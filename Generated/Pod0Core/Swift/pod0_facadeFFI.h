@@ -330,6 +330,11 @@ RustBuffer uniffi_pod0_facade_fn_method_pod0facade_subscribe(uint64_t ptr, RustB
 void uniffi_pod0_facade_fn_method_pod0facade_unsubscribe(uint64_t ptr, RustBuffer subscription_id, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_POD0_FACADE_FN_FUNC_PROJECT_CHAPTER_CONTRACT
+#define UNIFFI_FFIDEF_UNIFFI_POD0_FACADE_FN_FUNC_PROJECT_CHAPTER_CONTRACT
+RustBuffer uniffi_pod0_facade_fn_func_project_chapter_contract(RustBuffer request, RustBuffer scope, uint32_t offset, uint16_t max_items, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_POD0_FACADE_FN_FUNC_PROJECT_TRANSCRIPT_CONTRACT
 #define UNIFFI_FFIDEF_UNIFFI_POD0_FACADE_FN_FUNC_PROJECT_TRANSCRIPT_CONTRACT
 RustBuffer uniffi_pod0_facade_fn_func_project_transcript_contract(RustBuffer request, RustBuffer scope, uint32_t offset, uint16_t max_items, RustCallStatus *_Nonnull out_status
@@ -704,6 +709,12 @@ void ffi_pod0_facade_rust_future_free_void(uint64_t handle
 #ifndef UNIFFI_FFIDEF_FFI_POD0_FACADE_RUST_FUTURE_COMPLETE_VOID
 #define UNIFFI_FFIDEF_FFI_POD0_FACADE_RUST_FUTURE_COMPLETE_VOID
 void ffi_pod0_facade_rust_future_complete_void(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_POD0_FACADE_CHECKSUM_FUNC_PROJECT_CHAPTER_CONTRACT
+#define UNIFFI_FFIDEF_UNIFFI_POD0_FACADE_CHECKSUM_FUNC_PROJECT_CHAPTER_CONTRACT
+uint16_t uniffi_pod0_facade_checksum_func_project_chapter_contract(void
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_POD0_FACADE_CHECKSUM_FUNC_PROJECT_TRANSCRIPT_CONTRACT

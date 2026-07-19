@@ -4,6 +4,12 @@ use pod0_domain::{CommandId, UnixTimestampMilliseconds};
 
 uniffi::setup_scaffolding!();
 
+mod chapter_contract;
+#[cfg(test)]
+mod chapter_contract_fixture_tests;
+#[cfg(test)]
+mod chapter_contract_tests;
+mod chapter_projection;
 mod clip_contract;
 mod contract;
 mod contract_failure;
@@ -42,6 +48,8 @@ mod transcript_contract_fixture_tests;
 mod transcript_contract_tests;
 mod transcript_projection;
 
+pub use chapter_contract::*;
+pub use chapter_projection::*;
 pub use clip_contract::*;
 pub use contract::*;
 pub use contract_failure::*;

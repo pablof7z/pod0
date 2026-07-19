@@ -3,10 +3,13 @@
 use std::sync::Arc;
 
 pub use pod0_application::{
-    ApplicationCommand, ClipProjectionScope, ClipsProjection, CommandEnvelope, CoreFailure,
-    CoreFailureCode, DomainEvent, DomainEventEnvelope, EpisodeSummary, EvidenceIndexProjection,
-    EvidenceIndexSpanProjection, EvidenceIndexStage, FACADE_CONTRACT_VERSION, HostFailureCode,
-    HostObservation, HostObservationEnvelope, HostRequest, HostRequestEnvelope, KernelProbeCommand,
+    AdSpanProjection, ApplicationCommand, ChapterArtifactProjection, ChapterCommitReceipt,
+    ChapterContractProjection, ChapterContractRejection, ChapterContractRequest,
+    ChapterItemProjection, ChapterProjectionScope, ChapterSummaryProjection, ClipProjectionScope,
+    ClipsProjection, CommandEnvelope, CoreFailure, CoreFailureCode, DomainEvent,
+    DomainEventEnvelope, EpisodeSummary, EvidenceIndexProjection, EvidenceIndexSpanProjection,
+    EvidenceIndexStage, FACADE_CONTRACT_VERSION, HostFailureCode, HostObservation,
+    HostObservationEnvelope, HostRequest, HostRequestEnvelope, KernelProbeCommand,
     KernelProbeProjection, LibraryProjection, MAX_EVIDENCE_INDEX_PAGE_ITEMS,
     MAX_FEED_RESPONSE_BYTES, MAX_HOST_REQUEST_BATCH, MAX_OPERATION_ITEMS,
     MAX_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, MAX_PROJECTION_ITEMS, MAX_RECALL_CANDIDATES,
@@ -28,21 +31,23 @@ pub use pod0_application::{
 };
 use pod0_application::{Clock, KernelApplication};
 pub use pod0_domain::{
-    ArtifactReference, AutoDownloadMode, AutoDownloadPolicy, CancellationId, ClipEvidenceReference,
-    ClipId, ClipRecord, ClipRevision, ClipSource, CommandId, CompletionCause, CompletionStatus,
-    ContentDigest, DomainEventId, DownloadArtifactStatus, EpisodeId, EpisodeIdentityRecord,
-    EpisodeIdentityResolution, EpisodeListeningState, EpisodeRecord, EvidenceChunkPolicy,
-    EvidenceGenerationId, EvidenceSpanId, FeedIdentityV1, HostRequestId, ListeningDomainError,
-    ListeningDomainSnapshot, ListeningPlaybackPolicy, NoteAuthor, NoteEvidenceReference, NoteId,
-    NoteKind, NoteRecord, NoteRevision, NoteTarget, PlaybackRatePermille, PlaybackSegment,
-    PlaybackSleepMode, PodcastId, PodcastIdentityRecord, PodcastIdentityResolution, PodcastKind,
-    PodcastRecord, PodcastSubscriptionRecord, QueueEntry, QueueEntryId, RecallQueryId, SpeakerId,
-    StateRevision, SubscriptionId, TranscriptArtifactId, TranscriptArtifactInput,
-    TranscriptArtifactSegmentInput, TranscriptArtifactSpeakerInput, TranscriptArtifactStatus,
-    TranscriptArtifactWordInput, TranscriptProvenance, TranscriptSegmentId, TranscriptSource,
-    TranscriptVersionId, UnixTimestampMilliseconds, make_feed_identity_v1,
-    resolve_episode_identity_v1, resolve_legacy_parent_id, resolve_podcast_identity_v1,
-    validate_listening_snapshot,
+    AdSpanEvaluation, AdSpanId, AdSpanInput, ArtifactReference, AutoDownloadMode,
+    AutoDownloadPolicy, CancellationId, ChapterAdKind, ChapterArtifactId, ChapterArtifactInput,
+    ChapterArtifactProvenance, ChapterArtifactSource, ChapterId, ChapterInput,
+    ClipEvidenceReference, ClipId, ClipRecord, ClipRevision, ClipSource, CommandId,
+    CompletionCause, CompletionStatus, ContentDigest, DomainEventId, DownloadArtifactStatus,
+    EpisodeId, EpisodeIdentityRecord, EpisodeIdentityResolution, EpisodeListeningState,
+    EpisodeRecord, EvidenceChunkPolicy, EvidenceGenerationId, EvidenceSpanId, FeedIdentityV1,
+    HostRequestId, ListeningDomainError, ListeningDomainSnapshot, ListeningPlaybackPolicy,
+    NoteAuthor, NoteEvidenceReference, NoteId, NoteKind, NoteRecord, NoteRevision, NoteTarget,
+    PlaybackRatePermille, PlaybackSegment, PlaybackSleepMode, PodcastId, PodcastIdentityRecord,
+    PodcastIdentityResolution, PodcastKind, PodcastRecord, PodcastSubscriptionRecord, QueueEntry,
+    QueueEntryId, RecallQueryId, SpeakerId, StateRevision, SubscriptionId, TranscriptArtifactId,
+    TranscriptArtifactInput, TranscriptArtifactSegmentInput, TranscriptArtifactSpeakerInput,
+    TranscriptArtifactStatus, TranscriptArtifactWordInput, TranscriptProvenance,
+    TranscriptSegmentId, TranscriptSource, TranscriptVersionId, UnixTimestampMilliseconds,
+    make_feed_identity_v1, resolve_episode_identity_v1, resolve_legacy_parent_id,
+    resolve_podcast_identity_v1, validate_listening_snapshot,
 };
 
 uniffi::setup_scaffolding!();
@@ -169,6 +174,19 @@ pub fn project_transcript_contract(
     max_items: u16,
 ) -> TranscriptContractProjection {
     pod0_application::project_transcript_contract(request, scope, offset, max_items)
+}
+
+/// Produces bounded, state-shaped evidence for the typed chapter contract.
+/// The storage slice will add durable commit and selection after this pure
+/// cross-language contract is proven.
+#[uniffi::export]
+pub fn project_chapter_contract(
+    request: ChapterContractRequest,
+    scope: ChapterProjectionScope,
+    offset: u32,
+    max_items: u16,
+) -> ChapterContractProjection {
+    pod0_application::project_chapter_contract(request, scope, offset, max_items)
 }
 
 /// An internal deterministic probe retained for injected-time characterization.

@@ -615,6 +615,462 @@ fileprivate struct FfiConverterData: FfiConverterRustBuffer {
 }
 
 
+public struct AdSpanProjection: Equatable, Hashable {
+    public let adSpanId: AdSpanId
+    public let ordinal: UInt32
+    public let startMilliseconds: UInt64
+    public let endMilliseconds: UInt64
+    public let kind: ChapterAdKind
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(adSpanId: AdSpanId, ordinal: UInt32, startMilliseconds: UInt64, endMilliseconds: UInt64, kind: ChapterAdKind) {
+        self.adSpanId = adSpanId
+        self.ordinal = ordinal
+        self.startMilliseconds = startMilliseconds
+        self.endMilliseconds = endMilliseconds
+        self.kind = kind
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AdSpanProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAdSpanProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AdSpanProjection {
+        return
+            try AdSpanProjection(
+                adSpanId: FfiConverterTypeAdSpanId.read(from: &buf),
+                ordinal: FfiConverterUInt32.read(from: &buf),
+                startMilliseconds: FfiConverterUInt64.read(from: &buf),
+                endMilliseconds: FfiConverterUInt64.read(from: &buf),
+                kind: FfiConverterTypeChapterAdKind.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AdSpanProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeAdSpanId.write(value.adSpanId, into: &buf)
+        FfiConverterUInt32.write(value.ordinal, into: &buf)
+        FfiConverterUInt64.write(value.startMilliseconds, into: &buf)
+        FfiConverterUInt64.write(value.endMilliseconds, into: &buf)
+        FfiConverterTypeChapterAdKind.write(value.kind, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAdSpanProjection_lift(_ buf: RustBuffer) throws -> AdSpanProjection {
+    return try FfiConverterTypeAdSpanProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAdSpanProjection_lower(_ value: AdSpanProjection) -> RustBuffer {
+    return FfiConverterTypeAdSpanProjection.lower(value)
+}
+
+
+public struct ChapterArtifactProjection: Equatable, Hashable {
+    public let scope: ChapterProjectionScope
+    public let summary: ChapterSummaryProjection?
+    public let chapters: [ChapterItemProjection]
+    public let adSpans: [AdSpanProjection]
+    public let hasMore: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(scope: ChapterProjectionScope, summary: ChapterSummaryProjection?, chapters: [ChapterItemProjection], adSpans: [AdSpanProjection], hasMore: Bool) {
+        self.scope = scope
+        self.summary = summary
+        self.chapters = chapters
+        self.adSpans = adSpans
+        self.hasMore = hasMore
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterArtifactProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterArtifactProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterArtifactProjection {
+        return
+            try ChapterArtifactProjection(
+                scope: FfiConverterTypeChapterProjectionScope.read(from: &buf),
+                summary: FfiConverterOptionTypeChapterSummaryProjection.read(from: &buf),
+                chapters: FfiConverterSequenceTypeChapterItemProjection.read(from: &buf),
+                adSpans: FfiConverterSequenceTypeAdSpanProjection.read(from: &buf),
+                hasMore: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ChapterArtifactProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeChapterProjectionScope.write(value.scope, into: &buf)
+        FfiConverterOptionTypeChapterSummaryProjection.write(value.summary, into: &buf)
+        FfiConverterSequenceTypeChapterItemProjection.write(value.chapters, into: &buf)
+        FfiConverterSequenceTypeAdSpanProjection.write(value.adSpans, into: &buf)
+        FfiConverterBool.write(value.hasMore, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterArtifactProjection_lift(_ buf: RustBuffer) throws -> ChapterArtifactProjection {
+    return try FfiConverterTypeChapterArtifactProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterArtifactProjection_lower(_ value: ChapterArtifactProjection) -> RustBuffer {
+    return FfiConverterTypeChapterArtifactProjection.lower(value)
+}
+
+
+public struct ChapterCommitReceipt: Equatable, Hashable {
+    public let commandId: CommandId
+    public let artifactId: ChapterArtifactId
+    public let contentDigest: ContentDigest
+    public let integrityDigest: ContentDigest
+    public let commandFingerprint: ContentDigest
+    public let selectionRevision: StateRevision
+    public let chapterCount: UInt32
+    public let adSpanCount: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(commandId: CommandId, artifactId: ChapterArtifactId, contentDigest: ContentDigest, integrityDigest: ContentDigest, commandFingerprint: ContentDigest, selectionRevision: StateRevision, chapterCount: UInt32, adSpanCount: UInt32) {
+        self.commandId = commandId
+        self.artifactId = artifactId
+        self.contentDigest = contentDigest
+        self.integrityDigest = integrityDigest
+        self.commandFingerprint = commandFingerprint
+        self.selectionRevision = selectionRevision
+        self.chapterCount = chapterCount
+        self.adSpanCount = adSpanCount
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterCommitReceipt: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterCommitReceipt: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterCommitReceipt {
+        return
+            try ChapterCommitReceipt(
+                commandId: FfiConverterTypeCommandId.read(from: &buf),
+                artifactId: FfiConverterTypeChapterArtifactId.read(from: &buf),
+                contentDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                integrityDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                commandFingerprint: FfiConverterTypeContentDigest.read(from: &buf),
+                selectionRevision: FfiConverterTypeStateRevision.read(from: &buf),
+                chapterCount: FfiConverterUInt32.read(from: &buf),
+                adSpanCount: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ChapterCommitReceipt, into buf: inout [UInt8]) {
+        FfiConverterTypeCommandId.write(value.commandId, into: &buf)
+        FfiConverterTypeChapterArtifactId.write(value.artifactId, into: &buf)
+        FfiConverterTypeContentDigest.write(value.contentDigest, into: &buf)
+        FfiConverterTypeContentDigest.write(value.integrityDigest, into: &buf)
+        FfiConverterTypeContentDigest.write(value.commandFingerprint, into: &buf)
+        FfiConverterTypeStateRevision.write(value.selectionRevision, into: &buf)
+        FfiConverterUInt32.write(value.chapterCount, into: &buf)
+        FfiConverterUInt32.write(value.adSpanCount, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterCommitReceipt_lift(_ buf: RustBuffer) throws -> ChapterCommitReceipt {
+    return try FfiConverterTypeChapterCommitReceipt.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterCommitReceipt_lower(_ value: ChapterCommitReceipt) -> RustBuffer {
+    return FfiConverterTypeChapterCommitReceipt.lower(value)
+}
+
+
+public struct ChapterContractRequest: Equatable, Hashable {
+    public let commandId: CommandId
+    public let expectedSelectionRevision: StateRevision
+    public let artifact: ChapterArtifactInput
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(commandId: CommandId, expectedSelectionRevision: StateRevision, artifact: ChapterArtifactInput) {
+        self.commandId = commandId
+        self.expectedSelectionRevision = expectedSelectionRevision
+        self.artifact = artifact
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterContractRequest: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterContractRequest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterContractRequest {
+        return
+            try ChapterContractRequest(
+                commandId: FfiConverterTypeCommandId.read(from: &buf),
+                expectedSelectionRevision: FfiConverterTypeStateRevision.read(from: &buf),
+                artifact: FfiConverterTypeChapterArtifactInput.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ChapterContractRequest, into buf: inout [UInt8]) {
+        FfiConverterTypeCommandId.write(value.commandId, into: &buf)
+        FfiConverterTypeStateRevision.write(value.expectedSelectionRevision, into: &buf)
+        FfiConverterTypeChapterArtifactInput.write(value.artifact, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterContractRequest_lift(_ buf: RustBuffer) throws -> ChapterContractRequest {
+    return try FfiConverterTypeChapterContractRequest.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterContractRequest_lower(_ value: ChapterContractRequest) -> RustBuffer {
+    return FfiConverterTypeChapterContractRequest.lower(value)
+}
+
+
+public struct ChapterItemProjection: Equatable, Hashable {
+    public let chapterId: ChapterId
+    public let ordinal: UInt32
+    public let startMilliseconds: UInt64
+    public let explicitEndMilliseconds: UInt64?
+    public let effectiveEndMilliseconds: UInt64?
+    public let title: String
+    public let summary: String?
+    public let imageUrl: String?
+    public let linkUrl: String?
+    public let includeInTableOfContents: Bool
+    public let sourceEpisodeId: EpisodeId?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(chapterId: ChapterId, ordinal: UInt32, startMilliseconds: UInt64, explicitEndMilliseconds: UInt64?, effectiveEndMilliseconds: UInt64?, title: String, summary: String?, imageUrl: String?, linkUrl: String?, includeInTableOfContents: Bool, sourceEpisodeId: EpisodeId?) {
+        self.chapterId = chapterId
+        self.ordinal = ordinal
+        self.startMilliseconds = startMilliseconds
+        self.explicitEndMilliseconds = explicitEndMilliseconds
+        self.effectiveEndMilliseconds = effectiveEndMilliseconds
+        self.title = title
+        self.summary = summary
+        self.imageUrl = imageUrl
+        self.linkUrl = linkUrl
+        self.includeInTableOfContents = includeInTableOfContents
+        self.sourceEpisodeId = sourceEpisodeId
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterItemProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterItemProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterItemProjection {
+        return
+            try ChapterItemProjection(
+                chapterId: FfiConverterTypeChapterId.read(from: &buf),
+                ordinal: FfiConverterUInt32.read(from: &buf),
+                startMilliseconds: FfiConverterUInt64.read(from: &buf),
+                explicitEndMilliseconds: FfiConverterOptionUInt64.read(from: &buf),
+                effectiveEndMilliseconds: FfiConverterOptionUInt64.read(from: &buf),
+                title: FfiConverterString.read(from: &buf),
+                summary: FfiConverterOptionString.read(from: &buf),
+                imageUrl: FfiConverterOptionString.read(from: &buf),
+                linkUrl: FfiConverterOptionString.read(from: &buf),
+                includeInTableOfContents: FfiConverterBool.read(from: &buf),
+                sourceEpisodeId: FfiConverterOptionTypeEpisodeId.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ChapterItemProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeChapterId.write(value.chapterId, into: &buf)
+        FfiConverterUInt32.write(value.ordinal, into: &buf)
+        FfiConverterUInt64.write(value.startMilliseconds, into: &buf)
+        FfiConverterOptionUInt64.write(value.explicitEndMilliseconds, into: &buf)
+        FfiConverterOptionUInt64.write(value.effectiveEndMilliseconds, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.summary, into: &buf)
+        FfiConverterOptionString.write(value.imageUrl, into: &buf)
+        FfiConverterOptionString.write(value.linkUrl, into: &buf)
+        FfiConverterBool.write(value.includeInTableOfContents, into: &buf)
+        FfiConverterOptionTypeEpisodeId.write(value.sourceEpisodeId, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterItemProjection_lift(_ buf: RustBuffer) throws -> ChapterItemProjection {
+    return try FfiConverterTypeChapterItemProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterItemProjection_lower(_ value: ChapterItemProjection) -> RustBuffer {
+    return FfiConverterTypeChapterItemProjection.lower(value)
+}
+
+
+public struct ChapterSummaryProjection: Equatable, Hashable {
+    public let artifactId: ChapterArtifactId
+    public let episodeId: EpisodeId
+    public let podcastId: PodcastId
+    public let sourceRevision: String
+    public let provenance: ChapterArtifactProvenance
+    public let generatedAt: UnixTimestampMilliseconds
+    public let durationMilliseconds: UInt64?
+    public let contentDigest: ContentDigest
+    public let integrityDigest: ContentDigest
+    public let selectionRevision: StateRevision
+    public let chapterCount: UInt32
+    public let adSpanEvaluation: AdSpanEvaluation
+    public let adSpanCount: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(artifactId: ChapterArtifactId, episodeId: EpisodeId, podcastId: PodcastId, sourceRevision: String, provenance: ChapterArtifactProvenance, generatedAt: UnixTimestampMilliseconds, durationMilliseconds: UInt64?, contentDigest: ContentDigest, integrityDigest: ContentDigest, selectionRevision: StateRevision, chapterCount: UInt32, adSpanEvaluation: AdSpanEvaluation, adSpanCount: UInt32) {
+        self.artifactId = artifactId
+        self.episodeId = episodeId
+        self.podcastId = podcastId
+        self.sourceRevision = sourceRevision
+        self.provenance = provenance
+        self.generatedAt = generatedAt
+        self.durationMilliseconds = durationMilliseconds
+        self.contentDigest = contentDigest
+        self.integrityDigest = integrityDigest
+        self.selectionRevision = selectionRevision
+        self.chapterCount = chapterCount
+        self.adSpanEvaluation = adSpanEvaluation
+        self.adSpanCount = adSpanCount
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterSummaryProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterSummaryProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterSummaryProjection {
+        return
+            try ChapterSummaryProjection(
+                artifactId: FfiConverterTypeChapterArtifactId.read(from: &buf),
+                episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
+                podcastId: FfiConverterTypePodcastId.read(from: &buf),
+                sourceRevision: FfiConverterString.read(from: &buf),
+                provenance: FfiConverterTypeChapterArtifactProvenance.read(from: &buf),
+                generatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                durationMilliseconds: FfiConverterOptionUInt64.read(from: &buf),
+                contentDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                integrityDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                selectionRevision: FfiConverterTypeStateRevision.read(from: &buf),
+                chapterCount: FfiConverterUInt32.read(from: &buf),
+                adSpanEvaluation: FfiConverterTypeAdSpanEvaluation.read(from: &buf),
+                adSpanCount: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ChapterSummaryProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeChapterArtifactId.write(value.artifactId, into: &buf)
+        FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
+        FfiConverterTypePodcastId.write(value.podcastId, into: &buf)
+        FfiConverterString.write(value.sourceRevision, into: &buf)
+        FfiConverterTypeChapterArtifactProvenance.write(value.provenance, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.generatedAt, into: &buf)
+        FfiConverterOptionUInt64.write(value.durationMilliseconds, into: &buf)
+        FfiConverterTypeContentDigest.write(value.contentDigest, into: &buf)
+        FfiConverterTypeContentDigest.write(value.integrityDigest, into: &buf)
+        FfiConverterTypeStateRevision.write(value.selectionRevision, into: &buf)
+        FfiConverterUInt32.write(value.chapterCount, into: &buf)
+        FfiConverterTypeAdSpanEvaluation.write(value.adSpanEvaluation, into: &buf)
+        FfiConverterUInt32.write(value.adSpanCount, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterSummaryProjection_lift(_ buf: RustBuffer) throws -> ChapterSummaryProjection {
+    return try FfiConverterTypeChapterSummaryProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterSummaryProjection_lower(_ value: ChapterSummaryProjection) -> RustBuffer {
+    return FfiConverterTypeChapterSummaryProjection.lower(value)
+}
+
+
 public struct ClipsProjection: Equatable, Hashable {
     public let scope: ClipProjectionScope
     public let collectionRevision: StateRevision
@@ -3782,6 +4238,290 @@ public func FfiConverterTypeApplicationCommand_lift(_ buf: RustBuffer) throws ->
 #endif
 public func FfiConverterTypeApplicationCommand_lower(_ value: ApplicationCommand) -> RustBuffer {
     return FfiConverterTypeApplicationCommand.lower(value)
+}
+
+
+
+
+public enum ChapterContractProjection: Equatable, Hashable {
+
+    case qualified(receipt: ChapterCommitReceipt, artifact: ChapterArtifactProjection
+    )
+    case rejected(reason: ChapterContractRejection
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterContractProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterContractProjection: FfiConverterRustBuffer {
+    typealias SwiftType = ChapterContractProjection
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterContractProjection {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .qualified(receipt: try FfiConverterTypeChapterCommitReceipt.read(from: &buf), artifact: try FfiConverterTypeChapterArtifactProjection.read(from: &buf)
+        )
+
+        case 2: return .rejected(reason: try FfiConverterTypeChapterContractRejection.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ChapterContractProjection, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case let .qualified(receipt,artifact):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeChapterCommitReceipt.write(receipt, into: &buf)
+            FfiConverterTypeChapterArtifactProjection.write(artifact, into: &buf)
+
+
+        case let .rejected(reason):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeChapterContractRejection.write(reason, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterContractProjection_lift(_ buf: RustBuffer) throws -> ChapterContractProjection {
+    return try FfiConverterTypeChapterContractProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterContractProjection_lower(_ value: ChapterContractProjection) -> RustBuffer {
+    return FfiConverterTypeChapterContractProjection.lower(value)
+}
+
+
+
+
+public enum ChapterContractRejection: Equatable, Hashable {
+
+    case invalidMetadata
+    case invalidProvenance
+    case invalidChapter
+    case invalidAdSpan
+    case collectionLimit
+    case textLimit
+    case identityMismatch
+    case revisionExhausted
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterContractRejection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterContractRejection: FfiConverterRustBuffer {
+    typealias SwiftType = ChapterContractRejection
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterContractRejection {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .invalidMetadata
+
+        case 2: return .invalidProvenance
+
+        case 3: return .invalidChapter
+
+        case 4: return .invalidAdSpan
+
+        case 5: return .collectionLimit
+
+        case 6: return .textLimit
+
+        case 7: return .identityMismatch
+
+        case 8: return .revisionExhausted
+
+        case 9: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ChapterContractRejection, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .invalidMetadata:
+            writeInt(&buf, Int32(1))
+
+
+        case .invalidProvenance:
+            writeInt(&buf, Int32(2))
+
+
+        case .invalidChapter:
+            writeInt(&buf, Int32(3))
+
+
+        case .invalidAdSpan:
+            writeInt(&buf, Int32(4))
+
+
+        case .collectionLimit:
+            writeInt(&buf, Int32(5))
+
+
+        case .textLimit:
+            writeInt(&buf, Int32(6))
+
+
+        case .identityMismatch:
+            writeInt(&buf, Int32(7))
+
+
+        case .revisionExhausted:
+            writeInt(&buf, Int32(8))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(9))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterContractRejection_lift(_ buf: RustBuffer) throws -> ChapterContractRejection {
+    return try FfiConverterTypeChapterContractRejection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterContractRejection_lower(_ value: ChapterContractRejection) -> RustBuffer {
+    return FfiConverterTypeChapterContractRejection.lower(value)
+}
+
+
+
+
+public enum ChapterProjectionScope: Equatable, Hashable {
+
+    case summary
+    case chapters
+    case chapter(chapterId: ChapterId
+    )
+    case adSpans
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterProjectionScope: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterProjectionScope: FfiConverterRustBuffer {
+    typealias SwiftType = ChapterProjectionScope
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterProjectionScope {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .summary
+
+        case 2: return .chapters
+
+        case 3: return .chapter(chapterId: try FfiConverterTypeChapterId.read(from: &buf)
+        )
+
+        case 4: return .adSpans
+
+        case 5: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ChapterProjectionScope, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .summary:
+            writeInt(&buf, Int32(1))
+
+
+        case .chapters:
+            writeInt(&buf, Int32(2))
+
+
+        case let .chapter(chapterId):
+            writeInt(&buf, Int32(3))
+            FfiConverterTypeChapterId.write(chapterId, into: &buf)
+
+
+        case .adSpans:
+            writeInt(&buf, Int32(4))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(5))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterProjectionScope_lift(_ buf: RustBuffer) throws -> ChapterProjectionScope {
+    return try FfiConverterTypeChapterProjectionScope.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterProjectionScope_lower(_ value: ChapterProjectionScope) -> RustBuffer {
+    return FfiConverterTypeChapterProjectionScope.lower(value)
 }
 
 
@@ -7328,6 +8068,30 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeChapterSummaryProjection: FfiConverterRustBuffer {
+    typealias SwiftType = ChapterSummaryProjection?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeChapterSummaryProjection.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeChapterSummaryProjection.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeCoreFailure: FfiConverterRustBuffer {
     typealias SwiftType = CoreFailure?
 
@@ -7778,6 +8542,56 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterString.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeAdSpanProjection: FfiConverterRustBuffer {
+    typealias SwiftType = [AdSpanProjection]
+
+    public static func write(_ value: [AdSpanProjection], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAdSpanProjection.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AdSpanProjection] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AdSpanProjection]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAdSpanProjection.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeChapterItemProjection: FfiConverterRustBuffer {
+    typealias SwiftType = [ChapterItemProjection]
+
+    public static func write(_ value: [ChapterItemProjection], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeChapterItemProjection.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ChapterItemProjection] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ChapterItemProjection]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeChapterItemProjection.read(from: &buf))
         }
         return seq
     }

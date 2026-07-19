@@ -75,5 +75,6 @@ done < <(find "$REPO_ROOT/BindingsSmoke/Kotlin" -name '*.kt' -type f | sort)
   "$REPO_ROOT/Fixtures/CoreKnowledge/recall-projection-v1.properties" \
   "$REPO_ROOT/Fixtures/CoreKnowledge/note-projection-v1.properties" \
   "$REPO_ROOT/Fixtures/CoreKnowledge/clip-projection-v1.properties" \
-  "$REPO_ROOT/Fixtures/CoreKnowledge/transcript-contract-v1.properties"
+  "$REPO_ROOT/Fixtures/CoreKnowledge/transcript-contract-v1.properties" \
+  "$REPO_ROOT/Fixtures/CoreKnowledge/chapter-contract-v1.properties"
 echo "Kotlin generated binding compile and runtime smoke passed"

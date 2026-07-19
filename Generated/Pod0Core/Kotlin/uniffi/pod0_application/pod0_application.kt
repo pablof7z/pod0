@@ -30,8 +30,15 @@ import java.nio.CharBuffer
 import java.nio.charset.CodingErrorAction
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.ConcurrentHashMap
+import uniffi.pod0_domain.AdSpanEvaluation
+import uniffi.pod0_domain.AdSpanId
 import uniffi.pod0_domain.AutoDownloadPolicy
 import uniffi.pod0_domain.CancellationId
+import uniffi.pod0_domain.ChapterAdKind
+import uniffi.pod0_domain.ChapterArtifactId
+import uniffi.pod0_domain.ChapterArtifactInput
+import uniffi.pod0_domain.ChapterArtifactProvenance
+import uniffi.pod0_domain.ChapterId
 import uniffi.pod0_domain.ClipId
 import uniffi.pod0_domain.ClipRecord
 import uniffi.pod0_domain.ClipRevision
@@ -45,8 +52,15 @@ import uniffi.pod0_domain.EpisodeRecord
 import uniffi.pod0_domain.EvidenceChunkPolicy
 import uniffi.pod0_domain.EvidenceGenerationId
 import uniffi.pod0_domain.EvidenceSpanId
+import uniffi.pod0_domain.FfiConverterTypeAdSpanEvaluation
+import uniffi.pod0_domain.FfiConverterTypeAdSpanId
 import uniffi.pod0_domain.FfiConverterTypeAutoDownloadPolicy
 import uniffi.pod0_domain.FfiConverterTypeCancellationId
+import uniffi.pod0_domain.FfiConverterTypeChapterAdKind
+import uniffi.pod0_domain.FfiConverterTypeChapterArtifactId
+import uniffi.pod0_domain.FfiConverterTypeChapterArtifactInput
+import uniffi.pod0_domain.FfiConverterTypeChapterArtifactProvenance
+import uniffi.pod0_domain.FfiConverterTypeChapterId
 import uniffi.pod0_domain.FfiConverterTypeClipId
 import uniffi.pod0_domain.FfiConverterTypeClipRecord
 import uniffi.pod0_domain.FfiConverterTypeClipRevision
@@ -110,8 +124,15 @@ import uniffi.pod0_domain.TranscriptSegmentId
 import uniffi.pod0_domain.TranscriptSource
 import uniffi.pod0_domain.TranscriptVersionId
 import uniffi.pod0_domain.UnixTimestampMilliseconds
+import uniffi.pod0_domain.RustBuffer as RustBufferAdSpanEvaluation
+import uniffi.pod0_domain.RustBuffer as RustBufferAdSpanId
 import uniffi.pod0_domain.RustBuffer as RustBufferAutoDownloadPolicy
 import uniffi.pod0_domain.RustBuffer as RustBufferCancellationId
+import uniffi.pod0_domain.RustBuffer as RustBufferChapterAdKind
+import uniffi.pod0_domain.RustBuffer as RustBufferChapterArtifactId
+import uniffi.pod0_domain.RustBuffer as RustBufferChapterArtifactInput
+import uniffi.pod0_domain.RustBuffer as RustBufferChapterArtifactProvenance
+import uniffi.pod0_domain.RustBuffer as RustBufferChapterId
 import uniffi.pod0_domain.RustBuffer as RustBufferClipId
 import uniffi.pod0_domain.RustBuffer as RustBufferClipRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferClipRevision
@@ -1210,6 +1231,399 @@ public object FfiConverterByteArray: FfiConverterRustBuffer<ByteArray> {
     override fun write(value: ByteArray, buf: ByteBuffer) {
         buf.putInt(value.size)
         buf.put(value)
+    }
+}
+
+
+
+data class AdSpanProjection (
+    val `adSpanId`: AdSpanId
+    ,
+    val `ordinal`: kotlin.UInt
+    ,
+    val `startMilliseconds`: kotlin.ULong
+    ,
+    val `endMilliseconds`: kotlin.ULong
+    ,
+    val `kind`: ChapterAdKind
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAdSpanProjection: FfiConverterRustBuffer<AdSpanProjection> {
+    override fun read(buf: ByteBuffer): AdSpanProjection {
+        return AdSpanProjection(
+            FfiConverterTypeAdSpanId.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterTypeChapterAdKind.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AdSpanProjection) = (
+            FfiConverterTypeAdSpanId.allocationSize(value.`adSpanId`) +
+            FfiConverterUInt.allocationSize(value.`ordinal`) +
+            FfiConverterULong.allocationSize(value.`startMilliseconds`) +
+            FfiConverterULong.allocationSize(value.`endMilliseconds`) +
+            FfiConverterTypeChapterAdKind.allocationSize(value.`kind`)
+    )
+
+    override fun write(value: AdSpanProjection, buf: ByteBuffer) {
+            FfiConverterTypeAdSpanId.write(value.`adSpanId`, buf)
+            FfiConverterUInt.write(value.`ordinal`, buf)
+            FfiConverterULong.write(value.`startMilliseconds`, buf)
+            FfiConverterULong.write(value.`endMilliseconds`, buf)
+            FfiConverterTypeChapterAdKind.write(value.`kind`, buf)
+    }
+}
+
+
+
+data class ChapterArtifactProjection (
+    val `scope`: ChapterProjectionScope
+    ,
+    val `summary`: ChapterSummaryProjection?
+    ,
+    val `chapters`: List<ChapterItemProjection>
+    ,
+    val `adSpans`: List<AdSpanProjection>
+    ,
+    val `hasMore`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterArtifactProjection: FfiConverterRustBuffer<ChapterArtifactProjection> {
+    override fun read(buf: ByteBuffer): ChapterArtifactProjection {
+        return ChapterArtifactProjection(
+            FfiConverterTypeChapterProjectionScope.read(buf),
+            FfiConverterOptionalTypeChapterSummaryProjection.read(buf),
+            FfiConverterSequenceTypeChapterItemProjection.read(buf),
+            FfiConverterSequenceTypeAdSpanProjection.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ChapterArtifactProjection) = (
+            FfiConverterTypeChapterProjectionScope.allocationSize(value.`scope`) +
+            FfiConverterOptionalTypeChapterSummaryProjection.allocationSize(value.`summary`) +
+            FfiConverterSequenceTypeChapterItemProjection.allocationSize(value.`chapters`) +
+            FfiConverterSequenceTypeAdSpanProjection.allocationSize(value.`adSpans`) +
+            FfiConverterBoolean.allocationSize(value.`hasMore`)
+    )
+
+    override fun write(value: ChapterArtifactProjection, buf: ByteBuffer) {
+            FfiConverterTypeChapterProjectionScope.write(value.`scope`, buf)
+            FfiConverterOptionalTypeChapterSummaryProjection.write(value.`summary`, buf)
+            FfiConverterSequenceTypeChapterItemProjection.write(value.`chapters`, buf)
+            FfiConverterSequenceTypeAdSpanProjection.write(value.`adSpans`, buf)
+            FfiConverterBoolean.write(value.`hasMore`, buf)
+    }
+}
+
+
+
+data class ChapterCommitReceipt (
+    val `commandId`: CommandId
+    ,
+    val `artifactId`: ChapterArtifactId
+    ,
+    val `contentDigest`: ContentDigest
+    ,
+    val `integrityDigest`: ContentDigest
+    ,
+    val `commandFingerprint`: ContentDigest
+    ,
+    val `selectionRevision`: StateRevision
+    ,
+    val `chapterCount`: kotlin.UInt
+    ,
+    val `adSpanCount`: kotlin.UInt
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterCommitReceipt: FfiConverterRustBuffer<ChapterCommitReceipt> {
+    override fun read(buf: ByteBuffer): ChapterCommitReceipt {
+        return ChapterCommitReceipt(
+            FfiConverterTypeCommandId.read(buf),
+            FfiConverterTypeChapterArtifactId.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ChapterCommitReceipt) = (
+            FfiConverterTypeCommandId.allocationSize(value.`commandId`) +
+            FfiConverterTypeChapterArtifactId.allocationSize(value.`artifactId`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`contentDigest`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`integrityDigest`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`commandFingerprint`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`selectionRevision`) +
+            FfiConverterUInt.allocationSize(value.`chapterCount`) +
+            FfiConverterUInt.allocationSize(value.`adSpanCount`)
+    )
+
+    override fun write(value: ChapterCommitReceipt, buf: ByteBuffer) {
+            FfiConverterTypeCommandId.write(value.`commandId`, buf)
+            FfiConverterTypeChapterArtifactId.write(value.`artifactId`, buf)
+            FfiConverterTypeContentDigest.write(value.`contentDigest`, buf)
+            FfiConverterTypeContentDigest.write(value.`integrityDigest`, buf)
+            FfiConverterTypeContentDigest.write(value.`commandFingerprint`, buf)
+            FfiConverterTypeStateRevision.write(value.`selectionRevision`, buf)
+            FfiConverterUInt.write(value.`chapterCount`, buf)
+            FfiConverterUInt.write(value.`adSpanCount`, buf)
+    }
+}
+
+
+
+data class ChapterContractRequest (
+    val `commandId`: CommandId
+    ,
+    val `expectedSelectionRevision`: StateRevision
+    ,
+    val `artifact`: ChapterArtifactInput
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterContractRequest: FfiConverterRustBuffer<ChapterContractRequest> {
+    override fun read(buf: ByteBuffer): ChapterContractRequest {
+        return ChapterContractRequest(
+            FfiConverterTypeCommandId.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterTypeChapterArtifactInput.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ChapterContractRequest) = (
+            FfiConverterTypeCommandId.allocationSize(value.`commandId`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`expectedSelectionRevision`) +
+            FfiConverterTypeChapterArtifactInput.allocationSize(value.`artifact`)
+    )
+
+    override fun write(value: ChapterContractRequest, buf: ByteBuffer) {
+            FfiConverterTypeCommandId.write(value.`commandId`, buf)
+            FfiConverterTypeStateRevision.write(value.`expectedSelectionRevision`, buf)
+            FfiConverterTypeChapterArtifactInput.write(value.`artifact`, buf)
+    }
+}
+
+
+
+data class ChapterItemProjection (
+    val `chapterId`: ChapterId
+    ,
+    val `ordinal`: kotlin.UInt
+    ,
+    val `startMilliseconds`: kotlin.ULong
+    ,
+    val `explicitEndMilliseconds`: kotlin.ULong?
+    ,
+    val `effectiveEndMilliseconds`: kotlin.ULong?
+    ,
+    val `title`: kotlin.String
+    ,
+    val `summary`: kotlin.String?
+    ,
+    val `imageUrl`: kotlin.String?
+    ,
+    val `linkUrl`: kotlin.String?
+    ,
+    val `includeInTableOfContents`: kotlin.Boolean
+    ,
+    val `sourceEpisodeId`: EpisodeId?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterItemProjection: FfiConverterRustBuffer<ChapterItemProjection> {
+    override fun read(buf: ByteBuffer): ChapterItemProjection {
+        return ChapterItemProjection(
+            FfiConverterTypeChapterId.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalTypeEpisodeId.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ChapterItemProjection) = (
+            FfiConverterTypeChapterId.allocationSize(value.`chapterId`) +
+            FfiConverterUInt.allocationSize(value.`ordinal`) +
+            FfiConverterULong.allocationSize(value.`startMilliseconds`) +
+            FfiConverterOptionalULong.allocationSize(value.`explicitEndMilliseconds`) +
+            FfiConverterOptionalULong.allocationSize(value.`effectiveEndMilliseconds`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterOptionalString.allocationSize(value.`summary`) +
+            FfiConverterOptionalString.allocationSize(value.`imageUrl`) +
+            FfiConverterOptionalString.allocationSize(value.`linkUrl`) +
+            FfiConverterBoolean.allocationSize(value.`includeInTableOfContents`) +
+            FfiConverterOptionalTypeEpisodeId.allocationSize(value.`sourceEpisodeId`)
+    )
+
+    override fun write(value: ChapterItemProjection, buf: ByteBuffer) {
+            FfiConverterTypeChapterId.write(value.`chapterId`, buf)
+            FfiConverterUInt.write(value.`ordinal`, buf)
+            FfiConverterULong.write(value.`startMilliseconds`, buf)
+            FfiConverterOptionalULong.write(value.`explicitEndMilliseconds`, buf)
+            FfiConverterOptionalULong.write(value.`effectiveEndMilliseconds`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterOptionalString.write(value.`summary`, buf)
+            FfiConverterOptionalString.write(value.`imageUrl`, buf)
+            FfiConverterOptionalString.write(value.`linkUrl`, buf)
+            FfiConverterBoolean.write(value.`includeInTableOfContents`, buf)
+            FfiConverterOptionalTypeEpisodeId.write(value.`sourceEpisodeId`, buf)
+    }
+}
+
+
+
+data class ChapterSummaryProjection (
+    val `artifactId`: ChapterArtifactId
+    ,
+    val `episodeId`: EpisodeId
+    ,
+    val `podcastId`: PodcastId
+    ,
+    val `sourceRevision`: kotlin.String
+    ,
+    val `provenance`: ChapterArtifactProvenance
+    ,
+    val `generatedAt`: UnixTimestampMilliseconds
+    ,
+    val `durationMilliseconds`: kotlin.ULong?
+    ,
+    val `contentDigest`: ContentDigest
+    ,
+    val `integrityDigest`: ContentDigest
+    ,
+    val `selectionRevision`: StateRevision
+    ,
+    val `chapterCount`: kotlin.UInt
+    ,
+    val `adSpanEvaluation`: AdSpanEvaluation
+    ,
+    val `adSpanCount`: kotlin.UInt
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterSummaryProjection: FfiConverterRustBuffer<ChapterSummaryProjection> {
+    override fun read(buf: ByteBuffer): ChapterSummaryProjection {
+        return ChapterSummaryProjection(
+            FfiConverterTypeChapterArtifactId.read(buf),
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterTypePodcastId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeChapterArtifactProvenance.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterTypeAdSpanEvaluation.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ChapterSummaryProjection) = (
+            FfiConverterTypeChapterArtifactId.allocationSize(value.`artifactId`) +
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterString.allocationSize(value.`sourceRevision`) +
+            FfiConverterTypeChapterArtifactProvenance.allocationSize(value.`provenance`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`generatedAt`) +
+            FfiConverterOptionalULong.allocationSize(value.`durationMilliseconds`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`contentDigest`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`integrityDigest`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`selectionRevision`) +
+            FfiConverterUInt.allocationSize(value.`chapterCount`) +
+            FfiConverterTypeAdSpanEvaluation.allocationSize(value.`adSpanEvaluation`) +
+            FfiConverterUInt.allocationSize(value.`adSpanCount`)
+    )
+
+    override fun write(value: ChapterSummaryProjection, buf: ByteBuffer) {
+            FfiConverterTypeChapterArtifactId.write(value.`artifactId`, buf)
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterString.write(value.`sourceRevision`, buf)
+            FfiConverterTypeChapterArtifactProvenance.write(value.`provenance`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`generatedAt`, buf)
+            FfiConverterOptionalULong.write(value.`durationMilliseconds`, buf)
+            FfiConverterTypeContentDigest.write(value.`contentDigest`, buf)
+            FfiConverterTypeContentDigest.write(value.`integrityDigest`, buf)
+            FfiConverterTypeStateRevision.write(value.`selectionRevision`, buf)
+            FfiConverterUInt.write(value.`chapterCount`, buf)
+            FfiConverterTypeAdSpanEvaluation.write(value.`adSpanEvaluation`, buf)
+            FfiConverterUInt.write(value.`adSpanCount`, buf)
     }
 }
 
@@ -4287,6 +4701,389 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
             }
             is ApplicationCommand.Unsupported -> {
                 buf.putInt(26)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class ChapterContractProjection {
+
+    data class Qualified(
+        val `receipt`: uniffi.pod0_application.ChapterCommitReceipt,
+        val `artifact`: uniffi.pod0_application.ChapterArtifactProjection) : ChapterContractProjection()
+
+    {
+
+
+        companion object
+    }
+
+    data class Rejected(
+        val `reason`: uniffi.pod0_application.ChapterContractRejection) : ChapterContractProjection()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterContractProjection : FfiConverterRustBuffer<ChapterContractProjection>{
+    override fun read(buf: ByteBuffer): ChapterContractProjection {
+        return when(buf.getInt()) {
+            1 -> ChapterContractProjection.Qualified(
+                FfiConverterTypeChapterCommitReceipt.read(buf),
+                FfiConverterTypeChapterArtifactProjection.read(buf),
+                )
+            2 -> ChapterContractProjection.Rejected(
+                FfiConverterTypeChapterContractRejection.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: ChapterContractProjection): ULong = when(value) {
+        is ChapterContractProjection.Qualified -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeChapterCommitReceipt.allocationSize(value.`receipt`)
+                + FfiConverterTypeChapterArtifactProjection.allocationSize(value.`artifact`)
+            )
+        }
+        is ChapterContractProjection.Rejected -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeChapterContractRejection.allocationSize(value.`reason`)
+            )
+        }
+    }
+
+    override fun write(value: ChapterContractProjection, buf: ByteBuffer) {
+        when(value) {
+            is ChapterContractProjection.Qualified -> {
+                buf.putInt(1)
+                FfiConverterTypeChapterCommitReceipt.write(value.`receipt`, buf)
+                FfiConverterTypeChapterArtifactProjection.write(value.`artifact`, buf)
+                Unit
+            }
+            is ChapterContractProjection.Rejected -> {
+                buf.putInt(2)
+                FfiConverterTypeChapterContractRejection.write(value.`reason`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class ChapterContractRejection {
+
+    object InvalidMetadata : ChapterContractRejection()
+
+
+    object InvalidProvenance : ChapterContractRejection()
+
+
+    object InvalidChapter : ChapterContractRejection()
+
+
+    object InvalidAdSpan : ChapterContractRejection()
+
+
+    object CollectionLimit : ChapterContractRejection()
+
+
+    object TextLimit : ChapterContractRejection()
+
+
+    object IdentityMismatch : ChapterContractRejection()
+
+
+    object RevisionExhausted : ChapterContractRejection()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : ChapterContractRejection()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterContractRejection : FfiConverterRustBuffer<ChapterContractRejection>{
+    override fun read(buf: ByteBuffer): ChapterContractRejection {
+        return when(buf.getInt()) {
+            1 -> ChapterContractRejection.InvalidMetadata
+            2 -> ChapterContractRejection.InvalidProvenance
+            3 -> ChapterContractRejection.InvalidChapter
+            4 -> ChapterContractRejection.InvalidAdSpan
+            5 -> ChapterContractRejection.CollectionLimit
+            6 -> ChapterContractRejection.TextLimit
+            7 -> ChapterContractRejection.IdentityMismatch
+            8 -> ChapterContractRejection.RevisionExhausted
+            9 -> ChapterContractRejection.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: ChapterContractRejection): ULong = when(value) {
+        is ChapterContractRejection.InvalidMetadata -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterContractRejection.InvalidProvenance -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterContractRejection.InvalidChapter -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterContractRejection.InvalidAdSpan -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterContractRejection.CollectionLimit -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterContractRejection.TextLimit -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterContractRejection.IdentityMismatch -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterContractRejection.RevisionExhausted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterContractRejection.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: ChapterContractRejection, buf: ByteBuffer) {
+        when(value) {
+            is ChapterContractRejection.InvalidMetadata -> {
+                buf.putInt(1)
+                Unit
+            }
+            is ChapterContractRejection.InvalidProvenance -> {
+                buf.putInt(2)
+                Unit
+            }
+            is ChapterContractRejection.InvalidChapter -> {
+                buf.putInt(3)
+                Unit
+            }
+            is ChapterContractRejection.InvalidAdSpan -> {
+                buf.putInt(4)
+                Unit
+            }
+            is ChapterContractRejection.CollectionLimit -> {
+                buf.putInt(5)
+                Unit
+            }
+            is ChapterContractRejection.TextLimit -> {
+                buf.putInt(6)
+                Unit
+            }
+            is ChapterContractRejection.IdentityMismatch -> {
+                buf.putInt(7)
+                Unit
+            }
+            is ChapterContractRejection.RevisionExhausted -> {
+                buf.putInt(8)
+                Unit
+            }
+            is ChapterContractRejection.Unsupported -> {
+                buf.putInt(9)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class ChapterProjectionScope {
+
+    object Summary : ChapterProjectionScope()
+
+
+    object Chapters : ChapterProjectionScope()
+
+
+    data class Chapter(
+        val `chapterId`: uniffi.pod0_domain.ChapterId) : ChapterProjectionScope()
+
+    {
+
+
+        companion object
+    }
+
+    object AdSpans : ChapterProjectionScope()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : ChapterProjectionScope()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterProjectionScope : FfiConverterRustBuffer<ChapterProjectionScope>{
+    override fun read(buf: ByteBuffer): ChapterProjectionScope {
+        return when(buf.getInt()) {
+            1 -> ChapterProjectionScope.Summary
+            2 -> ChapterProjectionScope.Chapters
+            3 -> ChapterProjectionScope.Chapter(
+                FfiConverterTypeChapterId.read(buf),
+                )
+            4 -> ChapterProjectionScope.AdSpans
+            5 -> ChapterProjectionScope.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: ChapterProjectionScope): ULong = when(value) {
+        is ChapterProjectionScope.Summary -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterProjectionScope.Chapters -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterProjectionScope.Chapter -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeChapterId.allocationSize(value.`chapterId`)
+            )
+        }
+        is ChapterProjectionScope.AdSpans -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterProjectionScope.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: ChapterProjectionScope, buf: ByteBuffer) {
+        when(value) {
+            is ChapterProjectionScope.Summary -> {
+                buf.putInt(1)
+                Unit
+            }
+            is ChapterProjectionScope.Chapters -> {
+                buf.putInt(2)
+                Unit
+            }
+            is ChapterProjectionScope.Chapter -> {
+                buf.putInt(3)
+                FfiConverterTypeChapterId.write(value.`chapterId`, buf)
+                Unit
+            }
+            is ChapterProjectionScope.AdSpans -> {
+                buf.putInt(4)
+                Unit
+            }
+            is ChapterProjectionScope.Unsupported -> {
+                buf.putInt(5)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -9833,6 +10630,38 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeChapterSummaryProjection: FfiConverterRustBuffer<ChapterSummaryProjection?> {
+    override fun read(buf: ByteBuffer): ChapterSummaryProjection? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeChapterSummaryProjection.read(buf)
+    }
+
+    override fun allocationSize(value: ChapterSummaryProjection?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeChapterSummaryProjection.allocationSize(value)
+        }
+    }
+
+    override fun write(value: ChapterSummaryProjection?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeChapterSummaryProjection.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeCoreFailure: FfiConverterRustBuffer<CoreFailure?> {
     override fun read(buf: ByteBuffer): CoreFailure? {
         if (buf.get().toInt() == 0) {
@@ -10423,6 +11252,62 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterString.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeAdSpanProjection: FfiConverterRustBuffer<List<AdSpanProjection>> {
+    override fun read(buf: ByteBuffer): List<AdSpanProjection> {
+        val len = buf.getInt()
+        return List<AdSpanProjection>(len) {
+            FfiConverterTypeAdSpanProjection.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<AdSpanProjection>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeAdSpanProjection.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<AdSpanProjection>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeAdSpanProjection.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeChapterItemProjection: FfiConverterRustBuffer<List<ChapterItemProjection>> {
+    override fun read(buf: ByteBuffer): List<ChapterItemProjection> {
+        val len = buf.getInt()
+        return List<ChapterItemProjection>(len) {
+            FfiConverterTypeChapterItemProjection.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<ChapterItemProjection>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeChapterItemProjection.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<ChapterItemProjection>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeChapterItemProjection.write(it, buf)
         }
     }
 }

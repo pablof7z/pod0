@@ -597,6 +597,118 @@ fileprivate struct FfiConverterString: FfiConverter {
 }
 
 
+public struct AdSpanId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AdSpanId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAdSpanId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AdSpanId {
+        return
+            try AdSpanId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AdSpanId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAdSpanId_lift(_ buf: RustBuffer) throws -> AdSpanId {
+    return try FfiConverterTypeAdSpanId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAdSpanId_lower(_ value: AdSpanId) -> RustBuffer {
+    return FfiConverterTypeAdSpanId.lower(value)
+}
+
+
+public struct AdSpanInput: Equatable, Hashable {
+    public let startMilliseconds: UInt64
+    public let endMilliseconds: UInt64
+    public let kind: ChapterAdKind
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(startMilliseconds: UInt64, endMilliseconds: UInt64, kind: ChapterAdKind) {
+        self.startMilliseconds = startMilliseconds
+        self.endMilliseconds = endMilliseconds
+        self.kind = kind
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AdSpanInput: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAdSpanInput: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AdSpanInput {
+        return
+            try AdSpanInput(
+                startMilliseconds: FfiConverterUInt64.read(from: &buf),
+                endMilliseconds: FfiConverterUInt64.read(from: &buf),
+                kind: FfiConverterTypeChapterAdKind.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AdSpanInput, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.startMilliseconds, into: &buf)
+        FfiConverterUInt64.write(value.endMilliseconds, into: &buf)
+        FfiConverterTypeChapterAdKind.write(value.kind, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAdSpanInput_lift(_ buf: RustBuffer) throws -> AdSpanInput {
+    return try FfiConverterTypeAdSpanInput.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAdSpanInput_lower(_ value: AdSpanInput) -> RustBuffer {
+    return FfiConverterTypeAdSpanInput.lower(value)
+}
+
+
 /**
  * Opaque durable artifact identity. Payloads and host file URLs do not cross
  * this domain boundary; their owning workflow resolves this versioned key.
@@ -760,6 +872,348 @@ public func FfiConverterTypeCancellationId_lift(_ buf: RustBuffer) throws -> Can
 #endif
 public func FfiConverterTypeCancellationId_lower(_ value: CancellationId) -> RustBuffer {
     return FfiConverterTypeCancellationId.lower(value)
+}
+
+
+public struct ChapterArtifactId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterArtifactId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterArtifactId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterArtifactId {
+        return
+            try ChapterArtifactId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ChapterArtifactId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterArtifactId_lift(_ buf: RustBuffer) throws -> ChapterArtifactId {
+    return try FfiConverterTypeChapterArtifactId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterArtifactId_lower(_ value: ChapterArtifactId) -> RustBuffer {
+    return FfiConverterTypeChapterArtifactId.lower(value)
+}
+
+
+public struct ChapterArtifactInput: Equatable, Hashable {
+    public let episodeId: EpisodeId
+    public let podcastId: PodcastId
+    public let sourceRevision: String
+    public let provenance: ChapterArtifactProvenance
+    public let generatedAt: UnixTimestampMilliseconds
+    public let durationMilliseconds: UInt64?
+    public let chapters: [ChapterInput]
+    public let adSpanEvaluation: AdSpanEvaluation
+    public let adSpans: [AdSpanInput]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(episodeId: EpisodeId, podcastId: PodcastId, sourceRevision: String, provenance: ChapterArtifactProvenance, generatedAt: UnixTimestampMilliseconds, durationMilliseconds: UInt64?, chapters: [ChapterInput], adSpanEvaluation: AdSpanEvaluation, adSpans: [AdSpanInput]) {
+        self.episodeId = episodeId
+        self.podcastId = podcastId
+        self.sourceRevision = sourceRevision
+        self.provenance = provenance
+        self.generatedAt = generatedAt
+        self.durationMilliseconds = durationMilliseconds
+        self.chapters = chapters
+        self.adSpanEvaluation = adSpanEvaluation
+        self.adSpans = adSpans
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterArtifactInput: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterArtifactInput: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterArtifactInput {
+        return
+            try ChapterArtifactInput(
+                episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
+                podcastId: FfiConverterTypePodcastId.read(from: &buf),
+                sourceRevision: FfiConverterString.read(from: &buf),
+                provenance: FfiConverterTypeChapterArtifactProvenance.read(from: &buf),
+                generatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                durationMilliseconds: FfiConverterOptionUInt64.read(from: &buf),
+                chapters: FfiConverterSequenceTypeChapterInput.read(from: &buf),
+                adSpanEvaluation: FfiConverterTypeAdSpanEvaluation.read(from: &buf),
+                adSpans: FfiConverterSequenceTypeAdSpanInput.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ChapterArtifactInput, into buf: inout [UInt8]) {
+        FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
+        FfiConverterTypePodcastId.write(value.podcastId, into: &buf)
+        FfiConverterString.write(value.sourceRevision, into: &buf)
+        FfiConverterTypeChapterArtifactProvenance.write(value.provenance, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.generatedAt, into: &buf)
+        FfiConverterOptionUInt64.write(value.durationMilliseconds, into: &buf)
+        FfiConverterSequenceTypeChapterInput.write(value.chapters, into: &buf)
+        FfiConverterTypeAdSpanEvaluation.write(value.adSpanEvaluation, into: &buf)
+        FfiConverterSequenceTypeAdSpanInput.write(value.adSpans, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterArtifactInput_lift(_ buf: RustBuffer) throws -> ChapterArtifactInput {
+    return try FfiConverterTypeChapterArtifactInput.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterArtifactInput_lower(_ value: ChapterArtifactInput) -> RustBuffer {
+    return FfiConverterTypeChapterArtifactInput.lower(value)
+}
+
+
+public struct ChapterArtifactProvenance: Equatable, Hashable {
+    public let source: ChapterArtifactSource
+    public let provider: String?
+    public let model: String?
+    public let policyVersion: UInt32
+    public let sourcePayloadDigest: ContentDigest
+    public let transcriptVersionId: TranscriptVersionId?
+    public let transcriptContentDigest: ContentDigest?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(source: ChapterArtifactSource, provider: String?, model: String?, policyVersion: UInt32, sourcePayloadDigest: ContentDigest, transcriptVersionId: TranscriptVersionId?, transcriptContentDigest: ContentDigest?) {
+        self.source = source
+        self.provider = provider
+        self.model = model
+        self.policyVersion = policyVersion
+        self.sourcePayloadDigest = sourcePayloadDigest
+        self.transcriptVersionId = transcriptVersionId
+        self.transcriptContentDigest = transcriptContentDigest
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterArtifactProvenance: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterArtifactProvenance: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterArtifactProvenance {
+        return
+            try ChapterArtifactProvenance(
+                source: FfiConverterTypeChapterArtifactSource.read(from: &buf),
+                provider: FfiConverterOptionString.read(from: &buf),
+                model: FfiConverterOptionString.read(from: &buf),
+                policyVersion: FfiConverterUInt32.read(from: &buf),
+                sourcePayloadDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                transcriptVersionId: FfiConverterOptionTypeTranscriptVersionId.read(from: &buf),
+                transcriptContentDigest: FfiConverterOptionTypeContentDigest.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ChapterArtifactProvenance, into buf: inout [UInt8]) {
+        FfiConverterTypeChapterArtifactSource.write(value.source, into: &buf)
+        FfiConverterOptionString.write(value.provider, into: &buf)
+        FfiConverterOptionString.write(value.model, into: &buf)
+        FfiConverterUInt32.write(value.policyVersion, into: &buf)
+        FfiConverterTypeContentDigest.write(value.sourcePayloadDigest, into: &buf)
+        FfiConverterOptionTypeTranscriptVersionId.write(value.transcriptVersionId, into: &buf)
+        FfiConverterOptionTypeContentDigest.write(value.transcriptContentDigest, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterArtifactProvenance_lift(_ buf: RustBuffer) throws -> ChapterArtifactProvenance {
+    return try FfiConverterTypeChapterArtifactProvenance.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterArtifactProvenance_lower(_ value: ChapterArtifactProvenance) -> RustBuffer {
+    return FfiConverterTypeChapterArtifactProvenance.lower(value)
+}
+
+
+public struct ChapterId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterId {
+        return
+            try ChapterId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ChapterId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterId_lift(_ buf: RustBuffer) throws -> ChapterId {
+    return try FfiConverterTypeChapterId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterId_lower(_ value: ChapterId) -> RustBuffer {
+    return FfiConverterTypeChapterId.lower(value)
+}
+
+
+public struct ChapterInput: Equatable, Hashable {
+    public let startMilliseconds: UInt64
+    public let endMilliseconds: UInt64?
+    public let title: String
+    public let summary: String?
+    public let imageUrl: String?
+    public let linkUrl: String?
+    public let includeInTableOfContents: Bool
+    public let sourceEpisodeId: EpisodeId?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(startMilliseconds: UInt64, endMilliseconds: UInt64?, title: String, summary: String?, imageUrl: String?, linkUrl: String?, includeInTableOfContents: Bool, sourceEpisodeId: EpisodeId?) {
+        self.startMilliseconds = startMilliseconds
+        self.endMilliseconds = endMilliseconds
+        self.title = title
+        self.summary = summary
+        self.imageUrl = imageUrl
+        self.linkUrl = linkUrl
+        self.includeInTableOfContents = includeInTableOfContents
+        self.sourceEpisodeId = sourceEpisodeId
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterInput: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterInput: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterInput {
+        return
+            try ChapterInput(
+                startMilliseconds: FfiConverterUInt64.read(from: &buf),
+                endMilliseconds: FfiConverterOptionUInt64.read(from: &buf),
+                title: FfiConverterString.read(from: &buf),
+                summary: FfiConverterOptionString.read(from: &buf),
+                imageUrl: FfiConverterOptionString.read(from: &buf),
+                linkUrl: FfiConverterOptionString.read(from: &buf),
+                includeInTableOfContents: FfiConverterBool.read(from: &buf),
+                sourceEpisodeId: FfiConverterOptionTypeEpisodeId.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ChapterInput, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.startMilliseconds, into: &buf)
+        FfiConverterOptionUInt64.write(value.endMilliseconds, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.summary, into: &buf)
+        FfiConverterOptionString.write(value.imageUrl, into: &buf)
+        FfiConverterOptionString.write(value.linkUrl, into: &buf)
+        FfiConverterBool.write(value.includeInTableOfContents, into: &buf)
+        FfiConverterOptionTypeEpisodeId.write(value.sourceEpisodeId, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterInput_lift(_ buf: RustBuffer) throws -> ChapterInput {
+    return try FfiConverterTypeChapterInput.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterInput_lower(_ value: ChapterInput) -> RustBuffer {
+    return FfiConverterTypeChapterInput.lower(value)
 }
 
 
@@ -3693,6 +4147,82 @@ public func FfiConverterTypeUnixTimestampMilliseconds_lower(_ value: UnixTimesta
 
 
 
+public enum AdSpanEvaluation: Equatable, Hashable {
+
+    case notEvaluated
+    case evaluated
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AdSpanEvaluation: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAdSpanEvaluation: FfiConverterRustBuffer {
+    typealias SwiftType = AdSpanEvaluation
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AdSpanEvaluation {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .notEvaluated
+
+        case 2: return .evaluated
+
+        case 3: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AdSpanEvaluation, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .notEvaluated:
+            writeInt(&buf, Int32(1))
+
+
+        case .evaluated:
+            writeInt(&buf, Int32(2))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAdSpanEvaluation_lift(_ buf: RustBuffer) throws -> AdSpanEvaluation {
+    return try FfiConverterTypeAdSpanEvaluation.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAdSpanEvaluation_lower(_ value: AdSpanEvaluation) -> RustBuffer {
+    return FfiConverterTypeAdSpanEvaluation.lower(value)
+}
+
+
+
+
 public enum AutoDownloadMode: Equatable, Hashable {
 
     case off
@@ -3774,6 +4304,179 @@ public func FfiConverterTypeAutoDownloadMode_lift(_ buf: RustBuffer) throws -> A
 #endif
 public func FfiConverterTypeAutoDownloadMode_lower(_ value: AutoDownloadMode) -> RustBuffer {
     return FfiConverterTypeAutoDownloadMode.lower(value)
+}
+
+
+
+
+public enum ChapterAdKind: Equatable, Hashable {
+
+    case preroll
+    case midroll
+    case postroll
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterAdKind: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterAdKind: FfiConverterRustBuffer {
+    typealias SwiftType = ChapterAdKind
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterAdKind {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .preroll
+
+        case 2: return .midroll
+
+        case 3: return .postroll
+
+        case 4: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ChapterAdKind, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .preroll:
+            writeInt(&buf, Int32(1))
+
+
+        case .midroll:
+            writeInt(&buf, Int32(2))
+
+
+        case .postroll:
+            writeInt(&buf, Int32(3))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(4))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterAdKind_lift(_ buf: RustBuffer) throws -> ChapterAdKind {
+    return try FfiConverterTypeChapterAdKind.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterAdKind_lower(_ value: ChapterAdKind) -> RustBuffer {
+    return FfiConverterTypeChapterAdKind.lower(value)
+}
+
+
+
+
+public enum ChapterArtifactSource: Equatable, Hashable {
+
+    case publisher
+    case generated
+    case publisherEnriched
+    case agentComposed
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterArtifactSource: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterArtifactSource: FfiConverterRustBuffer {
+    typealias SwiftType = ChapterArtifactSource
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterArtifactSource {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .publisher
+
+        case 2: return .generated
+
+        case 3: return .publisherEnriched
+
+        case 4: return .agentComposed
+
+        case 5: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ChapterArtifactSource, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .publisher:
+            writeInt(&buf, Int32(1))
+
+
+        case .generated:
+            writeInt(&buf, Int32(2))
+
+
+        case .publisherEnriched:
+            writeInt(&buf, Int32(3))
+
+
+        case .agentComposed:
+            writeInt(&buf, Int32(4))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(5))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterArtifactSource_lift(_ buf: RustBuffer) throws -> ChapterArtifactSource {
+    return try FfiConverterTypeChapterArtifactSource.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterArtifactSource_lower(_ value: ChapterArtifactSource) -> RustBuffer {
+    return FfiConverterTypeChapterArtifactSource.lower(value)
 }
 
 
@@ -5226,6 +5929,30 @@ fileprivate struct FfiConverterOptionTypeClipEvidenceReference: FfiConverterRust
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeContentDigest: FfiConverterRustBuffer {
+    typealias SwiftType = ContentDigest?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeContentDigest.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeContentDigest.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeEpisodeId: FfiConverterRustBuffer {
     typealias SwiftType = EpisodeId?
 
@@ -5418,6 +6145,30 @@ fileprivate struct FfiConverterOptionTypeSpeakerId: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeTranscriptVersionId: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptVersionId?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeTranscriptVersionId.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeTranscriptVersionId.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeUnixTimestampMilliseconds: FfiConverterRustBuffer {
     typealias SwiftType = UnixTimestampMilliseconds?
 
@@ -5483,6 +6234,56 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterString.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeAdSpanInput: FfiConverterRustBuffer {
+    typealias SwiftType = [AdSpanInput]
+
+    public static func write(_ value: [AdSpanInput], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAdSpanInput.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AdSpanInput] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AdSpanInput]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAdSpanInput.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeChapterInput: FfiConverterRustBuffer {
+    typealias SwiftType = [ChapterInput]
+
+    public static func write(_ value: [ChapterInput], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeChapterInput.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ChapterInput] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ChapterInput]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeChapterInput.read(from: &buf))
         }
         return seq
     }

@@ -31,7 +31,13 @@ import java.nio.charset.CodingErrorAction
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import uniffi.pod0_application.ChapterContractProjection
+import uniffi.pod0_application.ChapterContractRequest
+import uniffi.pod0_application.ChapterProjectionScope
 import uniffi.pod0_application.CommandEnvelope
+import uniffi.pod0_application.FfiConverterTypeChapterContractProjection
+import uniffi.pod0_application.FfiConverterTypeChapterContractRequest
+import uniffi.pod0_application.FfiConverterTypeChapterProjectionScope
 import uniffi.pod0_application.FfiConverterTypeCommandEnvelope
 import uniffi.pod0_application.FfiConverterTypeHostObservationEnvelope
 import uniffi.pod0_application.FfiConverterTypeHostRequestEnvelope
@@ -61,6 +67,9 @@ import uniffi.pod0_domain.ListeningDomainSnapshot
 import uniffi.pod0_domain.NoteRecord
 import uniffi.pod0_domain.StateRevision
 import uniffi.pod0_domain.SubscriptionId
+import uniffi.pod0_application.RustBuffer as RustBufferChapterContractProjection
+import uniffi.pod0_application.RustBuffer as RustBufferChapterContractRequest
+import uniffi.pod0_application.RustBuffer as RustBufferChapterProjectionScope
 import uniffi.pod0_application.RustBuffer as RustBufferCommandEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferHostObservationEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferHostRequestEnvelope
@@ -740,6 +749,8 @@ internal object IntegrityCheckingUniffiLib {
         uniffiCheckContractApiVersion(this)
         uniffiCheckApiChecksums(this)
     }
+    external fun uniffi_pod0_facade_checksum_func_project_chapter_contract(
+    ): Int
     external fun uniffi_pod0_facade_checksum_func_project_transcript_contract(
     ): Int
     external fun uniffi_pod0_facade_checksum_func_commit_staged_legacy_clip_import(
@@ -853,6 +864,8 @@ internal object UniffiLib {
     ): RustBufferSubscriptionId.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_unsubscribe(`ptr`: Long,`subscriptionId`: RustBufferSubscriptionId.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): Unit
+    external fun uniffi_pod0_facade_fn_func_project_chapter_contract(`request`: RustBufferChapterContractRequest.ByValue,`scope`: RustBufferChapterProjectionScope.ByValue,`offset`: Int,`maxItems`: Short,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBufferChapterContractProjection.ByValue
     external fun uniffi_pod0_facade_fn_func_project_transcript_contract(`request`: RustBufferTranscriptCommitRequest.ByValue,`scope`: RustBufferTranscriptProjectionScope.ByValue,`offset`: Int,`maxItems`: Short,uniffi_out_err: UniffiRustCallStatus,
     ): RustBufferTranscriptContractProjection.ByValue
     external fun uniffi_pod0_facade_fn_func_commit_staged_legacy_clip_import(`sourcePath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
@@ -1018,6 +1031,9 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if (lib.uniffi_pod0_facade_checksum_func_project_chapter_contract() != 22970) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_pod0_facade_checksum_func_project_transcript_contract() != 30792) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -4153,6 +4169,31 @@ public object FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer<List<No
 
 
 
+
+
+
+
+
+
+
+
+        /**
+         * Produces bounded, state-shaped evidence for the typed chapter contract.
+         * The storage slice will add durable commit and selection after this pure
+         * cross-language contract is proven.
+         */ fun `projectChapterContract`(`request`: ChapterContractRequest, `scope`: ChapterProjectionScope, `offset`: kotlin.UInt, `maxItems`: kotlin.UShort): ChapterContractProjection {
+            return FfiConverterTypeChapterContractProjection.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_project_chapter_contract(
+
+
+        FfiConverterTypeChapterContractRequest.lower(`request`),
+        FfiConverterTypeChapterProjectionScope.lower(`scope`),
+        FfiConverterUInt.lower(`offset`),
+        FfiConverterUShort.lower(`maxItems`),_status)
+}
+    )
+    }
 
 
         /**

@@ -142,11 +142,18 @@ Swift and Kotlin bindings. CI rejects drift from Rust metadata.
   once: reject non-finite, negative, or overflowing values, multiply seconds by
   1,000, then round to the nearest whole millisecond with ties away from zero.
   Only the resulting integer milliseconds may be persisted or fingerprinted.
-  Version 12 commits accepted observations through the application command and
+  Version 13 commits accepted transcript observations through the application command and
   reads them back through bounded summary/speaker/segment/word projections.
   Swift maps native/provider observations into this command and reconstructs
   presentation values from these projections; it owns neither the selection
   nor a durable transcript copy.
+- Version 13 also defines the non-persisting canonical chapter/ad-span
+  contract: stable artifact/item IDs, integer-millisecond bounds, source and
+  transcript provenance, explicit not-evaluated versus evaluated-empty ad
+  state, deterministic inferred ends, and bounded summary/item projections.
+  Swift remains the single production chapter writer until the staged
+  migration and atomic authority cutover in #99–#104; the contract is not a
+  shadow durable store.
 - Open views receive bounded, revisioned, screen-shaped projections.
 - Operation failure and cancellation appear in projection state, not thrown
   per-operation FFI results.

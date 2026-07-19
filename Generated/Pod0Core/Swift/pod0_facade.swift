@@ -3089,6 +3089,22 @@ fileprivate struct FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer {
     }
 }
 /**
+ * Produces bounded, state-shaped evidence for the typed chapter contract.
+ * The storage slice will add durable commit and selection after this pure
+ * cross-language contract is proven.
+ */
+public func projectChapterContract(request: ChapterContractRequest, scope: ChapterProjectionScope, offset: UInt32, maxItems: UInt16) -> ChapterContractProjection  {
+    return try!  FfiConverterTypeChapterContractProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_project_chapter_contract(
+        FfiConverterTypeChapterContractRequest_lower(request),
+        FfiConverterTypeChapterProjectionScope_lower(scope),
+        FfiConverterUInt32.lower(offset),
+        FfiConverterUInt16.lower(maxItems),uniffiCallStatus
+    )
+})
+}
+/**
  * Produces bounded, state-shaped evidence for the typed transcript contract.
  * Invalid input becomes a rejected projection rather than an exception.
  * Durable commit and selection are added by the storage slice.
@@ -3344,6 +3360,9 @@ private let initializationResult: InitializationResult = {
     let scaffolding_contract_version = ffi_pod0_facade_uniffi_contract_version()
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_project_chapter_contract() != 22970) {
+        return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_func_project_transcript_contract() != 30792) {
         return InitializationResult.apiChecksumMismatch
