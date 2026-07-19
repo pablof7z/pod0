@@ -1,8 +1,10 @@
 # Rust core schema and recovery contract
 
-`pod0-storage` owns the app-core SQLite schema mechanism. It imports no Swift
-records and owns no user data yet. Swift remains authoritative until a complete
-domain importer, parity check, cutover marker, and obsolete-writer deletion all
+`pod0-storage` owns the app-core SQLite schema mechanism and the durable
+listening data that has completed its Swift-to-Rust cutover. Transcript evidence
+artifacts are Rust-owned once staged, but no native recall surface consumes them
+until the typed recall facade and iOS cutover land. A domain remains Swift-owned
+until its importer, parity check, cutover marker, and obsolete-writer deletion
 land together.
 
 ## Version contract
@@ -17,6 +19,20 @@ The first three forward-only versions establish only migration infrastructure:
 1. explicit component schema metadata;
 2. migration journal and verified-backup evidence;
 3. per-domain staged/authoritative cutover markers.
+
+Later versions add complete domain slices rather than generic storage:
+
+4. bounded listening-data import and parity evidence;
+5. Rust-authoritative library and subscription state;
+6. playback, queue, and resume state;
+7. versioned transcript documents and staged/verified evidence generations.
+
+Evidence generation writes are transactional. A complete artifact is staged,
+reread, and integrity-checked before commit; verification is a separate durable
+transition; and only a verified generation can become an episode's selected
+generation. Selection moves one pointer atomically while retaining the previous
+generation for rollback. Corrupt, incomplete, foreign, or newer-schema evidence
+fails closed, and pruning cannot remove the selected generation.
 
 SQL steps are sequential files under `rust/schema/migrations`. Their SHA-256
 lock and `CURRENT_SCHEMA_VERSION` are checked in CI. Never edit a shipped step;

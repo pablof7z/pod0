@@ -1,6 +1,13 @@
 #![forbid(unsafe_code)]
 
 mod backup;
+mod evidence_codec;
+mod evidence_commands;
+mod evidence_model;
+mod evidence_store;
+mod evidence_store_mutations;
+mod evidence_store_read;
+mod evidence_store_stage;
 mod import_model;
 mod legacy_backup;
 mod legacy_episode;
@@ -27,10 +34,16 @@ mod migration;
 mod migration_db;
 mod model;
 mod schema;
+mod schema_evidence;
 mod schema_introspection;
 mod schema_library;
 
 pub use backup::{restore_backup_to_new_store, verify_backup};
+pub use evidence_model::{
+    EvidenceGenerationState, EvidenceGenerationSummary, EvidencePruneReceipt,
+    EvidenceSelectionReceipt, EvidenceStageReceipt, EvidenceVerificationReceipt,
+};
+pub use evidence_store::EvidenceStore;
 pub use import_model::{
     LegacyBackupEvidence, LegacyImportPlan, LegacySourceKind, ListeningImportReport,
     ListeningImportVerification,
@@ -48,6 +61,12 @@ pub use model::{
     MIN_SUPPORTED_SCHEMA_VERSION, MigrationReport, MigrationState, SchemaStatus, StorageError,
 };
 
+#[cfg(test)]
+mod evidence_store_recovery_tests;
+#[cfg(test)]
+mod evidence_store_test_support;
+#[cfg(test)]
+mod evidence_store_tests;
 #[cfg(test)]
 mod library_store_playback_tests;
 #[cfg(test)]

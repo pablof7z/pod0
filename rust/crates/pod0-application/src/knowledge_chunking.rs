@@ -1,17 +1,16 @@
-use pod0_domain::{EvidenceSpan, TranscriptSegmentRecord, TranscriptVersionRecord};
+use pod0_domain::{
+    CanonicalTranscriptSegment, EvidenceSpan, SpanIdentity, TranscriptEvidenceArtifact,
+    TranscriptSegmentRecord, TranscriptVersionRecord, evidence_span_id, transcript_content_digest,
+    transcript_segment_id, transcript_version_id,
+};
 
 use crate::knowledge_chunking_policy::{
     compute_advance, dominant_speaker, snap_to_speaker_boundary,
 };
-use crate::knowledge_identity::{
-    CanonicalSegment, SpanIdentity, evidence_span_id, transcript_content_digest,
-    transcript_segment_id, transcript_version_id,
-};
 use crate::{
     EvidenceBuildError, EvidenceChunkPolicy, MAX_EVIDENCE_SPAN_TEXT_BYTES,
     MAX_PROVENANCE_PROVIDER_BYTES, MAX_SEGMENT_TEXT_BYTES, MAX_SOURCE_REVISION_BYTES,
-    MAX_TRANSCRIPT_BYTES, MAX_TRANSCRIPT_SEGMENTS, TranscriptEvidenceArtifact,
-    TranscriptEvidenceInput, provenance,
+    MAX_TRANSCRIPT_BYTES, MAX_TRANSCRIPT_SEGMENTS, TranscriptEvidenceInput, provenance,
 };
 
 /// Pure deterministic transcript normalization and semantic span construction.
@@ -67,11 +66,8 @@ pub fn build_evidence_artifact(
         provenance: provenance.clone(),
     };
     let spans = build_spans(&version, &segments, policy)?;
-    Ok(TranscriptEvidenceArtifact {
-        version,
-        segments,
-        spans,
-    })
+    TranscriptEvidenceArtifact::seal(policy, version, segments, spans)
+        .map_err(|_| EvidenceBuildError::ArtifactInvariant)
 }
 
 #[must_use]
@@ -82,7 +78,7 @@ pub fn approximate_evidence_token_count(text: &str) -> usize {
 
 fn normalize_segments(
     input: &TranscriptEvidenceInput,
-) -> Result<Vec<CanonicalSegment>, EvidenceBuildError> {
+) -> Result<Vec<CanonicalTranscriptSegment>, EvidenceBuildError> {
     let mut normalized = Vec::with_capacity(input.segments.len());
     let mut total_bytes = 0_usize;
     let mut previous_start = None;
@@ -110,7 +106,7 @@ fn normalize_segments(
         if total_bytes > MAX_TRANSCRIPT_BYTES {
             return Err(EvidenceBuildError::TranscriptTooLarge);
         }
-        normalized.push(CanonicalSegment {
+        normalized.push(CanonicalTranscriptSegment {
             ordinal,
             text,
             start_milliseconds: segment.start_milliseconds,

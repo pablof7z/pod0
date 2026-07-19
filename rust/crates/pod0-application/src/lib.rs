@@ -22,7 +22,6 @@ mod knowledge_chunking;
 mod knowledge_chunking_policy;
 #[cfg(test)]
 mod knowledge_chunking_tests;
-mod knowledge_identity;
 mod knowledge_ranking;
 #[cfg(test)]
 mod knowledge_ranking_tests;

@@ -1536,6 +1536,7 @@ dependencies = [
 name = "pod0-domain"
 version = "0.1.0"
 dependencies = [
+ "sha2",
  "uniffi",
 ]
 
@@ -1562,6 +1563,7 @@ dependencies = [
 name = "pod0-storage"
 version = "0.1.0"
 dependencies = [
+ "pod0-application",
  "pod0-domain",
  "rusqlite",
  "serde",

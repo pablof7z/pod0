@@ -1,7 +1,17 @@
 use crate::{
-    EpisodeId, EvidenceSpanId, PodcastId, SpeakerId, TranscriptSegmentId, TranscriptSource,
-    TranscriptVersionId,
+    EpisodeId, EvidenceGenerationId, EvidenceSpanId, PodcastId, SpeakerId, TranscriptSegmentId,
+    TranscriptSource, TranscriptVersionId,
 };
+use std::fmt;
+
+pub const EVIDENCE_ARTIFACT_SCHEMA_VERSION: u32 = 1;
+pub const EVIDENCE_CHUNK_POLICY_VERSION: u32 = 1;
+pub const MAX_TRANSCRIPT_SEGMENTS: usize = 50_000;
+pub const MAX_TRANSCRIPT_BYTES: usize = 16 * 1_024 * 1_024;
+pub const MAX_SEGMENT_TEXT_BYTES: usize = 16_384;
+pub const MAX_EVIDENCE_SPAN_TEXT_BYTES: usize = 65_536;
+pub const MAX_SOURCE_REVISION_BYTES: usize = 256;
+pub const MAX_PROVENANCE_PROVIDER_BYTES: usize = 128;
 
 /// Exact SHA-256 value represented without a stringly typed hex boundary.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -111,3 +121,56 @@ pub struct RankedEvidenceReference {
     pub span_id: EvidenceSpanId,
     pub score: EvidenceScoreComponents,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EvidenceChunkPolicy {
+    pub version: u32,
+    pub target_tokens: u16,
+    pub overlap_per_mille: u16,
+    pub snap_tolerance_per_mille: u16,
+}
+
+impl Default for EvidenceChunkPolicy {
+    fn default() -> Self {
+        Self {
+            version: EVIDENCE_CHUNK_POLICY_VERSION,
+            target_tokens: 400,
+            overlap_per_mille: 150,
+            snap_tolerance_per_mille: 200,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TranscriptEvidenceArtifact {
+    pub schema_version: u32,
+    pub generation_id: EvidenceGenerationId,
+    pub integrity_digest: ContentDigest,
+    pub policy: EvidenceChunkPolicy,
+    pub version: TranscriptVersionRecord,
+    pub segments: Vec<TranscriptSegmentRecord>,
+    pub spans: Vec<EvidenceSpan>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EvidenceArtifactError {
+    NewerSchema { stored: u32, supported: u32 },
+    InvalidSchema,
+    InvalidPolicy,
+    CollectionLimit,
+    TextLimit,
+    InvalidText,
+    InvalidTime,
+    InvalidOrdering,
+    IdentityMismatch,
+    ReferenceMismatch,
+    Incomplete,
+}
+
+impl fmt::Display for EvidenceArtifactError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "invalid evidence artifact: {self:?}")
+    }
+}
+
+impl std::error::Error for EvidenceArtifactError {}

@@ -5,7 +5,7 @@ use pod0_domain::CommandId;
 
 pub const APPLICATION_ID: i64 = 0x504F_4430;
 pub const MIN_SUPPORTED_SCHEMA_VERSION: u32 = 0;
-pub const CURRENT_SCHEMA_VERSION: u32 = 6;
+pub const CURRENT_SCHEMA_VERSION: u32 = 7;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AccessMode {
@@ -123,6 +123,16 @@ pub enum StorageError {
     CutoverNotAuthoritative,
     CommandConflict,
     EntityNotFound,
+    EvidenceCommandConflict,
+    EvidenceNotFound,
+    EvidenceNotVerified,
+    EvidenceGenerationSelected,
+    EvidenceEpisodeMismatch,
+    InvalidEvidenceArtifact,
+    NewerEvidenceSchema {
+        stored: u32,
+        supported: u32,
+    },
     Interrupted,
 }
 
@@ -148,6 +158,13 @@ impl StorageError {
             Self::CutoverNotAuthoritative => "listening_not_authoritative",
             Self::CommandConflict => "library_command_conflict",
             Self::EntityNotFound => "library_entity_not_found",
+            Self::EvidenceCommandConflict => "evidence_command_conflict",
+            Self::EvidenceNotFound => "evidence_not_found",
+            Self::EvidenceNotVerified => "evidence_not_verified",
+            Self::EvidenceGenerationSelected => "evidence_generation_selected",
+            Self::EvidenceEpisodeMismatch => "evidence_episode_mismatch",
+            Self::InvalidEvidenceArtifact => "invalid_evidence_artifact",
+            Self::NewerEvidenceSchema { .. } => "newer_evidence_schema",
             Self::Interrupted => "migration_interrupted",
         }
     }

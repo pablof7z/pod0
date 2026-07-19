@@ -1,10 +1,11 @@
-use pod0_domain::{
+use sha2::{Digest as _, Sha256};
+
+use crate::{
     ContentDigest, EpisodeId, EvidenceSpanId, PodcastId, SpeakerId, TranscriptProvenance,
     TranscriptSegmentId, TranscriptSource, TranscriptVersionId,
 };
-use sha2::{Digest as _, Sha256};
 
-pub(crate) struct CanonicalSegment {
+pub struct CanonicalTranscriptSegment {
     pub ordinal: u32,
     pub text: String,
     pub start_milliseconds: u64,
@@ -12,7 +13,7 @@ pub(crate) struct CanonicalSegment {
     pub speaker_id: Option<SpeakerId>,
 }
 
-pub(crate) struct SpanIdentity<'a> {
+pub struct SpanIdentity<'a> {
     pub transcript_version_id: TranscriptVersionId,
     pub content_digest: ContentDigest,
     pub policy_version: u32,
@@ -28,7 +29,8 @@ pub(crate) struct SpanIdentity<'a> {
     pub text: &'a str,
 }
 
-pub(crate) fn transcript_content_digest(segments: &[CanonicalSegment]) -> ContentDigest {
+#[must_use]
+pub fn transcript_content_digest(segments: &[CanonicalTranscriptSegment]) -> ContentDigest {
     let mut hash = StableHash::new(b"pod0.transcript-content.v1");
     hash.u64(segments.len() as u64);
     for segment in segments {
@@ -41,7 +43,8 @@ pub(crate) fn transcript_content_digest(segments: &[CanonicalSegment]) -> Conten
     ContentDigest::from_bytes(hash.finish())
 }
 
-pub(crate) fn transcript_version_id(
+#[must_use]
+pub fn transcript_version_id(
     episode_id: EpisodeId,
     podcast_id: PodcastId,
     source_revision: &str,
@@ -54,20 +57,15 @@ pub(crate) fn transcript_version_id(
     hash.text(source_revision);
     hash.bytes(&content_digest.into_bytes());
     hash.transcript_source(provenance.source);
-    match provenance.provider.as_deref() {
-        Some(provider) => {
-            hash.u8(1);
-            hash.text(provider);
-        }
-        None => hash.u8(0),
-    }
+    hash.optional_text(provenance.provider.as_deref());
     hash.bytes(&provenance.source_payload_digest.into_bytes());
     TranscriptVersionId::from_bytes(first_16(hash.finish()))
 }
 
-pub(crate) fn transcript_segment_id(
+#[must_use]
+pub fn transcript_segment_id(
     version_id: TranscriptVersionId,
-    segment: &CanonicalSegment,
+    segment: &CanonicalTranscriptSegment,
 ) -> TranscriptSegmentId {
     let mut hash = StableHash::new(b"pod0.transcript-segment.v1");
     hash.bytes(&version_id.into_bytes());
@@ -79,7 +77,8 @@ pub(crate) fn transcript_segment_id(
     TranscriptSegmentId::from_bytes(first_16(hash.finish()))
 }
 
-pub(crate) fn evidence_span_id(input: SpanIdentity<'_>) -> EvidenceSpanId {
+#[must_use]
+pub fn evidence_span_id(input: SpanIdentity<'_>) -> EvidenceSpanId {
     let mut hash = StableHash::new(b"pod0.evidence-span.v1");
     hash.bytes(&input.transcript_version_id.into_bytes());
     hash.bytes(&input.content_digest.into_bytes());
@@ -97,51 +96,61 @@ pub(crate) fn evidence_span_id(input: SpanIdentity<'_>) -> EvidenceSpanId {
     EvidenceSpanId::from_bytes(first_16(hash.finish()))
 }
 
-fn first_16(bytes: [u8; 32]) -> [u8; 16] {
+pub(crate) fn first_16(bytes: [u8; 32]) -> [u8; 16] {
     let mut result = [0_u8; 16];
     result.copy_from_slice(&bytes[..16]);
     result
 }
 
-struct StableHash(Sha256);
+pub(crate) struct StableHash(Sha256);
 
 impl StableHash {
-    fn new(domain: &[u8]) -> Self {
+    pub(crate) fn new(domain: &[u8]) -> Self {
         let mut value = Self(Sha256::new());
         value.bytes(domain);
         value
     }
 
-    fn finish(self) -> [u8; 32] {
+    pub(crate) fn finish(self) -> [u8; 32] {
         self.0.finalize().into()
     }
 
-    fn u8(&mut self, value: u8) {
+    pub(crate) fn u8(&mut self, value: u8) {
         self.0.update([value]);
     }
 
-    fn u16(&mut self, value: u16) {
+    pub(crate) fn u16(&mut self, value: u16) {
         self.0.update(value.to_be_bytes());
     }
 
-    fn u32(&mut self, value: u32) {
+    pub(crate) fn u32(&mut self, value: u32) {
         self.0.update(value.to_be_bytes());
     }
 
-    fn u64(&mut self, value: u64) {
+    pub(crate) fn u64(&mut self, value: u64) {
         self.0.update(value.to_be_bytes());
     }
 
-    fn bytes(&mut self, value: &[u8]) {
+    pub(crate) fn bytes(&mut self, value: &[u8]) {
         self.u64(value.len() as u64);
         self.0.update(value);
     }
 
-    fn text(&mut self, value: &str) {
+    pub(crate) fn text(&mut self, value: &str) {
         self.bytes(value.as_bytes());
     }
 
-    fn optional_id(&mut self, value: Option<[u8; 16]>) {
+    pub(crate) fn optional_text(&mut self, value: Option<&str>) {
+        match value {
+            Some(value) => {
+                self.u8(1);
+                self.text(value);
+            }
+            None => self.u8(0),
+        }
+    }
+
+    pub(crate) fn optional_id(&mut self, value: Option<[u8; 16]>) {
         match value {
             Some(value) => {
                 self.u8(1);
@@ -151,7 +160,7 @@ impl StableHash {
         }
     }
 
-    fn transcript_source(&mut self, source: TranscriptSource) {
+    pub(crate) fn transcript_source(&mut self, source: TranscriptSource) {
         match source {
             TranscriptSource::Publisher => self.u8(1),
             TranscriptSource::Scribe => self.u8(2),

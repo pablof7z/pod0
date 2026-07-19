@@ -10,6 +10,7 @@ const MIGRATION_3: &str = include_str!("../../../schema/migrations/0003_domain_c
 const MIGRATION_4: &str = include_str!("../../../schema/migrations/0004_listening_import.sql");
 const MIGRATION_5: &str = include_str!("../../../schema/migrations/0005_library_runtime.sql");
 const MIGRATION_6: &str = include_str!("../../../schema/migrations/0006_playback_runtime.sql");
+const MIGRATION_7: &str = include_str!("../../../schema/migrations/0007_evidence_artifacts.sql");
 
 pub(crate) fn migration_sql(version: u32) -> Option<&'static str> {
     match version {
@@ -19,6 +20,7 @@ pub(crate) fn migration_sql(version: u32) -> Option<&'static str> {
         4 => Some(MIGRATION_4),
         5 => Some(MIGRATION_5),
         6 => Some(MIGRATION_6),
+        7 => Some(MIGRATION_7),
         _ => None,
     }
 }
@@ -267,6 +269,9 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
     }
     if version >= 5 {
         crate::schema_library::validate_library_schema(connection)?;
+    }
+    if version >= 7 {
+        crate::schema_evidence::validate_evidence_schema(connection)?;
     }
     Ok(())
 }

@@ -262,7 +262,14 @@ impl From<StorageError> for LegacyListeningMigrationError {
             | StorageError::ForeignDatabase
             | StorageError::CorruptSchema { .. }
             | StorageError::CutoverNotAuthoritative
-            | StorageError::FailedMigration { .. } => Self::TargetBlocked,
+            | StorageError::FailedMigration { .. }
+            | StorageError::EvidenceCommandConflict
+            | StorageError::EvidenceNotFound
+            | StorageError::EvidenceNotVerified
+            | StorageError::EvidenceGenerationSelected
+            | StorageError::EvidenceEpisodeMismatch
+            | StorageError::InvalidEvidenceArtifact
+            | StorageError::NewerEvidenceSchema { .. } => Self::TargetBlocked,
             StorageError::Io { .. } | StorageError::Sqlite { .. } => Self::StorageUnavailable,
         }
     }

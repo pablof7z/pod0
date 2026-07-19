@@ -61,7 +61,7 @@ fn fresh_store_migrates_transactionally_to_current() {
     let report = fixture.migrate_to(CURRENT_SCHEMA_VERSION, 1).unwrap();
 
     assert_eq!(report.from_version, 0);
-    assert_eq!(report.applied_versions, vec![1, 2, 3, 4, 5, 6]);
+    assert_eq!(report.applied_versions, vec![1, 2, 3, 4, 5, 6, 7]);
     assert!(report.backup.is_none());
     assert_eq!(
         fixture.migrator.inspect(&fixture.store).migration_state,
@@ -87,6 +87,22 @@ fn one_and_multiple_version_upgrades_preserve_verified_backups() {
     assert_eq!(
         report.backup.as_ref().map(|item| item.schema_version),
         Some(1)
+    );
+}
+
+#[test]
+fn evidence_schema_upgrade_is_one_step_and_cannot_be_downgraded() {
+    let fixture = Fixture::new();
+    fixture.migrate_to(6, 1).unwrap();
+    let report = fixture.migrate_to(7, 2).unwrap();
+    assert_eq!(report.applied_versions, [7]);
+    assert_eq!(report.backup.unwrap().schema_version, 6);
+    assert_eq!(
+        fixture.migrate_to(6, 3),
+        Err(StorageError::DowngradeForbidden {
+            stored: 7,
+            requested: 6,
+        })
     );
 }
 

@@ -242,7 +242,7 @@ fn cross_language_schema_fixture_matches_rust_contract() {
     );
     assert_eq!(values["migration_state"], "required");
     assert_eq!(values["access_mode"], "migration_only");
-    assert_eq!(values["target_version"], "6");
+    assert_eq!(values["target_version"], "7");
     assert_eq!(values["store_id_high"], "10");
     assert_eq!(values["store_id_low"], "11");
     assert_eq!(values["command_id_high"], "1");

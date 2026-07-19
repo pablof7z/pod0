@@ -1,15 +1,14 @@
 use pod0_domain::{
-    ContentDigest, EpisodeId, EvidenceSpan, EvidenceSpanId, PodcastId, SpeakerId,
-    TranscriptProvenance, TranscriptSegmentRecord, TranscriptSource, TranscriptVersionRecord,
+    ContentDigest, EpisodeId, EvidenceSpanId, PodcastId, SpeakerId, TranscriptProvenance,
+    TranscriptSource,
 };
 
-pub const EVIDENCE_CHUNK_POLICY_VERSION: u32 = 1;
-pub const MAX_TRANSCRIPT_SEGMENTS: usize = 50_000;
-pub const MAX_TRANSCRIPT_BYTES: usize = 16 * 1_024 * 1_024;
-pub const MAX_SEGMENT_TEXT_BYTES: usize = 16_384;
-pub const MAX_EVIDENCE_SPAN_TEXT_BYTES: usize = 65_536;
-pub const MAX_SOURCE_REVISION_BYTES: usize = 256;
-pub const MAX_PROVENANCE_PROVIDER_BYTES: usize = 128;
+pub use pod0_domain::{
+    EVIDENCE_ARTIFACT_SCHEMA_VERSION, EVIDENCE_CHUNK_POLICY_VERSION, EvidenceChunkPolicy,
+    MAX_EVIDENCE_SPAN_TEXT_BYTES, MAX_PROVENANCE_PROVIDER_BYTES, MAX_SEGMENT_TEXT_BYTES,
+    MAX_SOURCE_REVISION_BYTES, MAX_TRANSCRIPT_BYTES, MAX_TRANSCRIPT_SEGMENTS,
+    TranscriptEvidenceArtifact,
+};
 pub const MAX_RANK_CANDIDATES: usize = 512;
 pub const MAX_RANKED_EVIDENCE: usize = 20;
 
@@ -30,32 +29,6 @@ pub struct TranscriptEvidenceInput {
     pub provider: Option<String>,
     pub source_payload_digest: ContentDigest,
     pub segments: Vec<TranscriptSegmentInput>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct EvidenceChunkPolicy {
-    pub version: u32,
-    pub target_tokens: u16,
-    pub overlap_per_mille: u16,
-    pub snap_tolerance_per_mille: u16,
-}
-
-impl Default for EvidenceChunkPolicy {
-    fn default() -> Self {
-        Self {
-            version: EVIDENCE_CHUNK_POLICY_VERSION,
-            target_tokens: 400,
-            overlap_per_mille: 150,
-            snap_tolerance_per_mille: 200,
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TranscriptEvidenceArtifact {
-    pub version: TranscriptVersionRecord,
-    pub segments: Vec<TranscriptSegmentRecord>,
-    pub spans: Vec<EvidenceSpan>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -80,6 +53,7 @@ pub enum EvidenceBuildError {
     TranscriptTooLarge,
     SpanTextTooLong,
     TooManySpans,
+    ArtifactInvariant,
 }
 
 impl std::fmt::Display for EvidenceBuildError {

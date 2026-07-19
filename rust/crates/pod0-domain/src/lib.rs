@@ -67,14 +67,19 @@ opaque_id!(SpeakerId);
 opaque_id!(TranscriptVersionId);
 opaque_id!(TranscriptSegmentId);
 opaque_id!(EvidenceSpanId);
+opaque_id!(EvidenceGenerationId);
 
 mod knowledge;
+mod knowledge_artifact;
+mod knowledge_artifact_hash;
+mod knowledge_identity;
 mod listening;
 mod listening_error;
 mod listening_policy;
 mod playback_policy;
 
 pub use knowledge::*;
+pub use knowledge_identity::*;
 pub use listening::*;
 pub use listening_error::*;
 pub use listening_policy::*;
