@@ -42,11 +42,11 @@ Native executor: Swift `AudioEngine` / AVFoundation through `CorePlaybackHost`
 
 Validated on 2026-07-19 against an iPhone 17 Pro simulator running iOS 26.5:
 
-- The complete `Podcastr` scheme passed 664 tests with zero failures or skips.
+- The complete `Podcastr` scheme passed 619 tests with zero failures or skips.
 - The app built, installed, launched, and rendered onboarding without a crash or
   shared-store bootstrap error.
 - The locked Rust workspace passed formatting, Clippy with warnings denied,
-  all 62 unit tests, dependency/facade/schema policies, license/source checks,
+  all 68 unit tests, dependency/facade/schema policies, license/source checks,
   and the configured security audit.
 - Generated Swift and Kotlin bindings matched facade metadata; the Kotlin/JNA
   runtime smoke passed.
