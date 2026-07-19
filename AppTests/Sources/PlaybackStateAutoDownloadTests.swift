@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 @testable import Podcastr
 
@@ -11,62 +12,129 @@ import XCTest
 @MainActor
 final class PlaybackStateAutoDownloadTests: XCTestCase {
 
-    func testNotDownloadedEpisodeFiresDownloadOnNewLoad() {
-        let state = PlaybackState()
-        var calls: [UUID] = []
-        state.onEnsureDownloadEnqueued = { calls.append($0) }
-
+    func testNotDownloadedEpisodeFiresDownloadOnNewLoad() async {
         let episode = makeEpisode(downloadState: .notDownloaded)
-        state.setEpisode(episode)
+        let fixture = makeFixture(episodes: [episode])
+        defer { fixture.persistence.reset() }
+        let requested = expectation(description: "download requested")
+        var calls: [UUID] = []
+        fixture.playback.onEnsureDownloadEnqueued = {
+            calls.append($0)
+            requested.fulfill()
+        }
 
+        fixture.playback.setEpisode(episode)
+
+        await fulfillment(of: [requested], timeout: 1)
         XCTAssertEqual(calls, [episode.id])
     }
 
-    func testSameEpisodeReloadDoesNotFireSecondDownload() {
+    func testSameEpisodeReloadDoesNotFireSecondDownload() async {
         // Play/Resume taps, deep-link replays, chapter-row taps all hit
         // `setEpisode` on every gesture. Re-firing the download trigger
         // would spam the queue / clobber resume data — verify the
         // same-episode reload path skips it.
-        let state = PlaybackState()
-        var calls: [UUID] = []
-        state.onEnsureDownloadEnqueued = { calls.append($0) }
-
+        let played = expectation(description: "Rust committed playing")
         let episode = makeEpisode(downloadState: .notDownloaded)
-        state.setEpisode(episode)
-        state.setEpisode(episode)
+        let fixture = makeFixture(
+            episodes: [episode],
+            productSignals: ProductSignalExpectationSink(
+                name: .playStarted,
+                expectation: played
+            )
+        )
+        defer { fixture.persistence.reset() }
+        let requested = expectation(description: "download requested once")
+        var calls: [UUID] = []
+        fixture.playback.onEnsureDownloadEnqueued = {
+            calls.append($0)
+            requested.fulfill()
+        }
 
+        fixture.playback.setEpisode(episode)
+        await fulfillment(of: [requested], timeout: 1)
+        fixture.playback.setEpisode(episode)
+        fixture.playback.play()
+
+        await fulfillment(of: [played], timeout: 1)
         XCTAssertEqual(calls, [episode.id])
     }
 
-    func testDownloadedEpisodeDoesNotFireDownload() {
-        let state = PlaybackState()
-        var calls: [UUID] = []
-        state.onEnsureDownloadEnqueued = { calls.append($0) }
-
-        let local = URL(fileURLWithPath: "/tmp/episode.mp3")
+    func testDownloadedEpisodeDoesNotFireDownload() async {
+        let played = expectation(description: "Rust committed playing")
         let episode = makeEpisode(
-            downloadState: .downloaded(localFileURL: local, byteCount: 4096)
+            downloadState: .downloaded(
+                localFileURL: URL(fileURLWithPath: "/tmp/episode.mp3"),
+                byteCount: 4096
+            )
         )
-        state.setEpisode(episode)
+        let fixture = makeFixture(
+            episodes: [episode],
+            productSignals: ProductSignalExpectationSink(
+                name: .playStarted,
+                expectation: played
+            )
+        )
+        defer { fixture.persistence.reset() }
+        var calls: [UUID] = []
+        fixture.playback.onEnsureDownloadEnqueued = { calls.append($0) }
 
+        fixture.playback.setEpisode(episode)
+        fixture.playback.play()
+
+        await fulfillment(of: [played], timeout: 1)
         XCTAssertTrue(calls.isEmpty)
     }
 
-    func testNewEpisodeAfterDifferentEpisodeFiresDownloadForEachNotDownloaded() {
+    func testNewEpisodeAfterDifferentEpisodeFiresDownloadForEachNotDownloaded() async {
         // Distinct from the same-episode-reload case: a brand-new
         // episode ID always re-evaluates `downloadState`, so playing two
         // different un-downloaded episodes in sequence should enqueue
         // both.
-        let state = PlaybackState()
-        var calls: [UUID] = []
-        state.onEnsureDownloadEnqueued = { calls.append($0) }
-
         let first = makeEpisode(downloadState: .notDownloaded)
         let second = makeEpisode(downloadState: .notDownloaded)
-        state.setEpisode(first)
-        state.setEpisode(second)
+        let fixture = makeFixture(episodes: [first, second])
+        defer { fixture.persistence.reset() }
+        let requested = expectation(description: "both downloads requested")
+        requested.expectedFulfillmentCount = 2
+        var calls: [UUID] = []
+        fixture.playback.onEnsureDownloadEnqueued = {
+            calls.append($0)
+            requested.fulfill()
+        }
 
+        fixture.playback.setEpisode(first)
+        fixture.playback.setEpisode(second)
+
+        await fulfillment(of: [requested], timeout: 1)
         XCTAssertEqual(calls, [first.id, second.id])
+    }
+
+    private func makeFixture(
+        episodes: [Episode],
+        productSignals: any ProductSignalSink = DiscardingProductSignalSink.shared
+    ) -> (persistence: Persistence, store: AppStateStore, playback: PlaybackState) {
+        let persistence = Persistence(fileURL: AppStateTestSupport.uniqueTempFileURL())
+        var legacy = AppState()
+        legacy.podcasts = episodes.map { episode in
+            Podcast(
+                id: episode.podcastID,
+                feedURL: URL(string: "https://example.com/\(episode.podcastID).xml")!,
+                title: "Show \(episode.podcastID)",
+                discoveredAt: Date(timeIntervalSince1970: 1_700_000_000)
+            )
+        }
+        legacy.episodes = episodes
+        XCTAssertTrue(persistence.write(legacy, revision: 1))
+        let store = AppStateStore(
+            persistence: persistence,
+            sharedFeedHost: QueuedCoreFeedHost([]),
+            startSubscriptionRefresh: false
+        )
+        let playback = PlaybackState(productSignals: productSignals)
+        store.sharedLibrary?.attachPlayback(playback, store: store)
+        XCTAssertNotNil(store.sharedLibrary)
+        return (persistence, store, playback)
     }
 
     private func makeEpisode(
@@ -80,7 +148,7 @@ final class PlaybackStateAutoDownloadTests: XCTestCase {
             podcastID: UUID(),
             guid: "episode-\(id.uuidString)",
             title: title,
-            pubDate: Date(),
+            pubDate: Date(timeIntervalSince1970: 1_700_000_100),
             duration: duration,
             enclosureURL: URL(string: "https://example.com/\(id.uuidString).mp3")!,
             downloadState: downloadState

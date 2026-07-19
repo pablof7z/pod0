@@ -1,7 +1,8 @@
 use crate::{
     CompletionStatus, DownloadArtifactStatus, EpisodeFeedMetadata, EpisodeId,
     EpisodeListeningState, EpisodeRecord, PlaybackSegment, PodcastId, TranscriptArtifactStatus,
-    UnixTimestampMilliseconds, playback_start_position, segment_reached, should_commit_position,
+    UnixTimestampMilliseconds, meaningful_listening_reached, playback_start_position,
+    segment_reached, should_commit_position,
 };
 
 #[test]
@@ -17,6 +18,12 @@ fn resume_and_segment_start_policy_are_deterministic() {
     assert_eq!(playback_start_position(&episode, Some(segment)), 42_000);
     assert!(!segment_reached(83_999, Some(segment)));
     assert!(segment_reached(84_000, Some(segment)));
+}
+
+#[test]
+fn meaningful_listening_uses_the_predeclared_five_minute_boundary() {
+    assert!(!meaningful_listening_reached(299_999));
+    assert!(meaningful_listening_reached(300_000));
 }
 
 #[test]

@@ -133,8 +133,8 @@ final class RecallAnswerServiceTests: XCTestCase {
             pubDate: Date(timeIntervalSince1970: 1_700_000_000),
             enclosureURL: URL(string: "https://example.com/episode.mp3")!
         )
-        made.store.upsertPodcast(podcast)
-        made.store.upsertEpisodes([episode], forPodcast: podcastID)
+        made.store.installPodcastFixture(podcast)
+        made.store.installEpisodeFixtures([episode], forPodcast: podcastID)
         let historyURL = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("recall-history-\(UUID().uuidString).json")
         defer { try? FileManager.default.removeItem(at: historyURL) }
@@ -161,24 +161,29 @@ final class RecallAnswerServiceTests: XCTestCase {
         XCTAssertEqual(session.phase, .idle)
     }
 
-    func testEvidencePlaybackHandoffSeeksToExactTranscriptMoment() {
+    func testEvidencePlaybackHandoffSeeksToExactTranscriptMoment() async throws {
         let made = AppStateTestSupport.makeIsolatedStore()
         defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
         let podcast = Podcast(id: podcastID, title: "Practical Minds")
-        let episode = Episode(
-            id: episodeID,
+        let episode = try await made.store.upsertExternalEpisodeAndWait(
             podcastID: podcastID,
-            guid: "recall-play",
+            feedURL: nil,
+            podcastTitle: podcast.title,
+            audioURL: URL(string: "https://example.com/episode.mp3")!,
             title: "The Habit Loop",
-            pubDate: Date(timeIntervalSince1970: 1_700_000_000),
-            enclosureURL: URL(string: "https://example.com/episode.mp3")!
+            publishedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            imageURL: nil,
+            duration: 300
         )
-        made.store.upsertPodcast(podcast)
-        made.store.upsertEpisodes([episode], forPodcast: podcastID)
-        let playback = PlaybackState()
+        let playCommitted = expectation(description: "Rust committed recall playback")
+        let playback = PlaybackState(productSignals: ProductSignalExpectationSink(
+            name: .playStarted,
+            expectation: playCommitted
+        ))
+        try XCTUnwrap(made.store.sharedLibrary).attachPlayback(playback, store: made.store)
         let evidence = RecallEvidence(
             chunkID: chunkID,
-            episodeID: episodeID,
+            episodeID: episode.id,
             podcastID: podcastID,
             episodeTitle: episode.title,
             podcastTitle: podcast.title,
@@ -190,7 +195,8 @@ final class RecallAnswerServiceTests: XCTestCase {
         )
 
         XCTAssertTrue(RecallPlaybackHandoff.open(evidence, store: made.store, playback: playback))
-        XCTAssertEqual(playback.episode?.id, episodeID)
+        await fulfillment(of: [playCommitted], timeout: 1)
+        XCTAssertEqual(playback.episode?.id, episode.id)
         XCTAssertEqual(playback.currentTime, 47.125, accuracy: 0.001)
     }
 

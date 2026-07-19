@@ -205,8 +205,8 @@ struct Settings: Codable, Hashable, Sendable {
 
     // Transcripts
     /// When `true`, the app pre-fetches publisher-supplied transcripts in the
-    /// background as soon as new episodes appear (called from
-    /// `AppStateStore.upsertEpisodes` after a feed refresh). Default-on
+    /// background as soon as the shared feed projection reports new episodes.
+    /// Default-on
     /// because the agent layer (RAG, summarisation) only works once
     /// the transcript exists; publisher transcripts are typically
     /// tens of KB so the bandwidth cost is small. Toggle off in

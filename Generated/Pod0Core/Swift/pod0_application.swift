@@ -921,6 +921,92 @@ public func FfiConverterTypeEpisodeSummary_lower(_ value: EpisodeSummary) -> Rus
 }
 
 
+public struct ExternalEpisodeInput: Equatable, Hashable {
+    public let podcastId: PodcastId
+    public let feedUrl: String?
+    public let podcastTitle: String
+    public let audioUrl: String
+    public let title: String
+    public let description: String
+    public let publishedAt: UnixTimestampMilliseconds
+    public let enclosureMimeType: String?
+    public let imageUrl: String?
+    public let durationMilliseconds: UInt64?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(podcastId: PodcastId, feedUrl: String?, podcastTitle: String, audioUrl: String, title: String, description: String, publishedAt: UnixTimestampMilliseconds, enclosureMimeType: String?, imageUrl: String?, durationMilliseconds: UInt64?) {
+        self.podcastId = podcastId
+        self.feedUrl = feedUrl
+        self.podcastTitle = podcastTitle
+        self.audioUrl = audioUrl
+        self.title = title
+        self.description = description
+        self.publishedAt = publishedAt
+        self.enclosureMimeType = enclosureMimeType
+        self.imageUrl = imageUrl
+        self.durationMilliseconds = durationMilliseconds
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ExternalEpisodeInput: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeExternalEpisodeInput: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ExternalEpisodeInput {
+        return
+            try ExternalEpisodeInput(
+                podcastId: FfiConverterTypePodcastId.read(from: &buf),
+                feedUrl: FfiConverterOptionString.read(from: &buf),
+                podcastTitle: FfiConverterString.read(from: &buf),
+                audioUrl: FfiConverterString.read(from: &buf),
+                title: FfiConverterString.read(from: &buf),
+                description: FfiConverterString.read(from: &buf),
+                publishedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                enclosureMimeType: FfiConverterOptionString.read(from: &buf),
+                imageUrl: FfiConverterOptionString.read(from: &buf),
+                durationMilliseconds: FfiConverterOptionUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ExternalEpisodeInput, into buf: inout [UInt8]) {
+        FfiConverterTypePodcastId.write(value.podcastId, into: &buf)
+        FfiConverterOptionString.write(value.feedUrl, into: &buf)
+        FfiConverterString.write(value.podcastTitle, into: &buf)
+        FfiConverterString.write(value.audioUrl, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterString.write(value.description, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.publishedAt, into: &buf)
+        FfiConverterOptionString.write(value.enclosureMimeType, into: &buf)
+        FfiConverterOptionString.write(value.imageUrl, into: &buf)
+        FfiConverterOptionUInt64.write(value.durationMilliseconds, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeExternalEpisodeInput_lift(_ buf: RustBuffer) throws -> ExternalEpisodeInput {
+    return try FfiConverterTypeExternalEpisodeInput.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeExternalEpisodeInput_lower(_ value: ExternalEpisodeInput) -> RustBuffer {
+    return FfiConverterTypeExternalEpisodeInput.lower(value)
+}
+
+
 public struct HostObservationEnvelope: Equatable, Hashable {
     public let requestId: HostRequestId
     public let cancellationId: CancellationId
@@ -1259,6 +1345,11 @@ public struct PlaybackItem: Equatable, Hashable {
     public let episodeId: EpisodeId
     public let title: String
     public let durableResumePositionMilliseconds: UInt64
+    /**
+     * A committed core fact used by native product-validation adapters.
+     * Native code records the typed outcome but does not choose the threshold.
+     */
+    public let meaningfulListeningReached: Bool
     public let segment: PlaybackSegment?
     public let label: String?
     public let completed: Bool
@@ -1266,10 +1357,15 @@ public struct PlaybackItem: Equatable, Hashable {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(episodeId: EpisodeId, title: String, durableResumePositionMilliseconds: UInt64, segment: PlaybackSegment?, label: String?, completed: Bool, policyState: PlaybackPolicyState) {
+    public init(episodeId: EpisodeId, title: String, durableResumePositionMilliseconds: UInt64,
+        /**
+         * A committed core fact used by native product-validation adapters.
+         * Native code records the typed outcome but does not choose the threshold.
+         */meaningfulListeningReached: Bool, segment: PlaybackSegment?, label: String?, completed: Bool, policyState: PlaybackPolicyState) {
         self.episodeId = episodeId
         self.title = title
         self.durableResumePositionMilliseconds = durableResumePositionMilliseconds
+        self.meaningfulListeningReached = meaningfulListeningReached
         self.segment = segment
         self.label = label
         self.completed = completed
@@ -1295,6 +1391,7 @@ public struct FfiConverterTypePlaybackItem: FfiConverterRustBuffer {
                 episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
                 title: FfiConverterString.read(from: &buf),
                 durableResumePositionMilliseconds: FfiConverterUInt64.read(from: &buf),
+                meaningfulListeningReached: FfiConverterBool.read(from: &buf),
                 segment: FfiConverterOptionTypePlaybackSegment.read(from: &buf),
                 label: FfiConverterOptionString.read(from: &buf),
                 completed: FfiConverterBool.read(from: &buf),
@@ -1306,6 +1403,7 @@ public struct FfiConverterTypePlaybackItem: FfiConverterRustBuffer {
         FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
         FfiConverterString.write(value.title, into: &buf)
         FfiConverterUInt64.write(value.durableResumePositionMilliseconds, into: &buf)
+        FfiConverterBool.write(value.meaningfulListeningReached, into: &buf)
         FfiConverterOptionTypePlaybackSegment.write(value.segment, into: &buf)
         FfiConverterOptionString.write(value.label, into: &buf)
         FfiConverterBool.write(value.completed, into: &buf)
@@ -1725,6 +1823,88 @@ public func FfiConverterTypeProjectionRequest_lower(_ value: ProjectionRequest) 
 }
 
 
+public struct SyntheticPodcastInput: Equatable, Hashable {
+    /**
+     * `None` creates a new stable ID derived from the command identity.
+     * Updates and named built-ins provide their existing stable ID.
+     */
+    public let podcastId: PodcastId?
+    public let title: String
+    public let author: String
+    public let imageUrl: String?
+    public let description: String
+    public let language: String?
+    public let categories: [String]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * `None` creates a new stable ID derived from the command identity.
+         * Updates and named built-ins provide their existing stable ID.
+         */podcastId: PodcastId?, title: String, author: String, imageUrl: String?, description: String, language: String?, categories: [String]) {
+        self.podcastId = podcastId
+        self.title = title
+        self.author = author
+        self.imageUrl = imageUrl
+        self.description = description
+        self.language = language
+        self.categories = categories
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension SyntheticPodcastInput: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSyntheticPodcastInput: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SyntheticPodcastInput {
+        return
+            try SyntheticPodcastInput(
+                podcastId: FfiConverterOptionTypePodcastId.read(from: &buf),
+                title: FfiConverterString.read(from: &buf),
+                author: FfiConverterString.read(from: &buf),
+                imageUrl: FfiConverterOptionString.read(from: &buf),
+                description: FfiConverterString.read(from: &buf),
+                language: FfiConverterOptionString.read(from: &buf),
+                categories: FfiConverterSequenceString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SyntheticPodcastInput, into buf: inout [UInt8]) {
+        FfiConverterOptionTypePodcastId.write(value.podcastId, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterString.write(value.author, into: &buf)
+        FfiConverterOptionString.write(value.imageUrl, into: &buf)
+        FfiConverterString.write(value.description, into: &buf)
+        FfiConverterOptionString.write(value.language, into: &buf)
+        FfiConverterSequenceString.write(value.categories, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyntheticPodcastInput_lift(_ buf: RustBuffer) throws -> SyntheticPodcastInput {
+    return try FfiConverterTypeSyntheticPodcastInput.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyntheticPodcastInput_lower(_ value: SyntheticPodcastInput) -> RustBuffer {
+    return FfiConverterTypeSyntheticPodcastInput.lower(value)
+}
+
+
 public struct UnsupportedProjection: Equatable, Hashable {
     public let wireCode: UInt32
     public let message: String
@@ -1790,7 +1970,9 @@ public enum ApplicationCommand: Equatable, Hashable {
     )
     case hydratePodcastMetadata(podcastId: PodcastId
     )
-    case upsertExternalEpisode(podcastId: PodcastId, feedUrl: String?, podcastTitle: String, audioUrl: String, title: String, imageUrl: String?, durationMilliseconds: UInt64?
+    case upsertSyntheticPodcast(podcast: SyntheticPodcastInput
+    )
+    case upsertExternalEpisode(episode: ExternalEpisodeInput
     )
     case unsubscribe(podcastId: PodcastId
     )
@@ -1798,6 +1980,9 @@ public enum ApplicationCommand: Equatable, Hashable {
     )
     case setSubscriptionAutoDownload(podcastId: PodcastId, policy: AutoDownloadPolicy
     )
+    case setEpisodeStarred(episodeId: EpisodeId, starred: Bool
+    )
+    case resetListeningData
     case requestPlayback(episodeId: EpisodeId
     )
     case playback(command: PlaybackCommand
@@ -1839,28 +2024,36 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
         case 4: return .hydratePodcastMetadata(podcastId: try FfiConverterTypePodcastId.read(from: &buf)
         )
 
-        case 5: return .upsertExternalEpisode(podcastId: try FfiConverterTypePodcastId.read(from: &buf), feedUrl: try FfiConverterOptionString.read(from: &buf), podcastTitle: try FfiConverterString.read(from: &buf), audioUrl: try FfiConverterString.read(from: &buf), title: try FfiConverterString.read(from: &buf), imageUrl: try FfiConverterOptionString.read(from: &buf), durationMilliseconds: try FfiConverterOptionUInt64.read(from: &buf)
+        case 5: return .upsertSyntheticPodcast(podcast: try FfiConverterTypeSyntheticPodcastInput.read(from: &buf)
         )
 
-        case 6: return .unsubscribe(podcastId: try FfiConverterTypePodcastId.read(from: &buf)
+        case 6: return .upsertExternalEpisode(episode: try FfiConverterTypeExternalEpisodeInput.read(from: &buf)
         )
 
-        case 7: return .setSubscriptionNotifications(podcastId: try FfiConverterTypePodcastId.read(from: &buf), enabled: try FfiConverterBool.read(from: &buf)
+        case 7: return .unsubscribe(podcastId: try FfiConverterTypePodcastId.read(from: &buf)
         )
 
-        case 8: return .setSubscriptionAutoDownload(podcastId: try FfiConverterTypePodcastId.read(from: &buf), policy: try FfiConverterTypeAutoDownloadPolicy.read(from: &buf)
+        case 8: return .setSubscriptionNotifications(podcastId: try FfiConverterTypePodcastId.read(from: &buf), enabled: try FfiConverterBool.read(from: &buf)
         )
 
-        case 9: return .requestPlayback(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
+        case 9: return .setSubscriptionAutoDownload(podcastId: try FfiConverterTypePodcastId.read(from: &buf), policy: try FfiConverterTypeAutoDownloadPolicy.read(from: &buf)
         )
 
-        case 10: return .playback(command: try FfiConverterTypePlaybackCommand.read(from: &buf)
+        case 10: return .setEpisodeStarred(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), starred: try FfiConverterBool.read(from: &buf)
         )
 
-        case 11: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
+        case 11: return .resetListeningData
+
+        case 12: return .requestPlayback(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
         )
 
-        case 12: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 13: return .playback(command: try FfiConverterTypePlaybackCommand.read(from: &buf)
+        )
+
+        case 14: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
+        )
+
+        case 15: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -1891,51 +2084,60 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
             FfiConverterTypePodcastId.write(podcastId, into: &buf)
 
 
-        case let .upsertExternalEpisode(podcastId,feedUrl,podcastTitle,audioUrl,title,imageUrl,durationMilliseconds):
+        case let .upsertSyntheticPodcast(podcast):
             writeInt(&buf, Int32(5))
-            FfiConverterTypePodcastId.write(podcastId, into: &buf)
-            FfiConverterOptionString.write(feedUrl, into: &buf)
-            FfiConverterString.write(podcastTitle, into: &buf)
-            FfiConverterString.write(audioUrl, into: &buf)
-            FfiConverterString.write(title, into: &buf)
-            FfiConverterOptionString.write(imageUrl, into: &buf)
-            FfiConverterOptionUInt64.write(durationMilliseconds, into: &buf)
+            FfiConverterTypeSyntheticPodcastInput.write(podcast, into: &buf)
+
+
+        case let .upsertExternalEpisode(episode):
+            writeInt(&buf, Int32(6))
+            FfiConverterTypeExternalEpisodeInput.write(episode, into: &buf)
 
 
         case let .unsubscribe(podcastId):
-            writeInt(&buf, Int32(6))
+            writeInt(&buf, Int32(7))
             FfiConverterTypePodcastId.write(podcastId, into: &buf)
 
 
         case let .setSubscriptionNotifications(podcastId,enabled):
-            writeInt(&buf, Int32(7))
+            writeInt(&buf, Int32(8))
             FfiConverterTypePodcastId.write(podcastId, into: &buf)
             FfiConverterBool.write(enabled, into: &buf)
 
 
         case let .setSubscriptionAutoDownload(podcastId,policy):
-            writeInt(&buf, Int32(8))
+            writeInt(&buf, Int32(9))
             FfiConverterTypePodcastId.write(podcastId, into: &buf)
             FfiConverterTypeAutoDownloadPolicy.write(policy, into: &buf)
 
 
+        case let .setEpisodeStarred(episodeId,starred):
+            writeInt(&buf, Int32(10))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterBool.write(starred, into: &buf)
+
+
+        case .resetListeningData:
+            writeInt(&buf, Int32(11))
+
+
         case let .requestPlayback(episodeId):
-            writeInt(&buf, Int32(9))
+            writeInt(&buf, Int32(12))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
 
 
         case let .playback(command):
-            writeInt(&buf, Int32(10))
+            writeInt(&buf, Int32(13))
             FfiConverterTypePlaybackCommand.write(command, into: &buf)
 
 
         case let .cancelOperation(cancellationId):
-            writeInt(&buf, Int32(11))
+            writeInt(&buf, Int32(14))
             FfiConverterTypeCancellationId.write(cancellationId, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(12))
+            writeInt(&buf, Int32(15))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -2700,6 +2902,9 @@ public enum OperationResult: Equatable, Hashable {
     )
     case preferencesUpdated(podcastId: PodcastId
     )
+    case episodeUpdated(episodeId: EpisodeId
+    )
+    case listeningReset
     case playbackUpdated(episodeId: EpisodeId?
     )
     case queueUpdated
@@ -2738,12 +2943,17 @@ public struct FfiConverterTypeOperationResult: FfiConverterRustBuffer {
         case 4: return .preferencesUpdated(podcastId: try FfiConverterTypePodcastId.read(from: &buf)
         )
 
-        case 5: return .playbackUpdated(episodeId: try FfiConverterOptionTypeEpisodeId.read(from: &buf)
+        case 5: return .episodeUpdated(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
         )
 
-        case 6: return .queueUpdated
+        case 6: return .listeningReset
 
-        case 7: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 7: return .playbackUpdated(episodeId: try FfiConverterOptionTypeEpisodeId.read(from: &buf)
+        )
+
+        case 8: return .queueUpdated
+
+        case 9: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -2775,17 +2985,26 @@ public struct FfiConverterTypeOperationResult: FfiConverterRustBuffer {
             FfiConverterTypePodcastId.write(podcastId, into: &buf)
 
 
-        case let .playbackUpdated(episodeId):
+        case let .episodeUpdated(episodeId):
             writeInt(&buf, Int32(5))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+
+
+        case .listeningReset:
+            writeInt(&buf, Int32(6))
+
+
+        case let .playbackUpdated(episodeId):
+            writeInt(&buf, Int32(7))
             FfiConverterOptionTypeEpisodeId.write(episodeId, into: &buf)
 
 
         case .queueUpdated:
-            writeInt(&buf, Int32(6))
+            writeInt(&buf, Int32(8))
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(7))
+            writeInt(&buf, Int32(9))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -4356,6 +4575,30 @@ fileprivate struct FfiConverterOptionTypePlaybackSegment: FfiConverterRustBuffer
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypePodcastId: FfiConverterRustBuffer {
+    typealias SwiftType = PodcastId?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypePodcastId.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypePodcastId.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypePodcastRecord: FfiConverterRustBuffer {
     typealias SwiftType = PodcastRecord?
 
@@ -4470,6 +4713,31 @@ fileprivate struct FfiConverterOptionTypeOperationResult: FfiConverterRustBuffer
         case 1: return try FfiConverterTypeOperationResult.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
+    typealias SwiftType = [String]
+
+    public static func write(_ value: [String], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterString.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [String] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [String]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterString.read(from: &buf))
+        }
+        return seq
     }
 }
 

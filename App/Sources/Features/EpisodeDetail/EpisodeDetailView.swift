@@ -252,8 +252,8 @@ struct EpisodeDetailView: View {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview("Detail") {
-    let store = AppStateStore()
     let playback = PlaybackState()
     let subID = UUID()
     let podcast = Podcast(
@@ -278,9 +278,14 @@ struct EpisodeDetailView: View {
             .init(startTime: 4810, title: "Practical protocols")
         ]
     )
-    store.upsertPodcast(podcast)
-    store.addSubscription(podcastID: subID)
-    store.upsertEpisodes([episode], forPodcast: subID)
+    var previewState = AppState()
+    previewState.podcasts = [podcast]
+    previewState.subscriptions = [PodcastSubscription(podcastID: subID)]
+    previewState.episodes = [episode]
+    let store = AppStateStore.previewStore(
+        importing: previewState,
+        name: "episode-detail"
+    )
     return NavigationStack {
         EpisodeDetailView(episodeID: episode.id)
     }
@@ -288,3 +293,4 @@ struct EpisodeDetailView: View {
     .environment(playback)
     .environment(WorkflowClient())
 }
+#endif

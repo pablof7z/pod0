@@ -230,6 +230,10 @@ fn feed_identity(
     kind: &PodcastKind,
     index: u32,
 ) -> Result<Option<FeedIdentityV1>, StorageError> {
+    // Ignore the old private `agent-generated://` non-feed sentinel.
+    if matches!(kind, PodcastKind::Synthetic) {
+        return Ok(None);
+    }
     let Some(value) = value else {
         return if matches!(kind, PodcastKind::Rss) {
             Err(StorageError::InvalidLegacyRecord {

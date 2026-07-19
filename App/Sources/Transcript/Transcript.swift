@@ -115,6 +115,18 @@ struct Speaker: Codable, Sendable, Hashable, Identifiable {
 // MARK: - Convenience
 
 extension Transcript {
+    func replacingEpisodeID(with episodeID: UUID) -> Transcript {
+        Transcript(
+            id: id,
+            episodeID: episodeID,
+            language: language,
+            source: source,
+            segments: segments,
+            speakers: speakers,
+            generatedAt: generatedAt
+        )
+    }
+
     /// Looks up a speaker by id. Used heavily by the reader view.
     func speaker(for id: UUID?) -> Speaker? {
         guard let id else { return nil }

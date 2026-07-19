@@ -162,7 +162,6 @@ extension AudioEngine {
         let observer = PlaybackAudioSessionObserver()
         observer.onEvent = { [weak self] event in
             guard let self else { return }
-            self.onAudioSessionEvent(event)
             self.onHostAudioSessionEvent(event)
         }
         audioSessionObserver = observer

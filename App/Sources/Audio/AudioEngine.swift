@@ -119,9 +119,7 @@ final class AudioEngine {
     var audioSessionObserver: PlaybackAudioSessionObserver?
     var fadeBaseVolume: Float = 1.0
 
-    /// Typed host lifecycle events. PlaybackState owns the pause/resume and
-    /// persistence policy so system and in-app commands share one boundary.
-    var onAudioSessionEvent: (PlaybackAudioSessionEvent) -> Void = { _ in }
+    /// Typed raw lifecycle observations for the Rust playback-policy owner.
     var onHostStateChanged: () -> Void = { }
     var onHostAudioSessionEvent: (PlaybackAudioSessionEvent) -> Void = { _ in }
     var onPresentationTimeChanged: (TimeInterval) -> Void = { _ in }
@@ -134,7 +132,7 @@ final class AudioEngine {
 
     init() {
         configureNowPlayingCallbacks()
-        onSleepTimerFire = { [weak self] in self?.pause() }
+        onSleepTimerFire = { }
         configureSleepTimerHooks()
         nowPlaying.setSkipIntervals(forward: skipForwardSeconds, backward: skipBackwardSeconds)
         configureAudioSessionObserver()

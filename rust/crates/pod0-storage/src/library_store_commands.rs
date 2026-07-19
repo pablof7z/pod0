@@ -1,4 +1,4 @@
-use pod0_domain::{AutoDownloadPolicy, CommandId, PodcastId, StateRevision};
+use pod0_domain::{AutoDownloadPolicy, CommandId, EpisodeId, PodcastId, StateRevision};
 use rusqlite::{OptionalExtension, params};
 
 use crate::StorageError;
@@ -6,6 +6,75 @@ use crate::library_store::{LibraryStore, command_was_applied, finish_command};
 use crate::listening_db_codec::{auto_download, bool_value};
 
 impl LibraryStore {
+    pub fn set_episode_starred(
+        &self,
+        command_id: CommandId,
+        command_fingerprint: &str,
+        episode_id: EpisodeId,
+        starred: bool,
+        observed_at_ms: i64,
+    ) -> Result<StateRevision, StorageError> {
+        self.write(|transaction| {
+            if let Some(revision) =
+                command_was_applied(transaction, command_id, command_fingerprint)?
+            {
+                return Ok(revision);
+            }
+            let changed = transaction
+                .execute(
+                    "UPDATE pod0_episodes SET is_starred=?1 WHERE episode_id=?2",
+                    params![bool_value(starred), episode_id.into_bytes().as_slice()],
+                )
+                .map_err(|error| StorageError::sqlite("update episode starred state", error))?;
+            if changed != 1 {
+                return Err(StorageError::EntityNotFound);
+            }
+            finish_command(transaction, command_id, command_fingerprint, observed_at_ms)
+        })
+    }
+
+    pub fn reset_listening_data(
+        &self,
+        command_id: CommandId,
+        command_fingerprint: &str,
+        observed_at_ms: i64,
+    ) -> Result<StateRevision, StorageError> {
+        self.write(|transaction| {
+            if let Some(revision) =
+                command_was_applied(transaction, command_id, command_fingerprint)?
+            {
+                return Ok(revision);
+            }
+            transaction
+                .execute("DELETE FROM pod0_queue_entries", [])
+                .map_err(|error| StorageError::sqlite("reset listening queue", error))?;
+            transaction.execute(
+                "UPDATE pod0_playback_state SET active_episode_id=NULL,playback_rate_permille=1000,\
+                 sleep_mode_code=1,sleep_duration_ms=NULL,sleep_wire_code=NULL,\
+                 auto_mark_played_at_natural_end=1,auto_play_next=1,\
+                 active_segment_start_ms=NULL,active_segment_end_ms=NULL,\
+                 active_segment_label=NULL,last_position_committed_at_ms=NULL WHERE singleton=1",
+                [],
+            ).map_err(|error| StorageError::sqlite("reset listening playback", error))?;
+            transaction
+                .execute("DELETE FROM pod0_episode_feed_metadata", [])
+                .map_err(|error| StorageError::sqlite("reset episode metadata", error))?;
+            transaction
+                .execute("DELETE FROM pod0_episodes", [])
+                .map_err(|error| StorageError::sqlite("reset listening episodes", error))?;
+            transaction
+                .execute("DELETE FROM pod0_subscriptions", [])
+                .map_err(|error| StorageError::sqlite("reset subscriptions", error))?;
+            transaction
+                .execute("DELETE FROM pod0_podcasts", [])
+                .map_err(|error| StorageError::sqlite("reset podcasts", error))?;
+            transaction
+                .execute("DELETE FROM pod0_library_commands", [])
+                .map_err(|error| StorageError::sqlite("reset command receipts", error))?;
+            finish_command(transaction, command_id, command_fingerprint, observed_at_ms)
+        })
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub fn mark_feed_not_modified(
         &self,

@@ -3,8 +3,8 @@ import Foundation
 // MARK: - AppState
 
 struct AppState: Codable, Sendable {
-    /// Monotonic revision of the authoritative SQLite snapshot. Legacy JSON
-    /// migration imports this value once; normal reads never compare stores.
+    /// Monotonic revision for the remaining Swift-owned temporary domains.
+    /// Listening rows below are read-only Rust projections after cutover.
     var persistenceGeneration: UInt64 = 0
     /// All podcasts the app knows about. Includes podcasts the user follows
     /// AND podcasts where the only attachment is an agent-added or
@@ -15,9 +15,9 @@ struct AppState: Codable, Sendable {
     /// Many `Podcast` rows may exist without a matching subscription — that's
     /// "known but not followed."
     var subscriptions: [PodcastSubscription] = []
-    /// All known episodes across all podcasts, hydrated from SQLite at
-    /// launch. Reads filter by `podcastID` rather than maintaining
-    /// per-podcast arrays so `upsertEpisodes(_:)` works for any feed.
+    /// All known episodes across all podcasts. Listening fields are projected
+    /// from Rust; temporary transcript/download adjuncts remain Swift-owned
+    /// until their own vertical slices migrate.
     var episodes: [Episode] = []
     var notes: [Note] = []
     var agentMemories: [AgentMemory] = []

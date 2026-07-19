@@ -30,6 +30,9 @@ pub struct PlaybackItem {
     pub episode_id: EpisodeId,
     pub title: String,
     pub durable_resume_position_milliseconds: u64,
+    /// A committed core fact used by native product-validation adapters.
+    /// Native code records the typed outcome but does not choose the threshold.
+    pub meaningful_listening_reached: bool,
     pub segment: Option<PlaybackSegment>,
     pub label: Option<String>,
     pub completed: bool,

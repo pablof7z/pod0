@@ -171,7 +171,7 @@ The AI agent can create and manage its own podcast shows — complete with AI-ge
 
 ### Lifecycle (`LiveAgentOwnedPodcastManager`)
 
-1. `createPodcast(...)` — creates a `Podcast` with `kind: .synthetic` and calls `store.upsertPodcast(...)`.
+1. `createPodcast(...)` — sends a typed synthetic-podcast input through the Pod0 Rust facade, which commits the show to the shared library.
 2. If `visibility == .public` and Nostr is enabled, immediately publishes a NIP-74 show event signed by the agent's Nostr key from `NostrCredentialStore`.
 3. `generateAndUploadArtwork(prompt:)` — calls the image-gen API (model configured in Image Generation Settings), uploads the result to the user's Blossom server, returns the CDN URL.
 4. `publishEpisodeToNostr(episodeID:)` — looks up the episode, builds a NIP-74 episode event, signs and publishes, returns the `naddr`.

@@ -2,40 +2,14 @@ import SwiftUI
 
 extension RootView {
 
-    /// Wires all playback-state callbacks. Called from `.onAppear` so the
-    /// closures reference the live `store` and `playbackState` values that
-    /// exist at the point the root view first appears.
+    /// Attaches the Rust playback owner and native-only presentation adapters.
+    /// Called from `.onAppear` after the live store and player exist.
     func setupPlaybackHandlers() {
         store.sharedLibrary?.attachPlayback(playbackState, store: store)
         playbackState.productSignals = store.productSignals
-        playbackState.onPersistPosition = { [store] id, position in
-            store.setEpisodePlaybackPosition(id, position: position)
-            store.setLastPlayedEpisode(id)
-        }
-        playbackState.onEpisodeFinished = { [store, playbackState] id in
-            store.markEpisodePlayed(id)
-            let endOfEpisodeArmed: Bool
-            switch playbackState.engine.sleepTimer.phase {
-            case .armedEndOfEpisode, .fired:
-                endOfEpisodeArmed = true
-            default:
-                endOfEpisodeArmed = false
-            }
-            guard store.state.settings.autoPlayNext, !endOfEpisodeArmed else { return }
-            playbackState.playNext { store.episode(id: $0) }
-        }
-        playbackState.onFlushPositions = { [store] in
-            store.flushPendingPositions()
-        }
         playbackState.onEnsureDownloadEnqueued = { [store] id in
             EpisodeDownloadService.shared.attach(appStore: store)
             EpisodeDownloadService.shared.ensureDownloadEnqueued(episodeID: id)
-        }
-        playbackState.onSegmentFinished = { [store, playbackState] in
-            let advanced = playbackState.playNext { store.episode(id: $0) }
-            if !advanced {
-                playbackState.pause()
-            }
         }
         // Cold-launch quick-action routing.
         if let delegate = UIApplication.shared.delegate as? AppDelegate,
@@ -43,7 +17,6 @@ extension RootView {
             delegate.pendingShortcutURL = nil
             handleDeepLink(url)
         }
-        playbackState.autoMarkPlayedOnFinish = store.state.settings.autoMarkPlayedAtEnd
         playbackState.applyPreferences(from: store.state.settings)
         playbackState.resolveShowName = { [store] episode in
             store.podcast(id: episode.podcastID)?.title ?? ""
@@ -77,15 +50,5 @@ extension RootView {
         }
         AutoSnipController.shared.attach(playback: playbackState, store: store)
 
-        // Restore the last-played episode so the mini-player reappears after
-        // an app restart. Loads the episode in a paused state — the user taps
-        // play to resume. Only runs when no deep-link or shortcut has already
-        // loaded an episode.
-        if playbackState.sharedCore == nil,
-           playbackState.episode == nil,
-           let lastID = store.state.lastPlayedEpisodeID,
-           let episode = store.episode(id: lastID) {
-            playbackState.setEpisode(episode)
-        }
     }
 }

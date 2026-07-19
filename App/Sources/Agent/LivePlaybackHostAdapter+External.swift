@@ -43,12 +43,10 @@ extension LivePlaybackHostAdapter {
             queuePosition: queuePosition,
             store: store
         )
-        if let feedURL,
-           parent.shouldHydrateMetadata {
+        if parent.shouldHydrateMetadata {
             Task.detached { [weak self] in
                 await self?.hydratePlaceholderPodcastMetadata(
-                    podcastID: parent.podcastID,
-                    feedURL: feedURL
+                    podcastID: parent.podcastID
                 )
             }
         }
@@ -74,7 +72,7 @@ extension LivePlaybackHostAdapter {
         let startedPlaying: Bool
         switch queuePosition {
         case .now:
-            playback.enqueueSegments([item], playNow: true) { store.episode(id: $0) }
+            playback.enqueueSegments([item], playNow: true)
             startedPlaying = true
         case .next:
             playback.insertNext(item)
@@ -118,39 +116,22 @@ extension LivePlaybackHostAdapter {
             titleIsPlaceholder: true
         )
         return ExternalParentResolution(
-            podcastID: store.upsertPodcast(placeholder).id,
+            podcastID: placeholder.id,
             shouldHydrateMetadata: true
         )
     }
 
-    private func hydratePlaceholderPodcastMetadata(podcastID: UUID, feedURL: URL) async {
+    private func hydratePlaceholderPodcastMetadata(podcastID: UUID) async {
         guard let store else { return }
-        if await store.isSharedLibraryAuthoritative {
-            do {
-                guard let sharedLibrary = await store.sharedLibrary else {
-                    throw SharedLibraryError.unavailable
-                }
-                _ = try await sharedLibrary.execute(.hydratePodcastMetadata(
-                    podcastId: PodcastId(uuid: podcastID)
-                ))
-            } catch {
-                logger.error("playExternalEpisode: shared metadata hydration failed: \(error.localizedDescription, privacy: .public)")
-            }
-            return
-        }
-        let placeholder = Podcast(
-            id: podcastID,
-            feedURL: feedURL,
-            title: feedURL.host ?? feedURL.absoluteString,
-            titleIsPlaceholder: true
-        )
         do {
-            if case .updated(var podcast, _, _) = try await FeedClient().fetch(placeholder) {
-                podcast.titleIsPlaceholder = false
-                await store.updatePodcast(podcast)
+            guard let sharedLibrary = await store.sharedLibrary else {
+                throw SharedLibraryError.unavailable
             }
+            _ = try await sharedLibrary.execute(.hydratePodcastMetadata(
+                podcastId: PodcastId(uuid: podcastID)
+            ))
         } catch {
-            logger.error("playExternalEpisode: metadata fetch failed: \(error.localizedDescription, privacy: .public)")
+            logger.error("playExternalEpisode: shared metadata hydration failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 

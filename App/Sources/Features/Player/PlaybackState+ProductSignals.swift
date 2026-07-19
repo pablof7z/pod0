@@ -22,4 +22,15 @@ extension PlaybackState {
             errorClass: succeeded ? nil : .unexpected
         )
     }
+
+    func recordMeaningfulListening(episodeID: UUID, domainRevision: UInt64) {
+        guard recordedMeaningfulEpisodeIDs.insert(episodeID).inserted else { return }
+        let observation = ProductSignalObservation.once(
+            name: .meaningfulListening,
+            subjectID: episodeID,
+            outcome: .succeeded,
+            domainRevision: domainRevision
+        )
+        Task { await productSignals.record(observation) }
+    }
 }

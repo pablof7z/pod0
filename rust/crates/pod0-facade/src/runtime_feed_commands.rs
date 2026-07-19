@@ -1,8 +1,10 @@
 use pod0_application::{
-    CommandEnvelope, CoreFailureCode, HostRequest, HostRequestEnvelope, MAX_FEED_RESPONSE_BYTES,
-    OperationResult, OperationStage,
+    CommandEnvelope, CoreFailureCode, ExternalEpisodeInput, HostRequest, HostRequestEnvelope,
+    MAX_FEED_RESPONSE_BYTES, OperationResult, OperationStage, SyntheticPodcastInput,
 };
-use pod0_domain::{HostRequestId, PodcastId, UnixTimestampMilliseconds};
+use pod0_domain::{
+    HostRequestId, PodcastId, PodcastKind, PodcastRecord, UnixTimestampMilliseconds,
+};
 
 use crate::runtime_commands::storage_failure;
 use crate::runtime_state::{FacadeState, FeedIntent, PendingFeed};
@@ -122,20 +124,62 @@ impl FacadeState {
         );
     }
 
-    #[allow(clippy::too_many_arguments)]
+    pub(super) fn upsert_synthetic_podcast(
+        &mut self,
+        envelope: &CommandEnvelope,
+        fingerprint: &str,
+        podcast: SyntheticPodcastInput,
+    ) {
+        if podcast.title.trim().is_empty() || podcast.categories.len() > 32 {
+            self.fail(envelope.command_id, CoreFailureCode::InvalidCommand);
+            return;
+        }
+        let podcast_id = podcast
+            .podcast_id
+            .unwrap_or_else(|| PodcastId::from_bytes(envelope.command_id.into_bytes()));
+        let now = self.now();
+        let record = PodcastRecord {
+            podcast_id,
+            kind: PodcastKind::Synthetic,
+            feed_identity: None,
+            title: podcast.title,
+            author: podcast.author,
+            image_url: podcast.image_url,
+            description: podcast.description,
+            language: podcast.language,
+            categories: podcast.categories,
+            discovered_at: now,
+            title_is_placeholder: false,
+            last_refreshed_at: None,
+            etag: None,
+            last_modified: None,
+        };
+        let result = self
+            .store
+            .as_ref()
+            .ok_or(pod0_storage::StorageError::CutoverNotAuthoritative)
+            .and_then(|store| {
+                store.upsert_synthetic_podcast(envelope.command_id, fingerprint, record, now.value)
+            });
+        match result {
+            Ok(_) => match self.reload_listening() {
+                Ok(()) => self.succeed(
+                    envelope.command_id,
+                    Some(OperationResult::Podcast { podcast_id }),
+                ),
+                Err(error) => self.fail(envelope.command_id, storage_failure(error)),
+            },
+            Err(error) => self.fail(envelope.command_id, storage_failure(error)),
+        }
+    }
+
     pub(super) fn upsert_external_episode(
         &mut self,
         envelope: &CommandEnvelope,
         fingerprint: &str,
-        podcast_id: PodcastId,
-        feed_url: Option<String>,
-        podcast_title: String,
-        audio_url: String,
-        title: String,
-        image_url: Option<String>,
-        duration_milliseconds: Option<u64>,
+        episode: ExternalEpisodeInput,
     ) {
-        let feed_identity = match feed_url {
+        let feed_identity = match episode.feed_url {
             Some(value) => match pod0_application::normalize_feed_url(&value) {
                 Some(value) => Some(value),
                 None => {
@@ -145,11 +189,11 @@ impl FacadeState {
             },
             None => None,
         };
-        let Some(audio_identity) = pod0_application::normalize_feed_url(&audio_url) else {
+        let Some(audio_url) = pod0_application::normalize_media_url(&episode.audio_url) else {
             self.fail(envelope.command_id, CoreFailureCode::InvalidCommand);
             return;
         };
-        if title.trim().is_empty() {
+        if episode.title.trim().is_empty() || episode.podcast_title.trim().is_empty() {
             self.fail(envelope.command_id, CoreFailureCode::InvalidCommand);
             return;
         }
@@ -161,13 +205,16 @@ impl FacadeState {
                 store.upsert_external_episode(
                     envelope.command_id,
                     fingerprint,
-                    podcast_id,
+                    episode.podcast_id,
                     feed_identity,
-                    &podcast_title,
-                    &audio_identity.source_url,
-                    &title,
-                    image_url.as_deref(),
-                    duration_milliseconds,
+                    &episode.podcast_title,
+                    &audio_url,
+                    &episode.title,
+                    &episode.description,
+                    episode.published_at.value,
+                    episode.enclosure_mime_type.as_deref(),
+                    episode.image_url.as_deref(),
+                    episode.duration_milliseconds,
                     self.now().value,
                 )
             });

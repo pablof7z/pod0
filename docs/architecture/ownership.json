@@ -33,9 +33,8 @@
       "priority": "keep_native",
       "includes": [
         "App/Sources/Audio/",
-        "App/Sources/Features/Player/PlaybackSessionPolicy.swift",
         "App/Sources/Features/Player/PlaybackState+AudioCallbacks.swift",
-        "App/Sources/Features/Player/PlaybackState+AudioSession.swift",
+        "App/Sources/Features/Player/PlaybackState+Snapshot.swift",
         "App/Sources/Features/Player/PlaybackState+SleepTimer.swift"
       ]
     },
@@ -50,7 +49,11 @@
       "priority": "keep_native",
       "includes": [
         "App/Sources/Core/",
-        "App/Sources/Features/Player/PlaybackState+SharedCore.swift"
+        "App/Sources/Features/Player/PlaybackState.swift",
+        "App/Sources/Features/Player/PlaybackState+Controls.swift",
+        "App/Sources/Features/Player/PlaybackState+Queue.swift",
+        "App/Sources/Features/Player/PlaybackState+SharedCore.swift",
+        "App/Sources/Features/Player/PlaybackTypes.swift"
       ]
     },
     {
@@ -73,7 +76,10 @@
       "boundary": "Accept typed committed outcomes from domain owners; never influence commands, projections, or durable product decisions.",
       "persisted_state": "Bounded local signal archive with a random, user-rotatable install identifier.",
       "priority": "keep_native",
-      "includes": ["App/Sources/ProductSignals/"]
+      "includes": [
+        "App/Sources/ProductSignals/",
+        "App/Sources/Features/Player/PlaybackState+ProductSignals.swift"
+      ]
     },
     {
       "id": "shared-domain-models",
@@ -229,12 +235,8 @@
       "migration_issues": [58, 60, 78, 80, 81, 82, 83],
       "deletion_target": "Delete policy from PlaybackState/AgentChatSession while retaining thin native view/capability adapters.",
       "priority": "highest",
-      "includes": ["App/Sources/Features/Player/PlaybackState", "App/Sources/Features/Player/PlaybackTypes.swift", "App/Sources/Features/Agent/AgentChatSession", "App/Sources/Features/Agent/AgentLLMClient.swift", "App/Sources/Features/Agent/AgentOllamaClient.swift", "App/Sources/Features/Agent/AgentOpenRouterClient.swift", "App/Sources/Features/Agent/AgentChatTitleGenerator.swift", "App/Sources/Features/Agent/ChatConversation.swift", "App/Sources/Features/Agent/ChatMessage.swift"],
+      "includes": ["App/Sources/Features/Player/PlaybackState+AdSkip.swift", "App/Sources/Features/Agent/AgentChatSession", "App/Sources/Features/Agent/AgentLLMClient.swift", "App/Sources/Features/Agent/AgentOllamaClient.swift", "App/Sources/Features/Agent/AgentOpenRouterClient.swift", "App/Sources/Features/Agent/AgentChatTitleGenerator.swift", "App/Sources/Features/Agent/ChatConversation.swift", "App/Sources/Features/Agent/ChatMessage.swift"],
       "excludes": [
-        "App/Sources/Features/Player/PlaybackState+AudioCallbacks.swift",
-        "App/Sources/Features/Player/PlaybackState+AudioSession.swift",
-        "App/Sources/Features/Player/PlaybackState+SharedCore.swift",
-        "App/Sources/Features/Player/PlaybackState+SleepTimer.swift",
         "App/Sources/Features/Agent/AgentChatSession+Recall.swift"
       ]
     },
@@ -261,7 +263,7 @@
       "persisted_state": "Transient presentation only; current exceptions are tracked by shared/temporary entries.",
       "priority": "keep_native",
       "includes": ["App/Sources/Features/"],
-      "excludes": ["App/Sources/Features/Player/PlaybackState", "App/Sources/Features/Player/PlaybackSessionPolicy.swift", "App/Sources/Features/Player/PlaybackTypes.swift", "App/Sources/Features/Player/AutoSnip/AutoSnipController.swift", "App/Sources/Features/Recall/", "App/Sources/Features/Agent/AgentChatSession", "App/Sources/Features/Agent/AgentLLMClient.swift", "App/Sources/Features/Agent/AgentOllamaClient.swift", "App/Sources/Features/Agent/AgentOpenRouterClient.swift", "App/Sources/Features/Agent/AgentChatTitleGenerator.swift", "App/Sources/Features/Agent/ChatConversation.swift", "App/Sources/Features/Agent/ChatMessage.swift"]
+      "excludes": ["App/Sources/Features/Player/PlaybackState.swift", "App/Sources/Features/Player/PlaybackState+AdSkip.swift", "App/Sources/Features/Player/PlaybackState+AudioCallbacks.swift", "App/Sources/Features/Player/PlaybackState+Controls.swift", "App/Sources/Features/Player/PlaybackState+ProductSignals.swift", "App/Sources/Features/Player/PlaybackState+Queue.swift", "App/Sources/Features/Player/PlaybackState+SharedCore.swift", "App/Sources/Features/Player/PlaybackState+SleepTimer.swift", "App/Sources/Features/Player/PlaybackState+Snapshot.swift", "App/Sources/Features/Player/PlaybackTypes.swift", "App/Sources/Features/Player/AutoSnip/AutoSnipController.swift", "App/Sources/Features/Recall/", "App/Sources/Features/Agent/AgentChatSession", "App/Sources/Features/Agent/AgentLLMClient.swift", "App/Sources/Features/Agent/AgentOllamaClient.swift", "App/Sources/Features/Agent/AgentOpenRouterClient.swift", "App/Sources/Features/Agent/AgentChatTitleGenerator.swift", "App/Sources/Features/Agent/ChatConversation.swift", "App/Sources/Features/Agent/ChatMessage.swift"]
     },
     {
       "id": "native-platform-services",

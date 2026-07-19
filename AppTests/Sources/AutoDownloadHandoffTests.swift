@@ -14,12 +14,12 @@ final class AutoDownloadHandoffTests: XCTestCase {
             pubDate: Date(),
             enclosureURL: URL(string: "https://example.com/automatic.mp3")!
         )
-        made.store.upsertPodcast(podcast)
-        made.store.addSubscription(PodcastSubscription(
+        made.store.installPodcastFixture(podcast)
+        made.store.installSubscriptionFixture(PodcastSubscription(
             podcastID: podcast.id,
             autoDownload: AutoDownloadPolicy(mode: .allNew, wifiOnly: false)
         ))
-        made.store.upsertEpisodes([episode], forPodcast: podcast.id)
+        made.store.installEpisodeFixtures([episode], forPodcast: podcast.id)
         EpisodeDownloadService.shared.pathState.set(.wifi)
         let context = JobAttemptContext(
             job: workJob(for: episode),

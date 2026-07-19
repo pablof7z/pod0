@@ -28,12 +28,6 @@ import Foundation
 // (`clearAllData`, persistence reload) and the one episode-removing path
 // in `removeSubscription` over in `+Podcasts`.
 //
-// **Position-cache fold.** `inProgressEpisodes` and `recentEpisodes`
-// surface live playhead values via the position-debounce cache (see
-// `AppStateStore+PositionDebounce.swift`). The cache is folded into the
-// returned values *at read time*, not stored in the precomputed array,
-// so a 1 Hz playback tick doesn't dirty the projection.
-//
 // **Memory.** Per-show projections store sorted indexes into `state.episodes`,
 // not full `Episode` copies. Reads materialize just the visible show's slice,
 // keeping the large imported-library footprint lower than a duplicate cache.
@@ -49,7 +43,7 @@ extension AppStateStore {
     /// a hot loop.
     ///
     /// Internal API surface: callers in `AppStateStore+Episodes.swift`,
-    /// `+Podcasts.swift`, and `+PositionDebounce.swift` invoke this after
+    /// `+Podcasts.swift` invoke this after
     /// any write that affects unplayed counts, download states, transcript
     /// states, episode membership, or position-derived in-progress status.
     func recomputeEpisodeProjections() {
@@ -100,10 +94,7 @@ extension AppStateStore {
             // Per-show index cache: append indexes now, sort once per show.
             byShow[podID, default: []].append(index)
 
-            // In-progress: persisted position > 0 AND not played. The
-            // position-cache fold at read time also surfaces episodes whose
-            // cached position crossed zero but haven't been persisted yet
-            // (`inProgressEpisodesView`).
+            // In-progress: Rust-projected position > 0 AND not played.
             if !episode.played, episode.playbackPosition > 0 {
                 inProgress.append(episode)
             }
@@ -147,56 +138,19 @@ extension AppStateStore {
         markEpisodeProjectionsDirty()
     }
 
-    // MARK: - Read-side helpers (position-cache fold)
+    // MARK: - Read-side helpers
 
-    /// `inProgressEpisodes`-shaped view, with the position-debounce cache
-    /// folded in.
-    ///
-    /// Two cases the read needs to handle correctly:
-    ///   1. **Persisted > 0, cache absent.** Episode is in the cached
-    ///      `inProgressEpisodesCached` list as-is.
-    ///   2. **Persisted == 0, cache > 0.** Engine just started ticking but
-    ///      hasn't flushed yet. Episode is NOT in the cached list and must
-    ///      be appended below.
-    ///   3. **Persisted > 0, cache == 0.** Engine wrote a zero (e.g. user
-    ///      scrubbed to the very start). The cached list still includes the
-    ///      episode but the post-fold position is 0 — the `> 0` filter
-    ///      after `applyingPositionCache` drops it so the Continue
-    ///      Listening rail doesn't show a stale entry.
-    ///
-    /// The third case is what the trailing `.filter { ... > 0 }` defends
-    /// against. Without it, `applyingPositionCache` would overwrite the
-    /// position with the cached 0 and leave a phantom in-progress entry.
     func inProgressEpisodesView() -> [Episode] {
-        var result = applyingPositionCache(inProgressEpisodesCached)
-            .filter { $0.playbackPosition > 0 }
-
-        // Case 2: episode whose persisted position is still 0 but whose
-        // cache has crossed > 0 must surface here. `positionCache` is
-        // typically tiny — at most a handful of episodes the engine has
-        // ticked since the last flush.
-        if !positionCache.isEmpty {
-            let existingIDs = Set(inProgressEpisodesCached.map(\.id))
-            for (id, position) in positionCache where position > 0 && !existingIDs.contains(id) {
-                guard var ep = state.episodes.first(where: { $0.id == id }), !ep.played else { continue }
-                ep.playbackPosition = position
-                result.append(ep)
-            }
-            // Re-sort if we appended; preserve newest-first ordering.
-            result.sort { $0.pubDate > $1.pubDate }
-        }
-
-        return result
+        inProgressEpisodesCached
     }
 
-    /// `recentEpisodes(limit:)`-shaped view, folding in the position
-    /// cache so a freshly-started episode reads with its live playhead.
-    /// Honours `limit` against the cached top-N; if a caller requests
+    /// `recentEpisodes(limit:)`-shaped view. Honours `limit` against the
+    /// cached top-N; if a caller requests
     /// more than `recentEpisodesCacheLimit`, falls back to a full
     /// recompute against `state.episodes`.
     func recentEpisodesView(limit: Int) -> [Episode] {
         if limit <= Self.recentEpisodesCacheLimit {
-            return applyingPositionCache(Array(recentEpisodesCached.prefix(limit)))
+            return Array(recentEpisodesCached.prefix(limit))
         }
         // Rare cold path: caller asked for more than we cache.
         let recomputed = state.episodes
@@ -205,10 +159,10 @@ extension AppStateStore {
             .sorted { $0.pubDate > $1.pubDate }
             .prefix(limit)
             .map { $0 }
-        return applyingPositionCache(Array(recomputed))
+        return Array(recomputed)
     }
 
-    /// Pre-sorted, position-cache-folded list of episodes for one show.
+    /// Pre-sorted list of episodes for one show.
     /// Backed by `episodeIndexesByShow`; no per-call filter or sort.
     func episodesForShowView(_ id: UUID) -> [Episode] {
         guard let indexes = episodeIndexesByShow[id] else { return [] }
@@ -217,7 +171,7 @@ extension AppStateStore {
             guard episodes.indices.contains(index) else { return nil }
             return episodes[index]
         }
-        return applyingPositionCache(cached)
+        return cached
     }
 
     // MARK: - Fingerprint (didSet safety net)

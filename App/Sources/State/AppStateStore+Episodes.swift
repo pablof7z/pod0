@@ -1,25 +1,14 @@
 import Foundation
-import Pod0Core
 
 // MARK: - Episodes
 
 extension AppStateStore {
 
     // MARK: - Reads
-    //
-    // Reads fold the position-debounce cache into the result so a freshly-
-    // updated playhead is visible to UI surfaces (in-progress carousel,
-    // resume-from-position, episode detail) without waiting for the next
-    // disk flush. See `AppStateStore+PositionDebounce.swift` for the
-    // cache's lifecycle.
 
     /// Returns the live episode record matching `id`, or `nil` when not found.
     func episode(id: UUID) -> Episode? {
-        guard var found = state.episodes.first(where: { $0.id == id }) else { return nil }
-        if let cached = cachedPosition(for: id) {
-            found.playbackPosition = cached
-        }
-        return found
+        state.episodes.first(where: { $0.id == id })
     }
 
     /// Episodes belonging to the given podcast, newest publish-date first.
@@ -60,86 +49,7 @@ extension AppStateStore {
         state.episodes.sorted { $0.pubDate > $1.pubDate }
     }
 
-    // MARK: - Writes
-
-    /// Inserts new episodes and updates existing ones (matched by `guid`)
-    /// for the given subscription. Episodes whose `guid` already exists in
-    /// the store are merged: the publisher fields refresh while the user-
-    /// mutable playback state (`playbackPosition`, `played`, `downloadState`,
-    /// `transcriptState`) is preserved.
-    ///
-    /// When `evaluateAutoDownload` is true, the episode mutation atomically
-    /// records a durable discovery occurrence. Its executor later materializes
-    /// bounded follow-on intent from the exact inserted batch.
-    @discardableResult
-    func upsertEpisodes(
-        _ incoming: [Episode],
-        forPodcast podcastID: UUID,
-        evaluateAutoDownload: Bool = false,
-        notificationDiscoveredAt: Date? = nil
-    ) -> [UUID] {
-        guard !incoming.isEmpty else { return [] }
-        if isSharedLibraryAuthoritative,
-           !isApplyingSharedLibraryProjection,
-           podcast(id: podcastID)?.kind == .rss {
-            return []
-        }
-        var updated = state.episodes
-        let existingByGUID = Dictionary(
-            updated.enumerated()
-                .filter { $0.element.podcastID == podcastID }
-                .map { ($0.element.guid, $0.offset) },
-            uniquingKeysWith: { first, _ in first }
-        )
-        var newlyInserted: [UUID] = []
-        for episode in incoming {
-            if let idx = existingByGUID[episode.guid] {
-                let prior = updated[idx]
-                var merged = episode
-                merged.id = prior.id
-                merged.playbackPosition = prior.playbackPosition
-                merged.played = prior.played
-                merged.isStarred = prior.isStarred
-                let audioInputChanged = DesiredStatePlanner.audioVersion(prior)
-                    != DesiredStatePlanner.audioVersion(merged)
-                merged.downloadState = audioInputChanged ? .notDownloaded : prior.downloadState
-                merged.transcriptState = audioInputChanged ? .none : prior.transcriptState
-                merged.requestedTranscriptProvider = prior.requestedTranscriptProvider
-                // Preserve AI-compiled/hydrated chapters when the incoming RSS episode
-                // doesn't supply new ones; RSS never carries ad segments so always keep.
-                if merged.chapters == nil || merged.chapters!.isEmpty {
-                    merged.chapters = prior.chapters
-                }
-                merged.adSegments = prior.adSegments
-                updated[idx] = merged
-            } else {
-                updated.append(episode)
-                newlyInserted.append(episode.id)
-            }
-        }
-        let occurrenceJobs = feedDiscoveryJobs(
-            podcastID: podcastID,
-            episodeIDs: newlyInserted,
-            episodes: updated,
-            evaluateAutoDownload: evaluateAutoDownload,
-            notificationDiscoveredAt: notificationDiscoveredAt
-        )
-        performMutationBatch {
-            mutateState(ensuring: occurrenceJobs) { $0.episodes = updated }
-            // The didSet fingerprint catches count changes but misses pure
-            // merges where count stays equal; explicit invalidation covers both.
-            invalidateEpisodeProjections()
-        }
-        WorkflowRuntime.shared.wake()
-        return newlyInserted
-    }
-
-    // `setEpisodePlaybackPosition(_:position:)` is implemented in
-    // `AppStateStore+PositionDebounce.swift`. It writes through an in-memory
-    // cache and only mutates `state.episodes` (firing the expensive save) on
-    // an eager-first / 5-second-trailing / 30-second-cap schedule. This is
-    // the file's single highest-frequency caller; routing it through the
-    // cache is the entire point of that companion file.
+    // MARK: - Temporary native adjunct writes
 
     /// Updates stable local-file evidence. Active/retry/failure lifecycle is
     /// owned exclusively by JobStore.

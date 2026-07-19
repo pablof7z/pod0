@@ -30,20 +30,20 @@ final class SortedSubscriptionsByRecencyTests: XCTestCase {
         let alpha = makeSubscription(title: "Alpha")
         let bravo = makeSubscription(title: "Bravo")
         let charlie = makeSubscription(title: "Charlie")
-        store.upsertPodcast(alpha); store.addSubscription(podcastID: alpha.id)
-        store.upsertPodcast(bravo); store.addSubscription(podcastID: bravo.id)
-        store.upsertPodcast(charlie); store.addSubscription(podcastID: charlie.id)
+        store.installPodcastFixture(alpha); store.installSubscriptionFixture(podcastID: alpha.id)
+        store.installPodcastFixture(bravo); store.installSubscriptionFixture(podcastID: bravo.id)
+        store.installPodcastFixture(charlie); store.installSubscriptionFixture(podcastID: charlie.id)
 
         let now = Date()
-        store.upsertEpisodes(
+        store.installEpisodeFixtures(
             [makeEpisode(subID: alpha.id, guid: "a-1", pubDate: now.addingTimeInterval(-3 * 86_400))],
             forPodcast: alpha.id
         )
-        store.upsertEpisodes(
+        store.installEpisodeFixtures(
             [makeEpisode(subID: bravo.id, guid: "b-1", pubDate: now)],
             forPodcast: bravo.id
         )
-        store.upsertEpisodes(
+        store.installEpisodeFixtures(
             [makeEpisode(subID: charlie.id, guid: "c-1", pubDate: now.addingTimeInterval(-86_400))],
             forPodcast: charlie.id
         )
@@ -56,11 +56,11 @@ final class SortedSubscriptionsByRecencyTests: XCTestCase {
         let withEp = makeSubscription(title: "Zebra Show")
         let blank1 = makeSubscription(title: "Bravo")
         let blank2 = makeSubscription(title: "Alpha")
-        store.upsertPodcast(withEp); store.addSubscription(podcastID: withEp.id)
-        store.upsertPodcast(blank1); store.addSubscription(podcastID: blank1.id)
-        store.upsertPodcast(blank2); store.addSubscription(podcastID: blank2.id)
+        store.installPodcastFixture(withEp); store.installSubscriptionFixture(podcastID: withEp.id)
+        store.installPodcastFixture(blank1); store.installSubscriptionFixture(podcastID: blank1.id)
+        store.installPodcastFixture(blank2); store.installSubscriptionFixture(podcastID: blank2.id)
 
-        store.upsertEpisodes(
+        store.installEpisodeFixtures(
             [makeEpisode(subID: withEp.id, guid: "z-1", pubDate: Date())],
             forPodcast: withEp.id
         )
@@ -72,15 +72,15 @@ final class SortedSubscriptionsByRecencyTests: XCTestCase {
     func testTieOnPubDateBreaksAlphabetically() {
         let alpha = makeSubscription(title: "Alpha")
         let bravo = makeSubscription(title: "Bravo")
-        store.upsertPodcast(alpha); store.addSubscription(podcastID: alpha.id)
-        store.upsertPodcast(bravo); store.addSubscription(podcastID: bravo.id)
+        store.installPodcastFixture(alpha); store.installSubscriptionFixture(podcastID: alpha.id)
+        store.installPodcastFixture(bravo); store.installSubscriptionFixture(podcastID: bravo.id)
 
         let pinned = Date()
-        store.upsertEpisodes(
+        store.installEpisodeFixtures(
             [makeEpisode(subID: alpha.id, guid: "a-1", pubDate: pinned)],
             forPodcast: alpha.id
         )
-        store.upsertEpisodes(
+        store.installEpisodeFixtures(
             [makeEpisode(subID: bravo.id, guid: "b-1", pubDate: pinned)],
             forPodcast: bravo.id
         )
@@ -91,10 +91,10 @@ final class SortedSubscriptionsByRecencyTests: XCTestCase {
 
     func testMostRecentEpisodeMatchesProjection() {
         let sub = makeSubscription(title: "X")
-        store.upsertPodcast(sub); store.addSubscription(podcastID: sub.id)
+        store.installPodcastFixture(sub); store.installSubscriptionFixture(podcastID: sub.id)
         let older = makeEpisode(subID: sub.id, guid: "older", pubDate: Date().addingTimeInterval(-86_400))
         let newer = makeEpisode(subID: sub.id, guid: "newer", pubDate: Date())
-        store.upsertEpisodes([older, newer], forPodcast: sub.id)
+        store.installEpisodeFixtures([older, newer], forPodcast: sub.id)
 
         let recent = store.mostRecentEpisode(forPodcast: sub.id)
         XCTAssertEqual(recent?.guid, "newer")

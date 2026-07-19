@@ -35,9 +35,6 @@ struct PlayerQueueSheet: View {
             }
             .navigationTitle("Up Next")
             .navigationBarTitleDisplayMode(.inline)
-            .onAppear {
-                pruneStaleQueue()
-            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
@@ -109,7 +106,7 @@ struct PlayerQueueSheet: View {
                     // gestures on the trailing edge where the move handle
                     // sits. `Button` reliably hits the whole row.
                     Button {
-                        play(item: pair.item, episode: pair.episode)
+                        play(item: pair.item)
                     } label: {
                         PlayerQueueRow(
                             episode: pair.episode,
@@ -135,7 +132,7 @@ struct PlayerQueueSheet: View {
                     }
                 }
                 .onMove { indices, destination in
-                    state.moveQueue(from: indices, to: destination) { store.episode(id: $0) }
+                    state.moveQueue(from: indices, to: destination)
                     Haptics.selection()
                 }
             } footer: {
@@ -188,17 +185,11 @@ struct PlayerQueueSheet: View {
 
     // MARK: - Actions
 
-    private func play(item: QueueItem, episode: Episode) {
+    private func play(item: QueueItem) {
         Haptics.medium()
         state.removeFromQueue(itemID: item.id)
-        state.enqueueSegments([item], playNow: true) { id in
-            id == episode.id ? episode : store.episode(id: id)
-        }
+        state.enqueueSegments([item], playNow: true)
         dismiss()
-    }
-
-    private func pruneStaleQueue() {
-        state.pruneQueue { store.episode(id: $0) }
     }
 }
 

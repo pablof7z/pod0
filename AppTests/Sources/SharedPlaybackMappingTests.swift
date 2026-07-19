@@ -58,6 +58,7 @@ final class SharedPlaybackMappingTests: XCTestCase {
                 episodeId: EpisodeId(uuid: episode.id),
                 title: episode.title,
                 durableResumePositionMilliseconds: 45_000,
+                meaningfulListeningReached: false,
                 segment: PlaybackSegment(
                     startPositionMilliseconds: 10_000,
                     endPositionMilliseconds: 20_000
@@ -81,7 +82,9 @@ final class SharedPlaybackMappingTests: XCTestCase {
             operations: []
         )
 
-        state.applySharedPlayback(projection) { id in id == episode.id ? episode : nil }
+        state.applySharedPlayback(projection, stateRevision: 7) {
+            id in id == episode.id ? episode : nil
+        }
 
         XCTAssertEqual(state.episode?.id, episode.id)
         XCTAssertEqual(state.currentSegmentEndTime, 20)

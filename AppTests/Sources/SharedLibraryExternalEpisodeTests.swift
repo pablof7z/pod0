@@ -19,9 +19,8 @@ final class SharedLibraryExternalEpisodeTests: XCTestCase {
         )])
         let store = AppStateStore(
             persistence: persistence,
-            sharedLibraryMode: .automatic,
             sharedFeedHost: host,
-            startPeriodicSubscriptionRefresh: false
+            startSubscriptionRefresh: false
         )
         let requestedPodcastID = UUID()
         let audioURL = URL(string: "https://external.example/selected.mp3")!
@@ -54,13 +53,50 @@ final class SharedLibraryExternalEpisodeTests: XCTestCase {
 
         let relaunched = AppStateStore(
             persistence: persistence,
-            sharedLibraryMode: .automatic,
             sharedFeedHost: QueuedCoreFeedHost([]),
-            startPeriodicSubscriptionRefresh: false
+            startSubscriptionRefresh: false
         )
         XCTAssertEqual(relaunched.podcast(id: requestedPodcastID)?.title, "Hydrated External Show")
         XCTAssertEqual(relaunched.episodes(forPodcast: requestedPodcastID).count, 1)
         XCTAssertNil(relaunched.subscription(podcastID: requestedPodcastID))
+    }
+
+    func testFeedlessExternalEpisodeCreatesDurableSyntheticParent() async throws {
+        let fileURL = AppStateTestSupport.uniqueTempFileURL()
+        let persistence = Persistence(fileURL: fileURL)
+        defer { persistence.reset() }
+        let store = AppStateStore(
+            persistence: persistence,
+            sharedFeedHost: QueuedCoreFeedHost([]),
+            startSubscriptionRefresh: false
+        )
+        let audioURL = URL(string: "https://external.example/no-feed.mp3")!
+
+        let episode = try await store.upsertExternalEpisodeAndWait(
+            podcastID: Podcast.unknownID,
+            feedURL: nil,
+            podcastTitle: "Unknown Podcast",
+            audioURL: audioURL,
+            title: "No-feed episode",
+            description: "Durable external playback",
+            publishedAt: Date(timeIntervalSince1970: 1_800_000_000),
+            enclosureMimeType: "audio/mpeg",
+            imageURL: nil,
+            duration: 42
+        )
+
+        XCTAssertEqual(episode.podcastID, Podcast.unknownID)
+        XCTAssertEqual(episode.description, "Durable external playback")
+        XCTAssertEqual(store.podcast(id: Podcast.unknownID)?.kind, .synthetic)
+        XCTAssertNil(store.subscription(podcastID: Podcast.unknownID))
+
+        let relaunched = AppStateStore(
+            persistence: persistence,
+            sharedFeedHost: QueuedCoreFeedHost([]),
+            startSubscriptionRefresh: false
+        )
+        XCTAssertEqual(relaunched.episode(id: episode.id)?.enclosureURL, audioURL)
+        XCTAssertEqual(relaunched.podcast(id: Podcast.unknownID)?.kind, .synthetic)
     }
 
     private static let metadataFeed = #"""

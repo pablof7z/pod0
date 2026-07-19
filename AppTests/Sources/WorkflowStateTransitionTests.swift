@@ -21,7 +21,7 @@ final class WorkflowStateTransitionTests: XCTestCase {
             podcastID: UUID(), guid: "transition", title: "Transition",
             pubDate: Date(), enclosureURL: URL(string: "https://example.com/audio.mp3")!
         )
-        store.upsertEpisodes([episode], forPodcast: episode.podcastID)
+        store.installEpisodeFixtures([episode], forPodcast: episode.podcastID)
     }
 
     override func tearDown() async throws {
@@ -271,7 +271,7 @@ final class WorkflowStateTransitionTests: XCTestCase {
 
         var refreshed = episode!
         refreshed.enclosureURL = URL(string: "https://example.com/replaced.mp3")!
-        store.upsertEpisodes([refreshed], forPodcast: refreshed.podcastID)
+        store.installEpisodeFixtures([refreshed], forPodcast: refreshed.podcastID)
 
         XCTAssertEqual(store.episode(id: episode.id)?.downloadState, .notDownloaded)
         XCTAssertEqual(store.episode(id: episode.id)?.transcriptState, .some(.none))

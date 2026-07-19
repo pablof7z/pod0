@@ -24,7 +24,7 @@ final class EpisodeMetadataIndexerTests: XCTestCase {
         let episode = makeEpisode(
             title: "Episode Title", description: "<p>Hello <b>world</b>.</p>"
         )
-        appStore.upsertEpisodes([episode], forPodcast: episode.podcastID)
+        appStore.installEpisodeFixtures([episode], forPodcast: episode.podcastID)
         let fake = FakeVectorStore()
 
         try await EpisodeMetadataIndexer(store: fake).indexEpisode(
@@ -41,7 +41,7 @@ final class EpisodeMetadataIndexerTests: XCTestCase {
 
     func testRepositoryFailureEscapesForCoordinatorClassification() async throws {
         let episode = makeEpisode(title: "Failure", description: "Body")
-        appStore.upsertEpisodes([episode], forPodcast: episode.podcastID)
+        appStore.installEpisodeFixtures([episode], forPodcast: episode.podcastID)
         let fake = FakeVectorStore()
         await fake.setShouldFail(true)
 
@@ -59,7 +59,7 @@ final class EpisodeMetadataIndexerTests: XCTestCase {
 
     func testEmptyMetadataProducesNoVectorWrite() async throws {
         let episode = makeEpisode(title: "", description: "  \n ")
-        appStore.upsertEpisodes([episode], forPodcast: episode.podcastID)
+        appStore.installEpisodeFixtures([episode], forPodcast: episode.podcastID)
         let fake = FakeVectorStore()
 
         try await EpisodeMetadataIndexer(store: fake).indexEpisode(

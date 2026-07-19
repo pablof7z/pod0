@@ -4,7 +4,7 @@ import XCTest
 
 @MainActor
 final class SharedPlaybackVerticalSliceTests: XCTestCase {
-    func testSharedPlaybackSurvivesRelaunchAndRejectsLegacySwiftWrites() async throws {
+    func testSharedPlaybackSurvivesRelaunchWithRustAsSoleWriter() async throws {
         let fileURL = AppStateTestSupport.uniqueTempFileURL()
         let persistence = Persistence(fileURL: fileURL)
         defer { persistence.reset() }
@@ -28,7 +28,8 @@ final class SharedPlaybackVerticalSliceTests: XCTestCase {
         let client = try XCTUnwrap(store.sharedLibrary)
         client.attachPlayback(playback, store: store)
         playback.enqueue(second.id)
-        playback.seek(to: 47)
+        let remoteSeek = playback.engine.nowPlaying.performRemoteCommand(.seek(47))
+        XCTAssertEqual(remoteSeek, .success)
         playback.setRate(.fast)
         playback.setSleepTimer(.minutes(15))
         await drainProjectionDeliveries()
@@ -40,8 +41,13 @@ final class SharedPlaybackVerticalSliceTests: XCTestCase {
         XCTAssertEqual(playback.engine.sleepTimer.mode, .duration(900))
         XCTAssertEqual(store.episode(id: first.id)?.playbackPosition, 47)
 
-        store.setEpisodePlaybackPosition(first.id, position: 999)
-        XCTAssertEqual(store.episode(id: first.id)?.playbackPosition, 47)
+        // A real duration expiry clears the native timer before delivering
+        // the callback. Mirror that ordering without waiting on wall time.
+        playback.engine.sleepTimer.cancel()
+        playback.engine.sleepTimer.onFire()
+        await drainProjectionDeliveries()
+        XCTAssertEqual(playback.sleepTimer, .off)
+        XCTAssertEqual(playback.engine.sleepTimer.mode, .off)
 
         let relaunched = makeStore(persistence)
         let restoredPlayback = PlaybackState(engine: AudioEngine())
@@ -64,19 +70,65 @@ final class SharedPlaybackVerticalSliceTests: XCTestCase {
         await drainProjectionDeliveries()
         XCTAssertEqual(relaunched.episode(id: first.id)?.played, true)
         XCTAssertEqual(relaunched.episode(id: first.id)?.playbackPosition, 0)
-        relaunched.setEpisodePlaybackPosition(first.id, position: 888)
-        XCTAssertEqual(relaunched.episode(id: first.id)?.playbackPosition, 0)
         relaunched.markEpisodeUnplayed(first.id)
         await drainProjectionDeliveries()
         XCTAssertEqual(relaunched.episode(id: first.id)?.played, false)
     }
 
+    func testSharedQueueCommandsRoundTripThroughCoreProjections() async throws {
+        let fileURL = AppStateTestSupport.uniqueTempFileURL()
+        let persistence = Persistence(fileURL: fileURL)
+        defer { persistence.reset() }
+        let podcast = Podcast(
+            id: UUID(),
+            feedURL: URL(string: "https://queue.example/feed.xml")!,
+            title: "Queue Show",
+            discoveredAt: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+        let first = episode(podcastID: podcast.id, number: 1, position: 12)
+        let second = episode(podcastID: podcast.id, number: 2, position: 0)
+        let third = episode(podcastID: podcast.id, number: 3, position: 0)
+        var legacy = AppState()
+        legacy.podcasts = [podcast]
+        legacy.subscriptions = [PodcastSubscription(podcastID: podcast.id)]
+        legacy.episodes = [first, second, third]
+        legacy.lastPlayedEpisodeID = first.id
+        XCTAssertTrue(persistence.write(legacy, revision: 1))
+
+        let store = makeStore(persistence)
+        let playback = PlaybackState(engine: AudioEngine())
+        try XCTUnwrap(store.sharedLibrary).attachPlayback(playback, store: store)
+
+        playback.enqueue(second.id)
+        playback.enqueue(third.id)
+        await drainProjectionDeliveries()
+        XCTAssertEqual(playback.queue.map(\.episodeID), [second.id, third.id])
+
+        playback.moveQueue(from: IndexSet(integer: 0), to: 2)
+        await drainProjectionDeliveries()
+        XCTAssertEqual(playback.queue.map(\.episodeID), [third.id, second.id])
+
+        let thirdSlot = try XCTUnwrap(playback.queue.first?.id)
+        playback.removeFromQueue(itemID: thirdSlot)
+        await drainProjectionDeliveries()
+        XCTAssertEqual(playback.queue.map(\.episodeID), [second.id])
+
+        playback.clearQueue()
+        await drainProjectionDeliveries()
+        XCTAssertTrue(playback.queue.isEmpty)
+
+        let relaunched = makeStore(persistence)
+        let restored = PlaybackState(engine: AudioEngine())
+        try XCTUnwrap(relaunched.sharedLibrary).attachPlayback(restored, store: relaunched)
+        await drainProjectionDeliveries()
+        XCTAssertTrue(restored.queue.isEmpty)
+    }
+
     private func makeStore(_ persistence: Persistence) -> AppStateStore {
         AppStateStore(
             persistence: persistence,
-            sharedLibraryMode: .automatic,
             sharedFeedHost: QueuedCoreFeedHost([]),
-            startPeriodicSubscriptionRefresh: false
+            startSubscriptionRefresh: false
         )
     }
 

@@ -5,7 +5,6 @@ import os.log
 
 enum SharedLibraryBootstrapOutcome {
     case ready(SharedLibraryClient)
-    case legacySwift(reason: String)
     case authoritativeUnavailable(reason: String)
 }
 
@@ -18,8 +17,6 @@ enum SharedLibraryBootstrap {
         feedHost: any CoreFeedHosting = CoreFeedHost()
     ) -> SharedLibraryBootstrapOutcome {
         let target = persistence.sharedCoreStoreURL
-        let targetExisted = FileManager.default.fileExists(atPath: target.path)
-        var authorityCommitted = false
         do {
             let observedAt = UnixTimestampMilliseconds(date: Date()).value
             let storeID = stableID("pod0-core-store:\(target.standardizedFileURL.path)")
@@ -34,7 +31,6 @@ enum SharedLibraryBootstrap {
                     targetPath: target.path,
                     observedAtMilliseconds: observedAt
                 )
-                authorityCommitted = true
             } catch LegacyListeningMigrationError.ImportNotFound {
                 let plan = try inspectLegacyListeningSource(
                     sourcePath: persistence.episodeStore.fileURL.path
@@ -68,7 +64,6 @@ enum SharedLibraryBootstrap {
                     targetPath: target.path,
                     observedAtMilliseconds: observedAt
                 )
-                authorityCommitted = true
             }
             let facade = try Pod0Facade.open(storePath: target.path)
             let client = SharedLibraryClient(facade: facade, feedHost: feedHost)
@@ -78,10 +73,7 @@ enum SharedLibraryBootstrap {
         } catch {
             let detail = String(describing: error)
             logger.error("Shared library bootstrap failed: \(detail, privacy: .public)")
-            if authorityCommitted || targetExisted {
-                return .authoritativeUnavailable(reason: detail)
-            }
-            return .legacySwift(reason: detail)
+            return .authoritativeUnavailable(reason: detail)
         }
     }
 
@@ -96,3 +88,22 @@ enum SharedLibraryBootstrap {
 private enum SharedLibraryBootstrapError: Error {
     case verificationFailed
 }
+
+#if DEBUG
+extension AppStateStore {
+    /// Builds an isolated legacy-import fixture for SwiftUI previews. Release
+    /// code has no writer or convenience initializer for listening state.
+    static func previewStore(importing state: AppState, name: String) -> AppStateStore {
+        let persistence = Persistence(
+            fileURL: FileManager.default.temporaryDirectory.appendingPathComponent(
+                "pod0-\(name)-preview-\(UUID().uuidString).json"
+            )
+        )
+        _ = persistence.write(state, revision: 1)
+        return AppStateStore(
+            persistence: persistence,
+            startSubscriptionRefresh: false
+        )
+    }
+}
+#endif

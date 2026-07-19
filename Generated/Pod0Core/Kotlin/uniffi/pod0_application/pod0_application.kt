@@ -1381,6 +1381,84 @@ public object FfiConverterTypeEpisodeSummary: FfiConverterRustBuffer<EpisodeSumm
 
 
 
+data class ExternalEpisodeInput (
+    val `podcastId`: PodcastId
+    ,
+    val `feedUrl`: kotlin.String?
+    ,
+    val `podcastTitle`: kotlin.String
+    ,
+    val `audioUrl`: kotlin.String
+    ,
+    val `title`: kotlin.String
+    ,
+    val `description`: kotlin.String
+    ,
+    val `publishedAt`: UnixTimestampMilliseconds
+    ,
+    val `enclosureMimeType`: kotlin.String?
+    ,
+    val `imageUrl`: kotlin.String?
+    ,
+    val `durationMilliseconds`: kotlin.ULong?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeExternalEpisodeInput: FfiConverterRustBuffer<ExternalEpisodeInput> {
+    override fun read(buf: ByteBuffer): ExternalEpisodeInput {
+        return ExternalEpisodeInput(
+            FfiConverterTypePodcastId.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ExternalEpisodeInput) = (
+            FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterOptionalString.allocationSize(value.`feedUrl`) +
+            FfiConverterString.allocationSize(value.`podcastTitle`) +
+            FfiConverterString.allocationSize(value.`audioUrl`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterString.allocationSize(value.`description`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`publishedAt`) +
+            FfiConverterOptionalString.allocationSize(value.`enclosureMimeType`) +
+            FfiConverterOptionalString.allocationSize(value.`imageUrl`) +
+            FfiConverterOptionalULong.allocationSize(value.`durationMilliseconds`)
+    )
+
+    override fun write(value: ExternalEpisodeInput, buf: ByteBuffer) {
+            FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterOptionalString.write(value.`feedUrl`, buf)
+            FfiConverterString.write(value.`podcastTitle`, buf)
+            FfiConverterString.write(value.`audioUrl`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterString.write(value.`description`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`publishedAt`, buf)
+            FfiConverterOptionalString.write(value.`enclosureMimeType`, buf)
+            FfiConverterOptionalString.write(value.`imageUrl`, buf)
+            FfiConverterOptionalULong.write(value.`durationMilliseconds`, buf)
+    }
+}
+
+
+
 data class HostObservationEnvelope (
     val `requestId`: HostRequestId
     ,
@@ -1658,6 +1736,12 @@ data class PlaybackItem (
     ,
     val `durableResumePositionMilliseconds`: kotlin.ULong
     ,
+    /**
+     * A committed core fact used by native product-validation adapters.
+     * Native code records the typed outcome but does not choose the threshold.
+     */
+    val `meaningfulListeningReached`: kotlin.Boolean
+    ,
     val `segment`: PlaybackSegment?
     ,
     val `label`: kotlin.String?
@@ -1684,6 +1768,7 @@ public object FfiConverterTypePlaybackItem: FfiConverterRustBuffer<PlaybackItem>
             FfiConverterTypeEpisodeId.read(buf),
             FfiConverterString.read(buf),
             FfiConverterULong.read(buf),
+            FfiConverterBoolean.read(buf),
             FfiConverterOptionalTypePlaybackSegment.read(buf),
             FfiConverterOptionalString.read(buf),
             FfiConverterBoolean.read(buf),
@@ -1695,6 +1780,7 @@ public object FfiConverterTypePlaybackItem: FfiConverterRustBuffer<PlaybackItem>
             FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
             FfiConverterString.allocationSize(value.`title`) +
             FfiConverterULong.allocationSize(value.`durableResumePositionMilliseconds`) +
+            FfiConverterBoolean.allocationSize(value.`meaningfulListeningReached`) +
             FfiConverterOptionalTypePlaybackSegment.allocationSize(value.`segment`) +
             FfiConverterOptionalString.allocationSize(value.`label`) +
             FfiConverterBoolean.allocationSize(value.`completed`) +
@@ -1705,6 +1791,7 @@ public object FfiConverterTypePlaybackItem: FfiConverterRustBuffer<PlaybackItem>
             FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
             FfiConverterString.write(value.`title`, buf)
             FfiConverterULong.write(value.`durableResumePositionMilliseconds`, buf)
+            FfiConverterBoolean.write(value.`meaningfulListeningReached`, buf)
             FfiConverterOptionalTypePlaybackSegment.write(value.`segment`, buf)
             FfiConverterOptionalString.write(value.`label`, buf)
             FfiConverterBoolean.write(value.`completed`, buf)
@@ -2032,6 +2119,73 @@ public object FfiConverterTypeProjectionRequest: FfiConverterRustBuffer<Projecti
 
 
 
+data class SyntheticPodcastInput (
+    /**
+     * `None` creates a new stable ID derived from the command identity.
+     * Updates and named built-ins provide their existing stable ID.
+     */
+    val `podcastId`: PodcastId?
+    ,
+    val `title`: kotlin.String
+    ,
+    val `author`: kotlin.String
+    ,
+    val `imageUrl`: kotlin.String?
+    ,
+    val `description`: kotlin.String
+    ,
+    val `language`: kotlin.String?
+    ,
+    val `categories`: List<kotlin.String>
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSyntheticPodcastInput: FfiConverterRustBuffer<SyntheticPodcastInput> {
+    override fun read(buf: ByteBuffer): SyntheticPodcastInput {
+        return SyntheticPodcastInput(
+            FfiConverterOptionalTypePodcastId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterSequenceString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SyntheticPodcastInput) = (
+            FfiConverterOptionalTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterString.allocationSize(value.`author`) +
+            FfiConverterOptionalString.allocationSize(value.`imageUrl`) +
+            FfiConverterString.allocationSize(value.`description`) +
+            FfiConverterOptionalString.allocationSize(value.`language`) +
+            FfiConverterSequenceString.allocationSize(value.`categories`)
+    )
+
+    override fun write(value: SyntheticPodcastInput, buf: ByteBuffer) {
+            FfiConverterOptionalTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterString.write(value.`author`, buf)
+            FfiConverterOptionalString.write(value.`imageUrl`, buf)
+            FfiConverterString.write(value.`description`, buf)
+            FfiConverterOptionalString.write(value.`language`, buf)
+            FfiConverterSequenceString.write(value.`categories`, buf)
+    }
+}
+
+
+
 data class UnsupportedProjection (
     val `wireCode`: kotlin.UInt
     ,
@@ -2108,14 +2262,17 @@ sealed class ApplicationCommand {
         companion object
     }
 
+    data class UpsertSyntheticPodcast(
+        val `podcast`: uniffi.pod0_application.SyntheticPodcastInput) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
     data class UpsertExternalEpisode(
-        val `podcastId`: uniffi.pod0_domain.PodcastId,
-        val `feedUrl`: kotlin.String?,
-        val `podcastTitle`: kotlin.String,
-        val `audioUrl`: kotlin.String,
-        val `title`: kotlin.String,
-        val `imageUrl`: kotlin.String?,
-        val `durationMilliseconds`: kotlin.ULong?) : ApplicationCommand()
+        val `episode`: uniffi.pod0_application.ExternalEpisodeInput) : ApplicationCommand()
 
     {
 
@@ -2151,6 +2308,19 @@ sealed class ApplicationCommand {
 
         companion object
     }
+
+    data class SetEpisodeStarred(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `starred`: kotlin.Boolean) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
+    object ResetListeningData : ApplicationCommand()
+
 
     data class RequestPlayback(
         val `episodeId`: uniffi.pod0_domain.EpisodeId) : ApplicationCommand()
@@ -2216,36 +2386,38 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
             4 -> ApplicationCommand.HydratePodcastMetadata(
                 FfiConverterTypePodcastId.read(buf),
                 )
-            5 -> ApplicationCommand.UpsertExternalEpisode(
-                FfiConverterTypePodcastId.read(buf),
-                FfiConverterOptionalString.read(buf),
-                FfiConverterString.read(buf),
-                FfiConverterString.read(buf),
-                FfiConverterString.read(buf),
-                FfiConverterOptionalString.read(buf),
-                FfiConverterOptionalULong.read(buf),
+            5 -> ApplicationCommand.UpsertSyntheticPodcast(
+                FfiConverterTypeSyntheticPodcastInput.read(buf),
                 )
-            6 -> ApplicationCommand.Unsubscribe(
+            6 -> ApplicationCommand.UpsertExternalEpisode(
+                FfiConverterTypeExternalEpisodeInput.read(buf),
+                )
+            7 -> ApplicationCommand.Unsubscribe(
                 FfiConverterTypePodcastId.read(buf),
                 )
-            7 -> ApplicationCommand.SetSubscriptionNotifications(
+            8 -> ApplicationCommand.SetSubscriptionNotifications(
                 FfiConverterTypePodcastId.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
-            8 -> ApplicationCommand.SetSubscriptionAutoDownload(
+            9 -> ApplicationCommand.SetSubscriptionAutoDownload(
                 FfiConverterTypePodcastId.read(buf),
                 FfiConverterTypeAutoDownloadPolicy.read(buf),
                 )
-            9 -> ApplicationCommand.RequestPlayback(
+            10 -> ApplicationCommand.SetEpisodeStarred(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            11 -> ApplicationCommand.ResetListeningData
+            12 -> ApplicationCommand.RequestPlayback(
                 FfiConverterTypeEpisodeId.read(buf),
                 )
-            10 -> ApplicationCommand.Playback(
+            13 -> ApplicationCommand.Playback(
                 FfiConverterTypePlaybackCommand.read(buf),
                 )
-            11 -> ApplicationCommand.CancelOperation(
+            14 -> ApplicationCommand.CancelOperation(
                 FfiConverterTypeCancellationId.read(buf),
                 )
-            12 -> ApplicationCommand.Unsupported(
+            15 -> ApplicationCommand.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -2281,17 +2453,18 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
             )
         }
+        is ApplicationCommand.UpsertSyntheticPodcast -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeSyntheticPodcastInput.allocationSize(value.`podcast`)
+            )
+        }
         is ApplicationCommand.UpsertExternalEpisode -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
-                + FfiConverterOptionalString.allocationSize(value.`feedUrl`)
-                + FfiConverterString.allocationSize(value.`podcastTitle`)
-                + FfiConverterString.allocationSize(value.`audioUrl`)
-                + FfiConverterString.allocationSize(value.`title`)
-                + FfiConverterOptionalString.allocationSize(value.`imageUrl`)
-                + FfiConverterOptionalULong.allocationSize(value.`durationMilliseconds`)
+                + FfiConverterTypeExternalEpisodeInput.allocationSize(value.`episode`)
             )
         }
         is ApplicationCommand.Unsubscribe -> {
@@ -2315,6 +2488,20 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 4UL
                 + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
                 + FfiConverterTypeAutoDownloadPolicy.allocationSize(value.`policy`)
+            )
+        }
+        is ApplicationCommand.SetEpisodeStarred -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterBoolean.allocationSize(value.`starred`)
+            )
+        }
+        is ApplicationCommand.ResetListeningData -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
             )
         }
         is ApplicationCommand.RequestPlayback -> {
@@ -2369,51 +2556,60 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
                 Unit
             }
-            is ApplicationCommand.UpsertExternalEpisode -> {
+            is ApplicationCommand.UpsertSyntheticPodcast -> {
                 buf.putInt(5)
-                FfiConverterTypePodcastId.write(value.`podcastId`, buf)
-                FfiConverterOptionalString.write(value.`feedUrl`, buf)
-                FfiConverterString.write(value.`podcastTitle`, buf)
-                FfiConverterString.write(value.`audioUrl`, buf)
-                FfiConverterString.write(value.`title`, buf)
-                FfiConverterOptionalString.write(value.`imageUrl`, buf)
-                FfiConverterOptionalULong.write(value.`durationMilliseconds`, buf)
+                FfiConverterTypeSyntheticPodcastInput.write(value.`podcast`, buf)
+                Unit
+            }
+            is ApplicationCommand.UpsertExternalEpisode -> {
+                buf.putInt(6)
+                FfiConverterTypeExternalEpisodeInput.write(value.`episode`, buf)
                 Unit
             }
             is ApplicationCommand.Unsubscribe -> {
-                buf.putInt(6)
+                buf.putInt(7)
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
                 Unit
             }
             is ApplicationCommand.SetSubscriptionNotifications -> {
-                buf.putInt(7)
+                buf.putInt(8)
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
                 FfiConverterBoolean.write(value.`enabled`, buf)
                 Unit
             }
             is ApplicationCommand.SetSubscriptionAutoDownload -> {
-                buf.putInt(8)
+                buf.putInt(9)
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
                 FfiConverterTypeAutoDownloadPolicy.write(value.`policy`, buf)
                 Unit
             }
+            is ApplicationCommand.SetEpisodeStarred -> {
+                buf.putInt(10)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterBoolean.write(value.`starred`, buf)
+                Unit
+            }
+            is ApplicationCommand.ResetListeningData -> {
+                buf.putInt(11)
+                Unit
+            }
             is ApplicationCommand.RequestPlayback -> {
-                buf.putInt(9)
+                buf.putInt(12)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 Unit
             }
             is ApplicationCommand.Playback -> {
-                buf.putInt(10)
+                buf.putInt(13)
                 FfiConverterTypePlaybackCommand.write(value.`command`, buf)
                 Unit
             }
             is ApplicationCommand.CancelOperation -> {
-                buf.putInt(11)
+                buf.putInt(14)
                 FfiConverterTypeCancellationId.write(value.`cancellationId`, buf)
                 Unit
             }
             is ApplicationCommand.Unsupported -> {
-                buf.putInt(12)
+                buf.putInt(15)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -3650,6 +3846,18 @@ sealed class OperationResult {
         companion object
     }
 
+    data class EpisodeUpdated(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId) : OperationResult()
+
+    {
+
+
+        companion object
+    }
+
+    object ListeningReset : OperationResult()
+
+
     data class PlaybackUpdated(
         val `episodeId`: uniffi.pod0_domain.EpisodeId?) : OperationResult()
 
@@ -3700,11 +3908,15 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
             4 -> OperationResult.PreferencesUpdated(
                 FfiConverterTypePodcastId.read(buf),
                 )
-            5 -> OperationResult.PlaybackUpdated(
+            5 -> OperationResult.EpisodeUpdated(
+                FfiConverterTypeEpisodeId.read(buf),
+                )
+            6 -> OperationResult.ListeningReset
+            7 -> OperationResult.PlaybackUpdated(
                 FfiConverterOptionalTypeEpisodeId.read(buf),
                 )
-            6 -> OperationResult.QueueUpdated
-            7 -> OperationResult.Unsupported(
+            8 -> OperationResult.QueueUpdated
+            9 -> OperationResult.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -3739,6 +3951,19 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
             (
                 4UL
                 + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
+            )
+        }
+        is OperationResult.EpisodeUpdated -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+            )
+        }
+        is OperationResult.ListeningReset -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
             )
         }
         is OperationResult.PlaybackUpdated -> {
@@ -3786,17 +4011,26 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
                 Unit
             }
-            is OperationResult.PlaybackUpdated -> {
+            is OperationResult.EpisodeUpdated -> {
                 buf.putInt(5)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                Unit
+            }
+            is OperationResult.ListeningReset -> {
+                buf.putInt(6)
+                Unit
+            }
+            is OperationResult.PlaybackUpdated -> {
+                buf.putInt(7)
                 FfiConverterOptionalTypeEpisodeId.write(value.`episodeId`, buf)
                 Unit
             }
             is OperationResult.QueueUpdated -> {
-                buf.putInt(6)
+                buf.putInt(8)
                 Unit
             }
             is OperationResult.Unsupported -> {
-                buf.putInt(7)
+                buf.putInt(9)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -6029,6 +6263,38 @@ public object FfiConverterOptionalTypePlaybackSegment: FfiConverterRustBuffer<Pl
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypePodcastId: FfiConverterRustBuffer<PodcastId?> {
+    override fun read(buf: ByteBuffer): PodcastId? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypePodcastId.read(buf)
+    }
+
+    override fun allocationSize(value: PodcastId?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypePodcastId.allocationSize(value)
+        }
+    }
+
+    override fun write(value: PodcastId?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypePodcastId.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypePodcastRecord: FfiConverterRustBuffer<PodcastRecord?> {
     override fun read(buf: ByteBuffer): PodcastRecord? {
         if (buf.get().toInt() == 0) {
@@ -6179,6 +6445,34 @@ public object FfiConverterOptionalTypeOperationResult: FfiConverterRustBuffer<Op
         } else {
             buf.put(1)
             FfiConverterTypeOperationResult.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.String>> {
+    override fun read(buf: ByteBuffer): List<kotlin.String> {
+        val len = buf.getInt()
+        return List<kotlin.String>(len) {
+            FfiConverterString.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.String>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterString.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.String>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterString.write(it, buf)
         }
     }
 }

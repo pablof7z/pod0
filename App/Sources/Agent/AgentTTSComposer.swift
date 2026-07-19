@@ -88,29 +88,23 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
         let inheritedArtwork = chapters.first(where: { $0.imageURL != nil })?.imageURL
 
         // 4. Register the episode and optionally start playback.
-        let episode = await MainActor.run {
-            guard let store else { return Optional<Episode>.none }
-            return AgentGeneratedPodcastService.publishEpisode(
-                title: title,
-                description: description ?? "",
-                audioURL: outputURL,
-                durationSeconds: durationSeconds,
-                imageURL: inheritedArtwork,
-                generationSource: generationSource,
-                targetPodcastID: targetPodcastID,
-                in: store
-            )
-        }
-
-        guard let episode else {
-            throw AgentTTSError.storeUnavailable
-        }
+        guard let store else { throw AgentTTSError.storeUnavailable }
+        let episode = try await AgentGeneratedPodcastService.publishEpisode(
+            title: title,
+            description: description ?? "",
+            audioURL: outputURL,
+            durationSeconds: durationSeconds,
+            imageURL: inheritedArtwork,
+            generationSource: generationSource,
+            targetPodcastID: targetPodcastID,
+            in: store
+        )
+        let committedTranscript = transcript.replacingEpisodeID(with: episode.id)
 
         // 5. Persist transcript, chapters, and set adSegments = [] so
         //    AIChapterCompiler skips this already-structured episode.
         try await MainActor.run {
-            try commitGeneratedTranscript(transcript, for: episode)
-            guard let store else { throw AgentTTSError.storeUnavailable }
+            try commitGeneratedTranscript(committedTranscript, for: episode)
             store.setEpisodeChapters(episode.id, chapters: chapters)
             store.setEpisodeAdSegments(episode.id, segments: [])
         }
@@ -125,18 +119,9 @@ final class AgentTTSComposer: TTSPublisherProtocol, @unchecked Sendable {
             }
         }
 
-        let podcastID: String
-        if let targetPodcastID {
-            podcastID = targetPodcastID.uuidString
-        } else {
-            podcastID = await MainActor.run {
-                store?.podcast(feedURL: AgentGeneratedPodcastService.sentinelFeedURL)?.id.uuidString ?? ""
-            }
-        }
-
         return TTSEpisodeResult(
             episodeID: episode.id.uuidString,
-            podcastID: podcastID,
+            podcastID: episode.podcastID.uuidString,
             title: title,
             durationSeconds: durationSeconds,
             publishedToLibrary: true

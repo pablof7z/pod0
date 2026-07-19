@@ -5,8 +5,6 @@ extension PlaybackState {
     func attachSharedCore(_ client: SharedLibraryClient) {
         guard sharedCore !== client else { return }
         sharedCore = client
-        persistenceTask?.cancel()
-        persistenceTask = nil
         engine.onPresentationTimeChanged = { [weak self] time in
             self?.handleSharedPresentationTime(time)
         }
@@ -14,6 +12,7 @@ extension PlaybackState {
 
     func applySharedPlayback(
         _ projection: PlaybackProjection,
+        stateRevision: UInt64,
         resolveEpisode: (UUID) -> Episode?
     ) {
         sleepTimer = projection.sleepMode.swiftValue
@@ -26,6 +25,7 @@ extension PlaybackState {
             if projection.current == nil {
                 episode = nil
                 currentSegmentEndTime = nil
+                pendingResumeSignal = nil
             }
             writeNowPlayingSnapshot(force: true)
             return
@@ -42,6 +42,37 @@ extension PlaybackState {
         }
         if isNewEpisode, case .notDownloaded = resolved.downloadState {
             onEnsureDownloadEnqueued(resolved.id)
+        }
+        if isNewEpisode, current.durableResumePositionMilliseconds > 0 {
+            pendingResumeSignal = (
+                resolved.id,
+                Double(current.durableResumePositionMilliseconds) / 1_000
+            )
+        }
+        if let pending = pendingResumeSignal,
+           pending.episodeID == resolved.id,
+           engine.episode?.id == resolved.id,
+           abs(engine.currentTime - pending.position) <= 1 {
+            recordResumeAttempt(expectedPosition: pending.position)
+            pendingResumeSignal = nil
+        }
+        if current.meaningfulListeningReached {
+            recordMeaningfulListening(
+                episodeID: resolved.id,
+                domainRevision: stateRevision
+            )
+        }
+        if pendingPlaySignal {
+            switch current.policyState {
+            case .playing:
+                recordPlaybackSignal(name: .playStarted, outcome: .succeeded)
+                pendingPlaySignal = false
+            case .failed:
+                recordPlaybackSignal(name: .playStarted, outcome: .failed)
+                pendingPlaySignal = false
+            default:
+                break
+            }
         }
         writeNowPlayingSnapshot(force: true)
     }

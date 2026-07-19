@@ -2,6 +2,12 @@ use crate::{EpisodeRecord, PlaybackSegment, UnixTimestampMilliseconds};
 
 pub const RESUME_END_GUARD_MILLISECONDS: u64 = 5_000;
 pub const POSITION_COMMIT_INTERVAL_MILLISECONDS: i64 = 30_000;
+pub const MEANINGFUL_LISTENING_THRESHOLD_MILLISECONDS: u64 = 300_000;
+
+#[must_use]
+pub const fn meaningful_listening_reached(position_milliseconds: u64) -> bool {
+    position_milliseconds >= MEANINGFUL_LISTENING_THRESHOLD_MILLISECONDS
+}
 
 #[must_use]
 pub fn playback_start_position(episode: &EpisodeRecord, segment: Option<PlaybackSegment>) -> u64 {

@@ -1,30 +1,9 @@
 import XCTest
 @testable import Podcastr
 
-/// Coverage for the `AppStateStore` episode-projection cache that backs
-/// `unplayedCount(forPodcast:)`, `hasDownloadedEpisode(forPodcast:)`,
-/// `hasTranscribedEpisode(forPodcast:)`, `episodes(forPodcast:)`,
-/// `inProgressEpisodes`, and `recentEpisodes(limit:)`.
-///
-/// **Why the cache exists.** Each of those reads used to scan the full
-/// `state.episodes` array on every call, and SwiftUI calls them from grid-
-/// cell `body` getters that fire on every scroll tick. With 20 subscriptions
-/// and 10k episodes, scrolling Library ran 20 × 10k = 200k filter iterations
-/// per frame. `sample` showed `unplayedCount(forPodcast:)` at 27 ticks
-/// per second of scrolling, dominated by `Episode` struct copies. After the
-/// projection landed, the same call is an O(1) dict lookup.
-///
-/// **What this file tests.**
-///   - Performance: a 10k-episode / 20-subscription state, 1000 calls to
-///     each cached helper, asserting an absolute upper bound that no
-///     reasonable hardware will violate but that the pre-fix code would
-///     blow past by 100×.
-///   - Correctness: every documented invalidation path (upsert, mark
-///     played / unplayed, set download state, set transcript state, remove
-///     subscription, position-cache flush, `clearAllData`) drops or adds
-///     the right entries from the cache. A perf regression that silently
-///     stale-caches would be invisible to the perf assertions but would
-///     show stale unplayed dots in the UI.
+/// Performance and invalidation coverage for native read projections built
+/// from bounded Rust library snapshots. Policy and durable listening writes
+/// are tested in the shared-core vertical-slice suites.
 @MainActor
 final class AppStateStorePerformanceTests: XCTestCase {
 
@@ -138,32 +117,13 @@ final class AppStateStorePerformanceTests: XCTestCase {
         }
     }
 
-    func testBatchSubscriptionImportPersistsOnce() {
-        let payloads = (0..<5).map { i in
-            makeImportPayload(index: i, episodeCount: 25)
-        }
-
-        store.persistence.resetSaveInvocationCount()
-        let result = store.addSubscriptions(payloads)
-
-        XCTAssertEqual(result, SubscriptionImportResult(imported: 5, skipped: 0))
-        XCTAssertEqual(store.state.subscriptions.count, 5)
-        XCTAssertEqual(store.state.episodes.count, 125)
-        XCTAssertEqual(
-            store.persistence.saveInvocationCount,
-            1,
-            "Batch import should perform one state save, not one save per subscription or episode batch."
-        )
-        XCTAssertEqual(store.unplayedCount(forPodcast: payloads[0].podcast.id), 25)
-    }
-
     // MARK: - Correctness: invalidation
 
     func testUpsertEpisodesAddsToUnplayedCount() {
         let sub = addSubscription(title: "Upsert")
         XCTAssertEqual(store.unplayedCount(forPodcast: sub.id), 0)
 
-        store.upsertEpisodes(
+        store.installEpisodeFixtures(
             [makeEpisode(podcastID: sub.id, guid: "u1"),
              makeEpisode(podcastID: sub.id, guid: "u2")],
             forPodcast: sub.id
@@ -172,33 +132,10 @@ final class AppStateStorePerformanceTests: XCTestCase {
         XCTAssertEqual(store.unplayedCount(forPodcast: sub.id), 2)
     }
 
-    func testMarkPlayedDecrementsUnplayedCount() {
-        let sub = addSubscription(title: "Played")
-        let ep = makeEpisode(podcastID: sub.id, guid: "p1")
-        store.upsertEpisodes([ep], forPodcast: sub.id)
-        XCTAssertEqual(store.unplayedCount(forPodcast: sub.id), 1)
-
-        store.markEpisodePlayed(ep.id)
-
-        XCTAssertEqual(store.unplayedCount(forPodcast: sub.id), 0)
-    }
-
-    func testMarkUnplayedRestoresUnplayedCount() {
-        let sub = addSubscription(title: "Unplayed")
-        let ep = makeEpisode(podcastID: sub.id, guid: "u1")
-        store.upsertEpisodes([ep], forPodcast: sub.id)
-        store.markEpisodePlayed(ep.id)
-        XCTAssertEqual(store.unplayedCount(forPodcast: sub.id), 0)
-
-        store.markEpisodeUnplayed(ep.id)
-
-        XCTAssertEqual(store.unplayedCount(forPodcast: sub.id), 1)
-    }
-
     func testSetDownloadStateUpdatesHasDownloadedSet() throws {
         let sub = addSubscription(title: "Download")
         let ep = makeEpisode(podcastID: sub.id, guid: "d1")
-        store.upsertEpisodes([ep], forPodcast: sub.id)
+        store.installEpisodeFixtures([ep], forPodcast: sub.id)
         XCTAssertFalse(store.hasDownloadedEpisode(forPodcast: sub.id))
 
         let fileURL = try installDownloadEvidence(for: ep)
@@ -215,7 +152,7 @@ final class AppStateStorePerformanceTests: XCTestCase {
     func testSetTranscriptStateUpdatesHasTranscribedSet() throws {
         let sub = addSubscription(title: "Transcript")
         let ep = makeEpisode(podcastID: sub.id, guid: "t1")
-        store.upsertEpisodes([ep], forPodcast: sub.id)
+        store.installEpisodeFixtures([ep], forPodcast: sub.id)
         XCTAssertFalse(store.hasTranscribedEpisode(forPodcast: sub.id))
 
         try installTranscriptEvidence(for: ep, source: .scribeV1)
@@ -226,30 +163,6 @@ final class AppStateStorePerformanceTests: XCTestCase {
         XCTAssertFalse(store.hasTranscribedEpisode(forPodcast: sub.id))
     }
 
-    func testRemoveSubscriptionEvictsFromAllProjections() throws {
-        let sub = addSubscription(title: "Evict")
-        let ep = makeEpisode(podcastID: sub.id, guid: "ev1")
-        store.upsertEpisodes([ep], forPodcast: sub.id)
-        let downloadURL = try installDownloadEvidence(for: ep)
-        store.setEpisodeDownloadState(
-            ep.id,
-            state: .downloaded(localFileURL: downloadURL, byteCount: 100)
-        )
-        try installTranscriptEvidence(for: ep, source: .publisher)
-        store.setEpisodeTranscriptState(ep.id, state: .ready(source: .publisher))
-        XCTAssertEqual(store.unplayedCount(forPodcast: sub.id), 1)
-        XCTAssertTrue(store.hasDownloadedEpisode(forPodcast: sub.id))
-        XCTAssertTrue(store.hasTranscribedEpisode(forPodcast: sub.id))
-        XCTAssertFalse(store.episodes(forPodcast: sub.id).isEmpty)
-
-        store.deletePodcast(podcastID: sub.id)
-
-        XCTAssertEqual(store.unplayedCount(forPodcast: sub.id), 0)
-        XCTAssertFalse(store.hasDownloadedEpisode(forPodcast: sub.id))
-        XCTAssertFalse(store.hasTranscribedEpisode(forPodcast: sub.id))
-        XCTAssertTrue(store.episodes(forPodcast: sub.id).isEmpty)
-    }
-
     func testEpisodesForSubscriptionStaysSortedNewestFirst() {
         let sub = addSubscription(title: "Sorted")
         let now = Date()
@@ -257,83 +170,22 @@ final class AppStateStorePerformanceTests: XCTestCase {
         older.pubDate = now.addingTimeInterval(-86_400)
         var newer = makeEpisode(podcastID: sub.id, guid: "new")
         newer.pubDate = now
-        store.upsertEpisodes([older, newer], forPodcast: sub.id)
+        store.installEpisodeFixtures([older, newer], forPodcast: sub.id)
 
         let listed = store.episodes(forPodcast: sub.id)
         XCTAssertEqual(listed.map(\.guid), ["new", "old"])
     }
 
-    func testStartingAnEpisodeSurfacesItInInProgressBeforeFlush() {
-        // Position cache fold at read time must surface an episode whose
-        // persisted position is still 0 but whose cache has crossed > 0.
-        let sub = addSubscription(title: "InProg")
-        let ep = makeEpisode(podcastID: sub.id, guid: "ip-cache")
-        store.upsertEpisodes([ep], forPodcast: sub.id)
-        XCTAssertTrue(store.inProgressEpisodes.isEmpty)
-
-        store.setEpisodePlaybackPosition(ep.id, position: 42)
-
-        // Eager-first flushes the first call, so the projection now lists
-        // the episode either way. Force the cache-only path explicitly:
-        store.setEpisodePlaybackPosition(ep.id, position: 99)
-
-        let listed = store.inProgressEpisodes
-        XCTAssertEqual(listed.first?.id, ep.id)
-        XCTAssertEqual(listed.first?.playbackPosition ?? 0, 99, accuracy: 0.001)
-    }
-
-    /// Regression: a cached `positionCache[id] == 0` (engine wrote a zero
-    /// after a non-zero — e.g. user scrubbed back to the very start) must
-    /// remove the episode from `inProgressEpisodes`. Without the
-    /// post-fold `> 0` filter, the position-cache fold would overwrite
-    /// the cached projection's non-zero value with 0 but leave the
-    /// episode in the result list, leaving a phantom Continue Listening
-    /// entry until the next flush.
-    func testInProgressDropsEpisodeWhenCachedPositionIsZero() {
-        let sub = addSubscription(title: "InProgZero")
-        let ep = makeEpisode(podcastID: sub.id, guid: "ip-zero")
-        store.upsertEpisodes([ep], forPodcast: sub.id)
-
-        // First call eagerly persists position 50, so the projection
-        // includes the episode with persisted = 50.
-        store.setEpisodePlaybackPosition(ep.id, position: 50)
-        XCTAssertEqual(store.inProgressEpisodes.count, 1)
-
-        // Second call lands in the cache only (within the eager-cap and
-        // debounce windows), overwriting the cached value to 0. The
-        // post-fold filter must drop the episode from the rail.
-        store.setEpisodePlaybackPosition(ep.id, position: 0)
-
-        XCTAssertTrue(
-            store.inProgressEpisodes.isEmpty,
-            "Cached position == 0 must evict the episode from the in-progress rail."
-        )
-    }
-
     func testRecentEpisodesReadsFromCacheAndStripsPlayed() {
         let sub = addSubscription(title: "Recent")
         let unplayed = makeEpisode(podcastID: sub.id, guid: "rec-u")
-        let played = makeEpisode(podcastID: sub.id, guid: "rec-p")
-        store.upsertEpisodes([unplayed, played], forPodcast: sub.id)
-        store.markEpisodePlayed(played.id)
+        var played = makeEpisode(podcastID: sub.id, guid: "rec-p")
+        played.played = true
+        store.installEpisodeFixtures([unplayed, played], forPodcast: sub.id)
 
         let listed = store.recentEpisodes(limit: 30)
         XCTAssertEqual(listed.count, 1)
         XCTAssertEqual(listed.first?.id, unplayed.id)
-    }
-
-    func testClearAllDataEmptiesProjections() {
-        let sub = addSubscription(title: "Wipe")
-        let ep = makeEpisode(podcastID: sub.id, guid: "wipe-1")
-        store.upsertEpisodes([ep], forPodcast: sub.id)
-        XCTAssertEqual(store.unplayedCount(forPodcast: sub.id), 1)
-
-        store.clearAllData()
-
-        XCTAssertEqual(store.unplayedCount(forPodcast: sub.id), 0)
-        XCTAssertTrue(store.inProgressEpisodes.isEmpty)
-        XCTAssertTrue(store.recentEpisodes(limit: 30).isEmpty)
-        XCTAssertTrue(store.episodes(forPodcast: sub.id).isEmpty)
     }
 
     // MARK: - Fixtures
@@ -344,8 +196,8 @@ final class AppStateStorePerformanceTests: XCTestCase {
             feedURL: URL(string: "https://example.com/\(UUID().uuidString).xml")!,
             title: title
         )
-        store.upsertPodcast(sub)
-        store.addSubscription(podcastID: sub.id)
+        store.installPodcastFixture(sub)
+        store.installSubscriptionFixture(podcastID: sub.id)
         return sub
     }
 
@@ -356,21 +208,6 @@ final class AppStateStorePerformanceTests: XCTestCase {
             title: "Episode \(guid)",
             pubDate: Date(),
             enclosureURL: URL(string: "https://example.com/\(guid).mp3")!
-        )
-    }
-
-    private func makeImportPayload(index: Int, episodeCount: Int) -> SubscriptionImportPayload {
-        let sub = Podcast(
-            feedURL: URL(string: "https://example.com/import-\(index).xml")!,
-            title: "Import Show \(index)"
-        )
-        let episodes = (0..<episodeCount).map { episodeIndex in
-            makeEpisode(podcastID: sub.id, guid: "import-\(index)-\(episodeIndex)")
-        }
-        return SubscriptionImportPayload(
-            podcast: sub,
-            subscription: PodcastSubscription(podcastID: sub.id),
-            episodes: episodes
         )
     }
 

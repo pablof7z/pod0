@@ -52,15 +52,13 @@ final class LiveYouTubeIngestionAdapter: YouTubeIngestionProtocol, @unchecked Se
         try await downloadAudio(from: info.audioURL, to: destURL)
 
         // Step 3 — publish episode to "Agent Generated" podcast
-        let episode = await MainActor.run {
-            AgentGeneratedPodcastService.publishEpisode(
-                title: finalTitle,
-                description: "From YouTube: \(youtubeURL)",
-                audioURL: destURL,
-                durationSeconds: info.durationSeconds,
-                in: store
-            )
-        }
+        let episode = try await AgentGeneratedPodcastService.publishEpisode(
+            title: finalTitle,
+            description: "From YouTube: \(youtubeURL)",
+            audioURL: destURL,
+            durationSeconds: info.durationSeconds,
+            in: store
+        )
         Self.logger.info("Published YouTube episode \(episode.id, privacy: .public) '\(finalTitle, privacy: .public)'")
 
         // Step 4 — optional transcription

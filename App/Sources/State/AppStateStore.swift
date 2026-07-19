@@ -3,23 +3,18 @@ import Observation
 import WidgetKit
 import os.log
 
-/// Single source of truth. All mutations route through here so the `didSet`
-/// observer can persist automatically. UI and agent both call the same methods.
+/// Native projection and temporary-domain store.
+///
+/// Rust is the sole durable owner of the migrated listening slice. This store
+/// persists unmigrated product domains and a replaceable native read model.
 @MainActor
 @Observable
 final class AppStateStore {
 
-    enum SharedLibraryMode: Sendable {
-        case automatic
-        case disabled
-    }
-
     nonisolated static let logger = Logger.app("AppStateStore")
     let productSignals: any ProductSignalSink
     @ObservationIgnored private(set) var sharedLibrary: SharedLibraryClient?
-    @ObservationIgnored private(set) var isSharedLibraryAuthoritative = false
     @ObservationIgnored private(set) var sharedLibraryUnavailableReason: String?
-    @ObservationIgnored var isApplyingSharedLibraryProjection = false
     /// Chapter the user long-pressed in `PlayerChaptersScrollView`. Drained
     /// by `AgentChatSession.init` and prefilled into the composer; cleared
     /// by the same call so a later sheet re-open starts blank. Carries no
@@ -56,7 +51,7 @@ final class AppStateStore {
     // These mirror `state.episodes` so the per-cell O(N) helpers in the
     // Library grid + Home feeds become O(1) dict/Set lookups. See
     // `AppStateStore+EpisodeProjections.swift` for the recompute logic and
-    // the read-side adapters that fold the position cache.
+    // the read-side adapters that materialize bounded native projections.
     //
     // Stored properties have to live on the class itself (extensions can't
     // add stored state); the methods that build them live in the
@@ -78,9 +73,8 @@ final class AppStateStore {
     /// Drives `ShowDetailView` without duplicating every `Episode` in memory.
     var episodeIndexesByShow: [UUID: [Int]] = [:]
 
-    /// Episodes whose persisted `playbackPosition > 0` and `played == false`,
-    /// pre-sorted newest first. Reads merge the position-cache so an episode
-    /// the user *just* started (cache > 0, persisted == 0) shows up too.
+    /// Episodes whose Rust-projected `playbackPosition > 0` and `played == false`,
+    /// pre-sorted newest first.
     var inProgressEpisodesCached: [Episode] = []
 
     /// Top 30 unplayed episodes across all shows, pre-sorted newest first.
@@ -101,12 +95,6 @@ final class AppStateStore {
     /// Retained observer token for iCloud external-change notifications.
     private var iCloudObserver: NSObjectProtocol?
 
-    /// Retained observer token for `UIApplication.didEnterBackgroundNotification`.
-    /// On background, the position cache is flushed to disk so the user
-    /// can force-quit + relaunch without losing playback progress.
-    /// See `AppStateStore+PositionDebounce.swift` for the rationale.
-    private var backgroundObservers: [NSObjectProtocol] = []
-
     var mutationBatchDepth = 0
     var deferredStateSideEffects = false
     var pendingAtomicJobs: [DesiredJob] = []
@@ -118,42 +106,11 @@ final class AppStateStore {
     /// without producing extra refreshes.
     var widgetReloadTask: Task<Void, Never>?
 
-    // MARK: - Position debounce
-    //
-    // Position updates from `PlaybackState.tickPersistence` arrive at 1 Hz.
-    // Writing the entire ~8 MB JSON blob every second would be 480 MB/min of
-    // disk I/O on the main actor — battery, NAND wear, and main-thread
-    // responsiveness all suffer. We coalesce position updates through these
-    // three fields and only mutate `state.episodes` (which would trigger the
-    // expensive save) on a controlled cadence.
-    //
-    // See `AppStateStore+PositionDebounce.swift` for the full read/write
-    // contract; these properties are declared here because they're stored
-    // properties (extensions can't add stored state) and isolated to the
-    // store's main actor.
-
-    /// Cached playback positions waiting to be folded into `state.episodes`.
-    /// Read-folded into `episode(id:)`/`inProgressEpisodes`/`recentEpisodes`
-    /// so UI surfaces never see a stale position. Drained by
-    /// `flushPendingPositions()`.
-    var positionCache: [UUID: TimeInterval] = [:]
-
-    /// Pending trailing-debounce flush task.
-    var positionFlushTask: Task<Void, Never>?
-
-    /// Wall-clock time of the most recent position flush. Drives the
-    /// max-interval cap: if continuous updates exceed
-    /// `positionMaxInterval` since this timestamp, the next call writes
-    /// eagerly so a crash never loses more than one cap-window of
-    /// position.
-    var lastPositionFlush: Date?
-
     init(
         persistence: Persistence = .shared,
         productSignals: any ProductSignalSink = DiscardingProductSignalSink.shared,
-        sharedLibraryMode: SharedLibraryMode = .automatic,
         sharedFeedHost: (any CoreFeedHosting)? = nil,
-        startPeriodicSubscriptionRefresh: Bool = true
+        startSubscriptionRefresh: Bool = true
     ) {
         self.persistence = persistence
         self.productSignals = productSignals
@@ -182,8 +139,7 @@ final class AppStateStore {
             loadedState.podcasts.removeAll { legacyExternalPodcastIDs.contains($0.id) }
             loadedState.subscriptions.removeAll { legacyExternalPodcastIDs.contains($0.podcastID) }
         }
-        if sharedLibraryMode == .automatic,
-           !FileManager.default.fileExists(atPath: persistence.sharedCoreStoreURL.path) {
+        if !FileManager.default.fileExists(atPath: persistence.sharedCoreStoreURL.path) {
             let nextGeneration = loadedState.persistenceGeneration == .max
                 ? UInt64.max
                 : loadedState.persistenceGeneration + 1
@@ -195,22 +151,16 @@ final class AppStateStore {
         // push (triggered by the `didSet` below) reflects the merged values.
         iCloudSettingsSync.shared.start(mergingInto: &loadedState.settings)
         self.state = loadedState
-        if sharedLibraryMode == .automatic {
-            let feedHost: any CoreFeedHosting = sharedFeedHost ?? CoreFeedHost()
-            switch SharedLibraryBootstrap.run(
-                persistence: persistence,
-                feedHost: feedHost
-            ) {
-            case .ready(let client):
-                sharedLibrary = client
-                isSharedLibraryAuthoritative = true
-                client.attach(store: self)
-            case .legacySwift:
-                break
-            case .authoritativeUnavailable(let reason):
-                isSharedLibraryAuthoritative = true
-                sharedLibraryUnavailableReason = reason
-            }
+        let feedHost: any CoreFeedHosting = sharedFeedHost ?? CoreFeedHost()
+        switch SharedLibraryBootstrap.run(
+            persistence: persistence,
+            feedHost: feedHost
+        ) {
+        case .ready(let client):
+            sharedLibrary = client
+            client.attach(store: self)
+        case .authoritativeUnavailable(let reason):
+            sharedLibraryUnavailableReason = reason
         }
         // The `state.didSet` above doesn't fire from inside `init` until all
         // stored properties are initialised, and even then it skips the very
@@ -252,17 +202,11 @@ final class AppStateStore {
                 self?.applyExternalSettingsChange()
             }
         }
-        // Kick off the foreground subscription-refresh loop. The service
-        // itself owns the polling task + lifecycle observers, so this call
-        // is idempotent and we never have to clean up from here.
-        if startPeriodicSubscriptionRefresh {
-            SubscriptionRefreshService.shared.startPeriodicRefresh(store: self)
+        // Refresh once for this foreground lifecycle. Later opportunities are
+        // delivered by foreground notifications and BGTaskScheduler.
+        if startSubscriptionRefresh {
+            SubscriptionRefreshService.shared.startLifecycleRefresh(store: self)
         }
-        // Subscribe to app-backgrounding so the position cache is flushed
-        // to disk before iOS can suspend or kill the process. Token is
-        // retained on `self` so the observer outlives the init call but
-        // dies with the store. See `AppStateStore+PositionDebounce.swift`.
-        backgroundObservers = registerBackgroundFlushObservers()
     }
 
     deinit {
@@ -279,13 +223,9 @@ final class AppStateStore {
         // by the time deinit runs, no other actor work can be racing
         // against us for `self`.
         MainActor.assumeIsolated {
-            for observer in backgroundObservers {
-                NotificationCenter.default.removeObserver(observer)
-            }
             if let iCloudObserver {
                 NotificationCenter.default.removeObserver(iCloudObserver)
             }
-            positionFlushTask?.cancel()
             widgetReloadTask?.cancel()
         }
     }

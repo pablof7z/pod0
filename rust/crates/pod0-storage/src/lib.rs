@@ -51,6 +51,8 @@ pub use model::{
 #[cfg(test)]
 mod library_store_playback_tests;
 #[cfg(test)]
+mod library_store_synthetic_tests;
+#[cfg(test)]
 mod library_store_tests;
 #[cfg(test)]
 mod listening_import_failure_tests;

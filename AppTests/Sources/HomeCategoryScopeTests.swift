@@ -205,10 +205,10 @@ final class HomeCategoryScopeTests: XCTestCase {
             feedURL: URL(string: "https://b.example.com/feed.xml")!,
             title: "Show B"
         )
-        store.upsertPodcast(subA)
-        store.upsertPodcast(subB)
-        store.addSubscription(podcastID: subA.id)
-        store.addSubscription(podcastID: subB.id)
+        store.installPodcastFixture(subA)
+        store.installPodcastFixture(subB)
+        store.installSubscriptionFixture(podcastID: subA.id)
+        store.installSubscriptionFixture(podcastID: subB.id)
 
         let aEpisodes = (0..<3).map { i -> Episode in
             makeEpisode(podcastID: subA.id, guid: "a-\(i)")
@@ -216,8 +216,8 @@ final class HomeCategoryScopeTests: XCTestCase {
         let bEpisodes = (0..<2).map { i -> Episode in
             makeEpisode(podcastID: subB.id, guid: "b-\(i)")
         }
-        store.upsertEpisodes(aEpisodes, forPodcast: subA.id)
-        store.upsertEpisodes(bEpisodes, forPodcast: subB.id)
+        store.installEpisodeFixtures(aEpisodes, forPodcast: subA.id)
+        store.installEpisodeFixtures(bEpisodes, forPodcast: subB.id)
 
         let topic = ThreadingTopic(
             slug: "category-scope-topic",

@@ -82,6 +82,11 @@ their own complete vertical slices.
 - The first vertical slice must delete old mutation paths after cutover.
 - Rust storage design cannot depend on Swift Codable implementation details
   beyond the importer.
+- The legacy importer is read-only and cannot write listening facts after
+  cutover. Delete it only when the minimum supported iOS version is newer than
+  the final Swift-authoritative release, two consecutive qualified releases
+  observe zero imports, and rollback no longer depends on its fixtures. Its
+  removal must be a dedicated migration issue with upgrade-path evidence.
 
 ## Rejected alternatives
 

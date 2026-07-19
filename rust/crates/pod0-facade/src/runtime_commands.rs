@@ -4,7 +4,7 @@ use pod0_application::{
 use pod0_domain::CommandId;
 
 use crate::runtime_command_fingerprint::command_fingerprint;
-use crate::runtime_state::{FacadeState, FeedIntent, failure};
+use crate::runtime_state::{FacadeState, FeedIntent, PlaybackRuntime, failure};
 
 impl FacadeState {
     pub(super) fn accept_command(&mut self, envelope: CommandEnvelope) -> bool {
@@ -23,25 +23,12 @@ impl FacadeState {
             ApplicationCommand::HydratePodcastMetadata { podcast_id } => {
                 self.start_metadata_refresh(&envelope, &fingerprint, podcast_id)
             }
-            ApplicationCommand::UpsertExternalEpisode {
-                podcast_id,
-                feed_url,
-                podcast_title,
-                audio_url,
-                title,
-                image_url,
-                duration_milliseconds,
-            } => self.upsert_external_episode(
-                &envelope,
-                &fingerprint,
-                podcast_id,
-                feed_url,
-                podcast_title,
-                audio_url,
-                title,
-                image_url,
-                duration_milliseconds,
-            ),
+            ApplicationCommand::UpsertSyntheticPodcast { podcast } => {
+                self.upsert_synthetic_podcast(&envelope, &fingerprint, podcast)
+            }
+            ApplicationCommand::UpsertExternalEpisode { episode } => {
+                self.upsert_external_episode(&envelope, &fingerprint, episode)
+            }
             ApplicationCommand::Unsubscribe { podcast_id } => {
                 let result = self
                     .store
@@ -105,6 +92,68 @@ impl FacadeState {
                     result,
                     OperationResult::PreferencesUpdated { podcast_id },
                 );
+            }
+            ApplicationCommand::SetEpisodeStarred {
+                episode_id,
+                starred,
+            } => {
+                let result = self
+                    .store
+                    .as_ref()
+                    .ok_or(pod0_storage::StorageError::CutoverNotAuthoritative)
+                    .and_then(|store| {
+                        store.set_episode_starred(
+                            envelope.command_id,
+                            &fingerprint,
+                            episode_id,
+                            starred,
+                            self.now().value,
+                        )
+                    });
+                self.finish_storage_command(
+                    envelope.command_id,
+                    result,
+                    OperationResult::EpisodeUpdated { episode_id },
+                );
+            }
+            ApplicationCommand::ResetListeningData => {
+                let observation_request_id = self.playback.observation_request_id;
+                let active_episode_id = self.listening.playback.active_episode_id;
+                let result = self
+                    .store
+                    .as_ref()
+                    .ok_or(pod0_storage::StorageError::CutoverNotAuthoritative)
+                    .and_then(|store| {
+                        store.reset_listening_data(
+                            envelope.command_id,
+                            &fingerprint,
+                            self.now().value,
+                        )
+                    });
+                let succeeded = result.is_ok();
+                self.finish_storage_command(
+                    envelope.command_id,
+                    result,
+                    OperationResult::ListeningReset,
+                );
+                if succeeded {
+                    if let Some(episode_id) = active_episode_id {
+                        self.issue_playback_request(
+                            &envelope,
+                            "reset-stop",
+                            pod0_application::HostRequest::StopPlayback { episode_id },
+                        );
+                        self.issue_playback_request(
+                            &envelope,
+                            "reset-timer",
+                            pod0_application::HostRequest::CancelNativeTimer { episode_id },
+                        );
+                    }
+                    self.playback = PlaybackRuntime {
+                        observation_request_id,
+                        ..PlaybackRuntime::default()
+                    };
+                }
             }
             ApplicationCommand::CancelOperation { cancellation_id } => {
                 self.host_requests.cancel(cancellation_id);

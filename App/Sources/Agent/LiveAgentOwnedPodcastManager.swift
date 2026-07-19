@@ -52,9 +52,11 @@ final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unc
             language: language,
             categories: categories
         )
-        let stored = await MainActor.run {
-            store?.upsertPodcast(podcast) ?? podcast
-        }
+        guard let store else { throw AgentOwnedPodcastError.storeUnavailable }
+        let stored = try await store.upsertSyntheticPodcastAndWait(
+            podcast,
+            creatingNewIdentity: true
+        )
         Self.logger.info("Created agent-owned podcast '\(title, privacy: .public)' id=\(stored.id, privacy: .public)")
         return await MainActor.run { info(for: stored) }
     }
@@ -82,8 +84,9 @@ final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unc
         if let description { updated.description = description }
         if let author { updated.author = author }
         if let imageURL { updated.imageURL = imageURL }
-        await MainActor.run { store?.updatePodcast(updated) }
-        return await MainActor.run { info(for: updated) }
+        guard let store else { throw AgentOwnedPodcastError.storeUnavailable }
+        let stored = try await store.upsertSyntheticPodcastAndWait(updated)
+        return await MainActor.run { info(for: stored) }
     }
 
     // MARK: - deletePodcast
@@ -98,10 +101,8 @@ final class LiveAgentOwnedPodcastManager: AgentOwnedPodcastManagerProtocol, @unc
         guard existing.kind == .synthetic else {
             throw AgentOwnedPodcastError.notOwned(podcastID)
         }
-        await MainActor.run {
-            guard let store else { return }
-            store.deletePodcast(podcastID: uuid)
-        }
+        guard let store else { throw AgentOwnedPodcastError.storeUnavailable }
+        try await store.deletePodcastAndWait(podcastID: uuid)
     }
 
     // MARK: - listOwnedPodcasts

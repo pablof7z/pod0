@@ -20,6 +20,7 @@ final class SharedLibraryClient {
     private weak var playbackState: PlaybackState?
     private var cachedSnapshot: SharedLibrarySnapshot?
     private var cachedPlayback: PlaybackProjection?
+    private var cachedPlaybackRevision: UInt64 = 0
     private var playbackHostAttached = false
 
     init(facade: Pod0Facade, feedHost: any CoreFeedHosting) {
@@ -66,7 +67,10 @@ final class SharedLibraryClient {
             playbackHostAttached = true
         }
         if let cachedPlayback {
-            playback.applySharedPlayback(cachedPlayback) { [weak store] id in
+            playback.applySharedPlayback(
+                cachedPlayback,
+                stateRevision: cachedPlaybackRevision
+            ) { [weak store] id in
                 store?.episode(id: id)
             }
         }
@@ -140,8 +144,12 @@ final class SharedLibraryClient {
         guard revision >= lastPlaybackRevision else { return }
         lastPlaybackRevision = revision
         cachedPlayback = projection
+        cachedPlaybackRevision = revision
         if let playbackState {
-            playbackState.applySharedPlayback(projection) { [weak store] id in
+            playbackState.applySharedPlayback(
+                projection,
+                stateRevision: revision
+            ) { [weak store] id in
                 store?.episode(id: id)
             }
         }

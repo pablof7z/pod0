@@ -40,11 +40,10 @@ final class SharedLibraryVerticalSliceTests: XCTestCase {
 
         let first = AppStateStore(
             persistence: persistence,
-            sharedLibraryMode: .automatic,
             sharedFeedHost: QueuedCoreFeedHost([]),
-            startPeriodicSubscriptionRefresh: false
+            startSubscriptionRefresh: false
         )
-        XCTAssertTrue(first.isSharedLibraryAuthoritative)
+        XCTAssertNotNil(first.sharedLibrary)
         XCTAssertNil(first.sharedLibraryUnavailableReason)
         XCTAssertEqual(first.podcast(id: podcast.id)?.title, "Migrated Show")
         XCTAssertEqual(first.episode(id: episode.id)?.playbackPosition, 33)
@@ -68,39 +67,26 @@ final class SharedLibraryVerticalSliceTests: XCTestCase {
 
         let relaunched = AppStateStore(
             persistence: persistence,
-            sharedLibraryMode: .automatic,
             sharedFeedHost: QueuedCoreFeedHost([]),
-            startPeriodicSubscriptionRefresh: false
+            startSubscriptionRefresh: false
         )
-        XCTAssertTrue(relaunched.isSharedLibraryAuthoritative)
+        XCTAssertNotNil(relaunched.sharedLibrary)
         XCTAssertEqual(relaunched.podcast(id: podcast.id)?.title, "Migrated Show")
         XCTAssertEqual(relaunched.episode(id: episode.id)?.playbackPosition, 33)
         XCTAssertEqual(relaunched.episode(id: episode.id)?.played, false)
-        XCTAssertEqual(relaunched.episode(id: episode.id)?.isStarred, false)
+        XCTAssertEqual(relaunched.episode(id: episode.id)?.isStarred, true)
         XCTAssertEqual(relaunched.subscription(podcastID: podcast.id)?.notificationsEnabled, false)
 
-        var rejectedPodcastWrite = try XCTUnwrap(relaunched.podcast(id: podcast.id))
-        rejectedPodcastWrite.title = "DIRECT SWIFT WRITE"
-        relaunched.updatePodcast(rejectedPodcastWrite)
-        XCTAssertEqual(relaunched.podcast(id: podcast.id)?.title, "Migrated Show")
-        XCTAssertTrue(relaunched.upsertEpisodes([
-            Episode(
-                podcastID: podcast.id,
-                guid: "swift-only",
-                title: "Must Not Persist",
-                pubDate: Date(),
-                enclosureURL: URL(string: "https://legacy.example/swift-only.mp3")!
-            )
-        ], forPodcast: podcast.id).isEmpty)
+        try await relaunched.setEpisodeStarredAndWait(episode.id, false)
+        XCTAssertEqual(relaunched.episode(id: episode.id)?.isStarred, false)
 
         try await relaunched.deletePodcastAndWait(podcastID: podcast.id)
         XCTAssertNil(relaunched.podcast(id: podcast.id))
 
         let afterDeletionRestart = AppStateStore(
             persistence: persistence,
-            sharedLibraryMode: .automatic,
             sharedFeedHost: QueuedCoreFeedHost([]),
-            startPeriodicSubscriptionRefresh: false
+            startSubscriptionRefresh: false
         )
         XCTAssertNil(afterDeletionRestart.podcast(id: podcast.id))
         XCTAssertTrue(afterDeletionRestart.state.subscriptions.isEmpty)
@@ -130,11 +116,10 @@ final class SharedLibraryVerticalSliceTests: XCTestCase {
         ])
         let store = AppStateStore(
             persistence: persistence,
-            sharedLibraryMode: .automatic,
             sharedFeedHost: host,
-            startPeriodicSubscriptionRefresh: false
+            startSubscriptionRefresh: false
         )
-        XCTAssertTrue(store.isSharedLibraryAuthoritative)
+        XCTAssertNotNil(store.sharedLibrary)
 
         let service = SubscriptionService(store: store)
         let podcast = try await service.addSubscription(feedURLString: feedURL)
@@ -183,6 +168,51 @@ final class SharedLibraryVerticalSliceTests: XCTestCase {
         XCTAssertEqual(discovery.episodes.map(\.title), ["Second Episode"])
         XCTAssertTrue(discovery.notificationsEnabled)
         XCTAssertEqual(discovery.autoDownloadPolicy?.mode, .allNew)
+    }
+
+    func testListeningResetClearsRustAuthorityAndSurvivesRelaunch() async throws {
+        let fileURL = AppStateTestSupport.uniqueTempFileURL()
+        let persistence = Persistence(fileURL: fileURL)
+        defer { persistence.reset() }
+        let podcast = Podcast(
+            feedURL: URL(string: "https://reset.example/feed.xml")!,
+            title: "Reset Show",
+            discoveredAt: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+        var legacy = AppState()
+        legacy.podcasts = [podcast]
+        legacy.subscriptions = [PodcastSubscription(
+            podcastID: podcast.id,
+            subscribedAt: Date(timeIntervalSince1970: 1_700_000_050)
+        )]
+        legacy.episodes = [Episode(
+            podcastID: podcast.id,
+            guid: "reset-episode",
+            title: "Reset Episode",
+            pubDate: Date(timeIntervalSince1970: 1_700_000_100),
+            enclosureURL: URL(string: "https://reset.example/episode.mp3")!
+        )]
+        XCTAssertTrue(persistence.write(legacy, revision: 1))
+        var store: AppStateStore? = AppStateStore(
+            persistence: persistence,
+            sharedFeedHost: QueuedCoreFeedHost([]),
+            startSubscriptionRefresh: false
+        )
+
+        try await store?.clearAllDataAndWait()
+
+        XCTAssertTrue(store?.state.podcasts.isEmpty == true)
+        XCTAssertTrue(store?.state.subscriptions.isEmpty == true)
+        XCTAssertTrue(store?.state.episodes.isEmpty == true)
+        store = nil
+        let relaunched = AppStateStore(
+            persistence: persistence,
+            sharedFeedHost: QueuedCoreFeedHost([]),
+            startSubscriptionRefresh: false
+        )
+        XCTAssertTrue(relaunched.state.podcasts.isEmpty)
+        XCTAssertTrue(relaunched.state.subscriptions.isEmpty)
+        XCTAssertTrue(relaunched.state.episodes.isEmpty)
     }
 
     private static func feed(version: Int) -> String {

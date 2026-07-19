@@ -220,14 +220,14 @@ final class EpisodeDownloadServiceTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: file) }
         let bytes = Data("one-transfer-two-intents".utf8)
         try bytes.write(to: file)
-        let episode = Episode(
-            podcastID: UUID(),
-            guid: "shared-transfer",
+        let episode = try await made.store.upsertExternalEpisodeAndWait(
+            podcastID: UUID(), feedURL: nil,
+            podcastTitle: "Shared transfer",
+            audioURL: URL(string: "https://example.com/shared.mp3")!,
             title: "Shared transfer",
-            pubDate: Date(),
-            enclosureURL: URL(string: "https://example.com/shared.mp3")!
+            publishedAt: Date(timeIntervalSince1970: 1_700_000_000), imageURL: nil,
+            duration: 300
         )
-        made.store.mutateState { $0.episodes = [episode] }
         let database = made.store.persistence.episodeStore.fileURL
         let jobs = JobStore(fileURL: database)
         let artifacts = ArtifactRepository(fileURL: database)
@@ -365,7 +365,7 @@ final class EpisodeDownloadServiceTests: XCTestCase {
             pubDate: Date(),
             enclosureURL: URL(string: "https://example.com/manual-redownload.mp3")!
         )
-        made.store.upsertEpisodes([episode], forPodcast: episode.podcastID)
+        made.store.installEpisodeFixtures([episode], forPodcast: episode.podcastID)
 
         let runtime = WorkflowRuntime.shared
         let initial = try runtime.persistDownloadIntent(episodeID: episode.id, origin: .user)

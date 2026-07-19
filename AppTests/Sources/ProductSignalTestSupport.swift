@@ -1,4 +1,5 @@
 import Foundation
+import XCTest
 @testable import Podcastr
 
 actor RecordingProductSignalSink: ProductSignalSink {
@@ -15,6 +16,22 @@ actor RecordingProductSignalSink: ProductSignalSink {
     func captured() -> [ProductSignalObservation] {
         observations
     }
+}
+
+final class ProductSignalExpectationSink: ProductSignalSink, @unchecked Sendable {
+    private let name: ProductSignalName
+    private let expectation: XCTestExpectation
+
+    init(name: ProductSignalName, expectation: XCTestExpectation) {
+        self.name = name
+        self.expectation = expectation
+    }
+
+    func record(_ observation: ProductSignalObservation) async {
+        if observation.name == name { expectation.fulfill() }
+    }
+
+    func deleteAll() async {}
 }
 
 enum ProductSignalTestSupport {

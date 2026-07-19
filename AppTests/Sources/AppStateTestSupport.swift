@@ -41,9 +41,8 @@ enum AppStateTestSupport {
         fileURL: URL = AppStateTestSupport.uniqueTempFileURL(),
         reset: Bool = true,
         productSignals: any ProductSignalSink = DiscardingProductSignalSink.shared,
-        sharedLibraryMode: AppStateStore.SharedLibraryMode = .disabled,
         sharedFeedHost: (any CoreFeedHosting)? = nil,
-        startPeriodicSubscriptionRefresh: Bool = false
+        startSubscriptionRefresh: Bool = false
     ) -> (store: AppStateStore, fileURL: URL) {
         if reset {
             // Belt-and-suspenders: clear anything a previous (crashed) test
@@ -54,9 +53,8 @@ enum AppStateTestSupport {
         let store = AppStateStore(
             persistence: persistence,
             productSignals: productSignals,
-            sharedLibraryMode: sharedLibraryMode,
             sharedFeedHost: sharedFeedHost,
-            startPeriodicSubscriptionRefresh: startPeriodicSubscriptionRefresh
+            startSubscriptionRefresh: startSubscriptionRefresh
         )
         return (store, fileURL)
     }

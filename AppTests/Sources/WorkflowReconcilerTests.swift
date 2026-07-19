@@ -231,7 +231,7 @@ final class WorkflowReconcilerTests: XCTestCase {
             podcastID: UUID(), guid: "owed", title: "Owed", pubDate: Date(),
             enclosureURL: URL(string: "https://example.com/owed.mp3")!
         )
-        appStore.upsertEpisodes([episode], forPodcast: episode.podcastID)
+        appStore.installEpisodeFixtures([episode], forPodcast: episode.podcastID)
         try jobs.removeAll()
         let reconciler = Reconciler(
             appStore: appStore, jobStore: jobs, artifacts: artifacts

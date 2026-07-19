@@ -1,16 +1,5 @@
 import Foundation
 
-struct SubscriptionImportPayload: Sendable {
-    let podcast: Podcast
-    let subscription: PodcastSubscription
-    let episodes: [Episode]
-}
-
-struct SubscriptionImportResult: Sendable, Equatable {
-    let imported: Int
-    let skipped: Int
-}
-
 // MARK: - Podcast metadata lookups
 
 extension AppStateStore {
@@ -42,63 +31,4 @@ extension AppStateStore {
         }
     }
 
-    /// Inserts a brand-new podcast metadata row, or merges fields into the
-    /// existing row matched by id or feedURL. Returns the persisted podcast.
-    @discardableResult
-    func upsertPodcast(_ incoming: Podcast) -> Podcast {
-        if isSharedLibraryAuthoritative,
-           !isApplyingSharedLibraryProjection,
-           incoming.kind == .rss {
-            return podcast(id: incoming.id)
-                ?? incoming.feedURL.flatMap { podcast(feedURL: $0) }
-                ?? incoming
-        }
-        if let idx = state.podcasts.firstIndex(where: { $0.id == incoming.id }) {
-            let value = merged(state.podcasts[idx], with: incoming)
-            mutateState { $0.podcasts[idx] = value }
-            return value
-        }
-        if let feedURL = incoming.feedURL,
-           let idx = state.podcasts.firstIndex(where: {
-               $0.feedURL?.absoluteString.caseInsensitiveCompare(feedURL.absoluteString) == .orderedSame
-           }) {
-            // Same feed under a different id — keep the existing row.
-            let value = merged(state.podcasts[idx], with: incoming)
-            mutateState { $0.podcasts[idx] = value }
-            return value
-        }
-        mutateState { $0.podcasts.append(incoming) }
-        return incoming
-    }
-
-    /// Persists changes back to a podcast — used after a feed refresh to
-    /// write the new HTTP cache (etag / lastModified) and any drifted
-    /// metadata (title, imageURL).
-    func updatePodcast(_ updated: Podcast) {
-        if isSharedLibraryAuthoritative,
-           !isApplyingSharedLibraryProjection,
-           updated.kind == .rss {
-            return
-        }
-        guard let idx = state.podcasts.firstIndex(where: { $0.id == updated.id }) else { return }
-        mutateState { $0.podcasts[idx] = updated }
-    }
-
-    /// Merge policy: keep the existing podcast's identity, prefer non-empty
-    /// incoming values for human-visible fields. HTTP cache always wins
-    /// when present (otherwise we'd lose etags between refreshes).
-    private func merged(_ existing: Podcast, with incoming: Podcast) -> Podcast {
-        var out = existing
-        if !incoming.title.isEmpty { out.title = incoming.title }
-        if !incoming.author.isEmpty { out.author = incoming.author }
-        if !incoming.description.isEmpty { out.description = incoming.description }
-        if let img = incoming.imageURL { out.imageURL = img }
-        if let lang = incoming.language { out.language = lang }
-        if !incoming.categories.isEmpty { out.categories = incoming.categories }
-        if let feedURL = incoming.feedURL { out.feedURL = feedURL }
-        if let lr = incoming.lastRefreshedAt { out.lastRefreshedAt = lr }
-        if let etag = incoming.etag { out.etag = etag }
-        if let lm = incoming.lastModified { out.lastModified = lm }
-        return out
-    }
 }

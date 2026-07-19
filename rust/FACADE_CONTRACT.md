@@ -69,9 +69,13 @@ Playback uses typed load/play/pause/seek/rate/timer requests. A long-lived
 coalesces position-only updates to `500...5000 ms`; its sequence remains open
 until explicit cancellation. AVFoundation route names and errors are mapped to
 the bounded generated vocabulary. UI playhead animation never uses this stream.
-This expansion began with contract version 2. The current version 4 surface
-adds Rust-owned playback commands and projections for selection, queue, resume,
-completion, rate, bounded segments, preferences, and session sleep timers.
+This expansion began with contract version 2. Version 4 added Rust-owned
+playback commands and projections for selection, queue, resume, completion,
+rate, bounded segments, preferences, and session sleep timers. The current
+version 5 surface makes synthetic podcasts and external/generated episode
+identity and metadata typed Rust-owned commands as well. It also exposes typed
+episode-star and listening-reset commands, plus the Rust-decided meaningful-
+listening outcome consumed by native product-signal adapters.
 
 ## Compatibility rules
 

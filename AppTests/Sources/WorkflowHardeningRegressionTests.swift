@@ -50,7 +50,7 @@ final class WorkflowRepairRegressionTests: XCTestCase {
 
     private func assertRepairConverges(after damage: Damage) throws {
         let episode = makeEpisode(guid: "repair-\(UUID().uuidString)")
-        appStore.upsertEpisodes([episode], forPodcast: episode.podcastID)
+        appStore.installEpisodeFixtures([episode], forPodcast: episode.podcastID)
 
         let desired = try XCTUnwrap(DesiredStatePlanner().plan(.init(
             episodes: [episode],

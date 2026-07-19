@@ -5,8 +5,7 @@ import Pod0Core
 
 extension PlaybackState {
 
-    /// Keep system-originated commands on the `PlaybackState` boundary so they
-    /// get the same persistence, flushing, and snapshot side effects as UI taps.
+    /// Keep system-originated commands on the same typed Rust boundary as UI taps.
     func configureAudioEngineCallbacks() {
         var callbacks = NowPlayingCenter.Callbacks()
         callbacks.play = { [weak self] in self?.play() }
@@ -29,15 +28,7 @@ extension PlaybackState {
         engine.setNowPlayingCallbacks(callbacks)
 
         engine.onSleepTimerFire = { [weak self] in
-            guard let self else { return }
-            if let sharedCore = self.sharedCore {
-                sharedCore.dispatchPlayback(.nativeTimerFired)
-            } else {
-                self.pause()
-            }
-        }
-        engine.onAudioSessionEvent = { [weak self] event in
-            self?.handleAudioSessionEvent(event)
+            self?.sharedCore?.dispatchPlayback(.nativeTimerFired)
         }
         engine.onFailure = { [weak self] failure in
             self?.recordPlaybackSignal(
@@ -49,12 +40,9 @@ extension PlaybackState {
     }
 
     func setRate(_ newRate: Double) {
-        if let sharedCore {
-            sharedCore.dispatchPlayback(.setRate(rate: PlaybackRatePermille(
-                value: UInt16(clamping: Int((newRate * 1_000).rounded()))
-            )))
-        } else {
-            engine.setRate(newRate)
-        }
+        guard let sharedCore else { return }
+        sharedCore.dispatchPlayback(.setRate(rate: PlaybackRatePermille(
+            value: UInt16(clamping: Int((newRate * 1_000).rounded()))
+        )))
     }
 }

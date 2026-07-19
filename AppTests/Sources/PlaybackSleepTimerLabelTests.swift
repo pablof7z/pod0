@@ -18,8 +18,9 @@ final class PlaybackSleepTimerLabelTests: XCTestCase {
 
     func testArmedDurationFormatsAsClock() {
         let state = PlaybackState()
-        // 30 min preset → engine arms with 1800s remaining.
-        state.setSleepTimer(.minutes(30))
+        // Rust command/host routing is covered by the shared playback slice;
+        // this test isolates the native countdown presentation primitive.
+        state.engine.sleepTimer.set(.duration(30 * 60))
         XCTAssertEqual(state.sleepTimerChipLabel, "30:00")
     }
 
@@ -39,15 +40,15 @@ final class PlaybackSleepTimerLabelTests: XCTestCase {
 
     func testEndOfEpisodeReadsEnd() {
         let state = PlaybackState()
-        state.setSleepTimer(.endOfEpisode)
+        state.engine.sleepTimer.set(.endOfEpisode)
         XCTAssertEqual(state.sleepTimerChipLabel, "End")
     }
 
     func testCancellingReturnsToSleep() {
         let state = PlaybackState()
-        state.setSleepTimer(.minutes(15))
+        state.engine.sleepTimer.set(.duration(15 * 60))
         XCTAssertNotEqual(state.sleepTimerChipLabel, "Sleep")
-        state.setSleepTimer(.off)
+        state.engine.sleepTimer.set(.off)
         XCTAssertEqual(state.sleepTimerChipLabel, "Sleep")
     }
 }

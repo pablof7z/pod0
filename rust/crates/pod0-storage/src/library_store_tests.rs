@@ -114,6 +114,9 @@ fn external_episode_and_placeholder_are_durable_without_creating_a_subscription(
             "External show",
             "https://external.test/audio.mp3",
             "External episode",
+            "External description",
+            1_800_000_000_011,
+            Some("audio/mpeg"),
             Some("https://external.test/art.jpg"),
             Some(42_000),
             1_800_000_000_012,
@@ -128,6 +131,8 @@ fn external_episode_and_placeholder_are_durable_without_creating_a_subscription(
     assert_eq!(first.1, requested_podcast_id);
     assert_eq!(first.2, episode.episode_id);
     assert_eq!(episode.title, "External episode");
+    assert_eq!(episode.description, "External description");
+    assert_eq!(episode.enclosure_mime_type.as_deref(), Some("audio/mpeg"));
     assert_eq!(episode.duration_milliseconds, Some(42_000));
     assert_eq!(after_first.podcasts.len(), 2);
     assert_eq!(after_first.subscriptions.len(), 1);
@@ -142,6 +147,9 @@ fn external_episode_and_placeholder_are_durable_without_creating_a_subscription(
                 "External show",
                 "https://external.test/audio.mp3",
                 "Ignored replay",
+                "Ignored description",
+                1_800_000_000_013,
+                None,
                 None,
                 None,
                 1_800_000_000_013,
@@ -160,6 +168,9 @@ fn external_episode_and_placeholder_are_durable_without_creating_a_subscription(
             "Duplicate identity",
             "https://external.test/audio.mp3",
             "Retitled external episode",
+            "Retitled description",
+            1_800_000_000_014,
+            None,
             None,
             None,
             1_800_000_000_014,
@@ -174,7 +185,48 @@ fn external_episode_and_placeholder_are_durable_without_creating_a_subscription(
     assert_eq!(second.1, requested_podcast_id);
     assert_eq!(second.2, first.2);
     assert_eq!(updated.title, "Retitled external episode");
+    assert_eq!(updated.description, "Retitled description");
     assert_eq!(updated.published_at, episode.published_at);
+}
+
+#[test]
+fn episode_starred_state_is_owned_and_replayed_by_the_library_store() {
+    let fixture = imported_fixture();
+    commit_listening_cutover(&fixture.target, 1_800_000_000_000).unwrap();
+    let store = LibraryStore::open_authoritative(&fixture.target).unwrap();
+    let episode_id = store.snapshot().unwrap().episodes[0].episode_id;
+
+    let revision = store
+        .set_episode_starred(id(13), &"d".repeat(64), episode_id, true, 1_800_000_000_013)
+        .unwrap();
+    let snapshot = store.snapshot().unwrap();
+    assert!(snapshot.episodes[0].is_starred);
+    assert_eq!(snapshot.playback.revision, revision);
+    assert_eq!(
+        store
+            .set_episode_starred(id(13), &"d".repeat(64), episode_id, true, 1_800_000_000_014,)
+            .unwrap(),
+        revision
+    );
+}
+
+#[test]
+fn listening_reset_clears_library_and_playback_but_preserves_authority() {
+    let fixture = imported_fixture();
+    commit_listening_cutover(&fixture.target, 1_800_000_000_000).unwrap();
+    let store = LibraryStore::open_authoritative(&fixture.target).unwrap();
+
+    let revision = store
+        .reset_listening_data(id(14), &"e".repeat(64), 1_800_000_000_014)
+        .unwrap();
+    let snapshot = store.snapshot().unwrap();
+    assert!(snapshot.podcasts.is_empty());
+    assert!(snapshot.subscriptions.is_empty());
+    assert!(snapshot.episodes.is_empty());
+    assert!(snapshot.playback.queue.is_empty());
+    assert_eq!(snapshot.playback.active_episode_id, None);
+    assert_eq!(snapshot.playback.revision, revision);
+    assert!(LibraryStore::open_authoritative(&fixture.target).is_ok());
 }
 
 fn imported_fixture() -> ImportFixture {

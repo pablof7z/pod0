@@ -132,7 +132,7 @@ final class LivePlaybackHostAdapter: PlaybackHostProtocol, @unchecked Sendable {
             case .now:
                 // Replace current playback with this item; existing queue is
                 // preserved and resumes after this finishes.
-                playback.enqueueSegments([item], playNow: true) { store.episode(id: $0) }
+                playback.enqueueSegments([item], playNow: true)
                 logger.info("playEpisode(now): \(episode.title, privacy: .public)")
                 return PlayEpisodeResult(
                     episodeID: episodeID,

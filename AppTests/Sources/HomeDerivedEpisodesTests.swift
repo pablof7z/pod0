@@ -3,9 +3,8 @@ import XCTest
 
 /// Coverage for the `AppStateStore` derived views Home Today depends on:
 /// `inProgressEpisodes` (Continue Listening rail) and
-/// `recentEpisodes(limit:)` (New Episodes feed). Both apply a position
-/// cache fold and have non-trivial filter + sort semantics, so they need
-/// direct test coverage independent of the SwiftUI layer.
+/// `recentEpisodes(limit:)` (New Episodes feed). These tests install bounded
+/// projection fixtures; playback policy itself is covered by the Rust slice.
 @MainActor
 final class HomeDerivedEpisodesTests: XCTestCase {
 
@@ -32,9 +31,9 @@ final class HomeDerivedEpisodesTests: XCTestCase {
 
     func testInProgressIncludesPartiallyListenedUnplayedEpisodes() {
         let sub = seedSubscription()
-        let ep = makeEpisode(podcastID: sub.id, guid: "ip-1")
-        store.upsertEpisodes([ep], forPodcast: sub.id)
-        store.setEpisodePlaybackPosition(ep.id, position: 600)
+        var ep = makeEpisode(podcastID: sub.id, guid: "ip-1")
+        ep.playbackPosition = 600
+        store.installEpisodeFixtures([ep], forPodcast: sub.id)
 
         let inProgress = store.inProgressEpisodes
 
@@ -44,12 +43,9 @@ final class HomeDerivedEpisodesTests: XCTestCase {
 
     func testInProgressExcludesPlayedEpisodes() {
         let sub = seedSubscription()
-        let ep = makeEpisode(podcastID: sub.id, guid: "ip-played")
-        store.upsertEpisodes([ep], forPodcast: sub.id)
-        store.setEpisodePlaybackPosition(ep.id, position: 600)
-        store.markEpisodePlayed(ep.id)
-        // mark-played zeroes position too — this also exercises the
-        // intersection of "played" and "position == 0" excluders.
+        var ep = makeEpisode(podcastID: sub.id, guid: "ip-played")
+        ep.played = true
+        store.installEpisodeFixtures([ep], forPodcast: sub.id)
 
         XCTAssertTrue(store.inProgressEpisodes.isEmpty)
     }
@@ -57,8 +53,8 @@ final class HomeDerivedEpisodesTests: XCTestCase {
     func testInProgressExcludesUnplayedZeroPositionEpisodes() {
         let sub = seedSubscription()
         let ep = makeEpisode(podcastID: sub.id, guid: "ip-zero")
-        store.upsertEpisodes([ep], forPodcast: sub.id)
-        // No setEpisodePlaybackPosition — position stays at 0.
+        store.installEpisodeFixtures([ep], forPodcast: sub.id)
+        // The projected position stays at zero.
 
         XCTAssertTrue(store.inProgressEpisodes.isEmpty)
     }
@@ -70,9 +66,9 @@ final class HomeDerivedEpisodesTests: XCTestCase {
         older.pubDate = now.addingTimeInterval(-7 * 86_400)
         var newer = makeEpisode(podcastID: sub.id, guid: "ip-newer")
         newer.pubDate = now
-        store.upsertEpisodes([older, newer], forPodcast: sub.id)
-        store.setEpisodePlaybackPosition(older.id, position: 1)
-        store.setEpisodePlaybackPosition(newer.id, position: 1)
+        older.playbackPosition = 1
+        newer.playbackPosition = 1
+        store.installEpisodeFixtures([older, newer], forPodcast: sub.id)
 
         let inProgress = store.inProgressEpisodes
         XCTAssertEqual(inProgress.map(\.id), [newer.id, older.id])
@@ -82,10 +78,10 @@ final class HomeDerivedEpisodesTests: XCTestCase {
 
     func testRecentEpisodesExcludesPlayed() {
         let sub = seedSubscription()
-        let played = makeEpisode(podcastID: sub.id, guid: "rec-played")
+        var played = makeEpisode(podcastID: sub.id, guid: "rec-played")
+        played.played = true
         let unplayed = makeEpisode(podcastID: sub.id, guid: "rec-unplayed")
-        store.upsertEpisodes([played, unplayed], forPodcast: sub.id)
-        store.markEpisodePlayed(played.id)
+        store.installEpisodeFixtures([played, unplayed], forPodcast: sub.id)
 
         let recent = store.recentEpisodes(limit: 30)
 
@@ -102,7 +98,7 @@ final class HomeDerivedEpisodesTests: XCTestCase {
         second.pubDate = now.addingTimeInterval(-15 * 86_400)
         var third = makeEpisode(podcastID: sub.id, guid: "rec-3")
         third.pubDate = now
-        store.upsertEpisodes([first, second, third], forPodcast: sub.id)
+        store.installEpisodeFixtures([first, second, third], forPodcast: sub.id)
 
         let recent = store.recentEpisodes(limit: 30)
 
@@ -117,7 +113,7 @@ final class HomeDerivedEpisodesTests: XCTestCase {
             ep.pubDate = now.addingTimeInterval(-Double(i) * 86_400)
             return ep
         }
-        store.upsertEpisodes(episodes, forPodcast: sub.id)
+        store.installEpisodeFixtures(episodes, forPodcast: sub.id)
 
         let limited = store.recentEpisodes(limit: 3)
 
@@ -131,9 +127,9 @@ final class HomeDerivedEpisodesTests: XCTestCase {
         // surface, which matches the Today/New-episodes UX (the user can
         // see something they started but haven't finished).
         let sub = seedSubscription()
-        let ep = makeEpisode(podcastID: sub.id, guid: "rec-half")
-        store.upsertEpisodes([ep], forPodcast: sub.id)
-        store.setEpisodePlaybackPosition(ep.id, position: 1234)
+        var ep = makeEpisode(podcastID: sub.id, guid: "rec-half")
+        ep.playbackPosition = 1234
+        store.installEpisodeFixtures([ep], forPodcast: sub.id)
 
         let recent = store.recentEpisodes(limit: 30)
         XCTAssertEqual(recent.first?.id, ep.id)
@@ -146,8 +142,8 @@ final class HomeDerivedEpisodesTests: XCTestCase {
             feedURL: URL(string: "https://example.com/\(UUID().uuidString).xml")!,
             title: "Home Derived Test Show"
         )
-        let stored = store.upsertPodcast(podcast)
-        store.addSubscription(podcastID: stored.id)
+        let stored = store.installPodcastFixture(podcast)
+        store.installSubscriptionFixture(podcastID: stored.id)
         return stored
     }
 

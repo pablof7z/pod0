@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-19T03:07:25Z",
+      "lines": [
+        "Generated episodes and episodes opened from links now remain playable after relaunch."
+      ]
+    },
+    {
       "shipped_at": "2026-07-19T01:06:04Z",
       "lines": [
         "Playback queues, speed, and listening position now restore reliably after relaunch."

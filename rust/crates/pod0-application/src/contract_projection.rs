@@ -158,6 +158,10 @@ pub enum OperationResult {
     PreferencesUpdated {
         podcast_id: PodcastId,
     },
+    EpisodeUpdated {
+        episode_id: EpisodeId,
+    },
+    ListeningReset,
     PlaybackUpdated {
         episode_id: Option<EpisodeId>,
     },

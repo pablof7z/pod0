@@ -37,6 +37,23 @@ pub fn normalize_feed_url(input: &str) -> Option<FeedIdentityV1> {
     make_feed_identity_v1(candidate).ok()
 }
 
+/// Validates a playable enclosure reference without applying feed identity
+/// policy. HTTPS media is portable; file URLs are accepted for native-owned
+/// generated/download artifacts whose lifecycle is handled by a host adapter.
+#[must_use]
+pub fn normalize_media_url(input: &str) -> Option<String> {
+    let trimmed = input.trim();
+    if trimmed.is_empty() || trimmed != input {
+        return None;
+    }
+    let parsed = Url::parse(trimmed).ok()?;
+    match parsed.scheme() {
+        "http" | "https" if parsed.host_str().is_some() => Some(trimmed.to_owned()),
+        "file" if !parsed.path().is_empty() => Some(trimmed.to_owned()),
+        _ => None,
+    }
+}
+
 pub fn parse_podcast_feed(
     bytes: &[u8],
     feed_identity: FeedIdentityV1,
@@ -78,5 +95,19 @@ mod tests {
         assert_eq!(identity.comparison_key, "https://example.test/feed");
         assert!(normalize_feed_url("file:///tmp/feed").is_none());
         assert!(normalize_feed_url("https://").is_none());
+    }
+
+    #[test]
+    fn media_normalization_accepts_remote_and_native_file_artifacts() {
+        assert_eq!(
+            normalize_media_url("https://example.test/audio.mp3").as_deref(),
+            Some("https://example.test/audio.mp3")
+        );
+        assert_eq!(
+            normalize_media_url("file:///tmp/generated.m4a").as_deref(),
+            Some("file:///tmp/generated.m4a")
+        );
+        assert!(normalize_media_url("agent-generated://podcast").is_none());
+        assert!(normalize_media_url(" https://example.test/audio.mp3 ").is_none());
     }
 }

@@ -80,13 +80,18 @@ pub(super) fn add_external_episode(fixture: &PlaybackFixture, id: u64) -> Episod
         cancellation_id: CancellationId::from_parts(11, id),
         expected_revision: None,
         command: ApplicationCommand::UpsertExternalEpisode {
-            podcast_id: fixture.podcast_id,
-            feed_url: None,
-            podcast_title: "Legacy Kotlin fixture".to_owned(),
-            audio_url: format!("https://legacy.example/{id}.mp3"),
-            title: format!("Episode {id}"),
-            image_url: None,
-            duration_milliseconds: Some(180_000),
+            episode: pod0_application::ExternalEpisodeInput {
+                podcast_id: fixture.podcast_id,
+                feed_url: None,
+                podcast_title: "Legacy Kotlin fixture".to_owned(),
+                audio_url: format!("https://legacy.example/{id}.mp3"),
+                title: format!("Episode {id}"),
+                description: String::new(),
+                published_at: UnixTimestampMilliseconds::new(1_800_000_000_000),
+                enclosure_mime_type: Some("audio/mpeg".to_owned()),
+                image_url: None,
+                duration_milliseconds: Some(180_000),
+            },
         },
     });
     let Projection::Library { value } = fixture.facade.snapshot(library_request()).projection

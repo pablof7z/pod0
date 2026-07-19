@@ -1,24 +1,46 @@
 import Foundation
+import Pod0Core
 
 extension AppStateStore {
     /// Deletes Pod0 product data while retaining settings and every Keychain item.
     func clearAllData() {
-        resetProductState(preserving: state.settings)
+        let settings = state.settings
+        Task { @MainActor [weak self] in
+            do {
+                try await self?.resetProductState(preserving: settings)
+            } catch {
+                Self.logger.error(
+                    "Product reset failed: \(error.localizedDescription, privacy: .public)"
+                )
+            }
+        }
+    }
+
+    /// Awaitable reset boundary used by destructive-flow qualification.
+    func clearAllDataAndWait() async throws {
+        try await resetProductState(preserving: state.settings)
     }
 
     /// Deletes the complete AppState projection for a local trust-domain handoff.
     func clearAppStateForMutuallyUntrustedUser() {
-        resetProductState(preserving: nil)
+        Task { @MainActor [weak self] in
+            do {
+                try await self?.resetProductState(preserving: nil)
+            } catch {
+                Self.logger.error(
+                    "Trust-domain reset failed: \(error.localizedDescription, privacy: .public)"
+                )
+            }
+        }
     }
 
-    private func resetProductState(preserving settings: Settings?) {
-        // Pending writes target episode ids that are about to disappear and
-        // must not resurrect rows after the reset.
-        positionFlushTask?.cancel()
-        positionFlushTask = nil
+    private func resetProductState(preserving settings: Settings?) async throws {
+        guard let sharedLibrary else {
+            throw SharedLibraryError.unavailable
+        }
+        _ = try await sharedLibrary.execute(.resetListeningData)
         widgetReloadTask?.cancel()
         widgetReloadTask = nil
-        positionCache.removeAll()
 
         performMutationBatch {
             mutateState {
@@ -27,7 +49,8 @@ extension AppStateStore {
             }
             invalidateEpisodeProjections()
         }
+        await persistence.flush(state)
         SpotlightIndexer.clearAll()
-        Task { await productSignals.deleteAll() }
+        await productSignals.deleteAll()
     }
 }

@@ -93,7 +93,7 @@ extension EpisodeRecord {
             chaptersURL: feedMetadata.chaptersUrl.flatMap(URL.init(string:)),
             playbackPosition: Double(listening.resumePositionMilliseconds) / 1_000,
             played: completed,
-            isStarred: adjunct?.isStarred ?? isStarred,
+            isStarred: isStarred,
             downloadState: adjunct?.downloadState ?? .notDownloaded,
             transcriptState: adjunct?.transcriptState ?? .none,
             requestedTranscriptProvider: adjunct?.requestedTranscriptProvider,

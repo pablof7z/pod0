@@ -19,7 +19,7 @@ final class DerivedProjectionConvergenceTests: XCTestCase {
             pubDate: Date(),
             enclosureURL: URL(string: "https://example.com/projection.mp3")!
         )
-        store.upsertEpisodes([episode], forPodcast: episode.podcastID)
+        store.installEpisodeFixtures([episode], forPodcast: episode.podcastID)
         let chapters = [Episode.Chapter(
             startTime: 0,
             title: "Generated",
@@ -67,7 +67,7 @@ final class DerivedProjectionConvergenceTests: XCTestCase {
             pubDate: Date(),
             enclosureURL: URL(string: "https://example.com/empty.mp3")!
         )
-        store.upsertEpisodes([episode], forPodcast: episode.podcastID)
+        store.installEpisodeFixtures([episode], forPodcast: episode.podcastID)
         let chapterURL = try adopt(
             [Episode.Chapter](),
             kind: .chapters,

@@ -5,9 +5,8 @@ import Foundation
 /// One entry in the Up Next queue. Can represent a full episode or a
 /// bounded segment within an episode (e.g. "chapters 2–4 of episode X").
 ///
-/// Segment items drive automatic end detection: `PlaybackState.tickPersistence`
-/// watches `endSeconds` and calls `onSegmentFinished` when the playhead crosses
-/// the boundary, then dequeues the next item.
+/// Rust uses segment bounds to decide completion and queue advancement. Native
+/// code renders the projected bounds and executes requested media effects.
 struct QueueItem: Identifiable, Equatable, Sendable {
     /// Stable identity for this queue slot — separate from `episodeID` so
     /// the same episode can appear more than once (e.g. two non-adjacent
@@ -83,8 +82,8 @@ enum PlaybackRate: Double, CaseIterable, Identifiable {
 
 // MARK: - PlaybackSleepTimer
 
-/// Sleep-timer presets surfaced in the sleep-timer sheet. Mapped onto the
-/// engine's `SleepTimer.Mode` at the boundary.
+/// Sleep-timer presets surfaced in the sleep-timer sheet. They map to the
+/// platform-neutral Rust command contract at the native/core boundary.
 enum PlaybackSleepTimer: Hashable, Identifiable {
     case off
     case minutes(Int)
@@ -110,11 +109,4 @@ enum PlaybackSleepTimer: Hashable, Identifiable {
         .off, .minutes(5), .minutes(15), .minutes(30), .minutes(45), .minutes(60), .endOfEpisode
     ]
 
-    var engineMode: SleepTimer.Mode {
-        switch self {
-        case .off: return .off
-        case .minutes(let m): return .duration(TimeInterval(m * 60))
-        case .endOfEpisode: return .endOfEpisode
-        }
-    }
 }

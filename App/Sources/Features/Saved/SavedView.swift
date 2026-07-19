@@ -56,8 +56,8 @@ struct SavedView: View {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview {
-    let store = AppStateStore()
     let podcast = Podcast(
         feedURL: URL(string: "https://example.com/feed")!,
         title: "The Peter Attia Drive"
@@ -69,9 +69,11 @@ struct SavedView: View {
         pubDate: Date(),
         enclosureURL: URL(string: "https://example.com/x.mp3")!
     )
-    store.upsertPodcast(podcast)
-    store.addSubscription(podcastID: podcast.id)
-    store.upsertEpisodes([episode], forPodcast: podcast.id)
+    var previewState = AppState()
+    previewState.podcasts = [podcast]
+    previewState.subscriptions = [PodcastSubscription(podcastID: podcast.id)]
+    previewState.episodes = [episode]
+    let store = AppStateStore.previewStore(importing: previewState, name: "saved")
     store.addClip(Clip(
         episodeID: episode.id,
         subscriptionID: podcast.id,
@@ -87,3 +89,4 @@ struct SavedView: View {
             .environment(PlaybackState())
     }
 }
+#endif

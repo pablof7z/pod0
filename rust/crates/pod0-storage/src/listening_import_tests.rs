@@ -1,6 +1,6 @@
 use std::fs;
 
-use pod0_domain::{CompletionCause, CompletionStatus, DownloadArtifactStatus};
+use pod0_domain::{CompletionCause, CompletionStatus, DownloadArtifactStatus, PodcastKind};
 use rusqlite::Connection;
 
 use crate::listening_import_test_support::*;
@@ -122,6 +122,34 @@ fn legacy_json_and_empty_install_have_typed_staged_projections() {
         .snapshot;
     assert!(snapshot.podcasts.is_empty() && snapshot.episodes.is_empty());
     assert_eq!(snapshot.playback.revision.value, 1);
+}
+
+#[test]
+fn legacy_agent_generated_sentinel_imports_as_feedless_synthetic_state() {
+    let fixture = ImportFixture::new();
+    let mut metadata = current_metadata(8);
+    metadata["podcasts"][0]["kind"] = serde_json::json!("synthetic");
+    metadata["podcasts"][0]["feedURL"] = serde_json::json!("agent-generated://podcast");
+    metadata["podcasts"][0]["title"] = serde_json::json!("Agent Generated");
+    metadata["subscriptions"] = serde_json::json!([]);
+    create_sqlite_source(
+        &fixture.source,
+        &metadata,
+        &[episode(EPISODE_ID, "generated")],
+    );
+
+    let plan = fixture.plan();
+    fixture.stage(&plan).unwrap();
+    let snapshot = read_listening_import(&fixture.target, id(1))
+        .unwrap()
+        .snapshot;
+
+    assert_eq!(snapshot.podcasts[0].kind, PodcastKind::Synthetic);
+    assert!(snapshot.podcasts[0].feed_identity.is_none());
+    assert_eq!(
+        snapshot.episodes[0].podcast_id,
+        snapshot.podcasts[0].podcast_id
+    );
 }
 
 #[test]

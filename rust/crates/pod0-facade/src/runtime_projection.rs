@@ -104,6 +104,9 @@ impl FacadeState {
                         durable_resume_position_milliseconds: episode
                             .listening
                             .resume_position_milliseconds,
+                        meaningful_listening_reached: pod0_domain::meaningful_listening_reached(
+                            episode.listening.resume_position_milliseconds,
+                        ),
                         segment: self.listening.playback.active_segment,
                         label: self.listening.playback.active_label.clone(),
                         completed: matches!(

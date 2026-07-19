@@ -1,4 +1,3 @@
-import AudioToolbox
 import Foundation
 import Pod0Core
 
@@ -14,40 +13,27 @@ extension PlaybackState {
     /// bounded segments — but whole-episode duplicates are still deduplicated
     /// so a library-row "Queue" button can't stack the same full episode twice.
     func enqueue(_ episodeID: UUID) {
-        if let sharedCore {
-            sharedCore.dispatchPlayback(.enqueue(
-                entry: QueueItem.episode(episodeID).coreValue,
-                placement: .back
-            ))
-            return
-        }
-        guard episodeID != episode?.id else { return }
-        // Deduplicate whole-episode items only (startSeconds == nil).
-        let alreadyWhole = queue.contains { $0.episodeID == episodeID && $0.startSeconds == nil }
-        guard !alreadyWhole else { return }
-        queue.append(.episode(episodeID))
+        guard let sharedCore else { return }
+        sharedCore.dispatchPlayback(.enqueue(
+            entry: QueueItem.episode(episodeID).coreValue,
+            placement: .back
+        ))
     }
 
     /// Append a `QueueItem` (possibly bounded) to the end of the queue.
     /// No deduplication — the agent intentionally queues multiple segments of
     /// the same episode.
     func enqueueItem(_ item: QueueItem) {
-        if let sharedCore {
-            sharedCore.dispatchPlayback(.enqueue(entry: item.coreValue, placement: .back))
-            return
-        }
-        queue.append(item)
+        guard let sharedCore else { return }
+        sharedCore.dispatchPlayback(.enqueue(entry: item.coreValue, placement: .back))
     }
 
     /// Insert a `QueueItem` at the head of Up Next so it plays after the
     /// currently-playing segment/episode finishes. No deduplication. Used by
     /// the agent's `play_episode` tool with `queue_position: "next"`.
     func insertNext(_ item: QueueItem) {
-        if let sharedCore {
-            sharedCore.dispatchPlayback(.enqueue(entry: item.coreValue, placement: .next))
-            return
-        }
-        queue.insert(item, at: 0)
+        guard let sharedCore else { return }
+        sharedCore.dispatchPlayback(.enqueue(entry: item.coreValue, placement: .next))
     }
 
     /// Replace the current queue with an ordered list of `QueueItem`s and,
@@ -55,45 +41,23 @@ extension PlaybackState {
     /// The `playNow` path is the engine primitive behind the agent's
     /// `play_episode` tool with `queue_position: "now"` (single item) and
     /// behind callers that want to start a chain of segments.
-    func enqueueSegments(_ items: [QueueItem], playNow: Bool, resolve: (UUID) -> Episode?) {
-        guard !items.isEmpty else { return }
-        if let sharedCore {
-            if playNow {
-                let first = items[0]
-                sharedCore.dispatchPlayback(.select(
-                    episodeId: EpisodeId(uuid: first.episodeID),
-                    segment: first.coreValue.segment,
-                    label: first.label
-                ))
-                for item in items.dropFirst().reversed() {
-                    sharedCore.dispatchPlayback(.enqueue(entry: item.coreValue, placement: .next))
-                }
-                sharedCore.dispatchPlayback(.play)
-            } else {
-                for item in items {
-                    sharedCore.dispatchPlayback(.enqueue(entry: item.coreValue, placement: .back))
-                }
-            }
-            return
-        }
+    func enqueueSegments(_ items: [QueueItem], playNow: Bool) {
+        guard !items.isEmpty, let sharedCore else { return }
         if playNow {
-            // Start the first segment immediately, push the rest into the queue.
             let first = items[0]
-            guard let episode = resolve(first.episodeID) else {
-                // First segment's episode is unavailable — fall through to queue-only.
-                queue.append(contentsOf: items)
-                return
+            sharedCore.dispatchPlayback(.select(
+                episodeId: EpisodeId(uuid: first.episodeID),
+                segment: first.coreValue.segment,
+                label: first.label
+            ))
+            for item in items.dropFirst().reversed() {
+                sharedCore.dispatchPlayback(.enqueue(entry: item.coreValue, placement: .next))
             }
-            currentSegmentEndTime = first.endSeconds
-            setEpisode(episode)
-            if let start = first.startSeconds {
-                engine.seek(to: start)
-            }
-            play()
-            // Remaining segments become the new queue (prepend so they play next).
-            queue.insert(contentsOf: items.dropFirst(), at: 0)
+            sharedCore.dispatchPlayback(.play)
         } else {
-            queue.append(contentsOf: items)
+            for item in items {
+                sharedCore.dispatchPlayback(.enqueue(entry: item.coreValue, placement: .back))
+            }
         }
     }
 
@@ -101,72 +65,34 @@ extension PlaybackState {
 
     /// Remove all queue items whose `episodeID` matches. Idempotent.
     func removeFromQueue(_ episodeID: UUID) {
-        if let sharedCore {
-            sharedCore.dispatchPlayback(.removeEpisodeFromQueue(
-                episodeId: EpisodeId(uuid: episodeID)
-            ))
-            return
-        }
-        queue.removeAll { $0.episodeID == episodeID }
+        guard let sharedCore else { return }
+        sharedCore.dispatchPlayback(.removeEpisodeFromQueue(
+            episodeId: EpisodeId(uuid: episodeID)
+        ))
     }
 
     /// Remove a single queue item by its stable slot identity.
     func removeFromQueue(itemID: UUID) {
-        if let sharedCore {
-            sharedCore.dispatchPlayback(.removeQueueEntry(
-                queueEntryId: QueueEntryId(uuid: itemID)
-            ))
-            return
-        }
-        queue.removeAll { $0.id == itemID }
+        guard let sharedCore else { return }
+        sharedCore.dispatchPlayback(.removeQueueEntry(
+            queueEntryId: QueueEntryId(uuid: itemID)
+        ))
     }
 
     // MARK: - Reordering / pruning
 
     func moveQueue(from source: IndexSet, to destination: Int) {
-        if let sharedCore {
-            var reordered = queue
-            reordered.move(fromOffsets: source, toOffset: min(destination, reordered.count))
-            sharedCore.dispatchPlayback(.replaceQueueOrder(
-                queueEntryIds: reordered.map { QueueEntryId(uuid: $0.id) }
-            ))
-            return
-        }
-        queue.move(fromOffsets: source, toOffset: destination)
-    }
-
-    func moveQueue(from source: IndexSet, to destination: Int, resolve: (UUID) -> Episode?) {
-        if sharedCore != nil {
-            moveQueue(from: source, to: destination)
-            return
-        }
-        pruneQueue(resolve: resolve)
-        queue.move(fromOffsets: source, toOffset: min(destination, queue.count))
+        guard let sharedCore else { return }
+        var reordered = queue
+        reordered.move(fromOffsets: source, toOffset: min(destination, reordered.count))
+        sharedCore.dispatchPlayback(.replaceQueueOrder(
+            queueEntryIds: reordered.map { QueueEntryId(uuid: $0.id) }
+        ))
     }
 
     func clearQueue() {
-        if let sharedCore {
-            sharedCore.dispatchPlayback(.clearQueue)
-            return
-        }
-        queue.removeAll()
-        currentSegmentEndTime = nil
-    }
-
-    @discardableResult
-    func pruneQueue(resolve: (UUID) -> Episode?) -> Int {
-        if let sharedCore {
-            let missing = queue.filter { resolve($0.episodeID) == nil }
-            for item in missing {
-                sharedCore.dispatchPlayback(.removeQueueEntry(
-                    queueEntryId: QueueEntryId(uuid: item.id)
-                ))
-            }
-            return missing.count
-        }
-        let oldCount = queue.count
-        queue.removeAll { resolve($0.episodeID) == nil }
-        return oldCount - queue.count
+        guard let sharedCore else { return }
+        sharedCore.dispatchPlayback(.clearQueue)
     }
 
     // MARK: - Convenience
@@ -178,45 +104,4 @@ extension PlaybackState {
         queue.contains { $0.episodeID == episodeID }
     }
 
-    // MARK: - Advance
-
-    /// Pop the head of the queue and start playing it. Plays a subtle audio +
-    /// haptic transition cue so the user knows the queue advanced. Returns
-    /// `true` when an episode was actually started, `false` when the queue is
-    /// empty or every pending episode has been deleted from the store.
-    @discardableResult
-    func playNext(resolve: (UUID) -> Episode?) -> Bool {
-        if let sharedCore {
-            guard !queue.isEmpty else { return false }
-            sharedCore.dispatchPlayback(.advanceQueue)
-            return true
-        }
-        while !queue.isEmpty {
-            let item = queue.removeFirst()
-            guard let next = resolve(item.episodeID) else { continue }
-            // Apply segment boundary BEFORE setEpisode so tickPersistence
-            // sees the new end time immediately on the next tick.
-            currentSegmentEndTime = item.endSeconds
-            setEpisode(next)
-            if let start = item.startSeconds {
-                engine.seek(to: start)
-            }
-            play()
-            playQueueTransitionCue()
-            return true
-        }
-        return false
-    }
-
-    // MARK: - Transition cue
-
-    /// Brief multi-sensory cue that fires on every queue advance so the user
-    /// knows the player moved to the next item. Uses a system UI sound (Tink,
-    /// id 1007) which plays through the active audio route even while
-    /// `.podcastPlayback` is active, paired with a selection haptic for
-    /// headphone-only listeners who may not hear the sound.
-    private func playQueueTransitionCue() {
-        Haptics.selection()
-        AudioServicesPlaySystemSound(1007)
-    }
 }
