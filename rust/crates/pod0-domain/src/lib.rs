@@ -63,11 +63,12 @@ opaque_id!(DomainEventId, uniffi::Record);
 opaque_id!(PodcastId, uniffi::Record);
 opaque_id!(EpisodeId, uniffi::Record);
 opaque_id!(QueueEntryId, uniffi::Record);
-opaque_id!(SpeakerId);
-opaque_id!(TranscriptVersionId);
-opaque_id!(TranscriptSegmentId);
-opaque_id!(EvidenceSpanId);
-opaque_id!(EvidenceGenerationId);
+opaque_id!(RecallQueryId, uniffi::Record);
+opaque_id!(SpeakerId, uniffi::Record);
+opaque_id!(TranscriptVersionId, uniffi::Record);
+opaque_id!(TranscriptSegmentId, uniffi::Record);
+opaque_id!(EvidenceSpanId, uniffi::Record);
+opaque_id!(EvidenceGenerationId, uniffi::Record);
 
 mod knowledge;
 mod knowledge_artifact;

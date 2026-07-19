@@ -71,5 +71,6 @@ done < <(find "$REPO_ROOT/BindingsSmoke/Kotlin" -name '*.kt' -type f | sort)
   MainKt \
   "$REPO_ROOT/Fixtures/CoreSchema/schema-status-v1.properties" \
   "$REPO_ROOT/Fixtures/CoreListening/listening-domain-v1.properties" \
-  "$REPO_ROOT/Fixtures/CoreImport/legacy-listening-v1.json"
+  "$REPO_ROOT/Fixtures/CoreImport/legacy-listening-v1.json" \
+  "$REPO_ROOT/Fixtures/CoreKnowledge/recall-projection-v1.properties"
 echo "Kotlin generated binding compile and runtime smoke passed"

@@ -13,7 +13,7 @@ private class RecordingSubscriber : ProjectionSubscriber {
 }
 
 fun main(args: Array<String>) {
-    check(args.size == 3)
+    check(args.size == 4)
     val fixture = decodeProperties(File(args[0]).readText())
     check(fixture["fixture_version"] == "1")
     check(fixture["schema_component"] == "kernel")
@@ -35,6 +35,7 @@ fun main(args: Array<String>) {
 
     qualifyListeningDomain(decodeProperties(File(args[1]).readText()))
     qualifyListeningImport(File(args[2]))
+    qualifyRecallProjection(decodeProperties(File(args[3]).readText()))
     qualifyNativeHostContract()
 
     val facade = Pod0Facade()
@@ -55,7 +56,7 @@ fun main(args: Array<String>) {
         check(subscriber.revisions == listOf(0UL, 1UL))
 
         val projection = facade.snapshot(request).projection
-        check(facade.snapshot(request).contractVersion == 5u)
+        check(facade.snapshot(request).contractVersion == 6u)
         check(projection is Projection.Library)
         val unsupportedOperation = projection.value.operations.single()
         check(unsupportedOperation.commandId == CommandId(0UL, 1UL))

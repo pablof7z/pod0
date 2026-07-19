@@ -14,7 +14,7 @@ pub const MAX_SOURCE_REVISION_BYTES: usize = 256;
 pub const MAX_PROVENANCE_PROVIDER_BYTES: usize = 128;
 
 /// Exact SHA-256 value represented without a stringly typed hex boundary.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, uniffi::Record)]
 pub struct ContentDigest {
     pub word_0: u64,
     pub word_1: u64,
@@ -61,7 +61,7 @@ impl ContentDigest {
 
 /// Provenance facts copied from the selected transcript artifact. The source
 /// payload digest protects identity without leaking a URL or provider body.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct TranscriptProvenance {
     pub source: TranscriptSource,
     pub provider: Option<String>,

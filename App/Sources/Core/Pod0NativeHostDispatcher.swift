@@ -87,6 +87,16 @@ final class Pod0NativeHostDispatcher {
                 minimumIntervalMilliseconds: minimumIntervalMilliseconds,
                 delivery: delivery
             )
+        case .embedRecallQuery, .retrieveRecallCandidates, .rerankRecallCandidates:
+            finish(
+                envelope,
+                sequenceNumber: 0,
+                observation: .failed(
+                    code: .indexUnavailable,
+                    safeDetail: "Recall capabilities are not attached"
+                ),
+                delivery: delivery
+            )
         default:
             finish(
                 envelope,

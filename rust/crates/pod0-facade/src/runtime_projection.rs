@@ -3,12 +3,12 @@ use std::sync::Arc;
 use pod0_application::{
     EpisodeDetailProjection, LibraryProjection, PlaybackAllowedActions, PlaybackItem,
     PlaybackProjection, PodcastDetailProjection, Projection, ProjectionEnvelope, ProjectionRequest,
-    ProjectionScope, UnsupportedProjection,
+    ProjectionScope, RecallResultProjection, RecallStage, UnsupportedProjection,
 };
 use pod0_domain::CompletionStatus;
 
 use crate::ProjectionSubscriber;
-use crate::runtime_state::FacadeState;
+use crate::runtime_state::{FacadeState, failure};
 
 impl FacadeState {
     pub(super) fn snapshot(&self, request: ProjectionRequest) -> ProjectionEnvelope {
@@ -134,6 +134,32 @@ impl FacadeState {
                 };
                 value.enforce_bounds(item_limit);
                 Projection::Playback { value }
+            }
+            ProjectionScope::Recall { query_id } => {
+                let mut value = if let Some(workflow) = self.recalls.get(&query_id) {
+                    RecallResultProjection {
+                        query_id,
+                        stage: workflow.stage,
+                        evidence: workflow.evidence.clone(),
+                        failure: workflow.failure.clone(),
+                        operation: self
+                            .operations
+                            .iter()
+                            .rev()
+                            .find(|operation| operation.command_id == workflow.command_id)
+                            .cloned(),
+                    }
+                } else {
+                    RecallResultProjection {
+                        query_id,
+                        stage: RecallStage::Failed,
+                        evidence: Vec::new(),
+                        failure: Some(failure(pod0_application::CoreFailureCode::NotFound)),
+                        operation: None,
+                    }
+                };
+                value.enforce_bounds(item_limit);
+                Projection::Recall { value }
             }
             ProjectionScope::Unsupported { wire_code } => Projection::Unsupported {
                 value: UnsupportedProjection {

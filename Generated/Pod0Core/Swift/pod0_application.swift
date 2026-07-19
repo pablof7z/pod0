@@ -497,6 +497,22 @@ fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterInt32: FfiConverterPrimitive {
+    typealias FfiType = Int32
+    typealias SwiftType = Int32
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Int32 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: Int32, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterUInt64: FfiConverterPrimitive {
     typealias FfiType = UInt64
     typealias SwiftType = UInt64
@@ -1823,6 +1839,540 @@ public func FfiConverterTypeProjectionRequest_lower(_ value: ProjectionRequest) 
 }
 
 
+public struct RecallCandidateObservation: Equatable, Hashable {
+    public let episodeId: EpisodeId
+    public let generationId: EvidenceGenerationId
+    public let spanId: EvidenceSpanId
+    public let vectorRank: UInt16?
+    public let lexicalRank: UInt16?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(episodeId: EpisodeId, generationId: EvidenceGenerationId, spanId: EvidenceSpanId, vectorRank: UInt16?, lexicalRank: UInt16?) {
+        self.episodeId = episodeId
+        self.generationId = generationId
+        self.spanId = spanId
+        self.vectorRank = vectorRank
+        self.lexicalRank = lexicalRank
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension RecallCandidateObservation: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRecallCandidateObservation: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RecallCandidateObservation {
+        return
+            try RecallCandidateObservation(
+                episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
+                generationId: FfiConverterTypeEvidenceGenerationId.read(from: &buf),
+                spanId: FfiConverterTypeEvidenceSpanId.read(from: &buf),
+                vectorRank: FfiConverterOptionUInt16.read(from: &buf),
+                lexicalRank: FfiConverterOptionUInt16.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: RecallCandidateObservation, into buf: inout [UInt8]) {
+        FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
+        FfiConverterTypeEvidenceGenerationId.write(value.generationId, into: &buf)
+        FfiConverterTypeEvidenceSpanId.write(value.spanId, into: &buf)
+        FfiConverterOptionUInt16.write(value.vectorRank, into: &buf)
+        FfiConverterOptionUInt16.write(value.lexicalRank, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallCandidateObservation_lift(_ buf: RustBuffer) throws -> RecallCandidateObservation {
+    return try FfiConverterTypeRecallCandidateObservation.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallCandidateObservation_lower(_ value: RecallCandidateObservation) -> RustBuffer {
+    return FfiConverterTypeRecallCandidateObservation.lower(value)
+}
+
+
+public struct RecallEmbeddingVector: Equatable, Hashable {
+    /**
+     * Provider dimensions quantized to signed millionths at the host boundary.
+     */
+    public let values: [Int32]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Provider dimensions quantized to signed millionths at the host boundary.
+         */values: [Int32]) {
+        self.values = values
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension RecallEmbeddingVector: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRecallEmbeddingVector: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RecallEmbeddingVector {
+        return
+            try RecallEmbeddingVector(
+                values: FfiConverterSequenceInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: RecallEmbeddingVector, into buf: inout [UInt8]) {
+        FfiConverterSequenceInt32.write(value.values, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallEmbeddingVector_lift(_ buf: RustBuffer) throws -> RecallEmbeddingVector {
+    return try FfiConverterTypeRecallEmbeddingVector.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallEmbeddingVector_lower(_ value: RecallEmbeddingVector) -> RustBuffer {
+    return FfiConverterTypeRecallEmbeddingVector.lower(value)
+}
+
+
+public struct RecallEvidenceProjection: Equatable, Hashable {
+    public let episodeId: EpisodeId
+    public let podcastId: PodcastId
+    public let generationId: EvidenceGenerationId
+    public let transcriptVersionId: TranscriptVersionId
+    public let transcriptContentDigest: ContentDigest
+    public let spanId: EvidenceSpanId
+    public let firstSegmentId: TranscriptSegmentId
+    public let lastSegmentId: TranscriptSegmentId
+    public let startSegmentOrdinal: UInt32
+    public let endSegmentOrdinalExclusive: UInt32
+    public let startMilliseconds: UInt64
+    public let endMilliseconds: UInt64
+    public let excerpt: String
+    public let speakerId: SpeakerId?
+    public let provenance: TranscriptProvenance
+    public let score: RecallScoreProjection
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(episodeId: EpisodeId, podcastId: PodcastId, generationId: EvidenceGenerationId, transcriptVersionId: TranscriptVersionId, transcriptContentDigest: ContentDigest, spanId: EvidenceSpanId, firstSegmentId: TranscriptSegmentId, lastSegmentId: TranscriptSegmentId, startSegmentOrdinal: UInt32, endSegmentOrdinalExclusive: UInt32, startMilliseconds: UInt64, endMilliseconds: UInt64, excerpt: String, speakerId: SpeakerId?, provenance: TranscriptProvenance, score: RecallScoreProjection) {
+        self.episodeId = episodeId
+        self.podcastId = podcastId
+        self.generationId = generationId
+        self.transcriptVersionId = transcriptVersionId
+        self.transcriptContentDigest = transcriptContentDigest
+        self.spanId = spanId
+        self.firstSegmentId = firstSegmentId
+        self.lastSegmentId = lastSegmentId
+        self.startSegmentOrdinal = startSegmentOrdinal
+        self.endSegmentOrdinalExclusive = endSegmentOrdinalExclusive
+        self.startMilliseconds = startMilliseconds
+        self.endMilliseconds = endMilliseconds
+        self.excerpt = excerpt
+        self.speakerId = speakerId
+        self.provenance = provenance
+        self.score = score
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension RecallEvidenceProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRecallEvidenceProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RecallEvidenceProjection {
+        return
+            try RecallEvidenceProjection(
+                episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
+                podcastId: FfiConverterTypePodcastId.read(from: &buf),
+                generationId: FfiConverterTypeEvidenceGenerationId.read(from: &buf),
+                transcriptVersionId: FfiConverterTypeTranscriptVersionId.read(from: &buf),
+                transcriptContentDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                spanId: FfiConverterTypeEvidenceSpanId.read(from: &buf),
+                firstSegmentId: FfiConverterTypeTranscriptSegmentId.read(from: &buf),
+                lastSegmentId: FfiConverterTypeTranscriptSegmentId.read(from: &buf),
+                startSegmentOrdinal: FfiConverterUInt32.read(from: &buf),
+                endSegmentOrdinalExclusive: FfiConverterUInt32.read(from: &buf),
+                startMilliseconds: FfiConverterUInt64.read(from: &buf),
+                endMilliseconds: FfiConverterUInt64.read(from: &buf),
+                excerpt: FfiConverterString.read(from: &buf),
+                speakerId: FfiConverterOptionTypeSpeakerId.read(from: &buf),
+                provenance: FfiConverterTypeTranscriptProvenance.read(from: &buf),
+                score: FfiConverterTypeRecallScoreProjection.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: RecallEvidenceProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
+        FfiConverterTypePodcastId.write(value.podcastId, into: &buf)
+        FfiConverterTypeEvidenceGenerationId.write(value.generationId, into: &buf)
+        FfiConverterTypeTranscriptVersionId.write(value.transcriptVersionId, into: &buf)
+        FfiConverterTypeContentDigest.write(value.transcriptContentDigest, into: &buf)
+        FfiConverterTypeEvidenceSpanId.write(value.spanId, into: &buf)
+        FfiConverterTypeTranscriptSegmentId.write(value.firstSegmentId, into: &buf)
+        FfiConverterTypeTranscriptSegmentId.write(value.lastSegmentId, into: &buf)
+        FfiConverterUInt32.write(value.startSegmentOrdinal, into: &buf)
+        FfiConverterUInt32.write(value.endSegmentOrdinalExclusive, into: &buf)
+        FfiConverterUInt64.write(value.startMilliseconds, into: &buf)
+        FfiConverterUInt64.write(value.endMilliseconds, into: &buf)
+        FfiConverterString.write(value.excerpt, into: &buf)
+        FfiConverterOptionTypeSpeakerId.write(value.speakerId, into: &buf)
+        FfiConverterTypeTranscriptProvenance.write(value.provenance, into: &buf)
+        FfiConverterTypeRecallScoreProjection.write(value.score, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallEvidenceProjection_lift(_ buf: RustBuffer) throws -> RecallEvidenceProjection {
+    return try FfiConverterTypeRecallEvidenceProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallEvidenceProjection_lower(_ value: RecallEvidenceProjection) -> RustBuffer {
+    return FfiConverterTypeRecallEvidenceProjection.lower(value)
+}
+
+
+public struct RecallQuery: Equatable, Hashable {
+    public let queryId: RecallQueryId
+    public let text: String
+    public let scope: RecallScope
+    public let limit: UInt16
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(queryId: RecallQueryId, text: String, scope: RecallScope, limit: UInt16) {
+        self.queryId = queryId
+        self.text = text
+        self.scope = scope
+        self.limit = limit
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension RecallQuery: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRecallQuery: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RecallQuery {
+        return
+            try RecallQuery(
+                queryId: FfiConverterTypeRecallQueryId.read(from: &buf),
+                text: FfiConverterString.read(from: &buf),
+                scope: FfiConverterTypeRecallScope.read(from: &buf),
+                limit: FfiConverterUInt16.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: RecallQuery, into buf: inout [UInt8]) {
+        FfiConverterTypeRecallQueryId.write(value.queryId, into: &buf)
+        FfiConverterString.write(value.text, into: &buf)
+        FfiConverterTypeRecallScope.write(value.scope, into: &buf)
+        FfiConverterUInt16.write(value.limit, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallQuery_lift(_ buf: RustBuffer) throws -> RecallQuery {
+    return try FfiConverterTypeRecallQuery.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallQuery_lower(_ value: RecallQuery) -> RustBuffer {
+    return FfiConverterTypeRecallQuery.lower(value)
+}
+
+
+public struct RecallRerankDocument: Equatable, Hashable {
+    public let spanId: EvidenceSpanId
+    public let excerpt: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(spanId: EvidenceSpanId, excerpt: String) {
+        self.spanId = spanId
+        self.excerpt = excerpt
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension RecallRerankDocument: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRecallRerankDocument: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RecallRerankDocument {
+        return
+            try RecallRerankDocument(
+                spanId: FfiConverterTypeEvidenceSpanId.read(from: &buf),
+                excerpt: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: RecallRerankDocument, into buf: inout [UInt8]) {
+        FfiConverterTypeEvidenceSpanId.write(value.spanId, into: &buf)
+        FfiConverterString.write(value.excerpt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallRerankDocument_lift(_ buf: RustBuffer) throws -> RecallRerankDocument {
+    return try FfiConverterTypeRecallRerankDocument.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallRerankDocument_lower(_ value: RecallRerankDocument) -> RustBuffer {
+    return FfiConverterTypeRecallRerankDocument.lower(value)
+}
+
+
+public struct RecallRerankObservation: Equatable, Hashable {
+    public let spanId: EvidenceSpanId
+    public let rank: UInt16
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(spanId: EvidenceSpanId, rank: UInt16) {
+        self.spanId = spanId
+        self.rank = rank
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension RecallRerankObservation: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRecallRerankObservation: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RecallRerankObservation {
+        return
+            try RecallRerankObservation(
+                spanId: FfiConverterTypeEvidenceSpanId.read(from: &buf),
+                rank: FfiConverterUInt16.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: RecallRerankObservation, into buf: inout [UInt8]) {
+        FfiConverterTypeEvidenceSpanId.write(value.spanId, into: &buf)
+        FfiConverterUInt16.write(value.rank, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallRerankObservation_lift(_ buf: RustBuffer) throws -> RecallRerankObservation {
+    return try FfiConverterTypeRecallRerankObservation.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallRerankObservation_lower(_ value: RecallRerankObservation) -> RustBuffer {
+    return FfiConverterTypeRecallRerankObservation.lower(value)
+}
+
+
+public struct RecallResultProjection: Equatable, Hashable {
+    public let queryId: RecallQueryId
+    public let stage: RecallStage
+    public let evidence: [RecallEvidenceProjection]
+    public let failure: CoreFailure?
+    public let operation: OperationProjection?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(queryId: RecallQueryId, stage: RecallStage, evidence: [RecallEvidenceProjection], failure: CoreFailure?, operation: OperationProjection?) {
+        self.queryId = queryId
+        self.stage = stage
+        self.evidence = evidence
+        self.failure = failure
+        self.operation = operation
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension RecallResultProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRecallResultProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RecallResultProjection {
+        return
+            try RecallResultProjection(
+                queryId: FfiConverterTypeRecallQueryId.read(from: &buf),
+                stage: FfiConverterTypeRecallStage.read(from: &buf),
+                evidence: FfiConverterSequenceTypeRecallEvidenceProjection.read(from: &buf),
+                failure: FfiConverterOptionTypeCoreFailure.read(from: &buf),
+                operation: FfiConverterOptionTypeOperationProjection.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: RecallResultProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeRecallQueryId.write(value.queryId, into: &buf)
+        FfiConverterTypeRecallStage.write(value.stage, into: &buf)
+        FfiConverterSequenceTypeRecallEvidenceProjection.write(value.evidence, into: &buf)
+        FfiConverterOptionTypeCoreFailure.write(value.failure, into: &buf)
+        FfiConverterOptionTypeOperationProjection.write(value.operation, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallResultProjection_lift(_ buf: RustBuffer) throws -> RecallResultProjection {
+    return try FfiConverterTypeRecallResultProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallResultProjection_lower(_ value: RecallResultProjection) -> RustBuffer {
+    return FfiConverterTypeRecallResultProjection.lower(value)
+}
+
+
+public struct RecallScoreProjection: Equatable, Hashable {
+    public let vectorRrfUnits: UInt64
+    public let lexicalRrfUnits: UInt64
+    public let totalRrfUnits: UInt64
+    public let baseRank: UInt16
+    public let rerankRank: UInt16?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(vectorRrfUnits: UInt64, lexicalRrfUnits: UInt64, totalRrfUnits: UInt64, baseRank: UInt16, rerankRank: UInt16?) {
+        self.vectorRrfUnits = vectorRrfUnits
+        self.lexicalRrfUnits = lexicalRrfUnits
+        self.totalRrfUnits = totalRrfUnits
+        self.baseRank = baseRank
+        self.rerankRank = rerankRank
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension RecallScoreProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRecallScoreProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RecallScoreProjection {
+        return
+            try RecallScoreProjection(
+                vectorRrfUnits: FfiConverterUInt64.read(from: &buf),
+                lexicalRrfUnits: FfiConverterUInt64.read(from: &buf),
+                totalRrfUnits: FfiConverterUInt64.read(from: &buf),
+                baseRank: FfiConverterUInt16.read(from: &buf),
+                rerankRank: FfiConverterOptionUInt16.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: RecallScoreProjection, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.vectorRrfUnits, into: &buf)
+        FfiConverterUInt64.write(value.lexicalRrfUnits, into: &buf)
+        FfiConverterUInt64.write(value.totalRrfUnits, into: &buf)
+        FfiConverterUInt16.write(value.baseRank, into: &buf)
+        FfiConverterOptionUInt16.write(value.rerankRank, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallScoreProjection_lift(_ buf: RustBuffer) throws -> RecallScoreProjection {
+    return try FfiConverterTypeRecallScoreProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallScoreProjection_lower(_ value: RecallScoreProjection) -> RustBuffer {
+    return FfiConverterTypeRecallScoreProjection.lower(value)
+}
+
+
 public struct SyntheticPodcastInput: Equatable, Hashable {
     /**
      * `None` creates a new stable ID derived from the command identity.
@@ -1987,6 +2537,8 @@ public enum ApplicationCommand: Equatable, Hashable {
     )
     case playback(command: PlaybackCommand
     )
+    case recallQuery(query: RecallQuery
+    )
     case cancelOperation(cancellationId: CancellationId
     )
     case unsupported(wireCode: UInt32
@@ -2050,10 +2602,13 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
         case 13: return .playback(command: try FfiConverterTypePlaybackCommand.read(from: &buf)
         )
 
-        case 14: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
+        case 14: return .recallQuery(query: try FfiConverterTypeRecallQuery.read(from: &buf)
         )
 
-        case 15: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 15: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
+        )
+
+        case 16: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -2131,13 +2686,18 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
             FfiConverterTypePlaybackCommand.write(command, into: &buf)
 
 
-        case let .cancelOperation(cancellationId):
+        case let .recallQuery(query):
             writeInt(&buf, Int32(14))
+            FfiConverterTypeRecallQuery.write(query, into: &buf)
+
+
+        case let .cancelOperation(cancellationId):
+            writeInt(&buf, Int32(15))
             FfiConverterTypeCancellationId.write(cancellationId, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(15))
+            writeInt(&buf, Int32(16))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -2422,6 +2982,8 @@ public enum HostFailureCode: Equatable, Hashable {
     case invalidResponse
     case responseTooLarge
     case mediaUnavailable
+    case providerUnavailable
+    case indexUnavailable
     case platformFailure
     case unsupported(wireCode: UInt32
     )
@@ -2458,9 +3020,13 @@ public struct FfiConverterTypeHostFailureCode: FfiConverterRustBuffer {
 
         case 6: return .mediaUnavailable
 
-        case 7: return .platformFailure
+        case 7: return .providerUnavailable
 
-        case 8: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 8: return .indexUnavailable
+
+        case 9: return .platformFailure
+
+        case 10: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -2495,12 +3061,20 @@ public struct FfiConverterTypeHostFailureCode: FfiConverterRustBuffer {
             writeInt(&buf, Int32(6))
 
 
-        case .platformFailure:
+        case .providerUnavailable:
             writeInt(&buf, Int32(7))
 
 
-        case let .unsupported(wireCode):
+        case .indexUnavailable:
             writeInt(&buf, Int32(8))
+
+
+        case .platformFailure:
+            writeInt(&buf, Int32(9))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(10))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -2532,6 +3106,12 @@ public enum HostObservation: Equatable, Hashable {
     case feedNotModified(entityTag: String?, lastModified: String?, responseUrl: String
     )
     case playbackObserved(value: PlaybackLifecycleObservation
+    )
+    case recallQueryEmbedded(queryId: RecallQueryId, embedding: RecallEmbeddingVector
+    )
+    case recallCandidatesRetrieved(queryId: RecallQueryId, candidates: [RecallCandidateObservation]
+    )
+    case recallCandidatesReranked(queryId: RecallQueryId, rankings: [RecallRerankObservation]
     )
     case failed(code: HostFailureCode, safeDetail: String?
     )
@@ -2568,12 +3148,21 @@ public struct FfiConverterTypeHostObservation: FfiConverterRustBuffer {
         case 3: return .playbackObserved(value: try FfiConverterTypePlaybackLifecycleObservation.read(from: &buf)
         )
 
-        case 4: return .failed(code: try FfiConverterTypeHostFailureCode.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf)
+        case 4: return .recallQueryEmbedded(queryId: try FfiConverterTypeRecallQueryId.read(from: &buf), embedding: try FfiConverterTypeRecallEmbeddingVector.read(from: &buf)
         )
 
-        case 5: return .cancelled
+        case 5: return .recallCandidatesRetrieved(queryId: try FfiConverterTypeRecallQueryId.read(from: &buf), candidates: try FfiConverterSequenceTypeRecallCandidateObservation.read(from: &buf)
+        )
 
-        case 6: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 6: return .recallCandidatesReranked(queryId: try FfiConverterTypeRecallQueryId.read(from: &buf), rankings: try FfiConverterSequenceTypeRecallRerankObservation.read(from: &buf)
+        )
+
+        case 7: return .failed(code: try FfiConverterTypeHostFailureCode.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf)
+        )
+
+        case 8: return .cancelled
+
+        case 9: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -2605,18 +3194,36 @@ public struct FfiConverterTypeHostObservation: FfiConverterRustBuffer {
             FfiConverterTypePlaybackLifecycleObservation.write(value, into: &buf)
 
 
-        case let .failed(code,safeDetail):
+        case let .recallQueryEmbedded(queryId,embedding):
             writeInt(&buf, Int32(4))
+            FfiConverterTypeRecallQueryId.write(queryId, into: &buf)
+            FfiConverterTypeRecallEmbeddingVector.write(embedding, into: &buf)
+
+
+        case let .recallCandidatesRetrieved(queryId,candidates):
+            writeInt(&buf, Int32(5))
+            FfiConverterTypeRecallQueryId.write(queryId, into: &buf)
+            FfiConverterSequenceTypeRecallCandidateObservation.write(candidates, into: &buf)
+
+
+        case let .recallCandidatesReranked(queryId,rankings):
+            writeInt(&buf, Int32(6))
+            FfiConverterTypeRecallQueryId.write(queryId, into: &buf)
+            FfiConverterSequenceTypeRecallRerankObservation.write(rankings, into: &buf)
+
+
+        case let .failed(code,safeDetail):
+            writeInt(&buf, Int32(7))
             FfiConverterTypeHostFailureCode.write(code, into: &buf)
             FfiConverterOptionString.write(safeDetail, into: &buf)
 
 
         case .cancelled:
-            writeInt(&buf, Int32(5))
+            writeInt(&buf, Int32(8))
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(6))
+            writeInt(&buf, Int32(9))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -2662,6 +3269,12 @@ public enum HostRequest: Equatable, Hashable {
     case observePlayback(episodeId: EpisodeId?, minimumIntervalMilliseconds: UInt32
     )
     case stopPlayback(episodeId: EpisodeId
+    )
+    case embedRecallQuery(queryId: RecallQueryId, text: String, maximumDimensions: UInt16
+    )
+    case retrieveRecallCandidates(queryId: RecallQueryId, scope: RecallScope, lexicalQuery: String, embedding: RecallEmbeddingVector, maximumCandidates: UInt16
+    )
+    case rerankRecallCandidates(queryId: RecallQueryId, query: String, candidates: [RecallRerankDocument]
     )
     case unsupported(wireCode: UInt32
     )
@@ -2716,7 +3329,16 @@ public struct FfiConverterTypeHostRequest: FfiConverterRustBuffer {
         case 10: return .stopPlayback(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
         )
 
-        case 11: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 11: return .embedRecallQuery(queryId: try FfiConverterTypeRecallQueryId.read(from: &buf), text: try FfiConverterString.read(from: &buf), maximumDimensions: try FfiConverterUInt16.read(from: &buf)
+        )
+
+        case 12: return .retrieveRecallCandidates(queryId: try FfiConverterTypeRecallQueryId.read(from: &buf), scope: try FfiConverterTypeRecallScope.read(from: &buf), lexicalQuery: try FfiConverterString.read(from: &buf), embedding: try FfiConverterTypeRecallEmbeddingVector.read(from: &buf), maximumCandidates: try FfiConverterUInt16.read(from: &buf)
+        )
+
+        case 13: return .rerankRecallCandidates(queryId: try FfiConverterTypeRecallQueryId.read(from: &buf), query: try FfiConverterString.read(from: &buf), candidates: try FfiConverterSequenceTypeRecallRerankDocument.read(from: &buf)
+        )
+
+        case 14: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -2787,8 +3409,31 @@ public struct FfiConverterTypeHostRequest: FfiConverterRustBuffer {
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
 
 
-        case let .unsupported(wireCode):
+        case let .embedRecallQuery(queryId,text,maximumDimensions):
             writeInt(&buf, Int32(11))
+            FfiConverterTypeRecallQueryId.write(queryId, into: &buf)
+            FfiConverterString.write(text, into: &buf)
+            FfiConverterUInt16.write(maximumDimensions, into: &buf)
+
+
+        case let .retrieveRecallCandidates(queryId,scope,lexicalQuery,embedding,maximumCandidates):
+            writeInt(&buf, Int32(12))
+            FfiConverterTypeRecallQueryId.write(queryId, into: &buf)
+            FfiConverterTypeRecallScope.write(scope, into: &buf)
+            FfiConverterString.write(lexicalQuery, into: &buf)
+            FfiConverterTypeRecallEmbeddingVector.write(embedding, into: &buf)
+            FfiConverterUInt16.write(maximumCandidates, into: &buf)
+
+
+        case let .rerankRecallCandidates(queryId,query,candidates):
+            writeInt(&buf, Int32(13))
+            FfiConverterTypeRecallQueryId.write(queryId, into: &buf)
+            FfiConverterString.write(query, into: &buf)
+            FfiConverterSequenceTypeRecallRerankDocument.write(candidates, into: &buf)
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(14))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -2908,6 +3553,8 @@ public enum OperationResult: Equatable, Hashable {
     case playbackUpdated(episodeId: EpisodeId?
     )
     case queueUpdated
+    case recallFinished(queryId: RecallQueryId, evidenceCount: UInt16
+    )
     case unsupported(wireCode: UInt32
     )
 
@@ -2953,7 +3600,10 @@ public struct FfiConverterTypeOperationResult: FfiConverterRustBuffer {
 
         case 8: return .queueUpdated
 
-        case 9: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 9: return .recallFinished(queryId: try FfiConverterTypeRecallQueryId.read(from: &buf), evidenceCount: try FfiConverterUInt16.read(from: &buf)
+        )
+
+        case 10: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -3003,8 +3653,14 @@ public struct FfiConverterTypeOperationResult: FfiConverterRustBuffer {
             writeInt(&buf, Int32(8))
 
 
-        case let .unsupported(wireCode):
+        case let .recallFinished(queryId,evidenceCount):
             writeInt(&buf, Int32(9))
+            FfiConverterTypeRecallQueryId.write(queryId, into: &buf)
+            FfiConverterUInt16.write(evidenceCount, into: &buf)
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(10))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -3969,6 +4625,8 @@ public enum Projection: Equatable, Hashable {
     )
     case playback(value: PlaybackProjection
     )
+    case recall(value: RecallResultProjection
+    )
     case unsupported(value: UnsupportedProjection
     )
 
@@ -4004,7 +4662,10 @@ public struct FfiConverterTypeProjection: FfiConverterRustBuffer {
         case 4: return .playback(value: try FfiConverterTypePlaybackProjection.read(from: &buf)
         )
 
-        case 5: return .unsupported(value: try FfiConverterTypeUnsupportedProjection.read(from: &buf)
+        case 5: return .recall(value: try FfiConverterTypeRecallResultProjection.read(from: &buf)
+        )
+
+        case 6: return .unsupported(value: try FfiConverterTypeUnsupportedProjection.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -4035,8 +4696,13 @@ public struct FfiConverterTypeProjection: FfiConverterRustBuffer {
             FfiConverterTypePlaybackProjection.write(value, into: &buf)
 
 
-        case let .unsupported(value):
+        case let .recall(value):
             writeInt(&buf, Int32(5))
+            FfiConverterTypeRecallResultProjection.write(value, into: &buf)
+
+
+        case let .unsupported(value):
+            writeInt(&buf, Int32(6))
             FfiConverterTypeUnsupportedProjection.write(value, into: &buf)
 
         }
@@ -4069,6 +4735,8 @@ public enum ProjectionScope: Equatable, Hashable {
     case episodeDetail(episodeId: EpisodeId
     )
     case playback
+    case recall(queryId: RecallQueryId
+    )
     case unsupported(wireCode: UInt32
     )
 
@@ -4102,7 +4770,10 @@ public struct FfiConverterTypeProjectionScope: FfiConverterRustBuffer {
 
         case 4: return .playback
 
-        case 5: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 5: return .recall(queryId: try FfiConverterTypeRecallQueryId.read(from: &buf)
+        )
+
+        case 6: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -4131,8 +4802,13 @@ public struct FfiConverterTypeProjectionScope: FfiConverterRustBuffer {
             writeInt(&buf, Int32(4))
 
 
-        case let .unsupported(wireCode):
+        case let .recall(queryId):
             writeInt(&buf, Int32(5))
+            FfiConverterTypeRecallQueryId.write(queryId, into: &buf)
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(6))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -4228,6 +4904,285 @@ public func FfiConverterTypeQueuePlacement_lift(_ buf: RustBuffer) throws -> Que
 #endif
 public func FfiConverterTypeQueuePlacement_lower(_ value: QueuePlacement) -> RustBuffer {
     return FfiConverterTypeQueuePlacement.lower(value)
+}
+
+
+
+
+public enum RecallPhase: Equatable, Hashable {
+
+    case retrieving
+    case reranking
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension RecallPhase: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRecallPhase: FfiConverterRustBuffer {
+    typealias SwiftType = RecallPhase
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RecallPhase {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .retrieving
+
+        case 2: return .reranking
+
+        case 3: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: RecallPhase, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .retrieving:
+            writeInt(&buf, Int32(1))
+
+
+        case .reranking:
+            writeInt(&buf, Int32(2))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallPhase_lift(_ buf: RustBuffer) throws -> RecallPhase {
+    return try FfiConverterTypeRecallPhase.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallPhase_lower(_ value: RecallPhase) -> RustBuffer {
+    return FfiConverterTypeRecallPhase.lower(value)
+}
+
+
+
+
+public enum RecallScope: Equatable, Hashable {
+
+    case library
+    case podcast(podcastId: PodcastId
+    )
+    case episode(episodeId: EpisodeId
+    )
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension RecallScope: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRecallScope: FfiConverterRustBuffer {
+    typealias SwiftType = RecallScope
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RecallScope {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .library
+
+        case 2: return .podcast(podcastId: try FfiConverterTypePodcastId.read(from: &buf)
+        )
+
+        case 3: return .episode(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
+        )
+
+        case 4: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: RecallScope, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .library:
+            writeInt(&buf, Int32(1))
+
+
+        case let .podcast(podcastId):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypePodcastId.write(podcastId, into: &buf)
+
+
+        case let .episode(episodeId):
+            writeInt(&buf, Int32(3))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(4))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallScope_lift(_ buf: RustBuffer) throws -> RecallScope {
+    return try FfiConverterTypeRecallScope.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallScope_lower(_ value: RecallScope) -> RustBuffer {
+    return FfiConverterTypeRecallScope.lower(value)
+}
+
+
+
+
+public enum RecallStage: Equatable, Hashable {
+
+    case queued
+    case running(phase: RecallPhase
+    )
+    case ready
+    case noEvidence
+    case indexUnavailable
+    case cancelled
+    case failed
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension RecallStage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRecallStage: FfiConverterRustBuffer {
+    typealias SwiftType = RecallStage
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RecallStage {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .queued
+
+        case 2: return .running(phase: try FfiConverterTypeRecallPhase.read(from: &buf)
+        )
+
+        case 3: return .ready
+
+        case 4: return .noEvidence
+
+        case 5: return .indexUnavailable
+
+        case 6: return .cancelled
+
+        case 7: return .failed
+
+        case 8: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: RecallStage, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .queued:
+            writeInt(&buf, Int32(1))
+
+
+        case let .running(phase):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeRecallPhase.write(phase, into: &buf)
+
+
+        case .ready:
+            writeInt(&buf, Int32(3))
+
+
+        case .noEvidence:
+            writeInt(&buf, Int32(4))
+
+
+        case .indexUnavailable:
+            writeInt(&buf, Int32(5))
+
+
+        case .cancelled:
+            writeInt(&buf, Int32(6))
+
+
+        case .failed:
+            writeInt(&buf, Int32(7))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(8))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallStage_lift(_ buf: RustBuffer) throws -> RecallStage {
+    return try FfiConverterTypeRecallStage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallStage_lower(_ value: RecallStage) -> RustBuffer {
+    return FfiConverterTypeRecallStage.lower(value)
 }
 
 
@@ -4407,6 +5362,30 @@ public func FfiConverterTypeUserAction_lower(_ value: UserAction) -> RustBuffer 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionUInt16: FfiConverterRustBuffer {
+    typealias SwiftType = UInt16?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterUInt16.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterUInt16.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionUInt64: FfiConverterRustBuffer {
     typealias SwiftType = UInt64?
 
@@ -4471,6 +5450,30 @@ fileprivate struct FfiConverterOptionTypeCoreFailure: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeCoreFailure.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeOperationProjection: FfiConverterRustBuffer {
+    typealias SwiftType = OperationProjection?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeOperationProjection.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeOperationProjection.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -4647,6 +5650,30 @@ fileprivate struct FfiConverterOptionTypePodcastSubscriptionRecord: FfiConverter
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeSpeakerId: FfiConverterRustBuffer {
+    typealias SwiftType = SpeakerId?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeSpeakerId.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeSpeakerId.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeStateRevision: FfiConverterRustBuffer {
     typealias SwiftType = StateRevision?
 
@@ -4719,6 +5746,31 @@ fileprivate struct FfiConverterOptionTypeOperationResult: FfiConverterRustBuffer
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceInt32: FfiConverterRustBuffer {
+    typealias SwiftType = [Int32]
+
+    public static func write(_ value: [Int32], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterInt32.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Int32] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [Int32]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterInt32.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
     typealias SwiftType = [String]
 
@@ -4761,6 +5813,106 @@ fileprivate struct FfiConverterSequenceTypeOperationProjection: FfiConverterRust
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeOperationProjection.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeRecallCandidateObservation: FfiConverterRustBuffer {
+    typealias SwiftType = [RecallCandidateObservation]
+
+    public static func write(_ value: [RecallCandidateObservation], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeRecallCandidateObservation.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [RecallCandidateObservation] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [RecallCandidateObservation]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeRecallCandidateObservation.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeRecallEvidenceProjection: FfiConverterRustBuffer {
+    typealias SwiftType = [RecallEvidenceProjection]
+
+    public static func write(_ value: [RecallEvidenceProjection], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeRecallEvidenceProjection.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [RecallEvidenceProjection] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [RecallEvidenceProjection]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeRecallEvidenceProjection.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeRecallRerankDocument: FfiConverterRustBuffer {
+    typealias SwiftType = [RecallRerankDocument]
+
+    public static func write(_ value: [RecallRerankDocument], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeRecallRerankDocument.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [RecallRerankDocument] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [RecallRerankDocument]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeRecallRerankDocument.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeRecallRerankObservation: FfiConverterRustBuffer {
+    typealias SwiftType = [RecallRerankObservation]
+
+    public static func write(_ value: [RecallRerankObservation], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeRecallRerankObservation.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [RecallRerankObservation] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [RecallRerankObservation]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeRecallRerankObservation.read(from: &buf))
         }
         return seq
     }

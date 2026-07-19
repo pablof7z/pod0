@@ -125,7 +125,7 @@ final class SharedLibraryClient {
             receiveLibrary(envelope)
         case .playback(let projection):
             receivePlayback(projection, revision: envelope.stateRevision.value)
-        case .podcastDetail, .episodeDetail, .unsupported:
+        case .podcastDetail, .episodeDetail, .recall, .unsupported:
             break
         }
     }

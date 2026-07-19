@@ -10,6 +10,7 @@ mod contract_projection;
 mod contract_state;
 #[cfg(test)]
 mod contract_state_tests;
+mod contract_state_validation;
 mod effects;
 mod feed;
 mod feed_parser;
@@ -27,6 +28,7 @@ mod knowledge_ranking;
 mod knowledge_ranking_tests;
 #[cfg(test)]
 mod knowledge_test_fixture;
+mod recall_contract;
 
 pub use contract::*;
 pub use contract_playback_projection::*;
@@ -37,6 +39,7 @@ pub use feed::*;
 pub use knowledge::*;
 pub use knowledge_chunking::*;
 pub use knowledge_ranking::*;
+pub use recall_contract::*;
 
 pub const CORE_SCHEMA_VERSION: u32 = 1;
 

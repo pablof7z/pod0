@@ -1,9 +1,12 @@
 use pod0_domain::{
     CancellationId, CommandId, DomainEventId, EpisodeId, HostRequestId, PlaybackRatePermille,
-    PodcastId, StateRevision, UnixTimestampMilliseconds,
+    PodcastId, RecallQueryId, StateRevision, UnixTimestampMilliseconds,
 };
 
-use crate::OperationStage;
+use crate::{
+    OperationStage, RecallCandidateObservation, RecallEmbeddingVector, RecallRerankDocument,
+    RecallRerankObservation, RecallScope,
+};
 
 pub const MAX_FEED_RESPONSE_BYTES: u64 = 8 * 1_024 * 1_024;
 pub const MIN_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS: u32 = 500;
@@ -107,6 +110,23 @@ pub enum HostRequest {
     StopPlayback {
         episode_id: EpisodeId,
     },
+    EmbedRecallQuery {
+        query_id: RecallQueryId,
+        text: String,
+        maximum_dimensions: u16,
+    },
+    RetrieveRecallCandidates {
+        query_id: RecallQueryId,
+        scope: RecallScope,
+        lexical_query: String,
+        embedding: RecallEmbeddingVector,
+        maximum_candidates: u16,
+    },
+    RerankRecallCandidates {
+        query_id: RecallQueryId,
+        query: String,
+        candidates: Vec<RecallRerankDocument>,
+    },
     Unsupported {
         wire_code: u32,
     },
@@ -138,6 +158,18 @@ pub enum HostObservation {
     },
     PlaybackObserved {
         value: PlaybackLifecycleObservation,
+    },
+    RecallQueryEmbedded {
+        query_id: RecallQueryId,
+        embedding: RecallEmbeddingVector,
+    },
+    RecallCandidatesRetrieved {
+        query_id: RecallQueryId,
+        candidates: Vec<RecallCandidateObservation>,
+    },
+    RecallCandidatesReranked {
+        query_id: RecallQueryId,
+        rankings: Vec<RecallRerankObservation>,
     },
     Failed {
         code: HostFailureCode,
@@ -227,6 +259,8 @@ pub enum HostFailureCode {
     InvalidResponse,
     ResponseTooLarge,
     MediaUnavailable,
+    ProviderUnavailable,
+    IndexUnavailable,
     PlatformFailure,
     Unsupported { wire_code: u32 },
 }

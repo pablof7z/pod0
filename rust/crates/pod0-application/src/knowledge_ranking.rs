@@ -58,6 +58,8 @@ pub fn rank_evidence(
             },
         });
     }
+    validate_rank_coverage(&vector_ranks, RankLane::Vector)?;
+    validate_rank_coverage(&lexical_ranks, RankLane::Lexical)?;
 
     ranked.sort_by(|left, right| {
         right
@@ -68,6 +70,24 @@ pub fn rank_evidence(
     });
     ranked.truncate(requested);
     Ok(ranked)
+}
+
+fn validate_rank_coverage(
+    ranks: &BTreeSet<u16>,
+    lane: RankLane,
+) -> Result<(), EvidenceRankingError> {
+    if ranks
+        .iter()
+        .enumerate()
+        .all(|(index, rank)| usize::from(*rank) == index + 1)
+    {
+        Ok(())
+    } else {
+        Err(match lane {
+            RankLane::Vector => EvidenceRankingError::IncompleteVectorRanks,
+            RankLane::Lexical => EvidenceRankingError::IncompleteLexicalRanks,
+        })
+    }
 }
 
 fn validate_rank(

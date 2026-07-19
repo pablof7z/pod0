@@ -4,7 +4,9 @@ use pod0_domain::{
     StateRevision, UnixTimestampMilliseconds,
 };
 
-pub const FACADE_CONTRACT_VERSION: u32 = 5;
+use crate::RecallQuery;
+
+pub const FACADE_CONTRACT_VERSION: u32 = 6;
 pub const MAX_PROJECTION_ITEMS: u16 = 200;
 pub const MAX_OPERATION_ITEMS: usize = 32;
 pub const MAX_HOST_REQUEST_BATCH: u16 = 64;
@@ -85,6 +87,9 @@ pub enum ApplicationCommand {
     },
     Playback {
         command: PlaybackCommand,
+    },
+    RecallQuery {
+        query: RecallQuery,
     },
     CancelOperation {
         cancellation_id: CancellationId,

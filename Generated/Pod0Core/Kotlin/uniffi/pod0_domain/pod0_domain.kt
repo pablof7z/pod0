@@ -1266,6 +1266,57 @@ public object FfiConverterTypeCommandId: FfiConverterRustBuffer<CommandId> {
 
 
 
+/**
+ * Exact SHA-256 value represented without a stringly typed hex boundary.
+ */
+data class ContentDigest (
+    val `word0`: kotlin.ULong
+    ,
+    val `word1`: kotlin.ULong
+    ,
+    val `word2`: kotlin.ULong
+    ,
+    val `word3`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeContentDigest: FfiConverterRustBuffer<ContentDigest> {
+    override fun read(buf: ByteBuffer): ContentDigest {
+        return ContentDigest(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ContentDigest) = (
+            FfiConverterULong.allocationSize(value.`word0`) +
+            FfiConverterULong.allocationSize(value.`word1`) +
+            FfiConverterULong.allocationSize(value.`word2`) +
+            FfiConverterULong.allocationSize(value.`word3`)
+    )
+
+    override fun write(value: ContentDigest, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`word0`, buf)
+            FfiConverterULong.write(value.`word1`, buf)
+            FfiConverterULong.write(value.`word2`, buf)
+            FfiConverterULong.write(value.`word3`, buf)
+    }
+}
+
+
+
 data class DomainEventId (
     val `high`: kotlin.ULong
     ,
@@ -1573,6 +1624,82 @@ public object FfiConverterTypeEpisodeRecord: FfiConverterRustBuffer<EpisodeRecor
             FfiConverterBoolean.write(value.`isStarred`, buf)
             FfiConverterTypeDownloadArtifactStatus.write(value.`download`, buf)
             FfiConverterTypeTranscriptArtifactStatus.write(value.`transcript`, buf)
+    }
+}
+
+
+
+data class EvidenceGenerationId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEvidenceGenerationId: FfiConverterRustBuffer<EvidenceGenerationId> {
+    override fun read(buf: ByteBuffer): EvidenceGenerationId {
+        return EvidenceGenerationId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: EvidenceGenerationId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: EvidenceGenerationId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class EvidenceSpanId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEvidenceSpanId: FfiConverterRustBuffer<EvidenceSpanId> {
+    override fun read(buf: ByteBuffer): EvidenceSpanId {
+        return EvidenceSpanId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: EvidenceSpanId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: EvidenceSpanId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
     }
 }
 
@@ -2310,6 +2437,82 @@ public object FfiConverterTypeQueueEntryId: FfiConverterRustBuffer<QueueEntryId>
 
 
 
+data class RecallQueryId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeRecallQueryId: FfiConverterRustBuffer<RecallQueryId> {
+    override fun read(buf: ByteBuffer): RecallQueryId {
+        return RecallQueryId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: RecallQueryId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: RecallQueryId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class SpeakerId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSpeakerId: FfiConverterRustBuffer<SpeakerId> {
+    override fun read(buf: ByteBuffer): SpeakerId {
+        return SpeakerId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SpeakerId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: SpeakerId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
 data class StateRevision (
     val `value`: kotlin.ULong
 
@@ -2374,6 +2577,129 @@ public object FfiConverterTypeSubscriptionId: FfiConverterRustBuffer<Subscriptio
     )
 
     override fun write(value: SubscriptionId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+/**
+ * Provenance facts copied from the selected transcript artifact. The source
+ * payload digest protects identity without leaking a URL or provider body.
+ */
+data class TranscriptProvenance (
+    val `source`: TranscriptSource
+    ,
+    val `provider`: kotlin.String?
+    ,
+    val `sourcePayloadDigest`: ContentDigest
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptProvenance: FfiConverterRustBuffer<TranscriptProvenance> {
+    override fun read(buf: ByteBuffer): TranscriptProvenance {
+        return TranscriptProvenance(
+            FfiConverterTypeTranscriptSource.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptProvenance) = (
+            FfiConverterTypeTranscriptSource.allocationSize(value.`source`) +
+            FfiConverterOptionalString.allocationSize(value.`provider`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`sourcePayloadDigest`)
+    )
+
+    override fun write(value: TranscriptProvenance, buf: ByteBuffer) {
+            FfiConverterTypeTranscriptSource.write(value.`source`, buf)
+            FfiConverterOptionalString.write(value.`provider`, buf)
+            FfiConverterTypeContentDigest.write(value.`sourcePayloadDigest`, buf)
+    }
+}
+
+
+
+data class TranscriptSegmentId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptSegmentId: FfiConverterRustBuffer<TranscriptSegmentId> {
+    override fun read(buf: ByteBuffer): TranscriptSegmentId {
+        return TranscriptSegmentId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptSegmentId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: TranscriptSegmentId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class TranscriptVersionId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptVersionId: FfiConverterRustBuffer<TranscriptVersionId> {
+    override fun read(buf: ByteBuffer): TranscriptVersionId {
+        return TranscriptVersionId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptVersionId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: TranscriptVersionId, buf: ByteBuffer) {
             FfiConverterULong.write(value.`high`, buf)
             FfiConverterULong.write(value.`low`, buf)
     }

@@ -74,6 +74,8 @@ final class CorePlaybackHost: CorePlaybackHosting {
             break
         case .fetchFeed:
             return .failed(code: .invalidResponse, safeDetail: "Feed request sent to player")
+        case .embedRecallQuery, .retrieveRecallCandidates, .rerankRecallCandidates:
+            return .failed(code: .invalidResponse, safeDetail: "Recall request sent to player")
         case .unsupported(let wireCode):
             return .unsupported(wireCode: wireCode)
         }

@@ -50,7 +50,7 @@ final class Pod0CoreBindingTests: XCTestCase {
 
         XCTAssertEqual(subscriber.revisions, [0, 1])
         let projection = facade.snapshot(request: request)
-        XCTAssertEqual(projection.contractVersion, 5)
+        XCTAssertEqual(projection.contractVersion, 6)
         guard case let .library(value) = projection.projection else {
             return XCTFail("Expected a bounded library projection")
         }
@@ -103,6 +103,100 @@ final class Pod0CoreBindingTests: XCTestCase {
             )
         )
         XCTAssertEqual(subscriber.revisions, [0, 1, 2, 3])
+    }
+
+    func testSwiftDecodesRecallProjectionGoldenFixture() throws {
+        let fixtureURL = try XCTUnwrap(
+            Bundle(for: Self.self).url(
+                forResource: "recall-projection-v1",
+                withExtension: "properties"
+            )
+        )
+        let fixture = try decodeProperties(at: fixtureURL)
+        func number(_ key: String) throws -> UInt64 {
+            try XCTUnwrap(UInt64(fixture[key] ?? ""), "Missing numeric fixture value: \(key)")
+        }
+
+        let evidence = RecallEvidenceProjection(
+            episodeId: EpisodeId(
+                high: try number("episode_id_high"),
+                low: try number("episode_id_low")
+            ),
+            podcastId: PodcastId(
+                high: try number("podcast_id_high"),
+                low: try number("podcast_id_low")
+            ),
+            generationId: EvidenceGenerationId(
+                high: try number("generation_id_high"),
+                low: try number("generation_id_low")
+            ),
+            transcriptVersionId: TranscriptVersionId(
+                high: try number("transcript_version_id_high"),
+                low: try number("transcript_version_id_low")
+            ),
+            transcriptContentDigest: ContentDigest(
+                word0: try number("content_digest_word_0"),
+                word1: try number("content_digest_word_1"),
+                word2: try number("content_digest_word_2"),
+                word3: try number("content_digest_word_3")
+            ),
+            spanId: EvidenceSpanId(
+                high: try number("span_id_high"),
+                low: try number("span_id_low")
+            ),
+            firstSegmentId: TranscriptSegmentId(
+                high: try number("first_segment_id_high"),
+                low: try number("first_segment_id_low")
+            ),
+            lastSegmentId: TranscriptSegmentId(
+                high: try number("last_segment_id_high"),
+                low: try number("last_segment_id_low")
+            ),
+            startSegmentOrdinal: UInt32(try number("start_segment_ordinal")),
+            endSegmentOrdinalExclusive: UInt32(try number("end_segment_ordinal_exclusive")),
+            startMilliseconds: try number("start_milliseconds"),
+            endMilliseconds: try number("end_milliseconds"),
+            excerpt: try XCTUnwrap(fixture["excerpt"]),
+            speakerId: SpeakerId(
+                high: try number("speaker_id_high"),
+                low: try number("speaker_id_low")
+            ),
+            provenance: TranscriptProvenance(
+                source: .publisher,
+                provider: fixture["provenance_provider"],
+                sourcePayloadDigest: ContentDigest(
+                    word0: try number("source_digest_word_0"),
+                    word1: try number("source_digest_word_1"),
+                    word2: try number("source_digest_word_2"),
+                    word3: try number("source_digest_word_3")
+                )
+            ),
+            score: RecallScoreProjection(
+                vectorRrfUnits: try number("vector_rrf_units"),
+                lexicalRrfUnits: try number("lexical_rrf_units"),
+                totalRrfUnits: try number("total_rrf_units"),
+                baseRank: UInt16(try number("base_rank")),
+                rerankRank: UInt16(try number("rerank_rank"))
+            )
+        )
+        let projection = RecallResultProjection(
+            queryId: RecallQueryId(
+                high: try number("query_id_high"),
+                low: try number("query_id_low")
+            ),
+            stage: .ready,
+            evidence: [evidence],
+            failure: nil,
+            operation: nil
+        )
+
+        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 6)
+        XCTAssertEqual(projection.stage, .ready)
+        XCTAssertEqual(projection.evidence.first?.excerpt, fixture["excerpt"])
+        XCTAssertEqual(
+            projection.evidence.first?.score.totalRrfUnits,
+            projection.evidence.first.map { $0.score.vectorRrfUnits + $0.score.lexicalRrfUnits }
+        )
     }
 
     private func decodeProperties(at url: URL) throws -> [String: String] {

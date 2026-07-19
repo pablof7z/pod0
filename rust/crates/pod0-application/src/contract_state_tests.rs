@@ -1,5 +1,6 @@
 use pod0_domain::{
-    CancellationId, CommandId, EpisodeId, HostRequestId, StateRevision, UnixTimestampMilliseconds,
+    CancellationId, CommandId, EpisodeId, HostRequestId, RecallQueryId, StateRevision,
+    UnixTimestampMilliseconds,
 };
 
 use crate::{
@@ -194,6 +195,39 @@ fn playback_observation_stream_accepts_increasing_sequences_only() {
     assert_eq!(
         ledger.accept_observation(&update),
         ObservationAcceptance::OutOfOrder
+    );
+}
+
+#[test]
+fn recall_observations_match_query_identity_and_payload_bounds() {
+    let mut ledger = HostRequestLedger::default();
+    let mut request = host_request();
+    request.request = HostRequest::EmbedRecallQuery {
+        query_id: RecallQueryId::from_parts(0, 8),
+        text: "question".to_owned(),
+        maximum_dimensions: 2,
+    };
+    assert!(ledger.register(request));
+
+    let mut result = observation();
+    result.observation = HostObservation::RecallQueryEmbedded {
+        query_id: RecallQueryId::from_parts(0, 9),
+        embedding: crate::RecallEmbeddingVector { values: vec![1] },
+    };
+    assert_eq!(
+        ledger.accept_observation(&result),
+        ObservationAcceptance::MismatchedPayload
+    );
+
+    result.observation = HostObservation::RecallQueryEmbedded {
+        query_id: RecallQueryId::from_parts(0, 8),
+        embedding: crate::RecallEmbeddingVector {
+            values: vec![1, 2, 3],
+        },
+    };
+    assert_eq!(
+        ledger.accept_observation(&result),
+        ObservationAcceptance::PayloadTooLarge
     );
 }
 

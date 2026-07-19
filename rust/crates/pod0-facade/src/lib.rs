@@ -8,24 +8,31 @@ pub use pod0_application::{
     HostObservationEnvelope, HostRequest, HostRequestEnvelope, KernelProbeCommand,
     KernelProbeProjection, LibraryProjection, MAX_FEED_RESPONSE_BYTES, MAX_HOST_REQUEST_BATCH,
     MAX_OPERATION_ITEMS, MAX_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, MAX_PROJECTION_ITEMS,
+    MAX_RECALL_CANDIDATES, MAX_RECALL_EMBEDDING_DIMENSIONS, MAX_RECALL_EVIDENCE,
+    MAX_RECALL_EXCERPT_BYTES, MAX_RECALL_QUERY_BYTES,
     MIN_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, NativeTimerMode, OperationProjection,
     OperationResult, OperationStage, PlaybackAllowedActions, PlaybackAudioRoute, PlaybackCommand,
     PlaybackHostState, PlaybackInterruption, PlaybackItem, PlaybackLifecycleObservation,
     PlaybackPolicyState, PlaybackProjection, PlaybackStopReason, PlaybackTransitionCue,
     PodcastSummary, Projection, ProjectionEnvelope, ProjectionRequest, ProjectionScope,
-    QueuePlacement, Retryability, UnsupportedProjection, UserAction, bounded_host_request_count,
+    QueuePlacement, RecallCandidateObservation, RecallEmbeddingVector, RecallEvidenceProjection,
+    RecallPhase, RecallQuery, RecallRerankDocument, RecallRerankObservation,
+    RecallResultProjection, RecallScope, RecallScoreProjection, RecallStage, Retryability,
+    UnsupportedProjection, UserAction, bounded_host_request_count,
     bounded_playback_observation_interval,
 };
 use pod0_application::{Clock, KernelApplication};
 pub use pod0_domain::{
     ArtifactReference, AutoDownloadMode, AutoDownloadPolicy, CancellationId, CommandId,
-    CompletionCause, CompletionStatus, DomainEventId, DownloadArtifactStatus, EpisodeId,
-    EpisodeIdentityRecord, EpisodeIdentityResolution, EpisodeListeningState, EpisodeRecord,
-    FeedIdentityV1, HostRequestId, ListeningDomainError, ListeningDomainSnapshot,
-    ListeningPlaybackPolicy, PlaybackRatePermille, PlaybackSegment, PlaybackSleepMode, PodcastId,
-    PodcastIdentityRecord, PodcastIdentityResolution, PodcastKind, PodcastRecord,
-    PodcastSubscriptionRecord, QueueEntry, QueueEntryId, StateRevision, SubscriptionId,
-    TranscriptArtifactStatus, TranscriptSource, UnixTimestampMilliseconds, make_feed_identity_v1,
+    CompletionCause, CompletionStatus, ContentDigest, DomainEventId, DownloadArtifactStatus,
+    EpisodeId, EpisodeIdentityRecord, EpisodeIdentityResolution, EpisodeListeningState,
+    EpisodeRecord, EvidenceGenerationId, EvidenceSpanId, FeedIdentityV1, HostRequestId,
+    ListeningDomainError, ListeningDomainSnapshot, ListeningPlaybackPolicy, PlaybackRatePermille,
+    PlaybackSegment, PlaybackSleepMode, PodcastId, PodcastIdentityRecord,
+    PodcastIdentityResolution, PodcastKind, PodcastRecord, PodcastSubscriptionRecord, QueueEntry,
+    QueueEntryId, RecallQueryId, SpeakerId, StateRevision, SubscriptionId,
+    TranscriptArtifactStatus, TranscriptProvenance, TranscriptSegmentId, TranscriptSource,
+    TranscriptVersionId, UnixTimestampMilliseconds, make_feed_identity_v1,
     resolve_episode_identity_v1, resolve_legacy_parent_id, resolve_podcast_identity_v1,
     validate_listening_snapshot,
 };
@@ -36,6 +43,7 @@ mod listening_migration;
 mod runtime;
 mod runtime_clock;
 mod runtime_command_fingerprint;
+mod runtime_command_fingerprint_values;
 mod runtime_commands;
 mod runtime_feed_commands;
 mod runtime_observations;
@@ -53,6 +61,13 @@ mod runtime_playback_test_support;
 mod runtime_playback_tests;
 mod runtime_playback_transitions;
 mod runtime_projection;
+mod runtime_recall_commands;
+mod runtime_recall_observations;
+mod runtime_recall_state;
+#[cfg(test)]
+mod runtime_recall_test_support;
+#[cfg(test)]
+mod runtime_recall_tests;
 mod runtime_state;
 #[cfg(test)]
 mod runtime_tests;

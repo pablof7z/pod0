@@ -5,7 +5,7 @@ use pod0_application::{
     ProjectionRequest, bounded_host_request_count,
 };
 use pod0_domain::SubscriptionId;
-use pod0_storage::LibraryStore;
+use pod0_storage::{EvidenceStore, LibraryStore};
 use std::path::Path;
 
 use crate::runtime_state::FacadeState;
@@ -68,9 +68,10 @@ impl Pod0Facade {
 
     #[uniffi::constructor]
     pub fn open(store_path: String) -> Result<Arc<Self>, FacadeOpenError> {
-        let store = LibraryStore::open_authoritative(Path::new(&store_path))
-            .map_err(FacadeOpenError::from)?;
-        let state = FacadeState::open(store).map_err(FacadeOpenError::from)?;
+        let path = Path::new(&store_path);
+        let store = LibraryStore::open_authoritative(path).map_err(FacadeOpenError::from)?;
+        let evidence_store = EvidenceStore::open(path).map_err(FacadeOpenError::from)?;
+        let state = FacadeState::open(store, evidence_store).map_err(FacadeOpenError::from)?;
         Ok(Arc::new(Self {
             state: Mutex::new(state),
         }))

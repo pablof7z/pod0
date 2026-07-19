@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use pod0_domain::{EpisodeId, EvidenceGenerationId, TranscriptEvidenceArtifact};
+use pod0_domain::{EpisodeId, EvidenceGenerationId, PodcastId, TranscriptEvidenceArtifact};
 use rusqlite::{Connection, Transaction, TransactionBehavior};
 
 use crate::evidence_store_read::{read_artifact, read_summary, selected_generation_id};
@@ -69,6 +69,44 @@ impl EvidenceStore {
         Ok(Some(artifact))
     }
 
+    pub fn has_selected_evidence_for_episode(
+        &self,
+        episode_id: EpisodeId,
+    ) -> Result<bool, StorageError> {
+        let connection = open_current(&self.path, true)?;
+        exists(
+            &connection,
+            "SELECT EXISTS(SELECT 1 FROM pod0_evidence_selection WHERE episode_id=?1)",
+            episode_id.into_bytes().as_slice(),
+        )
+    }
+
+    pub fn has_selected_evidence_for_podcast(
+        &self,
+        podcast_id: PodcastId,
+    ) -> Result<bool, StorageError> {
+        let connection = open_current(&self.path, true)?;
+        exists(
+            &connection,
+            "SELECT EXISTS(SELECT 1 FROM pod0_evidence_selection s \
+             JOIN pod0_evidence_generations g ON g.generation_id=s.generation_id \
+             JOIN pod0_transcript_documents d ON d.transcript_version_id=g.transcript_version_id \
+             WHERE d.podcast_id=?1)",
+            podcast_id.into_bytes().as_slice(),
+        )
+    }
+
+    pub fn has_any_selected_evidence(&self) -> Result<bool, StorageError> {
+        let connection = open_current(&self.path, true)?;
+        connection
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM pod0_evidence_selection)",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| StorageError::sqlite("check selected evidence", error))
+    }
+
     pub(crate) fn write<T>(
         &self,
         operation: impl FnOnce(&Transaction<'_>) -> Result<T, StorageError>,
@@ -84,6 +122,12 @@ impl EvidenceStore {
             .map_err(|error| StorageError::sqlite("commit evidence command", error))?;
         Ok(output)
     }
+}
+
+fn exists(connection: &Connection, sql: &str, identifier: &[u8]) -> Result<bool, StorageError> {
+    connection
+        .query_row(sql, [identifier], |row| row.get(0))
+        .map_err(|error| StorageError::sqlite("check selected evidence scope", error))
 }
 
 fn open_current(path: &Path, read_only: bool) -> Result<Connection, StorageError> {

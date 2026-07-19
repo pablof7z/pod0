@@ -59,6 +59,25 @@ fn complete_generation_reopens_identically_and_commands_are_idempotent() {
         .unwrap();
     assert!(!first_select.already_selected);
     assert_eq!(first_select.previous_generation_id, None);
+    assert!(fixture.store.has_any_selected_evidence().unwrap());
+    assert!(
+        fixture
+            .store
+            .has_selected_evidence_for_episode(artifact.version.episode_id)
+            .unwrap()
+    );
+    assert!(
+        fixture
+            .store
+            .has_selected_evidence_for_podcast(artifact.version.podcast_id)
+            .unwrap()
+    );
+    assert!(
+        !fixture
+            .store
+            .has_selected_evidence_for_podcast(pod0_domain::PodcastId::from_parts(9, 9))
+            .unwrap()
+    );
     assert_eq!(
         fixture
             .store

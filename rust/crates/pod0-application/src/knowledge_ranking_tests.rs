@@ -87,6 +87,13 @@ fn malformed_candidate_sets_fail_closed() {
         Err(EvidenceRankingError::DuplicateVectorRank { rank: 1 })
     );
     assert_eq!(
+        rank_evidence(
+            &[candidate(1, Some(1), None), candidate(2, Some(3), None)],
+            1
+        ),
+        Err(EvidenceRankingError::IncompleteVectorRanks)
+    );
+    assert_eq!(
         rank_evidence(&[candidate(1, Some(1), None)], 0),
         Err(EvidenceRankingError::EmptyLimit)
     );

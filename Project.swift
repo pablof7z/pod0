@@ -150,6 +150,7 @@ let project = Project(
                 "Fixtures/CoreSchema/**",
                 "Fixtures/CoreListening/**",
                 "Fixtures/CoreImport/**",
+                "Fixtures/CoreKnowledge/**",
             ],
             dependencies: [
                 .target(name: appName),

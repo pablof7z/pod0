@@ -12,6 +12,7 @@ impl FacadeState {
         let is_playback_request = self
             .host_requests
             .is_playback_request(observation.request_id);
+        let pending_recall = self.pending_recalls.get(&observation.request_id).copied();
         if self.host_requests.accept_observation(&observation) != ObservationAcceptance::Accepted {
             return false;
         }
@@ -25,6 +26,9 @@ impl FacadeState {
                 observation.observation,
                 observation.observed_at.value,
             );
+        } else if let Some(pending) = pending_recall {
+            self.pending_recalls.remove(&observation.request_id);
+            self.finish_recall_observation(pending, observation.observation);
         } else {
             match observation.observation {
                 HostObservation::Failed { code, .. } if is_playback_request => {
@@ -52,6 +56,11 @@ impl FacadeState {
                 }
                 HostObservation::FeedBytesFetched { .. }
                 | HostObservation::FeedNotModified { .. } => {
+                    self.fail(command_id, CoreFailureCode::InvalidCommand)
+                }
+                HostObservation::RecallQueryEmbedded { .. }
+                | HostObservation::RecallCandidatesRetrieved { .. }
+                | HostObservation::RecallCandidatesReranked { .. } => {
                     self.fail(command_id, CoreFailureCode::InvalidCommand)
                 }
                 HostObservation::Unsupported { wire_code } => {
@@ -97,6 +106,11 @@ impl FacadeState {
                 CoreFailureCode::Unsupported { wire_code },
             ),
             HostObservation::PlaybackObserved { .. } => {
+                self.fail(pending.command_id, CoreFailureCode::InvalidCommand)
+            }
+            HostObservation::RecallQueryEmbedded { .. }
+            | HostObservation::RecallCandidatesRetrieved { .. }
+            | HostObservation::RecallCandidatesReranked { .. } => {
                 self.fail(pending.command_id, CoreFailureCode::InvalidCommand)
             }
         }

@@ -165,6 +165,7 @@ impl FacadeState {
                         .find(|operation| operation.command_id == pending.command_id)
                         .is_none_or(|operation| operation.cancellation_id != cancellation_id)
                 });
+                self.cancel_recall(cancellation_id);
                 for operation in &mut self.operations {
                     if operation.cancellation_id == cancellation_id
                         && !operation.stage.is_terminal()
@@ -181,6 +182,7 @@ impl FacadeState {
             ApplicationCommand::Playback { command } => {
                 self.accept_playback_command(&envelope, &fingerprint, command)
             }
+            ApplicationCommand::RecallQuery { query } => self.start_recall(&envelope, query),
             ApplicationCommand::Unsupported { wire_code } => self.fail(
                 envelope.command_id,
                 CoreFailureCode::Unsupported { wire_code },

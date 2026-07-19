@@ -9,12 +9,13 @@ use pod0_application::{
 };
 use pod0_domain::{
     CommandId, EpisodeId, FeedIdentityV1, HostRequestId, ListeningDomainSnapshot, PodcastId,
-    StateRevision, SubscriptionId,
+    RecallQueryId, StateRevision, SubscriptionId,
 };
-use pod0_storage::LibraryStore;
+use pod0_storage::{EvidenceStore, LibraryStore};
 
 use crate::ProjectionSubscriber;
 use crate::runtime_clock::SystemClock;
+use crate::runtime_recall_state::{PendingRecall, RecallWorkflow};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum FeedIntent {
@@ -69,10 +70,13 @@ pub(super) struct FacadeState {
     pub(super) revision: StateRevision,
     pub(super) listening: ListeningDomainSnapshot,
     pub(super) store: Option<LibraryStore>,
+    pub(super) evidence_store: Option<EvidenceStore>,
     pub(super) commands: CommandLedger,
     pub(super) host_requests: HostRequestLedger,
     pub(super) host_queue: VecDeque<HostRequestEnvelope>,
     pub(super) pending_feeds: BTreeMap<pod0_domain::HostRequestId, PendingFeed>,
+    pub(super) pending_recalls: BTreeMap<HostRequestId, PendingRecall>,
+    pub(super) recalls: BTreeMap<RecallQueryId, RecallWorkflow>,
     pub(super) playback: PlaybackRuntime,
     pub(super) operations: Vec<OperationProjection>,
     pub(super) subscriptions: SubscriptionRegistry,
@@ -86,10 +90,13 @@ impl Default for FacadeState {
             revision: StateRevision::INITIAL,
             listening: empty_listening_snapshot(),
             store: None,
+            evidence_store: None,
             commands: CommandLedger::default(),
             host_requests: HostRequestLedger::default(),
             host_queue: VecDeque::new(),
             pending_feeds: BTreeMap::new(),
+            pending_recalls: BTreeMap::new(),
+            recalls: BTreeMap::new(),
             playback: PlaybackRuntime::default(),
             operations: Vec::new(),
             subscriptions: SubscriptionRegistry::default(),
@@ -111,7 +118,10 @@ impl FacadeState {
         self.clock.now()
     }
 
-    pub(super) fn open(store: LibraryStore) -> Result<Self, pod0_storage::StorageError> {
+    pub(super) fn open(
+        store: LibraryStore,
+        evidence_store: EvidenceStore,
+    ) -> Result<Self, pod0_storage::StorageError> {
         let _ = store.clear_session_sleep_timer()?;
         let listening = store.snapshot()?;
         let playback = PlaybackRuntime {
@@ -126,6 +136,7 @@ impl FacadeState {
             revision: listening.playback.revision,
             listening,
             store: Some(store),
+            evidence_store: Some(evidence_store),
             playback,
             ..Self::default()
         })

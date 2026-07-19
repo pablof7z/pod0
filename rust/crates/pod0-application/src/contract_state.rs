@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use pod0_domain::{CancellationId, CommandId, HostRequestId, StateRevision, SubscriptionId};
 
+use crate::contract_state_validation::{observation_matches_request, recall_payload_is_bounded};
 use crate::{
     CommandEnvelope, HostObservation, HostObservationEnvelope, HostRequest, HostRequestEnvelope,
     ProjectionRequest,
@@ -97,7 +98,18 @@ impl HostRequestLedger {
     #[must_use]
     pub fn is_playback_request(&self, request_id: HostRequestId) -> bool {
         self.requests.get(&request_id).is_some_and(|request| {
-            !matches!(request.envelope.request, HostRequest::FetchFeed { .. })
+            matches!(
+                request.envelope.request,
+                HostRequest::LoadMedia { .. }
+                    | HostRequest::Play { .. }
+                    | HostRequest::Pause { .. }
+                    | HostRequest::Seek { .. }
+                    | HostRequest::SetRate { .. }
+                    | HostRequest::ArmNativeTimer { .. }
+                    | HostRequest::CancelNativeTimer { .. }
+                    | HostRequest::ObservePlayback { .. }
+                    | HostRequest::StopPlayback { .. }
+            )
         })
     }
 
@@ -173,6 +185,9 @@ impl HostRequestLedger {
         {
             return ObservationAcceptance::PayloadTooLarge;
         }
+        if !recall_payload_is_bounded(&request.envelope.request, &observation.observation) {
+            return ObservationAcceptance::PayloadTooLarge;
+        }
         request.last_sequence_number = Some(observation.sequence_number);
         let is_stream_update = matches!(
             (&request.envelope.request, &observation.observation),
@@ -185,50 +200,6 @@ impl HostRequestLedger {
             request.status = HostRequestStatus::Completed;
         }
         ObservationAcceptance::Accepted
-    }
-}
-
-fn observation_matches_request(request: &HostRequest, observation: &HostObservation) -> bool {
-    if matches!(
-        observation,
-        HostObservation::Failed { .. } | HostObservation::Cancelled
-    ) {
-        return true;
-    }
-    match (request, observation) {
-        (
-            HostRequest::FetchFeed { .. },
-            HostObservation::FeedBytesFetched { .. } | HostObservation::FeedNotModified { .. },
-        ) => true,
-        (
-            HostRequest::ObservePlayback {
-                episode_id: expected,
-                ..
-            },
-            HostObservation::PlaybackObserved { value },
-        ) => expected.is_none() || *expected == value.episode_id,
-        (request, HostObservation::PlaybackObserved { value }) => {
-            playback_request_episode_id(request)
-                .is_some_and(|expected| value.episode_id == Some(expected))
-        }
-        (HostRequest::Unsupported { .. }, HostObservation::Unsupported { .. }) => true,
-        _ => false,
-    }
-}
-
-fn playback_request_episode_id(request: &HostRequest) -> Option<pod0_domain::EpisodeId> {
-    match request {
-        HostRequest::LoadMedia { episode_id, .. }
-        | HostRequest::Play { episode_id, .. }
-        | HostRequest::Pause { episode_id }
-        | HostRequest::Seek { episode_id, .. }
-        | HostRequest::SetRate { episode_id, .. }
-        | HostRequest::ArmNativeTimer { episode_id, .. }
-        | HostRequest::CancelNativeTimer { episode_id }
-        | HostRequest::StopPlayback { episode_id } => Some(*episode_id),
-        HostRequest::FetchFeed { .. }
-        | HostRequest::ObservePlayback { .. }
-        | HostRequest::Unsupported { .. } => None,
     }
 }
 

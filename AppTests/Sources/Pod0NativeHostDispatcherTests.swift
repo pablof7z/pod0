@@ -50,6 +50,30 @@ final class Pod0NativeHostDispatcherTests: XCTestCase {
         XCTAssertEqual(observations[0].observation, .cancelled)
     }
 
+    func testRecallRequestFailsTypedWhenCapabilityIsNotAttached() {
+        let dispatcher = Pod0NativeHostDispatcher(
+            feedHost: RecordingCoreFeedHost(),
+            playbackHost: FakeCorePlaybackHost()
+        )
+        let request = envelope(
+            requestID: 4,
+            deadline: nil,
+            request: .embedRecallQuery(
+                queryId: RecallQueryId(high: 1, low: 2),
+                text: "Where was the memory model discussed?",
+                maximumDimensions: 1_536
+            )
+        )
+        var observations: [HostObservationEnvelope] = []
+
+        dispatcher.execute(request) { observations.append($0) }
+
+        XCTAssertEqual(observations.count, 1)
+        guard case .failed(code: .indexUnavailable, safeDetail: _) = observations[0].observation else {
+            return XCTFail("Expected typed recall capability failure")
+        }
+    }
+
     func testPlaybackStreamCoalescesPositionButNeverDropsLifecycleBoundaries() {
         let feed = RecordingCoreFeedHost()
         let playback = FakeCorePlaybackHost()

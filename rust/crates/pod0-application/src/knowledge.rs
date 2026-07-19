@@ -75,6 +75,8 @@ pub enum EvidenceRankingError {
     InvalidLexicalRank { rank: u16 },
     DuplicateVectorRank { rank: u16 },
     DuplicateLexicalRank { rank: u16 },
+    IncompleteVectorRanks,
+    IncompleteLexicalRanks,
 }
 
 impl std::fmt::Display for EvidenceRankingError {
