@@ -50,5 +50,8 @@ jobs:
       - name: Bootstrap project
         run: ./ci_scripts/bootstrap_project.sh
 
+      - name: Detect generated Xcode project drift
+        run: git diff --exit-code -- Podcastr.xcodeproj/project.pbxproj
+
       - name: Build and test
         run: ./ci_scripts/run_tests.sh
