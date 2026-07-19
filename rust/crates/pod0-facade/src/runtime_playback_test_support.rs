@@ -13,9 +13,26 @@ pub(super) struct PlaybackFixture {
 
 impl PlaybackFixture {
     pub(super) fn new() -> Self {
+        Self::new_with_transcript(false)
+    }
+
+    pub(super) fn new_with_transcript(transcript_available: bool) -> Self {
         let directory = tempfile::tempdir().unwrap();
-        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        let canonical_source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../../Fixtures/CoreImport/legacy-listening-v1.json");
+        let source = if transcript_available {
+            let original = std::fs::read_to_string(&canonical_source).unwrap();
+            let modified = original.replace(
+                "\"transcriptState\": {\"none\": {}}",
+                "\"transcriptState\": {\"ready\": {\"source\": \"publisher\"}}",
+            );
+            assert_ne!(modified, original);
+            let source = directory.path().join("legacy-with-transcript.json");
+            std::fs::write(&source, modified).unwrap();
+            source
+        } else {
+            canonical_source
+        };
         let source_backup = directory.path().join("legacy.backup.json");
         let target = directory.path().join("core.sqlite");
         let schema_backup = directory.path().join("core.backup.sqlite");

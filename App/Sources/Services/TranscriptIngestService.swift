@@ -22,13 +22,12 @@ final class TranscriptIngestService {
 
     // MARK: Dependencies
 
-    let rag: RAGService
+    private(set) weak var appStore: AppStateStore?
     private let ingestor: PublisherTranscriptIngestor
     private let scribe: ElevenLabsScribeClient
     private let whisper: OpenRouterWhisperClient
     private let assemblyAI: AssemblyAITranscriptClient
     private let appleSTT: AppleNativeSTTClient
-    let chunkBuilder: ChunkBuilder
     let store: TranscriptStore
     private let elevenLabsKey: @Sendable () -> String?
     private let openRouterKey: @Sendable () -> String?
@@ -37,13 +36,11 @@ final class TranscriptIngestService {
     // MARK: Init
 
     init(
-        rag: RAGService = .shared,
         ingestor: PublisherTranscriptIngestor = PublisherTranscriptIngestor(),
         scribe: ElevenLabsScribeClient = ElevenLabsScribeClient(),
         whisper: OpenRouterWhisperClient = OpenRouterWhisperClient(),
         assemblyAI: AssemblyAITranscriptClient = AssemblyAITranscriptClient(),
         appleSTT: AppleNativeSTTClient = AppleNativeSTTClient(),
-        chunkBuilder: ChunkBuilder = ChunkBuilder(),
         store: TranscriptStore = .shared,
         elevenLabsKey: @escaping @Sendable () -> String? = {
             (try? ElevenLabsCredentialStore.apiKey()).flatMap { $0.isEmpty ? nil : $0 }
@@ -55,17 +52,19 @@ final class TranscriptIngestService {
             (try? AssemblyAICredentialStore.apiKey()).flatMap { $0.isEmpty ? nil : $0 }
         }
     ) {
-        self.rag = rag
         self.ingestor = ingestor
         self.scribe = scribe
         self.whisper = whisper
         self.assemblyAI = assemblyAI
         self.appleSTT = appleSTT
-        self.chunkBuilder = chunkBuilder
         self.store = store
         self.elevenLabsKey = elevenLabsKey
         self.openRouterKey = openRouterKey
         self.assemblyAIKey = assemblyAIKey
+    }
+
+    func attach(appStore: AppStateStore) {
+        self.appStore = appStore
     }
 
     func resolvedElevenLabsKey() -> String? { elevenLabsKey() }
@@ -82,7 +81,7 @@ final class TranscriptIngestService {
         payload: TranscriptJobPayload,
         jobStore: JobStore
     ) async throws -> String {
-        guard let appStore = rag.appStore,
+        guard let appStore,
               let episode = appStore.episode(id: context.job.subjectID) else {
             throw JobFailure(classification: .invalidInput, message: "Episode no longer exists")
         }

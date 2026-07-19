@@ -33,7 +33,13 @@ pub enum RecallStage {
     Running { phase: RecallPhase },
     Ready,
     NoEvidence,
+    TranscriptMissing,
+    IndexMissing,
+    Indexing,
     IndexUnavailable,
+    ProviderUnavailable,
+    CorruptArtifact,
+    Interrupted,
     Cancelled,
     Failed,
     Unsupported { wire_code: u32 },
@@ -46,7 +52,13 @@ impl RecallStage {
             self,
             Self::Ready
                 | Self::NoEvidence
+                | Self::TranscriptMissing
+                | Self::IndexMissing
+                | Self::Indexing
                 | Self::IndexUnavailable
+                | Self::ProviderUnavailable
+                | Self::CorruptArtifact
+                | Self::Interrupted
                 | Self::Cancelled
                 | Self::Failed
                 | Self::Unsupported { .. }

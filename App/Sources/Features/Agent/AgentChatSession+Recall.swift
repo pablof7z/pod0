@@ -3,7 +3,7 @@ import Foundation
 extension AgentChatSession {
     func startRecall(_ text: String) {
         let trimmed = text.trimmed
-        guard RecallFeature.isEnabled, !trimmed.isEmpty, canSend else { return }
+        guard !trimmed.isEmpty, canSend else { return }
         sendingTask = Task { await sendRecall(trimmed) }
     }
 
@@ -25,8 +25,8 @@ extension AgentChatSession {
         persistCurrentConversation()
 
         let answer: RecallAnswer
-        if let rag = podcastDeps?.rag {
-            answer = await RecallAnswerService(rag: rag, store: store).answer(query: text)
+        if let service = RecallAnswerService(store: store) {
+            answer = await service.answer(query: text)
         } else {
             answer = RecallAnswer(
                 text: "Transcript recall is unavailable right now. Try again after reopening Pod0.",

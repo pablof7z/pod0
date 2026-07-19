@@ -5498,7 +5498,13 @@ public enum RecallStage: Equatable, Hashable {
     )
     case ready
     case noEvidence
+    case transcriptMissing
+    case indexMissing
+    case indexing
     case indexUnavailable
+    case providerUnavailable
+    case corruptArtifact
+    case interrupted
     case cancelled
     case failed
     case unsupported(wireCode: UInt32
@@ -5533,13 +5539,25 @@ public struct FfiConverterTypeRecallStage: FfiConverterRustBuffer {
 
         case 4: return .noEvidence
 
-        case 5: return .indexUnavailable
+        case 5: return .transcriptMissing
 
-        case 6: return .cancelled
+        case 6: return .indexMissing
 
-        case 7: return .failed
+        case 7: return .indexing
 
-        case 8: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 8: return .indexUnavailable
+
+        case 9: return .providerUnavailable
+
+        case 10: return .corruptArtifact
+
+        case 11: return .interrupted
+
+        case 12: return .cancelled
+
+        case 13: return .failed
+
+        case 14: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -5567,20 +5585,44 @@ public struct FfiConverterTypeRecallStage: FfiConverterRustBuffer {
             writeInt(&buf, Int32(4))
 
 
-        case .indexUnavailable:
+        case .transcriptMissing:
             writeInt(&buf, Int32(5))
 
 
-        case .cancelled:
+        case .indexMissing:
             writeInt(&buf, Int32(6))
 
 
-        case .failed:
+        case .indexing:
             writeInt(&buf, Int32(7))
 
 
-        case let .unsupported(wireCode):
+        case .indexUnavailable:
             writeInt(&buf, Int32(8))
+
+
+        case .providerUnavailable:
+            writeInt(&buf, Int32(9))
+
+
+        case .corruptArtifact:
+            writeInt(&buf, Int32(10))
+
+
+        case .interrupted:
+            writeInt(&buf, Int32(11))
+
+
+        case .cancelled:
+            writeInt(&buf, Int32(12))
+
+
+        case .failed:
+            writeInt(&buf, Int32(13))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(14))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }

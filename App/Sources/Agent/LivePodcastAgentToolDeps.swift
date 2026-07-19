@@ -6,7 +6,7 @@ import os.log
 // Wires the lane-10 podcast tool surface (`AgentTools.dispatchPodcast`) to the
 // real services that ship in the app:
 //
-//   • `PodcastAgentRAGSearchProtocol`  → `LivePodcastRAGAdapter`
+//   • `PodcastAgentKnowledgeSearchProtocol` → `LivePodcastKnowledgeAdapter`
 //   • `EpisodeSummarizerProtocol`      → `LiveEpisodeSummarizerAdapter`
 //   • `EpisodeFetcherProtocol`         → `LiveEpisodeFetcherAdapter`
 //   • `PlaybackHostProtocol`           → `LivePlaybackHostAdapter`
@@ -15,7 +15,7 @@ import os.log
 //
 // Constructed once per `AgentChatSession`, the bundle holds weak references
 // to `AppStateStore` and `PlaybackState` so the agent adapters never extend
-// their lifetimes. Heavy adapters (RAG, Summarizer) live in their own files;
+// their lifetimes. Heavy adapters (knowledge recall, summarizer) live in their own files;
 // the small ones live here.
 
 @MainActor
@@ -32,7 +32,7 @@ enum LivePodcastAgentToolDeps {
     ) -> PodcastAgentToolDeps {
         let inventory = LivePodcastInventoryAdapter(store: store)
         return PodcastAgentToolDeps(
-            rag: LivePodcastRAGAdapter(store: store),
+            knowledge: LivePodcastKnowledgeAdapter(store: store),
             summarizer: LiveEpisodeSummarizerAdapter(store: store),
             fetcher: LiveEpisodeFetcherAdapter(store: store),
             playback: LivePlaybackHostAdapter(store: store, playback: playback),

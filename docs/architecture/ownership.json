@@ -185,42 +185,30 @@
       "includes": ["App/Sources/Transcript/AppleNativeSTTClient.swift", "App/Sources/Transcript/AppleSTT+TranscriptAdapter.swift"]
     },
     {
-      "id": "shared-knowledge-policy",
+      "id": "shared-utility-llm-policy",
       "classification": "shared_rust_now",
-      "current_owner": "Swift chunking, embeddings, retrieval, reranking, and citation policy",
-      "target_owner": "Pod0 Rust knowledge domain",
-      "reason": "Evidence identity/ranking/provenance are the cross-platform trust boundary.",
-      "boundary": "Native renders evidence and executes only explicitly delegated platform/provider capabilities.",
-      "persisted_state": "Chunk/vector/FTS index and versioned artifact metadata.",
-      "migration_issues": [59, 69],
-      "deletion_target": "Delete Swift ranking/chunk/citation ownership after shared-core cutover.",
+      "current_owner": "Swift utility-model request and provider error mapping",
+      "target_owner": "Pod0 Rust workflow and agent application layers",
+      "reason": "Utility prompt execution, provider choice, and retry/error semantics drive durable cross-platform workflows.",
+      "boundary": "A future native adapter may execute a typed provider request, but Rust owns the request policy and resulting workflow state.",
+      "persisted_state": "None in the client; callers currently commit generated workflow artifacts.",
+      "migration_issues": [60],
+      "deletion_target": "Delete Swift utility request policy when each durable workflow kind moves to the shared core.",
       "priority": "high",
-      "includes": ["App/Sources/Knowledge/"],
-      "excludes": ["App/Sources/Knowledge/VectorIndex.swift", "App/Sources/Knowledge/VectorIndex+VersionedArtifacts.swift", "App/Sources/Knowledge/VectorIndex+CoreRecall.swift", "App/Sources/Knowledge/VectorIndex+CoreRecallRetrieval.swift"]
+      "includes": ["App/Sources/Knowledge/UtilityLLMClient.swift", "App/Sources/Knowledge/UtilityLLMFailureMapping.swift"]
     },
     {
-      "id": "native-recall-index-capability",
-      "classification": "native_by_design",
-      "current_owner": "Swift sqlite-vec capability host",
-      "target_owner": "Platform capability host selected behind the Pod0 Rust facade",
-      "reason": "The host stores only a reconstructible Rust-selected generation and returns raw vector and lexical ranks; Rust owns evidence identity, fusion, fallback, ordering, and every durable product decision.",
+      "id": "temporary-recall-capability-host",
+      "classification": "temporary_swift",
+      "current_owner": "Swift provider and sqlite-vec capability host",
+      "target_owner": "Rust-owned retrieval backend or a retained typed platform capability selected by M3 portability evidence",
+      "reason": "The cutover removes Swift product authority now while preserving iOS velocity; the host stores only reconstructible rows and returns raw observations.",
       "boundary": "Consume bounded typed rebuild/retrieval requests and return exact generation/span identities with raw lane ranks; never select citations or expose final recall answers.",
       "persisted_state": "A disposable sqlite-vec/FTS capability index rebuilt exclusively from the Rust-selected evidence projection.",
-      "priority": "keep_native",
-      "includes": ["App/Sources/Knowledge/VectorIndex+CoreRecall.swift", "App/Sources/Knowledge/VectorIndex+CoreRecallRetrieval.swift"]
-    },
-    {
-      "id": "undecided-vector-index-backend",
-      "classification": "undecided_pending_investigation",
-      "current_owner": "Swift SQLiteVec index",
-      "target_owner": "Rust-owned knowledge storage; backend selected by portability evidence",
-      "reason": "The durable owner is Rust, but sqlite-vec versus another embedded backend needs Apple/Android build, latency, and rebuild evidence.",
-      "boundary": "Knowledge commands/projections remain backend-independent; no native policy cache.",
-      "persisted_state": "Current SQLiteVec database is a rebuildable derived artifact.",
-      "migration_issues": [69],
-      "deletion_target": "Delete the Swift VectorIndex after the selected Rust backend passes migration/rebuild tests.",
+      "migration_issues": [59],
+      "deletion_target": "Delete this Swift host if the M3 backend proof selects Rust; otherwise reclassify the proven provider/index executor as native by design without expanding its typed boundary.",
       "priority": "next",
-      "includes": ["App/Sources/Knowledge/VectorIndex.swift", "App/Sources/Knowledge/VectorIndex+VersionedArtifacts.swift"]
+      "includes": ["App/Sources/Knowledge/EmbeddingsClient.swift", "App/Sources/Knowledge/OllamaEmbeddingsClient.swift", "App/Sources/Knowledge/ProviderEmbeddingsClient.swift", "App/Sources/Knowledge/RerankerClient.swift", "App/Sources/Knowledge/VectorIndex.swift", "App/Sources/Knowledge/VectorIndex+CoreRecall.swift", "App/Sources/Knowledge/VectorIndex+CoreRecallRetrieval.swift", "App/Sources/Services/RecallCapabilityService.swift"]
     },
     {
       "id": "shared-agent-application-policy",
@@ -256,13 +244,13 @@
       "classification": "temporary_swift",
       "current_owner": "Swift product-proof controllers",
       "target_owner": "Shared knowledge/workflow policy after interaction validation",
-      "reason": "Auto-snip and transcript-grounded recall interaction policy are still being validated and isolated behind typed feature/domain boundaries.",
+      "reason": "Auto-snip, recall intent routing, and persisted chat presentation are still being validated behind typed feature/domain boundaries.",
       "boundary": "Commit only through typed store/library interfaces; no new independent durable store.",
       "persisted_state": "Clip records through AppStateStore; controller state is transient.",
-      "migration_issues": [59, 60, 69],
+      "migration_issues": [59, 60],
       "deletion_target": "Replace controller policy during clip/workflow vertical slices; retain native capture UI.",
       "priority": "next",
-      "includes": ["App/Sources/Features/Player/AutoSnip/AutoSnipController.swift", "App/Sources/Features/Recall/", "App/Sources/Features/Agent/AgentChatSession+Recall.swift"]
+      "includes": ["App/Sources/Features/Player/AutoSnip/AutoSnipController.swift", "App/Sources/Features/Recall/RecallAnswerModels.swift", "App/Sources/Features/Recall/RecallAnswerService.swift", "App/Sources/Features/Recall/RecallFeature.swift", "App/Sources/Features/Agent/AgentChatSession+Recall.swift"]
     },
     {
       "id": "native-feature-presentation",
@@ -274,7 +262,7 @@
       "persisted_state": "Transient presentation only; current exceptions are tracked by shared/temporary entries.",
       "priority": "keep_native",
       "includes": ["App/Sources/Features/"],
-      "excludes": ["App/Sources/Features/Player/PlaybackState.swift", "App/Sources/Features/Player/PlaybackState+AdSkip.swift", "App/Sources/Features/Player/PlaybackState+AudioCallbacks.swift", "App/Sources/Features/Player/PlaybackState+Controls.swift", "App/Sources/Features/Player/PlaybackState+ProductSignals.swift", "App/Sources/Features/Player/PlaybackState+Queue.swift", "App/Sources/Features/Player/PlaybackState+SharedCore.swift", "App/Sources/Features/Player/PlaybackState+SleepTimer.swift", "App/Sources/Features/Player/PlaybackState+Snapshot.swift", "App/Sources/Features/Player/PlaybackTypes.swift", "App/Sources/Features/Player/AutoSnip/AutoSnipController.swift", "App/Sources/Features/Recall/", "App/Sources/Features/Agent/AgentChatSession", "App/Sources/Features/Agent/AgentLLMClient.swift", "App/Sources/Features/Agent/AgentOllamaClient.swift", "App/Sources/Features/Agent/AgentOpenRouterClient.swift", "App/Sources/Features/Agent/AgentChatTitleGenerator.swift", "App/Sources/Features/Agent/ChatConversation.swift", "App/Sources/Features/Agent/ChatMessage.swift"]
+      "excludes": ["App/Sources/Features/Player/PlaybackState.swift", "App/Sources/Features/Player/PlaybackState+AdSkip.swift", "App/Sources/Features/Player/PlaybackState+AudioCallbacks.swift", "App/Sources/Features/Player/PlaybackState+Controls.swift", "App/Sources/Features/Player/PlaybackState+ProductSignals.swift", "App/Sources/Features/Player/PlaybackState+Queue.swift", "App/Sources/Features/Player/PlaybackState+SharedCore.swift", "App/Sources/Features/Player/PlaybackState+SleepTimer.swift", "App/Sources/Features/Player/PlaybackState+Snapshot.swift", "App/Sources/Features/Player/PlaybackTypes.swift", "App/Sources/Features/Player/AutoSnip/AutoSnipController.swift", "App/Sources/Features/Recall/RecallAnswerModels.swift", "App/Sources/Features/Recall/RecallAnswerService.swift", "App/Sources/Features/Recall/RecallFeature.swift", "App/Sources/Features/Agent/AgentChatSession", "App/Sources/Features/Agent/AgentLLMClient.swift", "App/Sources/Features/Agent/AgentOllamaClient.swift", "App/Sources/Features/Agent/AgentOpenRouterClient.swift", "App/Sources/Features/Agent/AgentChatTitleGenerator.swift", "App/Sources/Features/Agent/ChatConversation.swift", "App/Sources/Features/Agent/ChatMessage.swift"]
     },
     {
       "id": "native-platform-services",
@@ -299,7 +287,7 @@
       "deletion_target": "Delete or reduce each service to a platform capability adapter at its domain cutover.",
       "priority": "high",
       "includes": ["App/Sources/Services/"],
-      "excludes": ["App/Sources/Services/AssemblyAICredentialStore.swift", "App/Sources/Services/BYOK", "App/Sources/Services/ClipExporter.swift", "App/Sources/Services/DataExport.swift", "App/Sources/Services/DeepLinkHandler.swift", "App/Sources/Services/ElevenLabsCredentialStore.swift", "App/Sources/Services/EpisodeDownloadService+Delegate.swift", "App/Sources/Services/HandoffActivityType.swift", "App/Sources/Services/KeychainStore.swift", "App/Sources/Services/NotificationService.swift", "App/Sources/Services/NowPlayingSnapshotStore.swift", "App/Sources/Services/OllamaCredentialStore.swift", "App/Sources/Services/OpenRouterCredentialStore.swift", "App/Sources/Services/PerplexityCredentialStore.swift", "App/Sources/Services/Pod0FeedbackProtocol.swift", "App/Sources/Services/ReviewPrompt.swift", "App/Sources/Services/SpotlightIndexer.swift", "App/Sources/Services/WhatsNew.swift", "App/Sources/Services/iCloudSettingsSync.swift"]
+      "excludes": ["App/Sources/Services/AssemblyAICredentialStore.swift", "App/Sources/Services/BYOK", "App/Sources/Services/ClipExporter.swift", "App/Sources/Services/DataExport.swift", "App/Sources/Services/DeepLinkHandler.swift", "App/Sources/Services/ElevenLabsCredentialStore.swift", "App/Sources/Services/EpisodeDownloadService+Delegate.swift", "App/Sources/Services/HandoffActivityType.swift", "App/Sources/Services/KeychainStore.swift", "App/Sources/Services/NotificationService.swift", "App/Sources/Services/NowPlayingSnapshotStore.swift", "App/Sources/Services/OllamaCredentialStore.swift", "App/Sources/Services/OpenRouterCredentialStore.swift", "App/Sources/Services/PerplexityCredentialStore.swift", "App/Sources/Services/Pod0FeedbackProtocol.swift", "App/Sources/Services/RecallCapabilityService.swift", "App/Sources/Services/ReviewPrompt.swift", "App/Sources/Services/SpotlightIndexer.swift", "App/Sources/Services/WhatsNew.swift", "App/Sources/Services/iCloudSettingsSync.swift"]
     }
   ]
 }

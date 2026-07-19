@@ -44,6 +44,8 @@ anonymous install ID. No signal is transmitted automatically.
 Playback interruption/route recovery, crash-free sessions, launch/projection
 performance, and migration safety also require the device qualification and CI
 evidence named in [iOS playback qualification](ios-playback-qualification.md).
+Recall correctness, restart, and the 5,000-span local hybrid budget require the
+evidence named in [iOS recall qualification](ios-recall-qualification.md).
 `uncleanTermination` is a recovery proxy, not a substitute for organizer crash
 reports.
 

@@ -25,7 +25,7 @@ final class SharedLibraryClient {
     private var playbackHostAttached = false
     var evidenceRebuildTask: Task<Void, Never>?
     var evidenceUpdateTasks: [UUID: Task<Void, Never>] = [:]
-    var recallShadowTasks: [UUID: Task<Void, Never>] = [:]
+    var recallWaiters: [RecallQueryId: SharedRecallWaiter] = [:]
     var rebuildingEvidenceEpisodeIDs: Set<UUID> = []
     var recallHostAttached = false
 
@@ -94,6 +94,14 @@ final class SharedLibraryClient {
             command: .playback(command: command)
         ))
         dispatcher.executePendingRequests(from: facade)
+    }
+
+    func executePendingHostRequests() {
+        dispatcher.executePendingRequests(from: facade)
+    }
+
+    func cancelPendingHostRequests(cancellationID: CancellationId) {
+        dispatcher.cancel(cancellationID: cancellationID)
     }
 
     func execute(_ command: ApplicationCommand) async throws -> OperationResult? {
@@ -213,8 +221,7 @@ final class SharedLibraryClient {
         evidenceRebuildTask = nil
         for task in evidenceUpdateTasks.values { task.cancel() }
         evidenceUpdateTasks.removeAll()
-        for task in recallShadowTasks.values { task.cancel() }
-        recallShadowTasks.removeAll()
+        cancelAllRecallWaiters()
         dispatcher.shutdown()
         if let librarySubscriptionID { facade.unsubscribe(subscriptionId: librarySubscriptionID) }
         if let playbackSubscriptionID { facade.unsubscribe(subscriptionId: playbackSubscriptionID) }

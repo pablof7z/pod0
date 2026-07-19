@@ -243,7 +243,7 @@ final class AgentSkillsTests: XCTestCase {
 
     private func makeDeps() -> PodcastAgentToolDeps {
         PodcastAgentToolDeps(
-            rag: MockRAG(),
+            knowledge: MockKnowledgeSearch(),
             summarizer: MockSummarizer(),
             fetcher: MockFetcher(),
             playback: MockPlayback(),

@@ -124,37 +124,26 @@ struct Reconciler {
         return count
     }
 
-    /// Repairs the small external-index selection gap after the authoritative
-    /// artifact/job transaction. Generation rows are immutable and remain
-    /// invisible until this selected pointer is restored.
-    func repairVectorSelections() async throws {
+    /// Verifies that the workflow's derived receipt still names the exact
+    /// generation selected by the authoritative Rust evidence store.
+    func verifySharedEvidenceSelections() async throws {
         for artifact in try artifacts.all()
-            where artifact.kind == .semanticIndex || artifact.kind == .metadataIndex {
+            where artifact.kind == .semanticIndex {
             guard artifact.integrity == .available,
                   let encoded = artifact.origin,
                   let data = Data(base64Encoded: encoded),
                   let receipt = try? Self.decoder.decode(
-                    VectorArtifactReceipt.self, from: data
+                    SharedEvidenceReceipt.self, from: data
                   ),
-                  receipt.generation == artifact.outputVersion,
-                  try await RAGService.shared.index.verifyArtifact(
-                    episodeID: artifact.subjectID, receipt: receipt
-                  ) else {
+                  receipt.generationID == artifact.outputVersion,
+                  receipt.episodeID == artifact.subjectID,
+                  appStore.sharedLibrary?.verifyEvidenceReceipt(receipt) == true else {
                 try artifacts.markIntegrity(
                     kind: artifact.kind,
                     subjectID: artifact.subjectID,
                     integrity: .corrupt
                 )
                 continue
-            }
-            let selected = try await RAGService.shared.index.selectedReceipt(
-                episodeID: artifact.subjectID,
-                artifactKind: receipt.artifactKind
-            )
-            if selected != receipt {
-                try await RAGService.shared.index.selectArtifact(
-                    episodeID: artifact.subjectID, receipt: receipt
-                )
             }
         }
     }

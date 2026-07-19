@@ -49,6 +49,30 @@ extension SpeakerId {
             low: UInt64(hexadecimal.suffix(16), radix: 16)!
         )
     }
+
+    var stableString: String { coreIdentifier(high: high, low: low) }
+}
+
+extension EvidenceGenerationId {
+    var stableString: String { coreIdentifier(high: high, low: low) }
+}
+
+extension EvidenceSpanId {
+    var stableString: String { coreIdentifier(high: high, low: low) }
+}
+
+extension TranscriptVersionId {
+    var stableString: String { coreIdentifier(high: high, low: low) }
+}
+
+extension TranscriptSegmentId {
+    var stableString: String { coreIdentifier(high: high, low: low) }
+}
+
+extension ContentDigest {
+    var stableString: String {
+        String(format: "%016llx%016llx%016llx%016llx", word0, word1, word2, word3)
+    }
 }
 
 extension CommandId {
@@ -73,6 +97,8 @@ extension RecallQueryId {
             low: UInt64(hexadecimal.suffix(16), radix: 16)!
         )
     }
+
+    var stableString: String { coreIdentifier(high: high, low: low) }
 }
 
 extension UnixTimestampMilliseconds {
@@ -106,4 +132,8 @@ private extension UUID {
         ].map(String.init).joined(separator: "-")
         self.init(uuidString: formatted)
     }
+}
+
+private func coreIdentifier(high: UInt64, low: UInt64) -> String {
+    String(format: "%016llx%016llx", high, low)
 }

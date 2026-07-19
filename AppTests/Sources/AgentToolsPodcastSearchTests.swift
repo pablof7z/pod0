@@ -1,3 +1,4 @@
+import Pod0Core
 import XCTest
 @testable import Podcastr
 
@@ -14,7 +15,7 @@ final class AgentToolsPodcastSearchTests: XCTestCase {
             EpisodeHit(episodeID: "ep1", podcastID: "pod1", title: "Zone 2 Conversation", podcastTitle: "Tim Ferriss", score: 0.91),
             EpisodeHit(episodeID: "ep2", podcastID: "pod2", title: "VO2 Max", podcastTitle: "Huberman", score: 0.78),
         ]
-        let deps = makeDeps(rag: MockRAG(searchEpisodesResult: hits))
+        let deps = makeDeps(knowledge: MockKnowledgeSearch(searchEpisodesResult: hits))
         let json = await AgentTools.dispatchPodcast(
             name: AgentTools.PodcastNames.searchEpisodes,
             args: ["query": "zone 2", "limit": 5],
@@ -30,8 +31,8 @@ final class AgentToolsPodcastSearchTests: XCTestCase {
     }
 
     func testSearchEpisodesClampsLimitAboveMax() async throws {
-        let mockRAG = MockRAG()
-        let deps = makeDeps(rag: mockRAG)
+        let mockRAG = MockKnowledgeSearch()
+        let deps = makeDeps(knowledge: mockRAG)
         _ = await AgentTools.dispatchPodcast(
             name: AgentTools.PodcastNames.searchEpisodes,
             args: ["query": "anything", "limit": 9_999],
@@ -53,28 +54,30 @@ final class AgentToolsPodcastSearchTests: XCTestCase {
     // MARK: - query_transcripts
 
     func testQueryTranscriptsReturnsChunksWithTimestamps() async throws {
-        let deps = makeDeps(rag: MockRAG(transcriptsResult: [
-            TranscriptHit(
-                chunkID: "chunk-1", episodeID: "ep1", podcastID: "podcast-1",
-                artifactVersion: "transcript-v3", provenance: "publisher",
-                startSeconds: 47.0, endSeconds: 60.0,
-                speaker: "Tim", text: "Zone 2 is sustained..."
-            ),
-        ]))
+        let evidence = recallEvidence()
+        let projection = RecallResultProjection(
+            queryId: RecallQueryId(high: 90, low: 2),
+            stage: .ready,
+            evidence: [evidence],
+            failure: nil,
+            operation: nil
+        )
+        let deps = makeDeps(knowledge: MockKnowledgeSearch(transcriptProjection: projection))
         let json = await AgentTools.dispatchPodcast(
             name: AgentTools.PodcastNames.queryTranscripts,
             args: ["query": "zone 2", "scope": "ep1"],
             deps: deps
         )
         let decoded = try decode(json)
+        XCTAssertEqual(decoded["status"] as? String, "ready")
         let rows = decoded["results"] as? [[String: Any]]
         XCTAssertEqual(rows?.count, 1)
-        XCTAssertEqual(rows?.first?["speaker"] as? String, "Tim")
         XCTAssertEqual(rows?.first?["start_seconds"] as? Double, 47.0)
-        XCTAssertEqual(rows?.first?["chunk_id"] as? String, "chunk-1")
-        XCTAssertEqual(rows?.first?["podcast_id"] as? String, "podcast-1")
-        XCTAssertEqual(rows?.first?["artifact_version"] as? String, "transcript-v3")
-        XCTAssertEqual(rows?.first?["provenance"] as? String, "publisher")
+        XCTAssertEqual(rows?.first?["span_id"] as? String, evidence.spanId.stableString)
+        XCTAssertEqual(rows?.first?["generation_id"] as? String, evidence.generationId.stableString)
+        XCTAssertEqual(rows?.first?["podcast_id"] as? String, evidence.podcastId.uuid?.uuidString)
+        let provenance = rows?.first?["provenance"] as? [String: Any]
+        XCTAssertEqual(provenance?["source"] as? String, "publisher")
     }
 
     // MARK: - perplexity_search
@@ -128,10 +131,10 @@ final class AgentToolsPodcastSearchTests: XCTestCase {
     // MARK: - find_similar_episodes
 
     func testFindSimilarEpisodesUsesK() async throws {
-        let mockRAG = MockRAG(similarResult: [
+        let mockRAG = MockKnowledgeSearch(similarResult: [
             EpisodeHit(episodeID: "ep2", podcastID: "pod1", title: "Sequel", podcastTitle: "Tim Ferriss"),
         ])
-        let deps = makeDeps(rag: mockRAG, fetcher: MockFetcher(known: ["seed"]))
+        let deps = makeDeps(knowledge: mockRAG, fetcher: MockFetcher(known: ["seed"]))
         let json = await AgentTools.dispatchPodcast(
             name: AgentTools.PodcastNames.findSimilarEpisodes,
             args: ["seed_episode_id": "seed", "k": 7],
@@ -164,13 +167,13 @@ final class AgentToolsPodcastSearchTests: XCTestCase {
     }
 
     private func makeDeps(
-        rag: PodcastAgentRAGSearchProtocol = MockRAG(),
+        knowledge: PodcastAgentKnowledgeSearchProtocol = MockKnowledgeSearch(),
         summarizer: EpisodeSummarizerProtocol = MockSummarizer(),
         fetcher: EpisodeFetcherProtocol = MockFetcher(),
         perplexity: PerplexityClientProtocol = MockPerplexity()
     ) -> PodcastAgentToolDeps {
         PodcastAgentToolDeps(
-            rag: rag,
+            knowledge: knowledge,
             summarizer: summarizer,
             fetcher: fetcher,
             playback: MockPlayback(),
@@ -183,6 +186,37 @@ final class AgentToolsPodcastSearchTests: XCTestCase {
             subscribe: MockSubscribe(),
             youtubeIngestion: MockYouTubeIngestion(),
             ownedPodcasts: MockOwnedPodcasts()
+        )
+    }
+
+    private func recallEvidence() -> RecallEvidenceProjection {
+        RecallEvidenceProjection(
+            episodeId: EpisodeId(uuid: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!),
+            podcastId: PodcastId(uuid: UUID(uuidString: "22222222-2222-2222-2222-222222222222")!),
+            generationId: EvidenceGenerationId(high: 1, low: 2),
+            transcriptVersionId: TranscriptVersionId(high: 3, low: 4),
+            transcriptContentDigest: ContentDigest(word0: 5, word1: 6, word2: 7, word3: 8),
+            spanId: EvidenceSpanId(high: 9, low: 10),
+            firstSegmentId: TranscriptSegmentId(high: 11, low: 12),
+            lastSegmentId: TranscriptSegmentId(high: 13, low: 14),
+            startSegmentOrdinal: 2,
+            endSegmentOrdinalExclusive: 4,
+            startMilliseconds: 47_000,
+            endMilliseconds: 60_000,
+            excerpt: "Zone 2 is sustained...",
+            speakerId: SpeakerId(high: 15, low: 16),
+            provenance: Pod0Core.TranscriptProvenance(
+                source: .publisher,
+                provider: "fixture",
+                sourcePayloadDigest: ContentDigest(word0: 17, word1: 18, word2: 19, word3: 20)
+            ),
+            score: RecallScoreProjection(
+                vectorRrfUnits: 10,
+                lexicalRrfUnits: 11,
+                totalRrfUnits: 21,
+                baseRank: 1,
+                rerankRank: nil
+            )
         )
     }
 }

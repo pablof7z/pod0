@@ -65,6 +65,12 @@ extension VectorIndex {
     }
 
     func ensureRecallSchema() async throws {
+        guard !recallSchemaReady else { return }
+        // The replaced Swift chunk/index generations are reconstructible and
+        // must never become a rollback authority after the Rust cutover.
+        _ = try await db.execute("DROP TABLE IF EXISTS chunks_vec")
+        _ = try await db.execute("DROP TABLE IF EXISTS chunks_fts")
+        _ = try await db.execute("DROP TABLE IF EXISTS chunks_meta")
         _ = try await db.execute(
             """
             CREATE TABLE IF NOT EXISTS core_recall_meta_v1(
@@ -103,6 +109,7 @@ extension VectorIndex {
             )
             """
         )
+        recallSchemaReady = true
     }
 
     private func insertCoreRecallSpan(

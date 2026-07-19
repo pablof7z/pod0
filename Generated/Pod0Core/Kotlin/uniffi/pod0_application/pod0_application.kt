@@ -7283,7 +7283,25 @@ sealed class RecallStage {
     object NoEvidence : RecallStage()
 
 
+    object TranscriptMissing : RecallStage()
+
+
+    object IndexMissing : RecallStage()
+
+
+    object Indexing : RecallStage()
+
+
     object IndexUnavailable : RecallStage()
+
+
+    object ProviderUnavailable : RecallStage()
+
+
+    object CorruptArtifact : RecallStage()
+
+
+    object Interrupted : RecallStage()
 
 
     object Cancelled : RecallStage()
@@ -7323,10 +7341,16 @@ public object FfiConverterTypeRecallStage : FfiConverterRustBuffer<RecallStage>{
                 )
             3 -> RecallStage.Ready
             4 -> RecallStage.NoEvidence
-            5 -> RecallStage.IndexUnavailable
-            6 -> RecallStage.Cancelled
-            7 -> RecallStage.Failed
-            8 -> RecallStage.Unsupported(
+            5 -> RecallStage.TranscriptMissing
+            6 -> RecallStage.IndexMissing
+            7 -> RecallStage.Indexing
+            8 -> RecallStage.IndexUnavailable
+            9 -> RecallStage.ProviderUnavailable
+            10 -> RecallStage.CorruptArtifact
+            11 -> RecallStage.Interrupted
+            12 -> RecallStage.Cancelled
+            13 -> RecallStage.Failed
+            14 -> RecallStage.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -7359,7 +7383,43 @@ public object FfiConverterTypeRecallStage : FfiConverterRustBuffer<RecallStage>{
                 4UL
             )
         }
+        is RecallStage.TranscriptMissing -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is RecallStage.IndexMissing -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is RecallStage.Indexing -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
         is RecallStage.IndexUnavailable -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is RecallStage.ProviderUnavailable -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is RecallStage.CorruptArtifact -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is RecallStage.Interrupted -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
@@ -7405,20 +7465,44 @@ public object FfiConverterTypeRecallStage : FfiConverterRustBuffer<RecallStage>{
                 buf.putInt(4)
                 Unit
             }
-            is RecallStage.IndexUnavailable -> {
+            is RecallStage.TranscriptMissing -> {
                 buf.putInt(5)
                 Unit
             }
-            is RecallStage.Cancelled -> {
+            is RecallStage.IndexMissing -> {
                 buf.putInt(6)
                 Unit
             }
-            is RecallStage.Failed -> {
+            is RecallStage.Indexing -> {
                 buf.putInt(7)
                 Unit
             }
-            is RecallStage.Unsupported -> {
+            is RecallStage.IndexUnavailable -> {
                 buf.putInt(8)
+                Unit
+            }
+            is RecallStage.ProviderUnavailable -> {
+                buf.putInt(9)
+                Unit
+            }
+            is RecallStage.CorruptArtifact -> {
+                buf.putInt(10)
+                Unit
+            }
+            is RecallStage.Interrupted -> {
+                buf.putInt(11)
+                Unit
+            }
+            is RecallStage.Cancelled -> {
+                buf.putInt(12)
+                Unit
+            }
+            is RecallStage.Failed -> {
+                buf.putInt(13)
+                Unit
+            }
+            is RecallStage.Unsupported -> {
+                buf.putInt(14)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }

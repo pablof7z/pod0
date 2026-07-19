@@ -70,6 +70,7 @@ mod runtime_playback_transitions;
 mod runtime_projection;
 mod runtime_recall_commands;
 mod runtime_recall_observations;
+mod runtime_recall_rerank;
 mod runtime_recall_state;
 #[cfg(test)]
 mod runtime_recall_test_support;

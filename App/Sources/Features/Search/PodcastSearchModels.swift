@@ -1,4 +1,5 @@
 import Foundation
+import Pod0Core
 
 // MARK: - Search models
 
@@ -26,10 +27,13 @@ struct PodcastEpisodeSearchHit: Identifiable, Hashable, Sendable {
 }
 
 struct PodcastTranscriptSearchHit: Identifiable, Hashable, Sendable {
-    var chunk: Chunk
-    var score: Float
-    var snippet: String
-    var id: UUID { chunk.id }
+    let evidence: RecallEvidenceProjection
+
+    var id: String { evidence.spanId.stableString }
+    var episodeID: UUID? { evidence.episodeId.uuid }
+    var podcastID: UUID? { evidence.podcastId.uuid }
+    var snippet: String { evidence.excerpt }
+    var startMilliseconds: UInt64 { evidence.startMilliseconds }
 }
 
 enum PodcastSearchEngine {

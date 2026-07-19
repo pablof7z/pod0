@@ -236,17 +236,11 @@ final class ChapterArtifactsJobExecutor: JobExecutor {
 
 @MainActor
 final class MetadataIndexJobExecutor: JobExecutor {
-    private let store: AppStateStore
-    init(store: AppStateStore) { self.store = store }
+    init(store: AppStateStore) { _ = store }
 
     func run(_ context: JobAttemptContext) async throws -> JobOutcome {
-        guard store.episode(id: context.job.subjectID) != nil else { return .obsolete }
-        let receipt = try await EpisodeMetadataIndexer.shared.indexEpisode(
-            id: context.job.subjectID,
-            appStore: store,
-            generation: context.job.inputVersion
-        )
-        return .succeeded(outputVersion: try workflowEncoder.encode(receipt).base64EncodedString())
+        _ = context
+        return .obsolete
     }
 }
 

@@ -229,7 +229,7 @@ extension AgentTools {
         let scope = (args["scope"] as? String)?.trimmed.nilIfEmpty
         let limit = clampedLimit(args["limit"], default: podcastSearchDefaultLimit, max: podcastSearchMaxLimit)
         do {
-            let hits = try await deps.rag.searchEpisodes(query: query, scope: scope, limit: limit)
+            let hits = try await deps.knowledge.searchEpisodes(query: query, scope: scope, limit: limit)
             let rows = hits.map(serializeEpisodeHit)
             return toolSuccess([
                 "query": query,
@@ -242,24 +242,24 @@ extension AgentTools {
     }
 
     // MARK: - query_transcripts
-
     private static func queryTranscriptsTool(args: [String: Any], deps: PodcastAgentToolDeps) async -> String {
         guard let query = (args["query"] as? String)?.trimmed, !query.isEmpty else {
             return toolError("Missing or empty 'query'")
         }
         let scope = (args["scope"] as? String)?.trimmed.nilIfEmpty
         let limit = clampedLimit(args["limit"], default: podcastTranscriptDefaultLimit, max: podcastSearchMaxLimit)
-        do {
-            let hits = try await deps.rag.queryTranscripts(query: query, scope: scope, limit: limit)
-            let rows = hits.map(serializeTranscriptHit)
-            return toolSuccess([
-                "query": query,
-                "total_found": rows.count,
-                "results": rows,
-            ])
-        } catch {
-            return toolError("query_transcripts failed: \(error.localizedDescription)")
-        }
+        let projection = await deps.knowledge.queryTranscriptEvidence(
+            query: query,
+            scope: scope,
+            limit: limit
+        )
+        let rows = projection.evidence.map(serializeRecallEvidence)
+        return toolSuccess([
+            "query_id": projection.queryId.stableString,
+            "status": projection.stage.stableName,
+            "total_found": rows.count,
+            "results": rows,
+        ])
     }
 
     // MARK: - perplexity_search
@@ -326,7 +326,7 @@ extension AgentTools {
         }
         let k = clampedLimit(args["k"], default: findSimilarDefaultK, max: 20)
         do {
-            let hits = try await deps.rag.findSimilarEpisodes(seedEpisodeID: seed, k: k)
+            let hits = try await deps.knowledge.findSimilarEpisodes(seedEpisodeID: seed, k: k)
             let rows = hits.map(serializeEpisodeHit)
             return toolSuccess([
                 "seed_episode_id": seed,

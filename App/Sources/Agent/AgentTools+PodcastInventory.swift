@@ -5,7 +5,7 @@ import Foundation
 // The four "what's in my library?" tools — `list_subscriptions`,
 // `list_episodes`, `list_in_progress`, `list_recent_unplayed`. These let
 // the agent answer plain-English questions about the user's existing
-// library state without spending a search or RAG call. Split out of
+// library state without spending a semantic recall call. Split out of
 // `AgentTools+Podcast.swift` to keep that file under the 500-line hard
 // limit set by `AGENTS.md`.
 

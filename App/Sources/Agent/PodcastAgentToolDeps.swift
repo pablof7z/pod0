@@ -117,7 +117,7 @@ public protocol PodcastLibraryProtocol: Sendable {
 
 // MARK: - Inventory queries
 
-/// Plain-English library inventory queries. None of these go through RAG —
+/// Plain-English library inventory queries. None of these use semantic recall —
 /// the agent uses them to answer "what am I subscribed to?" or "what was I
 /// listening to?" without spending a search budget. Detail / discovery /
 /// content lookups still go through the search protocol.
@@ -224,7 +224,7 @@ public protocol PodcastSubscribeProtocol: Sendable {
 /// Bundle of every protocol the podcast tool surface needs. Construct once at
 /// app startup; pass to `AgentTools.dispatchPodcast(...)` for every tool call.
 struct PodcastAgentToolDeps: Sendable {
-    let rag: PodcastAgentRAGSearchProtocol
+    let knowledge: PodcastAgentKnowledgeSearchProtocol
     let summarizer: EpisodeSummarizerProtocol
     let fetcher: EpisodeFetcherProtocol
     let playback: PlaybackHostProtocol
@@ -242,7 +242,7 @@ struct PodcastAgentToolDeps: Sendable {
     /// its source conversation so the player can surface a tappable link.
     let chatConversationID: UUID?
     init(
-        rag: PodcastAgentRAGSearchProtocol,
+        knowledge: PodcastAgentKnowledgeSearchProtocol,
         summarizer: EpisodeSummarizerProtocol,
         fetcher: EpisodeFetcherProtocol,
         playback: PlaybackHostProtocol,
@@ -257,7 +257,7 @@ struct PodcastAgentToolDeps: Sendable {
         ownedPodcasts: AgentOwnedPodcastManagerProtocol,
         chatConversationID: UUID? = nil
     ) {
-        self.rag = rag
+        self.knowledge = knowledge
         self.summarizer = summarizer
         self.fetcher = fetcher
         self.playback = playback
@@ -275,7 +275,7 @@ struct PodcastAgentToolDeps: Sendable {
 
     func withChatConversationID(_ id: UUID?) -> PodcastAgentToolDeps {
         PodcastAgentToolDeps(
-            rag: rag, summarizer: summarizer,
+            knowledge: knowledge, summarizer: summarizer,
             fetcher: fetcher, playback: playback, library: library,
             inventory: inventory, categories: categories,
             perplexity: perplexity,

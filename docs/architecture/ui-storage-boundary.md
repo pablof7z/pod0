@@ -18,9 +18,10 @@ and deletion target. A new exception is architecture work and must not be added
 solely to make CI green.
 
 The current exceptions expose real migration seams rather than approved final
-architecture: direct `WorkflowRuntime`, `TranscriptStore`, `ChatHistoryStore`,
-and `RAGService` use. Issues #51, #50, #52, #59, #60, and #69 remove them through
-observable projections and typed commands.
+architecture: direct `TranscriptStore` and `ChatHistoryStore` use. Issues #59
+and #60 remove them through observable projections and typed commands. Recall
+and search no longer carry exceptions: they consume the typed shared-core
+projection, and UI access to `RecallCapabilityService` is prohibited.
 
 Generated UniFFI bindings are not presentation code and will live outside the
 scanned feature roots. Hand-authored native adapters remain subject to the

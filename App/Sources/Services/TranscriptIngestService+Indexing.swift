@@ -6,8 +6,8 @@ extension TranscriptIngestService {
     func indexTranscript(
         episodeID: UUID,
         generation: String
-    ) async throws -> VectorArtifactReceipt {
-        guard let appStore = rag.appStore,
+    ) async throws -> SharedEvidenceReceipt {
+        guard let appStore,
               let episode = appStore.episode(id: episodeID) else {
             throw JobFailure(classification: .invalidInput, message: "Episode no longer exists")
         }
@@ -18,26 +18,22 @@ extension TranscriptIngestService {
                 message: "Transcript is not available for indexing."
             )
         }
-        let chunks = chunkBuilder.build(from: ChunkableTranscript(
-            transcript: transcript,
-            podcastID: episode.podcastID
-        ))
-        let receipt = try await rag.index.stageArtifact(
-            chunks: chunks,
-            episodeID: episode.id,
-            generation: generation,
-            artifactKind: VectorIndex.semanticArtifactKind
-        )
-        Self.logger.info(
-            "indexed \(chunks.count, privacy: .public) transcript chunks for \(episode.id, privacy: .public)"
-        )
-        if let selectedData = store.verifiedData(episodeID: episodeID) {
-            appStore.sharedLibrary?.scheduleTranscriptEvidenceRebuild(
-                transcript: transcript,
-                podcastID: episode.podcastID,
-                selectedData: selectedData
+        guard let selectedData = store.verifiedData(episodeID: episodeID),
+              let sharedLibrary = appStore.sharedLibrary else {
+            throw JobFailure(
+                classification: .missingDependency,
+                message: "Shared evidence storage is unavailable."
             )
         }
+        let receipt = try await sharedLibrary.rebuildTranscriptEvidence(
+            transcript: transcript,
+            podcastID: episode.podcastID,
+            selectedData: selectedData,
+            inputVersion: generation
+        )
+        Self.logger.info(
+            "indexed \(receipt.spanCount, privacy: .public) shared evidence spans for \(episode.id, privacy: .public)"
+        )
         return receipt
     }
 }

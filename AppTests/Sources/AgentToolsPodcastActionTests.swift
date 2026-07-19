@@ -220,7 +220,7 @@ final class AgentToolsPodcastActionTests: XCTestCase {
         let library = MockLibrary()
         return DepsBundle(
             bundle: PodcastAgentToolDeps(
-                rag: MockRAG(),
+                knowledge: MockKnowledgeSearch(),
                 summarizer: MockSummarizer(),
                 fetcher: fetcher,
                 playback: playback,

@@ -14,7 +14,7 @@ final class DesiredStatePlannerTests: XCTestCase {
 
         let first = planner.plan(input)
         XCTAssertEqual(first, planner.plan(input))
-        XCTAssertEqual(Set(first.map(\.kind)), [.transcriptIngest, .metadataIndex])
+        XCTAssertEqual(Set(first.map(\.kind)), [.transcriptIngest])
 
         let transcript = artifact(
             kind: .transcript, subject: episode.id,
@@ -26,15 +26,13 @@ final class DesiredStatePlannerTests: XCTestCase {
         ))
         XCTAssertEqual(
             Set(withTranscript.map(\.kind)),
-            [.metadataIndex, .transcriptIndex, .chapterArtifacts]
+            [.transcriptIndex, .chapterArtifacts]
         )
 
-        let metadataJob = try XCTUnwrap(withTranscript.first { $0.kind == .metadataIndex })
         let indexJob = try XCTUnwrap(withTranscript.first { $0.kind == .transcriptIndex })
         let chapterJob = try XCTUnwrap(withTranscript.first { $0.kind == .chapterArtifacts })
         let completeArtifacts = [
             transcript,
-            artifact(kind: .metadataIndex, subject: episode.id, input: metadataJob.inputVersion),
             artifact(kind: .semanticIndex, subject: episode.id, input: indexJob.inputVersion),
             artifact(kind: .chapters, subject: episode.id, input: chapterJob.inputVersion),
             artifact(kind: .adSegments, subject: episode.id, input: chapterJob.inputVersion),
@@ -49,7 +47,7 @@ final class DesiredStatePlannerTests: XCTestCase {
             episodes: [episode], settings: settings, artifacts: completeArtifacts,
             transcriptDesiredEpisodeIDs: [episode.id], scheduledTasks: [], now: input.now
         ))
-        XCTAssertEqual(Set(modelChanged.map(\.kind)), [.metadataIndex, .transcriptIndex])
+        XCTAssertEqual(Set(modelChanged.map(\.kind)), [.transcriptIndex])
     }
 
     func testPolicyAndInputChangesProduceDeterministicPlanChanges() {
@@ -227,10 +225,11 @@ final class WorkflowReconcilerTests: XCTestCase {
     }
 
     func testSecondPassIsNoOpAndDerivableJournalWipeRecreatesOwedWork() throws {
-        let episode = Episode(
+        var episode = Episode(
             podcastID: UUID(), guid: "owed", title: "Owed", pubDate: Date(),
             enclosureURL: URL(string: "https://example.com/owed.mp3")!
         )
+        episode.chaptersURL = URL(string: "https://example.com/owed-chapters.json")
         appStore.installEpisodeFixtures([episode], forPodcast: episode.podcastID)
         try jobs.removeAll()
         let reconciler = Reconciler(
@@ -239,11 +238,11 @@ final class WorkflowReconcilerTests: XCTestCase {
 
         XCTAssertEqual(try reconciler.reconcile().ensured, 1)
         XCTAssertEqual(try reconciler.reconcile().ensured, 0)
-        XCTAssertEqual(try jobs.allJobs().map(\.kind), [.metadataIndex])
+        XCTAssertEqual(try jobs.allJobs().map(\.kind), [.publisherChapters])
 
         try jobs.removeDerivableJobs()
         XCTAssertEqual(try reconciler.reconcile().ensured, 1)
-        XCTAssertEqual(try jobs.allJobs().map(\.kind), [.metadataIndex])
+        XCTAssertEqual(try jobs.allJobs().map(\.kind), [.publisherChapters])
     }
 
     func testReconcilerNeverInventsOrObsoletesAuthoritativeOccurrence() throws {

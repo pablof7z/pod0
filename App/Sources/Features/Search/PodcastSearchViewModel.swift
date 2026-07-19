@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import Pod0Core
 
 @Observable
 @MainActor
@@ -11,11 +12,11 @@ final class PodcastSearchViewModel {
     private(set) var isSearchingTranscripts = false
     private(set) var transcriptError: String?
 
-    private let rag: RAGSearch
+    private weak var recall: (any SharedRecallSearching)?
     private var activeTranscriptQuery: String?
 
-    init(rag: RAGSearch? = nil) {
-        self.rag = rag ?? RAGService.shared.search
+    func attach(recall: (any SharedRecallSearching)?) {
+        self.recall = recall
     }
 
     func searchTranscripts() async {
@@ -38,31 +39,29 @@ final class PodcastSearchViewModel {
             }
         }
 
-        do {
-            // rerank: false — search fires on every debounced keystroke, so
-            // the extra ~220 ms the Cohere reranker adds (per RAGSearch.swift
-            // latency budget) exceeds the perceptual threshold for live
-            // typing. HomeRelatedSheet can afford rerank: true because it
-            // runs a single query on sheet open, not per-keystroke.
-            let matches = try await rag.search(
-                query: trimmed,
-                scope: .all,
-                options: .init(k: 8, overfetchMultiplier: 3, hybrid: true, rerank: false)
-            )
-            guard activeTranscriptQuery == trimmed, query.trimmed == trimmed else { return }
-            transcriptResults = matches.map { match in
-                PodcastTranscriptSearchHit(
-                    chunk: match.chunk,
-                    score: match.score,
-                    snippet: match.chunk.text
-                )
-            }
-        } catch is CancellationError {
-            return
-        } catch {
-            guard activeTranscriptQuery == trimmed, query.trimmed == trimmed else { return }
+        guard let recall else {
             transcriptResults = []
-            transcriptError = UserFacingFailurePresenter.make(error: error, canRetry: true).message
+            transcriptError = "Transcript recall is unavailable until Pod0 finishes opening."
+            return
+        }
+        let projection = await recall.recall(query: trimmed, scope: .library, limit: 8)
+        guard activeTranscriptQuery == trimmed, query.trimmed == trimmed else { return }
+        if projection.stage == .ready {
+            transcriptResults = projection.evidence.map(PodcastTranscriptSearchHit.init)
+            return
+        }
+        transcriptResults = []
+        transcriptError = switch projection.stage {
+        case .noEvidence: nil
+        case .transcriptMissing: "Prepare a transcript to search what was said."
+        case .indexMissing, .indexing: "Transcript search is still being prepared."
+        case .providerUnavailable: "The recall provider is unavailable."
+        case .corruptArtifact: "A transcript index needs to be rebuilt."
+        case .cancelled: nil
+        case .interrupted: "Search was interrupted. Try again."
+        case .indexUnavailable, .failed, .unsupported, .queued, .running:
+            "Transcript search is unavailable right now."
+        case .ready: nil
         }
     }
 }

@@ -10,7 +10,7 @@ struct AgentAssistantMessageView: View {
             AgentAvatarView()
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
                 messageText
-                if RecallFeature.isEnabled, let answer = message.recallAnswer {
+                if let answer = message.recallAnswer {
                     ForEach(answer.evidence) { evidence in
                         RecallEvidenceCard(evidence: evidence) {
                             onOpenEvidence(evidence)

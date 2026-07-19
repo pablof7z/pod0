@@ -225,7 +225,7 @@ final class WorkflowRuntime {
                 artifacts: artifactRepository
             )
             _ = try reconciler.reconcile()
-            try await reconciler.repairVectorSelections()
+            try await reconciler.verifySharedEvidenceSelections()
             if signalOnly { await coordinator.signal() }
             else { await coordinator.drainDueJobs() }
             repairCompletedScheduledOccurrences()

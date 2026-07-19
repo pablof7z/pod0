@@ -53,7 +53,7 @@ final class CoreRecallVerticalSliceTests: XCTestCase {
             feedHost: VerticalSliceFeedHost()
         ) else { return XCTFail("Expected an authoritative shared store") }
         await attachRecall(to: first, index: index, embedder: embedder)
-        let firstResult: OperationResult?
+        let firstResult: SharedEvidenceReceipt
         do {
             firstResult = try await first.rebuildTranscriptEvidence(
                 transcript: transcript,
@@ -65,13 +65,32 @@ final class CoreRecallVerticalSliceTests: XCTestCase {
             XCTFail("Evidence rebuild failed: \(String(describing: operation?.failure?.code))")
             return
         }
-        guard let firstResult,
-              case .evidenceRebuilt(let rebuiltEpisode, let generation, let spanCount) = firstResult else {
-            return XCTFail("Expected a completed Rust evidence rebuild")
-        }
-        XCTAssertEqual(rebuiltEpisode, EpisodeId(uuid: episodeID))
-        XCTAssertGreaterThan(spanCount, 0)
+        XCTAssertEqual(firstResult.episodeID, episodeID)
+        XCTAssertGreaterThan(firstResult.spanCount, 0)
         XCTAssertEqual(try Data(contentsOf: selectedURL), selectedData)
+        let firstRecall = await first.recall(
+            query: "durable evidence",
+            scope: .episode(episodeId: EpisodeId(uuid: episodeID)),
+            limit: 3
+        )
+        XCTAssertEqual(firstRecall.stage, .ready)
+        XCTAssertEqual(firstRecall.evidence.first?.generationId.stableString, firstResult.generationID)
+        XCTAssertEqual(firstRecall.evidence.first?.startMilliseconds, 12_000)
+
+        let recallStarted = expectation(description: "Recall capability started")
+        await first.deferredRecallHost.attach(CancellationRecallHost(started: recallStarted))
+        let cancelledTask = Task {
+            await first.recall(
+                query: "cancel this recall",
+                scope: .episode(episodeId: EpisodeId(uuid: episodeID)),
+                limit: 3
+            )
+        }
+        await fulfillment(of: [recallStarted], timeout: 1)
+        cancelledTask.cancel()
+        let cancelled = await cancelledTask.value
+        XCTAssertEqual(cancelled.stage, .cancelled)
+        XCTAssertTrue(cancelled.evidence.isEmpty)
         first.shutdown()
 
         let reopenedFacade = try Pod0Facade.open(storePath: persistence.sharedCoreStoreURL.path)
@@ -81,8 +100,8 @@ final class CoreRecallVerticalSliceTests: XCTestCase {
             maxItems: 16
         )).projection else { return XCTFail("Expected restored evidence projection") }
         XCTAssertEqual(restored.stage, .ready)
-        XCTAssertEqual(restored.generationId, generation)
-        XCTAssertEqual(restored.totalSpans, spanCount)
+        XCTAssertEqual(restored.generationId?.stableString, firstResult.generationID)
+        XCTAssertEqual(restored.totalSpans, firstResult.spanCount)
 
         let reopened = await makeClient(
             facade: reopenedFacade,
@@ -94,8 +113,18 @@ final class CoreRecallVerticalSliceTests: XCTestCase {
             podcastID: podcastID,
             selectedData: selectedData
         )
+        let reopenedRecall = await reopened.recall(
+            query: "selected transcript",
+            scope: .episode(episodeId: EpisodeId(uuid: episodeID)),
+            limit: 3
+        )
+        XCTAssertEqual(reopenedRecall.stage, .ready)
+        XCTAssertEqual(
+            reopenedRecall.evidence.first?.generationId.stableString,
+            firstResult.generationID
+        )
         let embeddingCalls = await embedder.callCount
-        XCTAssertEqual(embeddingCalls, 1)
+        XCTAssertEqual(embeddingCalls, 3)
         XCTAssertEqual(try Data(contentsOf: selectedURL), selectedData)
         reopened.shutdown()
     }
@@ -159,5 +188,22 @@ private struct VerticalSliceFeedHost: CoreFeedHosting {
         deadline: Date?
     ) async -> HostObservation {
         .failed(code: .platformFailure, safeDetail: nil)
+    }
+}
+
+private struct CancellationRecallHost: CoreRecallHosting, @unchecked Sendable {
+    let started: XCTestExpectation
+
+    func execute(_ request: HostRequest) async -> HostObservation {
+        guard case .embedRecallQuery = request else {
+            return .failed(code: .invalidResponse, safeDetail: nil)
+        }
+        started.fulfill()
+        do {
+            try await Task.sleep(for: .seconds(30))
+            return .failed(code: .timedOut, safeDetail: nil)
+        } catch {
+            return .cancelled
+        }
     }
 }

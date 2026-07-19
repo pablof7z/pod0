@@ -95,7 +95,7 @@ extension AgentTools {
             ),
             podcastTool(
                 name: PodcastNames.queryTranscripts,
-                description: "RAG search over transcript chunks. Returns timestamped excerpts with speaker labels. Use this when the user asks 'what did they say about X?' and you need direct quotes to ground the answer.",
+                description: "Evidence search over prepared transcripts. Returns exact timestamped excerpts and provenance. Use this when the user asks 'what did they say about X?' and you need evidence to ground the answer.",
                 properties: [
                     "query": ["type": "string", "description": "Natural-language question."],
                     "scope": ["type": "string", "description": "Optional scope: an episode_id, a podcast_id, or omit for all-corpus search."],

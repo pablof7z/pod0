@@ -4,7 +4,8 @@ use pod0_application::{
     OperationStage, RecallEvidenceProjection, RecallQuery, RecallScope, RecallStage,
 };
 use pod0_domain::{
-    CancellationId, CommandId, HostRequestId, RecallQueryId, UnixTimestampMilliseconds,
+    CancellationId, CommandId, EpisodeId, HostRequestId, RecallQueryId, TranscriptArtifactStatus,
+    UnixTimestampMilliseconds,
 };
 use sha2::{Digest, Sha256};
 
@@ -49,6 +50,10 @@ impl FacadeState {
             );
             return;
         }
+        if self.scope_has_pending_evidence_index(query.scope) {
+            self.complete_recall(query_id, RecallStage::Indexing, Vec::new());
+            return;
+        }
         let has_evidence = self
             .evidence_store
             .as_ref()
@@ -65,7 +70,12 @@ impl FacadeState {
             });
         match has_evidence {
             Ok(false) => {
-                self.complete_recall(query_id, RecallStage::NoEvidence, Vec::new());
+                let stage = if self.scope_has_available_transcript(query.scope) {
+                    RecallStage::IndexMissing
+                } else {
+                    RecallStage::TranscriptMissing
+                };
+                self.complete_recall(query_id, stage, Vec::new());
                 return;
             }
             Err(_) => {
@@ -88,6 +98,40 @@ impl FacadeState {
                     .unwrap_or(u16::MAX),
             },
         );
+    }
+
+    fn scope_has_pending_evidence_index(&self, scope: RecallScope) -> bool {
+        self.pending_evidence_indexes
+            .values()
+            .any(|pending| self.episode_matches_scope(pending.episode_id, scope))
+    }
+
+    fn scope_has_available_transcript(&self, scope: RecallScope) -> bool {
+        self.listening.episodes.iter().any(|episode| {
+            self.episode_matches_scope(episode.episode_id, scope)
+                && matches!(
+                    episode.transcript,
+                    TranscriptArtifactStatus::Available { .. }
+                )
+        })
+    }
+
+    fn episode_matches_scope(&self, episode_id: EpisodeId, scope: RecallScope) -> bool {
+        let episode = self
+            .listening
+            .episodes
+            .iter()
+            .find(|episode| episode.episode_id == episode_id);
+        match scope {
+            RecallScope::Library => episode.is_some(),
+            RecallScope::Podcast { podcast_id } => {
+                episode.is_some_and(|episode| episode.podcast_id == podcast_id)
+            }
+            RecallScope::Episode {
+                episode_id: scoped_id,
+            } => episode_id == scoped_id,
+            RecallScope::Unsupported { .. } => false,
+        }
     }
 
     pub(super) fn queue_recall_request(

@@ -1,3 +1,4 @@
+use crate::runtime_playback_test_support::PlaybackFixture;
 use crate::runtime_recall_test_support::*;
 use crate::*;
 
@@ -102,9 +103,24 @@ fn invalid_missing_and_unsupported_queries_have_explicit_terminal_state() {
         RecallStage::Unsupported { wire_code: 77 }
     );
 
-    fixture.dispatch(23, 23, "question without selected evidence");
-    assert_eq!(fixture.projection(23).stage, RecallStage::NoEvidence);
+    fixture.dispatch(23, 23, "question without a prepared transcript");
+    assert_eq!(fixture.projection(23).stage, RecallStage::TranscriptMissing);
     assert!(fixture.base.facade.next_host_requests(u16::MAX).is_empty());
+
+    let transcript_without_index = PlaybackFixture::new_with_transcript(true);
+    transcript_without_index.facade.dispatch(recall_command(
+        26,
+        26,
+        "question without selected evidence",
+        RecallScope::Episode {
+            episode_id: transcript_without_index.episode_id,
+        },
+        2,
+    ));
+    assert_eq!(
+        recall_projection(&transcript_without_index.facade, 26).stage,
+        RecallStage::IndexMissing
+    );
 
     let unavailable = Pod0Facade::new();
     unavailable.dispatch(recall_command(24, 24, "question", RecallScope::Library, 2));
@@ -131,8 +147,68 @@ fn invalid_missing_and_unsupported_queries_have_explicit_terminal_state() {
     );
     assert_eq!(
         provider_failure.projection(25).stage,
-        RecallStage::IndexUnavailable
+        RecallStage::ProviderUnavailable
     );
+}
+
+#[test]
+fn indexing_empty_results_and_process_restart_are_explicit() {
+    let indexing = RecallFixture::new(false);
+    indexing.base.facade.dispatch(CommandEnvelope {
+        command_id: CommandId::from_parts(40, 1),
+        cancellation_id: CancellationId::from_parts(41, 1),
+        expected_revision: None,
+        command: ApplicationCommand::RebuildTranscriptEvidence {
+            input: evidence_input(&indexing.base),
+            policy: evidence_policy(),
+        },
+    });
+    indexing.dispatch(41, 41, "question during indexing");
+    assert_eq!(indexing.projection(41).stage, RecallStage::Indexing);
+
+    let empty = RecallFixture::new(true);
+    empty.dispatch(42, 42, "evidence-free result");
+    let embed = empty.base.facade.next_host_requests(1).pop().unwrap();
+    record(
+        &empty.base.facade,
+        &embed,
+        HostObservation::RecallQueryEmbedded {
+            query_id: RecallQueryId::from_parts(32, 42),
+            embedding: RecallEmbeddingVector { values: vec![1] },
+        },
+    );
+    let retrieve = empty.base.facade.next_host_requests(1).pop().unwrap();
+    record(
+        &empty.base.facade,
+        &retrieve,
+        HostObservation::RecallCandidatesRetrieved {
+            query_id: RecallQueryId::from_parts(32, 42),
+            candidates: Vec::new(),
+        },
+    );
+    assert_eq!(empty.projection(42).stage, RecallStage::NoEvidence);
+
+    let interrupted = RecallFixture::new(true);
+    interrupted.dispatch(43, 43, "interrupted query");
+    let reopened =
+        Pod0Facade::open(interrupted.base.target.to_string_lossy().into_owned()).unwrap();
+    assert_eq!(
+        recall_projection(&reopened, 43).stage,
+        RecallStage::Interrupted
+    );
+    reopened.dispatch(recall_command(
+        44,
+        43,
+        "interrupted query",
+        RecallScope::Episode {
+            episode_id: interrupted.base.episode_id,
+        },
+        2,
+    ));
+    assert!(matches!(
+        recall_projection(&reopened, 43).stage,
+        RecallStage::Queued | RecallStage::Running { .. }
+    ));
 }
 
 #[test]
@@ -165,7 +241,7 @@ fn malformed_candidates_fail_closed_and_optional_rerank_falls_back() {
             }],
         },
     );
-    assert_eq!(malformed.projection(30).stage, RecallStage::Failed);
+    assert_eq!(malformed.projection(30).stage, RecallStage::CorruptArtifact);
 
     let fallback = RecallFixture::new(true);
     fallback.dispatch(31, 31, "habit cues");
@@ -186,105 +262,5 @@ fn malformed_candidates_fail_closed_and_optional_rerank_falls_back() {
             .evidence
             .iter()
             .all(|item| item.score.rerank_rank.is_none())
-    );
-}
-
-fn run_ready_recall(rerank_failure: bool) -> RecallResultProjection {
-    let fixture = RecallFixture::new(true);
-    fixture.dispatch(1, 1, "  durable   habit cues ");
-    advance_to_rerank(&fixture, 1);
-    let rerank = fixture.base.facade.next_host_requests(1).pop().unwrap();
-    let HostRequest::RerankRecallCandidates { candidates, .. } = &rerank.request else {
-        panic!("expected rerank request");
-    };
-    let revision = fixture
-        .base
-        .facade
-        .snapshot(recall_request(1))
-        .state_revision;
-    let observation = if rerank_failure {
-        HostObservation::Failed {
-            code: HostFailureCode::ProviderUnavailable,
-            safe_detail: None,
-        }
-    } else {
-        HostObservation::RecallCandidatesReranked {
-            query_id: RecallQueryId::from_parts(32, 1),
-            rankings: vec![
-                RecallRerankObservation {
-                    span_id: candidates[1].span_id,
-                    rank: 1,
-                },
-                RecallRerankObservation {
-                    span_id: candidates[0].span_id,
-                    rank: 2,
-                },
-            ],
-        }
-    };
-    record(&fixture.base.facade, &rerank, observation.clone());
-    let projection = fixture.projection(1);
-    record(&fixture.base.facade, &rerank, observation);
-    assert_eq!(
-        fixture
-            .base
-            .facade
-            .snapshot(recall_request(1))
-            .state_revision,
-        StateRevision::new(revision.value + 1)
-    );
-    projection
-}
-
-fn advance_to_rerank(fixture: &RecallFixture, query_id: u64) {
-    let embed = fixture.base.facade.next_host_requests(1).pop().unwrap();
-    let HostRequest::EmbedRecallQuery { text, .. } = &embed.request else {
-        panic!("expected embedding request");
-    };
-    assert!(!text.contains("  "));
-    record(
-        &fixture.base.facade,
-        &embed,
-        HostObservation::RecallQueryEmbedded {
-            query_id: RecallQueryId::from_parts(32, query_id),
-            embedding: RecallEmbeddingVector {
-                values: vec![100, -200, 300],
-            },
-        },
-    );
-    assert_eq!(
-        fixture.projection(query_id).stage,
-        RecallStage::Running {
-            phase: RecallPhase::Retrieving
-        }
-    );
-    let retrieve = fixture.base.facade.next_host_requests(1).pop().unwrap();
-    let candidates = fixture
-        .artifact
-        .spans
-        .iter()
-        .take(2)
-        .enumerate()
-        .map(|(index, span)| RecallCandidateObservation {
-            episode_id: fixture.base.episode_id,
-            generation_id: fixture.artifact.generation_id,
-            span_id: span.span_id,
-            vector_rank: Some(u16::try_from(index + 1).unwrap()),
-            lexical_rank: Some(u16::try_from(2 - index).unwrap()),
-        })
-        .collect();
-    record(
-        &fixture.base.facade,
-        &retrieve,
-        HostObservation::RecallCandidatesRetrieved {
-            query_id: RecallQueryId::from_parts(32, query_id),
-            candidates,
-        },
-    );
-    assert_eq!(
-        fixture.projection(query_id).stage,
-        RecallStage::Running {
-            phase: RecallPhase::Reranking
-        }
     );
 }

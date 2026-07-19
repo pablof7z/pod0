@@ -8,7 +8,7 @@ import Observation
 /// `ThreadingMention`s the timeline view renders.
 ///
 /// v1 is intentionally thin — the heavy lifting (semantic clustering over
-/// `RAGService`, contradiction detection) is stubbed out so the surfaces can
+/// shared recall, contradiction detection) is stubbed out so the surfaces can
 /// be wired and reviewed end-to-end without blocking on the full pipeline.
 /// The public API here matches what the views and the eventual real
 /// recompute will both call:
@@ -19,7 +19,7 @@ import Observation
 ///   deep-links from the in-episode agent.
 ///
 /// The store reference is wired through `attach(store:)` (mirroring the
-/// `RAGService.attach(appStore:)` pattern) so views and the eventual real
+/// capability-host attachment pattern) so views and the eventual real
 /// recompute can call the read/write API without threading the store
 /// through every call site. The view layer also calls
 /// `seedMockIfEmpty(store:)` on first appearance — a debug-only path that
@@ -31,7 +31,7 @@ final class ThreadingInferenceService {
 
     // MARK: Singleton
 
-    /// Process-wide handle. Mirrors `RAGService.shared` so views can reach
+    /// Process-wide handle so views can reach
     /// the service without dependency injection.
     static let shared = ThreadingInferenceService()
 
@@ -69,7 +69,7 @@ final class ThreadingInferenceService {
     }
 
     /// Re-derive every topic + mention from the user's transcript corpus.
-    /// v1 is a stub: the real pipeline (RAG semantic search, noun-phrase
+    /// v1 is a stub: the real pipeline (semantic recall, noun-phrase
     /// extraction, contradiction detection) lands behind a later milestone.
     /// For now the call clears `lastError` and advances `lastRecomputedAt` so
     /// the UI hooks are exercised.
@@ -79,7 +79,7 @@ final class ThreadingInferenceService {
         defer { isRecomputing = false }
         attach(store: store)
         // TODO: run noun-phrase extraction over the transcript corpus hosted
-        // by `RAGService.shared.search`, cluster mentions per canonical slug,
+        // by a bounded shared-core recall projection, cluster mentions per canonical slug,
         // score contradictions via prompt-driven verification, then
         // bulk-replace `state.threadingTopics` and `state.threadingMentions`.
         // Until that ships, `recompute` simply advances the timestamp so the

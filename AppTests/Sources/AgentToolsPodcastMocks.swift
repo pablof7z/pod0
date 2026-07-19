@@ -7,44 +7,12 @@ import Foundation
 // 500-line hard limit. Every mock is `actor` so it satisfies the `Sendable`
 // protocol surface in `PodcastAgentToolDeps`.
 
-actor MockRAG: PodcastAgentRAGSearchProtocol {
-    private let searchResult: [EpisodeHit]
-    private let transcriptsResult: [TranscriptHit]
-    private let similarResult: [EpisodeHit]
-    private(set) var lastSearchLimit: Int = -1
-    private(set) var lastSimilarK: Int = -1
-
-    init(
-        searchEpisodesResult: [EpisodeHit] = [],
-        transcriptsResult: [TranscriptHit] = [],
-        similarResult: [EpisodeHit] = []
-    ) {
-        self.searchResult = searchEpisodesResult
-        self.transcriptsResult = transcriptsResult
-        self.similarResult = similarResult
-    }
-
-    func searchEpisodes(query: String, scope: PodcastID?, limit: Int) async throws -> [EpisodeHit] {
-        lastSearchLimit = limit
-        return searchResult
-    }
-
-    func queryTranscripts(query: String, scope: String?, limit: Int) async throws -> [TranscriptHit] {
-        return transcriptsResult
-    }
-
-    func findSimilarEpisodes(seedEpisodeID: EpisodeID, k: Int) async throws -> [EpisodeHit] {
-        lastSimilarK = k
-        return similarResult
-    }
-}
-
 actor MockSummarizer: EpisodeSummarizerProtocol {
-    private let result: EpisodeSummary?
-    init(result: EpisodeSummary? = nil) { self.result = result }
+    private let result: Podcastr.EpisodeSummary?
+    init(result: Podcastr.EpisodeSummary? = nil) { self.result = result }
 
-    func summarizeEpisode(episodeID: EpisodeID, length: String?) async throws -> EpisodeSummary {
-        return result ?? EpisodeSummary(episodeID: episodeID, summary: "")
+    func summarizeEpisode(episodeID: EpisodeID, length: String?) async throws -> Podcastr.EpisodeSummary {
+        return result ?? Podcastr.EpisodeSummary(episodeID: episodeID, summary: "")
     }
 }
 

@@ -1,45 +1,39 @@
+import Pod0Core
 import XCTest
 @testable import Podcastr
 
 @MainActor
 final class RecallAnswerServiceTests: XCTestCase {
-    private let chunkID = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
     private let episodeID = UUID(uuidString: "22222222-2222-2222-2222-222222222222")!
     private let podcastID = UUID(uuidString: "33333333-3333-3333-3333-333333333333")!
 
-    func testGoldenRecallAnswerPreservesPlayableCitationIdentityAndProvenance() async {
-        let rag = RecallRAGStub(hits: [goldenHit], readiness: .ready)
-        let service = RecallAnswerService(rag: rag) { episodeID in
-            guard episodeID == self.episodeID else { return nil }
-            return RecallEvidenceMetadata(
-                episodeTitle: "The Habit Loop",
-                podcastTitle: "Practical Minds"
-            )
-        }
+    func testGoldenRecallPreservesEveryCoreIdentityAndPlayableAnchor() async {
+        let projection = goldenProjection()
+        let service = makeService(projection: projection)
 
         let answer = await service.answer(query: "What did I hear about habits?")
 
         XCTAssertEqual(answer.status, .ready)
-        XCTAssertEqual(answer.text, "Small habits become durable when the cue is obvious.")
-        XCTAssertEqual(answer.evidence, [RecallEvidence(
-            chunkID: chunkID,
-            episodeID: episodeID,
-            podcastID: podcastID,
-            episodeTitle: "The Habit Loop",
-            podcastTitle: "Practical Minds",
-            artifactVersion: "transcript-v3",
-            startMilliseconds: 47_125,
-            endMilliseconds: 60_000,
-            excerpt: "Small habits become durable when the cue is obvious.",
-            provenance: "publisher"
-        )])
+        XCTAssertEqual(answer.text, projection.evidence[0].excerpt)
+        let evidence = try? XCTUnwrap(answer.evidence.first)
+        XCTAssertEqual(evidence?.spanID, projection.evidence[0].spanId.stableString)
+        XCTAssertEqual(evidence?.generationID, projection.evidence[0].generationId.stableString)
+        XCTAssertEqual(
+            evidence?.transcriptContentDigest,
+            projection.evidence[0].transcriptContentDigest.stableString
+        )
+        XCTAssertEqual(evidence?.firstSegmentID, projection.evidence[0].firstSegmentId.stableString)
+        XCTAssertEqual(evidence?.lastSegmentID, projection.evidence[0].lastSegmentId.stableString)
+        XCTAssertEqual(evidence?.startMilliseconds, 47_125)
+        XCTAssertEqual(evidence?.endMilliseconds, 60_000)
+        XCTAssertEqual(evidence?.provenance.source, "publisher")
+        XCTAssertEqual(evidence?.provenance.provider, "fixture-provider")
+        XCTAssertEqual(evidence?.score.baseRank, 1)
     }
 
     func testGroundedRecallEmitsContentFreeOutcomeSignals() async {
         let sink = RecordingProductSignalSink()
-        let service = RecallAnswerService(rag: RecallRAGStub(hits: [goldenHit], readiness: .ready), productSignals: sink) { _ in
-            RecallEvidenceMetadata(episodeTitle: "The Habit Loop", podcastTitle: "Practical Minds")
-        }
+        let service = makeService(projection: goldenProjection(), productSignals: sink)
 
         _ = await service.answer(query: "private question about habits")
         let arrived = await ProductSignalTestSupport.eventually {
@@ -52,51 +46,87 @@ final class RecallAnswerServiceTests: XCTestCase {
         XCTAssertEqual(captured.first { $0.name == .recallGrounded }?.outcome, .grounded)
     }
 
-    func testEmptyRecallDistinguishesIndexingMissingAndNoEvidence() async {
-        for (readiness, status) in [
-            (TranscriptCorpusReadiness.indexing, RecallAnswer.Status.indexing),
+    func testEveryKernelTerminalStageRendersExplicitly() async {
+        let cases: [(RecallStage, RecallAnswer.Status)] = [
+            (.noEvidence, .noEvidence),
             (.transcriptMissing, .transcriptMissing),
-            (.ready, .noEvidence),
-            (.unavailable, .unavailable),
-        ] {
-            let answer = await RecallAnswerService(
-                rag: RecallRAGStub(hits: [], readiness: readiness),
-                metadata: { _ in nil }
-            ).answer(query: "unknown")
-            XCTAssertEqual(answer.status, status)
+            (.indexMissing, .indexMissing),
+            (.indexing, .indexing),
+            (.indexUnavailable, .indexUnavailable),
+            (.providerUnavailable, .providerUnavailable),
+            (.corruptArtifact, .corruptArtifact),
+            (.interrupted, .interrupted),
+            (.cancelled, .cancelled),
+            (.failed, .unavailable),
+        ]
+        for (stage, expected) in cases {
+            let projection = RecallResultProjection(
+                queryId: RecallQueryId(high: 1, low: 1),
+                stage: stage,
+                evidence: [],
+                failure: nil,
+                operation: nil
+            )
+            let answer = await makeService(projection: projection).answer(query: "unknown")
+            XCTAssertEqual(answer.status, expected, "Unexpected mapping for \(stage.stableName)")
             XCTAssertTrue(answer.evidence.isEmpty)
         }
     }
 
-    func testIncompleteRetrievalRowCannotBecomeEvidence() async {
-        let incomplete = TranscriptHit(
-            episodeID: episodeID.uuidString,
-            startSeconds: 1,
-            endSeconds: 2,
-            speaker: nil,
-            text: "This row lacks stable evidence identity."
+    func testIncompleteProjectionCannotBecomePresentationEvidence() async {
+        let invalid = RecallEvidenceProjection(
+            episodeId: EpisodeId(uuid: episodeID),
+            podcastId: PodcastId(uuid: podcastID),
+            generationId: EvidenceGenerationId(high: 1, low: 2),
+            transcriptVersionId: TranscriptVersionId(high: 3, low: 4),
+            transcriptContentDigest: ContentDigest(word0: 5, word1: 6, word2: 7, word3: 8),
+            spanId: EvidenceSpanId(high: 9, low: 10),
+            firstSegmentId: TranscriptSegmentId(high: 11, low: 12),
+            lastSegmentId: TranscriptSegmentId(high: 13, low: 14),
+            startSegmentOrdinal: 0,
+            endSegmentOrdinalExclusive: 1,
+            startMilliseconds: 60_000,
+            endMilliseconds: 47_125,
+            excerpt: "Invalid bounds",
+            speakerId: nil,
+            provenance: provenance,
+            score: score
         )
-        let answer = await RecallAnswerService(
-            rag: RecallRAGStub(hits: [incomplete], readiness: .ready),
-            metadata: { _ in RecallEvidenceMetadata(episodeTitle: "Episode", podcastTitle: "Show") }
-        ).answer(query: "identity")
+        let projection = RecallResultProjection(
+            queryId: RecallQueryId(high: 1, low: 2),
+            stage: .ready,
+            evidence: [invalid],
+            failure: nil,
+            operation: nil
+        )
 
-        XCTAssertEqual(answer.status, .noEvidence)
+        let answer = await makeService(projection: projection).answer(query: "identity")
+
+        XCTAssertEqual(answer.status, .unavailable)
         XCTAssertTrue(answer.evidence.isEmpty)
     }
 
-    func testCancellationProducesNoAnswerEvidence() async {
-        let rag = RecallRAGStub(hits: [goldenHit], readiness: .ready, delayNanoseconds: 5_000_000_000)
-        let task = Task {
-            await RecallAnswerService(
-                rag: rag,
-                metadata: { _ in RecallEvidenceMetadata(episodeTitle: "Episode", podcastTitle: "Show") }
-            ).answer(query: "cancel me")
-        }
+    func testCancellationRendersOnlyTheKernelCancellationProjection() async {
+        let service = RecallAnswerService(search: { _, _, _ in
+            do {
+                try await Task.sleep(for: .seconds(5))
+                return self.goldenProjection()
+            } catch {
+                return RecallResultProjection(
+                    queryId: RecallQueryId(high: 1, low: 3),
+                    stage: .cancelled,
+                    evidence: [],
+                    failure: nil,
+                    operation: nil
+                )
+            }
+        }, metadata: { _ in nil })
+        let task = Task { await service.answer(query: "cancel me") }
         await Task.yield()
         task.cancel()
 
         let answer = await task.value
+
         XCTAssertEqual(answer.status, .cancelled)
         XCTAssertTrue(answer.evidence.isEmpty)
     }
@@ -121,47 +151,7 @@ final class RecallAnswerServiceTests: XCTestCase {
         XCTAssertEqual(decoded.recallAnswer, answer)
     }
 
-    func testCancelledRecallCannotCommitLateAssistantMessage() async {
-        let made = AppStateTestSupport.makeIsolatedStore()
-        defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
-        let podcast = Podcast(id: podcastID, title: "Practical Minds")
-        let episode = Episode(
-            id: episodeID,
-            podcastID: podcastID,
-            guid: "recall-cancel",
-            title: "The Habit Loop",
-            pubDate: Date(timeIntervalSince1970: 1_700_000_000),
-            enclosureURL: URL(string: "https://example.com/episode.mp3")!
-        )
-        made.store.installPodcastFixture(podcast)
-        made.store.installEpisodeFixtures([episode], forPodcast: podcastID)
-        let historyURL = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("recall-history-\(UUID().uuidString).json")
-        defer { try? FileManager.default.removeItem(at: historyURL) }
-        let rag = RecallRAGStub(
-            hits: [goldenHit],
-            readiness: .ready,
-            delayNanoseconds: 5_000_000_000
-        )
-        let session = AgentChatSession(
-            store: made.store,
-            podcastDeps: makeRecallDeps(rag: rag),
-            history: ChatHistoryStore(fileURL: historyURL),
-            resumeWindow: 0,
-            drainPendingContext: false
-        )
-
-        session.startRecall("What did I hear about habits?")
-        let task = session.sendingTask
-        await Task.yield()
-        session.cancelSend()
-        await task?.value
-
-        XCTAssertFalse(session.messages.contains { $0.role == .assistant })
-        XCTAssertEqual(session.phase, .idle)
-    }
-
-    func testEvidencePlaybackHandoffSeeksToExactTranscriptMoment() async throws {
+    func testEvidencePlaybackHandoffSeeksToExactCoreMoment() async throws {
         let made = AppStateTestSupport.makeIsolatedStore()
         defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
         let podcast = Podcast(id: podcastID, title: "Practical Minds")
@@ -175,90 +165,107 @@ final class RecallAnswerServiceTests: XCTestCase {
             imageURL: nil,
             duration: 300
         )
-        let playCommitted = expectation(description: "Rust committed recall playback")
+        let committed = expectation(description: "Rust committed recall playback")
         let playback = PlaybackState(productSignals: ProductSignalExpectationSink(
             name: .playStarted,
-            expectation: playCommitted
+            expectation: committed
         ))
         try XCTUnwrap(made.store.sharedLibrary).attachPlayback(playback, store: made.store)
         let evidence = RecallEvidence(
-            chunkID: chunkID,
+            spanID: "span",
             episodeID: episode.id,
             podcastID: podcastID,
             episodeTitle: episode.title,
             podcastTitle: podcast.title,
-            artifactVersion: "transcript-v3",
+            generationID: "generation",
+            transcriptVersionID: "transcript",
+            transcriptContentDigest: "digest",
+            firstSegmentID: "first",
+            lastSegmentID: "last",
+            startSegmentOrdinal: 1,
+            endSegmentOrdinalExclusive: 2,
             startMilliseconds: 47_125,
             endMilliseconds: 60_000,
             excerpt: "Evidence",
-            provenance: "publisher"
+            speakerID: nil,
+            provenance: RecallEvidenceProvenance(
+                source: "publisher",
+                provider: nil,
+                sourcePayloadDigest: "payload"
+            ),
+            score: RecallEvidenceScore(
+                vectorRRFUnits: 10,
+                lexicalRRFUnits: 10,
+                totalRRFUnits: 20,
+                baseRank: 1,
+                rerankRank: nil
+            )
         )
 
         XCTAssertTrue(RecallPlaybackHandoff.open(evidence, store: made.store, playback: playback))
-        await fulfillment(of: [playCommitted], timeout: 1)
+        await fulfillment(of: [committed], timeout: 1)
         XCTAssertEqual(playback.episode?.id, episode.id)
         XCTAssertEqual(playback.currentTime, 47.125, accuracy: 0.001)
     }
 
-    private var goldenHit: TranscriptHit {
-        TranscriptHit(
-            chunkID: chunkID.uuidString,
-            episodeID: episodeID.uuidString,
-            podcastID: podcastID.uuidString,
-            artifactVersion: "transcript-v3",
-            provenance: "publisher",
-            startSeconds: 47.125,
-            endSeconds: 60,
-            speaker: "Host",
-            text: "  Small habits become durable\nwhen the cue is obvious.  ",
-            score: 0.92
+    private func makeService(
+        projection: RecallResultProjection,
+        productSignals: any ProductSignalSink = DiscardingProductSignalSink.shared
+    ) -> RecallAnswerService {
+        RecallAnswerService(
+            search: { _, _, _ in projection },
+            productSignals: productSignals
+        ) { episodeID in
+            guard episodeID == self.episodeID else { return nil }
+            return RecallEvidenceMetadata(
+                episodeTitle: "The Habit Loop",
+                podcastTitle: "Practical Minds"
+            )
+        }
+    }
+
+    private func goldenProjection() -> RecallResultProjection {
+        RecallResultProjection(
+            queryId: RecallQueryId(high: 42, low: 7),
+            stage: .ready,
+            evidence: [RecallEvidenceProjection(
+                episodeId: EpisodeId(uuid: episodeID),
+                podcastId: PodcastId(uuid: podcastID),
+                generationId: EvidenceGenerationId(high: 1, low: 2),
+                transcriptVersionId: TranscriptVersionId(high: 3, low: 4),
+                transcriptContentDigest: ContentDigest(word0: 5, word1: 6, word2: 7, word3: 8),
+                spanId: EvidenceSpanId(high: 9, low: 10),
+                firstSegmentId: TranscriptSegmentId(high: 11, low: 12),
+                lastSegmentId: TranscriptSegmentId(high: 13, low: 14),
+                startSegmentOrdinal: 2,
+                endSegmentOrdinalExclusive: 4,
+                startMilliseconds: 47_125,
+                endMilliseconds: 60_000,
+                excerpt: "Small habits become durable when the cue is obvious.",
+                speakerId: SpeakerId(high: 15, low: 16),
+                provenance: provenance,
+                score: score
+            )],
+            failure: nil,
+            operation: nil
         )
     }
 
-}
-
-private func makeRecallDeps(rag: PodcastAgentRAGSearchProtocol) -> PodcastAgentToolDeps {
-    let inventory = MockInventory()
-    return PodcastAgentToolDeps(
-        rag: rag,
-        summarizer: MockSummarizer(),
-        fetcher: MockFetcher(),
-        playback: MockPlayback(),
-        library: MockLibrary(),
-        inventory: inventory,
-        categories: inventory,
-        perplexity: MockPerplexity(),
-        ttsPublisher: MockTTSPublisher(),
-        directory: MockDirectory(),
-        subscribe: MockSubscribe(),
-        youtubeIngestion: MockYouTubeIngestion(),
-        ownedPodcasts: MockOwnedPodcasts()
-    )
-}
-
-actor RecallRAGStub: PodcastAgentRAGSearchProtocol {
-    let hits: [TranscriptHit]
-    let readiness: TranscriptCorpusReadiness
-    let delayNanoseconds: UInt64
-
-    init(
-        hits: [TranscriptHit],
-        readiness: TranscriptCorpusReadiness,
-        delayNanoseconds: UInt64 = 0
-    ) {
-        self.hits = hits
-        self.readiness = readiness
-        self.delayNanoseconds = delayNanoseconds
+    private var provenance: Pod0Core.TranscriptProvenance {
+        Pod0Core.TranscriptProvenance(
+            source: .publisher,
+            provider: "fixture-provider",
+            sourcePayloadDigest: ContentDigest(word0: 17, word1: 18, word2: 19, word3: 20)
+        )
     }
 
-    func searchEpisodes(query: String, scope: PodcastID?, limit: Int) async throws -> [EpisodeHit] { [] }
-
-    func queryTranscripts(query: String, scope: String?, limit: Int) async throws -> [TranscriptHit] {
-        if delayNanoseconds > 0 { try await Task.sleep(nanoseconds: delayNanoseconds) }
-        return hits
+    private var score: RecallScoreProjection {
+        RecallScoreProjection(
+            vectorRrfUnits: 10,
+            lexicalRrfUnits: 11,
+            totalRrfUnits: 21,
+            baseRank: 1,
+            rerankRank: nil
+        )
     }
-
-    func transcriptCorpusReadiness() async -> TranscriptCorpusReadiness { readiness }
-
-    func findSimilarEpisodes(seedEpisodeID: EpisodeID, k: Int) async throws -> [EpisodeHit] { [] }
 }

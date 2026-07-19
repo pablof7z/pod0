@@ -152,7 +152,7 @@ impl FacadeState {
                 } else {
                     RecallResultProjection {
                         query_id,
-                        stage: RecallStage::Failed,
+                        stage: RecallStage::Interrupted,
                         evidence: Vec::new(),
                         failure: Some(failure(pod0_application::CoreFailureCode::NotFound)),
                         operation: None,

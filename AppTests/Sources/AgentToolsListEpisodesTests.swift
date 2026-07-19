@@ -237,7 +237,7 @@ final class AgentToolsListEpisodesTests: XCTestCase {
         subscribe: MockSubscribe = MockSubscribe()
     ) async -> String {
         let deps = PodcastAgentToolDeps(
-            rag: MockRAG(),
+            knowledge: MockKnowledgeSearch(),
             summarizer: MockSummarizer(),
             fetcher: MockFetcher(),
             playback: MockPlayback(),

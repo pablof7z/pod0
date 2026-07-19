@@ -65,13 +65,13 @@ struct PodcastTranscriptSearchRow: View {
             title: episode?.title ?? "Episode",
             subtitle: podcast?.title ?? "Transcript",
             bodyText: hit.snippet,
-            footnote: "\(formatTime(hit.chunk.startMS)) · \(String(format: "%.2f", hit.score))",
+            footnote: "\(formatTime(hit.startMilliseconds)) · Rank \(hit.evidence.score.baseRank)",
             query: query
         )
     }
 
-    private func formatTime(_ ms: Int) -> String {
-        let total = max(0, ms / 1000)
+    private func formatTime(_ ms: UInt64) -> String {
+        let total = Int(clamping: ms / 1_000)
         let h = total / 3600
         let m = (total % 3600) / 60
         let s = total % 60

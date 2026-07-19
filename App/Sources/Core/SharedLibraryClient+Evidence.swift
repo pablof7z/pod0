@@ -3,16 +3,27 @@ import Foundation
 import Pod0Core
 import os.log
 
+struct SharedEvidenceReceipt: Codable, Sendable, Equatable {
+    static let schemaVersion = 1
+
+    let episodeID: UUID
+    let inputVersion: String
+    let generationID: String
+    let transcriptContentDigest: String
+    let spanCount: UInt32
+    let schemaVersion: Int
+}
+
 extension SharedLibraryClient {
     private static let evidenceLogger = Logger.app("SharedEvidenceRebuild")
 
-    func attachRecall(_ rag: RAGService, store: AppStateStore) {
+    func attachRecall(_ capabilities: RecallCapabilityService, store: AppStateStore) {
         guard !recallHostAttached else { return }
         recallHostAttached = true
         let host = CoreRecallHost(
             projections: facade,
-            index: rag.index,
-            embedder: rag.embedder,
+            index: capabilities.index,
+            embedder: capabilities.embedder,
             reranker: OpenRouterRerankerClient(),
             isRerankingEnabled: { [weak store] in
                 await MainActor.run { store?.state.settings.rerankerEnabled ?? false }
@@ -29,9 +40,12 @@ extension SharedLibraryClient {
     func rebuildTranscriptEvidence(
         transcript: Transcript,
         podcastID: UUID,
-        selectedData: Data
-    ) async throws -> OperationResult? {
-        guard rebuildingEvidenceEpisodeIDs.insert(transcript.episodeID).inserted else { return nil }
+        selectedData: Data,
+        inputVersion: String = "startup-rebuild"
+    ) async throws -> SharedEvidenceReceipt {
+        guard rebuildingEvidenceEpisodeIDs.insert(transcript.episodeID).inserted else {
+            throw SharedLibraryError.unavailable
+        }
         defer { rebuildingEvidenceEpisodeIDs.remove(transcript.episodeID) }
         let digestBytes = Array(SHA256.hash(data: selectedData))
         let digestHex = digestBytes.map { String(format: "%02x", $0) }.joined()
@@ -43,7 +57,7 @@ extension SharedLibraryClient {
                 speakerId: segment.speakerID.map(SpeakerId.init(uuid:))
             )
         }
-        return try await execute(.rebuildTranscriptEvidence(
+        let result = try await execute(.rebuildTranscriptEvidence(
             input: TranscriptEvidenceInput(
                 episodeId: EpisodeId(uuid: transcript.episodeID),
                 podcastId: PodcastId(uuid: podcastID),
@@ -65,6 +79,35 @@ extension SharedLibraryClient {
                 snapTolerancePerMille: 200
             )
         ))
+        guard case .evidenceRebuilt(let episodeID, let generationID, let spanCount) = result,
+              episodeID.uuid == transcript.episodeID,
+              let projection = evidenceIndex(episodeID: episodeID),
+              projection.stage == .ready,
+              projection.generationId == generationID,
+              projection.totalSpans == spanCount,
+              let digest = projection.transcriptContentDigest else {
+            throw SharedLibraryError.unavailable
+        }
+        return SharedEvidenceReceipt(
+            episodeID: transcript.episodeID,
+            inputVersion: inputVersion,
+            generationID: generationID.stableString,
+            transcriptContentDigest: digest.stableString,
+            spanCount: spanCount,
+            schemaVersion: SharedEvidenceReceipt.schemaVersion
+        )
+    }
+
+    func verifyEvidenceReceipt(_ receipt: SharedEvidenceReceipt) -> Bool {
+        let episodeID = EpisodeId(uuid: receipt.episodeID)
+        guard receipt.schemaVersion == SharedEvidenceReceipt.schemaVersion,
+              let projection = evidenceIndex(episodeID: episodeID),
+              projection.stage == .ready,
+              projection.generationId?.stableString == receipt.generationID,
+              projection.transcriptContentDigest?.stableString
+                == receipt.transcriptContentDigest,
+              projection.totalSpans == receipt.spanCount else { return false }
+        return true
     }
 
     func scheduleTranscriptEvidenceRebuild(
@@ -137,5 +180,14 @@ extension SharedLibraryClient {
 
     private static func digestWord(_ bytes: [UInt8], at offset: Int) -> UInt64 {
         bytes[offset..<(offset + 8)].reduce(0) { ($0 << 8) | UInt64($1) }
+    }
+
+    private func evidenceIndex(episodeID: EpisodeId) -> EvidenceIndexProjection? {
+        guard case .evidenceIndex(let projection) = facade.snapshot(request: ProjectionRequest(
+            scope: .evidenceIndex(episodeId: episodeID),
+            offset: 0,
+            maxItems: 1
+        )).projection else { return nil }
+        return projection
     }
 }

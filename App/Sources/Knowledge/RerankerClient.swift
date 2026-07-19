@@ -7,7 +7,7 @@ import os.log
 // Cohere-compatible schema (model + query + documents). Returns relevance
 // scores per document; we reorder the candidate indices client-side.
 //
-// Used as the optional final stage of `RAGSearch`: take the top-K hybrid
+// Used by the native reranking capability: take the top-K shared-core candidates
 // results, rerank, take the top-N. Skipped under "rapid voice" latency
 // budgets — per the spec, hybrid RRF alone is shippable quality.
 

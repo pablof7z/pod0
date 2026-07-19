@@ -1,15 +1,15 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use pod0_application::{
-    CoreFailureCode, EvidenceCandidateObservation, HostObservation, HostRequest,
-    MAX_RECALL_CANDIDATES, MAX_RECALL_EVIDENCE, MAX_RECALL_EXCERPT_BYTES,
-    RecallCandidateObservation, RecallEvidenceProjection, RecallPhase, RecallRerankDocument,
-    RecallRerankObservation, RecallScope, RecallScoreProjection, RecallStage, bounded_recall_text,
-    rank_evidence,
+    CoreFailureCode, EvidenceCandidateObservation, HostFailureCode, HostObservation, HostRequest,
+    MAX_RECALL_CANDIDATES, MAX_RECALL_EXCERPT_BYTES, RecallCandidateObservation,
+    RecallEvidenceProjection, RecallPhase, RecallRerankDocument, RecallRerankObservation,
+    RecallScope, RecallScoreProjection, RecallStage, bounded_recall_text, rank_evidence,
 };
-use pod0_domain::{EpisodeId, EvidenceSpanId, RecallQueryId, TranscriptEvidenceArtifact};
+use pod0_domain::{EpisodeId, RecallQueryId, TranscriptEvidenceArtifact};
 use pod0_storage::EvidenceStore;
 
+use crate::runtime_recall_rerank::validate_rerank;
 use crate::runtime_recall_state::{PendingRecall, RecallHostPhase};
 use crate::runtime_state::FacadeState;
 
@@ -36,7 +36,26 @@ impl FacadeState {
             | (RecallHostPhase::Reranking, HostObservation::Unsupported { .. }) => {
                 self.finish_without_rerank(pending.query_id)
             }
-            (_, HostObservation::Failed { .. }) | (_, HostObservation::Unsupported { .. }) => self
+            (
+                RecallHostPhase::Embedding,
+                HostObservation::Failed {
+                    code: HostFailureCode::ProviderUnavailable,
+                    ..
+                },
+            )
+            | (RecallHostPhase::Embedding, HostObservation::Unsupported { .. }) => self
+                .fail_recall(
+                    pending.query_id,
+                    RecallStage::ProviderUnavailable,
+                    CoreFailureCode::HostUnavailable,
+                ),
+            (RecallHostPhase::Embedding, HostObservation::Failed { .. }) => self.fail_recall(
+                pending.query_id,
+                RecallStage::ProviderUnavailable,
+                CoreFailureCode::HostUnavailable,
+            ),
+            (RecallHostPhase::Retrieval, HostObservation::Failed { .. })
+            | (RecallHostPhase::Retrieval, HostObservation::Unsupported { .. }) => self
                 .fail_recall(
                     pending.query_id,
                     RecallStage::IndexUnavailable,
@@ -101,10 +120,25 @@ impl FacadeState {
             );
             return;
         };
-        let evidence = resolve_candidates(store, workflow.scope, &candidates, workflow.limit);
-        let Ok(evidence) = evidence else {
-            self.fail_recall(query_id, RecallStage::Failed, CoreFailureCode::HostRejected);
-            return;
+        let evidence = match resolve_candidates(store, workflow.scope, &candidates, workflow.limit)
+        {
+            Ok(evidence) => evidence,
+            Err(CandidateResolutionError::IndexUnavailable) => {
+                self.fail_recall(
+                    query_id,
+                    RecallStage::IndexUnavailable,
+                    CoreFailureCode::StorageUnavailable,
+                );
+                return;
+            }
+            Err(CandidateResolutionError::CorruptArtifact) => {
+                self.fail_recall(
+                    query_id,
+                    RecallStage::CorruptArtifact,
+                    CoreFailureCode::HostRejected,
+                );
+                return;
+            }
         };
         if evidence.is_empty() {
             self.complete_recall(query_id, RecallStage::NoEvidence, Vec::new());
@@ -167,7 +201,7 @@ fn resolve_candidates(
     scope: RecallScope,
     candidates: &[RecallCandidateObservation],
     limit: u16,
-) -> Result<Vec<RecallEvidenceProjection>, ()> {
+) -> Result<Vec<RecallEvidenceProjection>, CandidateResolutionError> {
     let mut artifacts = BTreeMap::<EpisodeId, TranscriptEvidenceArtifact>::new();
     let mut spans = BTreeMap::new();
     let mut raw_ranks = Vec::with_capacity(candidates.len());
@@ -177,28 +211,28 @@ fn resolve_candidates(
         {
             let artifact = store
                 .selected_artifact(candidate.episode_id)
-                .map_err(|_| ())?
-                .ok_or(())?;
+                .map_err(|_| CandidateResolutionError::IndexUnavailable)?
+                .ok_or(CandidateResolutionError::CorruptArtifact)?;
             if !scope_matches(scope, &artifact) {
-                return Err(());
+                return Err(CandidateResolutionError::CorruptArtifact);
             }
             entry.insert(artifact);
         }
         let artifact = &artifacts[&candidate.episode_id];
         if artifact.generation_id != candidate.generation_id {
-            return Err(());
+            return Err(CandidateResolutionError::CorruptArtifact);
         }
         let span = artifact
             .spans
             .iter()
             .find(|span| span.span_id == candidate.span_id)
             .cloned()
-            .ok_or(())?;
+            .ok_or(CandidateResolutionError::CorruptArtifact)?;
         if spans
             .insert(candidate.span_id, (artifact.generation_id, span))
             .is_some()
         {
-            return Err(());
+            return Err(CandidateResolutionError::CorruptArtifact);
         }
         raw_ranks.push(EvidenceCandidateObservation {
             span_id: candidate.span_id,
@@ -207,11 +241,13 @@ fn resolve_candidates(
         });
     }
     rank_evidence(&raw_ranks, limit)
-        .map_err(|_| ())?
+        .map_err(|_| CandidateResolutionError::CorruptArtifact)?
         .into_iter()
         .enumerate()
         .map(|(index, ranked)| {
-            let (generation_id, span) = spans.remove(&ranked.span_id).ok_or(())?;
+            let (generation_id, span) = spans
+                .remove(&ranked.span_id)
+                .ok_or(CandidateResolutionError::CorruptArtifact)?;
             Ok(RecallEvidenceProjection {
                 episode_id: span.episode_id,
                 podcast_id: span.podcast_id,
@@ -232,12 +268,19 @@ fn resolve_candidates(
                     vector_rrf_units: ranked.score.vector_rrf_units,
                     lexical_rrf_units: ranked.score.lexical_rrf_units,
                     total_rrf_units: ranked.score.total_rrf_units,
-                    base_rank: u16::try_from(index + 1).map_err(|_| ())?,
+                    base_rank: u16::try_from(index + 1)
+                        .map_err(|_| CandidateResolutionError::CorruptArtifact)?,
                     rerank_rank: None,
                 },
             })
         })
         .collect()
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum CandidateResolutionError {
+    IndexUnavailable,
+    CorruptArtifact,
 }
 
 fn scope_matches(scope: RecallScope, artifact: &TranscriptEvidenceArtifact) -> bool {
@@ -247,40 +290,4 @@ fn scope_matches(scope: RecallScope, artifact: &TranscriptEvidenceArtifact) -> b
         RecallScope::Episode { episode_id } => artifact.version.episode_id == episode_id,
         RecallScope::Unsupported { .. } => false,
     }
-}
-
-fn validate_rerank(
-    evidence: &[RecallEvidenceProjection],
-    rankings: &[RecallRerankObservation],
-) -> Option<BTreeMap<EvidenceSpanId, u16>> {
-    if evidence.len() != rankings.len() || evidence.len() > MAX_RECALL_EVIDENCE {
-        return None;
-    }
-    let expected = evidence
-        .iter()
-        .map(|item| item.span_id)
-        .collect::<BTreeSet<_>>();
-    let observed = rankings
-        .iter()
-        .map(|item| item.span_id)
-        .collect::<BTreeSet<_>>();
-    let ranks = rankings
-        .iter()
-        .map(|item| item.rank)
-        .collect::<BTreeSet<_>>();
-    if expected != observed
-        || ranks.len() != rankings.len()
-        || !ranks
-            .iter()
-            .enumerate()
-            .all(|(index, rank)| usize::from(*rank) == index + 1)
-    {
-        return None;
-    }
-    Some(
-        rankings
-            .iter()
-            .map(|item| (item.span_id, item.rank))
-            .collect(),
-    )
 }

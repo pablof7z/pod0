@@ -1,9 +1,10 @@
+import Pod0Core
 import SwiftUI
 
 // MARK: - HomeRelatedSheet
 //
 // "Find related across my library" — long-press affordance on a featured
-// episode. Runs the existing `RAGService` over the user's transcript corpus
+// episode. Runs the shared Rust recall projection over the transcript corpus
 // using the seed episode's title + chapter titles as the query.
 //
 // Three lenses:
@@ -49,7 +50,7 @@ struct HomeRelatedSheet: View {
 
     /// One result row. Carries the matched chunk's metadata + the snippet.
     struct Match: Identifiable, Equatable {
-        let id: UUID
+        let id: String
         let episode: Episode
         let podcast: Podcast?
         let snippet: String
@@ -166,9 +167,9 @@ struct HomeRelatedSheet: View {
         phase = .loading
         matches = []
         let query = buildQuery()
-        let viaRAG = await searchRAG(query: query)
-        if !viaRAG.isEmpty {
-            matches = viaRAG
+        let sharedMatches = await searchSharedKnowledge(query: query)
+        if !sharedMatches.isEmpty {
+            matches = sharedMatches
             phase = .ready
             return
         }
@@ -197,42 +198,34 @@ struct HomeRelatedSheet: View {
         return parts.joined(separator: " · ")
     }
 
-    private func searchRAG(query: String) async -> [Match] {
-        do {
-            // Sources lens wants multiple hits per show, so over-fetch and
-            // skip the dedupe-by-subscription step the Topic lens applies.
-            let k = (lens == .sources) ? 24 : 12
-            let opts = RAGSearch.Options(k: k, hybrid: true, rerank: true)
-            let chunkMatches = try await RAGService.shared.search.search(
-                query: query,
-                scope: nil,
-                options: opts
-            )
-            switch lens {
-            case .topic:    return collapseByShow(chunkMatches)
-            case .sources:  return keepPerChunk(chunkMatches)
-            }
-        } catch {
-            return []
+    private func searchSharedKnowledge(query: String) async -> [Match] {
+        guard let client = store.sharedLibrary else { return [] }
+        let limit: UInt16 = lens == .sources ? 20 : 12
+        let projection = await client.recall(query: query, scope: .library, limit: limit)
+        guard projection.stage == .ready else { return [] }
+        return switch lens {
+        case .topic: collapseByShow(projection.evidence)
+        case .sources: keepPerSpan(projection.evidence)
         }
     }
 
     /// Topic lens: dedupe by subscription, drop the seed itself. Take the
     /// best-scored chunk per subscription so the sheet doesn't collapse to
     /// "the same show, three times".
-    private func collapseByShow(_ chunkMatches: [ChunkMatch]) -> [Match] {
+    private func collapseByShow(_ evidence: [RecallEvidenceProjection]) -> [Match] {
         var seenSubs: Set<UUID> = [seedEpisode.podcastID]
         var collected: [Match] = []
-        for chunk in chunkMatches {
-            guard let ep = store.episode(id: chunk.chunk.episodeID),
+        for item in evidence {
+            guard let episodeID = item.episodeId.uuid,
+                  let ep = store.episode(id: episodeID),
                   ep.id != seedEpisode.id,
                   !seenSubs.contains(ep.podcastID) else { continue }
             seenSubs.insert(ep.podcastID)
             collected.append(Match(
-                id: ep.id,
+                id: ep.id.uuidString,
                 episode: ep,
                 podcast: store.podcast(id: ep.podcastID),
-                snippet: String(chunk.chunk.text.prefix(220))
+                snippet: String(item.excerpt.prefix(220))
             ))
             if collected.count >= 8 { break }
         }
@@ -243,16 +236,17 @@ struct HomeRelatedSheet: View {
     /// Match ids must be unique for SwiftUI's `ForEach`, so we use the
     /// chunk id rather than the episode id — the same episode can produce
     /// multiple rows when more than one chunk hits.
-    private func keepPerChunk(_ chunkMatches: [ChunkMatch]) -> [Match] {
+    private func keepPerSpan(_ evidence: [RecallEvidenceProjection]) -> [Match] {
         var collected: [Match] = []
-        for chunk in chunkMatches {
-            guard let ep = store.episode(id: chunk.chunk.episodeID),
+        for item in evidence {
+            guard let episodeID = item.episodeId.uuid,
+                  let ep = store.episode(id: episodeID),
                   ep.id != seedEpisode.id else { continue }
             collected.append(Match(
-                id: chunk.chunk.id,
+                id: item.spanId.stableString,
                 episode: ep,
                 podcast: store.podcast(id: ep.podcastID),
-                snippet: String(chunk.chunk.text.prefix(220))
+                snippet: String(item.excerpt.prefix(220))
             ))
             if collected.count >= 24 { break }
         }
@@ -277,7 +271,7 @@ struct HomeRelatedSheet: View {
                       (lens == .sources || !seenSubs.contains(ep.podcastID)) else { continue }
                 seenSubs.insert(ep.podcastID)
                 collected.append(Match(
-                    id: mention.id,
+                    id: mention.id.uuidString,
                     episode: ep,
                     podcast: store.podcast(id: ep.podcastID),
                     snippet: mention.snippet

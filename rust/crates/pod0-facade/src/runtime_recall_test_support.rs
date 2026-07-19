@@ -13,43 +13,7 @@ pub(super) struct RecallFixture {
 impl RecallFixture {
     pub(super) fn new(with_evidence: bool) -> Self {
         let base = PlaybackFixture::new();
-        let artifact = build_evidence_artifact(
-            &TranscriptEvidenceInput {
-                episode_id: base.episode_id,
-                podcast_id: base.podcast_id,
-                source_revision: "recall-fixture-v1".to_owned(),
-                source: TranscriptSource::Publisher,
-                provider: Some("fixture-provider".to_owned()),
-                source_payload_digest: ContentDigest::from_bytes([0x55; 32]),
-                segments: vec![
-                    segment(
-                        "Small daily cues make useful habits easier to repeat every morning without relying on motivation alone.",
-                        10_000,
-                        20_000,
-                        1,
-                    ),
-                    segment(
-                        "A visible prompt reduces the effort required to remember the intended action when attention is divided.",
-                        20_000,
-                        31_000,
-                        2,
-                    ),
-                    segment(
-                        "Reviewing the same cue after a week reveals whether the behavior has become durable or still needs support.",
-                        31_000,
-                        44_000,
-                        1,
-                    ),
-                ],
-            },
-            EvidenceChunkPolicy {
-                version: 1,
-                target_tokens: 20,
-                overlap_per_mille: 0,
-                snap_tolerance_per_mille: 0,
-            },
-        )
-        .unwrap();
+        let artifact = build_evidence_artifact(&evidence_input(&base), evidence_policy()).unwrap();
         assert!(artifact.spans.len() >= 2);
         if with_evidence {
             let store = pod0_storage::EvidenceStore::open(&base.target).unwrap();
@@ -91,6 +55,46 @@ impl RecallFixture {
 
     pub(super) fn projection(&self, query_id: u64) -> RecallResultProjection {
         recall_projection(&self.base.facade, query_id)
+    }
+}
+
+pub(super) fn evidence_input(base: &PlaybackFixture) -> TranscriptEvidenceInput {
+    TranscriptEvidenceInput {
+        episode_id: base.episode_id,
+        podcast_id: base.podcast_id,
+        source_revision: "recall-fixture-v1".to_owned(),
+        source: TranscriptSource::Publisher,
+        provider: Some("fixture-provider".to_owned()),
+        source_payload_digest: ContentDigest::from_bytes([0x55; 32]),
+        segments: vec![
+            segment(
+                "Small daily cues make useful habits easier to repeat every morning without relying on motivation alone.",
+                10_000,
+                20_000,
+                1,
+            ),
+            segment(
+                "A visible prompt reduces the effort required to remember the intended action when attention is divided.",
+                20_000,
+                31_000,
+                2,
+            ),
+            segment(
+                "Reviewing the same cue after a week reveals whether the behavior has become durable or still needs support.",
+                31_000,
+                44_000,
+                1,
+            ),
+        ],
+    }
+}
+
+pub(super) fn evidence_policy() -> EvidenceChunkPolicy {
+    EvidenceChunkPolicy {
+        version: 1,
+        target_tokens: 20,
+        overlap_per_mille: 0,
+        snap_tolerance_per_mille: 0,
     }
 }
 
@@ -155,6 +159,106 @@ pub(super) fn record(
         observed_at: UnixTimestampMilliseconds::new(1_800_000_000_200),
         observation,
     });
+}
+
+pub(super) fn run_ready_recall(rerank_failure: bool) -> RecallResultProjection {
+    let fixture = RecallFixture::new(true);
+    fixture.dispatch(1, 1, "  durable   habit cues ");
+    advance_to_rerank(&fixture, 1);
+    let rerank = fixture.base.facade.next_host_requests(1).pop().unwrap();
+    let HostRequest::RerankRecallCandidates { candidates, .. } = &rerank.request else {
+        panic!("expected rerank request");
+    };
+    let revision = fixture
+        .base
+        .facade
+        .snapshot(recall_request(1))
+        .state_revision;
+    let observation = if rerank_failure {
+        HostObservation::Failed {
+            code: HostFailureCode::ProviderUnavailable,
+            safe_detail: None,
+        }
+    } else {
+        HostObservation::RecallCandidatesReranked {
+            query_id: RecallQueryId::from_parts(32, 1),
+            rankings: vec![
+                RecallRerankObservation {
+                    span_id: candidates[1].span_id,
+                    rank: 1,
+                },
+                RecallRerankObservation {
+                    span_id: candidates[0].span_id,
+                    rank: 2,
+                },
+            ],
+        }
+    };
+    record(&fixture.base.facade, &rerank, observation.clone());
+    let projection = fixture.projection(1);
+    record(&fixture.base.facade, &rerank, observation);
+    assert_eq!(
+        fixture
+            .base
+            .facade
+            .snapshot(recall_request(1))
+            .state_revision,
+        StateRevision::new(revision.value + 1)
+    );
+    projection
+}
+
+pub(super) fn advance_to_rerank(fixture: &RecallFixture, query_id: u64) {
+    let embed = fixture.base.facade.next_host_requests(1).pop().unwrap();
+    let HostRequest::EmbedRecallQuery { text, .. } = &embed.request else {
+        panic!("expected embedding request");
+    };
+    assert!(!text.contains("  "));
+    record(
+        &fixture.base.facade,
+        &embed,
+        HostObservation::RecallQueryEmbedded {
+            query_id: RecallQueryId::from_parts(32, query_id),
+            embedding: RecallEmbeddingVector {
+                values: vec![100, -200, 300],
+            },
+        },
+    );
+    assert_eq!(
+        fixture.projection(query_id).stage,
+        RecallStage::Running {
+            phase: RecallPhase::Retrieving
+        }
+    );
+    let retrieve = fixture.base.facade.next_host_requests(1).pop().unwrap();
+    let candidates = fixture
+        .artifact
+        .spans
+        .iter()
+        .take(2)
+        .enumerate()
+        .map(|(index, span)| RecallCandidateObservation {
+            episode_id: fixture.base.episode_id,
+            generation_id: fixture.artifact.generation_id,
+            span_id: span.span_id,
+            vector_rank: Some(u16::try_from(index + 1).unwrap()),
+            lexical_rank: Some(u16::try_from(2 - index).unwrap()),
+        })
+        .collect();
+    record(
+        &fixture.base.facade,
+        &retrieve,
+        HostObservation::RecallCandidatesRetrieved {
+            query_id: RecallQueryId::from_parts(32, query_id),
+            candidates,
+        },
+    );
+    assert_eq!(
+        fixture.projection(query_id).stage,
+        RecallStage::Running {
+            phase: RecallPhase::Reranking
+        }
+    );
 }
 
 fn segment(

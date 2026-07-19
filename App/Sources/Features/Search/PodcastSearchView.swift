@@ -43,6 +43,7 @@ struct PodcastSearchView: View {
             prompt: "Shows, episodes, transcripts"
         )
         .task(id: model.query) {
+            model.attach(recall: store.sharedLibrary)
             guard !model.query.trimmed.isEmpty else {
                 model.debouncedQuery = ""
                 await model.searchTranscripts()
@@ -113,12 +114,12 @@ struct PodcastSearchView: View {
                 }
                 ForEach(model.transcriptResults) { hit in
                     Button {
-                        openTranscriptHit(hit)
+                        openTranscriptEvidence(hit)
                     } label: {
                         PodcastTranscriptSearchRow(
                             hit: hit,
-                            episode: store.episode(id: hit.chunk.episodeID),
-                            podcast: store.podcast(id: hit.chunk.podcastID),
+                            episode: hit.episodeID.flatMap { store.episode(id: $0) },
+                            podcast: hit.podcastID.flatMap { store.podcast(id: $0) },
                             query: model.query
                         )
                     }
@@ -139,9 +140,10 @@ struct PodcastSearchView: View {
             + model.transcriptResults.count
     }
 
-    private func openTranscriptHit(_ hit: PodcastTranscriptSearchHit) {
+    private func openTranscriptEvidence(_ hit: PodcastTranscriptSearchHit) {
         Haptics.selection()
-        if let episode = store.episode(id: hit.chunk.episodeID) {
+        guard let episodeID = hit.episodeID else { return }
+        if let episode = store.episode(id: episodeID) {
             // Tapping a transcript hit reads as "play this moment" — load
             // the episode, seek to the chunk's start, and start playback.
             // Previously this only set + seeked, leaving the user on a
@@ -149,12 +151,12 @@ struct PodcastSearchView: View {
             // setEpisode is idempotent on same-id, so calling it when the
             // episode is already loaded is a no-op and won't re-buffer.
             playback.setEpisode(episode)
-            playback.seek(to: Double(hit.chunk.startMS) / 1000)
+            playback.seek(to: Double(hit.startMilliseconds) / 1_000)
             if !playback.isPlaying {
                 playback.play()
             }
         }
-        destination = .episode(hit.chunk.episodeID)
+        destination = .episode(episodeID)
     }
 
     @ViewBuilder

@@ -110,19 +110,6 @@ struct DesiredStatePlanner: Sendable {
                 ))
             }
 
-            let metadataVersion = Self.metadataVersion(episode, settings: input.settings)
-            let metadata = artifacts[ArtifactKey(kind: .metadataIndex, subjectID: episode.id)]
-            if !Self.isCurrent(metadata, inputVersion: metadataVersion) {
-                jobs.append(DesiredJob(
-                    idempotencyKey: "metadata:\(episode.id):\(metadataVersion)",
-                    kind: .metadataIndex,
-                    subjectID: episode.id,
-                    inputVersion: metadataVersion,
-                    priority: 10,
-                    resourceClass: .embedding
-                ))
-            }
-
             let chapters = artifacts[ArtifactKey(kind: .chapters, subjectID: episode.id)]
             if let publisherVersion = Self.publisherChapterInputVersion(episode),
                let url = episode.chaptersURL,
@@ -246,12 +233,6 @@ struct DesiredStatePlanner: Sendable {
         )
     }
 
-    private static func metadataVersion(_ episode: Episode, settings: Settings) -> String {
-        ArtifactRepository.version(parts: [
-            episode.title, episode.description, settings.embeddingsModel, "metadata-v1",
-        ])
-    }
-
     private static func transcriptProviderVersion(_ provider: STTProvider, settings: Settings) -> String {
         switch provider {
         case .elevenLabsScribe: settings.elevenLabsSTTModel
@@ -263,7 +244,8 @@ struct DesiredStatePlanner: Sendable {
 
     private static func indexInputVersion(_ transcript: ArtifactRecord, settings: Settings) -> String {
         ArtifactRepository.version(parts: [
-            transcript.contentHash, settings.embeddingsModel, "chunker-v1", "vector-schema-v1",
+            transcript.contentHash, settings.embeddingsModel,
+            "rust-evidence-v1", "core-recall-index-v1",
         ])
     }
 

@@ -47,9 +47,9 @@ struct RecallEvidenceCard: View {
     }
 
     private var provenanceLabel: String {
-        switch evidence.provenance {
+        switch evidence.provenance.source {
         case "publisher": "Publisher"
-        case "scribeV1": "Scribe"
+        case "scribe": "Scribe"
         case "whisper": "Whisper"
         case "onDevice": "On-device"
         case "assemblyAI": "AssemblyAI"

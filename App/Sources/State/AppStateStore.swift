@@ -169,12 +169,12 @@ final class AppStateStore {
         // already sees populated caches — otherwise the Library grid would
         // briefly read empty unplayed dots until the first mutation.
         recomputeEpisodeProjections()
-        // Bootstrap the live RAG stack so the SQLite vector store is opened
-        // (and its file path logged) before any view tries to query it.
-        // Hand `self` to the service so the reranker settings gate and
-        // transcript ingester can resolve episode/subscription metadata.
-        RAGService.shared.attach(appStore: self)
-        sharedLibrary?.attachRecall(RAGService.shared, store: self)
+        // Attach the native capability host used by the Rust recall workflow.
+        // Hand `self` to the service so provider settings and transcript
+        // metadata can be resolved without moving recall policy into Swift.
+        RecallCapabilityService.shared.attach(appStore: self)
+        sharedLibrary?.attachRecall(RecallCapabilityService.shared, store: self)
+        TranscriptIngestService.shared.attach(appStore: self)
         EpisodeDownloadService.shared.attach(appStore: self)
         WorkflowRuntime.shared.attach(store: self)
         BackgroundWorkScheduler.shared.attach(store: self)

@@ -48,39 +48,21 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
             guard await fileVerifier.verifiedTranscript(episodeID: job.subjectID) != nil,
                   let receiptData = Data(base64Encoded: outputVersion),
                   let receipt = try? Self.decoder.decode(
-                    VectorArtifactReceipt.self, from: receiptData
+                    SharedEvidenceReceipt.self, from: receiptData
                   ),
-                  receipt.generation == job.inputVersion,
-                  receipt.artifactKind == VectorIndex.semanticArtifactKind,
-                  try await RAGService.shared.index.verifyArtifact(
-                    episodeID: job.subjectID, receipt: receipt
-                  ) else { return false }
+                  receipt.episodeID == job.subjectID,
+                  receipt.inputVersion == job.inputVersion,
+                  appStore.sharedLibrary?.verifyEvidenceReceipt(receipt) == true else { return false }
             records = [record(
                 .semanticIndex,
                 job: job,
-                output: receipt.generation,
-                hash: ArtifactRepository.hash(receiptData),
+                output: receipt.generationID,
+                hash: receipt.transcriptContentDigest,
                 origin: outputVersion,
                 schemaVersion: receipt.schemaVersion
             )]
         case .metadataIndex:
-            guard let receiptData = Data(base64Encoded: outputVersion),
-                  let receipt = try? Self.decoder.decode(
-                    VectorArtifactReceipt.self, from: receiptData
-                  ),
-                  receipt.generation == job.inputVersion,
-                  receipt.artifactKind == VectorIndex.metadataArtifactKind,
-                  try await RAGService.shared.index.verifyArtifact(
-                    episodeID: job.subjectID, receipt: receipt
-                  ) else { return false }
-            records = [record(
-                .metadataIndex,
-                job: job,
-                output: receipt.generation,
-                hash: ArtifactRepository.hash(receiptData),
-                origin: outputVersion,
-                schemaVersion: receipt.schemaVersion
-            )]
+            return false
         case .publisherChapters:
             guard let verified = await fileVerifier.verifiedChapters(
                 episodeID: job.subjectID,
@@ -179,14 +161,6 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
             }
         }
         try artifacts.commit(records, completingJobID: job.id, leaseToken: leaseToken)
-        if job.kind == .transcriptIndex || job.kind == .metadataIndex,
-           let encoded = records.first?.origin,
-           let data = Data(base64Encoded: encoded),
-           let receipt = try? Self.decoder.decode(VectorArtifactReceipt.self, from: data) {
-            try await RAGService.shared.index.selectArtifact(
-                episodeID: job.subjectID, receipt: receipt
-            )
-        }
         for record in records { await applyStableProjection(for: record, job: job) }
         return true
     }
