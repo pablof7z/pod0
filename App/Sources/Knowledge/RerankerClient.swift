@@ -109,8 +109,9 @@ struct OpenRouterRerankerClient: RerankerClient {
         case 429:
             throw RerankerError.rateLimited
         default:
-            let body = String(data: data, encoding: .utf8) ?? "<binary>"
-            Self.logger.warning("OpenRouter rerank HTTP \(http.statusCode, privacy: .public): \(body, privacy: .public)")
+            Self.logger.warning(
+                "OpenRouter rerank failed with HTTP \(http.statusCode, privacy: .public)"
+            )
             throw RerankerError.serverError(statusCode: http.statusCode)
         }
 
@@ -123,7 +124,7 @@ struct OpenRouterRerankerClient: RerankerClient {
                 .sorted { $0.relevance_score > $1.relevance_score }
                 .map(\.index)
         } catch {
-            Self.logger.error("OpenRouter rerank decode failed: \(error, privacy: .public)")
+            Self.logger.error("OpenRouter rerank response could not be decoded")
             throw RerankerError.decoding
         }
     }

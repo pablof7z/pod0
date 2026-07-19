@@ -161,6 +161,9 @@ impl FacadeState {
                 value.enforce_bounds(item_limit);
                 Projection::Recall { value }
             }
+            ProjectionScope::EvidenceIndex { episode_id } => Projection::EvidenceIndex {
+                value: self.evidence_index_projection(episode_id, offset, item_limit),
+            },
             ProjectionScope::Unsupported { wire_code } => Projection::Unsupported {
                 value: UnsupportedProjection {
                     wire_code,

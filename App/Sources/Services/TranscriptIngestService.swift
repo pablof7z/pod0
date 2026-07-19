@@ -18,7 +18,7 @@ final class TranscriptIngestService {
 
     // MARK: Logger
 
-    nonisolated private static let logger = Logger.app("TranscriptIngestService")
+    nonisolated static let logger = Logger.app("TranscriptIngestService")
 
     // MARK: Dependencies
 
@@ -28,8 +28,8 @@ final class TranscriptIngestService {
     private let whisper: OpenRouterWhisperClient
     private let assemblyAI: AssemblyAITranscriptClient
     private let appleSTT: AppleNativeSTTClient
-    private let chunkBuilder: ChunkBuilder
-    private let store: TranscriptStore
+    let chunkBuilder: ChunkBuilder
+    let store: TranscriptStore
     private let elevenLabsKey: @Sendable () -> String?
     private let openRouterKey: @Sendable () -> String?
     private let assemblyAIKey: @Sendable () -> String?
@@ -278,40 +278,6 @@ final class TranscriptIngestService {
         context: JobAttemptContext
     ) throws -> String {
         try store.stage(transcript, context: context)
-    }
-
-    /// Runs only the vector-index outcome for an already persisted transcript.
-    /// Failures escape to `WorkCoordinator`, which owns durable backoff.
-    func indexTranscript(
-        episodeID: UUID,
-        generation: String
-    ) async throws -> VectorArtifactReceipt {
-        guard let appStore = rag.appStore,
-              let episode = appStore.episode(id: episodeID) else {
-            throw JobFailure(classification: .invalidInput, message: "Episode no longer exists")
-        }
-        guard case .ready = episode.transcriptState,
-              let transcript = store.load(episodeID: episodeID) else {
-            throw JobFailure(
-                classification: .missingDependency,
-                message: "Transcript is not available for indexing."
-            )
-        }
-        let chunkable = ChunkableTranscript(
-            transcript: transcript,
-            podcastID: episode.podcastID
-        )
-        let chunks = chunkBuilder.build(from: chunkable)
-        let receipt = try await rag.index.stageArtifact(
-            chunks: chunks,
-            episodeID: episode.id,
-            generation: generation,
-            artifactKind: VectorIndex.semanticArtifactKind
-        )
-        Self.logger.info(
-            "indexed \(chunks.count, privacy: .public) transcript chunks for \(episode.id, privacy: .public)"
-        )
-        return receipt
     }
 
     // MARK: - Helpers

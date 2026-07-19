@@ -60,7 +60,6 @@ struct OllamaEmbeddingsClient: EmbeddingsClient {
 
         let bodyData = try JSONEncoder().encode(RequestPayload(model: model, input: batch))
         req.httpBody = bodyData
-        let requestPayloadJSON = String(data: bodyData, encoding: .utf8)
 
         let start = Date()
         let (data, response) = try await session.data(for: req)
@@ -77,8 +76,9 @@ struct OllamaEmbeddingsClient: EmbeddingsClient {
         case 429:
             throw EmbeddingsError.providerRateLimited(provider: LLMProvider.ollama.displayName)
         default:
-            let body = String(data: data, encoding: .utf8) ?? "<binary>"
-            Self.logger.warning("Ollama embeddings HTTP \(http.statusCode, privacy: .public): \(body, privacy: .public)")
+            Self.logger.warning(
+                "Ollama embeddings failed with HTTP \(http.statusCode, privacy: .public)"
+            )
             throw EmbeddingsError.providerServerError(provider: LLMProvider.ollama.displayName, statusCode: http.statusCode)
         }
 
@@ -86,7 +86,7 @@ struct OllamaEmbeddingsClient: EmbeddingsClient {
         do {
             embeddings = try JSONDecoder().decode(ResponsePayload.self, from: data).embeddings
         } catch {
-            Self.logger.error("Ollama embeddings decode failed: \(error, privacy: .public)")
+            Self.logger.error("Ollama embeddings response could not be decoded")
             throw EmbeddingsError.providerDecoding(provider: LLMProvider.ollama.displayName)
         }
 
@@ -100,7 +100,7 @@ struct OllamaEmbeddingsClient: EmbeddingsClient {
                 promptTokens: promptTokens,
                 completionTokens: 0,
                 latencyMs: latencyMs,
-                requestPayloadJSON: requestPayloadJSON,
+                requestPayloadJSON: nil,
                 responseContentPreview: preview
             )
         }

@@ -8,13 +8,13 @@ import Pod0Core
 final class Pod0NativeHostDispatcher {
     typealias Delivery = @MainActor (HostObservationEnvelope) -> Void
 
-    private struct ActiveTask {
+    struct ActiveTask {
         let envelope: HostRequestEnvelope
         let task: Task<Void, Never>
         let delivery: Delivery
     }
 
-    private struct PlaybackStream {
+    struct PlaybackStream {
         let envelope: HostRequestEnvelope
         let episodeID: EpisodeId?
         let minimumInterval: TimeInterval
@@ -26,19 +26,22 @@ final class Pod0NativeHostDispatcher {
 
     private let feedHost: any CoreFeedHosting
     private let playbackHost: any CorePlaybackHosting
+    let recallHost: any CoreRecallHosting
     private let now: @MainActor () -> Date
-    private var activeTasks: [HostRequestId: ActiveTask] = [:]
-    private var playbackStreams: [HostRequestId: PlaybackStream] = [:]
+    var activeTasks: [HostRequestId: ActiveTask] = [:]
+    var playbackStreams: [HostRequestId: PlaybackStream] = [:]
     private var completedRequestIDs: Set<HostRequestId> = []
     private var completionOrder: [HostRequestId] = []
 
     init(
         feedHost: any CoreFeedHosting,
         playbackHost: any CorePlaybackHosting,
+        recallHost: any CoreRecallHosting = UnavailableCoreRecallHost(),
         now: @escaping @MainActor () -> Date = Date.init
     ) {
         self.feedHost = feedHost
         self.playbackHost = playbackHost
+        self.recallHost = recallHost
         self.now = now
         playbackHost.installObservationSink { [weak self] observation in
             self?.receivePlaybackObservation(observation)
@@ -87,16 +90,9 @@ final class Pod0NativeHostDispatcher {
                 minimumIntervalMilliseconds: minimumIntervalMilliseconds,
                 delivery: delivery
             )
-        case .embedRecallQuery, .retrieveRecallCandidates, .rerankRecallCandidates:
-            finish(
-                envelope,
-                sequenceNumber: 0,
-                observation: .failed(
-                    code: .indexUnavailable,
-                    safeDetail: "Recall capabilities are not attached"
-                ),
-                delivery: delivery
-            )
+        case .embedRecallQuery, .retrieveRecallCandidates,
+             .rerankRecallCandidates, .rebuildRecallIndex:
+            startRecallTask(envelope, delivery: delivery)
         default:
             finish(
                 envelope,
@@ -230,7 +226,7 @@ final class Pod0NativeHostDispatcher {
             || previous.ended != current.ended
     }
 
-    private func finish(
+    func finish(
         _ envelope: HostRequestEnvelope,
         sequenceNumber: UInt64,
         observation: HostObservation,
@@ -267,7 +263,7 @@ final class Pod0NativeHostDispatcher {
             || completedRequestIDs.contains(requestID)
     }
 
-    private func isExpired(_ envelope: HostRequestEnvelope) -> Bool {
+    func isExpired(_ envelope: HostRequestEnvelope) -> Bool {
         envelope.deadlineAt.map { $0.date <= now() } ?? false
     }
 

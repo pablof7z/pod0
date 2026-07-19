@@ -7,29 +7,38 @@ final class SharedLibraryClient {
         let continuation: CheckedContinuation<OperationResult?, Error>
     }
 
-    private let facade: Pod0Facade
+    let facade: Pod0Facade
     private let dispatcher: Pod0NativeHostDispatcher
     private let deferredPlaybackHost: DeferredPlaybackHost
+    let deferredRecallHost: DeferredRecallHost
     private var subscriber: SharedLibrarySubscriber?
     private var librarySubscriptionID: SubscriptionId?
     private var playbackSubscriptionID: SubscriptionId?
     private var waiters: [CommandId: Waiter] = [:]
     private var lastLibraryRevision: UInt64 = 0
     private var lastPlaybackRevision: UInt64 = 0
-    private weak var store: AppStateStore?
+    weak var store: AppStateStore?
     private weak var playbackState: PlaybackState?
     private var cachedSnapshot: SharedLibrarySnapshot?
     private var cachedPlayback: PlaybackProjection?
     private var cachedPlaybackRevision: UInt64 = 0
     private var playbackHostAttached = false
+    var evidenceRebuildTask: Task<Void, Never>?
+    var evidenceUpdateTasks: [UUID: Task<Void, Never>] = [:]
+    var recallShadowTasks: [UUID: Task<Void, Never>] = [:]
+    var rebuildingEvidenceEpisodeIDs: Set<UUID> = []
+    var recallHostAttached = false
 
     init(facade: Pod0Facade, feedHost: any CoreFeedHosting) {
         self.facade = facade
         let playbackHost = DeferredPlaybackHost()
+        let recallHost = DeferredRecallHost()
         self.deferredPlaybackHost = playbackHost
+        self.deferredRecallHost = recallHost
         self.dispatcher = Pod0NativeHostDispatcher(
             feedHost: feedHost,
-            playbackHost: playbackHost
+            playbackHost: playbackHost,
+            recallHost: recallHost
         )
     }
 
@@ -125,7 +134,7 @@ final class SharedLibraryClient {
             receiveLibrary(envelope)
         case .playback(let projection):
             receivePlayback(projection, revision: envelope.stateRevision.value)
-        case .podcastDetail, .episodeDetail, .recall, .unsupported:
+        case .podcastDetail, .episodeDetail, .recall, .evidenceIndex, .unsupported:
             break
         }
     }
@@ -197,6 +206,25 @@ final class SharedLibraryClient {
                 waiters[operation.commandId] = waiter
             }
         }
+    }
+
+    func shutdown() {
+        evidenceRebuildTask?.cancel()
+        evidenceRebuildTask = nil
+        for task in evidenceUpdateTasks.values { task.cancel() }
+        evidenceUpdateTasks.removeAll()
+        for task in recallShadowTasks.values { task.cancel() }
+        recallShadowTasks.removeAll()
+        dispatcher.shutdown()
+        if let librarySubscriptionID { facade.unsubscribe(subscriptionId: librarySubscriptionID) }
+        if let playbackSubscriptionID { facade.unsubscribe(subscriptionId: playbackSubscriptionID) }
+        librarySubscriptionID = nil
+        playbackSubscriptionID = nil
+        subscriber = nil
+        for waiter in waiters.values {
+            waiter.continuation.resume(throwing: SharedLibraryError.cancelled)
+        }
+        waiters.removeAll()
     }
 }
 

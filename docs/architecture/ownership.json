@@ -196,7 +196,18 @@
       "deletion_target": "Delete Swift ranking/chunk/citation ownership after shared-core cutover.",
       "priority": "high",
       "includes": ["App/Sources/Knowledge/"],
-      "excludes": ["App/Sources/Knowledge/VectorIndex.swift", "App/Sources/Knowledge/VectorIndex+VersionedArtifacts.swift"]
+      "excludes": ["App/Sources/Knowledge/VectorIndex.swift", "App/Sources/Knowledge/VectorIndex+VersionedArtifacts.swift", "App/Sources/Knowledge/VectorIndex+CoreRecall.swift", "App/Sources/Knowledge/VectorIndex+CoreRecallRetrieval.swift"]
+    },
+    {
+      "id": "native-recall-index-capability",
+      "classification": "native_by_design",
+      "current_owner": "Swift sqlite-vec capability host",
+      "target_owner": "Platform capability host selected behind the Pod0 Rust facade",
+      "reason": "The host stores only a reconstructible Rust-selected generation and returns raw vector and lexical ranks; Rust owns evidence identity, fusion, fallback, ordering, and every durable product decision.",
+      "boundary": "Consume bounded typed rebuild/retrieval requests and return exact generation/span identities with raw lane ranks; never select citations or expose final recall answers.",
+      "persisted_state": "A disposable sqlite-vec/FTS capability index rebuilt exclusively from the Rust-selected evidence projection.",
+      "priority": "keep_native",
+      "includes": ["App/Sources/Knowledge/VectorIndex+CoreRecall.swift", "App/Sources/Knowledge/VectorIndex+CoreRecallRetrieval.swift"]
     },
     {
       "id": "undecided-vector-index-backend",

@@ -4,9 +4,9 @@ use pod0_domain::{
     StateRevision, UnixTimestampMilliseconds,
 };
 
-use crate::RecallQuery;
+use crate::{EvidenceChunkPolicy, RecallQuery, TranscriptEvidenceInput};
 
-pub const FACADE_CONTRACT_VERSION: u32 = 6;
+pub const FACADE_CONTRACT_VERSION: u32 = 7;
 pub const MAX_PROJECTION_ITEMS: u16 = 200;
 pub const MAX_OPERATION_ITEMS: usize = 32;
 pub const MAX_HOST_REQUEST_BATCH: u16 = 64;
@@ -90,6 +90,10 @@ pub enum ApplicationCommand {
     },
     RecallQuery {
         query: RecallQuery,
+    },
+    RebuildTranscriptEvidence {
+        input: TranscriptEvidenceInput,
+        policy: EvidenceChunkPolicy,
     },
     CancelOperation {
         cancellation_id: CancellationId,

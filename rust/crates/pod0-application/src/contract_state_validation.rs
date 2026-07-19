@@ -44,6 +44,17 @@ pub(super) fn observation_matches_request(
             },
             HostObservation::RecallCandidatesReranked { query_id, .. },
         ) => expected == query_id,
+        (
+            HostRequest::RebuildRecallIndex {
+                episode_id: expected_episode,
+                generation_id: expected_generation,
+            },
+            HostObservation::RecallIndexRebuilt {
+                episode_id,
+                generation_id,
+                ..
+            },
+        ) => expected_episode == episode_id && expected_generation == generation_id,
         (HostRequest::Unsupported { .. }, HostObservation::Unsupported { .. }) => true,
         _ => false,
     }
@@ -66,11 +77,17 @@ pub(super) fn recall_payload_is_bounded(
         }
         (
             HostRequest::RetrieveRecallCandidates {
-                maximum_candidates, ..
+                maximum_vector_candidates,
+                maximum_lexical_candidates,
+                maximum_total_candidates,
+                ..
             },
             HostObservation::RecallCandidatesRetrieved { candidates, .. },
         ) => {
-            candidates.len() <= usize::from(*maximum_candidates)
+            usize::from(*maximum_vector_candidates)
+                .saturating_add(usize::from(*maximum_lexical_candidates))
+                <= usize::from(*maximum_total_candidates)
+                && candidates.len() <= usize::from(*maximum_total_candidates)
                 && candidates.len() <= crate::MAX_RECALL_CANDIDATES
         }
         (
@@ -96,6 +113,7 @@ fn playback_request_episode_id(request: &HostRequest) -> Option<pod0_domain::Epi
         | HostRequest::EmbedRecallQuery { .. }
         | HostRequest::RetrieveRecallCandidates { .. }
         | HostRequest::RerankRecallCandidates { .. }
+        | HostRequest::RebuildRecallIndex { .. }
         | HostRequest::Unsupported { .. } => None,
     }
 }

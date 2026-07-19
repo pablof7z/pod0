@@ -41,6 +41,16 @@ extension QueueEntryId {
     var uuid: UUID? { UUID(coreHigh: high, low: low) }
 }
 
+extension SpeakerId {
+    init(uuid: UUID) {
+        let hexadecimal = uuid.uuidString.replacingOccurrences(of: "-", with: "")
+        self.init(
+            high: UInt64(hexadecimal.prefix(16), radix: 16)!,
+            low: UInt64(hexadecimal.suffix(16), radix: 16)!
+        )
+    }
+}
+
 extension CommandId {
     init(uuid: UUID) {
         let parts = uuid.coreIdentifierParts
@@ -52,6 +62,16 @@ extension CancellationId {
     init(uuid: UUID) {
         let parts = uuid.coreIdentifierParts
         self.init(high: parts.high, low: parts.low)
+    }
+}
+
+extension RecallQueryId {
+    init(uuid: UUID) {
+        let hexadecimal = uuid.uuidString.replacingOccurrences(of: "-", with: "")
+        self.init(
+            high: UInt64(hexadecimal.prefix(16), radix: 16)!,
+            low: UInt64(hexadecimal.suffix(16), radix: 16)!
+        )
     }
 }
 

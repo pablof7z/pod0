@@ -1,6 +1,6 @@
 use pod0_domain::{
-    CancellationId, CommandId, DomainEventId, EpisodeId, HostRequestId, PlaybackRatePermille,
-    PodcastId, RecallQueryId, StateRevision, UnixTimestampMilliseconds,
+    CancellationId, CommandId, DomainEventId, EpisodeId, EvidenceGenerationId, HostRequestId,
+    PlaybackRatePermille, PodcastId, RecallQueryId, StateRevision, UnixTimestampMilliseconds,
 };
 
 use crate::{
@@ -120,12 +120,18 @@ pub enum HostRequest {
         scope: RecallScope,
         lexical_query: String,
         embedding: RecallEmbeddingVector,
-        maximum_candidates: u16,
+        maximum_vector_candidates: u16,
+        maximum_lexical_candidates: u16,
+        maximum_total_candidates: u16,
     },
     RerankRecallCandidates {
         query_id: RecallQueryId,
         query: String,
         candidates: Vec<RecallRerankDocument>,
+    },
+    RebuildRecallIndex {
+        episode_id: EpisodeId,
+        generation_id: EvidenceGenerationId,
     },
     Unsupported {
         wire_code: u32,
@@ -170,6 +176,11 @@ pub enum HostObservation {
     RecallCandidatesReranked {
         query_id: RecallQueryId,
         rankings: Vec<RecallRerankObservation>,
+    },
+    RecallIndexRebuilt {
+        episode_id: EpisodeId,
+        generation_id: EvidenceGenerationId,
+        indexed_span_count: u32,
     },
     Failed {
         code: HostFailureCode,

@@ -15,6 +15,7 @@ use pod0_storage::{EvidenceStore, LibraryStore};
 
 use crate::ProjectionSubscriber;
 use crate::runtime_clock::SystemClock;
+use crate::runtime_evidence_state::PendingEvidenceIndex;
 use crate::runtime_recall_state::{PendingRecall, RecallWorkflow};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -75,6 +76,7 @@ pub(super) struct FacadeState {
     pub(super) host_requests: HostRequestLedger,
     pub(super) host_queue: VecDeque<HostRequestEnvelope>,
     pub(super) pending_feeds: BTreeMap<pod0_domain::HostRequestId, PendingFeed>,
+    pub(super) pending_evidence_indexes: BTreeMap<HostRequestId, PendingEvidenceIndex>,
     pub(super) pending_recalls: BTreeMap<HostRequestId, PendingRecall>,
     pub(super) recalls: BTreeMap<RecallQueryId, RecallWorkflow>,
     pub(super) playback: PlaybackRuntime,
@@ -95,6 +97,7 @@ impl Default for FacadeState {
             host_requests: HostRequestLedger::default(),
             host_queue: VecDeque::new(),
             pending_feeds: BTreeMap::new(),
+            pending_evidence_indexes: BTreeMap::new(),
             pending_recalls: BTreeMap::new(),
             recalls: BTreeMap::new(),
             playback: PlaybackRuntime::default(),

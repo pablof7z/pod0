@@ -4,7 +4,8 @@ use pod0_domain::{
 };
 
 use crate::{
-    MAX_OPERATION_ITEMS, MAX_PROJECTION_ITEMS, PlaybackProjection, RecallResultProjection,
+    EvidenceIndexProjection, MAX_OPERATION_ITEMS, MAX_PROJECTION_ITEMS, PlaybackProjection,
+    RecallResultProjection,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
@@ -14,6 +15,7 @@ pub enum ProjectionScope {
     EpisodeDetail { episode_id: EpisodeId },
     Playback,
     Recall { query_id: RecallQueryId },
+    EvidenceIndex { episode_id: EpisodeId },
     Unsupported { wire_code: u32 },
 }
 
@@ -54,6 +56,7 @@ pub enum Projection {
     EpisodeDetail { value: EpisodeDetailProjection },
     Playback { value: PlaybackProjection },
     Recall { value: RecallResultProjection },
+    EvidenceIndex { value: EvidenceIndexProjection },
     Unsupported { value: UnsupportedProjection },
 }
 
@@ -173,6 +176,11 @@ pub enum OperationResult {
     RecallFinished {
         query_id: RecallQueryId,
         evidence_count: u16,
+    },
+    EvidenceRebuilt {
+        episode_id: EpisodeId,
+        generation_id: pod0_domain::EvidenceGenerationId,
+        span_count: u32,
     },
     Unsupported {
         wire_code: u32,

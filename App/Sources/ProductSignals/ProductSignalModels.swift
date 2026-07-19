@@ -12,6 +12,7 @@ enum ProductSignalName: String, Codable, CaseIterable, Sendable {
     case recallAsked
     case recallGrounded
     case recallCitationOpened
+    case recallShadowParity
     case noteCreated
     case clipCreated
     case agentTurnCompleted
@@ -31,6 +32,8 @@ enum ProductSignalOutcome: String, Codable, CaseIterable, Sendable {
     case opened
     case detected
     case cancelled
+    case matched
+    case mismatched
 }
 
 enum ProductSignalLatencyBucket: String, Codable, CaseIterable, Sendable {

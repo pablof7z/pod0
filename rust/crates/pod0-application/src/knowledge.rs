@@ -12,7 +12,7 @@ pub use pod0_domain::{
 pub const MAX_RANK_CANDIDATES: usize = 512;
 pub const MAX_RANKED_EVIDENCE: usize = 20;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct TranscriptSegmentInput {
     pub text: String,
     pub start_milliseconds: u64,
@@ -20,7 +20,7 @@ pub struct TranscriptSegmentInput {
     pub speaker_id: Option<SpeakerId>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct TranscriptEvidenceInput {
     pub episode_id: EpisodeId,
     pub podcast_id: PodcastId,

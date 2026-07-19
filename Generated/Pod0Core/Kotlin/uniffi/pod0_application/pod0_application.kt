@@ -38,6 +38,7 @@ import uniffi.pod0_domain.ContentDigest
 import uniffi.pod0_domain.DomainEventId
 import uniffi.pod0_domain.EpisodeId
 import uniffi.pod0_domain.EpisodeRecord
+import uniffi.pod0_domain.EvidenceChunkPolicy
 import uniffi.pod0_domain.EvidenceGenerationId
 import uniffi.pod0_domain.EvidenceSpanId
 import uniffi.pod0_domain.FfiConverterTypeAutoDownloadPolicy
@@ -48,6 +49,7 @@ import uniffi.pod0_domain.FfiConverterTypeContentDigest
 import uniffi.pod0_domain.FfiConverterTypeDomainEventId
 import uniffi.pod0_domain.FfiConverterTypeEpisodeId
 import uniffi.pod0_domain.FfiConverterTypeEpisodeRecord
+import uniffi.pod0_domain.FfiConverterTypeEvidenceChunkPolicy
 import uniffi.pod0_domain.FfiConverterTypeEvidenceGenerationId
 import uniffi.pod0_domain.FfiConverterTypeEvidenceSpanId
 import uniffi.pod0_domain.FfiConverterTypeHostRequestId
@@ -64,6 +66,7 @@ import uniffi.pod0_domain.FfiConverterTypeSpeakerId
 import uniffi.pod0_domain.FfiConverterTypeStateRevision
 import uniffi.pod0_domain.FfiConverterTypeTranscriptProvenance
 import uniffi.pod0_domain.FfiConverterTypeTranscriptSegmentId
+import uniffi.pod0_domain.FfiConverterTypeTranscriptSource
 import uniffi.pod0_domain.FfiConverterTypeTranscriptVersionId
 import uniffi.pod0_domain.FfiConverterTypeUnixTimestampMilliseconds
 import uniffi.pod0_domain.HostRequestId
@@ -80,6 +83,7 @@ import uniffi.pod0_domain.SpeakerId
 import uniffi.pod0_domain.StateRevision
 import uniffi.pod0_domain.TranscriptProvenance
 import uniffi.pod0_domain.TranscriptSegmentId
+import uniffi.pod0_domain.TranscriptSource
 import uniffi.pod0_domain.TranscriptVersionId
 import uniffi.pod0_domain.UnixTimestampMilliseconds
 import uniffi.pod0_domain.RustBuffer as RustBufferAutoDownloadPolicy
@@ -90,6 +94,7 @@ import uniffi.pod0_domain.RustBuffer as RustBufferContentDigest
 import uniffi.pod0_domain.RustBuffer as RustBufferDomainEventId
 import uniffi.pod0_domain.RustBuffer as RustBufferEpisodeId
 import uniffi.pod0_domain.RustBuffer as RustBufferEpisodeRecord
+import uniffi.pod0_domain.RustBuffer as RustBufferEvidenceChunkPolicy
 import uniffi.pod0_domain.RustBuffer as RustBufferEvidenceGenerationId
 import uniffi.pod0_domain.RustBuffer as RustBufferEvidenceSpanId
 import uniffi.pod0_domain.RustBuffer as RustBufferHostRequestId
@@ -106,6 +111,7 @@ import uniffi.pod0_domain.RustBuffer as RustBufferSpeakerId
 import uniffi.pod0_domain.RustBuffer as RustBufferStateRevision
 import uniffi.pod0_domain.RustBuffer as RustBufferTranscriptProvenance
 import uniffi.pod0_domain.RustBuffer as RustBufferTranscriptSegmentId
+import uniffi.pod0_domain.RustBuffer as RustBufferTranscriptSource
 import uniffi.pod0_domain.RustBuffer as RustBufferTranscriptVersionId
 import uniffi.pod0_domain.RustBuffer as RustBufferUnixTimestampMilliseconds
 
@@ -1428,6 +1434,122 @@ public object FfiConverterTypeEpisodeSummary: FfiConverterRustBuffer<EpisodeSumm
 
 
 
+data class EvidenceIndexProjection (
+    val `episodeId`: EpisodeId
+    ,
+    val `stage`: EvidenceIndexStage
+    ,
+    val `generationId`: EvidenceGenerationId?
+    ,
+    val `transcriptContentDigest`: ContentDigest?
+    ,
+    val `spans`: List<EvidenceIndexSpanProjection>
+    ,
+    val `totalSpans`: kotlin.UInt
+    ,
+    val `hasMore`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEvidenceIndexProjection: FfiConverterRustBuffer<EvidenceIndexProjection> {
+    override fun read(buf: ByteBuffer): EvidenceIndexProjection {
+        return EvidenceIndexProjection(
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterTypeEvidenceIndexStage.read(buf),
+            FfiConverterOptionalTypeEvidenceGenerationId.read(buf),
+            FfiConverterOptionalTypeContentDigest.read(buf),
+            FfiConverterSequenceTypeEvidenceIndexSpanProjection.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: EvidenceIndexProjection) = (
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterTypeEvidenceIndexStage.allocationSize(value.`stage`) +
+            FfiConverterOptionalTypeEvidenceGenerationId.allocationSize(value.`generationId`) +
+            FfiConverterOptionalTypeContentDigest.allocationSize(value.`transcriptContentDigest`) +
+            FfiConverterSequenceTypeEvidenceIndexSpanProjection.allocationSize(value.`spans`) +
+            FfiConverterUInt.allocationSize(value.`totalSpans`) +
+            FfiConverterBoolean.allocationSize(value.`hasMore`)
+    )
+
+    override fun write(value: EvidenceIndexProjection, buf: ByteBuffer) {
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterTypeEvidenceIndexStage.write(value.`stage`, buf)
+            FfiConverterOptionalTypeEvidenceGenerationId.write(value.`generationId`, buf)
+            FfiConverterOptionalTypeContentDigest.write(value.`transcriptContentDigest`, buf)
+            FfiConverterSequenceTypeEvidenceIndexSpanProjection.write(value.`spans`, buf)
+            FfiConverterUInt.write(value.`totalSpans`, buf)
+            FfiConverterBoolean.write(value.`hasMore`, buf)
+    }
+}
+
+
+
+data class EvidenceIndexSpanProjection (
+    val `spanId`: EvidenceSpanId
+    ,
+    val `generationId`: EvidenceGenerationId
+    ,
+    val `episodeId`: EpisodeId
+    ,
+    val `podcastId`: PodcastId
+    ,
+    val `text`: kotlin.String
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEvidenceIndexSpanProjection: FfiConverterRustBuffer<EvidenceIndexSpanProjection> {
+    override fun read(buf: ByteBuffer): EvidenceIndexSpanProjection {
+        return EvidenceIndexSpanProjection(
+            FfiConverterTypeEvidenceSpanId.read(buf),
+            FfiConverterTypeEvidenceGenerationId.read(buf),
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterTypePodcastId.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: EvidenceIndexSpanProjection) = (
+            FfiConverterTypeEvidenceSpanId.allocationSize(value.`spanId`) +
+            FfiConverterTypeEvidenceGenerationId.allocationSize(value.`generationId`) +
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterString.allocationSize(value.`text`)
+    )
+
+    override fun write(value: EvidenceIndexSpanProjection, buf: ByteBuffer) {
+            FfiConverterTypeEvidenceSpanId.write(value.`spanId`, buf)
+            FfiConverterTypeEvidenceGenerationId.write(value.`generationId`, buf)
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterString.write(value.`text`, buf)
+    }
+}
+
+
+
 data class ExternalEpisodeInput (
     val `podcastId`: PodcastId
     ,
@@ -2660,6 +2782,117 @@ public object FfiConverterTypeSyntheticPodcastInput: FfiConverterRustBuffer<Synt
 
 
 
+data class TranscriptEvidenceInput (
+    val `episodeId`: EpisodeId
+    ,
+    val `podcastId`: PodcastId
+    ,
+    val `sourceRevision`: kotlin.String
+    ,
+    val `source`: TranscriptSource
+    ,
+    val `provider`: kotlin.String?
+    ,
+    val `sourcePayloadDigest`: ContentDigest
+    ,
+    val `segments`: List<TranscriptSegmentInput>
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptEvidenceInput: FfiConverterRustBuffer<TranscriptEvidenceInput> {
+    override fun read(buf: ByteBuffer): TranscriptEvidenceInput {
+        return TranscriptEvidenceInput(
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterTypePodcastId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeTranscriptSource.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterSequenceTypeTranscriptSegmentInput.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptEvidenceInput) = (
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterString.allocationSize(value.`sourceRevision`) +
+            FfiConverterTypeTranscriptSource.allocationSize(value.`source`) +
+            FfiConverterOptionalString.allocationSize(value.`provider`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`sourcePayloadDigest`) +
+            FfiConverterSequenceTypeTranscriptSegmentInput.allocationSize(value.`segments`)
+    )
+
+    override fun write(value: TranscriptEvidenceInput, buf: ByteBuffer) {
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterString.write(value.`sourceRevision`, buf)
+            FfiConverterTypeTranscriptSource.write(value.`source`, buf)
+            FfiConverterOptionalString.write(value.`provider`, buf)
+            FfiConverterTypeContentDigest.write(value.`sourcePayloadDigest`, buf)
+            FfiConverterSequenceTypeTranscriptSegmentInput.write(value.`segments`, buf)
+    }
+}
+
+
+
+data class TranscriptSegmentInput (
+    val `text`: kotlin.String
+    ,
+    val `startMilliseconds`: kotlin.ULong
+    ,
+    val `endMilliseconds`: kotlin.ULong
+    ,
+    val `speakerId`: SpeakerId?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptSegmentInput: FfiConverterRustBuffer<TranscriptSegmentInput> {
+    override fun read(buf: ByteBuffer): TranscriptSegmentInput {
+        return TranscriptSegmentInput(
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterOptionalTypeSpeakerId.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptSegmentInput) = (
+            FfiConverterString.allocationSize(value.`text`) +
+            FfiConverterULong.allocationSize(value.`startMilliseconds`) +
+            FfiConverterULong.allocationSize(value.`endMilliseconds`) +
+            FfiConverterOptionalTypeSpeakerId.allocationSize(value.`speakerId`)
+    )
+
+    override fun write(value: TranscriptSegmentInput, buf: ByteBuffer) {
+            FfiConverterString.write(value.`text`, buf)
+            FfiConverterULong.write(value.`startMilliseconds`, buf)
+            FfiConverterULong.write(value.`endMilliseconds`, buf)
+            FfiConverterOptionalTypeSpeakerId.write(value.`speakerId`, buf)
+    }
+}
+
+
+
 data class UnsupportedProjection (
     val `wireCode`: kotlin.UInt
     ,
@@ -2823,6 +3056,16 @@ sealed class ApplicationCommand {
         companion object
     }
 
+    data class RebuildTranscriptEvidence(
+        val `input`: uniffi.pod0_application.TranscriptEvidenceInput,
+        val `policy`: uniffi.pod0_domain.EvidenceChunkPolicy) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
     data class CancelOperation(
         val `cancellationId`: uniffi.pod0_domain.CancellationId) : ApplicationCommand()
 
@@ -2900,10 +3143,14 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
             14 -> ApplicationCommand.RecallQuery(
                 FfiConverterTypeRecallQuery.read(buf),
                 )
-            15 -> ApplicationCommand.CancelOperation(
+            15 -> ApplicationCommand.RebuildTranscriptEvidence(
+                FfiConverterTypeTranscriptEvidenceInput.read(buf),
+                FfiConverterTypeEvidenceChunkPolicy.read(buf),
+                )
+            16 -> ApplicationCommand.CancelOperation(
                 FfiConverterTypeCancellationId.read(buf),
                 )
-            16 -> ApplicationCommand.Unsupported(
+            17 -> ApplicationCommand.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -3011,6 +3258,14 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 + FfiConverterTypeRecallQuery.allocationSize(value.`query`)
             )
         }
+        is ApplicationCommand.RebuildTranscriptEvidence -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeTranscriptEvidenceInput.allocationSize(value.`input`)
+                + FfiConverterTypeEvidenceChunkPolicy.allocationSize(value.`policy`)
+            )
+        }
         is ApplicationCommand.CancelOperation -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -3101,13 +3356,19 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterTypeRecallQuery.write(value.`query`, buf)
                 Unit
             }
-            is ApplicationCommand.CancelOperation -> {
+            is ApplicationCommand.RebuildTranscriptEvidence -> {
                 buf.putInt(15)
+                FfiConverterTypeTranscriptEvidenceInput.write(value.`input`, buf)
+                FfiConverterTypeEvidenceChunkPolicy.write(value.`policy`, buf)
+                Unit
+            }
+            is ApplicationCommand.CancelOperation -> {
+                buf.putInt(16)
                 FfiConverterTypeCancellationId.write(value.`cancellationId`, buf)
                 Unit
             }
             is ApplicationCommand.Unsupported -> {
-                buf.putInt(16)
+                buf.putInt(17)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -3515,6 +3776,43 @@ public object FfiConverterTypeDomainEvent : FfiConverterRustBuffer<DomainEvent>{
 
 
 
+
+enum class EvidenceIndexStage {
+
+    READY,
+    MISSING,
+    UNAVAILABLE;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEvidenceIndexStage: FfiConverterRustBuffer<EvidenceIndexStage> {
+    override fun read(buf: ByteBuffer) = try {
+
+        EvidenceIndexStage.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: EvidenceIndexStage) = 4UL
+
+    override fun write(value: EvidenceIndexStage, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 sealed class HostFailureCode {
 
     object Offline : HostFailureCode()
@@ -3765,6 +4063,17 @@ sealed class HostObservation {
         companion object
     }
 
+    data class RecallIndexRebuilt(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `generationId`: uniffi.pod0_domain.EvidenceGenerationId,
+        val `indexedSpanCount`: kotlin.UInt) : HostObservation()
+
+    {
+
+
+        companion object
+    }
+
     data class Failed(
         val `code`: uniffi.pod0_application.HostFailureCode,
         val `safeDetail`: kotlin.String?) : HostObservation()
@@ -3830,12 +4139,17 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 FfiConverterTypeRecallQueryId.read(buf),
                 FfiConverterSequenceTypeRecallRerankObservation.read(buf),
                 )
-            7 -> HostObservation.Failed(
+            7 -> HostObservation.RecallIndexRebuilt(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeEvidenceGenerationId.read(buf),
+                FfiConverterUInt.read(buf),
+                )
+            8 -> HostObservation.Failed(
                 FfiConverterTypeHostFailureCode.read(buf),
                 FfiConverterOptionalString.read(buf),
                 )
-            8 -> HostObservation.Cancelled
-            9 -> HostObservation.Unsupported(
+            9 -> HostObservation.Cancelled
+            10 -> HostObservation.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -3892,6 +4206,15 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 4UL
                 + FfiConverterTypeRecallQueryId.allocationSize(value.`queryId`)
                 + FfiConverterSequenceTypeRecallRerankObservation.allocationSize(value.`rankings`)
+            )
+        }
+        is HostObservation.RecallIndexRebuilt -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeEvidenceGenerationId.allocationSize(value.`generationId`)
+                + FfiConverterUInt.allocationSize(value.`indexedSpanCount`)
             )
         }
         is HostObservation.Failed -> {
@@ -3958,18 +4281,25 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 FfiConverterSequenceTypeRecallRerankObservation.write(value.`rankings`, buf)
                 Unit
             }
-            is HostObservation.Failed -> {
+            is HostObservation.RecallIndexRebuilt -> {
                 buf.putInt(7)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeEvidenceGenerationId.write(value.`generationId`, buf)
+                FfiConverterUInt.write(value.`indexedSpanCount`, buf)
+                Unit
+            }
+            is HostObservation.Failed -> {
+                buf.putInt(8)
                 FfiConverterTypeHostFailureCode.write(value.`code`, buf)
                 FfiConverterOptionalString.write(value.`safeDetail`, buf)
                 Unit
             }
             is HostObservation.Cancelled -> {
-                buf.putInt(8)
+                buf.putInt(9)
                 Unit
             }
             is HostObservation.Unsupported -> {
-                buf.putInt(9)
+                buf.putInt(10)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -4099,7 +4429,9 @@ sealed class HostRequest {
         val `scope`: uniffi.pod0_application.RecallScope,
         val `lexicalQuery`: kotlin.String,
         val `embedding`: uniffi.pod0_application.RecallEmbeddingVector,
-        val `maximumCandidates`: kotlin.UShort) : HostRequest()
+        val `maximumVectorCandidates`: kotlin.UShort,
+        val `maximumLexicalCandidates`: kotlin.UShort,
+        val `maximumTotalCandidates`: kotlin.UShort) : HostRequest()
 
     {
 
@@ -4111,6 +4443,16 @@ sealed class HostRequest {
         val `queryId`: uniffi.pod0_domain.RecallQueryId,
         val `query`: kotlin.String,
         val `candidates`: List<uniffi.pod0_application.RecallRerankDocument>) : HostRequest()
+
+    {
+
+
+        companion object
+    }
+
+    data class RebuildRecallIndex(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `generationId`: uniffi.pod0_domain.EvidenceGenerationId) : HostRequest()
 
     {
 
@@ -4194,13 +4536,19 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 FfiConverterString.read(buf),
                 FfiConverterTypeRecallEmbeddingVector.read(buf),
                 FfiConverterUShort.read(buf),
+                FfiConverterUShort.read(buf),
+                FfiConverterUShort.read(buf),
                 )
             13 -> HostRequest.RerankRecallCandidates(
                 FfiConverterTypeRecallQueryId.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterSequenceTypeRecallRerankDocument.read(buf),
                 )
-            14 -> HostRequest.Unsupported(
+            14 -> HostRequest.RebuildRecallIndex(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeEvidenceGenerationId.read(buf),
+                )
+            15 -> HostRequest.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -4305,7 +4653,9 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 + FfiConverterTypeRecallScope.allocationSize(value.`scope`)
                 + FfiConverterString.allocationSize(value.`lexicalQuery`)
                 + FfiConverterTypeRecallEmbeddingVector.allocationSize(value.`embedding`)
-                + FfiConverterUShort.allocationSize(value.`maximumCandidates`)
+                + FfiConverterUShort.allocationSize(value.`maximumVectorCandidates`)
+                + FfiConverterUShort.allocationSize(value.`maximumLexicalCandidates`)
+                + FfiConverterUShort.allocationSize(value.`maximumTotalCandidates`)
             )
         }
         is HostRequest.RerankRecallCandidates -> {
@@ -4315,6 +4665,14 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 + FfiConverterTypeRecallQueryId.allocationSize(value.`queryId`)
                 + FfiConverterString.allocationSize(value.`query`)
                 + FfiConverterSequenceTypeRecallRerankDocument.allocationSize(value.`candidates`)
+            )
+        }
+        is HostRequest.RebuildRecallIndex -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeEvidenceGenerationId.allocationSize(value.`generationId`)
             )
         }
         is HostRequest.Unsupported -> {
@@ -4401,7 +4759,9 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 FfiConverterTypeRecallScope.write(value.`scope`, buf)
                 FfiConverterString.write(value.`lexicalQuery`, buf)
                 FfiConverterTypeRecallEmbeddingVector.write(value.`embedding`, buf)
-                FfiConverterUShort.write(value.`maximumCandidates`, buf)
+                FfiConverterUShort.write(value.`maximumVectorCandidates`, buf)
+                FfiConverterUShort.write(value.`maximumLexicalCandidates`, buf)
+                FfiConverterUShort.write(value.`maximumTotalCandidates`, buf)
                 Unit
             }
             is HostRequest.RerankRecallCandidates -> {
@@ -4411,8 +4771,14 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 FfiConverterSequenceTypeRecallRerankDocument.write(value.`candidates`, buf)
                 Unit
             }
-            is HostRequest.Unsupported -> {
+            is HostRequest.RebuildRecallIndex -> {
                 buf.putInt(14)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeEvidenceGenerationId.write(value.`generationId`, buf)
+                Unit
+            }
+            is HostRequest.Unsupported -> {
+                buf.putInt(15)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -4594,6 +4960,17 @@ sealed class OperationResult {
         companion object
     }
 
+    data class EvidenceRebuilt(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `generationId`: uniffi.pod0_domain.EvidenceGenerationId,
+        val `spanCount`: kotlin.UInt) : OperationResult()
+
+    {
+
+
+        companion object
+    }
+
     data class Unsupported(
         val `wireCode`: kotlin.UInt) : OperationResult()
 
@@ -4644,7 +5021,12 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
                 FfiConverterTypeRecallQueryId.read(buf),
                 FfiConverterUShort.read(buf),
                 )
-            10 -> OperationResult.Unsupported(
+            10 -> OperationResult.EvidenceRebuilt(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeEvidenceGenerationId.read(buf),
+                FfiConverterUInt.read(buf),
+                )
+            11 -> OperationResult.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -4715,6 +5097,15 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
                 + FfiConverterUShort.allocationSize(value.`evidenceCount`)
             )
         }
+        is OperationResult.EvidenceRebuilt -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeEvidenceGenerationId.allocationSize(value.`generationId`)
+                + FfiConverterUInt.allocationSize(value.`spanCount`)
+            )
+        }
         is OperationResult.Unsupported -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -4771,8 +5162,15 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
                 FfiConverterUShort.write(value.`evidenceCount`, buf)
                 Unit
             }
-            is OperationResult.Unsupported -> {
+            is OperationResult.EvidenceRebuilt -> {
                 buf.putInt(10)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeEvidenceGenerationId.write(value.`generationId`, buf)
+                FfiConverterUInt.write(value.`spanCount`, buf)
+                Unit
+            }
+            is OperationResult.Unsupported -> {
+                buf.putInt(11)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -6231,6 +6629,15 @@ sealed class Projection {
         companion object
     }
 
+    data class EvidenceIndex(
+        val `value`: uniffi.pod0_application.EvidenceIndexProjection) : Projection()
+
+    {
+
+
+        companion object
+    }
+
     data class Unsupported(
         val `value`: uniffi.pod0_application.UnsupportedProjection) : Projection()
 
@@ -6271,7 +6678,10 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
             5 -> Projection.Recall(
                 FfiConverterTypeRecallResultProjection.read(buf),
                 )
-            6 -> Projection.Unsupported(
+            6 -> Projection.EvidenceIndex(
+                FfiConverterTypeEvidenceIndexProjection.read(buf),
+                )
+            7 -> Projection.Unsupported(
                 FfiConverterTypeUnsupportedProjection.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -6314,6 +6724,13 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
                 + FfiConverterTypeRecallResultProjection.allocationSize(value.`value`)
             )
         }
+        is Projection.EvidenceIndex -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEvidenceIndexProjection.allocationSize(value.`value`)
+            )
+        }
         is Projection.Unsupported -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -6350,8 +6767,13 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
                 FfiConverterTypeRecallResultProjection.write(value.`value`, buf)
                 Unit
             }
-            is Projection.Unsupported -> {
+            is Projection.EvidenceIndex -> {
                 buf.putInt(6)
+                FfiConverterTypeEvidenceIndexProjection.write(value.`value`, buf)
+                Unit
+            }
+            is Projection.Unsupported -> {
+                buf.putInt(7)
                 FfiConverterTypeUnsupportedProjection.write(value.`value`, buf)
                 Unit
             }
@@ -6398,6 +6820,15 @@ sealed class ProjectionScope {
         companion object
     }
 
+    data class EvidenceIndex(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId) : ProjectionScope()
+
+    {
+
+
+        companion object
+    }
+
     data class Unsupported(
         val `wireCode`: kotlin.UInt) : ProjectionScope()
 
@@ -6434,7 +6865,10 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
             5 -> ProjectionScope.Recall(
                 FfiConverterTypeRecallQueryId.read(buf),
                 )
-            6 -> ProjectionScope.Unsupported(
+            6 -> ProjectionScope.EvidenceIndex(
+                FfiConverterTypeEpisodeId.read(buf),
+                )
+            7 -> ProjectionScope.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -6475,6 +6909,13 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
                 + FfiConverterTypeRecallQueryId.allocationSize(value.`queryId`)
             )
         }
+        is ProjectionScope.EvidenceIndex -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+            )
+        }
         is ProjectionScope.Unsupported -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -6509,8 +6950,13 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
                 FfiConverterTypeRecallQueryId.write(value.`queryId`, buf)
                 Unit
             }
-            is ProjectionScope.Unsupported -> {
+            is ProjectionScope.EvidenceIndex -> {
                 buf.putInt(6)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                Unit
+            }
+            is ProjectionScope.Unsupported -> {
+                buf.putInt(7)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -7396,6 +7842,38 @@ public object FfiConverterOptionalTypePlaybackItem: FfiConverterRustBuffer<Playb
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeContentDigest: FfiConverterRustBuffer<ContentDigest?> {
+    override fun read(buf: ByteBuffer): ContentDigest? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeContentDigest.read(buf)
+    }
+
+    override fun allocationSize(value: ContentDigest?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeContentDigest.allocationSize(value)
+        }
+    }
+
+    override fun write(value: ContentDigest?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeContentDigest.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeEpisodeId: FfiConverterRustBuffer<EpisodeId?> {
     override fun read(buf: ByteBuffer): EpisodeId? {
         if (buf.get().toInt() == 0) {
@@ -7450,6 +7928,38 @@ public object FfiConverterOptionalTypeEpisodeRecord: FfiConverterRustBuffer<Epis
         } else {
             buf.put(1)
             FfiConverterTypeEpisodeRecord.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeEvidenceGenerationId: FfiConverterRustBuffer<EvidenceGenerationId?> {
+    override fun read(buf: ByteBuffer): EvidenceGenerationId? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeEvidenceGenerationId.read(buf)
+    }
+
+    override fun allocationSize(value: EvidenceGenerationId?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeEvidenceGenerationId.allocationSize(value)
+        }
+    }
+
+    override fun write(value: EvidenceGenerationId?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeEvidenceGenerationId.write(value, buf)
         }
     }
 }
@@ -7772,6 +8282,34 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeEvidenceIndexSpanProjection: FfiConverterRustBuffer<List<EvidenceIndexSpanProjection>> {
+    override fun read(buf: ByteBuffer): List<EvidenceIndexSpanProjection> {
+        val len = buf.getInt()
+        return List<EvidenceIndexSpanProjection>(len) {
+            FfiConverterTypeEvidenceIndexSpanProjection.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<EvidenceIndexSpanProjection>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeEvidenceIndexSpanProjection.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<EvidenceIndexSpanProjection>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeEvidenceIndexSpanProjection.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeOperationProjection: FfiConverterRustBuffer<List<OperationProjection>> {
     override fun read(buf: ByteBuffer): List<OperationProjection> {
         val len = buf.getInt()
@@ -7902,6 +8440,34 @@ public object FfiConverterSequenceTypeRecallRerankObservation: FfiConverterRustB
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeRecallRerankObservation.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeTranscriptSegmentInput: FfiConverterRustBuffer<List<TranscriptSegmentInput>> {
+    override fun read(buf: ByteBuffer): List<TranscriptSegmentInput> {
+        val len = buf.getInt()
+        return List<TranscriptSegmentInput>(len) {
+            FfiConverterTypeTranscriptSegmentInput.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<TranscriptSegmentInput>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeTranscriptSegmentInput.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<TranscriptSegmentInput>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeTranscriptSegmentInput.write(it, buf)
         }
     }
 }

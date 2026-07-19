@@ -100,7 +100,6 @@ struct OpenRouterEmbeddingsClient: EmbeddingsClient {
         )
         let bodyData = try Self.encoder.encode(payload)
         req.httpBody = bodyData
-        let requestPayloadJSON = String(data: bodyData, encoding: .utf8)
 
         let start = Date()
         let (data, response) = try await session.data(for: req)
@@ -117,8 +116,9 @@ struct OpenRouterEmbeddingsClient: EmbeddingsClient {
         case 429:
             throw EmbeddingsError.rateLimited
         default:
-            let body = String(data: data, encoding: .utf8) ?? "<binary>"
-            Self.logger.warning("OpenRouter embeddings HTTP \(http.statusCode, privacy: .public): \(body, privacy: .public)")
+            Self.logger.warning(
+                "OpenRouter embeddings failed with HTTP \(http.statusCode, privacy: .public)"
+            )
             throw EmbeddingsError.serverError(statusCode: http.statusCode)
         }
 
@@ -126,7 +126,7 @@ struct OpenRouterEmbeddingsClient: EmbeddingsClient {
         do {
             decoded = try Self.decoder.decode(ResponsePayload.self, from: data)
         } catch {
-            Self.logger.error("OpenRouter embeddings decode failed: \(error, privacy: .public)")
+            Self.logger.error("OpenRouter embeddings response could not be decoded")
             throw EmbeddingsError.decoding
         }
 
@@ -145,7 +145,7 @@ struct OpenRouterEmbeddingsClient: EmbeddingsClient {
                     model: modelUsed,
                     usage: usage,
                     latencyMs: latencyMs,
-                    requestPayloadJSON: requestPayloadJSON,
+                    requestPayloadJSON: nil,
                     responseContentPreview: preview
                 )
             }

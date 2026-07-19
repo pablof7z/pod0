@@ -13,6 +13,10 @@ impl FacadeState {
             .host_requests
             .is_playback_request(observation.request_id);
         let pending_recall = self.pending_recalls.get(&observation.request_id).copied();
+        let pending_evidence = self
+            .pending_evidence_indexes
+            .get(&observation.request_id)
+            .copied();
         if self.host_requests.accept_observation(&observation) != ObservationAcceptance::Accepted {
             return false;
         }
@@ -29,6 +33,10 @@ impl FacadeState {
         } else if let Some(pending) = pending_recall {
             self.pending_recalls.remove(&observation.request_id);
             self.finish_recall_observation(pending, observation.observation);
+        } else if let Some(pending) = pending_evidence {
+            self.pending_evidence_indexes
+                .remove(&observation.request_id);
+            self.finish_evidence_index_observation(pending, observation.observation);
         } else {
             match observation.observation {
                 HostObservation::Failed { code, .. } if is_playback_request => {
@@ -60,7 +68,8 @@ impl FacadeState {
                 }
                 HostObservation::RecallQueryEmbedded { .. }
                 | HostObservation::RecallCandidatesRetrieved { .. }
-                | HostObservation::RecallCandidatesReranked { .. } => {
+                | HostObservation::RecallCandidatesReranked { .. }
+                | HostObservation::RecallIndexRebuilt { .. } => {
                     self.fail(command_id, CoreFailureCode::InvalidCommand)
                 }
                 HostObservation::Unsupported { wire_code } => {
@@ -110,7 +119,8 @@ impl FacadeState {
             }
             HostObservation::RecallQueryEmbedded { .. }
             | HostObservation::RecallCandidatesRetrieved { .. }
-            | HostObservation::RecallCandidatesReranked { .. } => {
+            | HostObservation::RecallCandidatesReranked { .. }
+            | HostObservation::RecallIndexRebuilt { .. } => {
                 self.fail(pending.command_id, CoreFailureCode::InvalidCommand)
             }
         }

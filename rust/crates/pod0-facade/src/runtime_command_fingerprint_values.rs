@@ -1,7 +1,7 @@
-use pod0_application::{PlaybackCommand, QueuePlacement};
+use pod0_application::{PlaybackCommand, QueuePlacement, TranscriptEvidenceInput};
 use pod0_domain::{
     AutoDownloadMode, AutoDownloadPolicy, CompletionCause, CompletionStatus, PlaybackSegment,
-    PlaybackSleepMode, QueueEntry,
+    PlaybackSleepMode, QueueEntry, TranscriptSource,
 };
 use sha2::{Digest, Sha256};
 
@@ -122,6 +122,50 @@ pub(super) fn hash_policy(hash: &mut Sha256, policy: &AutoDownloadPolicy) {
         }
     }
     hash.update([u8::from(policy.wifi_only)]);
+}
+
+pub(super) fn hash_evidence_input(
+    hash: &mut Sha256,
+    input: &TranscriptEvidenceInput,
+    policy: pod0_domain::EvidenceChunkPolicy,
+) {
+    hash.update(b"rebuild-evidence\0");
+    hash.update(input.episode_id.into_bytes());
+    hash.update(input.podcast_id.into_bytes());
+    hash.update(input.source_revision.as_bytes());
+    hash.update([0]);
+    hash.update(
+        match input.source {
+            TranscriptSource::Publisher => 1_u32,
+            TranscriptSource::Scribe => 2,
+            TranscriptSource::Whisper => 3,
+            TranscriptSource::OnDevice => 4,
+            TranscriptSource::AssemblyAi => 5,
+            TranscriptSource::Other => 6,
+            TranscriptSource::Unsupported { wire_code } => wire_code | 0x8000_0000,
+        }
+        .to_be_bytes(),
+    );
+    hash_optional(hash, input.provider.as_deref());
+    hash.update(input.source_payload_digest.into_bytes());
+    hash.update(policy.version.to_be_bytes());
+    hash.update(policy.target_tokens.to_be_bytes());
+    hash.update(policy.overlap_per_mille.to_be_bytes());
+    hash.update(policy.snap_tolerance_per_mille.to_be_bytes());
+    hash.update((input.segments.len() as u64).to_be_bytes());
+    for segment in &input.segments {
+        hash.update(segment.text.as_bytes());
+        hash.update([0]);
+        hash.update(segment.start_milliseconds.to_be_bytes());
+        hash.update(segment.end_milliseconds.to_be_bytes());
+        match segment.speaker_id {
+            Some(id) => {
+                hash.update([1]);
+                hash.update(id.into_bytes());
+            }
+            None => hash.update([0]),
+        }
+    }
 }
 
 fn hash_queue_entry(hash: &mut Sha256, entry: &QueueEntry) {

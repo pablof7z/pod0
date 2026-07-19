@@ -1278,6 +1278,68 @@ public func FfiConverterTypeEpisodeRecord_lower(_ value: EpisodeRecord) -> RustB
 }
 
 
+public struct EvidenceChunkPolicy: Equatable, Hashable {
+    public let version: UInt32
+    public let targetTokens: UInt16
+    public let overlapPerMille: UInt16
+    public let snapTolerancePerMille: UInt16
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(version: UInt32, targetTokens: UInt16, overlapPerMille: UInt16, snapTolerancePerMille: UInt16) {
+        self.version = version
+        self.targetTokens = targetTokens
+        self.overlapPerMille = overlapPerMille
+        self.snapTolerancePerMille = snapTolerancePerMille
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension EvidenceChunkPolicy: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeEvidenceChunkPolicy: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EvidenceChunkPolicy {
+        return
+            try EvidenceChunkPolicy(
+                version: FfiConverterUInt32.read(from: &buf),
+                targetTokens: FfiConverterUInt16.read(from: &buf),
+                overlapPerMille: FfiConverterUInt16.read(from: &buf),
+                snapTolerancePerMille: FfiConverterUInt16.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: EvidenceChunkPolicy, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.version, into: &buf)
+        FfiConverterUInt16.write(value.targetTokens, into: &buf)
+        FfiConverterUInt16.write(value.overlapPerMille, into: &buf)
+        FfiConverterUInt16.write(value.snapTolerancePerMille, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEvidenceChunkPolicy_lift(_ buf: RustBuffer) throws -> EvidenceChunkPolicy {
+    return try FfiConverterTypeEvidenceChunkPolicy.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEvidenceChunkPolicy_lower(_ value: EvidenceChunkPolicy) -> RustBuffer {
+    return FfiConverterTypeEvidenceChunkPolicy.lower(value)
+}
+
+
 public struct EvidenceGenerationId: Equatable, Hashable {
     public let high: UInt64
     public let low: UInt64

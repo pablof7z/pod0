@@ -72,7 +72,11 @@ impl FacadeState {
                 scope,
                 lexical_query,
                 embedding,
-                maximum_candidates: u16::try_from(MAX_RECALL_CANDIDATES).unwrap_or(u16::MAX),
+                maximum_vector_candidates: u16::try_from(MAX_RECALL_CANDIDATES / 2)
+                    .unwrap_or(u16::MAX),
+                maximum_lexical_candidates: u16::try_from(MAX_RECALL_CANDIDATES / 2)
+                    .unwrap_or(u16::MAX),
+                maximum_total_candidates: u16::try_from(MAX_RECALL_CANDIDATES).unwrap_or(u16::MAX),
             },
         );
     }

@@ -3,23 +3,38 @@ import Foundation
 @MainActor
 struct RecallAnswerService {
     typealias MetadataResolver = @MainActor (UUID) -> RecallEvidenceMetadata?
+    typealias ShadowRecorder = @MainActor (String, [RecallEvidence], Int) -> Void
 
     private let rag: any PodcastAgentRAGSearchProtocol
     private let metadata: MetadataResolver
     private let productSignals: any ProductSignalSink
+    private let shadow: ShadowRecorder?
 
     init(
         rag: any PodcastAgentRAGSearchProtocol,
         productSignals: any ProductSignalSink = DiscardingProductSignalSink.shared,
+        shadow: ShadowRecorder? = nil,
         metadata: @escaping MetadataResolver
     ) {
         self.rag = rag
         self.productSignals = productSignals
+        self.shadow = shadow
         self.metadata = metadata
     }
 
     init(rag: any PodcastAgentRAGSearchProtocol, store: AppStateStore) {
-        self.init(rag: rag, productSignals: store.productSignals) { episodeID in
+        let client = store.sharedLibrary
+        self.init(
+            rag: rag,
+            productSignals: store.productSignals,
+            shadow: { [weak client] query, evidence, limit in
+                client?.scheduleRecallShadow(
+                    query: query,
+                    legacyEvidence: evidence,
+                    limit: limit
+                )
+            }
+        ) { episodeID in
             guard let episode = store.episode(id: episodeID) else { return nil }
             return RecallEvidenceMetadata(
                 episodeTitle: episode.title,
@@ -49,6 +64,7 @@ struct RecallAnswerService {
                     status: .ready
                 )
             }
+            shadow?(query.trimmed, evidence, max(1, min(limit, 5)))
         } catch is CancellationError {
             answer = RecallAnswer(text: "Recall cancelled.", status: .cancelled)
         } catch {

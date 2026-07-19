@@ -1629,6 +1629,54 @@ public object FfiConverterTypeEpisodeRecord: FfiConverterRustBuffer<EpisodeRecor
 
 
 
+data class EvidenceChunkPolicy (
+    val `version`: kotlin.UInt
+    ,
+    val `targetTokens`: kotlin.UShort
+    ,
+    val `overlapPerMille`: kotlin.UShort
+    ,
+    val `snapTolerancePerMille`: kotlin.UShort
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEvidenceChunkPolicy: FfiConverterRustBuffer<EvidenceChunkPolicy> {
+    override fun read(buf: ByteBuffer): EvidenceChunkPolicy {
+        return EvidenceChunkPolicy(
+            FfiConverterUInt.read(buf),
+            FfiConverterUShort.read(buf),
+            FfiConverterUShort.read(buf),
+            FfiConverterUShort.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: EvidenceChunkPolicy) = (
+            FfiConverterUInt.allocationSize(value.`version`) +
+            FfiConverterUShort.allocationSize(value.`targetTokens`) +
+            FfiConverterUShort.allocationSize(value.`overlapPerMille`) +
+            FfiConverterUShort.allocationSize(value.`snapTolerancePerMille`)
+    )
+
+    override fun write(value: EvidenceChunkPolicy, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`version`, buf)
+            FfiConverterUShort.write(value.`targetTokens`, buf)
+            FfiConverterUShort.write(value.`overlapPerMille`, buf)
+            FfiConverterUShort.write(value.`snapTolerancePerMille`, buf)
+    }
+}
+
+
+
 data class EvidenceGenerationId (
     val `high`: kotlin.ULong
     ,

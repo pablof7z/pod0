@@ -122,7 +122,7 @@ pub struct RankedEvidenceReference {
     pub score: EvidenceScoreComponents,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct EvidenceChunkPolicy {
     pub version: u32,
     pub target_tokens: u16,

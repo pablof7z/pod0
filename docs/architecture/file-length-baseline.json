@@ -57,7 +57,6 @@
     "App/Sources/App/RootView.swift": 336,
     "App/Sources/Agent/AgentTools+PodcastInventory.swift": 337,
     "App/Sources/Features/Home/HomeRelatedSheet.swift": 329,
-    "App/Sources/Services/TranscriptIngestService.swift": 323,
     "App/Sources/Workflows/JobStore+Recovery.swift": 323,
     "App/Sources/Features/Voice/VoiceView.swift": 322,
     "App/Sources/Features/Voice/VoiceOrbView.swift": 322,

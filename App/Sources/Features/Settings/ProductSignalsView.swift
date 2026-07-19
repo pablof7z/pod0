@@ -178,6 +178,7 @@ private extension ProductSignalName {
         case .recallAsked: "Recall asked"
         case .recallGrounded: "Recall grounded"
         case .recallCitationOpened: "Citation opened"
+        case .recallShadowParity: "Recall shadow parity"
         case .noteCreated: "Note created"
         case .clipCreated: "Clip created"
         case .agentTurnCompleted: "Agent turn completed"

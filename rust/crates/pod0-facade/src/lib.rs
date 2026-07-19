@@ -4,20 +4,22 @@ use std::sync::Arc;
 
 pub use pod0_application::{
     ApplicationCommand, CommandEnvelope, CoreFailure, CoreFailureCode, DomainEvent,
-    DomainEventEnvelope, EpisodeSummary, FACADE_CONTRACT_VERSION, HostFailureCode, HostObservation,
+    DomainEventEnvelope, EpisodeSummary, EvidenceIndexProjection, EvidenceIndexSpanProjection,
+    EvidenceIndexStage, FACADE_CONTRACT_VERSION, HostFailureCode, HostObservation,
     HostObservationEnvelope, HostRequest, HostRequestEnvelope, KernelProbeCommand,
-    KernelProbeProjection, LibraryProjection, MAX_FEED_RESPONSE_BYTES, MAX_HOST_REQUEST_BATCH,
-    MAX_OPERATION_ITEMS, MAX_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, MAX_PROJECTION_ITEMS,
-    MAX_RECALL_CANDIDATES, MAX_RECALL_EMBEDDING_DIMENSIONS, MAX_RECALL_EVIDENCE,
-    MAX_RECALL_EXCERPT_BYTES, MAX_RECALL_QUERY_BYTES,
-    MIN_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, NativeTimerMode, OperationProjection,
-    OperationResult, OperationStage, PlaybackAllowedActions, PlaybackAudioRoute, PlaybackCommand,
-    PlaybackHostState, PlaybackInterruption, PlaybackItem, PlaybackLifecycleObservation,
-    PlaybackPolicyState, PlaybackProjection, PlaybackStopReason, PlaybackTransitionCue,
-    PodcastSummary, Projection, ProjectionEnvelope, ProjectionRequest, ProjectionScope,
-    QueuePlacement, RecallCandidateObservation, RecallEmbeddingVector, RecallEvidenceProjection,
-    RecallPhase, RecallQuery, RecallRerankDocument, RecallRerankObservation,
-    RecallResultProjection, RecallScope, RecallScoreProjection, RecallStage, Retryability,
+    KernelProbeProjection, LibraryProjection, MAX_EVIDENCE_INDEX_PAGE_ITEMS,
+    MAX_FEED_RESPONSE_BYTES, MAX_HOST_REQUEST_BATCH, MAX_OPERATION_ITEMS,
+    MAX_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, MAX_PROJECTION_ITEMS, MAX_RECALL_CANDIDATES,
+    MAX_RECALL_EMBEDDING_DIMENSIONS, MAX_RECALL_EVIDENCE, MAX_RECALL_EXCERPT_BYTES,
+    MAX_RECALL_QUERY_BYTES, MIN_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, NativeTimerMode,
+    OperationProjection, OperationResult, OperationStage, PlaybackAllowedActions,
+    PlaybackAudioRoute, PlaybackCommand, PlaybackHostState, PlaybackInterruption, PlaybackItem,
+    PlaybackLifecycleObservation, PlaybackPolicyState, PlaybackProjection, PlaybackStopReason,
+    PlaybackTransitionCue, PodcastSummary, Projection, ProjectionEnvelope, ProjectionRequest,
+    ProjectionScope, QueuePlacement, RecallCandidateObservation, RecallEmbeddingVector,
+    RecallEvidenceProjection, RecallPhase, RecallQuery, RecallRerankDocument,
+    RecallRerankObservation, RecallResultProjection, RecallScope, RecallScoreProjection,
+    RecallStage, Retryability, TranscriptEvidenceInput, TranscriptSegmentInput,
     UnsupportedProjection, UserAction, bounded_host_request_count,
     bounded_playback_observation_interval,
 };
@@ -26,9 +28,9 @@ pub use pod0_domain::{
     ArtifactReference, AutoDownloadMode, AutoDownloadPolicy, CancellationId, CommandId,
     CompletionCause, CompletionStatus, ContentDigest, DomainEventId, DownloadArtifactStatus,
     EpisodeId, EpisodeIdentityRecord, EpisodeIdentityResolution, EpisodeListeningState,
-    EpisodeRecord, EvidenceGenerationId, EvidenceSpanId, FeedIdentityV1, HostRequestId,
-    ListeningDomainError, ListeningDomainSnapshot, ListeningPlaybackPolicy, PlaybackRatePermille,
-    PlaybackSegment, PlaybackSleepMode, PodcastId, PodcastIdentityRecord,
+    EpisodeRecord, EvidenceChunkPolicy, EvidenceGenerationId, EvidenceSpanId, FeedIdentityV1,
+    HostRequestId, ListeningDomainError, ListeningDomainSnapshot, ListeningPlaybackPolicy,
+    PlaybackRatePermille, PlaybackSegment, PlaybackSleepMode, PodcastId, PodcastIdentityRecord,
     PodcastIdentityResolution, PodcastKind, PodcastRecord, PodcastSubscriptionRecord, QueueEntry,
     QueueEntryId, RecallQueryId, SpeakerId, StateRevision, SubscriptionId,
     TranscriptArtifactStatus, TranscriptProvenance, TranscriptSegmentId, TranscriptSource,
@@ -45,6 +47,11 @@ mod runtime_clock;
 mod runtime_command_fingerprint;
 mod runtime_command_fingerprint_values;
 mod runtime_commands;
+mod runtime_evidence_commands;
+mod runtime_evidence_projection;
+mod runtime_evidence_state;
+#[cfg(test)]
+mod runtime_evidence_tests;
 mod runtime_feed_commands;
 mod runtime_observations;
 mod runtime_playback_actions;

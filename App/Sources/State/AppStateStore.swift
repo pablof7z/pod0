@@ -174,6 +174,7 @@ final class AppStateStore {
         // Hand `self` to the service so the reranker settings gate and
         // transcript ingester can resolve episode/subscription metadata.
         RAGService.shared.attach(appStore: self)
+        sharedLibrary?.attachRecall(RAGService.shared, store: self)
         EpisodeDownloadService.shared.attach(appStore: self)
         WorkflowRuntime.shared.attach(store: self)
         BackgroundWorkScheduler.shared.attach(store: self)
@@ -227,6 +228,7 @@ final class AppStateStore {
                 NotificationCenter.default.removeObserver(iCloudObserver)
             }
             widgetReloadTask?.cancel()
+            sharedLibrary?.shutdown()
         }
     }
 }

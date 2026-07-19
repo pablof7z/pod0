@@ -33,6 +33,7 @@ def main() -> int:
         (scripts / "check_rust_dependency_policy.py", True),
         (scripts / "check_rust_facade_boundary.py", True),
         (scripts / "check_rust_schema_policy.py", True),
+        (scripts / "check_recall_privacy.py", True),
     ]
     failed = False
     for script, has_self_test in checks:

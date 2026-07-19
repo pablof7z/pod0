@@ -214,6 +214,7 @@ final class RecallAnswerServiceTests: XCTestCase {
             score: 0.92
         )
     }
+
 }
 
 private func makeRecallDeps(rag: PodcastAgentRAGSearchProtocol) -> PodcastAgentToolDeps {
@@ -235,7 +236,7 @@ private func makeRecallDeps(rag: PodcastAgentRAGSearchProtocol) -> PodcastAgentT
     )
 }
 
-private actor RecallRAGStub: PodcastAgentRAGSearchProtocol {
+actor RecallRAGStub: PodcastAgentRAGSearchProtocol {
     let hits: [TranscriptHit]
     let readiness: TranscriptCorpusReadiness
     let delayNanoseconds: UInt64

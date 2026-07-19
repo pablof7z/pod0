@@ -1,7 +1,9 @@
 use pod0_application::{ApplicationCommand, RecallScope};
 use sha2::{Digest, Sha256};
 
-use crate::runtime_command_fingerprint_values::{hash_optional, hash_playback, hash_policy};
+use crate::runtime_command_fingerprint_values::{
+    hash_evidence_input, hash_optional, hash_playback, hash_policy,
+};
 
 pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
     let mut hash = Sha256::new();
@@ -116,6 +118,9 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
                     hash.update(wire_code.to_be_bytes());
                 }
             }
+        }
+        ApplicationCommand::RebuildTranscriptEvidence { input, policy } => {
+            hash_evidence_input(&mut hash, input, *policy);
         }
         ApplicationCommand::CancelOperation { cancellation_id } => {
             hash.update(b"cancel\0");
