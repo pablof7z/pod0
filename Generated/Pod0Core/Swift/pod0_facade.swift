@@ -2422,6 +2422,22 @@ fileprivate struct FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer {
         return seq
     }
 }
+/**
+ * Produces bounded, state-shaped evidence for the typed transcript contract.
+ * Invalid input becomes a rejected projection rather than an exception.
+ * Durable commit and selection are added by the storage slice.
+ */
+public func projectTranscriptContract(request: TranscriptCommitRequest, scope: TranscriptProjectionScope, offset: UInt32, maxItems: UInt16) -> TranscriptContractProjection  {
+    return try!  FfiConverterTypeTranscriptContractProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_project_transcript_contract(
+        FfiConverterTypeTranscriptCommitRequest_lower(request),
+        FfiConverterTypeTranscriptProjectionScope_lower(scope),
+        FfiConverterUInt32.lower(offset),
+        FfiConverterUInt16.lower(maxItems),uniffiCallStatus
+    )
+})
+}
 public func commitStagedLegacyClipImport(sourcePath: String, targetPath: String, observedAtMilliseconds: Int64)throws  -> Bool  {
     return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeLegacyClipMigrationError_lift) {
         uniffiCallStatus in
@@ -2579,6 +2595,9 @@ private let initializationResult: InitializationResult = {
     let scaffolding_contract_version = ffi_pod0_facade_uniffi_contract_version()
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_project_transcript_contract() != 30792) {
+        return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_func_commit_staged_legacy_clip_import() != 45677) {
         return InitializationResult.apiChecksumMismatch

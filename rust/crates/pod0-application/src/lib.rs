@@ -34,6 +34,12 @@ mod knowledge_ranking_tests;
 mod knowledge_test_fixture;
 mod note_contract;
 mod recall_contract;
+mod transcript_contract;
+#[cfg(test)]
+mod transcript_contract_fixture_tests;
+#[cfg(test)]
+mod transcript_contract_tests;
+mod transcript_projection;
 
 pub use clip_contract::*;
 pub use contract::*;
@@ -48,6 +54,8 @@ pub use knowledge_chunking::*;
 pub use knowledge_ranking::*;
 pub use note_contract::*;
 pub use recall_contract::*;
+pub use transcript_contract::*;
+pub use transcript_projection::*;
 
 pub const CORE_SCHEMA_VERSION: u32 = 1;
 

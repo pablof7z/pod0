@@ -78,6 +78,8 @@ import uniffi.pod0_domain.FfiConverterTypeQueueEntryId
 import uniffi.pod0_domain.FfiConverterTypeRecallQueryId
 import uniffi.pod0_domain.FfiConverterTypeSpeakerId
 import uniffi.pod0_domain.FfiConverterTypeStateRevision
+import uniffi.pod0_domain.FfiConverterTypeTranscriptArtifactId
+import uniffi.pod0_domain.FfiConverterTypeTranscriptArtifactInput
 import uniffi.pod0_domain.FfiConverterTypeTranscriptProvenance
 import uniffi.pod0_domain.FfiConverterTypeTranscriptSegmentId
 import uniffi.pod0_domain.FfiConverterTypeTranscriptSource
@@ -101,6 +103,8 @@ import uniffi.pod0_domain.QueueEntryId
 import uniffi.pod0_domain.RecallQueryId
 import uniffi.pod0_domain.SpeakerId
 import uniffi.pod0_domain.StateRevision
+import uniffi.pod0_domain.TranscriptArtifactId
+import uniffi.pod0_domain.TranscriptArtifactInput
 import uniffi.pod0_domain.TranscriptProvenance
 import uniffi.pod0_domain.TranscriptSegmentId
 import uniffi.pod0_domain.TranscriptSource
@@ -139,6 +143,8 @@ import uniffi.pod0_domain.RustBuffer as RustBufferQueueEntryId
 import uniffi.pod0_domain.RustBuffer as RustBufferRecallQueryId
 import uniffi.pod0_domain.RustBuffer as RustBufferSpeakerId
 import uniffi.pod0_domain.RustBuffer as RustBufferStateRevision
+import uniffi.pod0_domain.RustBuffer as RustBufferTranscriptArtifactId
+import uniffi.pod0_domain.RustBuffer as RustBufferTranscriptArtifactInput
 import uniffi.pod0_domain.RustBuffer as RustBufferTranscriptProvenance
 import uniffi.pod0_domain.RustBuffer as RustBufferTranscriptSegmentId
 import uniffi.pod0_domain.RustBuffer as RustBufferTranscriptSource
@@ -2918,6 +2924,127 @@ public object FfiConverterTypeSyntheticPodcastInput: FfiConverterRustBuffer<Synt
 
 
 
+data class TranscriptCommitReceipt (
+    val `commandId`: CommandId
+    ,
+    val `artifactId`: TranscriptArtifactId
+    ,
+    val `transcriptVersionId`: TranscriptVersionId
+    ,
+    val `transcriptContentDigest`: ContentDigest
+    ,
+    val `artifactIntegrityDigest`: ContentDigest
+    ,
+    val `commandFingerprint`: ContentDigest
+    ,
+    val `selectionRevision`: StateRevision
+    ,
+    val `speakerCount`: kotlin.UInt
+    ,
+    val `segmentCount`: kotlin.UInt
+    ,
+    val `wordCount`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptCommitReceipt: FfiConverterRustBuffer<TranscriptCommitReceipt> {
+    override fun read(buf: ByteBuffer): TranscriptCommitReceipt {
+        return TranscriptCommitReceipt(
+            FfiConverterTypeCommandId.read(buf),
+            FfiConverterTypeTranscriptArtifactId.read(buf),
+            FfiConverterTypeTranscriptVersionId.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptCommitReceipt) = (
+            FfiConverterTypeCommandId.allocationSize(value.`commandId`) +
+            FfiConverterTypeTranscriptArtifactId.allocationSize(value.`artifactId`) +
+            FfiConverterTypeTranscriptVersionId.allocationSize(value.`transcriptVersionId`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`transcriptContentDigest`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`artifactIntegrityDigest`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`commandFingerprint`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`selectionRevision`) +
+            FfiConverterUInt.allocationSize(value.`speakerCount`) +
+            FfiConverterUInt.allocationSize(value.`segmentCount`) +
+            FfiConverterULong.allocationSize(value.`wordCount`)
+    )
+
+    override fun write(value: TranscriptCommitReceipt, buf: ByteBuffer) {
+            FfiConverterTypeCommandId.write(value.`commandId`, buf)
+            FfiConverterTypeTranscriptArtifactId.write(value.`artifactId`, buf)
+            FfiConverterTypeTranscriptVersionId.write(value.`transcriptVersionId`, buf)
+            FfiConverterTypeContentDigest.write(value.`transcriptContentDigest`, buf)
+            FfiConverterTypeContentDigest.write(value.`artifactIntegrityDigest`, buf)
+            FfiConverterTypeContentDigest.write(value.`commandFingerprint`, buf)
+            FfiConverterTypeStateRevision.write(value.`selectionRevision`, buf)
+            FfiConverterUInt.write(value.`speakerCount`, buf)
+            FfiConverterUInt.write(value.`segmentCount`, buf)
+            FfiConverterULong.write(value.`wordCount`, buf)
+    }
+}
+
+
+
+data class TranscriptCommitRequest (
+    val `commandId`: CommandId
+    ,
+    val `expectedSelectionRevision`: StateRevision
+    ,
+    val `artifact`: TranscriptArtifactInput
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptCommitRequest: FfiConverterRustBuffer<TranscriptCommitRequest> {
+    override fun read(buf: ByteBuffer): TranscriptCommitRequest {
+        return TranscriptCommitRequest(
+            FfiConverterTypeCommandId.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterTypeTranscriptArtifactInput.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptCommitRequest) = (
+            FfiConverterTypeCommandId.allocationSize(value.`commandId`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`expectedSelectionRevision`) +
+            FfiConverterTypeTranscriptArtifactInput.allocationSize(value.`artifact`)
+    )
+
+    override fun write(value: TranscriptCommitRequest, buf: ByteBuffer) {
+            FfiConverterTypeCommandId.write(value.`commandId`, buf)
+            FfiConverterTypeStateRevision.write(value.`expectedSelectionRevision`, buf)
+            FfiConverterTypeTranscriptArtifactInput.write(value.`artifact`, buf)
+    }
+}
+
+
+
 data class TranscriptEvidenceInput (
     val `episodeId`: EpisodeId
     ,
@@ -2981,6 +3108,69 @@ public object FfiConverterTypeTranscriptEvidenceInput: FfiConverterRustBuffer<Tr
 
 
 
+data class TranscriptProjection (
+    val `scope`: TranscriptProjectionScope
+    ,
+    val `summary`: TranscriptSummaryProjection?
+    ,
+    val `speakers`: List<TranscriptSpeakerProjection>
+    ,
+    val `segments`: List<TranscriptSegmentProjection>
+    ,
+    val `words`: List<TranscriptWordProjection>
+    ,
+    val `operations`: List<OperationProjection>
+    ,
+    val `hasMore`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptProjection: FfiConverterRustBuffer<TranscriptProjection> {
+    override fun read(buf: ByteBuffer): TranscriptProjection {
+        return TranscriptProjection(
+            FfiConverterTypeTranscriptProjectionScope.read(buf),
+            FfiConverterOptionalTypeTranscriptSummaryProjection.read(buf),
+            FfiConverterSequenceTypeTranscriptSpeakerProjection.read(buf),
+            FfiConverterSequenceTypeTranscriptSegmentProjection.read(buf),
+            FfiConverterSequenceTypeTranscriptWordProjection.read(buf),
+            FfiConverterSequenceTypeOperationProjection.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptProjection) = (
+            FfiConverterTypeTranscriptProjectionScope.allocationSize(value.`scope`) +
+            FfiConverterOptionalTypeTranscriptSummaryProjection.allocationSize(value.`summary`) +
+            FfiConverterSequenceTypeTranscriptSpeakerProjection.allocationSize(value.`speakers`) +
+            FfiConverterSequenceTypeTranscriptSegmentProjection.allocationSize(value.`segments`) +
+            FfiConverterSequenceTypeTranscriptWordProjection.allocationSize(value.`words`) +
+            FfiConverterSequenceTypeOperationProjection.allocationSize(value.`operations`) +
+            FfiConverterBoolean.allocationSize(value.`hasMore`)
+    )
+
+    override fun write(value: TranscriptProjection, buf: ByteBuffer) {
+            FfiConverterTypeTranscriptProjectionScope.write(value.`scope`, buf)
+            FfiConverterOptionalTypeTranscriptSummaryProjection.write(value.`summary`, buf)
+            FfiConverterSequenceTypeTranscriptSpeakerProjection.write(value.`speakers`, buf)
+            FfiConverterSequenceTypeTranscriptSegmentProjection.write(value.`segments`, buf)
+            FfiConverterSequenceTypeTranscriptWordProjection.write(value.`words`, buf)
+            FfiConverterSequenceTypeOperationProjection.write(value.`operations`, buf)
+            FfiConverterBoolean.write(value.`hasMore`, buf)
+    }
+}
+
+
+
 data class TranscriptSegmentInput (
     val `text`: kotlin.String
     ,
@@ -3024,6 +3214,268 @@ public object FfiConverterTypeTranscriptSegmentInput: FfiConverterRustBuffer<Tra
             FfiConverterULong.write(value.`startMilliseconds`, buf)
             FfiConverterULong.write(value.`endMilliseconds`, buf)
             FfiConverterOptionalTypeSpeakerId.write(value.`speakerId`, buf)
+    }
+}
+
+
+
+data class TranscriptSegmentProjection (
+    val `segmentId`: TranscriptSegmentId
+    ,
+    val `ordinal`: kotlin.UInt
+    ,
+    val `text`: kotlin.String
+    ,
+    val `startMilliseconds`: kotlin.ULong
+    ,
+    val `endMilliseconds`: kotlin.ULong
+    ,
+    val `speakerId`: SpeakerId?
+    ,
+    val `wordCount`: kotlin.UInt
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptSegmentProjection: FfiConverterRustBuffer<TranscriptSegmentProjection> {
+    override fun read(buf: ByteBuffer): TranscriptSegmentProjection {
+        return TranscriptSegmentProjection(
+            FfiConverterTypeTranscriptSegmentId.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterOptionalTypeSpeakerId.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptSegmentProjection) = (
+            FfiConverterTypeTranscriptSegmentId.allocationSize(value.`segmentId`) +
+            FfiConverterUInt.allocationSize(value.`ordinal`) +
+            FfiConverterString.allocationSize(value.`text`) +
+            FfiConverterULong.allocationSize(value.`startMilliseconds`) +
+            FfiConverterULong.allocationSize(value.`endMilliseconds`) +
+            FfiConverterOptionalTypeSpeakerId.allocationSize(value.`speakerId`) +
+            FfiConverterUInt.allocationSize(value.`wordCount`)
+    )
+
+    override fun write(value: TranscriptSegmentProjection, buf: ByteBuffer) {
+            FfiConverterTypeTranscriptSegmentId.write(value.`segmentId`, buf)
+            FfiConverterUInt.write(value.`ordinal`, buf)
+            FfiConverterString.write(value.`text`, buf)
+            FfiConverterULong.write(value.`startMilliseconds`, buf)
+            FfiConverterULong.write(value.`endMilliseconds`, buf)
+            FfiConverterOptionalTypeSpeakerId.write(value.`speakerId`, buf)
+            FfiConverterUInt.write(value.`wordCount`, buf)
+    }
+}
+
+
+
+data class TranscriptSpeakerProjection (
+    val `speakerId`: SpeakerId
+    ,
+    val `label`: kotlin.String
+    ,
+    val `displayName`: kotlin.String?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptSpeakerProjection: FfiConverterRustBuffer<TranscriptSpeakerProjection> {
+    override fun read(buf: ByteBuffer): TranscriptSpeakerProjection {
+        return TranscriptSpeakerProjection(
+            FfiConverterTypeSpeakerId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptSpeakerProjection) = (
+            FfiConverterTypeSpeakerId.allocationSize(value.`speakerId`) +
+            FfiConverterString.allocationSize(value.`label`) +
+            FfiConverterOptionalString.allocationSize(value.`displayName`)
+    )
+
+    override fun write(value: TranscriptSpeakerProjection, buf: ByteBuffer) {
+            FfiConverterTypeSpeakerId.write(value.`speakerId`, buf)
+            FfiConverterString.write(value.`label`, buf)
+            FfiConverterOptionalString.write(value.`displayName`, buf)
+    }
+}
+
+
+
+data class TranscriptSummaryProjection (
+    val `artifactId`: TranscriptArtifactId
+    ,
+    val `transcriptVersionId`: TranscriptVersionId
+    ,
+    val `episodeId`: EpisodeId
+    ,
+    val `podcastId`: PodcastId
+    ,
+    val `source`: TranscriptSource
+    ,
+    val `provider`: kotlin.String?
+    ,
+    val `sourcePayloadDigest`: ContentDigest
+    ,
+    val `language`: kotlin.String
+    ,
+    val `generatedAt`: UnixTimestampMilliseconds
+    ,
+    val `transcriptContentDigest`: ContentDigest
+    ,
+    val `artifactIntegrityDigest`: ContentDigest
+    ,
+    val `selectionRevision`: StateRevision
+    ,
+    val `speakerCount`: kotlin.UInt
+    ,
+    val `segmentCount`: kotlin.UInt
+    ,
+    val `wordCount`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptSummaryProjection: FfiConverterRustBuffer<TranscriptSummaryProjection> {
+    override fun read(buf: ByteBuffer): TranscriptSummaryProjection {
+        return TranscriptSummaryProjection(
+            FfiConverterTypeTranscriptArtifactId.read(buf),
+            FfiConverterTypeTranscriptVersionId.read(buf),
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterTypePodcastId.read(buf),
+            FfiConverterTypeTranscriptSource.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptSummaryProjection) = (
+            FfiConverterTypeTranscriptArtifactId.allocationSize(value.`artifactId`) +
+            FfiConverterTypeTranscriptVersionId.allocationSize(value.`transcriptVersionId`) +
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterTypeTranscriptSource.allocationSize(value.`source`) +
+            FfiConverterOptionalString.allocationSize(value.`provider`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`sourcePayloadDigest`) +
+            FfiConverterString.allocationSize(value.`language`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`generatedAt`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`transcriptContentDigest`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`artifactIntegrityDigest`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`selectionRevision`) +
+            FfiConverterUInt.allocationSize(value.`speakerCount`) +
+            FfiConverterUInt.allocationSize(value.`segmentCount`) +
+            FfiConverterULong.allocationSize(value.`wordCount`)
+    )
+
+    override fun write(value: TranscriptSummaryProjection, buf: ByteBuffer) {
+            FfiConverterTypeTranscriptArtifactId.write(value.`artifactId`, buf)
+            FfiConverterTypeTranscriptVersionId.write(value.`transcriptVersionId`, buf)
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterTypeTranscriptSource.write(value.`source`, buf)
+            FfiConverterOptionalString.write(value.`provider`, buf)
+            FfiConverterTypeContentDigest.write(value.`sourcePayloadDigest`, buf)
+            FfiConverterString.write(value.`language`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`generatedAt`, buf)
+            FfiConverterTypeContentDigest.write(value.`transcriptContentDigest`, buf)
+            FfiConverterTypeContentDigest.write(value.`artifactIntegrityDigest`, buf)
+            FfiConverterTypeStateRevision.write(value.`selectionRevision`, buf)
+            FfiConverterUInt.write(value.`speakerCount`, buf)
+            FfiConverterUInt.write(value.`segmentCount`, buf)
+            FfiConverterULong.write(value.`wordCount`, buf)
+    }
+}
+
+
+
+data class TranscriptWordProjection (
+    val `segmentId`: TranscriptSegmentId
+    ,
+    val `ordinal`: kotlin.UInt
+    ,
+    val `text`: kotlin.String
+    ,
+    val `startMilliseconds`: kotlin.ULong
+    ,
+    val `endMilliseconds`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptWordProjection: FfiConverterRustBuffer<TranscriptWordProjection> {
+    override fun read(buf: ByteBuffer): TranscriptWordProjection {
+        return TranscriptWordProjection(
+            FfiConverterTypeTranscriptSegmentId.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptWordProjection) = (
+            FfiConverterTypeTranscriptSegmentId.allocationSize(value.`segmentId`) +
+            FfiConverterUInt.allocationSize(value.`ordinal`) +
+            FfiConverterString.allocationSize(value.`text`) +
+            FfiConverterULong.allocationSize(value.`startMilliseconds`) +
+            FfiConverterULong.allocationSize(value.`endMilliseconds`)
+    )
+
+    override fun write(value: TranscriptWordProjection, buf: ByteBuffer) {
+            FfiConverterTypeTranscriptSegmentId.write(value.`segmentId`, buf)
+            FfiConverterUInt.write(value.`ordinal`, buf)
+            FfiConverterString.write(value.`text`, buf)
+            FfiConverterULong.write(value.`startMilliseconds`, buf)
+            FfiConverterULong.write(value.`endMilliseconds`, buf)
     }
 }
 
@@ -4212,6 +4664,28 @@ sealed class DomainEvent {
         companion object
     }
 
+    data class TranscriptArtifactCommitted(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `artifactId`: uniffi.pod0_domain.TranscriptArtifactId,
+        val `transcriptVersionId`: uniffi.pod0_domain.TranscriptVersionId) : DomainEvent()
+
+    {
+
+
+        companion object
+    }
+
+    data class TranscriptSelectionChanged(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `artifactId`: uniffi.pod0_domain.TranscriptArtifactId,
+        val `selectionRevision`: uniffi.pod0_domain.StateRevision) : DomainEvent()
+
+    {
+
+
+        companion object
+    }
+
     data class OperationFinished(
         val `stage`: uniffi.pod0_application.OperationStage) : DomainEvent()
 
@@ -4260,10 +4734,20 @@ public object FfiConverterTypeDomainEvent : FfiConverterRustBuffer<DomainEvent>{
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterULong.read(buf),
                 )
-            6 -> DomainEvent.OperationFinished(
+            6 -> DomainEvent.TranscriptArtifactCommitted(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeTranscriptArtifactId.read(buf),
+                FfiConverterTypeTranscriptVersionId.read(buf),
+                )
+            7 -> DomainEvent.TranscriptSelectionChanged(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeTranscriptArtifactId.read(buf),
+                FfiConverterTypeStateRevision.read(buf),
+                )
+            8 -> DomainEvent.OperationFinished(
                 FfiConverterTypeOperationStage.read(buf),
                 )
-            7 -> DomainEvent.Unsupported(
+            9 -> DomainEvent.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -4304,6 +4788,24 @@ public object FfiConverterTypeDomainEvent : FfiConverterRustBuffer<DomainEvent>{
                 4UL
                 + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
                 + FfiConverterULong.allocationSize(value.`positionMilliseconds`)
+            )
+        }
+        is DomainEvent.TranscriptArtifactCommitted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeTranscriptArtifactId.allocationSize(value.`artifactId`)
+                + FfiConverterTypeTranscriptVersionId.allocationSize(value.`transcriptVersionId`)
+            )
+        }
+        is DomainEvent.TranscriptSelectionChanged -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeTranscriptArtifactId.allocationSize(value.`artifactId`)
+                + FfiConverterTypeStateRevision.allocationSize(value.`selectionRevision`)
             )
         }
         is DomainEvent.OperationFinished -> {
@@ -4349,13 +4851,27 @@ public object FfiConverterTypeDomainEvent : FfiConverterRustBuffer<DomainEvent>{
                 FfiConverterULong.write(value.`positionMilliseconds`, buf)
                 Unit
             }
-            is DomainEvent.OperationFinished -> {
+            is DomainEvent.TranscriptArtifactCommitted -> {
                 buf.putInt(6)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeTranscriptArtifactId.write(value.`artifactId`, buf)
+                FfiConverterTypeTranscriptVersionId.write(value.`transcriptVersionId`, buf)
+                Unit
+            }
+            is DomainEvent.TranscriptSelectionChanged -> {
+                buf.putInt(7)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeTranscriptArtifactId.write(value.`artifactId`, buf)
+                FfiConverterTypeStateRevision.write(value.`selectionRevision`, buf)
+                Unit
+            }
+            is DomainEvent.OperationFinished -> {
+                buf.putInt(8)
                 FfiConverterTypeOperationStage.write(value.`stage`, buf)
                 Unit
             }
             is DomainEvent.Unsupported -> {
-                buf.putInt(7)
+                buf.putInt(9)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -8563,6 +9079,417 @@ public object FfiConverterTypeRetryability : FfiConverterRustBuffer<Retryability
 
 
 
+/**
+ * Bounded state returned by the pure pre-cutover contract projection.
+ * Rejections are data, never an exception crossing UniFFI.
+ */
+sealed class TranscriptContractProjection {
+
+    data class Qualified(
+        val `receipt`: uniffi.pod0_application.TranscriptCommitReceipt,
+        val `transcript`: uniffi.pod0_application.TranscriptProjection) : TranscriptContractProjection()
+
+    {
+
+
+        companion object
+    }
+
+    data class Rejected(
+        val `reason`: uniffi.pod0_application.TranscriptContractRejection) : TranscriptContractProjection()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptContractProjection : FfiConverterRustBuffer<TranscriptContractProjection>{
+    override fun read(buf: ByteBuffer): TranscriptContractProjection {
+        return when(buf.getInt()) {
+            1 -> TranscriptContractProjection.Qualified(
+                FfiConverterTypeTranscriptCommitReceipt.read(buf),
+                FfiConverterTypeTranscriptProjection.read(buf),
+                )
+            2 -> TranscriptContractProjection.Rejected(
+                FfiConverterTypeTranscriptContractRejection.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: TranscriptContractProjection): ULong = when(value) {
+        is TranscriptContractProjection.Qualified -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeTranscriptCommitReceipt.allocationSize(value.`receipt`)
+                + FfiConverterTypeTranscriptProjection.allocationSize(value.`transcript`)
+            )
+        }
+        is TranscriptContractProjection.Rejected -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeTranscriptContractRejection.allocationSize(value.`reason`)
+            )
+        }
+    }
+
+    override fun write(value: TranscriptContractProjection, buf: ByteBuffer) {
+        when(value) {
+            is TranscriptContractProjection.Qualified -> {
+                buf.putInt(1)
+                FfiConverterTypeTranscriptCommitReceipt.write(value.`receipt`, buf)
+                FfiConverterTypeTranscriptProjection.write(value.`transcript`, buf)
+                Unit
+            }
+            is TranscriptContractProjection.Rejected -> {
+                buf.putInt(2)
+                FfiConverterTypeTranscriptContractRejection.write(value.`reason`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class TranscriptContractRejection {
+
+    object InvalidMetadata : TranscriptContractRejection()
+
+
+    object InvalidSpeaker : TranscriptContractRejection()
+
+
+    object InvalidSegment : TranscriptContractRejection()
+
+
+    object InvalidWord : TranscriptContractRejection()
+
+
+    object CollectionLimit : TranscriptContractRejection()
+
+
+    object TextLimit : TranscriptContractRejection()
+
+
+    object IdentityMismatch : TranscriptContractRejection()
+
+
+    object RevisionExhausted : TranscriptContractRejection()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : TranscriptContractRejection()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptContractRejection : FfiConverterRustBuffer<TranscriptContractRejection>{
+    override fun read(buf: ByteBuffer): TranscriptContractRejection {
+        return when(buf.getInt()) {
+            1 -> TranscriptContractRejection.InvalidMetadata
+            2 -> TranscriptContractRejection.InvalidSpeaker
+            3 -> TranscriptContractRejection.InvalidSegment
+            4 -> TranscriptContractRejection.InvalidWord
+            5 -> TranscriptContractRejection.CollectionLimit
+            6 -> TranscriptContractRejection.TextLimit
+            7 -> TranscriptContractRejection.IdentityMismatch
+            8 -> TranscriptContractRejection.RevisionExhausted
+            9 -> TranscriptContractRejection.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: TranscriptContractRejection): ULong = when(value) {
+        is TranscriptContractRejection.InvalidMetadata -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptContractRejection.InvalidSpeaker -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptContractRejection.InvalidSegment -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptContractRejection.InvalidWord -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptContractRejection.CollectionLimit -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptContractRejection.TextLimit -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptContractRejection.IdentityMismatch -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptContractRejection.RevisionExhausted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptContractRejection.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: TranscriptContractRejection, buf: ByteBuffer) {
+        when(value) {
+            is TranscriptContractRejection.InvalidMetadata -> {
+                buf.putInt(1)
+                Unit
+            }
+            is TranscriptContractRejection.InvalidSpeaker -> {
+                buf.putInt(2)
+                Unit
+            }
+            is TranscriptContractRejection.InvalidSegment -> {
+                buf.putInt(3)
+                Unit
+            }
+            is TranscriptContractRejection.InvalidWord -> {
+                buf.putInt(4)
+                Unit
+            }
+            is TranscriptContractRejection.CollectionLimit -> {
+                buf.putInt(5)
+                Unit
+            }
+            is TranscriptContractRejection.TextLimit -> {
+                buf.putInt(6)
+                Unit
+            }
+            is TranscriptContractRejection.IdentityMismatch -> {
+                buf.putInt(7)
+                Unit
+            }
+            is TranscriptContractRejection.RevisionExhausted -> {
+                buf.putInt(8)
+                Unit
+            }
+            is TranscriptContractRejection.Unsupported -> {
+                buf.putInt(9)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class TranscriptProjectionScope {
+
+    object Summary : TranscriptProjectionScope()
+
+
+    object Speakers : TranscriptProjectionScope()
+
+
+    object Segments : TranscriptProjectionScope()
+
+
+    data class Segment(
+        val `segmentId`: uniffi.pod0_domain.TranscriptSegmentId) : TranscriptProjectionScope()
+
+    {
+
+
+        companion object
+    }
+
+    data class Words(
+        val `segmentId`: uniffi.pod0_domain.TranscriptSegmentId) : TranscriptProjectionScope()
+
+    {
+
+
+        companion object
+    }
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : TranscriptProjectionScope()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptProjectionScope : FfiConverterRustBuffer<TranscriptProjectionScope>{
+    override fun read(buf: ByteBuffer): TranscriptProjectionScope {
+        return when(buf.getInt()) {
+            1 -> TranscriptProjectionScope.Summary
+            2 -> TranscriptProjectionScope.Speakers
+            3 -> TranscriptProjectionScope.Segments
+            4 -> TranscriptProjectionScope.Segment(
+                FfiConverterTypeTranscriptSegmentId.read(buf),
+                )
+            5 -> TranscriptProjectionScope.Words(
+                FfiConverterTypeTranscriptSegmentId.read(buf),
+                )
+            6 -> TranscriptProjectionScope.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: TranscriptProjectionScope): ULong = when(value) {
+        is TranscriptProjectionScope.Summary -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptProjectionScope.Speakers -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptProjectionScope.Segments -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptProjectionScope.Segment -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeTranscriptSegmentId.allocationSize(value.`segmentId`)
+            )
+        }
+        is TranscriptProjectionScope.Words -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeTranscriptSegmentId.allocationSize(value.`segmentId`)
+            )
+        }
+        is TranscriptProjectionScope.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: TranscriptProjectionScope, buf: ByteBuffer) {
+        when(value) {
+            is TranscriptProjectionScope.Summary -> {
+                buf.putInt(1)
+                Unit
+            }
+            is TranscriptProjectionScope.Speakers -> {
+                buf.putInt(2)
+                Unit
+            }
+            is TranscriptProjectionScope.Segments -> {
+                buf.putInt(3)
+                Unit
+            }
+            is TranscriptProjectionScope.Segment -> {
+                buf.putInt(4)
+                FfiConverterTypeTranscriptSegmentId.write(value.`segmentId`, buf)
+                Unit
+            }
+            is TranscriptProjectionScope.Words -> {
+                buf.putInt(5)
+                FfiConverterTypeTranscriptSegmentId.write(value.`segmentId`, buf)
+                Unit
+            }
+            is TranscriptProjectionScope.Unsupported -> {
+                buf.putInt(6)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 sealed class UserAction {
 
     object None : UserAction()
@@ -8864,6 +9791,38 @@ public object FfiConverterOptionalTypePlaybackItem: FfiConverterRustBuffer<Playb
         } else {
             buf.put(1)
             FfiConverterTypePlaybackItem.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeTranscriptSummaryProjection: FfiConverterRustBuffer<TranscriptSummaryProjection?> {
+    override fun read(buf: ByteBuffer): TranscriptSummaryProjection? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeTranscriptSummaryProjection.read(buf)
+    }
+
+    override fun allocationSize(value: TranscriptSummaryProjection?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeTranscriptSummaryProjection.allocationSize(value)
+        }
+    }
+
+    override fun write(value: TranscriptSummaryProjection?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeTranscriptSummaryProjection.write(value, buf)
         }
     }
 }
@@ -9532,6 +10491,90 @@ public object FfiConverterSequenceTypeTranscriptSegmentInput: FfiConverterRustBu
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeTranscriptSegmentInput.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeTranscriptSegmentProjection: FfiConverterRustBuffer<List<TranscriptSegmentProjection>> {
+    override fun read(buf: ByteBuffer): List<TranscriptSegmentProjection> {
+        val len = buf.getInt()
+        return List<TranscriptSegmentProjection>(len) {
+            FfiConverterTypeTranscriptSegmentProjection.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<TranscriptSegmentProjection>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeTranscriptSegmentProjection.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<TranscriptSegmentProjection>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeTranscriptSegmentProjection.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeTranscriptSpeakerProjection: FfiConverterRustBuffer<List<TranscriptSpeakerProjection>> {
+    override fun read(buf: ByteBuffer): List<TranscriptSpeakerProjection> {
+        val len = buf.getInt()
+        return List<TranscriptSpeakerProjection>(len) {
+            FfiConverterTypeTranscriptSpeakerProjection.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<TranscriptSpeakerProjection>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeTranscriptSpeakerProjection.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<TranscriptSpeakerProjection>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeTranscriptSpeakerProjection.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeTranscriptWordProjection: FfiConverterRustBuffer<List<TranscriptWordProjection>> {
+    override fun read(buf: ByteBuffer): List<TranscriptWordProjection> {
+        val len = buf.getInt()
+        return List<TranscriptWordProjection>(len) {
+            FfiConverterTypeTranscriptWordProjection.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<TranscriptWordProjection>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeTranscriptWordProjection.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<TranscriptWordProjection>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeTranscriptWordProjection.write(it, buf)
         }
     }
 }

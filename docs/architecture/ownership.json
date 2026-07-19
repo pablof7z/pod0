@@ -84,12 +84,12 @@
     {
       "id": "shared-domain-models",
       "classification": "shared_rust_now",
-      "current_owner": "Rust owns migrated listening, note, and clip records; Swift retains presentation mappings, read-only legacy import values, and unmigrated Codable domains",
+      "current_owner": "Rust owns migrated listening, note, and clip records plus the additive canonical transcript contract; Swift retains presentation mappings, read-only legacy import values, selected transcript persistence, and unmigrated Codable domains",
       "target_owner": "Pod0 Rust domain crate",
       "reason": "Durable identities, settings, notes, clips, memory, and agent facts are cross-platform product state.",
       "boundary": "Stable IDs, versioned schemas, commands, and bounded projections.",
       "persisted_state": "Rust SQLite for migrated listening, notes, and clips; AppState metadata for unmigrated domains only.",
-      "migration_issues": [58, 59, 60, 78, 79, 81, 82, 83, 92, 93],
+      "migration_issues": [58, 59, 60, 78, 79, 81, 82, 83, 92, 93, 94, 95, 96, 97],
       "deletion_target": "Remove migrated Swift records and Codable ownership after each vertical-slice cutover.",
       "priority": "high",
       "includes": ["App/Sources/Domain/"]
@@ -102,7 +102,7 @@
       "reason": "Podcast, episode, subscription, feed normalization, and policy are stable cross-platform behavior.",
       "boundary": "Native fetch returns bytes/validators; Rust normalizes feeds and owns library projections.",
       "persisted_state": "Rust SQLite listening tables; Swift values are replaceable projections and legacy import compatibility.",
-      "migration_issues": [78, 79, 81, 83],
+      "migration_issues": [78, 79, 81, 83, 94, 95, 96, 97],
       "deletion_target": "Delete Swift feed/domain ownership while retaining thin platform fetch/export adapters.",
       "priority": "highest",
       "includes": ["App/Sources/Podcast/"]
@@ -115,7 +115,7 @@
       "reason": "Durable application state and mutation policy require one cross-platform writer.",
       "boundary": "Swift renders projections and dispatches commands; importer reads legacy Swift state once.",
       "persisted_state": "Rust listening/note/clip tables plus AppState metadata for unmigrated domains; migrated projections are stripped from Swift persistence.",
-      "migration_issues": [64, 75, 79, 81, 82, 83, 92, 93],
+      "migration_issues": [64, 75, 79, 81, 82, 83, 92, 93, 94, 95, 96, 97],
       "deletion_target": "Delete migrated AppState fields/mutation methods; retain only supported read-only import and native projection adapters.",
       "priority": "highest",
       "includes": ["App/Sources/State/"]
@@ -150,12 +150,12 @@
     {
       "id": "shared-transcript-model-and-normalization",
       "classification": "shared_rust_now",
-      "current_owner": "Swift transcript model and parsers",
+      "current_owner": "Rust canonical transcript contract and evidence identities; Swift selected transcript JSON, readiness, and parsers",
       "target_owner": "Pod0 Rust transcript/knowledge domain",
       "reason": "Normalized segments, speakers, timestamps, chapters, and provenance are durable evidence.",
       "boundary": "Provider/native capabilities return raw typed payloads; Rust normalizes and versions artifacts.",
-      "persisted_state": "Versioned transcript artifact files and workflow metadata.",
-      "migration_issues": [59, 69],
+      "persisted_state": "Swift selected transcript files and workflow metadata remain authoritative until #97; Rust persists evidence-oriented transcript versions only until #95.",
+      "migration_issues": [59, 69, 94, 95, 96, 97],
       "deletion_target": "Delete Swift normalized model/parser ownership after Rust fixture parity and import.",
       "priority": "high",
       "includes": ["App/Sources/Transcript/Transcript.swift", "App/Sources/Transcript/Parsing/"]
@@ -247,7 +247,7 @@
       "reason": "Auto-snip, recall intent routing, and persisted chat presentation are still being validated behind typed feature/domain boundaries.",
       "boundary": "Commit only through typed store/library interfaces; no new independent durable store.",
       "persisted_state": "Clip records commit through the Rust facade; controller state is transient.",
-      "migration_issues": [59, 60, 93],
+      "migration_issues": [59, 60, 93, 96, 97],
       "deletion_target": "Replace transcript-selection and workflow policy as those slices migrate; retain native capture UI and typed clip commands.",
       "priority": "next",
       "includes": ["App/Sources/Features/Player/AutoSnip/AutoSnipController.swift", "App/Sources/Features/Recall/RecallAnswerModels.swift", "App/Sources/Features/Recall/RecallAnswerService.swift", "App/Sources/Features/Recall/RecallFeature.swift", "App/Sources/Features/Agent/AgentChatSession+Recall.swift"]
@@ -283,7 +283,7 @@
       "reason": "This mixed service layer currently owns subscription, download, transcript, knowledge, agent, Nostr, and artifact decisions that must migrate by vertical slice.",
       "boundary": "Existing typed service protocols are characterization seams; no second store or new untracked policy.",
       "persisted_state": "AppState, workflow/artifact SQLite, transcript files, chat history, logs, and generated media.",
-      "migration_issues": [58, 59, 60, 69, 79, 80, 81, 82, 83],
+      "migration_issues": [58, 59, 60, 69, 79, 80, 81, 82, 83, 94, 95, 96, 97],
       "deletion_target": "Delete or reduce each service to a platform capability adapter at its domain cutover.",
       "priority": "high",
       "includes": ["App/Sources/Services/"],

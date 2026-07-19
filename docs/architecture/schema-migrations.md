@@ -24,6 +24,12 @@ Current versions:
 - v9: staged/authoritative clips, exact millisecond bounds, frozen transcript
   text, revisioned tombstones, and immutable selected evidence.
 
+Facade contract version 11 adds the canonical full-transcript artifact and
+bounded projections without changing the SQLite schema. It deliberately does
+not claim transcript authority or write a second artifact. Issue #95 adds the
+next locked schema and staged importer; issue #97 performs the single-writer
+cutover and deletes Swift transcript persistence authority.
+
 Listening, note, and clip importers read the Swift source without mutation,
 verify an online SQLite or copied JSON backup, stage rows in one target
 transaction, reconstruct the typed projection, and compare it with the

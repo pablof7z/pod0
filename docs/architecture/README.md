@@ -29,6 +29,10 @@ The operating rule is:
 - [Architecture guardrail epic](https://github.com/pablof7z/pod0/issues/55)
 - [First Rust-backed listening slice](https://github.com/pablof7z/pod0/issues/58)
 - [Rust-backed saved clips slice](https://github.com/pablof7z/pod0/issues/93)
+- [Canonical transcript contract](https://github.com/pablof7z/pod0/issues/94)
+- [Transcript storage and staged import](https://github.com/pablof7z/pod0/issues/95)
+- [Typed iOS transcript adapter](https://github.com/pablof7z/pod0/issues/96)
+- [Transcript authority cutover](https://github.com/pablof7z/pod0/issues/97)
 
 An ADR changes only through a later ADR that names the superseded decision.
 Implementation convenience is not an implicit waiver.

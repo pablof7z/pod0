@@ -37,10 +37,16 @@ import uniffi.pod0_application.FfiConverterTypeHostObservationEnvelope
 import uniffi.pod0_application.FfiConverterTypeHostRequestEnvelope
 import uniffi.pod0_application.FfiConverterTypeProjectionEnvelope
 import uniffi.pod0_application.FfiConverterTypeProjectionRequest
+import uniffi.pod0_application.FfiConverterTypeTranscriptCommitRequest
+import uniffi.pod0_application.FfiConverterTypeTranscriptContractProjection
+import uniffi.pod0_application.FfiConverterTypeTranscriptProjectionScope
 import uniffi.pod0_application.HostObservationEnvelope
 import uniffi.pod0_application.HostRequestEnvelope
 import uniffi.pod0_application.ProjectionEnvelope
 import uniffi.pod0_application.ProjectionRequest
+import uniffi.pod0_application.TranscriptCommitRequest
+import uniffi.pod0_application.TranscriptContractProjection
+import uniffi.pod0_application.TranscriptProjectionScope
 import uniffi.pod0_domain.ClipRecord
 import uniffi.pod0_domain.CommandId
 import uniffi.pod0_domain.FfiConverterTypeClipRecord
@@ -58,6 +64,9 @@ import uniffi.pod0_application.RustBuffer as RustBufferHostObservationEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferHostRequestEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionRequest
+import uniffi.pod0_application.RustBuffer as RustBufferTranscriptCommitRequest
+import uniffi.pod0_application.RustBuffer as RustBufferTranscriptContractProjection
+import uniffi.pod0_application.RustBuffer as RustBufferTranscriptProjectionScope
 import uniffi.pod0_domain.RustBuffer as RustBufferClipRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferCommandId
 import uniffi.pod0_domain.RustBuffer as RustBufferListeningDomainSnapshot
@@ -728,6 +737,8 @@ internal object IntegrityCheckingUniffiLib {
         uniffiCheckContractApiVersion(this)
         uniffiCheckApiChecksums(this)
     }
+    external fun uniffi_pod0_facade_checksum_func_project_transcript_contract(
+    ): Int
     external fun uniffi_pod0_facade_checksum_func_commit_staged_legacy_clip_import(
     ): Int
     external fun uniffi_pod0_facade_checksum_func_inspect_legacy_clip_source(
@@ -823,6 +834,8 @@ internal object UniffiLib {
     ): RustBufferSubscriptionId.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_unsubscribe(`ptr`: Long,`subscriptionId`: RustBufferSubscriptionId.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): Unit
+    external fun uniffi_pod0_facade_fn_func_project_transcript_contract(`request`: RustBufferTranscriptCommitRequest.ByValue,`scope`: RustBufferTranscriptProjectionScope.ByValue,`offset`: Int,`maxItems`: Short,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBufferTranscriptContractProjection.ByValue
     external fun uniffi_pod0_facade_fn_func_commit_staged_legacy_clip_import(`sourcePath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): Byte
     external fun uniffi_pod0_facade_fn_func_inspect_legacy_clip_source(`sourcePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -970,6 +983,9 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if (lib.uniffi_pod0_facade_checksum_func_project_transcript_contract() != 30792) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_pod0_facade_checksum_func_commit_staged_legacy_clip_import() != 45677) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -3470,6 +3486,31 @@ public object FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer<List<No
 
 
 
+
+
+
+
+
+
+
+
+        /**
+         * Produces bounded, state-shaped evidence for the typed transcript contract.
+         * Invalid input becomes a rejected projection rather than an exception.
+         * Durable commit and selection are added by the storage slice.
+         */ fun `projectTranscriptContract`(`request`: TranscriptCommitRequest, `scope`: TranscriptProjectionScope, `offset`: kotlin.UInt, `maxItems`: kotlin.UShort): TranscriptContractProjection {
+            return FfiConverterTypeTranscriptContractProjection.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_project_transcript_contract(
+
+
+        FfiConverterTypeTranscriptCommitRequest.lower(`request`),
+        FfiConverterTypeTranscriptProjectionScope.lower(`scope`),
+        FfiConverterUInt.lower(`offset`),
+        FfiConverterUShort.lower(`maxItems`),_status)
+}
+    )
+    }
 
 
     @Throws(LegacyClipMigrationException::class) fun `commitStagedLegacyClipImport`(`sourcePath`: kotlin.String, `targetPath`: kotlin.String, `observedAtMilliseconds`: kotlin.Long): kotlin.Boolean {

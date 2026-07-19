@@ -131,6 +131,10 @@ impl StableHash {
         self.0.update(value.to_be_bytes());
     }
 
+    pub(crate) fn i64(&mut self, value: i64) {
+        self.0.update(value.to_be_bytes());
+    }
+
     pub(crate) fn bytes(&mut self, value: &[u8]) {
         self.u64(value.len() as u64);
         self.0.update(value);

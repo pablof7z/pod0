@@ -18,6 +18,14 @@ the current Swift listening library, notes, and clips. The Rust store is authori
 podcasts, subscriptions, episode listening facts, active playback, queue,
 resume, completion, rate, playback preferences, session sleep mode, notes, and
 saved clips with immutable transcript provenance.
+The facade contract is now version 11 and includes an additive canonical
+transcript-artifact contract: exact integer milliseconds, full word and speaker
+records, deterministic semantic/version/artifact identities, unknown-source
+preservation, replay fingerprints, and separately bounded summary, speaker,
+segment, and word projections. Its pure contract projection represents invalid
+input as rejection state rather than an FFI exception. Swift transcript JSON
+and selection remain authoritative until the staged import and cutover in
+issues #95–#97.
 Cancellable native host adapters now
 execute typed feed requests through URLSession and playback requests through
 AVFoundation, returning correlated bounded observations through the generated
@@ -52,7 +60,9 @@ state. Normal reads and writes do not compare a JSON store.
 - Workflow schema metadata, jobs, and artifact records share the authoritative
   SQLite transaction boundary where atomic state/job creation is required.
 - Transcript, download, staged artifact, and vector-index files are derived or
-  independently versioned artifacts under application support.
+  independently versioned artifacts under application support. Selected full
+  transcript JSON is still Swift-owned migration input; the v11 Rust transcript
+  contract does not dual-write it.
 - Legacy JSON is imported once and is never a concurrent authority.
 - Keychain stores provider secrets. iCloud KVS carries selected non-secret
   settings. The widget reads a bounded app-group snapshot.
@@ -119,6 +129,14 @@ Swift and Kotlin bindings. CI rejects drift from Rust metadata.
   Swift does not normalize the payload on the shared path.
 - Playback hosts execute AVFoundation primitives and coalesce lifecycle
   observations; queue/resume/completion decisions never enter the adapter.
+- Transcript contract qualification is a pure, bounded, state-shaped
+  pre-cutover helper; invalid input becomes rejected projection state.
+  Legacy Swift `TimeInterval` transcript bounds cross this boundary exactly
+  once: reject non-finite, negative, or overflowing values, multiply seconds by
+  1,000, then round to the nearest whole millisecond with ties away from zero.
+  Only the resulting integer milliseconds may be persisted or fingerprinted.
+  Durable transcript commits will use the application command/projection path
+  after shared storage exists; the helper is not a second application RPC.
 - Open views receive bounded, revisioned, screen-shaped projections.
 - Operation failure and cancellation appear in projection state, not thrown
   per-operation FFI results.

@@ -33,7 +33,9 @@ already migrated. `current_owner`, `target_owner`, `migration_issues`, and
 ## Migration priority
 
 1. Listening identity/state and playback policy: #78–#83.
-2. Transcript knowledge, evidence provenance, notes, and clips: #59, #69, #92, and #93.
+2. Transcript knowledge, evidence provenance, notes, and clips: #59, #69,
+   #92–#97. The v11 full-transcript contract is additive; #97 is the required
+   Swift authority deletion point.
 3. Workflow, download, agent, artifact, and Nostr policy: #60.
 4. Native UI and platform capabilities remain native and converge on typed
    host/projection boundaries as their domains migrate.

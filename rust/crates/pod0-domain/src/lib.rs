@@ -65,6 +65,7 @@ opaque_id!(EpisodeId, uniffi::Record);
 opaque_id!(QueueEntryId, uniffi::Record);
 opaque_id!(RecallQueryId, uniffi::Record);
 opaque_id!(SpeakerId, uniffi::Record);
+opaque_id!(TranscriptArtifactId, uniffi::Record);
 opaque_id!(TranscriptVersionId, uniffi::Record);
 opaque_id!(TranscriptSegmentId, uniffi::Record);
 opaque_id!(EvidenceSpanId, uniffi::Record);
@@ -82,6 +83,9 @@ mod listening_error;
 mod listening_policy;
 mod notes;
 mod playback_policy;
+mod transcript_artifact;
+mod transcript_artifact_hash;
+mod transcript_artifact_validation;
 
 pub use clips::*;
 pub use knowledge::*;
@@ -91,6 +95,7 @@ pub use listening_error::*;
 pub use listening_policy::*;
 pub use notes::*;
 pub use playback_policy::*;
+pub use transcript_artifact::*;
 
 #[cfg(test)]
 mod listening_completion_tests;
@@ -98,6 +103,8 @@ mod listening_completion_tests;
 mod listening_tests;
 #[cfg(test)]
 mod playback_policy_tests;
+#[cfg(test)]
+mod transcript_artifact_tests;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, uniffi::Record)]
 pub struct StateRevision {

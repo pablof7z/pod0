@@ -3061,6 +3061,261 @@ public object FfiConverterTypeSubscriptionId: FfiConverterRustBuffer<Subscriptio
 
 
 
+data class TranscriptArtifactId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptArtifactId: FfiConverterRustBuffer<TranscriptArtifactId> {
+    override fun read(buf: ByteBuffer): TranscriptArtifactId {
+        return TranscriptArtifactId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptArtifactId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: TranscriptArtifactId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class TranscriptArtifactInput (
+    val `episodeId`: EpisodeId
+    ,
+    val `podcastId`: PodcastId
+    ,
+    val `sourceRevision`: kotlin.String
+    ,
+    val `source`: TranscriptSource
+    ,
+    val `provider`: kotlin.String?
+    ,
+    val `sourcePayloadDigest`: ContentDigest
+    ,
+    val `language`: kotlin.String
+    ,
+    val `generatedAt`: UnixTimestampMilliseconds
+    ,
+    val `speakers`: List<TranscriptArtifactSpeakerInput>
+    ,
+    val `segments`: List<TranscriptArtifactSegmentInput>
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptArtifactInput: FfiConverterRustBuffer<TranscriptArtifactInput> {
+    override fun read(buf: ByteBuffer): TranscriptArtifactInput {
+        return TranscriptArtifactInput(
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterTypePodcastId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeTranscriptSource.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterSequenceTypeTranscriptArtifactSpeakerInput.read(buf),
+            FfiConverterSequenceTypeTranscriptArtifactSegmentInput.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptArtifactInput) = (
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterString.allocationSize(value.`sourceRevision`) +
+            FfiConverterTypeTranscriptSource.allocationSize(value.`source`) +
+            FfiConverterOptionalString.allocationSize(value.`provider`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`sourcePayloadDigest`) +
+            FfiConverterString.allocationSize(value.`language`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`generatedAt`) +
+            FfiConverterSequenceTypeTranscriptArtifactSpeakerInput.allocationSize(value.`speakers`) +
+            FfiConverterSequenceTypeTranscriptArtifactSegmentInput.allocationSize(value.`segments`)
+    )
+
+    override fun write(value: TranscriptArtifactInput, buf: ByteBuffer) {
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterString.write(value.`sourceRevision`, buf)
+            FfiConverterTypeTranscriptSource.write(value.`source`, buf)
+            FfiConverterOptionalString.write(value.`provider`, buf)
+            FfiConverterTypeContentDigest.write(value.`sourcePayloadDigest`, buf)
+            FfiConverterString.write(value.`language`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`generatedAt`, buf)
+            FfiConverterSequenceTypeTranscriptArtifactSpeakerInput.write(value.`speakers`, buf)
+            FfiConverterSequenceTypeTranscriptArtifactSegmentInput.write(value.`segments`, buf)
+    }
+}
+
+
+
+data class TranscriptArtifactSegmentInput (
+    val `text`: kotlin.String
+    ,
+    val `startMilliseconds`: kotlin.ULong
+    ,
+    val `endMilliseconds`: kotlin.ULong
+    ,
+    val `speakerId`: SpeakerId?
+    ,
+    val `words`: List<TranscriptArtifactWordInput>
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptArtifactSegmentInput: FfiConverterRustBuffer<TranscriptArtifactSegmentInput> {
+    override fun read(buf: ByteBuffer): TranscriptArtifactSegmentInput {
+        return TranscriptArtifactSegmentInput(
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterOptionalTypeSpeakerId.read(buf),
+            FfiConverterSequenceTypeTranscriptArtifactWordInput.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptArtifactSegmentInput) = (
+            FfiConverterString.allocationSize(value.`text`) +
+            FfiConverterULong.allocationSize(value.`startMilliseconds`) +
+            FfiConverterULong.allocationSize(value.`endMilliseconds`) +
+            FfiConverterOptionalTypeSpeakerId.allocationSize(value.`speakerId`) +
+            FfiConverterSequenceTypeTranscriptArtifactWordInput.allocationSize(value.`words`)
+    )
+
+    override fun write(value: TranscriptArtifactSegmentInput, buf: ByteBuffer) {
+            FfiConverterString.write(value.`text`, buf)
+            FfiConverterULong.write(value.`startMilliseconds`, buf)
+            FfiConverterULong.write(value.`endMilliseconds`, buf)
+            FfiConverterOptionalTypeSpeakerId.write(value.`speakerId`, buf)
+            FfiConverterSequenceTypeTranscriptArtifactWordInput.write(value.`words`, buf)
+    }
+}
+
+
+
+data class TranscriptArtifactSpeakerInput (
+    val `speakerId`: SpeakerId
+    ,
+    val `label`: kotlin.String
+    ,
+    val `displayName`: kotlin.String?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptArtifactSpeakerInput: FfiConverterRustBuffer<TranscriptArtifactSpeakerInput> {
+    override fun read(buf: ByteBuffer): TranscriptArtifactSpeakerInput {
+        return TranscriptArtifactSpeakerInput(
+            FfiConverterTypeSpeakerId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptArtifactSpeakerInput) = (
+            FfiConverterTypeSpeakerId.allocationSize(value.`speakerId`) +
+            FfiConverterString.allocationSize(value.`label`) +
+            FfiConverterOptionalString.allocationSize(value.`displayName`)
+    )
+
+    override fun write(value: TranscriptArtifactSpeakerInput, buf: ByteBuffer) {
+            FfiConverterTypeSpeakerId.write(value.`speakerId`, buf)
+            FfiConverterString.write(value.`label`, buf)
+            FfiConverterOptionalString.write(value.`displayName`, buf)
+    }
+}
+
+
+
+data class TranscriptArtifactWordInput (
+    val `text`: kotlin.String
+    ,
+    val `startMilliseconds`: kotlin.ULong
+    ,
+    val `endMilliseconds`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptArtifactWordInput: FfiConverterRustBuffer<TranscriptArtifactWordInput> {
+    override fun read(buf: ByteBuffer): TranscriptArtifactWordInput {
+        return TranscriptArtifactWordInput(
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptArtifactWordInput) = (
+            FfiConverterString.allocationSize(value.`text`) +
+            FfiConverterULong.allocationSize(value.`startMilliseconds`) +
+            FfiConverterULong.allocationSize(value.`endMilliseconds`)
+    )
+
+    override fun write(value: TranscriptArtifactWordInput, buf: ByteBuffer) {
+            FfiConverterString.write(value.`text`, buf)
+            FfiConverterULong.write(value.`startMilliseconds`, buf)
+            FfiConverterULong.write(value.`endMilliseconds`, buf)
+    }
+}
+
+
+
 /**
  * Provenance facts copied from the selected transcript artifact. The source
  * payload digest protects identity without leaking a URL or provider body.
@@ -5841,6 +6096,90 @@ public object FfiConverterSequenceTypeQueueEntry: FfiConverterRustBuffer<List<Qu
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeQueueEntry.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeTranscriptArtifactSegmentInput: FfiConverterRustBuffer<List<TranscriptArtifactSegmentInput>> {
+    override fun read(buf: ByteBuffer): List<TranscriptArtifactSegmentInput> {
+        val len = buf.getInt()
+        return List<TranscriptArtifactSegmentInput>(len) {
+            FfiConverterTypeTranscriptArtifactSegmentInput.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<TranscriptArtifactSegmentInput>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeTranscriptArtifactSegmentInput.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<TranscriptArtifactSegmentInput>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeTranscriptArtifactSegmentInput.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeTranscriptArtifactSpeakerInput: FfiConverterRustBuffer<List<TranscriptArtifactSpeakerInput>> {
+    override fun read(buf: ByteBuffer): List<TranscriptArtifactSpeakerInput> {
+        val len = buf.getInt()
+        return List<TranscriptArtifactSpeakerInput>(len) {
+            FfiConverterTypeTranscriptArtifactSpeakerInput.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<TranscriptArtifactSpeakerInput>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeTranscriptArtifactSpeakerInput.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<TranscriptArtifactSpeakerInput>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeTranscriptArtifactSpeakerInput.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeTranscriptArtifactWordInput: FfiConverterRustBuffer<List<TranscriptArtifactWordInput>> {
+    override fun read(buf: ByteBuffer): List<TranscriptArtifactWordInput> {
+        val len = buf.getInt()
+        return List<TranscriptArtifactWordInput>(len) {
+            FfiConverterTypeTranscriptArtifactWordInput.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<TranscriptArtifactWordInput>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeTranscriptArtifactWordInput.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<TranscriptArtifactWordInput>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeTranscriptArtifactWordInput.write(it, buf)
         }
     }
 }

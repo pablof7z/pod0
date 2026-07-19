@@ -2727,6 +2727,150 @@ public func FfiConverterTypeSyntheticPodcastInput_lower(_ value: SyntheticPodcas
 }
 
 
+public struct TranscriptCommitReceipt: Equatable, Hashable {
+    public let commandId: CommandId
+    public let artifactId: TranscriptArtifactId
+    public let transcriptVersionId: TranscriptVersionId
+    public let transcriptContentDigest: ContentDigest
+    public let artifactIntegrityDigest: ContentDigest
+    public let commandFingerprint: ContentDigest
+    public let selectionRevision: StateRevision
+    public let speakerCount: UInt32
+    public let segmentCount: UInt32
+    public let wordCount: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(commandId: CommandId, artifactId: TranscriptArtifactId, transcriptVersionId: TranscriptVersionId, transcriptContentDigest: ContentDigest, artifactIntegrityDigest: ContentDigest, commandFingerprint: ContentDigest, selectionRevision: StateRevision, speakerCount: UInt32, segmentCount: UInt32, wordCount: UInt64) {
+        self.commandId = commandId
+        self.artifactId = artifactId
+        self.transcriptVersionId = transcriptVersionId
+        self.transcriptContentDigest = transcriptContentDigest
+        self.artifactIntegrityDigest = artifactIntegrityDigest
+        self.commandFingerprint = commandFingerprint
+        self.selectionRevision = selectionRevision
+        self.speakerCount = speakerCount
+        self.segmentCount = segmentCount
+        self.wordCount = wordCount
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptCommitReceipt: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptCommitReceipt: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptCommitReceipt {
+        return
+            try TranscriptCommitReceipt(
+                commandId: FfiConverterTypeCommandId.read(from: &buf),
+                artifactId: FfiConverterTypeTranscriptArtifactId.read(from: &buf),
+                transcriptVersionId: FfiConverterTypeTranscriptVersionId.read(from: &buf),
+                transcriptContentDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                artifactIntegrityDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                commandFingerprint: FfiConverterTypeContentDigest.read(from: &buf),
+                selectionRevision: FfiConverterTypeStateRevision.read(from: &buf),
+                speakerCount: FfiConverterUInt32.read(from: &buf),
+                segmentCount: FfiConverterUInt32.read(from: &buf),
+                wordCount: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TranscriptCommitReceipt, into buf: inout [UInt8]) {
+        FfiConverterTypeCommandId.write(value.commandId, into: &buf)
+        FfiConverterTypeTranscriptArtifactId.write(value.artifactId, into: &buf)
+        FfiConverterTypeTranscriptVersionId.write(value.transcriptVersionId, into: &buf)
+        FfiConverterTypeContentDigest.write(value.transcriptContentDigest, into: &buf)
+        FfiConverterTypeContentDigest.write(value.artifactIntegrityDigest, into: &buf)
+        FfiConverterTypeContentDigest.write(value.commandFingerprint, into: &buf)
+        FfiConverterTypeStateRevision.write(value.selectionRevision, into: &buf)
+        FfiConverterUInt32.write(value.speakerCount, into: &buf)
+        FfiConverterUInt32.write(value.segmentCount, into: &buf)
+        FfiConverterUInt64.write(value.wordCount, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptCommitReceipt_lift(_ buf: RustBuffer) throws -> TranscriptCommitReceipt {
+    return try FfiConverterTypeTranscriptCommitReceipt.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptCommitReceipt_lower(_ value: TranscriptCommitReceipt) -> RustBuffer {
+    return FfiConverterTypeTranscriptCommitReceipt.lower(value)
+}
+
+
+public struct TranscriptCommitRequest: Equatable, Hashable {
+    public let commandId: CommandId
+    public let expectedSelectionRevision: StateRevision
+    public let artifact: TranscriptArtifactInput
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(commandId: CommandId, expectedSelectionRevision: StateRevision, artifact: TranscriptArtifactInput) {
+        self.commandId = commandId
+        self.expectedSelectionRevision = expectedSelectionRevision
+        self.artifact = artifact
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptCommitRequest: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptCommitRequest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptCommitRequest {
+        return
+            try TranscriptCommitRequest(
+                commandId: FfiConverterTypeCommandId.read(from: &buf),
+                expectedSelectionRevision: FfiConverterTypeStateRevision.read(from: &buf),
+                artifact: FfiConverterTypeTranscriptArtifactInput.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TranscriptCommitRequest, into buf: inout [UInt8]) {
+        FfiConverterTypeCommandId.write(value.commandId, into: &buf)
+        FfiConverterTypeStateRevision.write(value.expectedSelectionRevision, into: &buf)
+        FfiConverterTypeTranscriptArtifactInput.write(value.artifact, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptCommitRequest_lift(_ buf: RustBuffer) throws -> TranscriptCommitRequest {
+    return try FfiConverterTypeTranscriptCommitRequest.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptCommitRequest_lower(_ value: TranscriptCommitRequest) -> RustBuffer {
+    return FfiConverterTypeTranscriptCommitRequest.lower(value)
+}
+
+
 public struct TranscriptEvidenceInput: Equatable, Hashable {
     public let episodeId: EpisodeId
     public let podcastId: PodcastId
@@ -2801,6 +2945,80 @@ public func FfiConverterTypeTranscriptEvidenceInput_lower(_ value: TranscriptEvi
 }
 
 
+public struct TranscriptProjection: Equatable, Hashable {
+    public let scope: TranscriptProjectionScope
+    public let summary: TranscriptSummaryProjection?
+    public let speakers: [TranscriptSpeakerProjection]
+    public let segments: [TranscriptSegmentProjection]
+    public let words: [TranscriptWordProjection]
+    public let operations: [OperationProjection]
+    public let hasMore: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(scope: TranscriptProjectionScope, summary: TranscriptSummaryProjection?, speakers: [TranscriptSpeakerProjection], segments: [TranscriptSegmentProjection], words: [TranscriptWordProjection], operations: [OperationProjection], hasMore: Bool) {
+        self.scope = scope
+        self.summary = summary
+        self.speakers = speakers
+        self.segments = segments
+        self.words = words
+        self.operations = operations
+        self.hasMore = hasMore
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptProjection {
+        return
+            try TranscriptProjection(
+                scope: FfiConverterTypeTranscriptProjectionScope.read(from: &buf),
+                summary: FfiConverterOptionTypeTranscriptSummaryProjection.read(from: &buf),
+                speakers: FfiConverterSequenceTypeTranscriptSpeakerProjection.read(from: &buf),
+                segments: FfiConverterSequenceTypeTranscriptSegmentProjection.read(from: &buf),
+                words: FfiConverterSequenceTypeTranscriptWordProjection.read(from: &buf),
+                operations: FfiConverterSequenceTypeOperationProjection.read(from: &buf),
+                hasMore: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TranscriptProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeTranscriptProjectionScope.write(value.scope, into: &buf)
+        FfiConverterOptionTypeTranscriptSummaryProjection.write(value.summary, into: &buf)
+        FfiConverterSequenceTypeTranscriptSpeakerProjection.write(value.speakers, into: &buf)
+        FfiConverterSequenceTypeTranscriptSegmentProjection.write(value.segments, into: &buf)
+        FfiConverterSequenceTypeTranscriptWordProjection.write(value.words, into: &buf)
+        FfiConverterSequenceTypeOperationProjection.write(value.operations, into: &buf)
+        FfiConverterBool.write(value.hasMore, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptProjection_lift(_ buf: RustBuffer) throws -> TranscriptProjection {
+    return try FfiConverterTypeTranscriptProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptProjection_lower(_ value: TranscriptProjection) -> RustBuffer {
+    return FfiConverterTypeTranscriptProjection.lower(value)
+}
+
+
 public struct TranscriptSegmentInput: Equatable, Hashable {
     public let text: String
     public let startMilliseconds: UInt64
@@ -2860,6 +3078,310 @@ public func FfiConverterTypeTranscriptSegmentInput_lift(_ buf: RustBuffer) throw
 #endif
 public func FfiConverterTypeTranscriptSegmentInput_lower(_ value: TranscriptSegmentInput) -> RustBuffer {
     return FfiConverterTypeTranscriptSegmentInput.lower(value)
+}
+
+
+public struct TranscriptSegmentProjection: Equatable, Hashable {
+    public let segmentId: TranscriptSegmentId
+    public let ordinal: UInt32
+    public let text: String
+    public let startMilliseconds: UInt64
+    public let endMilliseconds: UInt64
+    public let speakerId: SpeakerId?
+    public let wordCount: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(segmentId: TranscriptSegmentId, ordinal: UInt32, text: String, startMilliseconds: UInt64, endMilliseconds: UInt64, speakerId: SpeakerId?, wordCount: UInt32) {
+        self.segmentId = segmentId
+        self.ordinal = ordinal
+        self.text = text
+        self.startMilliseconds = startMilliseconds
+        self.endMilliseconds = endMilliseconds
+        self.speakerId = speakerId
+        self.wordCount = wordCount
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptSegmentProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptSegmentProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptSegmentProjection {
+        return
+            try TranscriptSegmentProjection(
+                segmentId: FfiConverterTypeTranscriptSegmentId.read(from: &buf),
+                ordinal: FfiConverterUInt32.read(from: &buf),
+                text: FfiConverterString.read(from: &buf),
+                startMilliseconds: FfiConverterUInt64.read(from: &buf),
+                endMilliseconds: FfiConverterUInt64.read(from: &buf),
+                speakerId: FfiConverterOptionTypeSpeakerId.read(from: &buf),
+                wordCount: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TranscriptSegmentProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeTranscriptSegmentId.write(value.segmentId, into: &buf)
+        FfiConverterUInt32.write(value.ordinal, into: &buf)
+        FfiConverterString.write(value.text, into: &buf)
+        FfiConverterUInt64.write(value.startMilliseconds, into: &buf)
+        FfiConverterUInt64.write(value.endMilliseconds, into: &buf)
+        FfiConverterOptionTypeSpeakerId.write(value.speakerId, into: &buf)
+        FfiConverterUInt32.write(value.wordCount, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptSegmentProjection_lift(_ buf: RustBuffer) throws -> TranscriptSegmentProjection {
+    return try FfiConverterTypeTranscriptSegmentProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptSegmentProjection_lower(_ value: TranscriptSegmentProjection) -> RustBuffer {
+    return FfiConverterTypeTranscriptSegmentProjection.lower(value)
+}
+
+
+public struct TranscriptSpeakerProjection: Equatable, Hashable {
+    public let speakerId: SpeakerId
+    public let label: String
+    public let displayName: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(speakerId: SpeakerId, label: String, displayName: String?) {
+        self.speakerId = speakerId
+        self.label = label
+        self.displayName = displayName
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptSpeakerProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptSpeakerProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptSpeakerProjection {
+        return
+            try TranscriptSpeakerProjection(
+                speakerId: FfiConverterTypeSpeakerId.read(from: &buf),
+                label: FfiConverterString.read(from: &buf),
+                displayName: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TranscriptSpeakerProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeSpeakerId.write(value.speakerId, into: &buf)
+        FfiConverterString.write(value.label, into: &buf)
+        FfiConverterOptionString.write(value.displayName, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptSpeakerProjection_lift(_ buf: RustBuffer) throws -> TranscriptSpeakerProjection {
+    return try FfiConverterTypeTranscriptSpeakerProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptSpeakerProjection_lower(_ value: TranscriptSpeakerProjection) -> RustBuffer {
+    return FfiConverterTypeTranscriptSpeakerProjection.lower(value)
+}
+
+
+public struct TranscriptSummaryProjection: Equatable, Hashable {
+    public let artifactId: TranscriptArtifactId
+    public let transcriptVersionId: TranscriptVersionId
+    public let episodeId: EpisodeId
+    public let podcastId: PodcastId
+    public let source: TranscriptSource
+    public let provider: String?
+    public let sourcePayloadDigest: ContentDigest
+    public let language: String
+    public let generatedAt: UnixTimestampMilliseconds
+    public let transcriptContentDigest: ContentDigest
+    public let artifactIntegrityDigest: ContentDigest
+    public let selectionRevision: StateRevision
+    public let speakerCount: UInt32
+    public let segmentCount: UInt32
+    public let wordCount: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(artifactId: TranscriptArtifactId, transcriptVersionId: TranscriptVersionId, episodeId: EpisodeId, podcastId: PodcastId, source: TranscriptSource, provider: String?, sourcePayloadDigest: ContentDigest, language: String, generatedAt: UnixTimestampMilliseconds, transcriptContentDigest: ContentDigest, artifactIntegrityDigest: ContentDigest, selectionRevision: StateRevision, speakerCount: UInt32, segmentCount: UInt32, wordCount: UInt64) {
+        self.artifactId = artifactId
+        self.transcriptVersionId = transcriptVersionId
+        self.episodeId = episodeId
+        self.podcastId = podcastId
+        self.source = source
+        self.provider = provider
+        self.sourcePayloadDigest = sourcePayloadDigest
+        self.language = language
+        self.generatedAt = generatedAt
+        self.transcriptContentDigest = transcriptContentDigest
+        self.artifactIntegrityDigest = artifactIntegrityDigest
+        self.selectionRevision = selectionRevision
+        self.speakerCount = speakerCount
+        self.segmentCount = segmentCount
+        self.wordCount = wordCount
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptSummaryProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptSummaryProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptSummaryProjection {
+        return
+            try TranscriptSummaryProjection(
+                artifactId: FfiConverterTypeTranscriptArtifactId.read(from: &buf),
+                transcriptVersionId: FfiConverterTypeTranscriptVersionId.read(from: &buf),
+                episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
+                podcastId: FfiConverterTypePodcastId.read(from: &buf),
+                source: FfiConverterTypeTranscriptSource.read(from: &buf),
+                provider: FfiConverterOptionString.read(from: &buf),
+                sourcePayloadDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                language: FfiConverterString.read(from: &buf),
+                generatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                transcriptContentDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                artifactIntegrityDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                selectionRevision: FfiConverterTypeStateRevision.read(from: &buf),
+                speakerCount: FfiConverterUInt32.read(from: &buf),
+                segmentCount: FfiConverterUInt32.read(from: &buf),
+                wordCount: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TranscriptSummaryProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeTranscriptArtifactId.write(value.artifactId, into: &buf)
+        FfiConverterTypeTranscriptVersionId.write(value.transcriptVersionId, into: &buf)
+        FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
+        FfiConverterTypePodcastId.write(value.podcastId, into: &buf)
+        FfiConverterTypeTranscriptSource.write(value.source, into: &buf)
+        FfiConverterOptionString.write(value.provider, into: &buf)
+        FfiConverterTypeContentDigest.write(value.sourcePayloadDigest, into: &buf)
+        FfiConverterString.write(value.language, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.generatedAt, into: &buf)
+        FfiConverterTypeContentDigest.write(value.transcriptContentDigest, into: &buf)
+        FfiConverterTypeContentDigest.write(value.artifactIntegrityDigest, into: &buf)
+        FfiConverterTypeStateRevision.write(value.selectionRevision, into: &buf)
+        FfiConverterUInt32.write(value.speakerCount, into: &buf)
+        FfiConverterUInt32.write(value.segmentCount, into: &buf)
+        FfiConverterUInt64.write(value.wordCount, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptSummaryProjection_lift(_ buf: RustBuffer) throws -> TranscriptSummaryProjection {
+    return try FfiConverterTypeTranscriptSummaryProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptSummaryProjection_lower(_ value: TranscriptSummaryProjection) -> RustBuffer {
+    return FfiConverterTypeTranscriptSummaryProjection.lower(value)
+}
+
+
+public struct TranscriptWordProjection: Equatable, Hashable {
+    public let segmentId: TranscriptSegmentId
+    public let ordinal: UInt32
+    public let text: String
+    public let startMilliseconds: UInt64
+    public let endMilliseconds: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(segmentId: TranscriptSegmentId, ordinal: UInt32, text: String, startMilliseconds: UInt64, endMilliseconds: UInt64) {
+        self.segmentId = segmentId
+        self.ordinal = ordinal
+        self.text = text
+        self.startMilliseconds = startMilliseconds
+        self.endMilliseconds = endMilliseconds
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptWordProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptWordProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptWordProjection {
+        return
+            try TranscriptWordProjection(
+                segmentId: FfiConverterTypeTranscriptSegmentId.read(from: &buf),
+                ordinal: FfiConverterUInt32.read(from: &buf),
+                text: FfiConverterString.read(from: &buf),
+                startMilliseconds: FfiConverterUInt64.read(from: &buf),
+                endMilliseconds: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TranscriptWordProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeTranscriptSegmentId.write(value.segmentId, into: &buf)
+        FfiConverterUInt32.write(value.ordinal, into: &buf)
+        FfiConverterString.write(value.text, into: &buf)
+        FfiConverterUInt64.write(value.startMilliseconds, into: &buf)
+        FfiConverterUInt64.write(value.endMilliseconds, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWordProjection_lift(_ buf: RustBuffer) throws -> TranscriptWordProjection {
+    return try FfiConverterTypeTranscriptWordProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWordProjection_lower(_ value: TranscriptWordProjection) -> RustBuffer {
+    return FfiConverterTypeTranscriptWordProjection.lower(value)
 }
 
 
@@ -3499,6 +4021,10 @@ public enum DomainEvent: Equatable, Hashable {
     )
     case resumePositionCommitted(episodeId: EpisodeId, positionMilliseconds: UInt64
     )
+    case transcriptArtifactCommitted(episodeId: EpisodeId, artifactId: TranscriptArtifactId, transcriptVersionId: TranscriptVersionId
+    )
+    case transcriptSelectionChanged(episodeId: EpisodeId, artifactId: TranscriptArtifactId, selectionRevision: StateRevision
+    )
     case operationFinished(stage: OperationStage
     )
     case unsupported(wireCode: UInt32
@@ -3538,10 +4064,16 @@ public struct FfiConverterTypeDomainEvent: FfiConverterRustBuffer {
         case 5: return .resumePositionCommitted(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), positionMilliseconds: try FfiConverterUInt64.read(from: &buf)
         )
 
-        case 6: return .operationFinished(stage: try FfiConverterTypeOperationStage.read(from: &buf)
+        case 6: return .transcriptArtifactCommitted(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), artifactId: try FfiConverterTypeTranscriptArtifactId.read(from: &buf), transcriptVersionId: try FfiConverterTypeTranscriptVersionId.read(from: &buf)
         )
 
-        case 7: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 7: return .transcriptSelectionChanged(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), artifactId: try FfiConverterTypeTranscriptArtifactId.read(from: &buf), selectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        )
+
+        case 8: return .operationFinished(stage: try FfiConverterTypeOperationStage.read(from: &buf)
+        )
+
+        case 9: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -3577,13 +4109,27 @@ public struct FfiConverterTypeDomainEvent: FfiConverterRustBuffer {
             FfiConverterUInt64.write(positionMilliseconds, into: &buf)
 
 
-        case let .operationFinished(stage):
+        case let .transcriptArtifactCommitted(episodeId,artifactId,transcriptVersionId):
             writeInt(&buf, Int32(6))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeTranscriptArtifactId.write(artifactId, into: &buf)
+            FfiConverterTypeTranscriptVersionId.write(transcriptVersionId, into: &buf)
+
+
+        case let .transcriptSelectionChanged(episodeId,artifactId,selectionRevision):
+            writeInt(&buf, Int32(7))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeTranscriptArtifactId.write(artifactId, into: &buf)
+            FfiConverterTypeStateRevision.write(selectionRevision, into: &buf)
+
+
+        case let .operationFinished(stage):
+            writeInt(&buf, Int32(8))
             FfiConverterTypeOperationStage.write(stage, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(7))
+            writeInt(&buf, Int32(9))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -6263,6 +6809,304 @@ public func FfiConverterTypeRetryability_lower(_ value: Retryability) -> RustBuf
 
 
 
+/**
+ * Bounded state returned by the pure pre-cutover contract projection.
+ * Rejections are data, never an exception crossing UniFFI.
+ */
+
+public enum TranscriptContractProjection: Equatable, Hashable {
+
+    case qualified(receipt: TranscriptCommitReceipt, transcript: TranscriptProjection
+    )
+    case rejected(reason: TranscriptContractRejection
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptContractProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptContractProjection: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptContractProjection
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptContractProjection {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .qualified(receipt: try FfiConverterTypeTranscriptCommitReceipt.read(from: &buf), transcript: try FfiConverterTypeTranscriptProjection.read(from: &buf)
+        )
+
+        case 2: return .rejected(reason: try FfiConverterTypeTranscriptContractRejection.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: TranscriptContractProjection, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case let .qualified(receipt,transcript):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeTranscriptCommitReceipt.write(receipt, into: &buf)
+            FfiConverterTypeTranscriptProjection.write(transcript, into: &buf)
+
+
+        case let .rejected(reason):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeTranscriptContractRejection.write(reason, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptContractProjection_lift(_ buf: RustBuffer) throws -> TranscriptContractProjection {
+    return try FfiConverterTypeTranscriptContractProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptContractProjection_lower(_ value: TranscriptContractProjection) -> RustBuffer {
+    return FfiConverterTypeTranscriptContractProjection.lower(value)
+}
+
+
+
+
+public enum TranscriptContractRejection: Equatable, Hashable {
+
+    case invalidMetadata
+    case invalidSpeaker
+    case invalidSegment
+    case invalidWord
+    case collectionLimit
+    case textLimit
+    case identityMismatch
+    case revisionExhausted
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptContractRejection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptContractRejection: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptContractRejection
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptContractRejection {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .invalidMetadata
+
+        case 2: return .invalidSpeaker
+
+        case 3: return .invalidSegment
+
+        case 4: return .invalidWord
+
+        case 5: return .collectionLimit
+
+        case 6: return .textLimit
+
+        case 7: return .identityMismatch
+
+        case 8: return .revisionExhausted
+
+        case 9: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: TranscriptContractRejection, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .invalidMetadata:
+            writeInt(&buf, Int32(1))
+
+
+        case .invalidSpeaker:
+            writeInt(&buf, Int32(2))
+
+
+        case .invalidSegment:
+            writeInt(&buf, Int32(3))
+
+
+        case .invalidWord:
+            writeInt(&buf, Int32(4))
+
+
+        case .collectionLimit:
+            writeInt(&buf, Int32(5))
+
+
+        case .textLimit:
+            writeInt(&buf, Int32(6))
+
+
+        case .identityMismatch:
+            writeInt(&buf, Int32(7))
+
+
+        case .revisionExhausted:
+            writeInt(&buf, Int32(8))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(9))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptContractRejection_lift(_ buf: RustBuffer) throws -> TranscriptContractRejection {
+    return try FfiConverterTypeTranscriptContractRejection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptContractRejection_lower(_ value: TranscriptContractRejection) -> RustBuffer {
+    return FfiConverterTypeTranscriptContractRejection.lower(value)
+}
+
+
+
+
+public enum TranscriptProjectionScope: Equatable, Hashable {
+
+    case summary
+    case speakers
+    case segments
+    case segment(segmentId: TranscriptSegmentId
+    )
+    case words(segmentId: TranscriptSegmentId
+    )
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptProjectionScope: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptProjectionScope: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptProjectionScope
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptProjectionScope {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .summary
+
+        case 2: return .speakers
+
+        case 3: return .segments
+
+        case 4: return .segment(segmentId: try FfiConverterTypeTranscriptSegmentId.read(from: &buf)
+        )
+
+        case 5: return .words(segmentId: try FfiConverterTypeTranscriptSegmentId.read(from: &buf)
+        )
+
+        case 6: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: TranscriptProjectionScope, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .summary:
+            writeInt(&buf, Int32(1))
+
+
+        case .speakers:
+            writeInt(&buf, Int32(2))
+
+
+        case .segments:
+            writeInt(&buf, Int32(3))
+
+
+        case let .segment(segmentId):
+            writeInt(&buf, Int32(4))
+            FfiConverterTypeTranscriptSegmentId.write(segmentId, into: &buf)
+
+
+        case let .words(segmentId):
+            writeInt(&buf, Int32(5))
+            FfiConverterTypeTranscriptSegmentId.write(segmentId, into: &buf)
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(6))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptProjectionScope_lift(_ buf: RustBuffer) throws -> TranscriptProjectionScope {
+    return try FfiConverterTypeTranscriptProjectionScope.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptProjectionScope_lower(_ value: TranscriptProjectionScope) -> RustBuffer {
+    return FfiConverterTypeTranscriptProjectionScope.lower(value)
+}
+
+
+
 
 public enum UserAction: Equatable, Hashable {
 
@@ -6491,6 +7335,30 @@ fileprivate struct FfiConverterOptionTypePlaybackItem: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypePlaybackItem.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeTranscriptSummaryProjection: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptSummaryProjection?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeTranscriptSummaryProjection.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeTranscriptSummaryProjection.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -7028,6 +7896,81 @@ fileprivate struct FfiConverterSequenceTypeTranscriptSegmentInput: FfiConverterR
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeTranscriptSegmentInput.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeTranscriptSegmentProjection: FfiConverterRustBuffer {
+    typealias SwiftType = [TranscriptSegmentProjection]
+
+    public static func write(_ value: [TranscriptSegmentProjection], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTranscriptSegmentProjection.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TranscriptSegmentProjection] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TranscriptSegmentProjection]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTranscriptSegmentProjection.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeTranscriptSpeakerProjection: FfiConverterRustBuffer {
+    typealias SwiftType = [TranscriptSpeakerProjection]
+
+    public static func write(_ value: [TranscriptSpeakerProjection], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTranscriptSpeakerProjection.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TranscriptSpeakerProjection] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TranscriptSpeakerProjection]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTranscriptSpeakerProjection.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeTranscriptWordProjection: FfiConverterRustBuffer {
+    typealias SwiftType = [TranscriptWordProjection]
+
+    public static func write(_ value: [TranscriptWordProjection], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTranscriptWordProjection.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TranscriptWordProjection] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TranscriptWordProjection]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTranscriptWordProjection.read(from: &buf))
         }
         return seq
     }

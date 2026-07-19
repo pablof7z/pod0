@@ -19,9 +19,12 @@ pub use pod0_application::{
     ProjectionEnvelope, ProjectionRequest, ProjectionScope, QueuePlacement,
     RecallCandidateObservation, RecallEmbeddingVector, RecallEvidenceProjection, RecallPhase,
     RecallQuery, RecallRerankDocument, RecallRerankObservation, RecallResultProjection,
-    RecallScope, RecallScoreProjection, RecallStage, Retryability, TranscriptEvidenceInput,
-    TranscriptSegmentInput, UnsupportedProjection, UserAction, bounded_host_request_count,
-    bounded_playback_observation_interval,
+    RecallScope, RecallScoreProjection, RecallStage, Retryability, TranscriptCommitReceipt,
+    TranscriptCommitRequest, TranscriptContractProjection, TranscriptContractRejection,
+    TranscriptEvidenceInput, TranscriptProjection, TranscriptProjectionScope,
+    TranscriptSegmentInput, TranscriptSegmentProjection, TranscriptSpeakerProjection,
+    TranscriptSummaryProjection, TranscriptWordProjection, UnsupportedProjection, UserAction,
+    bounded_host_request_count, bounded_playback_observation_interval,
 };
 use pod0_application::{Clock, KernelApplication};
 pub use pod0_domain::{
@@ -34,10 +37,12 @@ pub use pod0_domain::{
     NoteKind, NoteRecord, NoteRevision, NoteTarget, PlaybackRatePermille, PlaybackSegment,
     PlaybackSleepMode, PodcastId, PodcastIdentityRecord, PodcastIdentityResolution, PodcastKind,
     PodcastRecord, PodcastSubscriptionRecord, QueueEntry, QueueEntryId, RecallQueryId, SpeakerId,
-    StateRevision, SubscriptionId, TranscriptArtifactStatus, TranscriptProvenance,
-    TranscriptSegmentId, TranscriptSource, TranscriptVersionId, UnixTimestampMilliseconds,
-    make_feed_identity_v1, resolve_episode_identity_v1, resolve_legacy_parent_id,
-    resolve_podcast_identity_v1, validate_listening_snapshot,
+    StateRevision, SubscriptionId, TranscriptArtifactId, TranscriptArtifactInput,
+    TranscriptArtifactSegmentInput, TranscriptArtifactSpeakerInput, TranscriptArtifactStatus,
+    TranscriptArtifactWordInput, TranscriptProvenance, TranscriptSegmentId, TranscriptSource,
+    TranscriptVersionId, UnixTimestampMilliseconds, make_feed_identity_v1,
+    resolve_episode_identity_v1, resolve_legacy_parent_id, resolve_podcast_identity_v1,
+    validate_listening_snapshot,
 };
 
 uniffi::setup_scaffolding!();
@@ -131,6 +136,19 @@ pub trait Pod0ApplicationApi: Send + Sync {
     fn unsubscribe(&self, subscription_id: SubscriptionId);
     fn next_host_requests(&self, maximum_count: u16) -> Vec<HostRequestEnvelope>;
     fn record_host_observation(&self, observation: HostObservationEnvelope);
+}
+
+/// Produces bounded, state-shaped evidence for the typed transcript contract.
+/// Invalid input becomes a rejected projection rather than an exception.
+/// Durable commit and selection are added by the storage slice.
+#[uniffi::export]
+pub fn project_transcript_contract(
+    request: TranscriptCommitRequest,
+    scope: TranscriptProjectionScope,
+    offset: u32,
+    max_items: u16,
+) -> TranscriptContractProjection {
+    pod0_application::project_transcript_contract(request, scope, offset, max_items)
 }
 
 /// An internal deterministic probe retained for injected-time characterization.

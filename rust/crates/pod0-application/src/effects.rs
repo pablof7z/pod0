@@ -1,6 +1,7 @@
 use pod0_domain::{
     CancellationId, CommandId, DomainEventId, EpisodeId, EvidenceGenerationId, HostRequestId,
-    PlaybackRatePermille, PodcastId, RecallQueryId, StateRevision, UnixTimestampMilliseconds,
+    PlaybackRatePermille, PodcastId, RecallQueryId, StateRevision, TranscriptArtifactId,
+    TranscriptVersionId, UnixTimestampMilliseconds,
 };
 
 use crate::{
@@ -49,6 +50,16 @@ pub enum DomainEvent {
     ResumePositionCommitted {
         episode_id: EpisodeId,
         position_milliseconds: u64,
+    },
+    TranscriptArtifactCommitted {
+        episode_id: EpisodeId,
+        artifact_id: TranscriptArtifactId,
+        transcript_version_id: TranscriptVersionId,
+    },
+    TranscriptSelectionChanged {
+        episode_id: EpisodeId,
+        artifact_id: TranscriptArtifactId,
+        selection_revision: StateRevision,
     },
     OperationFinished {
         stage: OperationStage,

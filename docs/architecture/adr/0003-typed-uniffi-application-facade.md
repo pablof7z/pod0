@@ -14,11 +14,14 @@ by both Swift and Kotlin.
 
 ## Implementation status
 
-The first contract and generated Swift/Kotlin APIs now exist. Swift runtime and
-Kotlin JVM smoke tests exercise the same facade metadata, and CI regenerates
-both languages to detect drift. The current runtime is deliberately in-memory
-and non-authoritative; the first durable vertical slice replaces it with the
-single-writer actor described below.
+The generated Swift/Kotlin APIs and durable Rust runtime now own the migrated
+listening, notes, clips, and recall/evidence slices. CI regenerates both
+languages to detect drift. Contract version 11 adds a canonical full-transcript
+artifact plus separately bounded summary/speaker/segment/word projections. A
+pure, bounded contract projection lets both bindings prove IDs, limits,
+unknown-value handling, and conversion fixtures before storage cutover; it
+neither dispatches an application operation nor writes durable state. Invalid
+fixture input is represented as rejected projection state, never an exception.
 
 ## Decision
 
@@ -59,6 +62,12 @@ Native host observations may carry typed raw failure codes and safe metadata.
 Rust decides retry, fallback, user action availability, and durable next state.
 Late or duplicate observations are rejected by request ID, revision, lease, or
 idempotency evidence.
+
+Pure migration inspection helpers that predate this facade are limited to
+offline cutover tooling. New contract-qualification surfaces return bounded
+state projections, including typed rejection state, and never throw across
+FFI. Once a domain is authoritative, all user operations follow the
+fire-and-forget command/projection rule.
 
 ## Compatibility
 
