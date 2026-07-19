@@ -14,7 +14,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 
     // MARK: - Pending shortcut
 
-    /// Shortcut selected while the app was not running (cold-launch path).
+    /// Shortcut selected while a scene was connecting (cold-launch path).
     /// `RootView` reads this on `.onAppear` and clears it after routing.
     var pendingShortcutURL: URL?
 
@@ -32,30 +32,22 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         // Bound Kingfisher's memory + disk caches so artwork doesn't grow
         // unchecked. See KingfisherConfiguration for the rationale.
         KingfisherConfiguration.configure()
-        // Cold-launch path: UIKit hands the shortcut here. `RootView` reads
-        // `pendingShortcutURL` on `.onAppear` and routes via DeepLinkHandler.
-        if let shortcut = launchOptions?[.shortcutItem] as? UIApplicationShortcutItem,
-           let url = Self.deepLinkURL(for: shortcut) {
-            pendingShortcutURL = url
-        }
         return true
     }
 
-    /// Warm-app path: invoked when the user picks a quick action while the
-    /// app is already running (foreground or backgrounded). Posts the URL
-    /// so RootView's onReceive routes it on the main run loop.
     func application(
         _ application: UIApplication,
-        performActionFor shortcutItem: UIApplicationShortcutItem,
-        completionHandler: @escaping (Bool) -> Void
-    ) {
-        guard let url = Self.deepLinkURL(for: shortcutItem) else {
-            logger.warning("Unhandled quick action: \(shortcutItem.type, privacy: .public)")
-            completionHandler(false)
-            return
+        configurationForConnecting connectingSceneSession: UISceneSession,
+        options: UIScene.ConnectionOptions
+    ) -> UISceneConfiguration {
+        let configuration = UISceneConfiguration(
+            name: nil,
+            sessionRole: connectingSceneSession.role
+        )
+        if connectingSceneSession.role == .windowApplication {
+            configuration.delegateClass = AppSceneDelegate.self
         }
-        NotificationCenter.default.post(name: Self.shortcutURLNotification, object: url)
-        completionHandler(true)
+        return configuration
     }
 
     func application(
@@ -76,8 +68,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     /// The bundle-id prefix is stripped so the suffix alone identifies the
     /// destination — keeps this in sync with whatever bundle ID `Project.swift`
     /// resolves to today.
-    private static func deepLinkURL(for shortcut: UIApplicationShortcutItem) -> URL? {
-        let bundleID = Bundle.main.bundleIdentifier ?? ""
+    static func deepLinkURL(
+        for shortcut: UIApplicationShortcutItem,
+        bundleIdentifier: String = Bundle.main.bundleIdentifier ?? ""
+    ) -> URL? {
+        let bundleID = bundleIdentifier
         let prefix = bundleID + "."
         let suffix = shortcut.type.hasPrefix(prefix)
             ? String(shortcut.type.dropFirst(prefix.count))
@@ -87,6 +82,36 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         case "settings":   return URL(string: "podcastr://settings")
         default:           return nil
         }
+    }
+
+    @discardableResult
+    func handleShortcut(
+        _ shortcut: UIApplicationShortcutItem,
+        delivery: ShortcutDelivery,
+        bundleIdentifier: String = Bundle.main.bundleIdentifier ?? "",
+        notificationCenter: NotificationCenter = .default
+    ) -> Bool {
+        guard let url = Self.deepLinkURL(
+            for: shortcut,
+            bundleIdentifier: bundleIdentifier
+        ) else {
+            logger.warning("Unhandled quick action: \(shortcut.type, privacy: .public)")
+            return false
+        }
+        switch delivery {
+        case .pending:
+            pendingShortcutURL = url
+        case .notification:
+            notificationCenter.post(name: Self.shortcutURLNotification, object: url)
+        }
+        return true
+    }
+}
+
+extension AppDelegate {
+    enum ShortcutDelivery {
+        case pending
+        case notification
     }
 }
 

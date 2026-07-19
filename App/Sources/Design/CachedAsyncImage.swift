@@ -24,6 +24,8 @@ import SwiftUI
 /// and lands on Now Playing all in 30 seconds.
 struct CachedAsyncImage<Content: View>: View {
 
+    @Environment(\.displayScale) private var displayScale
+
     let url: URL?
     let scale: CGFloat
     /// Optional logical-points target size. When set, the image is decoded
@@ -35,7 +37,6 @@ struct CachedAsyncImage<Content: View>: View {
     @ViewBuilder let content: (AsyncImagePhase) -> Content
 
     @State private var phase: AsyncImagePhase = .empty
-    @State private var task: DownloadTask?
 
     init(
         url: URL?,
@@ -51,17 +52,22 @@ struct CachedAsyncImage<Content: View>: View {
 
     var body: some View {
         content(phase)
-            .onChange(of: url, initial: true) { _, newURL in
-                load(newURL)
-            }
-            .onDisappear {
-                task?.cancel()
-                task = nil
+            .task(id: requestID) {
+                await load(url, displayScale: displayScale)
             }
     }
 
-    private func load(_ url: URL?) {
-        task?.cancel()
+    private var requestID: RequestID {
+        RequestID(
+            url: url,
+            scale: scale,
+            targetSize: targetSize,
+            displayScale: displayScale
+        )
+    }
+
+    @MainActor
+    private func load(_ url: URL?, displayScale: CGFloat) async {
         guard let url else {
             phase = .empty
             return
@@ -90,32 +96,41 @@ struct CachedAsyncImage<Content: View>: View {
         ]
         if let targetSize {
             // Kingfisher's processor expects pixels; convert from points.
-            let screenScale = UIScreen.main.scale
             let pixelSize = CGSize(
-                width: targetSize.width * screenScale,
-                height: targetSize.height * screenScale
+                width: targetSize.width * displayScale,
+                height: targetSize.height * displayScale
             )
             options.append(.processor(DownsamplingImageProcessor(size: pixelSize)))
             options.append(.cacheOriginalImage)
             options.append(.cacheSerializer(FormatIndicatedCacheSerializer.png))
         }
 
-        task = KingfisherManager.shared.retrieveImage(
-            with: url,
-            options: options
-        ) { result in
-            switch result {
-            case .success(let value):
-                phase = .success(Image(uiImage: value.image))
-            case .failure(let error):
-                // `.cancelled` happens any time the URL changes mid-load
-                // (scrolling); collapse it to `.empty` rather than surfacing
-                // it as a failure to the caller's switch.
-                if error.isTaskCancelled || error.isNotCurrentTask {
-                    return
-                }
-                phase = .failure(error)
-            }
+        do {
+            let value = try await KingfisherManager.shared.retrieveImage(
+                with: url,
+                options: options
+            )
+            guard !Task.isCancelled else { return }
+            phase = .success(Image(uiImage: value.image))
+        } catch let error as KingfisherError {
+            // Cancellation happens when the URL changes or the view leaves
+            // the hierarchy. The superseded task must not overwrite the new
+            // request's phase.
+            guard !Task.isCancelled,
+                  !error.isTaskCancelled,
+                  !error.isNotCurrentTask
+            else { return }
+            phase = .failure(error)
+        } catch {
+            guard !Task.isCancelled else { return }
+            phase = .failure(error)
         }
+    }
+
+    private struct RequestID: Hashable {
+        let url: URL?
+        let scale: CGFloat
+        let targetSize: CGSize?
+        let displayScale: CGFloat
     }
 }
