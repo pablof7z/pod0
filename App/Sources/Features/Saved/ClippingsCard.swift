@@ -17,8 +17,14 @@ struct ClippingsCard: View {
     @State private var shareClip: Clip?
 
     var body: some View {
-        Button(action: { Haptics.selection(); onPlay() }) {
-            cardContent
+        Group {
+            if episode != nil {
+                Button(action: { Haptics.selection(); onPlay() }) {
+                    cardContent
+                }
+            } else {
+                cardContent
+            }
         }
         .buttonStyle(.pressable(scale: 0.98))
         .contextMenu { contextMenuContent }
@@ -162,6 +168,7 @@ struct ClippingsCard: View {
         Button { Haptics.selection(); onPlay() } label: {
             Label("Play Clip", systemImage: "play.circle")
         }
+        .disabled(episode == nil)
 
         if episode != nil, podcast != nil {
             Button { Haptics.selection(); shareClip = clip } label: {
@@ -198,6 +205,7 @@ struct ClippingsCard: View {
         case .watch:     return ("applewatch", "Watch")
         case .siri:      return ("waveform", "Siri")
         case .agent:     return ("sparkles", "Agent")
+        case .unsupported: return ("scissors", "Clip")
         }
     }
 

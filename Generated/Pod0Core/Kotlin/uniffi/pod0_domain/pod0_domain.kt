@@ -1228,6 +1228,235 @@ public object FfiConverterTypeCancellationId: FfiConverterRustBuffer<Cancellatio
 
 
 
+/**
+ * Immutable provenance captured from the selected, verified evidence
+ * generation. Transcript rebuilds never silently retarget a saved clip.
+ */
+data class ClipEvidenceReference (
+    val `generationId`: EvidenceGenerationId
+    ,
+    val `transcriptVersionId`: TranscriptVersionId
+    ,
+    val `transcriptContentDigest`: ContentDigest
+    ,
+    val `spanId`: EvidenceSpanId
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeClipEvidenceReference: FfiConverterRustBuffer<ClipEvidenceReference> {
+    override fun read(buf: ByteBuffer): ClipEvidenceReference {
+        return ClipEvidenceReference(
+            FfiConverterTypeEvidenceGenerationId.read(buf),
+            FfiConverterTypeTranscriptVersionId.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterTypeEvidenceSpanId.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ClipEvidenceReference) = (
+            FfiConverterTypeEvidenceGenerationId.allocationSize(value.`generationId`) +
+            FfiConverterTypeTranscriptVersionId.allocationSize(value.`transcriptVersionId`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`transcriptContentDigest`) +
+            FfiConverterTypeEvidenceSpanId.allocationSize(value.`spanId`)
+    )
+
+    override fun write(value: ClipEvidenceReference, buf: ByteBuffer) {
+            FfiConverterTypeEvidenceGenerationId.write(value.`generationId`, buf)
+            FfiConverterTypeTranscriptVersionId.write(value.`transcriptVersionId`, buf)
+            FfiConverterTypeContentDigest.write(value.`transcriptContentDigest`, buf)
+            FfiConverterTypeEvidenceSpanId.write(value.`spanId`, buf)
+    }
+}
+
+
+
+data class ClipId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeClipId: FfiConverterRustBuffer<ClipId> {
+    override fun read(buf: ByteBuffer): ClipId {
+        return ClipId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ClipId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: ClipId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+/**
+ * Durable clip state owned by the Pod0 kernel. Media rendering and sharing
+ * remain native capabilities over this bounded projection.
+ */
+data class ClipRecord (
+    val `clipId`: ClipId
+    ,
+    val `revision`: ClipRevision
+    ,
+    val `episodeId`: EpisodeId
+    ,
+    val `podcastId`: PodcastId
+    ,
+    val `startMilliseconds`: kotlin.ULong
+    ,
+    val `endMilliseconds`: kotlin.ULong
+    ,
+    val `createdAt`: UnixTimestampMilliseconds
+    ,
+    val `caption`: kotlin.String?
+    ,
+    val `speakerId`: SpeakerId?
+    ,
+    /**
+     * Preserved only for pre-kernel clips whose Swift payload used a display
+     * label instead of a stable speaker identity.
+     */
+    val `speakerLabel`: kotlin.String?
+    ,
+    val `frozenTranscriptText`: kotlin.String
+    ,
+    val `source`: ClipSource
+    ,
+    val `deleted`: kotlin.Boolean
+    ,
+    val `evidence`: ClipEvidenceReference?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeClipRecord: FfiConverterRustBuffer<ClipRecord> {
+    override fun read(buf: ByteBuffer): ClipRecord {
+        return ClipRecord(
+            FfiConverterTypeClipId.read(buf),
+            FfiConverterTypeClipRevision.read(buf),
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterTypePodcastId.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalTypeSpeakerId.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeClipSource.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalTypeClipEvidenceReference.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ClipRecord) = (
+            FfiConverterTypeClipId.allocationSize(value.`clipId`) +
+            FfiConverterTypeClipRevision.allocationSize(value.`revision`) +
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterULong.allocationSize(value.`startMilliseconds`) +
+            FfiConverterULong.allocationSize(value.`endMilliseconds`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`createdAt`) +
+            FfiConverterOptionalString.allocationSize(value.`caption`) +
+            FfiConverterOptionalTypeSpeakerId.allocationSize(value.`speakerId`) +
+            FfiConverterOptionalString.allocationSize(value.`speakerLabel`) +
+            FfiConverterString.allocationSize(value.`frozenTranscriptText`) +
+            FfiConverterTypeClipSource.allocationSize(value.`source`) +
+            FfiConverterBoolean.allocationSize(value.`deleted`) +
+            FfiConverterOptionalTypeClipEvidenceReference.allocationSize(value.`evidence`)
+    )
+
+    override fun write(value: ClipRecord, buf: ByteBuffer) {
+            FfiConverterTypeClipId.write(value.`clipId`, buf)
+            FfiConverterTypeClipRevision.write(value.`revision`, buf)
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterULong.write(value.`startMilliseconds`, buf)
+            FfiConverterULong.write(value.`endMilliseconds`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`createdAt`, buf)
+            FfiConverterOptionalString.write(value.`caption`, buf)
+            FfiConverterOptionalTypeSpeakerId.write(value.`speakerId`, buf)
+            FfiConverterOptionalString.write(value.`speakerLabel`, buf)
+            FfiConverterString.write(value.`frozenTranscriptText`, buf)
+            FfiConverterTypeClipSource.write(value.`source`, buf)
+            FfiConverterBoolean.write(value.`deleted`, buf)
+            FfiConverterOptionalTypeClipEvidenceReference.write(value.`evidence`, buf)
+    }
+}
+
+
+
+data class ClipRevision (
+    val `value`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeClipRevision: FfiConverterRustBuffer<ClipRevision> {
+    override fun read(buf: ByteBuffer): ClipRevision {
+        return ClipRevision(
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ClipRevision) = (
+            FfiConverterULong.allocationSize(value.`value`)
+    )
+
+    override fun write(value: ClipRevision, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`value`, buf)
+    }
+}
+
+
+
 data class CommandId (
     val `high`: kotlin.ULong
     ,
@@ -3103,6 +3332,163 @@ public object FfiConverterTypeAutoDownloadMode : FfiConverterRustBuffer<AutoDown
 
 
 
+sealed class ClipSource {
+
+    object Touch : ClipSource()
+
+
+    object Auto : ClipSource()
+
+
+    object Headphone : ClipSource()
+
+
+    object Carplay : ClipSource()
+
+
+    object Watch : ClipSource()
+
+
+    object Siri : ClipSource()
+
+
+    object Agent : ClipSource()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : ClipSource()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeClipSource : FfiConverterRustBuffer<ClipSource>{
+    override fun read(buf: ByteBuffer): ClipSource {
+        return when(buf.getInt()) {
+            1 -> ClipSource.Touch
+            2 -> ClipSource.Auto
+            3 -> ClipSource.Headphone
+            4 -> ClipSource.Carplay
+            5 -> ClipSource.Watch
+            6 -> ClipSource.Siri
+            7 -> ClipSource.Agent
+            8 -> ClipSource.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: ClipSource): ULong = when(value) {
+        is ClipSource.Touch -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ClipSource.Auto -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ClipSource.Headphone -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ClipSource.Carplay -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ClipSource.Watch -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ClipSource.Siri -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ClipSource.Agent -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ClipSource.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: ClipSource, buf: ByteBuffer) {
+        when(value) {
+            is ClipSource.Touch -> {
+                buf.putInt(1)
+                Unit
+            }
+            is ClipSource.Auto -> {
+                buf.putInt(2)
+                Unit
+            }
+            is ClipSource.Headphone -> {
+                buf.putInt(3)
+                Unit
+            }
+            is ClipSource.Carplay -> {
+                buf.putInt(4)
+                Unit
+            }
+            is ClipSource.Watch -> {
+                buf.putInt(5)
+                Unit
+            }
+            is ClipSource.Siri -> {
+                buf.putInt(6)
+                Unit
+            }
+            is ClipSource.Agent -> {
+                buf.putInt(7)
+                Unit
+            }
+            is ClipSource.Unsupported -> {
+                buf.putInt(8)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 sealed class CompletionCause {
 
     object NaturalEnd : CompletionCause()
@@ -4861,6 +5247,38 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeClipEvidenceReference: FfiConverterRustBuffer<ClipEvidenceReference?> {
+    override fun read(buf: ByteBuffer): ClipEvidenceReference? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeClipEvidenceReference.read(buf)
+    }
+
+    override fun allocationSize(value: ClipEvidenceReference?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeClipEvidenceReference.allocationSize(value)
+        }
+    }
+
+    override fun write(value: ClipEvidenceReference?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeClipEvidenceReference.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeEpisodeId: FfiConverterRustBuffer<EpisodeId?> {
     override fun read(buf: ByteBuffer): EpisodeId? {
         if (buf.get().toInt() == 0) {
@@ -5075,6 +5493,38 @@ public object FfiConverterOptionalTypePublisherTranscriptReference: FfiConverter
         } else {
             buf.put(1)
             FfiConverterTypePublisherTranscriptReference.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeSpeakerId: FfiConverterRustBuffer<SpeakerId?> {
+    override fun read(buf: ByteBuffer): SpeakerId? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeSpeakerId.read(buf)
+    }
+
+    override fun allocationSize(value: SpeakerId?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeSpeakerId.allocationSize(value)
+        }
+    }
+
+    override fun write(value: SpeakerId?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeSpeakerId.write(value, buf)
         }
     }
 }

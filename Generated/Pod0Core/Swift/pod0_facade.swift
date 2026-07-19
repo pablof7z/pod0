@@ -1002,6 +1002,262 @@ public func FfiConverterTypeProjectionSubscriber_lower(_ value: ProjectionSubscr
 
 
 
+public struct LegacyClipBackupEvidence: Equatable, Hashable {
+    public let sourceKind: LegacyListeningSourceKind
+    public let sourceHash: String
+    public let sourceGeneration: UInt64
+    public let byteCount: UInt64
+    public let reusedExisting: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sourceKind: LegacyListeningSourceKind, sourceHash: String, sourceGeneration: UInt64, byteCount: UInt64, reusedExisting: Bool) {
+        self.sourceKind = sourceKind
+        self.sourceHash = sourceHash
+        self.sourceGeneration = sourceGeneration
+        self.byteCount = byteCount
+        self.reusedExisting = reusedExisting
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyClipBackupEvidence: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyClipBackupEvidence: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyClipBackupEvidence {
+        return
+            try LegacyClipBackupEvidence(
+                sourceKind: FfiConverterTypeLegacyListeningSourceKind.read(from: &buf),
+                sourceHash: FfiConverterString.read(from: &buf),
+                sourceGeneration: FfiConverterUInt64.read(from: &buf),
+                byteCount: FfiConverterUInt64.read(from: &buf),
+                reusedExisting: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyClipBackupEvidence, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyListeningSourceKind.write(value.sourceKind, into: &buf)
+        FfiConverterString.write(value.sourceHash, into: &buf)
+        FfiConverterUInt64.write(value.sourceGeneration, into: &buf)
+        FfiConverterUInt64.write(value.byteCount, into: &buf)
+        FfiConverterBool.write(value.reusedExisting, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyClipBackupEvidence_lift(_ buf: RustBuffer) throws -> LegacyClipBackupEvidence {
+    return try FfiConverterTypeLegacyClipBackupEvidence.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyClipBackupEvidence_lower(_ value: LegacyClipBackupEvidence) -> RustBuffer {
+    return FfiConverterTypeLegacyClipBackupEvidence.lower(value)
+}
+
+
+public struct LegacyClipImportPlan: Equatable, Hashable {
+    public let sourceKind: LegacyListeningSourceKind
+    public let sourceHash: String
+    public let sourceGeneration: UInt64
+    public let clipCount: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sourceKind: LegacyListeningSourceKind, sourceHash: String, sourceGeneration: UInt64, clipCount: UInt32) {
+        self.sourceKind = sourceKind
+        self.sourceHash = sourceHash
+        self.sourceGeneration = sourceGeneration
+        self.clipCount = clipCount
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyClipImportPlan: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyClipImportPlan: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyClipImportPlan {
+        return
+            try LegacyClipImportPlan(
+                sourceKind: FfiConverterTypeLegacyListeningSourceKind.read(from: &buf),
+                sourceHash: FfiConverterString.read(from: &buf),
+                sourceGeneration: FfiConverterUInt64.read(from: &buf),
+                clipCount: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyClipImportPlan, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyListeningSourceKind.write(value.sourceKind, into: &buf)
+        FfiConverterString.write(value.sourceHash, into: &buf)
+        FfiConverterUInt64.write(value.sourceGeneration, into: &buf)
+        FfiConverterUInt32.write(value.clipCount, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyClipImportPlan_lift(_ buf: RustBuffer) throws -> LegacyClipImportPlan {
+    return try FfiConverterTypeLegacyClipImportPlan.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyClipImportPlan_lower(_ value: LegacyClipImportPlan) -> RustBuffer {
+    return FfiConverterTypeLegacyClipImportPlan.lower(value)
+}
+
+
+public struct LegacyClipImportReport: Equatable, Hashable {
+    public let importId: CommandId
+    public let plan: LegacyClipImportPlan
+    public let targetRevision: StateRevision
+    public let backup: LegacyClipBackupEvidence
+    public let staged: Bool
+    public let reusedExisting: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(importId: CommandId, plan: LegacyClipImportPlan, targetRevision: StateRevision, backup: LegacyClipBackupEvidence, staged: Bool, reusedExisting: Bool) {
+        self.importId = importId
+        self.plan = plan
+        self.targetRevision = targetRevision
+        self.backup = backup
+        self.staged = staged
+        self.reusedExisting = reusedExisting
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyClipImportReport: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyClipImportReport: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyClipImportReport {
+        return
+            try LegacyClipImportReport(
+                importId: FfiConverterTypeCommandId.read(from: &buf),
+                plan: FfiConverterTypeLegacyClipImportPlan.read(from: &buf),
+                targetRevision: FfiConverterTypeStateRevision.read(from: &buf),
+                backup: FfiConverterTypeLegacyClipBackupEvidence.read(from: &buf),
+                staged: FfiConverterBool.read(from: &buf),
+                reusedExisting: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyClipImportReport, into buf: inout [UInt8]) {
+        FfiConverterTypeCommandId.write(value.importId, into: &buf)
+        FfiConverterTypeLegacyClipImportPlan.write(value.plan, into: &buf)
+        FfiConverterTypeStateRevision.write(value.targetRevision, into: &buf)
+        FfiConverterTypeLegacyClipBackupEvidence.write(value.backup, into: &buf)
+        FfiConverterBool.write(value.staged, into: &buf)
+        FfiConverterBool.write(value.reusedExisting, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyClipImportReport_lift(_ buf: RustBuffer) throws -> LegacyClipImportReport {
+    return try FfiConverterTypeLegacyClipImportReport.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyClipImportReport_lower(_ value: LegacyClipImportReport) -> RustBuffer {
+    return FfiConverterTypeLegacyClipImportReport.lower(value)
+}
+
+
+public struct LegacyClipImportVerification: Equatable, Hashable {
+    public let report: LegacyClipImportReport
+    public let collectionRevision: StateRevision
+    public let clips: [ClipRecord]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(report: LegacyClipImportReport, collectionRevision: StateRevision, clips: [ClipRecord]) {
+        self.report = report
+        self.collectionRevision = collectionRevision
+        self.clips = clips
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyClipImportVerification: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyClipImportVerification: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyClipImportVerification {
+        return
+            try LegacyClipImportVerification(
+                report: FfiConverterTypeLegacyClipImportReport.read(from: &buf),
+                collectionRevision: FfiConverterTypeStateRevision.read(from: &buf),
+                clips: FfiConverterSequenceTypeClipRecord.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyClipImportVerification, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyClipImportReport.write(value.report, into: &buf)
+        FfiConverterTypeStateRevision.write(value.collectionRevision, into: &buf)
+        FfiConverterSequenceTypeClipRecord.write(value.clips, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyClipImportVerification_lift(_ buf: RustBuffer) throws -> LegacyClipImportVerification {
+    return try FfiConverterTypeLegacyClipImportVerification.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyClipImportVerification_lower(_ value: LegacyClipImportVerification) -> RustBuffer {
+    return FfiConverterTypeLegacyClipImportVerification.lower(value)
+}
+
+
 public struct LegacyListeningBackupEvidence: Equatable, Hashable {
     public let sourceKind: LegacyListeningSourceKind
     public let sourceHash: String
@@ -1664,6 +1920,119 @@ public func FfiConverterTypeFacadeOpenError_lower(_ value: FacadeOpenError) -> R
 
 
 public
+enum LegacyClipMigrationError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+
+
+
+    case SourceChanged
+    case SourceInvalid
+    case BackupConflict
+    case ImportConflict
+    case ImportNotFound
+    case TargetBlocked
+    case Interrupted
+    case StorageUnavailable
+
+
+
+
+
+
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+
+}
+
+#if compiler(>=6)
+extension LegacyClipMigrationError: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyClipMigrationError: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyClipMigrationError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyClipMigrationError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+
+
+
+        case 1: return .SourceChanged
+        case 2: return .SourceInvalid
+        case 3: return .BackupConflict
+        case 4: return .ImportConflict
+        case 5: return .ImportNotFound
+        case 6: return .TargetBlocked
+        case 7: return .Interrupted
+        case 8: return .StorageUnavailable
+
+         default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyClipMigrationError, into buf: inout [UInt8]) {
+        switch value {
+
+
+
+
+
+        case .SourceChanged:
+            writeInt(&buf, Int32(1))
+
+
+        case .SourceInvalid:
+            writeInt(&buf, Int32(2))
+
+
+        case .BackupConflict:
+            writeInt(&buf, Int32(3))
+
+
+        case .ImportConflict:
+            writeInt(&buf, Int32(4))
+
+
+        case .ImportNotFound:
+            writeInt(&buf, Int32(5))
+
+
+        case .TargetBlocked:
+            writeInt(&buf, Int32(6))
+
+
+        case .Interrupted:
+            writeInt(&buf, Int32(7))
+
+
+        case .StorageUnavailable:
+            writeInt(&buf, Int32(8))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyClipMigrationError_lift(_ buf: RustBuffer) throws -> LegacyClipMigrationError {
+    return try FfiConverterTypeLegacyClipMigrationError.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyClipMigrationError_lower(_ value: LegacyClipMigrationError) -> RustBuffer {
+    return FfiConverterTypeLegacyClipMigrationError.lower(value)
+}
+
+
+public
 enum LegacyListeningMigrationError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
 
@@ -2007,6 +2376,31 @@ fileprivate struct FfiConverterSequenceTypeHostRequestEnvelope: FfiConverterRust
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeClipRecord: FfiConverterRustBuffer {
+    typealias SwiftType = [ClipRecord]
+
+    public static func write(_ value: [ClipRecord], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeClipRecord.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ClipRecord] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ClipRecord]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeClipRecord.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer {
     typealias SwiftType = [NoteRecord]
 
@@ -2027,6 +2421,48 @@ fileprivate struct FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer {
         }
         return seq
     }
+}
+public func commitStagedLegacyClipImport(sourcePath: String, targetPath: String, observedAtMilliseconds: Int64)throws  -> Bool  {
+    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeLegacyClipMigrationError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_commit_staged_legacy_clip_import(
+        FfiConverterString.lower(sourcePath),
+        FfiConverterString.lower(targetPath),
+        FfiConverterInt64.lower(observedAtMilliseconds),uniffiCallStatus
+    )
+})
+}
+public func inspectLegacyClipSource(sourcePath: String)throws  -> LegacyClipImportPlan  {
+    return try  FfiConverterTypeLegacyClipImportPlan_lift(try rustCallWithError(FfiConverterTypeLegacyClipMigrationError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_inspect_legacy_clip_source(
+        FfiConverterString.lower(sourcePath),uniffiCallStatus
+    )
+})
+}
+public func readStagedLegacyClipImport(targetPath: String, importId: CommandId)throws  -> LegacyClipImportVerification  {
+    return try  FfiConverterTypeLegacyClipImportVerification_lift(try rustCallWithError(FfiConverterTypeLegacyClipMigrationError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_read_staged_legacy_clip_import(
+        FfiConverterString.lower(targetPath),
+        FfiConverterTypeCommandId_lower(importId),uniffiCallStatus
+    )
+})
+}
+public func stageLegacyClipImport(sourcePath: String, sourceBackupPath: String, targetPath: String, targetSchemaBackupPath: String, expectedPlan: LegacyClipImportPlan, importId: CommandId, targetStoreId: CommandId, observedAtMilliseconds: Int64)throws  -> LegacyClipImportReport  {
+    return try  FfiConverterTypeLegacyClipImportReport_lift(try rustCallWithError(FfiConverterTypeLegacyClipMigrationError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_stage_legacy_clip_import(
+        FfiConverterString.lower(sourcePath),
+        FfiConverterString.lower(sourceBackupPath),
+        FfiConverterString.lower(targetPath),
+        FfiConverterString.lower(targetSchemaBackupPath),
+        FfiConverterTypeLegacyClipImportPlan_lower(expectedPlan),
+        FfiConverterTypeCommandId_lower(importId),
+        FfiConverterTypeCommandId_lower(targetStoreId),
+        FfiConverterInt64.lower(observedAtMilliseconds),uniffiCallStatus
+    )
+})
 }
 public func commitStagedLegacyListeningImport(targetPath: String, observedAtMilliseconds: Int64)throws  -> Bool  {
     return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeLegacyListeningMigrationError_lift) {
@@ -2062,6 +2498,13 @@ public func readStagedLegacyListeningImport(targetPath: String, importId: Comman
     uniffi_pod0_facade_fn_func_read_staged_legacy_listening_import(
         FfiConverterString.lower(targetPath),
         FfiConverterTypeCommandId_lower(importId),uniffiCallStatus
+    )
+})
+}
+public func sharedStoreSchemaVersion() -> UInt32  {
+    return try!  FfiConverterUInt32.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_shared_store_schema_version(uniffiCallStatus
     )
 })
 }
@@ -2137,6 +2580,18 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
+    if (uniffi_pod0_facade_checksum_func_commit_staged_legacy_clip_import() != 45677) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_inspect_legacy_clip_source() != 38453) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_read_staged_legacy_clip_import() != 39313) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_stage_legacy_clip_import() != 13972) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_pod0_facade_checksum_func_commit_staged_legacy_listening_import() != 20149) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -2147,6 +2602,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_func_read_staged_legacy_listening_import() != 31272) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_shared_store_schema_version() != 49863) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_func_stage_legacy_listening_import() != 21059) {

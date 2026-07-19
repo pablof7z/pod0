@@ -225,6 +225,7 @@ enum PodcastAgentToolAdapterError: LocalizedError {
     case invalidID(String)
     case missingEpisode(String)
     case missingPodcast(String)
+    case invalidClipBounds
 
     var errorDescription: String? {
         switch self {
@@ -232,6 +233,7 @@ enum PodcastAgentToolAdapterError: LocalizedError {
         case .invalidID(let value): return "Invalid UUID: \(value)"
         case .missingEpisode(let id): return "Episode not found: \(id)"
         case .missingPodcast(let id): return "Podcast not found: \(id)"
+        case .invalidClipBounds: return "Clip timestamps are outside the supported range."
         }
     }
 }

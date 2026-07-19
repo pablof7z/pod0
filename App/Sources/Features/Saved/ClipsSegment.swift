@@ -52,29 +52,30 @@ struct ClipsSegment: View {
 
     @ViewBuilder
     private func clipRow(_ clip: Clip) -> some View {
-        if let episode = store.episode(id: clip.episodeID) {
-            let podcast = store.podcast(id: clip.subscriptionID)
-            ClippingsCard(
-                clip: clip,
-                episode: episode,
-                podcast: podcast,
-                onPlay: { playClip(clip, episode: episode) },
-                onOpenEpisode: { onOpenEpisode(episode.id) },
-                onDelete: {
-                    Haptics.delete()
-                    store.deleteClip(id: clip.id)
-                }
-            )
-            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                Button(role: .destructive) {
-                    Haptics.delete()
-                    store.deleteClip(id: clip.id)
-                } label: {
-                    Label("Delete", systemImage: "trash")
-                }
+        let episode = store.episode(id: clip.episodeID)
+        let podcast = store.podcast(id: clip.subscriptionID)
+        ClippingsCard(
+            clip: clip,
+            episode: episode,
+            podcast: podcast,
+            onPlay: { playClip(clip, episode: episode) },
+            onOpenEpisode: {
+                if let episode { onOpenEpisode(episode.id) }
+            },
+            onDelete: {
+                Haptics.delete()
+                store.deleteClip(id: clip.id)
+            }
+        )
+        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive) {
+                Haptics.delete()
+                store.deleteClip(id: clip.id)
+            } label: {
+                Label("Delete", systemImage: "trash")
             }
         }
     }

@@ -59,7 +59,7 @@ struct StarredSegment: View {
     // MARK: - Data
 
     private func starredEntries() -> [StarredEntry] {
-        let clipsByEpisode = Dictionary(grouping: store.state.clips, by: \.episodeID)
+        let clipsByEpisode = Dictionary(grouping: store.allClips(), by: \.episodeID)
         let notesByEpisode: [UUID: [Note]] = {
             var result: [UUID: [Note]] = [:]
             for note in store.state.notes where !note.deleted {

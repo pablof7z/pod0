@@ -71,6 +71,28 @@ impl PlaybackFixture {
         .unwrap();
         commit_staged_legacy_note_import(target.to_string_lossy().into_owned(), 1_800_000_000_003)
             .unwrap();
+        let clip_plan = inspect_legacy_clip_source(source.to_string_lossy().into_owned()).unwrap();
+        stage_legacy_clip_import(
+            source.to_string_lossy().into_owned(),
+            directory
+                .path()
+                .join("legacy-clips.backup.json")
+                .to_string_lossy()
+                .into_owned(),
+            target.to_string_lossy().into_owned(),
+            schema_backup.to_string_lossy().into_owned(),
+            clip_plan,
+            CommandId::from_parts(9, 4),
+            CommandId::from_parts(9, 2),
+            1_800_000_000_004,
+        )
+        .unwrap();
+        commit_staged_legacy_clip_import(
+            source.to_string_lossy().into_owned(),
+            target.to_string_lossy().into_owned(),
+            1_800_000_000_005,
+        )
+        .unwrap();
         let facade = Pod0Facade::open(target.to_string_lossy().into_owned()).unwrap();
         let Projection::Library { value } = facade.snapshot(library_request()).projection else {
             panic!("expected library projection");

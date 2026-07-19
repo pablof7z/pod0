@@ -28,6 +28,7 @@ The operating rule is:
 - [Ownership inventory issue](https://github.com/pablof7z/pod0/issues/64)
 - [Architecture guardrail epic](https://github.com/pablof7z/pod0/issues/55)
 - [First Rust-backed listening slice](https://github.com/pablof7z/pod0/issues/58)
+- [Rust-backed saved clips slice](https://github.com/pablof7z/pod0/issues/93)
 
 An ADR changes only through a later ADR that names the superseded decision.
 Implementation convenience is not an implicit waiver.

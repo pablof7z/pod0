@@ -1,12 +1,13 @@
 use pod0_domain::{
-    AutoDownloadPolicy, CancellationId, CommandId, CompletionStatus, EpisodeId, NoteAuthor, NoteId,
-    NoteKind, NoteRevision, NoteTarget, PlaybackRatePermille, PlaybackSegment, PlaybackSleepMode,
-    PodcastId, QueueEntry, QueueEntryId, StateRevision, UnixTimestampMilliseconds,
+    AutoDownloadPolicy, CancellationId, ClipId, ClipRevision, ClipSource, CommandId,
+    CompletionStatus, EpisodeId, NoteAuthor, NoteId, NoteKind, NoteRevision, NoteTarget,
+    PlaybackRatePermille, PlaybackSegment, PlaybackSleepMode, PodcastId, QueueEntry, QueueEntryId,
+    SpeakerId, StateRevision, UnixTimestampMilliseconds,
 };
 
 use crate::{EvidenceChunkPolicy, RecallQuery, TranscriptEvidenceInput};
 
-pub const FACADE_CONTRACT_VERSION: u32 = 9;
+pub const FACADE_CONTRACT_VERSION: u32 = 10;
 pub const MAX_PROJECTION_ITEMS: u16 = 200;
 pub const MAX_OPERATION_ITEMS: usize = 32;
 pub const MAX_HOST_REQUEST_BATCH: u16 = 64;
@@ -114,6 +115,34 @@ pub enum ApplicationCommand {
         deleted: bool,
     },
     ClearNotes {
+        expected_collection_revision: StateRevision,
+    },
+    CreateClip {
+        clip_id: ClipId,
+        episode_id: EpisodeId,
+        podcast_id: PodcastId,
+        start_milliseconds: u64,
+        end_milliseconds: u64,
+        caption: Option<String>,
+        speaker_id: Option<SpeakerId>,
+        frozen_transcript_text: String,
+        source: ClipSource,
+    },
+    UpdateClip {
+        clip_id: ClipId,
+        expected_clip_revision: ClipRevision,
+        start_milliseconds: u64,
+        end_milliseconds: u64,
+        caption: Option<String>,
+        speaker_id: Option<SpeakerId>,
+        frozen_transcript_text: String,
+    },
+    SetClipDeleted {
+        clip_id: ClipId,
+        expected_clip_revision: ClipRevision,
+        deleted: bool,
+    },
+    ClearClips {
         expected_collection_revision: StateRevision,
     },
     CancelOperation {

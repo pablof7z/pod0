@@ -70,7 +70,9 @@ opaque_id!(TranscriptSegmentId, uniffi::Record);
 opaque_id!(EvidenceSpanId, uniffi::Record);
 opaque_id!(EvidenceGenerationId, uniffi::Record);
 opaque_id!(NoteId, uniffi::Record);
+opaque_id!(ClipId, uniffi::Record);
 
+mod clips;
 mod knowledge;
 mod knowledge_artifact;
 mod knowledge_artifact_hash;
@@ -81,6 +83,7 @@ mod listening_policy;
 mod notes;
 mod playback_policy;
 
+pub use clips::*;
 pub use knowledge::*;
 pub use knowledge_identity::*;
 pub use listening::*;

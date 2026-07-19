@@ -1,6 +1,14 @@
 #![forbid(unsafe_code)]
 
 mod backup;
+mod clip_import;
+mod clip_import_model;
+mod clip_import_store;
+mod clip_import_store_support;
+mod clip_legacy_backup;
+mod clip_store_codec;
+mod clip_store_model;
+mod clip_store_read;
 mod evidence_codec;
 mod evidence_commands;
 mod evidence_model;
@@ -10,6 +18,8 @@ mod evidence_store_read;
 mod evidence_store_stage;
 mod import_model;
 mod legacy_backup;
+mod legacy_clip_format;
+mod legacy_clip_source;
 mod legacy_episode;
 mod legacy_format;
 mod legacy_note_format;
@@ -18,6 +28,8 @@ mod legacy_source;
 mod legacy_transform;
 mod library_feed_codec;
 mod library_store;
+mod library_store_clip_support;
+mod library_store_clips;
 mod library_store_commands;
 mod library_store_external;
 mod library_store_feed;
@@ -46,12 +58,20 @@ mod note_store_codec;
 mod note_store_model;
 mod note_store_read;
 mod schema;
+mod schema_clips;
 mod schema_evidence;
 mod schema_introspection;
 mod schema_library;
 mod schema_notes;
 
 pub use backup::{restore_backup_to_new_store, verify_backup};
+pub use clip_import::{ClipImportClock, ClipImporter};
+pub(crate) use clip_import_model::InspectedClipSource;
+pub use clip_import_model::{
+    ClipBackupEvidence, ClipImportPlan, ClipImportReport, ClipImportVerification,
+};
+pub use clip_import_store::{commit_clip_cutover, read_clip_import};
+pub use clip_store_model::ClipCollectionSnapshot;
 pub use evidence_model::{
     EvidenceGenerationState, EvidenceGenerationSummary, EvidencePruneReceipt,
     EvidenceSelectionReceipt, EvidenceStageReceipt, EvidenceVerificationReceipt,
@@ -61,6 +81,7 @@ pub use import_model::{
     LegacyBackupEvidence, LegacyImportPlan, LegacySourceKind, ListeningImportReport,
     ListeningImportVerification,
 };
+pub use legacy_clip_source::inspect_legacy_clip_source;
 pub use legacy_note_source::inspect_legacy_note_source;
 pub use legacy_source::inspect_legacy_listening_source;
 pub use library_store::{LibraryStore, commit_listening_cutover};
@@ -82,6 +103,14 @@ pub use note_import_model::{
 pub use note_import_store::{commit_note_cutover, read_note_import};
 pub use note_store_model::NoteCollectionSnapshot;
 
+#[cfg(test)]
+mod clip_cutover_restart_tests;
+#[cfg(test)]
+mod clip_import_failure_tests;
+#[cfg(test)]
+mod clip_import_orphan_tests;
+#[cfg(test)]
+mod clip_import_tests;
 #[cfg(test)]
 mod evidence_store_recovery_tests;
 #[cfg(test)]

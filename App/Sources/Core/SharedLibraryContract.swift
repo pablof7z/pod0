@@ -16,6 +16,7 @@ enum SharedLibraryError: Error, LocalizedError, Equatable {
     case unavailable
     case cancelled
     case invalidNote
+    case invalidClip
     case revisionConflict
 
     init(_ code: CoreFailureCode?) {
@@ -26,6 +27,7 @@ enum SharedLibraryError: Error, LocalizedError, Equatable {
         case .notFound: .notFound
         case .cancelled: .cancelled
         case .invalidNote: .invalidNote
+        case .invalidClip: .invalidClip
         case .revisionConflict: .revisionConflict
         default: .unavailable
         }
@@ -36,11 +38,12 @@ enum SharedLibraryError: Error, LocalizedError, Equatable {
         case .invalidURL: "That doesn't look like a valid feed URL."
         case .malformedFeed: "Pod0 couldn't read a podcast feed at that address."
         case .alreadySubscribed: "You're already subscribed to this podcast."
-        case .notFound: "That podcast is no longer in your library."
+        case .notFound: "That item is no longer in your library."
         case .unavailable: "Your library is temporarily unavailable."
         case .cancelled: "The library request was cancelled."
         case .invalidNote: "The note is empty or contains an invalid anchor."
-        case .revisionConflict: "That note changed before this edit could be saved."
+        case .invalidClip: "That clip has invalid timestamps or transcript context."
+        case .revisionConflict: "That item changed before this edit could be saved."
         }
     }
 }

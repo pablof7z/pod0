@@ -27,6 +27,32 @@ pub(super) fn hash_note_target(hash: &mut Sha256, value: Option<pod0_domain::Not
     }
 }
 
+pub(super) fn hash_optional_speaker(hash: &mut Sha256, value: Option<pod0_domain::SpeakerId>) {
+    match value {
+        Some(value) => {
+            hash.update([1]);
+            hash.update(value.into_bytes());
+        }
+        None => hash.update([0]),
+    }
+}
+
+pub(super) fn hash_clip_source(hash: &mut Sha256, value: pod0_domain::ClipSource) {
+    match value {
+        pod0_domain::ClipSource::Touch => hash.update([1]),
+        pod0_domain::ClipSource::Auto => hash.update([2]),
+        pod0_domain::ClipSource::Headphone => hash.update([3]),
+        pod0_domain::ClipSource::Carplay => hash.update([4]),
+        pod0_domain::ClipSource::Watch => hash.update([5]),
+        pod0_domain::ClipSource::Siri => hash.update([6]),
+        pod0_domain::ClipSource::Agent => hash.update([7]),
+        pod0_domain::ClipSource::Unsupported { wire_code } => {
+            hash.update([255]);
+            hash.update(wire_code.to_be_bytes());
+        }
+    }
+}
+
 pub(super) fn hash_playback(hash: &mut Sha256, command: &PlaybackCommand) {
     match command {
         PlaybackCommand::Select {

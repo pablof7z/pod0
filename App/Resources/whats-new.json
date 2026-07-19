@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-19T14:13:40Z",
+      "lines": [
+        "Saved clips now keep their exact timestamps, transcript words, and source after Pod0 relaunches."
+      ]
+    },
+    {
       "shipped_at": "2026-07-19T13:09:23Z",
       "lines": [
         "Notes and saved podcast moments now survive app restarts without losing their episode or transcript context."

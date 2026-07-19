@@ -4,7 +4,7 @@ use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 
 use pod0_domain::PlaybackRatePermille;
 
-use crate::{StorageError, legacy_note_format::RawNote};
+use crate::{StorageError, legacy_clip_format::RawClip, legacy_note_format::RawNote};
 
 #[derive(Deserialize)]
 pub(crate) struct RawAppState {
@@ -18,6 +18,8 @@ pub(crate) struct RawAppState {
     pub(crate) episodes: Vec<Value>,
     #[serde(default)]
     pub(crate) notes: Vec<RawNote>,
+    #[serde(default)]
+    pub(crate) clips: Vec<RawClip>,
     #[serde(default)]
     pub(crate) settings: RawSettings,
     #[serde(rename = "lastPlayedEpisodeID")]

@@ -15,16 +15,19 @@ final class SharedLibraryClient {
     private var librarySubscriptionID: SubscriptionId?
     private var playbackSubscriptionID: SubscriptionId?
     private var notesSubscriptionID: SubscriptionId?
+    private var clipsSubscriptionID: SubscriptionId?
     private var waiters: [CommandId: Waiter] = [:]
     private var lastLibraryRevision: UInt64 = 0
     private var lastPlaybackRevision: UInt64 = 0
     var lastNotesRevision: UInt64 = 0
+    var lastClipsRevision: UInt64 = 0
     weak var store: AppStateStore?
     private weak var playbackState: PlaybackState?
     private var cachedSnapshot: SharedLibrarySnapshot?
     private var cachedPlayback: PlaybackProjection?
     private var cachedPlaybackRevision: UInt64 = 0
     var cachedNotes: SharedNoteSnapshot?
+    var cachedClips: SharedClipSnapshot?
     private var playbackHostAttached = false
     var evidenceRebuildTask: Task<Void, Never>?
     var evidenceUpdateTasks: [UUID: Task<Void, Never>] = [:]
@@ -63,6 +66,10 @@ final class SharedLibraryClient {
             request: ProjectionRequest(scope: .notes(scope: .all), offset: 0, maxItems: 200),
             subscriber: subscriber
         )
+        clipsSubscriptionID = facade.subscribe(
+            request: ProjectionRequest(scope: .clips(scope: .active), offset: 0, maxItems: 200),
+            subscriber: subscriber
+        )
     }
 
     func attach(store: AppStateStore) {
@@ -73,6 +80,9 @@ final class SharedLibraryClient {
         let notes = loadNotePages(scope: .all)
         cachedNotes = notes
         store.applySharedNotes(notes)
+        let clips = loadClipPages(scope: .active)
+        cachedClips = clips
+        store.applySharedClips(clips)
     }
 
     func attachPlayback(_ playback: PlaybackState, store: AppStateStore) {
@@ -154,6 +164,8 @@ final class SharedLibraryClient {
             receivePlayback(projection, revision: envelope.stateRevision.value)
         case .notes:
             receiveNotes(revision: envelope.stateRevision.value)
+        case .clips:
+            receiveClips(revision: envelope.stateRevision.value)
         case .podcastDetail, .episodeDetail, .recall, .evidenceIndex, .unsupported:
             break
         }
@@ -238,9 +250,11 @@ final class SharedLibraryClient {
         if let librarySubscriptionID { facade.unsubscribe(subscriptionId: librarySubscriptionID) }
         if let playbackSubscriptionID { facade.unsubscribe(subscriptionId: playbackSubscriptionID) }
         if let notesSubscriptionID { facade.unsubscribe(subscriptionId: notesSubscriptionID) }
+        if let clipsSubscriptionID { facade.unsubscribe(subscriptionId: clipsSubscriptionID) }
         librarySubscriptionID = nil
         playbackSubscriptionID = nil
         notesSubscriptionID = nil
+        clipsSubscriptionID = nil
         subscriber = nil
         for waiter in waiters.values {
             waiter.continuation.resume(throwing: SharedLibraryError.cancelled)

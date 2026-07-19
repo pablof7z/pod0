@@ -4,9 +4,12 @@ use pod0_domain::{CommandId, UnixTimestampMilliseconds};
 
 uniffi::setup_scaffolding!();
 
+mod clip_contract;
 mod contract;
 mod contract_playback_projection;
 mod contract_projection;
+#[cfg(test)]
+mod contract_projection_tests;
 mod contract_state;
 #[cfg(test)]
 mod contract_state_tests;
@@ -32,6 +35,7 @@ mod knowledge_test_fixture;
 mod note_contract;
 mod recall_contract;
 
+pub use clip_contract::*;
 pub use contract::*;
 pub use contract_playback_projection::*;
 pub use contract_projection::*;

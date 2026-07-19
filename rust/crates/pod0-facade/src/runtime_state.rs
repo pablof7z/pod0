@@ -71,6 +71,7 @@ pub(super) struct FacadeState {
     pub(super) revision: StateRevision,
     pub(super) listening: ListeningDomainSnapshot,
     pub(super) notes: pod0_storage::NoteCollectionSnapshot,
+    pub(super) clips: pod0_storage::ClipCollectionSnapshot,
     pub(super) store: Option<LibraryStore>,
     pub(super) evidence_store: Option<EvidenceStore>,
     pub(super) commands: CommandLedger,
@@ -95,6 +96,10 @@ impl Default for FacadeState {
             notes: pod0_storage::NoteCollectionSnapshot {
                 revision: StateRevision::INITIAL,
                 notes: Vec::new(),
+            },
+            clips: pod0_storage::ClipCollectionSnapshot {
+                revision: StateRevision::INITIAL,
+                clips: Vec::new(),
             },
             store: None,
             evidence_store: None,
@@ -133,6 +138,7 @@ impl FacadeState {
         let _ = store.clear_session_sleep_timer()?;
         let listening = store.snapshot()?;
         let notes = store.note_snapshot()?;
+        let clips = store.clip_snapshot()?;
         let playback = PlaybackRuntime {
             policy_state: if listening.playback.active_episode_id.is_some() {
                 PlaybackPolicyState::Paused
@@ -143,10 +149,16 @@ impl FacadeState {
         };
         Ok(Self {
             revision: StateRevision::new(
-                listening.playback.revision.value.max(notes.revision.value),
+                listening
+                    .playback
+                    .revision
+                    .value
+                    .max(notes.revision.value)
+                    .max(clips.revision.value),
             ),
             listening,
             notes,
+            clips,
             store: Some(store),
             evidence_store: Some(evidence_store),
             playback,

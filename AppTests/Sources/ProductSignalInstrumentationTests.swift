@@ -24,8 +24,11 @@ final class ProductSignalInstrumentationTests: XCTestCase {
         _ = try await service.addSubscription(feedURLString: secondURL)
         _ = made.store.addNote(text: "private user note")
         _ = made.store.addNote(text: "agent note", author: .agent)
+        let episode = try XCTUnwrap(
+            made.store.state.episodes.first { $0.podcastID == first.id }
+        )
         made.store.addClip(Clip(
-            episodeID: UUID(),
+            episodeID: episode.id,
             subscriptionID: first.id,
             startMs: 1_000,
             endMs: 2_000,

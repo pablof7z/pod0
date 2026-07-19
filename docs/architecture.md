@@ -13,10 +13,11 @@ Swift and Kotlin APIs derive from the same Rust metadata. The Swift API is
 linked into iOS as `Pod0Core` and has a runtime smoke test; the Kotlin API has a
 JVM compile/runtime smoke test. `pod0-storage` now provides versioned,
 transactional core-schema migrations, verified backup/restore-to-staging, a
-restart journal, typed read-only failure states, and a verified staged import of
-the current Swift listening library. The Rust store is authoritative for
+restart journal, typed read-only failure states, and verified staged imports of
+the current Swift listening library, notes, and clips. The Rust store is authoritative for
 podcasts, subscriptions, episode listening facts, active playback, queue,
-resume, completion, rate, playback preferences, and session sleep mode.
+resume, completion, rate, playback preferences, session sleep mode, notes, and
+saved clips with immutable transcript provenance.
 Cancellable native host adapters now
 execute typed feed requests through URLSession and playback requests through
 AVFoundation, returning correlated bounded observations through the generated
@@ -28,24 +29,24 @@ hold in issue #85 is active.
 ### Application state
 
 `AppStateStore` is the `@MainActor @Observable` owner for unmigrated Swift
-domains and a projection adapter for the migrated listening and notes slices. Views and
+domains and a projection adapter for the migrated listening, notes, and clips slices. Views and
 agent adapters call typed methods; migrated library/playback methods dispatch
 to the shared facade, and direct `mutateState` calls outside
 `App/Sources/State` are rejected by tests.
 
-`AppState` currently contains replaceable podcast, episode, and note projections plus clips,
+`AppState` currently contains replaceable podcast, episode, note, and clip projections plus
 settings, agent memory/activity, categories, threading records, scheduled tasks,
 and the last-played episode. This is migration input, not the final
 cross-platform schema.
 
 ### Persistence topology
 
-`pod0-core.sqlite` is authoritative for the migrated listening and notes slices.
+`pod0-core.sqlite` is authoritative for the migrated listening, notes, and clips slices.
 `Persistence` remains SQLite-authoritative for unmigrated and adjunct Swift
 state. Normal reads and writes do not compare a JSON store.
 
 - `persistence_metadata` stores a JSON-encoded `AppState` metadata snapshot
-  without migrated episode or note authority plus a monotonic generation.
+  without migrated episode, note, or clip authority plus a monotonic generation.
 - `episodes` stores one versioned JSON payload per episode with stable local ID
   and sort order.
 - Workflow schema metadata, jobs, and artifact records share the authoritative

@@ -1,7 +1,6 @@
 use pod0_application::{
     ApplicationCommand, CommandEnvelope, CoreFailureCode, OperationResult, OperationStage,
 };
-use pod0_domain::CommandId;
 
 use crate::runtime_command_fingerprint::command_fingerprint;
 use crate::runtime_state::{FacadeState, FeedIntent, PlaybackRuntime, failure};
@@ -223,6 +222,62 @@ impl FacadeState {
             ApplicationCommand::ClearNotes {
                 expected_collection_revision,
             } => self.clear_notes(&envelope, &fingerprint, expected_collection_revision),
+            ApplicationCommand::CreateClip {
+                clip_id,
+                episode_id,
+                podcast_id,
+                start_milliseconds,
+                end_milliseconds,
+                caption,
+                speaker_id,
+                frozen_transcript_text,
+                source,
+            } => self.create_clip(
+                &envelope,
+                &fingerprint,
+                clip_id,
+                episode_id,
+                podcast_id,
+                start_milliseconds,
+                end_milliseconds,
+                caption.as_deref(),
+                speaker_id,
+                &frozen_transcript_text,
+                source,
+            ),
+            ApplicationCommand::UpdateClip {
+                clip_id,
+                expected_clip_revision,
+                start_milliseconds,
+                end_milliseconds,
+                caption,
+                speaker_id,
+                frozen_transcript_text,
+            } => self.update_clip(
+                &envelope,
+                &fingerprint,
+                clip_id,
+                expected_clip_revision,
+                start_milliseconds,
+                end_milliseconds,
+                caption.as_deref(),
+                speaker_id,
+                &frozen_transcript_text,
+            ),
+            ApplicationCommand::SetClipDeleted {
+                clip_id,
+                expected_clip_revision,
+                deleted,
+            } => self.set_clip_deleted(
+                &envelope,
+                &fingerprint,
+                clip_id,
+                expected_clip_revision,
+                deleted,
+            ),
+            ApplicationCommand::ClearClips {
+                expected_collection_revision,
+            } => self.clear_clips(&envelope, &fingerprint, expected_collection_revision),
             ApplicationCommand::Unsupported { wire_code } => self.fail(
                 envelope.command_id,
                 CoreFailureCode::Unsupported { wire_code },
@@ -230,30 +285,5 @@ impl FacadeState {
         }
         self.trim_operations();
         true
-    }
-
-    fn finish_storage_command(
-        &mut self,
-        command_id: CommandId,
-        result: Result<pod0_domain::StateRevision, pod0_storage::StorageError>,
-        operation_result: OperationResult,
-    ) {
-        match result {
-            Ok(_) => match self.reload_listening().and_then(|()| self.reload_notes()) {
-                Ok(()) => self.succeed(command_id, Some(operation_result)),
-                Err(error) => self.fail(command_id, storage_failure(error)),
-            },
-            Err(error) => self.fail(command_id, storage_failure(error)),
-        }
-    }
-}
-
-pub(super) fn storage_failure(error: pod0_storage::StorageError) -> CoreFailureCode {
-    match error {
-        pod0_storage::StorageError::EntityNotFound => CoreFailureCode::NotFound,
-        pod0_storage::StorageError::CommandConflict => CoreFailureCode::InvalidCommand,
-        pod0_storage::StorageError::RevisionConflict => CoreFailureCode::RevisionConflict,
-        pod0_storage::StorageError::InvalidNote => CoreFailureCode::InvalidNote,
-        _ => CoreFailureCode::StorageUnavailable,
     }
 }

@@ -3,6 +3,7 @@ use rusqlite::{OptionalExtension, params};
 
 use crate::StorageError;
 use crate::library_store::{LibraryStore, command_was_applied, finish_command};
+use crate::library_store_clip_support::set_clip_revision;
 use crate::library_store_note_support::finish_note_command;
 use crate::listening_db_codec::{auto_download, bool_value};
 
@@ -50,6 +51,9 @@ impl LibraryStore {
                 .execute("DELETE FROM pod0_queue_entries", [])
                 .map_err(|error| StorageError::sqlite("reset listening queue", error))?;
             transaction
+                .execute("DELETE FROM pod0_clips", [])
+                .map_err(|error| StorageError::sqlite("reset clips", error))?;
+            transaction
                 .execute("DELETE FROM pod0_notes", [])
                 .map_err(|error| StorageError::sqlite("reset notes", error))?;
             transaction.execute(
@@ -75,7 +79,10 @@ impl LibraryStore {
             transaction
                 .execute("DELETE FROM pod0_library_commands", [])
                 .map_err(|error| StorageError::sqlite("reset command receipts", error))?;
-            finish_note_command(transaction, command_id, command_fingerprint, observed_at_ms)
+            let revision =
+                finish_note_command(transaction, command_id, command_fingerprint, observed_at_ms)?;
+            set_clip_revision(transaction, revision)?;
+            Ok(revision)
         })
     }
 
@@ -176,7 +183,10 @@ impl LibraryStore {
                     [podcast_id.into_bytes().as_slice()],
                 )
                 .map_err(|error| StorageError::sqlite("remove podcast", error))?;
-            finish_command(transaction, command_id, command_fingerprint, observed_at_ms)
+            let revision =
+                finish_command(transaction, command_id, command_fingerprint, observed_at_ms)?;
+            set_clip_revision(transaction, revision)?;
+            Ok(revision)
         })
     }
 

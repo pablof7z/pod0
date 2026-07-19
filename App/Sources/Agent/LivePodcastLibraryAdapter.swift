@@ -104,8 +104,13 @@ final class LivePodcastLibraryAdapter: PodcastLibraryProtocol, @unchecked Sendab
         guard let episode = await store.episode(id: uuid) else {
             throw PodcastAgentToolAdapterError.missingEpisode(episodeID)
         }
-        let startMs = Int(startSeconds * 1000)
-        let endMs = Int(endSeconds * 1000)
+        guard startSeconds.isFinite,
+              endSeconds.isFinite,
+              let startMs = Int(exactly: (startSeconds * 1_000).rounded(.towardZero)),
+              let endMs = Int(exactly: (endSeconds * 1_000).rounded(.towardZero)),
+              startMs >= 0,
+              endMs > startMs
+        else { throw PodcastAgentToolAdapterError.invalidClipBounds }
         let resolvedText: String
         if let supplied = transcriptText, !supplied.isEmpty {
             resolvedText = supplied
@@ -116,7 +121,7 @@ final class LivePodcastLibraryAdapter: PodcastLibraryProtocol, @unchecked Sendab
                 endSeconds: endSeconds
             )
         }
-        let clip = await MainActor.run {
+        guard let clip = await MainActor.run(body: {
             store.addClip(
                 episodeID: uuid,
                 subscriptionID: episode.podcastID,
@@ -126,16 +131,18 @@ final class LivePodcastLibraryAdapter: PodcastLibraryProtocol, @unchecked Sendab
                 source: .agent,
                 caption: caption
             )
+        }) else {
+            throw PodcastAgentToolAdapterError.unavailable("Shared clip core")
         }
         return ClipResult(
             clipID: clip.id.uuidString,
             episodeID: episodeID,
             podcastID: episode.podcastID.uuidString,
             episodeTitle: episode.title,
-            startSeconds: startSeconds,
-            endSeconds: endSeconds,
-            transcriptText: resolvedText,
-            caption: caption
+            startSeconds: Double(clip.startMs) / 1_000,
+            endSeconds: Double(clip.endMs) / 1_000,
+            transcriptText: clip.transcriptText,
+            caption: clip.caption
         )
     }
 

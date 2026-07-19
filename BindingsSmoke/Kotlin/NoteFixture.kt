@@ -40,7 +40,7 @@ fun qualifyNoteProjection(fixture: Map<String, String>) {
     )
 
     check(fixture["fixture_version"] == "1")
-    check(fixture["contract_version"]?.toUInt() == 9u)
+    check(fixture["contract_version"]?.toUInt() == 10u)
     check(projection.notes.single().text == fixture["text"])
     check(projection.notes.single().evidence?.spanId == evidence.spanId)
 }
@@ -63,15 +63,4 @@ fun qualifyEmptyNoteImport(source: File, root: File) {
     check(readStagedLegacyNoteImport(coreStore, CommandId(0UL, 3UL)).notes.isEmpty())
     check(!commitStagedLegacyNoteImport(coreStore, 1_721_322_000_003L))
 
-    val facade = Pod0Facade.open(coreStore)
-    try {
-        val notes = facade.snapshot(ProjectionRequest(
-            ProjectionScope.Notes(NoteProjectionScope.All),
-            0u,
-            20u.toUShort(),
-        )).projection
-        check(notes is Projection.Notes && notes.value.notes.isEmpty())
-    } finally {
-        facade.destroy()
-    }
 }

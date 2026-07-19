@@ -41,6 +41,15 @@ extension NoteId {
     var uuid: UUID? { UUID(coreHigh: high, low: low) }
 }
 
+extension ClipId {
+    init(uuid: UUID) {
+        let parts = uuid.coreIdentifierParts
+        self.init(high: parts.high, low: parts.low)
+    }
+
+    var uuid: UUID? { UUID(coreHigh: high, low: low) }
+}
+
 extension QueueEntryId {
     init(uuid: UUID) {
         let parts = uuid.coreIdentifierParts
@@ -59,6 +68,7 @@ extension SpeakerId {
         )
     }
 
+    var uuid: UUID? { UUID(coreHigh: high, low: low) }
     var stableString: String { coreIdentifier(high: high, low: low) }
 }
 

@@ -3,10 +3,10 @@
 use std::sync::Arc;
 
 pub use pod0_application::{
-    ApplicationCommand, CommandEnvelope, CoreFailure, CoreFailureCode, DomainEvent,
-    DomainEventEnvelope, EpisodeSummary, EvidenceIndexProjection, EvidenceIndexSpanProjection,
-    EvidenceIndexStage, FACADE_CONTRACT_VERSION, HostFailureCode, HostObservation,
-    HostObservationEnvelope, HostRequest, HostRequestEnvelope, KernelProbeCommand,
+    ApplicationCommand, ClipProjectionScope, ClipsProjection, CommandEnvelope, CoreFailure,
+    CoreFailureCode, DomainEvent, DomainEventEnvelope, EpisodeSummary, EvidenceIndexProjection,
+    EvidenceIndexSpanProjection, EvidenceIndexStage, FACADE_CONTRACT_VERSION, HostFailureCode,
+    HostObservation, HostObservationEnvelope, HostRequest, HostRequestEnvelope, KernelProbeCommand,
     KernelProbeProjection, LibraryProjection, MAX_EVIDENCE_INDEX_PAGE_ITEMS,
     MAX_FEED_RESPONSE_BYTES, MAX_HOST_REQUEST_BATCH, MAX_OPERATION_ITEMS,
     MAX_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, MAX_PROJECTION_ITEMS, MAX_RECALL_CANDIDATES,
@@ -25,26 +25,32 @@ pub use pod0_application::{
 };
 use pod0_application::{Clock, KernelApplication};
 pub use pod0_domain::{
-    ArtifactReference, AutoDownloadMode, AutoDownloadPolicy, CancellationId, CommandId,
-    CompletionCause, CompletionStatus, ContentDigest, DomainEventId, DownloadArtifactStatus,
-    EpisodeId, EpisodeIdentityRecord, EpisodeIdentityResolution, EpisodeListeningState,
-    EpisodeRecord, EvidenceChunkPolicy, EvidenceGenerationId, EvidenceSpanId, FeedIdentityV1,
-    HostRequestId, ListeningDomainError, ListeningDomainSnapshot, ListeningPlaybackPolicy,
-    NoteAuthor, NoteEvidenceReference, NoteId, NoteKind, NoteRecord, NoteRevision, NoteTarget,
-    PlaybackRatePermille, PlaybackSegment, PlaybackSleepMode, PodcastId, PodcastIdentityRecord,
-    PodcastIdentityResolution, PodcastKind, PodcastRecord, PodcastSubscriptionRecord, QueueEntry,
-    QueueEntryId, RecallQueryId, SpeakerId, StateRevision, SubscriptionId,
-    TranscriptArtifactStatus, TranscriptProvenance, TranscriptSegmentId, TranscriptSource,
-    TranscriptVersionId, UnixTimestampMilliseconds, make_feed_identity_v1,
-    resolve_episode_identity_v1, resolve_legacy_parent_id, resolve_podcast_identity_v1,
-    validate_listening_snapshot,
+    ArtifactReference, AutoDownloadMode, AutoDownloadPolicy, CancellationId, ClipEvidenceReference,
+    ClipId, ClipRecord, ClipRevision, ClipSource, CommandId, CompletionCause, CompletionStatus,
+    ContentDigest, DomainEventId, DownloadArtifactStatus, EpisodeId, EpisodeIdentityRecord,
+    EpisodeIdentityResolution, EpisodeListeningState, EpisodeRecord, EvidenceChunkPolicy,
+    EvidenceGenerationId, EvidenceSpanId, FeedIdentityV1, HostRequestId, ListeningDomainError,
+    ListeningDomainSnapshot, ListeningPlaybackPolicy, NoteAuthor, NoteEvidenceReference, NoteId,
+    NoteKind, NoteRecord, NoteRevision, NoteTarget, PlaybackRatePermille, PlaybackSegment,
+    PlaybackSleepMode, PodcastId, PodcastIdentityRecord, PodcastIdentityResolution, PodcastKind,
+    PodcastRecord, PodcastSubscriptionRecord, QueueEntry, QueueEntryId, RecallQueryId, SpeakerId,
+    StateRevision, SubscriptionId, TranscriptArtifactStatus, TranscriptProvenance,
+    TranscriptSegmentId, TranscriptSource, TranscriptVersionId, UnixTimestampMilliseconds,
+    make_feed_identity_v1, resolve_episode_identity_v1, resolve_legacy_parent_id,
+    resolve_podcast_identity_v1, validate_listening_snapshot,
 };
 
 uniffi::setup_scaffolding!();
 
+mod clip_migration;
 mod listening_migration;
 mod note_migration;
 mod runtime;
+mod runtime_clip_commands;
+#[cfg(test)]
+mod runtime_clip_replay_tests;
+#[cfg(test)]
+mod runtime_clip_tests;
 mod runtime_clock;
 mod runtime_command_fingerprint;
 mod runtime_command_fingerprint_values;
@@ -82,14 +88,21 @@ mod runtime_recall_test_support;
 #[cfg(test)]
 mod runtime_recall_tests;
 mod runtime_state;
+mod runtime_storage_commands;
 #[cfg(test)]
 mod runtime_tests;
+pub use clip_migration::{
+    LegacyClipBackupEvidence, LegacyClipImportPlan, LegacyClipImportReport,
+    LegacyClipImportVerification, LegacyClipMigrationError, commit_staged_legacy_clip_import,
+    inspect_legacy_clip_source, read_staged_legacy_clip_import, stage_legacy_clip_import,
+};
 pub use listening_migration::{
     LegacyListeningBackupEvidence, LegacyListeningImportPlan, LegacyListeningImportReport,
     LegacyListeningImportVerification, LegacyListeningMigrationError, LegacyListeningSourceKind,
     SharedListeningStorePreparation, commit_staged_legacy_listening_import,
     inspect_legacy_listening_source, prepare_shared_listening_store,
-    read_staged_legacy_listening_import, stage_legacy_listening_import,
+    read_staged_legacy_listening_import, shared_store_schema_version,
+    stage_legacy_listening_import,
 };
 pub use note_migration::{
     LegacyNoteBackupEvidence, LegacyNoteImportPlan, LegacyNoteImportReport,

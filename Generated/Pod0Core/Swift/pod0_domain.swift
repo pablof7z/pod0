@@ -763,6 +763,290 @@ public func FfiConverterTypeCancellationId_lower(_ value: CancellationId) -> Rus
 }
 
 
+/**
+ * Immutable provenance captured from the selected, verified evidence
+ * generation. Transcript rebuilds never silently retarget a saved clip.
+ */
+public struct ClipEvidenceReference: Equatable, Hashable {
+    public let generationId: EvidenceGenerationId
+    public let transcriptVersionId: TranscriptVersionId
+    public let transcriptContentDigest: ContentDigest
+    public let spanId: EvidenceSpanId
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(generationId: EvidenceGenerationId, transcriptVersionId: TranscriptVersionId, transcriptContentDigest: ContentDigest, spanId: EvidenceSpanId) {
+        self.generationId = generationId
+        self.transcriptVersionId = transcriptVersionId
+        self.transcriptContentDigest = transcriptContentDigest
+        self.spanId = spanId
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ClipEvidenceReference: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeClipEvidenceReference: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ClipEvidenceReference {
+        return
+            try ClipEvidenceReference(
+                generationId: FfiConverterTypeEvidenceGenerationId.read(from: &buf),
+                transcriptVersionId: FfiConverterTypeTranscriptVersionId.read(from: &buf),
+                transcriptContentDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                spanId: FfiConverterTypeEvidenceSpanId.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ClipEvidenceReference, into buf: inout [UInt8]) {
+        FfiConverterTypeEvidenceGenerationId.write(value.generationId, into: &buf)
+        FfiConverterTypeTranscriptVersionId.write(value.transcriptVersionId, into: &buf)
+        FfiConverterTypeContentDigest.write(value.transcriptContentDigest, into: &buf)
+        FfiConverterTypeEvidenceSpanId.write(value.spanId, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeClipEvidenceReference_lift(_ buf: RustBuffer) throws -> ClipEvidenceReference {
+    return try FfiConverterTypeClipEvidenceReference.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeClipEvidenceReference_lower(_ value: ClipEvidenceReference) -> RustBuffer {
+    return FfiConverterTypeClipEvidenceReference.lower(value)
+}
+
+
+public struct ClipId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ClipId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeClipId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ClipId {
+        return
+            try ClipId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ClipId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeClipId_lift(_ buf: RustBuffer) throws -> ClipId {
+    return try FfiConverterTypeClipId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeClipId_lower(_ value: ClipId) -> RustBuffer {
+    return FfiConverterTypeClipId.lower(value)
+}
+
+
+/**
+ * Durable clip state owned by the Pod0 kernel. Media rendering and sharing
+ * remain native capabilities over this bounded projection.
+ */
+public struct ClipRecord: Equatable, Hashable {
+    public let clipId: ClipId
+    public let revision: ClipRevision
+    public let episodeId: EpisodeId
+    public let podcastId: PodcastId
+    public let startMilliseconds: UInt64
+    public let endMilliseconds: UInt64
+    public let createdAt: UnixTimestampMilliseconds
+    public let caption: String?
+    public let speakerId: SpeakerId?
+    /**
+     * Preserved only for pre-kernel clips whose Swift payload used a display
+     * label instead of a stable speaker identity.
+     */
+    public let speakerLabel: String?
+    public let frozenTranscriptText: String
+    public let source: ClipSource
+    public let deleted: Bool
+    public let evidence: ClipEvidenceReference?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(clipId: ClipId, revision: ClipRevision, episodeId: EpisodeId, podcastId: PodcastId, startMilliseconds: UInt64, endMilliseconds: UInt64, createdAt: UnixTimestampMilliseconds, caption: String?, speakerId: SpeakerId?,
+        /**
+         * Preserved only for pre-kernel clips whose Swift payload used a display
+         * label instead of a stable speaker identity.
+         */speakerLabel: String?, frozenTranscriptText: String, source: ClipSource, deleted: Bool, evidence: ClipEvidenceReference?) {
+        self.clipId = clipId
+        self.revision = revision
+        self.episodeId = episodeId
+        self.podcastId = podcastId
+        self.startMilliseconds = startMilliseconds
+        self.endMilliseconds = endMilliseconds
+        self.createdAt = createdAt
+        self.caption = caption
+        self.speakerId = speakerId
+        self.speakerLabel = speakerLabel
+        self.frozenTranscriptText = frozenTranscriptText
+        self.source = source
+        self.deleted = deleted
+        self.evidence = evidence
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ClipRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeClipRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ClipRecord {
+        return
+            try ClipRecord(
+                clipId: FfiConverterTypeClipId.read(from: &buf),
+                revision: FfiConverterTypeClipRevision.read(from: &buf),
+                episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
+                podcastId: FfiConverterTypePodcastId.read(from: &buf),
+                startMilliseconds: FfiConverterUInt64.read(from: &buf),
+                endMilliseconds: FfiConverterUInt64.read(from: &buf),
+                createdAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                caption: FfiConverterOptionString.read(from: &buf),
+                speakerId: FfiConverterOptionTypeSpeakerId.read(from: &buf),
+                speakerLabel: FfiConverterOptionString.read(from: &buf),
+                frozenTranscriptText: FfiConverterString.read(from: &buf),
+                source: FfiConverterTypeClipSource.read(from: &buf),
+                deleted: FfiConverterBool.read(from: &buf),
+                evidence: FfiConverterOptionTypeClipEvidenceReference.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ClipRecord, into buf: inout [UInt8]) {
+        FfiConverterTypeClipId.write(value.clipId, into: &buf)
+        FfiConverterTypeClipRevision.write(value.revision, into: &buf)
+        FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
+        FfiConverterTypePodcastId.write(value.podcastId, into: &buf)
+        FfiConverterUInt64.write(value.startMilliseconds, into: &buf)
+        FfiConverterUInt64.write(value.endMilliseconds, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.createdAt, into: &buf)
+        FfiConverterOptionString.write(value.caption, into: &buf)
+        FfiConverterOptionTypeSpeakerId.write(value.speakerId, into: &buf)
+        FfiConverterOptionString.write(value.speakerLabel, into: &buf)
+        FfiConverterString.write(value.frozenTranscriptText, into: &buf)
+        FfiConverterTypeClipSource.write(value.source, into: &buf)
+        FfiConverterBool.write(value.deleted, into: &buf)
+        FfiConverterOptionTypeClipEvidenceReference.write(value.evidence, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeClipRecord_lift(_ buf: RustBuffer) throws -> ClipRecord {
+    return try FfiConverterTypeClipRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeClipRecord_lower(_ value: ClipRecord) -> RustBuffer {
+    return FfiConverterTypeClipRecord.lower(value)
+}
+
+
+public struct ClipRevision: Equatable, Hashable {
+    public let value: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(value: UInt64) {
+        self.value = value
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ClipRevision: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeClipRevision: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ClipRevision {
+        return
+            try ClipRevision(
+                value: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ClipRevision, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.value, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeClipRevision_lift(_ buf: RustBuffer) throws -> ClipRevision {
+    return try FfiConverterTypeClipRevision.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeClipRevision_lower(_ value: ClipRevision) -> RustBuffer {
+    return FfiConverterTypeClipRevision.lower(value)
+}
+
+
 public struct CommandId: Equatable, Hashable {
     public let high: UInt64
     public let low: UInt64
@@ -3173,6 +3457,117 @@ public func FfiConverterTypeAutoDownloadMode_lower(_ value: AutoDownloadMode) ->
 
 
 
+public enum ClipSource: Equatable, Hashable {
+
+    case touch
+    case auto
+    case headphone
+    case carplay
+    case watch
+    case siri
+    case agent
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ClipSource: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeClipSource: FfiConverterRustBuffer {
+    typealias SwiftType = ClipSource
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ClipSource {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .touch
+
+        case 2: return .auto
+
+        case 3: return .headphone
+
+        case 4: return .carplay
+
+        case 5: return .watch
+
+        case 6: return .siri
+
+        case 7: return .agent
+
+        case 8: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ClipSource, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .touch:
+            writeInt(&buf, Int32(1))
+
+
+        case .auto:
+            writeInt(&buf, Int32(2))
+
+
+        case .headphone:
+            writeInt(&buf, Int32(3))
+
+
+        case .carplay:
+            writeInt(&buf, Int32(4))
+
+
+        case .watch:
+            writeInt(&buf, Int32(5))
+
+
+        case .siri:
+            writeInt(&buf, Int32(6))
+
+
+        case .agent:
+            writeInt(&buf, Int32(7))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(8))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeClipSource_lift(_ buf: RustBuffer) throws -> ClipSource {
+    return try FfiConverterTypeClipSource.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeClipSource_lower(_ value: ClipSource) -> RustBuffer {
+    return FfiConverterTypeClipSource.lower(value)
+}
+
+
+
+
 public enum CompletionCause: Equatable, Hashable {
 
     case naturalEnd
@@ -4485,6 +4880,30 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeClipEvidenceReference: FfiConverterRustBuffer {
+    typealias SwiftType = ClipEvidenceReference?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeClipEvidenceReference.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeClipEvidenceReference.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeEpisodeId: FfiConverterRustBuffer {
     typealias SwiftType = EpisodeId?
 
@@ -4645,6 +5064,30 @@ fileprivate struct FfiConverterOptionTypePublisherTranscriptReference: FfiConver
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypePublisherTranscriptReference.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeSpeakerId: FfiConverterRustBuffer {
+    typealias SwiftType = SpeakerId?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeSpeakerId.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeSpeakerId.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }

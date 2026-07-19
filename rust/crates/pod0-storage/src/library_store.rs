@@ -34,6 +34,19 @@ impl LibraryStore {
         crate::note_store_read::read_note_snapshot(&connection)
     }
 
+    pub fn clip_snapshot(&self) -> Result<crate::ClipCollectionSnapshot, StorageError> {
+        let connection = open_current(&self.path, true)?;
+        require_authoritative(&connection)?;
+        crate::clip_store_read::require_clips_authoritative(&connection)?;
+        crate::clip_store_read::read_clip_snapshot(&connection)
+    }
+
+    pub fn require_clips_authoritative(&self) -> Result<(), StorageError> {
+        let connection = open_current(&self.path, true)?;
+        require_authoritative(&connection)?;
+        crate::clip_store_read::require_clips_authoritative(&connection)
+    }
+
     pub fn require_notes_authoritative(&self) -> Result<(), StorageError> {
         let connection = open_current(&self.path, true)?;
         require_authoritative(&connection)?;

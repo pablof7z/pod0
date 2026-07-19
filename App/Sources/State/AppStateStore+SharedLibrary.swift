@@ -23,4 +23,9 @@ extension AppStateStore {
     func applySharedNotes(_ projection: SharedNoteSnapshot) {
         mutateState { $0.notes = projection.notes }
     }
+
+    /// The sole production assignment to the replaceable native clip read model.
+    func applySharedClips(_ projection: SharedClipSnapshot) {
+        mutateState { $0.clips = projection.clips }
+    }
 }

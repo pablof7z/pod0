@@ -204,6 +204,31 @@ impl FacadeState {
                 value.enforce_bounds(offset, item_limit);
                 Projection::Notes { value }
             }
+            ProjectionScope::Clips { scope } => {
+                let mut clips = self.clips.clips.clone();
+                match scope {
+                    pod0_application::ClipProjectionScope::All => {}
+                    pod0_application::ClipProjectionScope::Active => {
+                        clips.retain(|clip| !clip.deleted);
+                    }
+                    pod0_application::ClipProjectionScope::Clip { clip_id } => {
+                        clips.retain(|clip| clip.clip_id == clip_id);
+                    }
+                    pod0_application::ClipProjectionScope::Episode { episode_id } => {
+                        clips.retain(|clip| !clip.deleted && clip.episode_id == episode_id);
+                    }
+                    pod0_application::ClipProjectionScope::Unsupported { .. } => clips.clear(),
+                }
+                let mut value = pod0_application::ClipsProjection {
+                    scope,
+                    collection_revision: self.clips.revision,
+                    clips,
+                    operations: self.operations.clone(),
+                    has_more: false,
+                };
+                value.enforce_bounds(offset, item_limit);
+                Projection::Clips { value }
+            }
             ProjectionScope::Unsupported { wire_code } => Projection::Unsupported {
                 value: UnsupportedProjection {
                     wire_code,

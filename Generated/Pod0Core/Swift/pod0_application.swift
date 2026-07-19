@@ -615,6 +615,72 @@ fileprivate struct FfiConverterData: FfiConverterRustBuffer {
 }
 
 
+public struct ClipsProjection: Equatable, Hashable {
+    public let scope: ClipProjectionScope
+    public let collectionRevision: StateRevision
+    public let clips: [ClipRecord]
+    public let operations: [OperationProjection]
+    public let hasMore: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(scope: ClipProjectionScope, collectionRevision: StateRevision, clips: [ClipRecord], operations: [OperationProjection], hasMore: Bool) {
+        self.scope = scope
+        self.collectionRevision = collectionRevision
+        self.clips = clips
+        self.operations = operations
+        self.hasMore = hasMore
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ClipsProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeClipsProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ClipsProjection {
+        return
+            try ClipsProjection(
+                scope: FfiConverterTypeClipProjectionScope.read(from: &buf),
+                collectionRevision: FfiConverterTypeStateRevision.read(from: &buf),
+                clips: FfiConverterSequenceTypeClipRecord.read(from: &buf),
+                operations: FfiConverterSequenceTypeOperationProjection.read(from: &buf),
+                hasMore: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ClipsProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeClipProjectionScope.write(value.scope, into: &buf)
+        FfiConverterTypeStateRevision.write(value.collectionRevision, into: &buf)
+        FfiConverterSequenceTypeClipRecord.write(value.clips, into: &buf)
+        FfiConverterSequenceTypeOperationProjection.write(value.operations, into: &buf)
+        FfiConverterBool.write(value.hasMore, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeClipsProjection_lift(_ buf: RustBuffer) throws -> ClipsProjection {
+    return try FfiConverterTypeClipsProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeClipsProjection_lower(_ value: ClipsProjection) -> RustBuffer {
+    return FfiConverterTypeClipsProjection.lower(value)
+}
+
+
 public struct CommandEnvelope: Equatable, Hashable {
     public let commandId: CommandId
     public let cancellationId: CancellationId
@@ -2891,6 +2957,14 @@ public enum ApplicationCommand: Equatable, Hashable {
     )
     case clearNotes(expectedCollectionRevision: StateRevision
     )
+    case createClip(clipId: ClipId, episodeId: EpisodeId, podcastId: PodcastId, startMilliseconds: UInt64, endMilliseconds: UInt64, caption: String?, speakerId: SpeakerId?, frozenTranscriptText: String, source: ClipSource
+    )
+    case updateClip(clipId: ClipId, expectedClipRevision: ClipRevision, startMilliseconds: UInt64, endMilliseconds: UInt64, caption: String?, speakerId: SpeakerId?, frozenTranscriptText: String
+    )
+    case setClipDeleted(clipId: ClipId, expectedClipRevision: ClipRevision, deleted: Bool
+    )
+    case clearClips(expectedCollectionRevision: StateRevision
+    )
     case cancelOperation(cancellationId: CancellationId
     )
     case unsupported(wireCode: UInt32
@@ -2972,10 +3046,22 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
         case 19: return .clearNotes(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 20: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
+        case 20: return .createClip(clipId: try FfiConverterTypeClipId.read(from: &buf), episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), podcastId: try FfiConverterTypePodcastId.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf), source: try FfiConverterTypeClipSource.read(from: &buf)
         )
 
-        case 21: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 21: return .updateClip(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf)
+        )
+
+        case 22: return .setClipDeleted(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 23: return .clearClips(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        )
+
+        case 24: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
+        )
+
+        case 25: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -3093,13 +3179,49 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
             FfiConverterTypeStateRevision.write(expectedCollectionRevision, into: &buf)
 
 
-        case let .cancelOperation(cancellationId):
+        case let .createClip(clipId,episodeId,podcastId,startMilliseconds,endMilliseconds,caption,speakerId,frozenTranscriptText,source):
             writeInt(&buf, Int32(20))
+            FfiConverterTypeClipId.write(clipId, into: &buf)
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypePodcastId.write(podcastId, into: &buf)
+            FfiConverterUInt64.write(startMilliseconds, into: &buf)
+            FfiConverterUInt64.write(endMilliseconds, into: &buf)
+            FfiConverterOptionString.write(caption, into: &buf)
+            FfiConverterOptionTypeSpeakerId.write(speakerId, into: &buf)
+            FfiConverterString.write(frozenTranscriptText, into: &buf)
+            FfiConverterTypeClipSource.write(source, into: &buf)
+
+
+        case let .updateClip(clipId,expectedClipRevision,startMilliseconds,endMilliseconds,caption,speakerId,frozenTranscriptText):
+            writeInt(&buf, Int32(21))
+            FfiConverterTypeClipId.write(clipId, into: &buf)
+            FfiConverterTypeClipRevision.write(expectedClipRevision, into: &buf)
+            FfiConverterUInt64.write(startMilliseconds, into: &buf)
+            FfiConverterUInt64.write(endMilliseconds, into: &buf)
+            FfiConverterOptionString.write(caption, into: &buf)
+            FfiConverterOptionTypeSpeakerId.write(speakerId, into: &buf)
+            FfiConverterString.write(frozenTranscriptText, into: &buf)
+
+
+        case let .setClipDeleted(clipId,expectedClipRevision,deleted):
+            writeInt(&buf, Int32(22))
+            FfiConverterTypeClipId.write(clipId, into: &buf)
+            FfiConverterTypeClipRevision.write(expectedClipRevision, into: &buf)
+            FfiConverterBool.write(deleted, into: &buf)
+
+
+        case let .clearClips(expectedCollectionRevision):
+            writeInt(&buf, Int32(23))
+            FfiConverterTypeStateRevision.write(expectedCollectionRevision, into: &buf)
+
+
+        case let .cancelOperation(cancellationId):
+            writeInt(&buf, Int32(24))
             FfiConverterTypeCancellationId.write(cancellationId, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(21))
+            writeInt(&buf, Int32(25))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -3124,6 +3246,102 @@ public func FfiConverterTypeApplicationCommand_lower(_ value: ApplicationCommand
 
 
 
+public enum ClipProjectionScope: Equatable, Hashable {
+
+    case all
+    case active
+    case clip(clipId: ClipId
+    )
+    case episode(episodeId: EpisodeId
+    )
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ClipProjectionScope: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeClipProjectionScope: FfiConverterRustBuffer {
+    typealias SwiftType = ClipProjectionScope
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ClipProjectionScope {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .all
+
+        case 2: return .active
+
+        case 3: return .clip(clipId: try FfiConverterTypeClipId.read(from: &buf)
+        )
+
+        case 4: return .episode(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
+        )
+
+        case 5: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ClipProjectionScope, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .all:
+            writeInt(&buf, Int32(1))
+
+
+        case .active:
+            writeInt(&buf, Int32(2))
+
+
+        case let .clip(clipId):
+            writeInt(&buf, Int32(3))
+            FfiConverterTypeClipId.write(clipId, into: &buf)
+
+
+        case let .episode(episodeId):
+            writeInt(&buf, Int32(4))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(5))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeClipProjectionScope_lift(_ buf: RustBuffer) throws -> ClipProjectionScope {
+    return try FfiConverterTypeClipProjectionScope.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeClipProjectionScope_lower(_ value: ClipProjectionScope) -> RustBuffer {
+    return FfiConverterTypeClipProjectionScope.lower(value)
+}
+
+
+
+
 public enum CoreFailureCode: Equatable, Hashable {
 
     case invalidCommand
@@ -3134,6 +3352,7 @@ public enum CoreFailureCode: Equatable, Hashable {
     case revisionConflict
     case notFound
     case invalidNote
+    case invalidClip
     case hostUnavailable
     case hostRejected
     case cancelled
@@ -3176,13 +3395,15 @@ public struct FfiConverterTypeCoreFailureCode: FfiConverterRustBuffer {
 
         case 8: return .invalidNote
 
-        case 9: return .hostUnavailable
+        case 9: return .invalidClip
 
-        case 10: return .hostRejected
+        case 10: return .hostUnavailable
 
-        case 11: return .cancelled
+        case 11: return .hostRejected
 
-        case 12: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 12: return .cancelled
+
+        case 13: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -3225,20 +3446,24 @@ public struct FfiConverterTypeCoreFailureCode: FfiConverterRustBuffer {
             writeInt(&buf, Int32(8))
 
 
-        case .hostUnavailable:
+        case .invalidClip:
             writeInt(&buf, Int32(9))
 
 
-        case .hostRejected:
+        case .hostUnavailable:
             writeInt(&buf, Int32(10))
 
 
-        case .cancelled:
+        case .hostRejected:
             writeInt(&buf, Int32(11))
 
 
-        case let .unsupported(wireCode):
+        case .cancelled:
             writeInt(&buf, Int32(12))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(13))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -4155,6 +4380,12 @@ public enum OperationResult: Equatable, Hashable {
     case noteUpdated(noteId: NoteId
     )
     case notesCleared
+    case clipCreated(clipId: ClipId, clipRevision: ClipRevision, collectionRevision: StateRevision
+    )
+    case clipUpdated(clipId: ClipId, clipRevision: ClipRevision, collectionRevision: StateRevision
+    )
+    case clipsCleared(collectionRevision: StateRevision
+    )
     case unsupported(wireCode: UInt32
     )
 
@@ -4214,7 +4445,16 @@ public struct FfiConverterTypeOperationResult: FfiConverterRustBuffer {
 
         case 13: return .notesCleared
 
-        case 14: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 14: return .clipCreated(clipId: try FfiConverterTypeClipId.read(from: &buf), clipRevision: try FfiConverterTypeClipRevision.read(from: &buf), collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        )
+
+        case 15: return .clipUpdated(clipId: try FfiConverterTypeClipId.read(from: &buf), clipRevision: try FfiConverterTypeClipRevision.read(from: &buf), collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        )
+
+        case 16: return .clipsCleared(collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        )
+
+        case 17: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -4291,8 +4531,27 @@ public struct FfiConverterTypeOperationResult: FfiConverterRustBuffer {
             writeInt(&buf, Int32(13))
 
 
-        case let .unsupported(wireCode):
+        case let .clipCreated(clipId,clipRevision,collectionRevision):
             writeInt(&buf, Int32(14))
+            FfiConverterTypeClipId.write(clipId, into: &buf)
+            FfiConverterTypeClipRevision.write(clipRevision, into: &buf)
+            FfiConverterTypeStateRevision.write(collectionRevision, into: &buf)
+
+
+        case let .clipUpdated(clipId,clipRevision,collectionRevision):
+            writeInt(&buf, Int32(15))
+            FfiConverterTypeClipId.write(clipId, into: &buf)
+            FfiConverterTypeClipRevision.write(clipRevision, into: &buf)
+            FfiConverterTypeStateRevision.write(collectionRevision, into: &buf)
+
+
+        case let .clipsCleared(collectionRevision):
+            writeInt(&buf, Int32(16))
+            FfiConverterTypeStateRevision.write(collectionRevision, into: &buf)
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(17))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -5263,6 +5522,8 @@ public enum Projection: Equatable, Hashable {
     )
     case notes(value: NotesProjection
     )
+    case clips(value: ClipsProjection
+    )
     case unsupported(value: UnsupportedProjection
     )
 
@@ -5307,7 +5568,10 @@ public struct FfiConverterTypeProjection: FfiConverterRustBuffer {
         case 7: return .notes(value: try FfiConverterTypeNotesProjection.read(from: &buf)
         )
 
-        case 8: return .unsupported(value: try FfiConverterTypeUnsupportedProjection.read(from: &buf)
+        case 8: return .clips(value: try FfiConverterTypeClipsProjection.read(from: &buf)
+        )
+
+        case 9: return .unsupported(value: try FfiConverterTypeUnsupportedProjection.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -5353,8 +5617,13 @@ public struct FfiConverterTypeProjection: FfiConverterRustBuffer {
             FfiConverterTypeNotesProjection.write(value, into: &buf)
 
 
-        case let .unsupported(value):
+        case let .clips(value):
             writeInt(&buf, Int32(8))
+            FfiConverterTypeClipsProjection.write(value, into: &buf)
+
+
+        case let .unsupported(value):
+            writeInt(&buf, Int32(9))
             FfiConverterTypeUnsupportedProjection.write(value, into: &buf)
 
         }
@@ -5392,6 +5661,8 @@ public enum ProjectionScope: Equatable, Hashable {
     case evidenceIndex(episodeId: EpisodeId
     )
     case notes(scope: NoteProjectionScope
+    )
+    case clips(scope: ClipProjectionScope
     )
     case unsupported(wireCode: UInt32
     )
@@ -5435,7 +5706,10 @@ public struct FfiConverterTypeProjectionScope: FfiConverterRustBuffer {
         case 7: return .notes(scope: try FfiConverterTypeNoteProjectionScope.read(from: &buf)
         )
 
-        case 8: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 8: return .clips(scope: try FfiConverterTypeClipProjectionScope.read(from: &buf)
+        )
+
+        case 9: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -5479,8 +5753,13 @@ public struct FfiConverterTypeProjectionScope: FfiConverterRustBuffer {
             FfiConverterTypeNoteProjectionScope.write(scope, into: &buf)
 
 
-        case let .unsupported(wireCode):
+        case let .clips(scope):
             writeInt(&buf, Int32(8))
+            FfiConverterTypeClipProjectionScope.write(scope, into: &buf)
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(9))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -6749,6 +7028,31 @@ fileprivate struct FfiConverterSequenceTypeTranscriptSegmentInput: FfiConverterR
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeTranscriptSegmentInput.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeClipRecord: FfiConverterRustBuffer {
+    typealias SwiftType = [ClipRecord]
+
+    public static func write(_ value: [ClipRecord], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeClipRecord.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ClipRecord] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ClipRecord]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeClipRecord.read(from: &buf))
         }
         return seq
     }

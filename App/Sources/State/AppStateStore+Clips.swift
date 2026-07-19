@@ -3,10 +3,7 @@ import os.log
 
 // MARK: - Clips
 
-/// CRUD surface for user-authored transcript excerpts. Mirrors the pattern
-/// used by `+Notes` and `+Memories` so all clip mutations route through one
-/// place and the `state.didSet` observer in `AppStateStore` picks them up
-/// for persistence + Spotlight + widget refresh.
+/// Native adapter for Rust-owned user-authored transcript excerpts.
 ///
 /// Auto-snip and the in-app composer both land here so a clip captured from
 /// the lock-screen and a clip composed from a transcript share the same
@@ -15,9 +12,23 @@ extension AppStateStore {
 
     nonisolated private static let clipsLogger = Logger.app("AppStateStore+Clips")
 
-    func addClip(_ clip: Clip) {
-        mutateState { $0.clips.append(clip) }
-        recordProductSignal(.once(name: .clipCreated, subjectID: clip.id, outcome: .created))
+    @discardableResult
+    func addClip(_ clip: Clip) -> Bool {
+        do {
+            guard let sharedLibrary else { throw SharedLibraryError.unavailable }
+            let saved = try sharedLibrary.createClip(clip)
+            recordProductSignal(.once(
+                name: .clipCreated,
+                subjectID: saved.id,
+                outcome: .created
+            ))
+            return true
+        } catch {
+            Self.clipsLogger.error(
+                "Shared clip creation failed: \(error.localizedDescription, privacy: .public)"
+            )
+            return false
+        }
     }
 
     /// Convenience: build + persist in one call. Used by `AutoSnipController`
@@ -34,7 +45,7 @@ extension AppStateStore {
         speakerID: UUID? = nil,
         source: Clip.Source = .auto,
         caption: String? = nil
-    ) -> Clip {
+    ) -> Clip? {
         let clip = Clip(
             episodeID: episodeID,
             subscriptionID: subscriptionID,
@@ -45,49 +56,81 @@ extension AppStateStore {
             transcriptText: transcriptText ?? "",
             source: source
         )
-        addClip(clip)
-        return clip
+        guard addClip(clip) else { return nil }
+        return sharedLibrary?.clip(id: clip.id)
     }
 
     /// In-place rewrite for the optimistic-then-refine flow used by
     /// `AutoSnipController`: the mechanical clip lands first (instant haptic +
     /// toast), then a background LLM call refines the boundaries and calls
     /// this to overwrite the span and frozen transcript.
+    @discardableResult
     func updateClipBoundaries(
         id: UUID,
         startMs: Int,
         endMs: Int,
         transcriptText: String,
         speakerID: UUID?
-    ) {
-        guard let idx = state.clips.firstIndex(where: { $0.id == id }) else { return }
-        var clip = state.clips[idx]
+    ) -> Bool {
+        guard var clip = sharedLibrary?.clip(id: id) else { return false }
         clip.startMs = startMs
         clip.endMs = endMs
         clip.transcriptText = transcriptText
         clip.speakerID = speakerID?.uuidString
-        mutateState { $0.clips[idx] = clip }
+        do {
+            guard let sharedLibrary else { throw SharedLibraryError.unavailable }
+            try sharedLibrary.updateClip(clip)
+            return true
+        } catch {
+            Self.clipsLogger.error(
+                "Shared clip update failed: \(error.localizedDescription, privacy: .public)"
+            )
+            return false
+        }
     }
 
-    func deleteClip(id: UUID) {
-        guard let idx = state.clips.firstIndex(where: { $0.id == id }) else { return }
-        mutateState { $0.clips.remove(at: idx) }
+    @discardableResult
+    func deleteClip(id: UUID) -> Bool {
+        do {
+            guard let clip = sharedLibrary?.clip(id: id),
+                  let sharedLibrary
+            else { throw SharedLibraryError.notFound }
+            try sharedLibrary.setClipDeleted(clip, deleted: true)
+            return true
+        } catch {
+            Self.clipsLogger.error(
+                "Shared clip deletion failed: \(error.localizedDescription, privacy: .public)"
+            )
+            return false
+        }
     }
 
     func clip(id: UUID) -> Clip? {
-        state.clips.first(where: { $0.id == id })
+        sharedLibrary?.clip(id: id)
     }
 
     /// All clips, newest first. Used by the Saved screen's Clips segment.
     func allClips() -> [Clip] {
-        state.clips.sorted { $0.createdAt > $1.createdAt }
+        sharedLibrary?.allClips() ?? []
     }
 
     /// Clips for a single episode, newest first. Used by the episode detail
     /// surface and the global clips list.
     func clips(forEpisode id: UUID) -> [Clip] {
-        state.clips
-            .filter { $0.episodeID == id }
-            .sorted { $0.createdAt > $1.createdAt }
+        sharedLibrary?.clips(forEpisode: id) ?? []
+    }
+
+    @discardableResult
+    func clearAllClips() -> Bool {
+        do {
+            guard let sharedLibrary else { throw SharedLibraryError.unavailable }
+            try sharedLibrary.clearClips()
+            return true
+        } catch {
+            Self.clipsLogger.error(
+                "Shared clip clear failed: \(error.localizedDescription, privacy: .public)"
+            )
+            return false
+        }
     }
 }

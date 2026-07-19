@@ -16,10 +16,10 @@ final class Pod0CoreBindingTests: XCTestCase {
         XCTAssertEqual(fixture["schema_component"], "kernel")
         XCTAssertEqual(UInt32(fixture["stored_version"] ?? ""), 2)
         XCTAssertEqual(UInt32(fixture["supported_min"] ?? ""), 0)
-        XCTAssertEqual(UInt32(fixture["supported_max"] ?? ""), 8)
+        XCTAssertEqual(UInt32(fixture["supported_max"] ?? ""), 9)
         XCTAssertEqual(fixture["access_mode"], "migration_only")
         XCTAssertEqual(fixture["migration_state"], "required")
-        XCTAssertEqual(UInt32(fixture["target_version"] ?? ""), 8)
+        XCTAssertEqual(UInt32(fixture["target_version"] ?? ""), 9)
         XCTAssertEqual(UInt64(fixture["store_id_high"] ?? ""), 10)
         XCTAssertEqual(UInt64(fixture["store_id_low"] ?? ""), 11)
         XCTAssertEqual(UInt64(fixture["command_id_high"] ?? ""), 1)
@@ -50,7 +50,7 @@ final class Pod0CoreBindingTests: XCTestCase {
 
         XCTAssertEqual(subscriber.revisions, [0, 1])
         let projection = facade.snapshot(request: request)
-        XCTAssertEqual(projection.contractVersion, 9)
+        XCTAssertEqual(projection.contractVersion, 10)
         guard case let .library(value) = projection.projection else {
             return XCTFail("Expected a bounded library projection")
         }
@@ -190,7 +190,7 @@ final class Pod0CoreBindingTests: XCTestCase {
             operation: nil
         )
 
-        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 9)
+        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 10)
         XCTAssertEqual(projection.stage, .ready)
         XCTAssertEqual(projection.evidence.first?.excerpt, fixture["excerpt"])
         XCTAssertEqual(
@@ -255,7 +255,7 @@ final class Pod0CoreBindingTests: XCTestCase {
             hasMore: false
         )
 
-        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 9)
+        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 10)
         XCTAssertEqual(projection.notes.first?.text, fixture["text"])
         XCTAssertEqual(projection.notes.first?.evidence?.spanId, note.evidence?.spanId)
     }

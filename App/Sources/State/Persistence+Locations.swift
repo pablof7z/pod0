@@ -1,4 +1,5 @@
 import Foundation
+import Pod0Core
 
 extension Persistence {
 
@@ -50,6 +51,12 @@ extension Persistence {
         sharedCoreStoreURL.appendingPathExtension("schema-backup")
     }
 
+    /// Schema migrations retain version-specific rollback evidence so a
+    /// later upgrade never mistakes an older valid backup for its own.
+    func sharedCoreSchemaBackupURL(targetVersion: UInt32) -> URL {
+        sharedCoreStoreURL.appendingPathExtension("schema-backup-v\(targetVersion)")
+    }
+
     var legacyListeningBackupURL: URL {
         episodeStore.fileURL.appendingPathExtension("listening-backup")
     }
@@ -58,16 +65,39 @@ extension Persistence {
         episodeStore.fileURL.appendingPathExtension("notes-backup")
     }
 
+    var legacyClipsBackupURL: URL {
+        episodeStore.fileURL.appendingPathExtension("clips-backup")
+    }
+
+    func legacyClipsBackupURL(for plan: LegacyClipImportPlan) -> URL {
+        episodeStore.fileURL.appendingPathExtension(
+            "clips-backup-\(plan.sourceGeneration)-\(plan.sourceHash)"
+        )
+    }
+
     func removeSharedCoreArtifacts() {
         let core = sharedCoreStoreURL
-        for url in [
+        var urls = [
             core,
             URL(fileURLWithPath: core.path + "-wal"),
             URL(fileURLWithPath: core.path + "-shm"),
             sharedCoreSchemaBackupURL,
             legacyListeningBackupURL,
-            legacyNotesBackupURL
-        ] {
+            legacyNotesBackupURL,
+            legacyClipsBackupURL
+        ]
+        urls.append(contentsOf: (1...32).map {
+            sharedCoreSchemaBackupURL(targetVersion: UInt32($0))
+        })
+        let directory = episodeStore.fileURL.deletingLastPathComponent()
+        let prefix = episodeStore.fileURL.lastPathComponent + ".clips-backup-"
+        if let entries = try? FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil
+        ) {
+            urls.append(contentsOf: entries.filter { $0.lastPathComponent.hasPrefix(prefix) })
+        }
+        for url in urls {
             try? FileManager.default.removeItem(at: url)
         }
     }

@@ -69,6 +69,11 @@ pub enum LegacyListeningMigrationError {
     StorageUnavailable,
 }
 
+#[uniffi::export]
+pub fn shared_store_schema_version() -> u32 {
+    CURRENT_SCHEMA_VERSION
+}
+
 impl std::fmt::Display for LegacyListeningMigrationError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter.write_str(match self {
@@ -264,6 +269,7 @@ impl From<StorageError> for LegacyListeningMigrationError {
             | StorageError::CutoverNotAuthoritative
             | StorageError::RevisionConflict
             | StorageError::InvalidNote
+            | StorageError::InvalidClip
             | StorageError::FailedMigration { .. }
             | StorageError::EvidenceCommandConflict
             | StorageError::EvidenceNotFound

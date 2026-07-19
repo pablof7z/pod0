@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-07-18
 - Decision owners: Pod0 application architecture
-- Related issues: #58, #63, #75, #79, #81, #82, #83
+- Related issues: #58, #63, #75, #79, #81, #82, #83, #92, #93
 
 ## Context
 
@@ -18,12 +18,12 @@ these Codable payloads with Swift.
 The app-core schema mechanism now exists in `pod0-storage`: sequential locked
 SQL versions, transactional forward migration, a restart journal, verified
 SQLite backups, staged/authoritative domain markers, and read-only blocked
-states. Schema v6 contains normalized listening and playback-runtime tables
-plus a one-shot importer for the current Swift SQLite store and pre-SQLite
-legacy JSON. Swift, Kotlin, and Rust tests inspect, stage, cut over, mutate, and
-read back the same typed projections. The committed listening marker permits
-only the Rust facade to write migrated library and playback facts; Swift is a
-projection adapter after cutover.
+states. Schema v9 contains normalized listening/playback, transcript-evidence,
+note, and clip tables plus one-shot importers for the current Swift SQLite store
+and pre-SQLite legacy JSON. Swift, Kotlin, and Rust tests inspect, stage, cut
+over, mutate, and read back the same typed projections. Committed per-domain
+markers permit only the Rust facade to write migrated library, playback, note,
+and clip facts; Swift is a projection adapter after cutover.
 
 ## Decision
 
@@ -48,8 +48,10 @@ identical events and projections.
 3. Import into a staged Rust schema using stable existing IDs.
 4. Verify counts, IDs, key fields, and projection parity.
 5. Optionally shadow-read; never dual-write.
-6. Stop the Swift writer for the domain.
-7. Atomically commit the Rust cutover marker, then permit Rust writes.
+6. Hold the legacy persistence writer lock and revalidate the staged digest
+   against the current source. Discard and restage if user state changed.
+7. Atomically commit the Rust cutover marker while the lock is held, activate
+   the Rust-only writer boundary, then release the legacy writer lock.
 8. Delete obsolete Swift ownership in the vertical-slice cleanup issue.
 
 Before the first Rust-authoritative write, rollback discards the staged target
@@ -65,13 +67,16 @@ tested export/restore path; silently re-enabling the old writer is forbidden.
 - Migration failure never deletes, truncates, or silently replaces user data.
 - A late/stale writer cannot commit over a newer revision.
 - Backups are verified before cutover, not assumed from file existence.
+- Source backups are generation/content-qualified so an interrupted retry
+  cannot confuse an older valid backup with the current source.
 
 ## Domain boundaries
 
-The first store migration includes podcast, subscription, episode library,
-queue/resume/completion/rate/sleep policy, and relevant preferences. Transcript,
-knowledge, workflow, agent, and Nostr state remain in their current owners until
-their own complete vertical slices.
+The migrated store now includes podcast, subscription, episode library,
+queue/resume/completion/rate/sleep policy, relevant preferences, notes, and
+clips. Transcript normalization, broader knowledge/search, workflow, agent, and
+Nostr state remain in their current owners until their own complete vertical
+slices.
 
 ## Consequences
 

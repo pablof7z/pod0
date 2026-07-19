@@ -41,7 +41,9 @@ import uniffi.pod0_application.HostObservationEnvelope
 import uniffi.pod0_application.HostRequestEnvelope
 import uniffi.pod0_application.ProjectionEnvelope
 import uniffi.pod0_application.ProjectionRequest
+import uniffi.pod0_domain.ClipRecord
 import uniffi.pod0_domain.CommandId
+import uniffi.pod0_domain.FfiConverterTypeClipRecord
 import uniffi.pod0_domain.FfiConverterTypeCommandId
 import uniffi.pod0_domain.FfiConverterTypeListeningDomainSnapshot
 import uniffi.pod0_domain.FfiConverterTypeNoteRecord
@@ -56,6 +58,7 @@ import uniffi.pod0_application.RustBuffer as RustBufferHostObservationEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferHostRequestEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionRequest
+import uniffi.pod0_domain.RustBuffer as RustBufferClipRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferCommandId
 import uniffi.pod0_domain.RustBuffer as RustBufferListeningDomainSnapshot
 import uniffi.pod0_domain.RustBuffer as RustBufferNoteRecord
@@ -725,6 +728,14 @@ internal object IntegrityCheckingUniffiLib {
         uniffiCheckContractApiVersion(this)
         uniffiCheckApiChecksums(this)
     }
+    external fun uniffi_pod0_facade_checksum_func_commit_staged_legacy_clip_import(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_inspect_legacy_clip_source(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_read_staged_legacy_clip_import(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_stage_legacy_clip_import(
+    ): Int
     external fun uniffi_pod0_facade_checksum_func_commit_staged_legacy_listening_import(
     ): Int
     external fun uniffi_pod0_facade_checksum_func_inspect_legacy_listening_source(
@@ -732,6 +743,8 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_pod0_facade_checksum_func_prepare_shared_listening_store(
     ): Int
     external fun uniffi_pod0_facade_checksum_func_read_staged_legacy_listening_import(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_shared_store_schema_version(
     ): Int
     external fun uniffi_pod0_facade_checksum_func_stage_legacy_listening_import(
     ): Int
@@ -810,6 +823,14 @@ internal object UniffiLib {
     ): RustBufferSubscriptionId.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_unsubscribe(`ptr`: Long,`subscriptionId`: RustBufferSubscriptionId.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): Unit
+    external fun uniffi_pod0_facade_fn_func_commit_staged_legacy_clip_import(`sourcePath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): Byte
+    external fun uniffi_pod0_facade_fn_func_inspect_legacy_clip_source(`sourcePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_read_staged_legacy_clip_import(`targetPath`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_stage_legacy_clip_import(`sourcePath`: RustBuffer.ByValue,`sourceBackupPath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`targetSchemaBackupPath`: RustBuffer.ByValue,`expectedPlan`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,`targetStoreId`: RustBufferCommandId.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_func_commit_staged_legacy_listening_import(`targetPath`: RustBuffer.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): Byte
     external fun uniffi_pod0_facade_fn_func_inspect_legacy_listening_source(`sourcePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -818,6 +839,8 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_func_read_staged_legacy_listening_import(`targetPath`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_shared_store_schema_version(uniffi_out_err: UniffiRustCallStatus,
+    ): Int
     external fun uniffi_pod0_facade_fn_func_stage_legacy_listening_import(`sourcePath`: RustBuffer.ByValue,`sourceBackupPath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`targetSchemaBackupPath`: RustBuffer.ByValue,`expectedPlan`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,`targetStoreId`: RustBufferCommandId.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_func_commit_staged_legacy_note_import(`targetPath`: RustBuffer.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
@@ -947,6 +970,18 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if (lib.uniffi_pod0_facade_checksum_func_commit_staged_legacy_clip_import() != 45677) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_inspect_legacy_clip_source() != 38453) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_read_staged_legacy_clip_import() != 39313) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_stage_legacy_clip_import() != 13972) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_pod0_facade_checksum_func_commit_staged_legacy_listening_import() != 20149) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -957,6 +992,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_func_read_staged_legacy_listening_import() != 31272) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_shared_store_schema_version() != 49863) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_func_stage_legacy_listening_import() != 21059) {
@@ -2039,6 +2077,208 @@ public object FfiConverterTypeProjectionSubscriber: FfiConverter<ProjectionSubsc
 
 
 
+data class LegacyClipBackupEvidence (
+    val `sourceKind`: LegacyListeningSourceKind
+    ,
+    val `sourceHash`: kotlin.String
+    ,
+    val `sourceGeneration`: kotlin.ULong
+    ,
+    val `byteCount`: kotlin.ULong
+    ,
+    val `reusedExisting`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyClipBackupEvidence: FfiConverterRustBuffer<LegacyClipBackupEvidence> {
+    override fun read(buf: ByteBuffer): LegacyClipBackupEvidence {
+        return LegacyClipBackupEvidence(
+            FfiConverterTypeLegacyListeningSourceKind.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyClipBackupEvidence) = (
+            FfiConverterTypeLegacyListeningSourceKind.allocationSize(value.`sourceKind`) +
+            FfiConverterString.allocationSize(value.`sourceHash`) +
+            FfiConverterULong.allocationSize(value.`sourceGeneration`) +
+            FfiConverterULong.allocationSize(value.`byteCount`) +
+            FfiConverterBoolean.allocationSize(value.`reusedExisting`)
+    )
+
+    override fun write(value: LegacyClipBackupEvidence, buf: ByteBuffer) {
+            FfiConverterTypeLegacyListeningSourceKind.write(value.`sourceKind`, buf)
+            FfiConverterString.write(value.`sourceHash`, buf)
+            FfiConverterULong.write(value.`sourceGeneration`, buf)
+            FfiConverterULong.write(value.`byteCount`, buf)
+            FfiConverterBoolean.write(value.`reusedExisting`, buf)
+    }
+}
+
+
+
+data class LegacyClipImportPlan (
+    val `sourceKind`: LegacyListeningSourceKind
+    ,
+    val `sourceHash`: kotlin.String
+    ,
+    val `sourceGeneration`: kotlin.ULong
+    ,
+    val `clipCount`: kotlin.UInt
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyClipImportPlan: FfiConverterRustBuffer<LegacyClipImportPlan> {
+    override fun read(buf: ByteBuffer): LegacyClipImportPlan {
+        return LegacyClipImportPlan(
+            FfiConverterTypeLegacyListeningSourceKind.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyClipImportPlan) = (
+            FfiConverterTypeLegacyListeningSourceKind.allocationSize(value.`sourceKind`) +
+            FfiConverterString.allocationSize(value.`sourceHash`) +
+            FfiConverterULong.allocationSize(value.`sourceGeneration`) +
+            FfiConverterUInt.allocationSize(value.`clipCount`)
+    )
+
+    override fun write(value: LegacyClipImportPlan, buf: ByteBuffer) {
+            FfiConverterTypeLegacyListeningSourceKind.write(value.`sourceKind`, buf)
+            FfiConverterString.write(value.`sourceHash`, buf)
+            FfiConverterULong.write(value.`sourceGeneration`, buf)
+            FfiConverterUInt.write(value.`clipCount`, buf)
+    }
+}
+
+
+
+data class LegacyClipImportReport (
+    val `importId`: CommandId
+    ,
+    val `plan`: LegacyClipImportPlan
+    ,
+    val `targetRevision`: StateRevision
+    ,
+    val `backup`: LegacyClipBackupEvidence
+    ,
+    val `staged`: kotlin.Boolean
+    ,
+    val `reusedExisting`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyClipImportReport: FfiConverterRustBuffer<LegacyClipImportReport> {
+    override fun read(buf: ByteBuffer): LegacyClipImportReport {
+        return LegacyClipImportReport(
+            FfiConverterTypeCommandId.read(buf),
+            FfiConverterTypeLegacyClipImportPlan.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterTypeLegacyClipBackupEvidence.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyClipImportReport) = (
+            FfiConverterTypeCommandId.allocationSize(value.`importId`) +
+            FfiConverterTypeLegacyClipImportPlan.allocationSize(value.`plan`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`targetRevision`) +
+            FfiConverterTypeLegacyClipBackupEvidence.allocationSize(value.`backup`) +
+            FfiConverterBoolean.allocationSize(value.`staged`) +
+            FfiConverterBoolean.allocationSize(value.`reusedExisting`)
+    )
+
+    override fun write(value: LegacyClipImportReport, buf: ByteBuffer) {
+            FfiConverterTypeCommandId.write(value.`importId`, buf)
+            FfiConverterTypeLegacyClipImportPlan.write(value.`plan`, buf)
+            FfiConverterTypeStateRevision.write(value.`targetRevision`, buf)
+            FfiConverterTypeLegacyClipBackupEvidence.write(value.`backup`, buf)
+            FfiConverterBoolean.write(value.`staged`, buf)
+            FfiConverterBoolean.write(value.`reusedExisting`, buf)
+    }
+}
+
+
+
+data class LegacyClipImportVerification (
+    val `report`: LegacyClipImportReport
+    ,
+    val `collectionRevision`: StateRevision
+    ,
+    val `clips`: List<ClipRecord>
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyClipImportVerification: FfiConverterRustBuffer<LegacyClipImportVerification> {
+    override fun read(buf: ByteBuffer): LegacyClipImportVerification {
+        return LegacyClipImportVerification(
+            FfiConverterTypeLegacyClipImportReport.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterSequenceTypeClipRecord.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyClipImportVerification) = (
+            FfiConverterTypeLegacyClipImportReport.allocationSize(value.`report`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`collectionRevision`) +
+            FfiConverterSequenceTypeClipRecord.allocationSize(value.`clips`)
+    )
+
+    override fun write(value: LegacyClipImportVerification, buf: ByteBuffer) {
+            FfiConverterTypeLegacyClipImportReport.write(value.`report`, buf)
+            FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
+            FfiConverterSequenceTypeClipRecord.write(value.`clips`, buf)
+    }
+}
+
+
+
 data class LegacyListeningBackupEvidence (
     val `sourceKind`: LegacyListeningSourceKind
     ,
@@ -2584,6 +2824,167 @@ public object FfiConverterTypeFacadeOpenError : FfiConverterRustBuffer<FacadeOpe
 
 
 
+sealed class LegacyClipMigrationException: kotlin.Exception() {
+
+    class SourceChanged(
+        ) : LegacyClipMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class SourceInvalid(
+        ) : LegacyClipMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class BackupConflict(
+        ) : LegacyClipMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class ImportConflict(
+        ) : LegacyClipMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class ImportNotFound(
+        ) : LegacyClipMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class TargetBlocked(
+        ) : LegacyClipMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class Interrupted(
+        ) : LegacyClipMigrationException() {
+        override val message
+            get() = ""
+    }
+
+    class StorageUnavailable(
+        ) : LegacyClipMigrationException() {
+        override val message
+            get() = ""
+    }
+
+
+
+
+
+    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<LegacyClipMigrationException> {
+        override fun lift(error_buf: RustBuffer.ByValue): LegacyClipMigrationException = FfiConverterTypeLegacyClipMigrationError.lift(error_buf)
+    }
+
+
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyClipMigrationError : FfiConverterRustBuffer<LegacyClipMigrationException> {
+    override fun read(buf: ByteBuffer): LegacyClipMigrationException {
+
+
+        return when(buf.getInt()) {
+            1 -> LegacyClipMigrationException.SourceChanged()
+            2 -> LegacyClipMigrationException.SourceInvalid()
+            3 -> LegacyClipMigrationException.BackupConflict()
+            4 -> LegacyClipMigrationException.ImportConflict()
+            5 -> LegacyClipMigrationException.ImportNotFound()
+            6 -> LegacyClipMigrationException.TargetBlocked()
+            7 -> LegacyClipMigrationException.Interrupted()
+            8 -> LegacyClipMigrationException.StorageUnavailable()
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: LegacyClipMigrationException): ULong {
+        return when(value) {
+            is LegacyClipMigrationException.SourceChanged -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyClipMigrationException.SourceInvalid -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyClipMigrationException.BackupConflict -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyClipMigrationException.ImportConflict -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyClipMigrationException.ImportNotFound -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyClipMigrationException.TargetBlocked -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyClipMigrationException.Interrupted -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is LegacyClipMigrationException.StorageUnavailable -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: LegacyClipMigrationException, buf: ByteBuffer) {
+        when(value) {
+            is LegacyClipMigrationException.SourceChanged -> {
+                buf.putInt(1)
+                Unit
+            }
+            is LegacyClipMigrationException.SourceInvalid -> {
+                buf.putInt(2)
+                Unit
+            }
+            is LegacyClipMigrationException.BackupConflict -> {
+                buf.putInt(3)
+                Unit
+            }
+            is LegacyClipMigrationException.ImportConflict -> {
+                buf.putInt(4)
+                Unit
+            }
+            is LegacyClipMigrationException.ImportNotFound -> {
+                buf.putInt(5)
+                Unit
+            }
+            is LegacyClipMigrationException.TargetBlocked -> {
+                buf.putInt(6)
+                Unit
+            }
+            is LegacyClipMigrationException.Interrupted -> {
+                buf.putInt(7)
+                Unit
+            }
+            is LegacyClipMigrationException.StorageUnavailable -> {
+                buf.putInt(8)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
+
+
+
+
+
 sealed class LegacyListeningMigrationException: kotlin.Exception() {
 
     class SourceChanged(
@@ -3000,6 +3401,34 @@ public object FfiConverterSequenceTypeHostRequestEnvelope: FfiConverterRustBuffe
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeClipRecord: FfiConverterRustBuffer<List<ClipRecord>> {
+    override fun read(buf: ByteBuffer): List<ClipRecord> {
+        val len = buf.getInt()
+        return List<ClipRecord>(len) {
+            FfiConverterTypeClipRecord.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<ClipRecord>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeClipRecord.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<ClipRecord>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeClipRecord.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer<List<NoteRecord>> {
     override fun read(buf: ByteBuffer): List<NoteRecord> {
         val len = buf.getInt()
@@ -3039,6 +3468,66 @@ public object FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer<List<No
 
 
 
+
+
+
+
+    @Throws(LegacyClipMigrationException::class) fun `commitStagedLegacyClipImport`(`sourcePath`: kotlin.String, `targetPath`: kotlin.String, `observedAtMilliseconds`: kotlin.Long): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    uniffiRustCallWithError(LegacyClipMigrationException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_commit_staged_legacy_clip_import(
+
+
+        FfiConverterString.lower(`sourcePath`),
+        FfiConverterString.lower(`targetPath`),
+        FfiConverterLong.lower(`observedAtMilliseconds`),_status)
+}
+    )
+    }
+
+
+    @Throws(LegacyClipMigrationException::class) fun `inspectLegacyClipSource`(`sourcePath`: kotlin.String): LegacyClipImportPlan {
+            return FfiConverterTypeLegacyClipImportPlan.lift(
+    uniffiRustCallWithError(LegacyClipMigrationException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_inspect_legacy_clip_source(
+
+
+        FfiConverterString.lower(`sourcePath`),_status)
+}
+    )
+    }
+
+
+    @Throws(LegacyClipMigrationException::class) fun `readStagedLegacyClipImport`(`targetPath`: kotlin.String, `importId`: CommandId): LegacyClipImportVerification {
+            return FfiConverterTypeLegacyClipImportVerification.lift(
+    uniffiRustCallWithError(LegacyClipMigrationException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_read_staged_legacy_clip_import(
+
+
+        FfiConverterString.lower(`targetPath`),
+        FfiConverterTypeCommandId.lower(`importId`),_status)
+}
+    )
+    }
+
+
+    @Throws(LegacyClipMigrationException::class) fun `stageLegacyClipImport`(`sourcePath`: kotlin.String, `sourceBackupPath`: kotlin.String, `targetPath`: kotlin.String, `targetSchemaBackupPath`: kotlin.String, `expectedPlan`: LegacyClipImportPlan, `importId`: CommandId, `targetStoreId`: CommandId, `observedAtMilliseconds`: kotlin.Long): LegacyClipImportReport {
+            return FfiConverterTypeLegacyClipImportReport.lift(
+    uniffiRustCallWithError(LegacyClipMigrationException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_stage_legacy_clip_import(
+
+
+        FfiConverterString.lower(`sourcePath`),
+        FfiConverterString.lower(`sourceBackupPath`),
+        FfiConverterString.lower(`targetPath`),
+        FfiConverterString.lower(`targetSchemaBackupPath`),
+        FfiConverterTypeLegacyClipImportPlan.lower(`expectedPlan`),
+        FfiConverterTypeCommandId.lower(`importId`),
+        FfiConverterTypeCommandId.lower(`targetStoreId`),
+        FfiConverterLong.lower(`observedAtMilliseconds`),_status)
+}
+    )
+    }
 
 
     @Throws(LegacyListeningMigrationException::class) fun `commitStagedLegacyListeningImport`(`targetPath`: kotlin.String, `observedAtMilliseconds`: kotlin.Long): kotlin.Boolean {
@@ -3089,6 +3578,16 @@ public object FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer<List<No
 
         FfiConverterString.lower(`targetPath`),
         FfiConverterTypeCommandId.lower(`importId`),_status)
+}
+    )
+    }
+
+ fun `sharedStoreSchemaVersion`(): kotlin.UInt {
+            return FfiConverterUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_shared_store_schema_version(
+
+        _status)
 }
     )
     }

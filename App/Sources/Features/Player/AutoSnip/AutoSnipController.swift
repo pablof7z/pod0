@@ -138,7 +138,7 @@ final class AutoSnipController {
             atSeconds: now
         )
 
-        let clip = store.addClip(
+        guard let clip = store.addClip(
             episodeID: episode.id,
             subscriptionID: episode.podcastID,
             startMs: startMs,
@@ -146,7 +146,10 @@ final class AutoSnipController {
             transcriptText: text,
             speakerID: speaker,
             source: source
-        )
+        ) else {
+            Self.logger.error("captureSnip: shared clip commit failed")
+            return nil
+        }
 
         Haptics.success()
 
