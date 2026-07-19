@@ -20,7 +20,7 @@ publish = false
 pod0-domain = { path = "crates/pod0-domain", version = "=0.1.0" }
 pod0-application = { path = "crates/pod0-application", version = "=0.1.0" }
 pod0-storage = { path = "crates/pod0-storage", version = "=0.1.0" }
-nmp = { git = "https://github.com/pablof7z/nmp.git", rev = "f3495f09c8a3f90f3b31a28313f572c09fbdb369", version = "=0.1.0" }
+nmp = { git = "https://github.com/pablof7z/nmp.git", rev = "68310f88a31bf80e6b73d018b1374e73efda0041", version = "=0.1.0" }
 rusqlite = { version = "=0.39.0", default-features = false, features = ["backup", "bundled"] }
 quick-xml = { version = "=0.41.0" }
 serde = { version = "=1.0.228", features = ["derive"] }

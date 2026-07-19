@@ -8,13 +8,11 @@ import re
 import sys
 
 
-NMP_REVISION = "f3495f09c8a3f90f3b31a28313f572c09fbdb369"
+NMP_REVISION = "68310f88a31bf80e6b73d018b1374e73efda0041"
 NMP_GIT = "https://github.com/pablof7z/nmp.git"
 ALLOWED_NMP_MANIFEST = "crates/pod0-nmp/Cargo.toml"
 UNIFFI_VERSION = "0.32.0"
 RUSQLITE_VERSION = "0.39.0"
-SECURITY_HOLD_ADVISORIES = {"RUSTSEC-2026-0118", "RUSTSEC-2026-0119"}
-SECURITY_HOLD_ISSUE = "https://github.com/pablof7z/pod0/issues/85"
 
 
 def manifest_dependencies(text: str) -> list[tuple[str, str]]:
@@ -32,18 +30,12 @@ def manifest_dependencies(text: str) -> list[tuple[str, str]]:
     return dependencies
 
 
-def dependency_errors(
-    relative: str, name: str, specification: str, security_hold_active: bool
-) -> list[str]:
+def dependency_errors(relative: str, name: str, specification: str) -> list[str]:
     errors: list[str] = []
     package_match = re.search(r'package\s*=\s*"([^"]+)"', specification)
     package = package_match.group(1) if package_match else name
     if package == "nmp" and relative != ALLOWED_NMP_MANIFEST:
         errors.append(f"{relative}: only {ALLOWED_NMP_MANIFEST} may depend on nmp")
-    if package == "pod0-nmp" and security_hold_active:
-        errors.append(
-            f"{relative}: pod0-nmp consumption is blocked by {SECURITY_HOLD_ISSUE}"
-        )
     if package.startswith("nmp-") and package != "pod0-nmp":
         errors.append(
             f"{relative}: mechanism/protocol crate dependency {package!r} is forbidden"
@@ -77,18 +69,11 @@ def validate(root: Path) -> list[str]:
     elif NMP_REVISION not in lock.read_text(encoding="utf-8"):
         errors.append("Cargo.lock does not contain the approved NMP revision")
 
-    deny_text = (rust / "deny.toml").read_text(encoding="utf-8")
-    security_hold_active = any(
-        advisory in deny_text for advisory in SECURITY_HOLD_ADVISORIES
-    )
-
     for manifest in sorted((rust / "crates").glob("*/Cargo.toml")):
         relative = manifest.relative_to(rust).as_posix()
         text = manifest.read_text(encoding="utf-8")
         for name, specification in manifest_dependencies(text):
-            errors.extend(
-                dependency_errors(relative, name, specification, security_hold_active)
-            )
+            errors.extend(dependency_errors(relative, name, specification))
     return errors
 
 
@@ -96,13 +81,10 @@ def self_test() -> None:
     fixture = '[dependencies]\nnmp = { workspace = true }\n[package]\nname = "fixture"'
     assert manifest_dependencies(fixture) == [("nmp", "{ workspace = true }")]
     assert dependency_errors(
-        "crates/pod0-facade/Cargo.toml", "pod0-nmp", "{ path = \"../pod0-nmp\" }", True
-    ) == [
-        "crates/pod0-facade/Cargo.toml: pod0-nmp consumption is blocked by "
-        + SECURITY_HOLD_ISSUE
-    ]
+        "crates/pod0-facade/Cargo.toml", "pod0-nmp", "{ path = \"../pod0-nmp\" }"
+    ) == []
     assert dependency_errors(
-        "crates/pod0-facade/Cargo.toml", "nmp-store", "{ git = \"example\" }", False
+        "crates/pod0-facade/Cargo.toml", "nmp-store", "{ git = \"example\" }"
     ) == [
         "crates/pod0-facade/Cargo.toml: mechanism/protocol crate dependency "
         "'nmp-store' is forbidden",

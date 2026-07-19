@@ -5,10 +5,6 @@ all-features = true
 version = 2
 yanked = "deny"
 unmaintained = "workspace"
-ignore = [
-    { id = "RUSTSEC-2026-0118", reason = "NMP bootstrap is not linked into the facade or native app; issue #85 blocks all consumers until the dependency graph is fixed." },
-    { id = "RUSTSEC-2026-0119", reason = "NMP bootstrap is not linked into the facade or native app; issue #85 blocks all consumers until the dependency graph is fixed." },
-]
 
 [licenses]
 version = 2

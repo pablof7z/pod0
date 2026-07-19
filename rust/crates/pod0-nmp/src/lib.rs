@@ -1,7 +1,5 @@
 #![forbid(unsafe_code)]
 
-pub const PINNED_NMP_REVISION: &str = "f3495f09c8a3f90f3b31a28313f572c09fbdb369";
-
 /// Pod0's only direct owner of the generic NMP engine. Product-domain crates
 /// do not receive the engine or its mechanism types.
 pub struct NmpRuntime {
@@ -26,8 +24,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn pinned_supported_facade_constructs_and_shuts_down() {
-        assert_eq!(PINNED_NMP_REVISION.len(), 40);
+    fn supported_facade_constructs_and_shuts_down() {
         let runtime = NmpRuntime::start_in_memory().expect("NMP runtime should start");
         runtime.shutdown();
     }

@@ -22,4 +22,4 @@ if ! command -v cargo-audit >/dev/null 2>&1; then
 fi
 
 cargo deny check
-cargo audit --ignore RUSTSEC-2026-0118 --ignore RUSTSEC-2026-0119
+cargo audit

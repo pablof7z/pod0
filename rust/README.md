@@ -73,22 +73,20 @@ for Android arm64/x86_64. Those results prove API portability, not permission
 to begin the M6 Android application phase; the M5 product/architecture gate
 remains authoritative.
 
-## Security hold on NMP consumption
+## NMP security posture
 
-The pinned NMP graph currently resolves Hickory 0.25.2, affected by
-RUSTSEC-2026-0118 and RUSTSEC-2026-0119. Issue
-[#85](https://github.com/pablof7z/pod0/issues/85) blocks every dependency on
-`pod0-nmp` until an upstream-supported graph removes both advisories. The
-workspace accepts them only for the isolated compile-and-lifecycle bootstrap;
-the dependency-policy check prevents the facade or any other crate from
-consuming that adapter while either exception exists. No NMP network path is
-linked into the iOS app.
+The pinned NMP graph resolves Hickory 0.26.1 and contains neither
+RUSTSEC-2026-0118 nor RUSTSEC-2026-0119. `cargo deny` and `cargo audit` run
+without advisory exceptions. The `pod0-nmp` adapter is therefore eligible for
+composition behind the app-owned Rust facade; no NMP network path is linked
+into the iOS app until a product slice explicitly adds that dependency and its
+lifecycle tests.
 
 ## NMP pin and upgrade policy
 
 The only NMP dependency is the supported `nmp` crate at Git revision
-`f3495f09c8a3f90f3b31a28313f572c09fbdb369`, audited on 2026-07-18 against
-upstream `master`. NMP is pre-1.0, so an upgrade requires a named Pod0 issue,
+`68310f88a31bf80e6b73d018b1374e73efda0041`, merged to and audited against
+upstream `master` on 2026-07-19. NMP is pre-1.0, so an upgrade requires a named Pod0 issue,
 review of upstream `README.md`, `docs/known-gaps.md`,
 `docs/architecture/supported-surface.md`, and the current public facade, then:
 
