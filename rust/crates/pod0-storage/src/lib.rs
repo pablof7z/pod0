@@ -64,6 +64,15 @@ mod schema_introspection;
 mod schema_library;
 mod schema_notes;
 mod schema_transcripts;
+mod transcript_store;
+mod transcript_store_codec;
+mod transcript_store_model;
+mod transcript_store_read;
+mod transcript_store_read_artifact;
+mod transcript_store_read_rows;
+mod transcript_store_write;
+mod transcript_store_write_artifact;
+mod transcript_store_write_rows;
 
 pub use backup::{restore_backup_to_new_store, verify_backup};
 pub use clip_import::{ClipImportClock, ClipImporter};
@@ -103,6 +112,12 @@ pub use note_import_model::{
 };
 pub use note_import_store::{commit_note_cutover, read_note_import};
 pub use note_store_model::NoteCollectionSnapshot;
+pub use transcript_store::TranscriptStore;
+pub use transcript_store_model::{
+    MAX_TRANSCRIPT_PROJECTION_ITEMS, StoredTranscriptSegment, StoredTranscriptSpeaker,
+    StoredTranscriptWord, TranscriptCommitStorageReceipt, TranscriptPage,
+    TranscriptSelectionSummary,
+};
 
 #[cfg(test)]
 mod clip_cutover_restart_tests;
@@ -138,3 +153,9 @@ mod note_import_tests;
 mod recovery_test_support;
 #[cfg(test)]
 mod recovery_tests;
+#[cfg(test)]
+mod transcript_store_recovery_tests;
+#[cfg(test)]
+mod transcript_store_test_support;
+#[cfg(test)]
+mod transcript_store_tests;

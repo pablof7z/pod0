@@ -190,6 +190,8 @@ impl EvidenceStore {
                     .execute(
                         "DELETE FROM pod0_transcript_documents WHERE transcript_version_id=?1 \
                          AND NOT EXISTS(SELECT 1 FROM pod0_evidence_generations \
+                         WHERE transcript_version_id=?1) \
+                         AND NOT EXISTS(SELECT 1 FROM pod0_transcript_artifacts \
                          WHERE transcript_version_id=?1)",
                         [transcript_version],
                     )
