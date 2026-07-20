@@ -1,4 +1,4 @@
-import CSQLiteVec
+import CSQLite3
 import Foundation
 
 extension EpisodeSQLiteStore {

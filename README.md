@@ -76,7 +76,7 @@ App/Sources/
 ├── State/        AppStateStore and SQLite-authoritative persistence
 ├── Workflows/    durable jobs, leases, fencing, artifacts, recovery
 ├── Transcript/   transcript model, parsers, provider/native adapters
-├── Knowledge/    chunking, embeddings, SQLiteVec/FTS retrieval
+├── Knowledge/    native embedding/reranking provider execution
 ├── Agent/        tool schemas, validation, generated artifacts, skills
 ├── Services/     platform adapters and temporary application services
 ├── Features/     SwiftUI presentation plus tracked temporary controllers

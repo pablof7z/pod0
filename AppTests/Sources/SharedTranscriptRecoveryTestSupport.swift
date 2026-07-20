@@ -1,6 +1,6 @@
 import CryptoKit
 import Foundation
-import CSQLiteVec
+import CSQLite3
 import Pod0Core
 import XCTest
 @testable import Podcastr

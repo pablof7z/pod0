@@ -1,4 +1,4 @@
-import CSQLiteVec
+import CSQLite3
 import Foundation
 import XCTest
 @testable import Podcastr

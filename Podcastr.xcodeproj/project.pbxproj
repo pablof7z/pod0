@@ -516,7 +516,7 @@
 		B3839EBE561B4BC77F6011BE /* AppStateStore+Lifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAC54EC10812EA4C1EC780F5 /* AppStateStore+Lifecycle.swift */; };
 		B389C5108FE832C3F0F5FB34 /* AgentNotesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF30CFCB7607AB17F8205471 /* AgentNotesView.swift */; };
 		B3911A6DDB986C6528C2C4F1 /* RSSParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252381473A916661CCBA523E /* RSSParserTests.swift */; };
-		B3970DA45FCC4CB32765FCCD /* SQLiteVec in Frameworks */ = {isa = PBXBuildFile; productRef = D1C704F1B182FF83C41AAB0F /* SQLiteVec */; };
+		B3970DA45FCC4CB32765FCCD /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = AC95E5BC4A660944ADC3109C /* Kingfisher */; };
 		B3A905E197AB568191C7B2A6 /* AgentNostrSignerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15A2D929FA7CC3D15CA4ABB8 /* AgentNostrSignerTests.swift */; };
 		B3D650CB33926951017490CF /* ElevenLabsVoiceRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDD80384C741138D608DAECE /* ElevenLabsVoiceRow.swift */; };
 		B3E189C5BA5D59D07FF8FC37 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCDBEC4F0E2BBCFFB096BEFD /* AppDelegate.swift */; };
@@ -614,7 +614,6 @@
 		D944A1BDB09B06AD452C8D3A /* EpisodeDownloadService+Admission.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A1C94CBBCB88AD2E5519A04 /* EpisodeDownloadService+Admission.swift */; };
 		D95527C23F53B938EA0E0C88 /* AppStateStore+Clips.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98A1693ABB19FC728B784A91 /* AppStateStore+Clips.swift */; };
 		DACDC30D47FA9CB617CDE2C0 /* AgentLLMClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A638E5BA5F728BAED5DA9EC /* AgentLLMClient.swift */; };
-		DAF43A45B5BEC1A4531656CC /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = AC95E5BC4A660944ADC3109C /* Kingfisher */; };
 		DB0AD05493472369070D66D5 /* DiscoverResultRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A4AC7F407D64C7EECAC6FB /* DiscoverResultRow.swift */; };
 		DB10B5AD9F69EEF1856576D7 /* PlaybackLifecycleQualificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF9E66C5E53CB0271421BAAA /* PlaybackLifecycleQualificationTests.swift */; };
 		DB2873BD9B10BCD9A324F18F /* recall-index-v1.json in Resources */ = {isa = PBXBuildFile; fileRef = 0B8057F4F41E105DA6D7964F /* recall-index-v1.json */; };
@@ -1528,8 +1527,7 @@
 			files = (
 				F519A30C1D84AF9E6A1B012A /* Pod0Core.framework in Frameworks */,
 				D296A3A113B7CA431F3F4B45 /* P256K in Frameworks */,
-				B3970DA45FCC4CB32765FCCD /* SQLiteVec in Frameworks */,
-				DAF43A45B5BEC1A4531656CC /* Kingfisher in Frameworks */,
+				B3970DA45FCC4CB32765FCCD /* Kingfisher in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2834,7 +2832,6 @@
 			name = Podcastr;
 			packageProductDependencies = (
 				A865ADD09595500A328B6A66 /* P256K */,
-				D1C704F1B182FF83C41AAB0F /* SQLiteVec */,
 				AC95E5BC4A660944ADC3109C /* Kingfisher */,
 			);
 			productName = Podcastr;
@@ -2888,7 +2885,6 @@
 			mainGroup = 26AC729818BDCD33D4152DB0;
 			packageReferences = (
 				9E67C9C9E4C6EC730548EE88 /* XCRemoteSwiftPackageReference "secp256k1.swift" */,
-				E6351A58B45DD67BACED66EE /* XCRemoteSwiftPackageReference "SQLiteVec" */,
 				FD91E0E152391009482BC6AE /* XCRemoteSwiftPackageReference "Kingfisher" */,
 			);
 			productRefGroup = EE8ECCB93F31FD087A3D5446 /* Products */;
@@ -3715,7 +3711,7 @@
 					"@executable_path/Frameworks",
 				);
 				OTHER_LDFLAGS = (
-					"$(inherited)",
+					"$(inherited) -lsqlite3",
 					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_IDENTIFIER)";
@@ -3726,6 +3722,7 @@
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/App/Support";
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -3839,7 +3836,7 @@
 					"@executable_path/Frameworks",
 				);
 				OTHER_LDFLAGS = (
-					"$(inherited)",
+					"$(inherited) -lsqlite3",
 					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_IDENTIFIER)";
@@ -3854,6 +3851,7 @@
 					DEBUG,
 				);
 				SWIFT_COMPILATION_MODE = singlefile;
+				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/App/Support";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -3877,7 +3875,7 @@
 					"@loader_path/Frameworks",
 				);
 				OTHER_LDFLAGS = (
-					"$(inherited)",
+					"$(inherited) -lsqlite3",
 					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = io.f7z.podcast.tests;
@@ -3887,6 +3885,7 @@
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/App/Support";
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Podcastr.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Podcastr";
@@ -4012,7 +4011,7 @@
 					"@loader_path/Frameworks",
 				);
 				OTHER_LDFLAGS = (
-					"$(inherited)",
+					"$(inherited) -lsqlite3",
 					"-L$(DT_TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = io.f7z.podcast.tests;
@@ -4026,6 +4025,7 @@
 					DEBUG,
 				);
 				SWIFT_COMPILATION_MODE = singlefile;
+				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/App/Support";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Podcastr.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Podcastr";
@@ -4191,14 +4191,6 @@
 				minimumVersion = 0.23.1;
 			};
 		};
-		E6351A58B45DD67BACED66EE /* XCRemoteSwiftPackageReference "SQLiteVec" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/jkrukowski/SQLiteVec";
-			requirement = {
-				kind = upToNextMinorVersion;
-				minimumVersion = 0.0.14;
-			};
-		};
 		FD91E0E152391009482BC6AE /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/onevcat/Kingfisher";
@@ -4217,10 +4209,6 @@
 		AC95E5BC4A660944ADC3109C /* Kingfisher */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Kingfisher;
-		};
-		D1C704F1B182FF83C41AAB0F /* SQLiteVec */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SQLiteVec;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

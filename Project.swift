@@ -33,12 +33,6 @@ let project = Project(
             url: "https://github.com/GigaBitcoin/secp256k1.swift",
             requirement: .upToNextMajor(from: "0.23.1")
         ),
-        // Retained for the CSQLiteVec module used by legacy Swift workflow and
-        // state stores tracked in #107. Recall vector/FTS execution is Rust-owned.
-        .remote(
-            url: "https://github.com/jkrukowski/SQLiteVec",
-            requirement: .upToNextMinor(from: "0.0.14")
-        ),
         // Kingfisher — memory + disk image cache. Backs `CachedAsyncImage`
         // so artwork URLs (subscription / episode covers, iTunes Search
         // results, etc.) fetch at most once per session instead of
@@ -94,7 +88,6 @@ let project = Project(
             entitlements: .file(path: "App/Resources/Podcastr.entitlements"),
             dependencies: [
                 .package(product: "P256K"),
-                .package(product: "SQLiteVec"),
                 .package(product: "Kingfisher"),
                 .target(name: coreBindingsName),
                 .target(name: "\(appName)Widget"),
@@ -106,9 +99,11 @@ let project = Project(
                     "PRODUCT_BUNDLE_IDENTIFIER": "$(APP_BUNDLE_IDENTIFIER)",
                     "CFBundleDisplayName": "\(appDisplayName)",
                     "GENERATE_INFOPLIST_FILE": "NO",
+                    "OTHER_LDFLAGS": "$(inherited) -lsqlite3",
                     "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
                     "TARGETED_DEVICE_FAMILY": "1,2",
                     "PROVISIONING_PROFILE_SPECIFIER": "$(CI_APP_PROFILE_SPECIFIER)",
+                    "SWIFT_INCLUDE_PATHS": "$(SRCROOT)/App/Support",
                 ]
             )
         ),
@@ -158,9 +153,11 @@ let project = Project(
             settings: .settings(
                 base: [
                     "GENERATE_INFOPLIST_FILE": "YES",
+                    "OTHER_LDFLAGS": "$(inherited) -lsqlite3",
                     "PRODUCT_BUNDLE_IDENTIFIER": "\(appBundleID).tests",
                     "BUNDLE_LOADER": "$(TEST_HOST)",
                     "TEST_HOST": "$(BUILT_PRODUCTS_DIR)/\(appName).app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/\(appName)",
+                    "SWIFT_INCLUDE_PATHS": "$(SRCROOT)/App/Support",
                 ]
             )
         ),

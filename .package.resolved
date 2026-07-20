@@ -1,4 +1,5 @@
 {
+  "originHash" : "55ac145fb4a4a9455d7e9145b55fbfc646c79d908e9e0d70a2b718b04382d6bc",
   "pins" : [
     {
       "identity" : "kingfisher",
@@ -17,16 +18,7 @@
         "revision" : "cfab52e538683557259302c39ef25df60226eb30",
         "version" : "0.23.1"
       }
-    },
-    {
-      "identity" : "sqlitevec",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/jkrukowski/SQLiteVec",
-      "state" : {
-        "revision" : "1504246d0900db950a5065f43fce964bf4adceda",
-        "version" : "0.0.14"
-      }
     }
   ],
-  "version" : 2
+  "version" : 3
 }
