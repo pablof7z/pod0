@@ -5,7 +5,12 @@ extension AppStateStore {
         let existingEpisodes = Dictionary(uniqueKeysWithValues: state.episodes.map { ($0.id, $0) })
         let projectedPodcasts = projection.podcasts.map(\.swiftValue)
         let projectedEpisodes = projection.episodes.compactMap { record in
-            record.episodeId.uuid.flatMap { record.swiftValue(preserving: existingEpisodes[$0]) }
+            record.episodeId.uuid.flatMap {
+                record.swiftValue(
+                    preserving: existingEpisodes[$0],
+                    chapters: projection.chaptersByEpisodeID[$0]
+                )
+            }
         }
         let newlyReadyTranscriptIDs = projectedEpisodes.compactMap { episode -> UUID? in
             guard Self.isTranscriptReady(episode.transcriptState),
@@ -40,6 +45,32 @@ extension AppStateStore {
     /// The sole production assignment to the replaceable native clip read model.
     func applySharedClips(_ projection: SharedClipSnapshot) {
         mutateState { $0.clips = projection.clips }
+    }
+
+    /// Applies one bounded Rust chapter projection to the replaceable native
+    /// read model. Swift never persists or independently mutates these values.
+    func applySharedChapter(_ projection: SharedChapterSnapshot) {
+        guard let episodeID = projection.summary.episodeId.uuid,
+              let index = state.episodes.firstIndex(where: { $0.id == episodeID })
+        else { return }
+        mutateState {
+            $0.episodes[index].chapters = projection.chapters.isEmpty
+                ? nil
+                : projection.chapters
+            $0.episodes[index].adSegments = projection.adSegments
+        }
+    }
+
+    func clearSharedChapter(episodeID: UUID) {
+        guard let index = state.episodes.firstIndex(where: { $0.id == episodeID }) else {
+            return
+        }
+        guard state.episodes[index].chapters != nil
+                || state.episodes[index].adSegments != nil else { return }
+        mutateState {
+            $0.episodes[index].chapters = nil
+            $0.episodes[index].adSegments = nil
+        }
     }
 
     private static func isTranscriptReady(_ state: TranscriptState?) -> Bool {

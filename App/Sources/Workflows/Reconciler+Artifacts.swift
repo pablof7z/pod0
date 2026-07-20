@@ -9,9 +9,6 @@ extension Reconciler {
                 episode: episode,
                 inputVersion: audioVersion
             )
-            adopted += try adoptInlinePublisherChapters(episode: episode)
-            try restoreDerivedProjection(kind: .chapters, episodeID: episode.id)
-            try restoreDerivedProjection(kind: .adSegments, episodeID: episode.id)
         }
         return adopted
     }
@@ -100,71 +97,6 @@ extension Reconciler {
             return 1
         }
         return 0
-    }
-
-    private func adoptInlinePublisherChapters(episode: Episode) throws -> Int {
-        guard episode.chaptersURL == nil,
-              let sourceVersion = DesiredStatePlanner.publisherChapterInputVersion(episode),
-              let chapters = episode.chapters,
-              !chapters.isEmpty else { return 0 }
-        let current = try artifacts.current(kind: .chapters, subjectID: episode.id)
-        let publisherOrigin = DesiredStatePlanner.publisherChapterOrigin(
-            sourceVersion: sourceVersion,
-            enriched: false
-        )
-        let enrichedOrigin = DesiredStatePlanner.publisherChapterOrigin(
-            sourceVersion: sourceVersion,
-            enriched: true
-        )
-        if current?.integrity == .available,
-           current?.origin == publisherOrigin || current?.origin == enrichedOrigin {
-            return 0
-        }
-        let stored = try DerivedArtifactStagingStore.shared.adoptPublisherChapters(
-            chapters,
-            episodeID: episode.id
-        )
-        try artifacts.adopt(ArtifactRecord(
-            kind: .chapters,
-            subjectID: episode.id,
-            inputVersion: sourceVersion,
-            outputVersion: stored.contentHash,
-            contentHash: stored.contentHash,
-            location: stored.url.path,
-            origin: publisherOrigin,
-            schemaVersion: 1,
-            integrity: .available,
-            verifiedAt: now()
-        ))
-        return 1
-    }
-
-    private func restoreDerivedProjection(kind: ArtifactKind, episodeID: UUID) throws {
-        guard let artifact = try artifacts.current(kind: kind, subjectID: episodeID),
-              artifact.integrity == .available,
-              let location = artifact.location else { return }
-        let url = URL(fileURLWithPath: location)
-        guard let data = try? Data(contentsOf: url),
-              ArtifactRepository.hash(data) == artifact.contentHash else {
-            try artifacts.markIntegrity(kind: kind, subjectID: episodeID, integrity: .corrupt)
-            return
-        }
-        switch kind {
-        case .chapters:
-            guard let chapters = DerivedArtifactStagingStore.shared.loadChapters(at: url) else {
-                try artifacts.markIntegrity(kind: kind, subjectID: episodeID, integrity: .corrupt)
-                return
-            }
-            appStore.setEpisodeChapters(episodeID, chapters: chapters)
-        case .adSegments:
-            guard let ads = DerivedArtifactStagingStore.shared.loadAds(at: url) else {
-                try artifacts.markIntegrity(kind: kind, subjectID: episodeID, integrity: .corrupt)
-                return
-            }
-            appStore.setEpisodeAdSegments(episodeID, segments: ads)
-        default:
-            break
-        }
     }
 
 }

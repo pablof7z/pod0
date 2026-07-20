@@ -1,7 +1,7 @@
 use pod0_application::{ApplicationCommand, RecallScope};
-use pod0_domain::{TranscriptArtifact, transcript_command_fingerprint};
 use sha2::{Digest, Sha256};
 
+use crate::runtime_artifact_command_fingerprint::{hash_chapter_commit, hash_transcript_commit};
 use crate::runtime_command_fingerprint_values::{
     hash_clip_source, hash_evidence_input, hash_note_target, hash_optional, hash_optional_speaker,
     hash_policy,
@@ -129,23 +129,13 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
             expected_selection_revision,
             artifact,
         } => {
-            hash.update(b"commit-transcript\0");
-            hash.update(expected_selection_revision.value.to_be_bytes());
-            match TranscriptArtifact::seal(artifact.clone()) {
-                Ok(artifact) => hash.update(
-                    transcript_command_fingerprint(*expected_selection_revision, &artifact)
-                        .into_bytes(),
-                ),
-                Err(_) => {
-                    hash.update(b"invalid\0");
-                    hash.update(artifact.episode_id.into_bytes());
-                    hash.update(artifact.podcast_id.into_bytes());
-                    hash.update(artifact.source_revision.as_bytes());
-                    hash.update(artifact.source_payload_digest.into_bytes());
-                    hash.update((artifact.speakers.len() as u64).to_be_bytes());
-                    hash.update((artifact.segments.len() as u64).to_be_bytes());
-                }
-            }
+            hash_transcript_commit(&mut hash, *expected_selection_revision, artifact);
+        }
+        ApplicationCommand::CommitChapter {
+            expected_selection_revision,
+            artifact,
+        } => {
+            hash_chapter_commit(&mut hash, *expected_selection_revision, artifact);
         }
         ApplicationCommand::CreateNote {
             text,

@@ -34,6 +34,8 @@ pub fn project_chapter_artifact(
         summary: Some(summary),
         chapters: Vec::new(),
         ad_spans: Vec::new(),
+        operations: Vec::new(),
+        failure: None,
         has_more: false,
     };
     match scope {

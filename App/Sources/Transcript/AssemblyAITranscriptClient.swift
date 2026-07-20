@@ -7,7 +7,7 @@ import os.log
 // input: we pass the publisher's enclosure URL and AssemblyAI fetches it
 // server-side - no upload, no base64 inflation, no on-device memory pressure
 // for 90+ MB podcast files. Returns per-utterance and per-word timestamps
-// which `AIChapterCompiler` needs to anchor chapter boundaries and ad spans.
+// which the Rust chapter qualifier uses to anchor boundaries and ad spans.
 //
 // Wire-protocol notes per AssemblyAI's published llms-full.txt:
 //   - Auth header: `Authorization: <raw_key>` - NO `Bearer` prefix. This is
@@ -422,8 +422,8 @@ extension Transcript {
 
     /// Falls-back segment construction when `utterances` is absent. 1.5 s pause
     /// boundary keeps segments human-sized for the player's transcript view
-    /// without losing AIChapterCompiler's anchoring (it only needs timestamped
-    /// lines, not perfect sentence breaks).
+    /// without losing shared-core anchoring (it needs timestamped lines, not
+    /// perfect sentence breaks).
     private static func groupWordsIntoSegments(_ words: [AssemblyAIWord]) -> [Segment] {
         guard !words.isEmpty else { return [] }
         let pauseBoundary = 1.5

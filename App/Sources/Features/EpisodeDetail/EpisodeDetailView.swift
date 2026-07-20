@@ -56,6 +56,7 @@ struct EpisodeDetailView: View {
                 .publisherChapters, .chapterArtifacts, .metadataIndex,
             ]
         )
+        .chapterProjectionScope(episodeID: episodeID)
     }
 
     // MARK: - Loaded

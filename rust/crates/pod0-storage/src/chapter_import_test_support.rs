@@ -7,7 +7,8 @@ use rusqlite::{Connection, params};
 use crate::transcript_import_digest::{digest_bytes, hex_digest};
 use crate::{
     ChapterImportClock, ChapterImportPlan, ChapterImportReport, ChapterImportVerification,
-    ChapterImporter, LegacyChapterSourceKind, inspect_legacy_chapter_source,
+    ChapterImporter, CoreStoreMigrator, LegacyChapterSourceKind, MigrationClock,
+    inspect_legacy_chapter_source,
 };
 
 pub(crate) const EPISODE_ID: &str = "11111111-1111-1111-1111-111111111111";
@@ -20,6 +21,12 @@ pub(crate) const STORE_ID: CommandId = CommandId::from_parts(8, 8);
 pub(crate) struct FixedClock(pub(crate) i64);
 
 impl ChapterImportClock for FixedClock {
+    fn now_milliseconds(&self) -> i64 {
+        self.0
+    }
+}
+
+impl MigrationClock for FixedClock {
     fn now_milliseconds(&self) -> i64 {
         self.0
     }
@@ -157,6 +164,30 @@ impl ChapterImportFixture {
 
     pub(crate) fn inspect(&self) -> ChapterImportPlan {
         inspect_legacy_chapter_source(&self.source, &self.artifacts).unwrap()
+    }
+
+    pub(crate) fn prepare_target_with_listening_import(&self) {
+        CoreStoreMigrator::new(FixedClock(1_800_000_000_000))
+            .migrate(
+                &self.target,
+                crate::CURRENT_SCHEMA_VERSION,
+                &self.schema_backup,
+                STORE_ID,
+            )
+            .unwrap();
+        Connection::open(&self.target)
+            .unwrap()
+            .execute(
+                "INSERT INTO pod0_listening_imports(import_id,source_kind,source_hash,\
+                 source_generation,podcast_count,subscription_count,episode_count,\
+                 backup_byte_count,target_revision,state,verified_at_ms)\
+                 VALUES(?1,1,?2,0,0,0,0,1,1,'verified',0)",
+                params![
+                    CommandId::from_parts(7, 7).into_bytes().as_slice(),
+                    "0".repeat(64)
+                ],
+            )
+            .unwrap();
     }
 
     pub(crate) fn stage(&self, clock: i64) -> ChapterImportReport {

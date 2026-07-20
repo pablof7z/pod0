@@ -63,7 +63,7 @@ fn fresh_store_migrates_transactionally_to_current() {
     assert_eq!(report.from_version, 0);
     assert_eq!(
         report.applied_versions,
-        vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+        (1..=CURRENT_SCHEMA_VERSION).collect::<Vec<_>>()
     );
     assert!(report.backup.is_none());
     assert_eq!(

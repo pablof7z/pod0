@@ -67,11 +67,18 @@ mod clip_migration;
 mod listening_migration;
 mod note_migration;
 mod runtime;
+mod runtime_artifact_command_fingerprint;
 #[cfg(test)]
 mod runtime_chapter_ad_skip_tests;
+mod runtime_chapter_commands;
+#[cfg(test)]
+mod runtime_chapter_lifecycle_tests;
 mod runtime_chapter_playback;
 #[cfg(test)]
 mod runtime_chapter_playback_tests;
+mod runtime_chapter_projection;
+#[cfg(test)]
+mod runtime_chapter_tests;
 mod runtime_clip_commands;
 #[cfg(test)]
 mod runtime_clip_evidence_tests;
@@ -136,8 +143,8 @@ pub use chapter_migration::{
     LegacyChapterMigrationStage, LegacyChapterRollbackExportReport, LegacyChapterSourceKind,
     commit_staged_legacy_chapter_import, discard_staged_legacy_chapter_import,
     export_legacy_chapter_rollback, inspect_legacy_chapter_migration,
-    read_active_legacy_chapter_migration, stage_legacy_chapter_import,
-    verify_staged_legacy_chapter_import,
+    read_active_legacy_chapter_migration, shared_chapter_store_is_authoritative,
+    stage_legacy_chapter_import, verify_staged_legacy_chapter_import,
 };
 pub use chapter_observation_facade::{
     chapter_observation_limits, qualify_agent_composed_chapter_observation,

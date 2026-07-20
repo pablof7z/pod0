@@ -180,6 +180,14 @@ impl FacadeState {
                     request.max_items,
                 ),
             },
+            ProjectionScope::Chapter { episode_id, scope } => Projection::Chapter {
+                value: self.chapter_projection(
+                    episode_id,
+                    scope,
+                    request.offset,
+                    request.max_items,
+                ),
+            },
             ProjectionScope::Notes { scope } => {
                 let mut notes = self.notes.notes.clone();
                 match scope {

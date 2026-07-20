@@ -4,11 +4,8 @@ import Foundation
 
 enum ArtifactKind: String, CaseIterable, Codable, Sendable {
     case downloadFile
-    case transcript
     case semanticIndex
     case metadataIndex
-    case chapters
-    case adSegments
     case scheduledOutput
     case notificationDelivery
     case feedDiscovery
@@ -70,7 +67,10 @@ struct ArtifactRepository: Sendable {
                 """
                 SELECT kind,subject_id,input_version,output_version,content_hash,
                        location,origin,schema_version,integrity,verified_at
-                FROM artifacts WHERE selected=1 ORDER BY kind,subject_id
+                FROM artifacts
+                WHERE selected=1
+                  AND kind NOT IN ('transcript','chapters','adSegments')
+                ORDER BY kind,subject_id
                 """,
                 db: db
             )
@@ -117,7 +117,6 @@ struct ArtifactRepository: Sendable {
         leaseToken: UUID
     ) throws {
         guard let primary = records.first else { throw JobStoreError.corruptRow }
-        try requireNativeWritable(records)
         try withDatabase { db in
             try WorkflowSQLite.execute("BEGIN IMMEDIATE TRANSACTION", db)
             do {
@@ -196,7 +195,6 @@ struct ArtifactRepository: Sendable {
     /// Records a verified artifact found by reconciliation. This is used only
     /// for adoption when no active attempt owns the already-written output.
     func adopt(_ record: ArtifactRecord) throws {
-        try requireNativeWritable([record])
         try withDatabase { db in
             try WorkflowSQLite.execute("BEGIN IMMEDIATE TRANSACTION", db)
             do {
@@ -214,7 +212,6 @@ struct ArtifactRepository: Sendable {
         subjectID: UUID,
         integrity: ArtifactIntegrity
     ) throws {
-        try requireNativeWritable(kind: kind)
         try withDatabase { db in
             let statement = try WorkflowSQLite.prepare(
                 "UPDATE artifacts SET integrity=?, verified_at=? WHERE kind=? AND subject_id=? AND selected=1",

@@ -32,9 +32,10 @@ Native executor: Swift `AudioEngine` / AVFoundation through `CorePlaybackHost`
 | Shared queue identity, same-episode selection, and adjacent segment transitions remain deterministic | Rust `runtime_playback_recovery_tests`, `SharedPlaybackMappingTests` | Automated |
 | Completion and mark-played do not resurrect a stale position | `EpisodePlayedStateTests`, `AppTests` | Automated |
 | Pre-seek end callbacks and replaced-episode observations cannot overwrite newer shared state | Rust `runtime_playback_race_tests` | Automated |
-| Chapter next/previous targets, restart threshold, stale fences, and command replay are Rust-deterministic | Rust `runtime_chapter_playback_tests` | Automated; production activation gated by #104 |
-| Automatic ad skip uses half-open spans, one stable ID per session, coarse observations, and deliberate seek-back semantics | Rust `runtime_chapter_ad_skip_tests`, `chapter_playback_policy_tests` | Automated; production activation gated by #104 |
+| Chapter next/previous targets, restart threshold, stale fences, and command replay are Rust-deterministic | Rust `runtime_chapter_playback_tests` | Automated; production path active |
+| Automatic ad skip uses half-open spans, one stable ID per session, coarse observations, and deliberate seek-back semantics | Rust `runtime_chapter_ad_skip_tests`, `chapter_playback_policy_tests` | Automated; production path active |
 | Native playback host executes the exact typed chapter/ad target without policy recomputation | `CorePlaybackHostTests` | Automated |
+| Verified chapter migration resumes after termination, damaged core suppresses Swift persistence, and rollback exports replay exactly | `SharedChapterRecoveryTests` | Automated |
 | Sleep-timer pause travels through the same flush boundary | `PlaybackStateAudioCallbackTests`, `PlaybackSleepTimerLabelTests` | Automated |
 | Shared queue/resume/rate survive facade relaunch while the session timer clears | Rust `restart_restores_queue_resume_rate_and_clears_session_timer`, `SharedPlaybackVerticalSliceTests` | Automated |
 | Now Playing seek/pause uses the same persistence side effects | `PlaybackStateAudioCallbackTests` | Automated |
@@ -43,18 +44,27 @@ Native executor: Swift `AudioEngine` / AVFoundation through `CorePlaybackHost`
 
 ## Latest automated evidence
 
-Validated on 2026-07-19 against an iPhone 17 Pro simulator running iOS 26.5:
+Validated on 2026-07-20 against an iPhone 17 Pro simulator running iOS 26.5:
 
-- The complete `Podcastr` scheme passed 619 tests with zero failures or skips.
-- The app built, installed, launched, and rendered onboarding without a crash or
-  shared-store bootstrap error.
+- The complete `Podcastr` scheme passed 620 tests with zero failures or skips in
+  Debug and again with whole-module Release optimization. The Release test
+  invocation used the test-only `ENABLE_TESTABILITY=YES` override required by
+  the suite's `@testable import`; the shipping Release launch did not.
+- Debug and shipping Release builds installed, launched, and rendered the
+  first-launch What's New surface without a crash or shared-store bootstrap
+  error.
 - The locked Rust workspace passed formatting, Clippy with warnings denied,
-  all 68 unit tests, dependency/facade/schema policies, license/source checks,
+  all 232 unit tests, dependency/facade/schema policies, license/source checks,
   and the configured security audit.
-- Generated Swift and Kotlin bindings matched facade metadata; the Kotlin/JNA
-  runtime smoke passed.
+- Generated Swift and Kotlin bindings matched facade metadata. The Kotlin/JNA
+  runtime smoke performed the empty chapter inspect, stage, verify, and
+  authority commit before opening the facade.
 - The core built for Apple device and simulator, Android API 23 ARM64, and
   Android API 23 x86_64.
+- Chapter migration/recovery, stale workflow fencing, bounded projections,
+  source-of-truth deletion, transcript-replacement provenance, unsubscribe
+  retention, navigation, and automatic ad-skip tests all passed in the same
+  matrix.
 
 No physical device was attached for this run, so wired/Bluetooth route evidence
 remains explicitly open rather than being inferred from simulator coverage.

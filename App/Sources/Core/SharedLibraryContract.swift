@@ -5,6 +5,7 @@ struct SharedLibrarySnapshot {
     let podcasts: [PodcastRecord]
     let subscriptions: [PodcastSubscriptionRecord]
     let episodes: [EpisodeRecord]
+    let chaptersByEpisodeID: [UUID: SharedChapterSnapshot]
     let operations: [OperationProjection]
 }
 
@@ -18,6 +19,7 @@ enum SharedLibraryError: Error, LocalizedError, Equatable {
     case invalidNote
     case invalidClip
     case invalidTranscript
+    case invalidChapter
     case revisionConflict
 
     init(_ code: CoreFailureCode?) {
@@ -30,6 +32,7 @@ enum SharedLibraryError: Error, LocalizedError, Equatable {
         case .invalidNote: .invalidNote
         case .invalidClip: .invalidClip
         case .invalidTranscript: .invalidTranscript
+        case .invalidChapter: .invalidChapter
         case .revisionConflict: .revisionConflict
         default: .unavailable
         }
@@ -46,6 +49,7 @@ enum SharedLibraryError: Error, LocalizedError, Equatable {
         case .invalidNote: "The note is empty or contains an invalid anchor."
         case .invalidClip: "That clip has invalid timestamps or transcript context."
         case .invalidTranscript: "That transcript contains invalid timing or provenance."
+        case .invalidChapter: "Those chapters contain invalid timing or provenance."
         case .revisionConflict: "That item changed before this edit could be saved."
         }
     }

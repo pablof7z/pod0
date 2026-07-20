@@ -102,9 +102,8 @@ struct Settings: Codable, Hashable, Sendable {
     /// cheaper model for one-shot categorization without affecting live agent chat.
     var categorizationModel: String = Defaults.llmModel
     var categorizationModelName: String = ""
-    /// Model used by `AIChapterCompiler` to synthesise chapter boundaries from
-    /// a ready transcript. Kept distinct from `wikiModel` so users can pick a
-    /// cheaper / faster model for chapter compile independently.
+    /// Model used by the chapter observation capability to request raw model
+    /// output from a ready transcript. Rust qualifies and selects the result.
     var chapterCompilationModel: String = Defaults.llmModel
     var chapterCompilationModelName: String = ""
     var embeddingsModel: String = Self.defaultEmbeddingsModel
@@ -187,8 +186,8 @@ struct Settings: Codable, Hashable, Sendable {
     /// Defaults on for parity with Apple Podcasts. Suppressed when the
     /// sleep timer has armed an end-of-episode stop.
     var autoPlayNext: Bool = true
-    /// When `true`, the player auto-seeks past detected ad segments
-    /// (`AIChapterCompiler` output, stored on `Episode.adSegments`).
+    /// When `true`, the Rust playback policy requests a seek past ad spans in
+    /// the selected chapter artifact.
     /// Defaults off for v1 — opt-in until detection quality is proven. The
     /// chapter rail still flags ad-overlapping chapters visually regardless.
     var autoSkipAds: Bool = false

@@ -3,12 +3,14 @@ import Pod0Core
 
 @MainActor
 final class SharedLibraryClient {
-    private struct Waiter {
+    static let maximumActiveChapterProjections = 8
+    struct Waiter {
         let continuation: CheckedContinuation<OperationResult?, Error>
     }
 
     nonisolated let facade: Pod0Facade
     let authoritativeTranscriptReader: SharedTranscriptReader
+    let authoritativeChapterReader: SharedChapterReader
     private let dispatcher: Pod0NativeHostDispatcher
     private let deferredPlaybackHost: DeferredPlaybackHost
     let deferredRecallHost: DeferredRecallHost
@@ -17,7 +19,7 @@ final class SharedLibraryClient {
     private var playbackSubscriptionID: SubscriptionId?
     private var notesSubscriptionID: SubscriptionId?
     private var clipsSubscriptionID: SubscriptionId?
-    private var waiters: [CommandId: Waiter] = [:]
+    var waiters: [CommandId: Waiter] = [:]
     private var lastLibraryRevision: UInt64 = 0
     private var lastPlaybackRevision: UInt64 = 0
     var lastNotesRevision: UInt64 = 0
@@ -25,6 +27,9 @@ final class SharedLibraryClient {
     weak var store: AppStateStore?
     private weak var playbackState: PlaybackState?
     private var cachedSnapshot: SharedLibrarySnapshot?
+    var chapterScopeCounts: [UUID: Int] = [:]
+    var chapterSnapshots: [UUID: SharedChapterSnapshot] = [:]
+    var playbackChapterEpisodeID: UUID?
     private var cachedPlayback: PlaybackProjection?
     private var cachedPlaybackRevision: UInt64 = 0
     var cachedNotes: SharedNoteSnapshot?
@@ -42,6 +47,7 @@ final class SharedLibraryClient {
     ) {
         self.facade = facade
         self.authoritativeTranscriptReader = SharedTranscriptReader(facade: facade)
+        self.authoritativeChapterReader = SharedChapterReader(facade: facade)
         let playbackHost = DeferredPlaybackHost()
         let recallHost = DeferredRecallHost()
         self.deferredPlaybackHost = playbackHost
@@ -171,7 +177,8 @@ final class SharedLibraryClient {
             receiveNotes(revision: envelope.stateRevision.value)
         case .clips:
             receiveClips(revision: envelope.stateRevision.value)
-        case .podcastDetail, .episodeDetail, .recall, .evidenceIndex, .transcript, .unsupported:
+        case .podcastDetail, .episodeDetail, .recall, .evidenceIndex, .transcript, .chapter,
+             .unsupported:
             break
         }
     }
@@ -191,6 +198,16 @@ final class SharedLibraryClient {
         lastPlaybackRevision = revision
         cachedPlayback = projection
         cachedPlaybackRevision = revision
+        let projectedEpisodeID = projection.current?.episodeId.uuid
+        if playbackChapterEpisodeID != projectedEpisodeID {
+            if let playbackChapterEpisodeID {
+                releaseChapterProjection(episodeID: playbackChapterEpisodeID)
+            }
+            playbackChapterEpisodeID = projectedEpisodeID
+            if let projectedEpisodeID {
+                retainChapterProjection(episodeID: projectedEpisodeID)
+            }
+        }
         if let playbackState {
             playbackState.applySharedPlayback(
                 projection,
@@ -223,26 +240,20 @@ final class SharedLibraryClient {
             guard offset <= UInt32.max - 200 else { break }
             offset += 200
         }
+        let activeEpisodeIDs = Set(chapterScopeCounts.keys)
+        chapterSnapshots = Dictionary(uniqueKeysWithValues: activeEpisodeIDs.compactMap {
+            episodeID in
+            guard let snapshot = try? authoritativeChapterReader.load(episodeID: episodeID)
+            else { return nil }
+            return (episodeID, snapshot)
+        })
         return SharedLibrarySnapshot(
             podcasts: podcasts,
             subscriptions: subscriptions,
             episodes: episodes,
+            chaptersByEpisodeID: chapterSnapshots,
             operations: operations
         )
-    }
-
-    func resolveWaiters(_ operations: [OperationProjection]) {
-        for operation in operations {
-            guard let waiter = waiters.removeValue(forKey: operation.commandId) else { continue }
-            switch operation.stage {
-            case .succeeded:
-                waiter.continuation.resume(returning: operation.result)
-            case .failed, .cancelled, .unsupported:
-                waiter.continuation.resume(throwing: SharedLibraryError(operation.failure?.code))
-            default:
-                waiters[operation.commandId] = waiter
-            }
-        }
     }
 
     func shutdown() {
@@ -260,12 +271,16 @@ final class SharedLibraryClient {
         playbackSubscriptionID = nil
         notesSubscriptionID = nil
         clipsSubscriptionID = nil
+        chapterScopeCounts.removeAll()
+        chapterSnapshots.removeAll()
+        playbackChapterEpisodeID = nil
         subscriber = nil
         for waiter in waiters.values {
             waiter.continuation.resume(throwing: SharedLibraryError.cancelled)
         }
         waiters.removeAll()
     }
+
 }
 
 private final class SharedLibrarySubscriber: ProjectionSubscriber, @unchecked Sendable {

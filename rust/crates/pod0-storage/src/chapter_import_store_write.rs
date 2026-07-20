@@ -105,7 +105,14 @@ where
         staged_at_ms,
     )?;
     for artifact in artifacts.values() {
-        insert_or_validate_chapter_artifact(&transaction, artifact, import_id, staged_at_ms)?;
+        if artifact.podcast_id == crate::retained_orphan_parent::retained_orphan_podcast_id() {
+            crate::retained_orphan_parent::ensure_retained_orphan_parent(
+                &transaction,
+                artifact.episode_id,
+                staged_at_ms,
+            )?;
+        }
+        insert_or_validate_chapter_artifact(&transaction, artifact, Some(import_id), staged_at_ms)?;
     }
     for entry in &source.entries {
         insert_import_entry(&transaction, import_id, source.plan.source_kind, entry)?;

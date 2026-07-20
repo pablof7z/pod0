@@ -17,6 +17,10 @@ enum SharedLibraryBootstrapStage: String {
     case transcriptStaging
     case transcriptVerification
     case transcriptCommit
+    case chapterInspection
+    case chapterStaging
+    case chapterVerification
+    case chapterCommit
     case facade
 }
 
@@ -167,6 +171,16 @@ enum SharedLibraryBootstrap {
                     stage: &stage
                 )
             }
+            stage = .chapterInspection
+            if !sharedChapterStoreIsAuthoritative(targetPath: target.path) {
+                try stageAndCommitChapters(
+                    persistence: persistence,
+                    target: target,
+                    schemaBackup: schemaBackup,
+                    storeID: storeID,
+                    stage: &stage
+                )
+            }
             stage = .facade
             let facade = try Pod0Facade.open(storePath: target.path)
             let client = SharedLibraryClient(facade: facade, feedHost: feedHost)
@@ -246,46 +260,7 @@ enum SharedLibraryBootstrap {
         }
     }
 
-    private static func stageAndCommitClips(
-        persistence: Persistence,
-        target: URL,
-        schemaBackup: URL,
-        storeID: CommandId,
-        observedAt: Int64
-    ) throws {
-        let source = persistence.episodeStore.fileURL
-        let plan = try inspectLegacyClipSource(sourcePath: source.path)
-        let importID = stableID(
-            "pod0-clip-import:\(plan.sourceHash):\(plan.sourceGeneration)"
-        )
-        let report = try stageLegacyClipImport(
-            sourcePath: source.path,
-            sourceBackupPath: persistence.legacyClipsBackupURL(for: plan).path,
-            targetPath: target.path,
-            targetSchemaBackupPath: schemaBackup.path,
-            expectedPlan: plan,
-            importId: importID,
-            targetStoreId: storeID,
-            observedAtMilliseconds: observedAt
-        )
-        let verification = try readStagedLegacyClipImport(
-            targetPath: target.path,
-            importId: importID
-        )
-        guard report.staged,
-              verification.report.plan == plan,
-              verification.clips.count == Int(plan.clipCount)
-        else {
-            throw SharedLibraryBootstrapError.verificationFailed
-        }
-        _ = try commitStagedLegacyClipImport(
-            sourcePath: source.path,
-            targetPath: target.path,
-            observedAtMilliseconds: observedAt
-        )
-    }
-
-    private static func stableID(_ seed: String) -> CommandId {
+    static func stableID(_ seed: String) -> CommandId {
         let digest = Array(SHA256.hash(data: Data(seed.utf8)))
         let high = digest[0..<8].reduce(UInt64(0)) { ($0 << 8) | UInt64($1) }
         let low = digest[8..<16].reduce(UInt64(0)) { ($0 << 8) | UInt64($1) }

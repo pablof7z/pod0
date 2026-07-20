@@ -192,6 +192,10 @@ impl FacadeState {
                 expected_selection_revision,
                 artifact,
             } => self.commit_transcript(&envelope, expected_selection_revision, artifact),
+            ApplicationCommand::CommitChapter {
+                expected_selection_revision,
+                artifact,
+            } => self.commit_chapter(&envelope, expected_selection_revision, artifact),
             ApplicationCommand::CreateNote {
                 text,
                 kind,

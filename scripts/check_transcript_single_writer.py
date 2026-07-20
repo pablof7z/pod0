@@ -54,13 +54,7 @@ REQUIRED_TOKENS = {
         "SharedLibraryBootstrapFailureCode.classify(error)",
     ),
     "App/Sources/Workflows/ArtifactRepository.swift": (
-        "requireNativeWritable(records)",
-        "requireNativeWritable([record])",
-        "requireNativeWritable(kind: kind)",
-    ),
-    "App/Sources/Workflows/ArtifactRepository+Authority.swift": (
-        "sharedCoreOwnsTranscripts",
-        "records.contains(where: { $0.kind == .transcript })",
+        "kind NOT IN ('transcript','chapters','adSegments')",
     ),
 }
 
@@ -157,6 +151,10 @@ def validate(root: Path) -> list[str]:
     }
     for relative, source in sources.items():
         errors.extend(findings(relative, source))
+    repository = sources.get("App/Sources/Workflows/ArtifactRepository.swift", "")
+    kind_body = re.search(r"enum\s+ArtifactKind\b[^\{]*\{(?P<body>.*?)\n\}", repository, re.S)
+    if kind_body and re.search(r"\bcase\s+transcript\b", kind_body.group("body")):
+        errors.append("App/Sources/Workflows/ArtifactRepository.swift: transcript kind is representable")
     for relative, tokens in REQUIRED_TOKENS.items():
         source = sources.get(relative)
         if source is None:

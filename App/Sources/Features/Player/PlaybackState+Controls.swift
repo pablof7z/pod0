@@ -65,11 +65,8 @@ extension PlaybackState {
         sharedCore?.dispatchPlayback(.setPreferences(
             autoMarkPlayedAtNaturalEnd: settings.autoMarkPlayedAtEnd,
             autoPlayNext: settings.autoPlayNext,
-            // #104 flips this to the user setting in the same change that
-            // activates Rust chapter authority and removes the Swift policy.
-            autoSkipAds: false
+            autoSkipAds: settings.autoSkipAds
         ))
-        autoSkipAdsEnabled = settings.autoSkipAds
         headphoneDoubleTapAction = settings.headphoneDoubleTapAction
         headphoneTripleTapAction = settings.headphoneTripleTapAction
     }

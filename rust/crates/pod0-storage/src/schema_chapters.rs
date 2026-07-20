@@ -3,7 +3,10 @@ use rusqlite::Connection;
 use crate::StorageError;
 use crate::schema_introspection::require_columns;
 
-pub(crate) fn validate_chapters_schema(connection: &Connection) -> Result<(), StorageError> {
+pub(crate) fn validate_chapters_schema(
+    connection: &Connection,
+    version: u32,
+) -> Result<(), StorageError> {
     require_columns(
         connection,
         "pod0_chapter_imports",
@@ -171,17 +174,36 @@ pub(crate) fn validate_chapters_schema(connection: &Connection) -> Result<(), St
             "singleton",
         ],
     )?;
-    let inactive_rows: u32 = connection
+    if version >= 14 {
+        require_columns(
+            connection,
+            "pod0_chapter_commands",
+            &[
+                "already_selected",
+                "artifact_id",
+                "command_fingerprint",
+                "command_id",
+                "completed_at_ms",
+                "episode_id",
+                "expected_selection_revision",
+                "operation_code",
+                "previous_artifact_id",
+                "resulting_selection_revision",
+            ],
+        )?;
+    }
+    let valid_rows: u32 = connection
         .query_row(
             "SELECT COUNT(*) FROM pod0_chapter_state \
-             WHERE singleton=1 AND authority_active=0 AND authority_import_id IS NULL",
-            [],
+             WHERE singleton=1 AND ((authority_active=0 AND authority_import_id IS NULL) \
+             OR (?1>=14 AND authority_active=1 AND authority_import_id IS NOT NULL))",
+            [version],
             |row| row.get(0),
         )
         .map_err(|error| StorageError::sqlite("validate chapter authority state", error))?;
-    if inactive_rows != 1 {
+    if valid_rows != 1 {
         return Err(StorageError::CorruptSchema {
-            detail: "chapter authority must remain inactive",
+            detail: "chapter authority state is malformed",
         });
     }
     Ok(())

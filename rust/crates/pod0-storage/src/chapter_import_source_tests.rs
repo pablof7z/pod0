@@ -3,6 +3,7 @@ use rusqlite::params;
 use crate::chapter_import_test_support::{
     ChapterImportFixture, EPISODE_ID, PODCAST_ID, SECOND_EPISODE_ID,
 };
+use crate::chapter_store_read_selection::read_selected_chapter_artifact;
 
 #[test]
 fn episode_adjunct_distinguishes_explicit_empty_ads_from_not_evaluated() {
@@ -162,6 +163,51 @@ fn v0_winner_policy_imports_complete_history_and_one_selection() {
         )
         .unwrap();
     assert_eq!(selected_revision, "current-input");
+}
+
+#[test]
+fn verified_selected_file_wins_over_disagreeing_inline_fallback() {
+    let fixture = ChapterImportFixture::new_v1();
+    fixture.insert_episode(
+        EPISODE_ID,
+        PODCAST_ID,
+        &episode_with_chapters(EPISODE_ID, true, false).replace("Opening", "Inline fallback"),
+    );
+    fixture.insert_workflow_artifact(
+        "chapters",
+        EPISODE_ID,
+        "selected-input",
+        "selected-output",
+        "generated",
+        "available",
+        1_800_000_300.0,
+        true,
+        &workflow_chapters("Selected file", true),
+    );
+
+    let plan = fixture.inspect();
+    assert_eq!(plan.selected_count, 1);
+    assert_eq!(plan.canonical_artifact_count, 2);
+    fixture.stage(1_800_000_300_000);
+    fixture.verify(1_800_000_300_001);
+    fixture.import(1_800_000_300_002);
+
+    let selected = read_selected_chapter_artifact(
+        &fixture.target_connection(),
+        pod0_domain::EpisodeId::from_bytes([0x11; 16]),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(selected.artifact.chapters[0].title, "Selected file");
+    assert_eq!(
+        fixture
+            .target_connection()
+            .query_row("SELECT COUNT(*) FROM pod0_chapter_artifacts", [], |row| {
+                row.get::<_, u32>(0)
+            })
+            .unwrap(),
+        2
+    );
 }
 
 pub(crate) fn episode_without_adjunct(episode: &str) -> String {

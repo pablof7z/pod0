@@ -111,7 +111,12 @@ pub(crate) fn workflow_evidence(
     let episode_id = uuid_bytes(&row.subject, "chapter artifact episode", index)
         .ok()
         .map(EpisodeId::from_bytes);
-    let podcast_id = context.map(|context| context.podcast_id);
+    let podcast_id = episode_id.map(|_| {
+        context.map_or_else(
+            crate::retained_orphan_parent::retained_orphan_podcast_id,
+            |context| context.podcast_id,
+        )
+    });
     let verified_at_ms =
         finite_milliseconds(row.verified_at_seconds, "chapter artifact", index).ok();
     let mut entry = base_entry(row, loaded, kind, episode_id, podcast_id, verified_at_ms);

@@ -778,6 +778,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_func_read_active_legacy_chapter_migration(
     ): Int
+    external fun uniffi_pod0_facade_checksum_func_shared_chapter_store_is_authoritative(
+    ): Int
     external fun uniffi_pod0_facade_checksum_func_stage_legacy_chapter_import(
     ): Int
     external fun uniffi_pod0_facade_checksum_func_verify_staged_legacy_chapter_import(
@@ -915,6 +917,8 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_func_read_active_legacy_chapter_migration(`targetPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_shared_chapter_store_is_authoritative(`targetPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): Byte
     external fun uniffi_pod0_facade_fn_func_stage_legacy_chapter_import(`sourceDatabasePath`: RustBuffer.ByValue,`artifactRootPath`: RustBuffer.ByValue,`legacyBackupRootPath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`targetSchemaBackupPath`: RustBuffer.ByValue,`expectedPlan`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,`targetStoreId`: RustBufferCommandId.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_func_verify_staged_legacy_chapter_import(`sourceDatabasePath`: RustBuffer.ByValue,`artifactRootPath`: RustBuffer.ByValue,`legacyBackupRootPath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1109,6 +1113,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_func_read_active_legacy_chapter_migration() != 11340) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_shared_chapter_store_is_authoritative() != 42055) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_func_stage_legacy_chapter_import() != 56104) {
@@ -5106,6 +5113,17 @@ public object FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer<List<No
             return FfiConverterTypeLegacyChapterMigrationProjection.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_pod0_facade_fn_func_read_active_legacy_chapter_migration(
+
+
+        FfiConverterString.lower(`targetPath`),_status)
+}
+    )
+    }
+
+ fun `sharedChapterStoreIsAuthoritative`(`targetPath`: kotlin.String): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_shared_chapter_store_is_authoritative(
 
 
         FfiConverterString.lower(`targetPath`),_status)

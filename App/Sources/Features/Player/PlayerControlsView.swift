@@ -43,7 +43,7 @@ struct PlayerControlsView: View {
                 seconds: back,
                 direction: .backward,
                 tapAction: { state.skipBackward() },
-                chapterAction: chapters.isEmpty ? nil : { state.seekToPreviousChapter(in: chapters) }
+                chapterAction: chapters.isEmpty ? nil : { state.seekToPreviousChapter() }
             )
 
             playPauseButton
@@ -52,7 +52,7 @@ struct PlayerControlsView: View {
                 seconds: forward,
                 direction: .forward,
                 tapAction: { state.skipForward() },
-                chapterAction: chapters.isEmpty ? nil : { state.seekToNextChapter(in: chapters) }
+                chapterAction: chapters.isEmpty ? nil : { state.seekToNextChapter() }
             )
 
             Spacer(minLength: 0)

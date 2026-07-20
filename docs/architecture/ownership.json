@@ -62,8 +62,12 @@
         "App/Sources/Core/ChapterObservationCapability.swift",
         "App/Sources/Core/ChapterObservationCapabilityAdapter.swift",
         "App/Sources/Core/ChapterObservationCapabilityAdapter+Mapping.swift",
+        "App/Sources/Core/ChapterModelPromptBuilder.swift",
         "App/Sources/Core/ChapterPublisherTransport.swift",
-        "App/Sources/Core/ChapterModelTransport.swift"
+        "App/Sources/Core/ChapterModelTransport.swift",
+        "App/Sources/Core/SharedChapterReader.swift",
+        "App/Sources/Core/SharedLibraryClient+Chapters.swift",
+        "App/Sources/Core/SharedLibraryClient+ChapterScopes.swift"
       ]
     },
     {
@@ -94,7 +98,23 @@
       "includes": [
         "App/Sources/Core/ChapterObservationCapability.swift",
         "App/Sources/Core/ChapterObservationCapabilityAdapter.swift",
-        "App/Sources/Core/ChapterObservationCapabilityAdapter+Mapping.swift"
+        "App/Sources/Core/ChapterObservationCapabilityAdapter+Mapping.swift",
+        "App/Sources/Core/ChapterModelPromptBuilder.swift"
+      ]
+    },
+    {
+      "id": "native-chapter-projection-adapter",
+      "classification": "native_by_design",
+      "current_owner": "Swift bounded chapter projection and active-view adapters",
+      "target_owner": "Swift and future Kotlin native projection adapters",
+      "reason": "Native player and episode-detail surfaces render platform models reconstructed from bounded Rust pages without owning durable chapter facts.",
+      "boundary": "Retain at most eight active episode scopes, page Rust projections with a fixed cap, and clear transient values when the final native scope closes.",
+      "persisted_state": "None; Episode chapter and ad fields are decode-only legacy inputs and replaceable active-view projections.",
+      "priority": "keep_native",
+      "includes": [
+        "App/Sources/Core/SharedChapterReader.swift",
+        "App/Sources/Core/SharedLibraryClient+Chapters.swift",
+        "App/Sources/Core/SharedLibraryClient+ChapterScopes.swift"
       ]
     },
     {
@@ -207,13 +227,13 @@
     {
       "id": "shared-transcript-model-and-normalization",
       "classification": "shared_rust_now",
-      "current_owner": "Rust canonical transcript artifacts, selection, readiness, migration state, and the non-authoritative canonical chapter/ad contract; Swift remains the sole production chapter/ad writer until #104",
+      "current_owner": "Rust canonical transcript and chapter/ad artifacts, selections, provenance, migration state, and playback policy; Swift retains bounded native projections and raw capabilities",
       "target_owner": "Pod0 Rust transcript/knowledge domain",
       "reason": "Normalized segments, speakers, timestamps, chapters, and provenance are durable evidence.",
       "boundary": "Provider/native capabilities return raw typed payloads; Rust normalizes and versions artifacts.",
-      "persisted_state": "Rust SQLite owns canonical transcript artifacts and selections; chapter/ad persistence remains Swift-owned until staged import #99 and atomic cutover #104. The #98 contract persists nothing.",
+      "persisted_state": "Rust SQLite owns canonical transcript and chapter/ad immutable history, selections, command receipts, and authority state. Legacy Swift values are decode-only migration evidence.",
       "migration_issues": [59, 69, 94, 95, 96, 97, 98, 99, 101, 102, 103, 104],
-      "deletion_target": "Delete Swift normalized chapter/ad models, parser/selection ownership, and direct writers during #104; retain only native provider observation and presentation adapters linked to #100.",
+      "deletion_target": "Issue #100 deletes the remaining Swift chapter request/prompt orchestration; retain only primitive provider execution and bounded native presentation adapters.",
       "priority": "high",
       "includes": ["App/Sources/Transcript/Transcript.swift", "App/Sources/Transcript/Parsing/"]
     },
@@ -283,16 +303,15 @@
     {
       "id": "shared-feature-policy-controllers",
       "classification": "shared_rust_now",
-      "current_owner": "Rust owns migrated playback policy; Swift still owns temporary chapter navigation/ad-skip helpers and unmigrated agent feature controllers",
+      "current_owner": "Rust owns playback, chapter navigation, and ad-skip decisions; Swift dispatches typed controls and still owns unmigrated agent feature controllers",
       "target_owner": "Pod0 Rust listening and agent application domains",
       "reason": "Queue/resume/completion and agent turn/tool decisions are durable cross-platform behavior.",
       "boundary": "Swift feature views render projections; AVFoundation and LLM/provider capabilities report raw results.",
-      "persisted_state": "Rust owns playback resume/played state and staged canonical chapter artifacts. Swift ad-skip suppression is bounded session memory only; agent conversation and turn state remain unmigrated.",
+      "persisted_state": "Rust owns playback resume/played state, selected canonical chapter artifacts, chapter sessions, and skipped-ad session state; agent conversation and turn state remain unmigrated.",
       "migration_issues": [58, 60, 78, 80, 81, 82, 83, 103, 104],
-      "deletion_target": "Issue #104 deletes Swift chapter target/ad-membership/session policy; issue #60 deletes agent policy while retaining thin native view/capability adapters.",
+      "deletion_target": "Issue #60 deletes agent policy while retaining thin native view/capability adapters; chapter playback has no remaining Swift policy owner.",
       "priority": "highest",
-      "includes": ["App/Sources/Features/Player/PlaybackState+AdSkip.swift", "App/Sources/Features/Player/PlaybackState+Chapters.swift", "App/Sources/Features/Player/PlaybackState+HeadphoneGestures.swift", "App/Sources/Features/Agent/AgentChatSession", "App/Sources/Features/Agent/AgentLLMClient.swift", "App/Sources/Features/Agent/AgentOllamaClient.swift", "App/Sources/Features/Agent/AgentOpenRouterClient.swift", "App/Sources/Features/Agent/AgentChatTitleGenerator.swift", "App/Sources/Features/Agent/ChatConversation.swift", "App/Sources/Features/Agent/ChatMessage.swift"],
-      "components": ["PlaybackState.autoSkipAdsEnabled", "PlaybackState.skippedAdSegmentIDs"],
+      "includes": ["App/Sources/Features/Player/PlaybackState+Chapters.swift", "App/Sources/Features/Player/PlaybackState+HeadphoneGestures.swift", "App/Sources/Features/Agent/AgentChatSession", "App/Sources/Features/Agent/AgentLLMClient.swift", "App/Sources/Features/Agent/AgentOllamaClient.swift", "App/Sources/Features/Agent/AgentOpenRouterClient.swift", "App/Sources/Features/Agent/AgentChatTitleGenerator.swift", "App/Sources/Features/Agent/ChatConversation.swift", "App/Sources/Features/Agent/ChatMessage.swift"],
       "excludes": [
         "App/Sources/Features/Agent/AgentChatSession+Recall.swift"
       ]
@@ -320,7 +339,7 @@
       "persisted_state": "Transient presentation only; current exceptions are tracked by shared/temporary entries.",
       "priority": "keep_native",
       "includes": ["App/Sources/Features/"],
-      "excludes": ["App/Sources/Features/Player/PlaybackState.swift", "App/Sources/Features/Player/PlaybackState+AdSkip.swift", "App/Sources/Features/Player/PlaybackState+AudioCallbacks.swift", "App/Sources/Features/Player/PlaybackState+Chapters.swift", "App/Sources/Features/Player/PlaybackState+Controls.swift", "App/Sources/Features/Player/PlaybackState+HeadphoneGestures.swift", "App/Sources/Features/Player/PlaybackState+ProductSignals.swift", "App/Sources/Features/Player/PlaybackState+Queue.swift", "App/Sources/Features/Player/PlaybackState+SharedCore.swift", "App/Sources/Features/Player/PlaybackState+SleepTimer.swift", "App/Sources/Features/Player/PlaybackState+Snapshot.swift", "App/Sources/Features/Player/PlaybackTypes.swift", "App/Sources/Features/Player/AutoSnip/AutoSnipController.swift", "App/Sources/Features/Recall/RecallAnswerModels.swift", "App/Sources/Features/Recall/RecallAnswerService.swift", "App/Sources/Features/Recall/RecallFeature.swift", "App/Sources/Features/Agent/AgentChatSession", "App/Sources/Features/Agent/AgentLLMClient.swift", "App/Sources/Features/Agent/AgentOllamaClient.swift", "App/Sources/Features/Agent/AgentOpenRouterClient.swift", "App/Sources/Features/Agent/AgentChatTitleGenerator.swift", "App/Sources/Features/Agent/ChatConversation.swift", "App/Sources/Features/Agent/ChatMessage.swift"]
+      "excludes": ["App/Sources/Features/Player/PlaybackState.swift", "App/Sources/Features/Player/PlaybackState+AudioCallbacks.swift", "App/Sources/Features/Player/PlaybackState+Chapters.swift", "App/Sources/Features/Player/PlaybackState+Controls.swift", "App/Sources/Features/Player/PlaybackState+HeadphoneGestures.swift", "App/Sources/Features/Player/PlaybackState+ProductSignals.swift", "App/Sources/Features/Player/PlaybackState+Queue.swift", "App/Sources/Features/Player/PlaybackState+SharedCore.swift", "App/Sources/Features/Player/PlaybackState+SleepTimer.swift", "App/Sources/Features/Player/PlaybackState+Snapshot.swift", "App/Sources/Features/Player/PlaybackTypes.swift", "App/Sources/Features/Player/AutoSnip/AutoSnipController.swift", "App/Sources/Features/Recall/RecallAnswerModels.swift", "App/Sources/Features/Recall/RecallAnswerService.swift", "App/Sources/Features/Recall/RecallFeature.swift", "App/Sources/Features/Agent/AgentChatSession", "App/Sources/Features/Agent/AgentLLMClient.swift", "App/Sources/Features/Agent/AgentOllamaClient.swift", "App/Sources/Features/Agent/AgentOpenRouterClient.swift", "App/Sources/Features/Agent/AgentChatTitleGenerator.swift", "App/Sources/Features/Agent/ChatConversation.swift", "App/Sources/Features/Agent/ChatMessage.swift"]
     },
     {
       "id": "native-platform-services",

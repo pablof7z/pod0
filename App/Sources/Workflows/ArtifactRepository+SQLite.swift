@@ -18,7 +18,6 @@ extension ArtifactRepository {
         db: OpaquePointer,
         beforeSelection: (@Sendable () throws -> Void)? = nil
     ) throws {
-        try requireNativeWritable([record])
         let deselect = try WorkflowSQLite.prepare(
             "UPDATE artifacts SET selected=0, integrity='stale' WHERE kind=? AND subject_id=? AND selected=1",
             db: db

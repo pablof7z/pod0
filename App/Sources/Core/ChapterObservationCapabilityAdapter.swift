@@ -57,6 +57,25 @@ final class ChapterObservationCapabilityAdapter {
         )
     }
 
+    /// Async job-facing adapter over the same bounded capability lifecycle.
+    /// The native shell owns only the in-flight task; Rust still qualifies the
+    /// raw observation and decides whether it can become a domain artifact.
+    func execute(
+        _ envelope: ChapterCapabilityRequestEnvelope
+    ) async -> ChapterCapabilityResponse {
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                execute(envelope) { response in
+                    continuation.resume(returning: response)
+                }
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.cancel(cancellationID: envelope.cancellationID)
+            }
+        }
+    }
+
     func cancel(cancellationID: CancellationId) {
         let requestIDs = activeTasks.compactMap { requestID, active in
             active.envelope.cancellationID == cancellationID ? requestID : nil

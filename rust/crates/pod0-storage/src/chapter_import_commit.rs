@@ -44,10 +44,12 @@ where
     let mut connection = open_current(target_path)?;
     let report = read_import_report(&connection, import_id, true)?
         .ok_or(StorageError::ChapterImportNotFound)?;
-    if report.state == ChapterImportState::Imported {
-        return Ok(report);
-    }
-    if report.state != ChapterImportState::Verified || report.plan.blocked_count != 0 {
+    let already_imported = report.state == ChapterImportState::Imported;
+    if !matches!(
+        report.state,
+        ChapterImportState::Verified | ChapterImportState::Imported
+    ) || report.plan.blocked_count != 0
+    {
         return Err(StorageError::ChapterImportConflict);
     }
     if report.plan != source.plan {
@@ -58,27 +60,34 @@ where
     let transaction = connection
         .transaction_with_behavior(TransactionBehavior::Immediate)
         .map_err(|error| StorageError::sqlite("begin chapter import commit", error))?;
-    require_inactive(&transaction)?;
-    for (episode_id, artifact_id) in selections {
-        transaction
-            .execute(
-                "INSERT INTO pod0_chapter_selections(episode_id,selection_revision,artifact_id,\
-                 source_import_id,selected_at_ms) VALUES(?1,?2,?3,?4,?5)",
-                params![
-                    episode_id.into_bytes().as_slice(),
-                    i64::try_from(report.target_revision.value)
-                        .map_err(|_| StorageError::ChapterImportConflict)?,
-                    artifact_id.into_bytes().as_slice(),
-                    import_id.into_bytes().as_slice(),
-                    imported_at_ms,
-                ],
-            )
-            .map_err(|error| StorageError::sqlite("record chapter import selection", error))?;
+    match authority_state(&transaction)? {
+        (true, Some(active)) if active == import_id.into_bytes() => return Ok(report),
+        (true, _) => return Err(StorageError::CutoverAlreadyAuthoritative),
+        (false, None) => {}
+        _ => return Err(StorageError::ChapterImportConflict),
+    }
+    if !already_imported {
+        for (episode_id, artifact_id) in selections {
+            transaction
+                .execute(
+                    "INSERT INTO pod0_chapter_selections(episode_id,selection_revision,artifact_id,\
+                     source_import_id,selected_at_ms) VALUES(?1,?2,?3,?4,?5)",
+                    params![
+                        episode_id.into_bytes().as_slice(),
+                        i64::try_from(report.target_revision.value)
+                            .map_err(|_| StorageError::ChapterImportConflict)?,
+                        artifact_id.into_bytes().as_slice(),
+                        import_id.into_bytes().as_slice(),
+                        imported_at_ms,
+                    ],
+                )
+                .map_err(|error| StorageError::sqlite("record chapter import selection", error))?;
+        }
     }
     let state_changed = transaction
         .execute(
-            "UPDATE pod0_chapter_state SET collection_revision=?1 \
-             WHERE singleton=1 AND collection_revision < ?1 AND authority_active=0",
+            "UPDATE pod0_chapter_state SET collection_revision=MAX(collection_revision,?1) \
+             WHERE singleton=1 AND authority_active=0 AND authority_import_id IS NULL",
             [i64::try_from(report.target_revision.value)
                 .map_err(|_| StorageError::ChapterImportConflict)?],
         )
@@ -86,15 +95,17 @@ where
     if state_changed != 1 {
         return Err(StorageError::ChapterImportConflict);
     }
-    let import_changed = transaction
-        .execute(
-            "UPDATE pod0_chapter_imports SET state='imported',imported_at_ms=?1,\
-             diagnostic_code=NULL WHERE import_id=?2 AND state='verified'",
-            params![imported_at_ms, import_id.into_bytes().as_slice()],
-        )
-        .map_err(|error| StorageError::sqlite("commit chapter import", error))?;
-    if import_changed != 1 {
-        return Err(StorageError::ChapterImportConflict);
+    if !already_imported {
+        let import_changed = transaction
+            .execute(
+                "UPDATE pod0_chapter_imports SET state='imported',imported_at_ms=?1,\
+                 diagnostic_code=NULL WHERE import_id=?2 AND state='verified'",
+                params![imported_at_ms, import_id.into_bytes().as_slice()],
+            )
+            .map_err(|error| StorageError::sqlite("commit chapter import", error))?;
+        if import_changed != 1 {
+            return Err(StorageError::ChapterImportConflict);
+        }
     }
     if let Err(error) = before_commit() {
         drop(transaction);
@@ -112,6 +123,16 @@ where
         drop(transaction);
         mark_corrupt(target_path, import_id, StorageError::SourceChanged.code());
         return Err(StorageError::SourceChanged);
+    }
+    let activated = transaction
+        .execute(
+            "UPDATE pod0_chapter_state SET authority_active=1,authority_import_id=?1 \
+             WHERE singleton=1 AND authority_active=0 AND authority_import_id IS NULL",
+            [import_id.into_bytes().as_slice()],
+        )
+        .map_err(|error| StorageError::sqlite("activate chapter authority", error))?;
+    if activated != 1 {
+        return Err(StorageError::ChapterImportConflict);
     }
     transaction
         .commit()
@@ -153,7 +174,9 @@ fn selected_artifacts(
     Ok(selected)
 }
 
-fn require_inactive(transaction: &rusqlite::Transaction<'_>) -> Result<(), StorageError> {
+fn authority_state(
+    transaction: &rusqlite::Transaction<'_>,
+) -> Result<(bool, Option<[u8; 16]>), StorageError> {
     let value: (bool, Option<Vec<u8>>) = transaction
         .query_row(
             "SELECT authority_active,authority_import_id FROM pod0_chapter_state WHERE singleton=1",
@@ -161,9 +184,15 @@ fn require_inactive(transaction: &rusqlite::Transaction<'_>) -> Result<(), Stora
             |row| Ok((row.get(0)?, row.get(1)?)),
         )
         .map_err(|error| StorageError::sqlite("read chapter authority before import", error))?;
-    if value == (false, None) {
-        Ok(())
-    } else {
-        Err(StorageError::CutoverAlreadyAuthoritative)
-    }
+    Ok((
+        value.0,
+        value
+            .1
+            .map(|bytes| {
+                bytes
+                    .try_into()
+                    .map_err(|_| StorageError::ChapterImportConflict)
+            })
+            .transpose()?,
+    ))
 }

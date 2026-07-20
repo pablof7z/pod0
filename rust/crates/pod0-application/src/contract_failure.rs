@@ -18,6 +18,7 @@ pub enum CoreFailureCode {
     InvalidNote,
     InvalidClip,
     InvalidTranscript,
+    InvalidChapter,
     HostUnavailable,
     HostRejected,
     Cancelled,

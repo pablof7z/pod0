@@ -23,6 +23,8 @@ struct Reconciler {
             settings: appStore.state.settings,
             artifacts: try artifacts.all(),
             transcripts: transcriptSnapshots(),
+            chapters: chapterSnapshots(),
+            chapterCompletions: try chapterCompletions(),
             transcriptDesiredEpisodeIDs: try transcriptDesiredIDs(),
             scheduledTasks: appStore.scheduledTasks,
             now: now()
@@ -170,6 +172,37 @@ struct Reconciler {
         appStore.sharedLibrary?.transcriptWorkflowSnapshots(
             episodeIDs: appStore.state.episodes.map(\.id)
         ) ?? []
+    }
+
+    private func chapterSnapshots() -> [ChapterWorkflowSnapshot] {
+        appStore.sharedLibrary?.chapterWorkflowSnapshots(
+            episodeIDs: appStore.state.episodes.map(\.id)
+        ) ?? []
+    }
+
+    private func chapterCompletions() throws -> [ChapterWorkflowCompletion] {
+        guard let sharedLibrary = appStore.sharedLibrary else { return [] }
+        return try jobStore.allJobs().compactMap { job in
+            guard job.state == .succeeded,
+                  job.kind == .publisherChapters || job.kind == .chapterArtifacts,
+                  let output = job.outputVersion,
+                  let data = Data(base64Encoded: output),
+                  let receipt = try? Self.decoder.decode(
+                    SharedChapterWorkflowReceipt.self,
+                    from: data
+                  ),
+                  receipt.episodeID == job.subjectID,
+                  receipt.inputVersion == job.inputVersion,
+                  sharedLibrary.verifyChapterWorkflowReceipt(receipt)
+            else { return nil }
+            return ChapterWorkflowCompletion(
+                episodeID: receipt.episodeID,
+                kind: job.kind,
+                inputVersion: receipt.inputVersion,
+                artifactID: receipt.artifactID,
+                publisherInputVersion: receipt.publisherInputVersion
+            )
+        }
     }
 
     private func prerequisitesAreAvailable(for job: WorkJob) -> Bool {

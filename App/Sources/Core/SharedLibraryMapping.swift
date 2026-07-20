@@ -63,7 +63,10 @@ extension AutoDownloadPolicy {
 }
 
 extension EpisodeRecord {
-    func swiftValue(preserving adjunct: Episode?) -> Episode? {
+    func swiftValue(
+        preserving adjunct: Episode?,
+        chapters chapterProjection: SharedChapterSnapshot?
+    ) -> Episode? {
         guard let id = episodeId.uuid,
               let podcastID = podcastId.uuid,
               let enclosureURL = URL(string: enclosureUrl)
@@ -83,7 +86,7 @@ extension EpisodeRecord {
             enclosureURL: enclosureURL,
             enclosureMimeType: enclosureMimeType,
             imageURL: imageUrl.flatMap(URL.init(string:)),
-            chapters: adjunct?.chapters,
+            chapters: chapterProjection?.chapters,
             persons: mappedPersons(preserving: adjunct?.persons),
             soundBites: mappedSoundBites(preserving: adjunct?.soundBites),
             publisherTranscriptURL: feedMetadata.publisherTranscript.flatMap {
@@ -97,7 +100,7 @@ extension EpisodeRecord {
             downloadState: adjunct?.downloadState ?? .notDownloaded,
             transcriptState: transcript.swiftValue,
             requestedTranscriptProvider: adjunct?.requestedTranscriptProvider,
-            adSegments: adjunct?.adSegments,
+            adSegments: chapterProjection?.adSegments,
             generationSource: adjunct?.generationSource
         )
     }

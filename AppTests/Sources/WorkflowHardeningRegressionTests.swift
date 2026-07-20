@@ -3,7 +3,7 @@ import XCTest
 @testable import Podcastr
 
 final class WorkflowRepairRegressionTests: XCTestCase {
-    func testLegacyTranscriptArtifactCannotSatisfyRustTranscriptPlanning() {
+    func testGenericArtifactCannotSatisfyRustTranscriptPlanning() {
         let episode = Episode(
             podcastID: UUID(),
             guid: "legacy-transcript-artifact",
@@ -12,8 +12,8 @@ final class WorkflowRepairRegressionTests: XCTestCase {
             enclosureURL: URL(string: "https://example.com/legacy-transcript.mp3")!
         )
         let inputVersion = DesiredStatePlanner.audioVersion(episode)
-        let legacyArtifact = ArtifactRecord(
-            kind: .transcript,
+        let genericArtifact = ArtifactRecord(
+            kind: .semanticIndex,
             subjectID: episode.id,
             inputVersion: inputVersion,
             outputVersion: "legacy-output",
@@ -28,7 +28,7 @@ final class WorkflowRepairRegressionTests: XCTestCase {
         let jobs = DesiredStatePlanner().plan(.init(
             episodes: [episode],
             settings: Settings(),
-            artifacts: [legacyArtifact],
+            artifacts: [genericArtifact],
             transcripts: [],
             transcriptDesiredEpisodeIDs: [episode.id],
             scheduledTasks: [],

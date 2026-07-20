@@ -26,14 +26,14 @@ extension PlaybackState {
             if chapters.isEmpty {
                 skipForward()
             } else {
-                seekToNextChapter(in: chapters)
+                seekToNextChapter()
             }
         case .previousChapter:
             let chapters = episode.map(resolveNavigableChapters) ?? []
             if chapters.isEmpty {
                 skipBackward()
             } else {
-                seekToPreviousChapter(in: chapters)
+                seekToPreviousChapter()
             }
         case .clipNow:
             onClipRequested()

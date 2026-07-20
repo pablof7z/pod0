@@ -13,12 +13,12 @@ private class RecordingSubscriber : ProjectionSubscriber {
 }
 
 fun main(args: Array<String>) {
-    check(args.size == 8)
+    check(args.size == 9)
     val fixture = decodeProperties(File(args[0]).readText())
     qualifySchemaFixture(fixture)
 
     qualifyListeningDomain(decodeProperties(File(args[1]).readText()))
-    qualifyListeningImport(File(args[2]))
+    qualifyListeningImport(File(args[2]), File(args[8]))
     qualifyRecallProjection(decodeProperties(File(args[3]).readText()))
     qualifyNoteProjection(decodeProperties(File(args[4]).readText()))
     qualifyClipProjection(decodeProperties(File(args[5]).readText()))
@@ -46,7 +46,7 @@ fun main(args: Array<String>) {
         check(subscriber.revisions == listOf(0UL, 1UL))
 
         val projection = facade.snapshot(request).projection
-        check(facade.snapshot(request).contractVersion == 17u)
+        check(facade.snapshot(request).contractVersion == 18u)
         check(projection is Projection.Library)
         val unsupportedOperation = projection.value.operations.single()
         check(unsupportedOperation.commandId == CommandId(0UL, 1UL))
@@ -96,7 +96,7 @@ fun main(args: Array<String>) {
     }
 }
 
-private fun qualifyListeningImport(source: File) {
+private fun qualifyListeningImport(source: File, chapterSource: File) {
     val root = Files.createTempDirectory("pod0-listening-import").toFile()
     try {
         val plan = inspectLegacyListeningSource(source.absolutePath)
@@ -129,6 +129,7 @@ private fun qualifyListeningImport(source: File) {
         qualifyEmptyNoteImport(source, root)
         qualifyEmptyClipImport(source, root)
         qualifyEmptyTranscriptImport(File(root, "core.sqlite"), root)
+        qualifyEmptyChapterImport(chapterSource, File(root, "core.sqlite"), root)
         qualifyTranscriptRuntime(
             File(root, "core.sqlite"),
             imported.podcasts.single().podcastId,

@@ -110,6 +110,7 @@ final class ProductSignalInstrumentationTests: XCTestCase {
             podcasts: page.podcasts,
             subscriptions: page.subscriptions,
             episodes: page.episodes,
+            chaptersByEpisodeID: [:],
             operations: page.operations
         ))
         try await Task.sleep(for: .milliseconds(20))

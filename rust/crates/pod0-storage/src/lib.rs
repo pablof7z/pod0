@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 mod backup;
+mod chapter_authority;
 mod chapter_import;
 mod chapter_import_commit;
 mod chapter_import_discard;
@@ -62,6 +63,7 @@ mod legacy_transcript_transform;
 mod legacy_transform;
 mod library_feed_codec;
 mod library_store;
+mod library_store_chapters;
 mod library_store_clip_support;
 mod library_store_clips;
 mod library_store_commands;
@@ -91,6 +93,7 @@ mod note_legacy_backup;
 mod note_store_codec;
 mod note_store_model;
 mod note_store_read;
+mod retained_orphan_parent;
 mod schema;
 mod schema_chapters;
 mod schema_clips;
@@ -136,7 +139,7 @@ pub use chapter_import_store_read::{read_active_chapter_import, read_chapter_imp
 pub use chapter_rollback_export::{
     CHAPTER_ROLLBACK_FORMAT_VERSION, export_chapter_rollback_bundle,
 };
-pub use chapter_store_model::SelectedChapterArtifact;
+pub use chapter_store_model::{ChapterCommitStorageReceipt, SelectedChapterArtifact};
 pub use clip_import::{ClipImportClock, ClipImporter};
 pub(crate) use clip_import_model::InspectedClipSource;
 pub use clip_import_model::{
@@ -159,6 +162,10 @@ pub use legacy_note_source::inspect_legacy_note_source;
 pub use legacy_source::inspect_legacy_listening_source;
 pub use legacy_transcript_source::inspect_legacy_transcript_source;
 pub use library_store::{LibraryStore, commit_listening_cutover};
+pub fn chapter_store_is_authoritative(path: &std::path::Path) -> Result<bool, StorageError> {
+    let connection = crate::chapter_import_store_read::open_current(path)?;
+    crate::chapter_authority::chapter_is_authoritative(&connection)
+}
 pub use library_store_playback::{
     PlaybackMutation, PlaybackMutationResult, PlaybackQueuePlacement,
 };

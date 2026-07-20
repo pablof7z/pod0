@@ -141,6 +141,11 @@ pub fn read_active_legacy_chapter_migration(
     }
 }
 
+#[uniffi::export]
+pub fn shared_chapter_store_is_authoritative(target_path: String) -> bool {
+    pod0_storage::chapter_store_is_authoritative(Path::new(&target_path)).unwrap_or(false)
+}
+
 #[allow(clippy::too_many_arguments)]
 #[uniffi::export]
 pub fn stage_legacy_chapter_import(

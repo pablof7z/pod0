@@ -10,7 +10,7 @@ use crate::chapter_store_read_artifact::read_chapter_artifact;
 pub(crate) fn insert_or_validate_chapter_artifact(
     transaction: &Transaction<'_>,
     artifact: &ChapterArtifact,
-    source_import_id: CommandId,
+    source_import_id: Option<CommandId>,
     created_at_ms: i64,
 ) -> Result<(), StorageError> {
     artifact
@@ -81,7 +81,7 @@ pub(crate) fn insert_or_validate_chapter_artifact(
                     .transpose()?,
                 legacy.and_then(|value| value.original_origin.as_deref()),
                 legacy.map(|value| value.generated_at_was_unknown),
-                source_import_id.into_bytes().as_slice(),
+                source_import_id.map(|value| value.into_bytes().to_vec()),
                 created_at_ms,
             ],
         )

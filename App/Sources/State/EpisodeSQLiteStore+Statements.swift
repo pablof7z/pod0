@@ -189,9 +189,10 @@ extension EpisodeSQLiteStore {
         return encoder
     }()
 
-    static let decoder: JSONDecoder = {
+    static func decoder(loadLegacyChapterAdjuncts: Bool) -> JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
+        decoder.userInfo[.loadLegacyChapterAdjuncts] = loadLegacyChapterAdjuncts
         return decoder
-    }()
+    }
 }

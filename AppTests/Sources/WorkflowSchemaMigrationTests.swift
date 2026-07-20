@@ -79,13 +79,28 @@ final class WorkflowSchemaMigrationTests: XCTestCase {
             )
         }
 
-        let repository = ArtifactRepository(fileURL: fileURL)
-        let current = try XCTUnwrap(repository.current(kind: .transcript, subjectID: subjectID))
-        let history = try repository.history(kind: .transcript, subjectID: subjectID)
-
-        XCTAssertEqual(current.outputVersion, "out-2")
-        XCTAssertEqual(current.location, "two")
-        XCTAssertEqual(history.map(\.outputVersion), ["out-3", "out-2", "out-1"])
+        _ = try ArtifactRepository(fileURL: fileURL).all()
+        try raw { db in
+            XCTAssertEqual(
+                try Self.text(
+                    "SELECT output_version FROM artifacts WHERE kind='transcript' AND selected=1",
+                    db: db
+                ),
+                "out-2"
+            )
+            XCTAssertEqual(
+                try Self.text(
+                    """
+                    SELECT group_concat(output_version,'|') FROM (
+                        SELECT output_version FROM artifacts WHERE kind='transcript'
+                        ORDER BY verified_at DESC,id DESC
+                    )
+                    """,
+                    db: db
+                ),
+                "out-3|out-2|out-1"
+            )
+        }
         XCTAssertEqual(try schemaVersion("artifacts"), 1)
     }
 

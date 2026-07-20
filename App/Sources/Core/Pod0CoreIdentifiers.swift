@@ -94,6 +94,19 @@ extension TranscriptSegmentId {
     var stableString: String { coreIdentifier(high: high, low: low) }
 }
 
+extension ChapterArtifactId {
+    var uuid: UUID? { UUID(coreHigh: high, low: low) }
+    var stableString: String { coreIdentifier(high: high, low: low) }
+}
+
+extension ChapterId {
+    var uuid: UUID? { UUID(coreHigh: high, low: low) }
+}
+
+extension AdSpanId {
+    var uuid: UUID? { UUID(coreHigh: high, low: low) }
+}
+
 extension ContentDigest {
     init?(hexadecimal: String) {
         guard hexadecimal.count == 64,
@@ -121,6 +134,13 @@ extension CommandId {
 }
 
 extension CancellationId {
+    init(uuid: UUID) {
+        let parts = uuid.coreIdentifierParts
+        self.init(high: parts.high, low: parts.low)
+    }
+}
+
+extension HostRequestId {
     init(uuid: UUID) {
         let parts = uuid.coreIdentifierParts
         self.init(high: parts.high, low: parts.low)

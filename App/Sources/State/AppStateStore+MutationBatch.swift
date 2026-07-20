@@ -55,6 +55,14 @@ extension AppStateStore {
     }
 
     private func runStateSideEffects() {
+        guard sharedLibraryUnavailableReason == nil else {
+            // The SQLite episode payload is migration input until Rust has
+            // committed authority. Never let a native mutation rewrite that
+            // evidence after bootstrap has failed closed.
+            pendingAtomicJobs.removeAll()
+            Self.logger.error("Suppressed native persistence while shared core is unavailable")
+            return
+        }
         let snapshot = state
         let jobs = pendingAtomicJobs
         pendingAtomicJobs.removeAll()

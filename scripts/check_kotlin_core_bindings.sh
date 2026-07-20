@@ -65,6 +65,8 @@ done < <(find "$REPO_ROOT/BindingsSmoke/Kotlin" -name '*.kt' -type f | sort)
   -jvm-target 21 \
   -include-runtime \
   -d "$TOOLS_ROOT/smoke/pod0-core-bindings.jar"
+CHAPTER_SOURCE="$TOOLS_ROOT/smoke/empty-legacy-chapter.sqlite"
+sqlite3 "$CHAPTER_SOURCE" < "$REPO_ROOT/Fixtures/CoreImport/empty-legacy-chapter-v1.sql"
 "$JAVA_HOME/bin/java" \
   -Djna.library.path="$CARGO_OUTPUT/release" \
   -classpath "$TOOLS_ROOT/smoke/pod0-core-bindings.jar:$JNA_JAR" \
@@ -76,5 +78,6 @@ done < <(find "$REPO_ROOT/BindingsSmoke/Kotlin" -name '*.kt' -type f | sort)
   "$REPO_ROOT/Fixtures/CoreKnowledge/note-projection-v1.properties" \
   "$REPO_ROOT/Fixtures/CoreKnowledge/clip-projection-v1.properties" \
   "$REPO_ROOT/Fixtures/CoreKnowledge/transcript-contract-v1.properties" \
-  "$REPO_ROOT/Fixtures/CoreKnowledge/chapter-contract-v1.properties"
+  "$REPO_ROOT/Fixtures/CoreKnowledge/chapter-contract-v1.properties" \
+  "$CHAPTER_SOURCE"
 echo "Kotlin generated binding compile and runtime smoke passed"

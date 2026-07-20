@@ -18,6 +18,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../../../schema/migrations/0011_retained_library_artifacts.sql"),
     include_str!("../../../schema/migrations/0012_complete_transcript_history.sql"),
     include_str!("../../../schema/migrations/0013_chapter_artifacts.sql"),
+    include_str!("../../../schema/migrations/0014_chapter_authority.sql"),
 ];
 
 pub(crate) fn migration_sql(version: u32) -> Option<&'static str> {
@@ -283,7 +284,7 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
         crate::schema_transcripts::validate_transcripts_schema(connection, version)?;
     }
     if version >= 13 {
-        crate::schema_chapters::validate_chapters_schema(connection)?;
+        crate::schema_chapters::validate_chapters_schema(connection, version)?;
     }
     Ok(())
 }

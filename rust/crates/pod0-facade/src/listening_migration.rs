@@ -278,6 +278,8 @@ impl From<StorageError> for LegacyListeningMigrationError {
             | StorageError::TranscriptImportNotFound
             | StorageError::NewerLegacyTranscriptSchema { .. }
             | StorageError::InvalidChapterArtifact
+            | StorageError::ChapterCommandConflict
+            | StorageError::ChapterRevisionConflict
             | StorageError::ChapterImportConflict
             | StorageError::ChapterImportNotFound
             | StorageError::NewerLegacyChapterSchema { .. }

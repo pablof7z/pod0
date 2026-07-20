@@ -47,6 +47,7 @@ impl LibraryStore {
     ) -> Result<Option<crate::SelectedChapterArtifact>, StorageError> {
         let connection = open_current(&self.path, true)?;
         require_authoritative(&connection)?;
+        crate::chapter_authority::require_chapter_authoritative(&connection)?;
         crate::chapter_store_read_selection::read_selected_chapter_artifact(&connection, episode_id)
     }
 

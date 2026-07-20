@@ -70,6 +70,9 @@ impl Pod0Facade {
     pub fn open(store_path: String) -> Result<Arc<Self>, FacadeOpenError> {
         let path = Path::new(&store_path);
         let store = LibraryStore::open_authoritative(path).map_err(FacadeOpenError::from)?;
+        if !pod0_storage::chapter_store_is_authoritative(path).map_err(FacadeOpenError::from)? {
+            return Err(FacadeOpenError::NotAuthoritative);
+        }
         store
             .require_notes_authoritative()
             .map_err(FacadeOpenError::from)?;

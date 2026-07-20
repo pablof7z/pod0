@@ -1,6 +1,6 @@
 use pod0_domain::{
     AdSpanEvaluation, AdSpanId, ChapterAdKind, ChapterArtifactId, ChapterArtifactSource, ChapterId,
-    ChapterLegacySource, ContentDigest, EpisodeId, PodcastId, TranscriptVersionId,
+    ChapterLegacySource, ContentDigest, EpisodeId, PodcastId, StateRevision, TranscriptVersionId,
 };
 
 use crate::StorageError;
@@ -110,6 +110,10 @@ pub(crate) fn sqlite_i64(value: u64) -> Result<i64, StorageError> {
 
 pub(crate) fn stored_u64(value: i64, detail: &'static str) -> Result<u64, StorageError> {
     u64::try_from(value).map_err(|_| corrupt(detail))
+}
+
+pub(crate) fn revision(value: i64) -> Result<StateRevision, StorageError> {
+    stored_u64(value, "chapter selection revision").map(StateRevision::new)
 }
 
 pub(crate) fn stored_u32(value: i64, detail: &'static str) -> Result<u32, StorageError> {

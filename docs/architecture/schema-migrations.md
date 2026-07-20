@@ -34,6 +34,11 @@ Current versions:
   including orphaned episodes, while retaining exactly one selected artifact
   per selected episode. Import accounting separates total artifacts from
   selected artifacts.
+- v13: immutable chapter/ad-span artifacts, normalized items, provenance,
+  import evidence, history, exact selections, and staged chapter authority.
+- v14: runtime chapter commands and replay receipts, nullable import identity
+  for newly observed artifacts, and the atomic chapter authority state used by
+  production cutover.
 
 Facade contract version 12 adds the canonical full-transcript application
 command, typed receipt/failures, and bounded runtime projections. Schema v10
@@ -76,4 +81,5 @@ separate, explicitly tested export operation; the old Swift writer must not be
 silently re-enabled.
 
 Operational recovery and rollback procedures are defined in the
-[transcript authority migration runbook](transcript-migration-runbook.md).
+[transcript authority migration runbook](transcript-migration-runbook.md) and
+[chapter authority migration runbook](chapter-migration-runbook.md).

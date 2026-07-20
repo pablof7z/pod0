@@ -73,7 +73,7 @@ fun qualifyChapterContract(fixture: Map<String, String>) {
     )
 
     check(fixture["fixture_version"] == "1")
-    check(fixture["contract_version"]?.toUInt() == 17u)
+    check(fixture["contract_version"]?.toUInt() == 18u)
     check(fixture["unknown_future_field"] == "ignored-by-v1-readers")
     val qualified = projectChapterContract(
         request,
@@ -235,20 +235,4 @@ private fun chapterDigest(bytes: ByteArray): ContentDigest {
         (value shl 8) or digest[index].toUByte().toULong()
     }
     return ContentDigest(word(0), word(8), word(16), word(24))
-}
-
-fun qualifyChapterMigrationBoundary() {
-    val missing = "/definitely-missing-pod0-chapter-source"
-    val inspected = inspectLegacyChapterMigration(missing, missing)
-    check(inspected.stage == LegacyChapterMigrationStage.BLOCKED)
-    check(inspected.failure?.code == LegacyChapterMigrationFailureCode.STORAGE_UNAVAILABLE)
-    check(inspected.report == null && inspected.rollbackExport == null)
-
-    val status = readActiveLegacyChapterMigration(missing)
-    check(status.stage == LegacyChapterMigrationStage.BLOCKED)
-    check(status.failure?.diagnosticCode == "storage_sqlite")
-
-    val rollback = exportLegacyChapterRollback(missing, missing, missing)
-    check(rollback.stage == LegacyChapterMigrationStage.BLOCKED)
-    check(rollback.rollbackExport == null)
 }

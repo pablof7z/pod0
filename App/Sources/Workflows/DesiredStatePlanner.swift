@@ -1,80 +1,5 @@
 import Foundation
-
-struct TranscriptJobPayload: Codable, Sendable, Equatable {
-    let provider: STTProvider
-    let modelID: String
-    let audioURL: URL
-    let audioVersion: String
-    let userInitiated: Bool
-}
-
-struct ScheduledRunPayload: Codable, Sendable, Equatable {
-    let taskID: UUID
-    let scheduledFor: Date
-    let prompt: String
-    let modelID: String
-    let intervalSeconds: TimeInterval
-}
-
-struct NotificationJobPayload: Codable, Sendable, Equatable {
-    let discoveredAt: Date
-    let podcastID: UUID
-    let episodeTitle: String
-}
-
-struct AutoDownloadJobPayload: Codable, Sendable, Equatable {
-    let discoveryOccurrenceID: String
-    let policyVersion: String
-}
-
-enum DownloadIntentOrigin: String, Codable, Sendable, Equatable {
-    case user
-    case playback
-    case autoDownload
-
-    var priority: Int {
-        switch self {
-        case .user: 100
-        case .playback: 80
-        case .autoDownload: 20
-        }
-    }
-}
-
-struct DownloadJobPayload: Codable, Sendable, Equatable {
-    let origin: DownloadIntentOrigin
-    let enclosureURL: URL
-    let audioVersion: String
-}
-
-struct PublisherChaptersJobPayload: Codable, Sendable, Equatable {
-    let url: URL
-    let sourceVersion: String
-}
-
-struct FeedDiscoveryPayload: Codable, Sendable, Equatable {
-    struct EpisodeInput: Codable, Sendable, Equatable {
-        let episodeID: UUID
-        let inputVersion: String
-        let pubDate: Date
-        let title: String
-    }
-
-    let podcastID: UUID
-    let occurrenceID: String
-    let discoveredAt: Date
-    let episodes: [EpisodeInput]
-    let autoDownloadPolicy: AutoDownloadPolicy?
-    let notificationsEnabled: Bool
-    let policyVersion: String
-}
-
-struct TranscriptWorkflowSnapshot: Sendable, Equatable {
-    let episodeID: UUID
-    let sourceRevision: String
-    let contentDigest: String
-    let selectionRevision: UInt64
-}
+import Pod0Core
 
 struct DesiredStatePlanner: Sendable {
     struct Input: Sendable {
@@ -82,9 +7,33 @@ struct DesiredStatePlanner: Sendable {
         let settings: Settings
         let artifacts: [ArtifactRecord]
         let transcripts: [TranscriptWorkflowSnapshot]
+        let chapters: [ChapterWorkflowSnapshot]
+        let chapterCompletions: [ChapterWorkflowCompletion]
         let transcriptDesiredEpisodeIDs: Set<UUID>
         let scheduledTasks: [AgentScheduledTask]
         let now: Date
+
+        init(
+            episodes: [Episode],
+            settings: Settings,
+            artifacts: [ArtifactRecord],
+            transcripts: [TranscriptWorkflowSnapshot],
+            chapters: [ChapterWorkflowSnapshot] = [],
+            chapterCompletions: [ChapterWorkflowCompletion] = [],
+            transcriptDesiredEpisodeIDs: Set<UUID>,
+            scheduledTasks: [AgentScheduledTask],
+            now: Date
+        ) {
+            self.episodes = episodes
+            self.settings = settings
+            self.artifacts = artifacts
+            self.transcripts = transcripts
+            self.chapters = chapters
+            self.chapterCompletions = chapterCompletions
+            self.transcriptDesiredEpisodeIDs = transcriptDesiredEpisodeIDs
+            self.scheduledTasks = scheduledTasks
+            self.now = now
+        }
     }
 
     func plan(_ input: Input) -> [DesiredJob] {
@@ -94,6 +43,13 @@ struct DesiredStatePlanner: Sendable {
         )
         let transcripts = Dictionary(
             uniqueKeysWithValues: input.transcripts.map { ($0.episodeID, $0) }
+        )
+        let chapters = Dictionary(
+            uniqueKeysWithValues: input.chapters.map { ($0.episodeID, $0) }
+        )
+        let chapterCompletions = Dictionary(
+            grouping: input.chapterCompletions,
+            by: \.episodeID
         )
         var jobs: [DesiredJob] = []
         for episode in input.episodes {
@@ -121,27 +77,38 @@ struct DesiredStatePlanner: Sendable {
                 ))
             }
 
-            let chapters = artifacts[ArtifactKey(kind: .chapters, subjectID: episode.id)]
+            let chapter = chapters[episode.id]
+            let completions = chapterCompletions[episode.id] ?? []
+            var publisherReady = true
             if let publisherVersion = Self.publisherChapterInputVersion(episode),
-               let url = episode.chaptersURL,
-               !Self.hasCurrentPublisherChapters(chapters, sourceVersion: publisherVersion) {
-                let payload = PublisherChaptersJobPayload(
-                    url: url,
-                    sourceVersion: publisherVersion
+               let url = episode.chaptersURL {
+                publisherReady = Self.hasCurrentPublisherChapters(
+                chapter,
+                completions: completions,
+                sourceVersion: publisherVersion
                 )
-                jobs.append(DesiredJob(
-                    idempotencyKey: "publisher-chapters:\(episode.id):\(publisherVersion)",
-                    kind: .publisherChapters,
-                    subjectID: episode.id,
-                    inputVersion: publisherVersion,
-                    payload: try? Self.encoder.encode(payload),
-                    priority: 55,
-                    resourceClass: .planning
-                ))
+                if !publisherReady {
+                    let payload = PublisherChaptersJobPayload(
+                        url: url,
+                        sourceVersion: publisherVersion
+                    )
+                    jobs.append(DesiredJob(
+                        idempotencyKey: "publisher-chapters:\(episode.id):\(publisherVersion)",
+                        kind: .publisherChapters,
+                        subjectID: episode.id,
+                        inputVersion: publisherVersion,
+                        payload: try? Self.encoder.encode(payload),
+                        priority: 55,
+                        resourceClass: .planning
+                    ))
+                }
             }
 
             guard let transcript, transcript.sourceRevision == audioVersion else { continue }
-            let indexVersion = Self.indexInputVersion(transcript, settings: input.settings)
+            let indexVersion = Self.transcriptIndexInputVersion(
+                transcript,
+                settings: input.settings
+            )
             let semantic = artifacts[ArtifactKey(kind: .semanticIndex, subjectID: episode.id)]
             if !Self.isCurrent(semantic, inputVersion: indexVersion) {
                 jobs.append(DesiredJob(
@@ -154,10 +121,18 @@ struct DesiredStatePlanner: Sendable {
                 ))
             }
 
-            let compilerVersion = Self.compilerInputVersion(transcript, settings: input.settings)
-            let ads = artifacts[ArtifactKey(kind: .adSegments, subjectID: episode.id)]
-            if !Self.isCurrent(chapters, inputVersion: compilerVersion)
-                || !Self.isCurrent(ads, inputVersion: compilerVersion) {
+            if !publisherReady || chapter?.provenance.source == .agentComposed {
+                continue
+            }
+            let compilerVersion = Self.chapterCompilerInputVersion(
+                transcript,
+                settings: input.settings
+            )
+            if !Self.hasCurrentCompiledChapters(
+                chapter,
+                completions: completions,
+                inputVersion: compilerVersion
+            ) {
                 jobs.append(DesiredJob(
                     idempotencyKey: "compile:\(episode.id):\(compilerVersion)",
                     kind: .chapterArtifacts,
@@ -206,42 +181,36 @@ struct DesiredStatePlanner: Sendable {
     }
 
     static func publisherChapterInputVersion(_ episode: Episode) -> String? {
-        if let url = episode.chaptersURL {
-            return ArtifactRepository.version(parts: [
-                url.absoluteString,
-                "podcasting2-chapters-v1",
-            ])
-        }
-        guard let chapters = episode.chapters,
-              !chapters.isEmpty,
-              chapters.contains(where: { !$0.isAIGenerated }) else { return nil }
-        return ArtifactRepository.version(parts: chapters.flatMap {
-            [
-                String($0.startTime),
-                String($0.endTime ?? -1),
-                $0.title,
-                $0.imageURL?.absoluteString ?? "",
-                $0.linkURL?.absoluteString ?? "",
-            ]
-        } + ["inline-publisher-chapters-v1"])
-    }
-
-    static func publisherChapterOrigin(sourceVersion: String, enriched: Bool) -> String {
-        "\(enriched ? "publisherEnriched" : "publisher"):\(sourceVersion)"
+        guard let url = episode.chaptersURL else { return nil }
+        return ArtifactRepository.version(parts: [
+            url.absoluteString,
+            "podcasting2-chapters-v1",
+        ])
     }
 
     private static func hasCurrentPublisherChapters(
-        _ artifact: ArtifactRecord?,
+        _ chapter: ChapterWorkflowSnapshot?,
+        completions: [ChapterWorkflowCompletion],
         sourceVersion: String
     ) -> Bool {
-        guard artifact?.integrity == .available else { return false }
-        return artifact?.origin == publisherChapterOrigin(
-            sourceVersion: sourceVersion,
-            enriched: false
-        ) || artifact?.origin == publisherChapterOrigin(
-            sourceVersion: sourceVersion,
-            enriched: true
-        )
+        guard let chapter else { return false }
+        return completions.contains {
+            $0.artifactID == chapter.artifactID
+                && $0.publisherInputVersion == sourceVersion
+        }
+    }
+
+    private static func hasCurrentCompiledChapters(
+        _ chapter: ChapterWorkflowSnapshot?,
+        completions: [ChapterWorkflowCompletion],
+        inputVersion: String
+    ) -> Bool {
+        guard let chapter else { return false }
+        return completions.contains {
+            $0.kind == .chapterArtifacts
+                && $0.inputVersion == inputVersion
+                && $0.artifactID == chapter.artifactID
+        }
     }
 
     private static func transcriptProviderVersion(_ provider: STTProvider, settings: Settings) -> String {
@@ -253,7 +222,7 @@ struct DesiredStatePlanner: Sendable {
         }
     }
 
-    private static func indexInputVersion(
+    static func transcriptIndexInputVersion(
         _ transcript: TranscriptWorkflowSnapshot,
         settings: Settings
     ) -> String {
@@ -263,7 +232,7 @@ struct DesiredStatePlanner: Sendable {
         ])
     }
 
-    private static func compilerInputVersion(
+    static func chapterCompilerInputVersion(
         _ transcript: TranscriptWorkflowSnapshot,
         settings: Settings
     ) -> String {

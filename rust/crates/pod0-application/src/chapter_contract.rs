@@ -4,6 +4,8 @@ use pod0_domain::{
     ContentDigest, EpisodeId, PodcastId, StateRevision, UnixTimestampMilliseconds,
 };
 
+use crate::{CoreFailure, OperationProjection};
+
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct ChapterContractRequest {
     pub command_id: CommandId,
@@ -79,6 +81,8 @@ pub struct ChapterArtifactProjection {
     pub summary: Option<ChapterSummaryProjection>,
     pub chapters: Vec<ChapterItemProjection>,
     pub ad_spans: Vec<AdSpanProjection>,
+    pub operations: Vec<OperationProjection>,
+    pub failure: Option<CoreFailure>,
     pub has_more: bool,
 }
 

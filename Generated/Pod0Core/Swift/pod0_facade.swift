@@ -4154,6 +4154,14 @@ public func readActiveLegacyChapterMigration(targetPath: String) -> LegacyChapte
     )
 })
 }
+public func sharedChapterStoreIsAuthoritative(targetPath: String) -> Bool  {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_shared_chapter_store_is_authoritative(
+        FfiConverterString.lower(targetPath),uniffiCallStatus
+    )
+})
+}
 public func stageLegacyChapterImport(sourceDatabasePath: String, artifactRootPath: String, legacyBackupRootPath: String, targetPath: String, targetSchemaBackupPath: String, expectedPlan: LegacyChapterImportPlan, importId: CommandId, targetStoreId: CommandId) -> LegacyChapterMigrationProjection  {
     return try!  FfiConverterTypeLegacyChapterMigrationProjection_lift(try! rustCall() {
         uniffiCallStatus in
@@ -4484,6 +4492,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_func_read_active_legacy_chapter_migration() != 11340) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_shared_chapter_store_is_authoritative() != 42055) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_func_stage_legacy_chapter_import() != 56104) {

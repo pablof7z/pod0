@@ -9,7 +9,7 @@ use crate::chapter_import_test_support::{
 use crate::{ChapterImportState, ChapterImporter, StorageError, read_chapter_import};
 
 #[test]
-fn orphan_and_corrupt_workflow_rows_remain_blocked_evidence() {
+fn valid_orphan_workflow_artifact_gets_a_hidden_retained_parent() {
     let orphan = ChapterImportFixture::new_v1();
     orphan.insert_workflow_artifact(
         "chapters",
@@ -23,21 +23,35 @@ fn orphan_and_corrupt_workflow_rows_remain_blocked_evidence() {
         &workflow_chapters("Orphan", true),
     );
     let plan = orphan.inspect();
-    assert_eq!((plan.blocked_count, plan.canonical_artifact_count), (1, 0));
+    assert_eq!((plan.blocked_count, plan.canonical_artifact_count), (0, 1));
+    assert_eq!(plan.selected_count, 1);
+    orphan.prepare_target_with_listening_import();
     orphan.stage(1_800_000_160_000);
-    assert_eq!(
-        orphan
-            .target_connection()
+    orphan.verify(1_800_000_160_001);
+    orphan.import(1_800_000_160_002);
+    let connection = orphan.target_connection();
+    assert!(
+        !connection
             .query_row(
-                "SELECT COUNT(*) FROM pod0_chapter_import_entries \
-                 WHERE validation_state='blocked' AND episode_id IS NOT NULL AND podcast_id IS NULL",
-                [],
-                |row| row.get::<_, i64>(0),
+                "SELECT library_visible FROM pod0_podcasts WHERE podcast_id=?1",
+                [crate::retained_orphan_parent::retained_orphan_podcast_id()
+                    .into_bytes()
+                    .as_slice()],
+                |row| row.get::<_, bool>(0),
             )
-            .unwrap(),
-        1
+            .unwrap()
     );
+    let selected = crate::chapter_store_read_selection::read_selected_chapter_artifact(
+        &connection,
+        pod0_domain::EpisodeId::from_bytes([0x11; 16]),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(selected.artifact.chapters[0].title, "Orphan");
+}
 
+#[test]
+fn hash_mismatched_workflow_row_remains_blocked_evidence() {
     let corrupt = ChapterImportFixture::new_v1();
     corrupt.insert_episode(
         EPISODE_ID,
@@ -75,6 +89,85 @@ fn orphan_and_corrupt_workflow_rows_remain_blocked_evidence() {
             .state,
         ChapterImportState::Corrupt
     );
+}
+
+#[test]
+fn selected_missing_file_is_preserved_as_blocked_evidence_and_fails_closed() {
+    let fixture = ChapterImportFixture::new_v1();
+    fixture.insert_episode(
+        EPISODE_ID,
+        PODCAST_ID,
+        &crate::chapter_import_source_tests::episode_without_adjunct(EPISODE_ID),
+    );
+    let path = fixture.insert_workflow_artifact(
+        "chapters",
+        EPISODE_ID,
+        "missing-input",
+        "missing-output",
+        "generated",
+        "available",
+        1_800_000_162.0,
+        true,
+        &workflow_chapters("Missing", true),
+    );
+    fs::remove_file(path).unwrap();
+
+    let plan = fixture.inspect();
+    assert_eq!((plan.blocked_count, plan.canonical_artifact_count), (1, 0));
+    fixture.stage(1_800_000_162_000);
+    assert_eq!(
+        fixture
+            .target_connection()
+            .query_row(
+                "SELECT diagnostic_code FROM pod0_chapter_import_entries",
+                [],
+                |row| row.get::<_, String>(0),
+            )
+            .unwrap(),
+        "workflow_file_missing"
+    );
+    assert!(matches!(
+        ChapterImporter::new(FixedClock(1_800_000_162_001)).verify(
+            &fixture.source,
+            &fixture.artifacts,
+            &fixture.legacy_backup,
+            &fixture.target,
+            IMPORT_ID,
+        ),
+        Err(StorageError::InvalidChapterArtifact)
+    ));
+}
+
+#[test]
+fn multiple_selected_files_for_one_episode_are_rejected_before_staging() {
+    let fixture = ChapterImportFixture::new_v1();
+    fixture.insert_episode(
+        EPISODE_ID,
+        PODCAST_ID,
+        &crate::chapter_import_source_tests::episode_without_adjunct(EPISODE_ID),
+    );
+    for version in ["first", "second"] {
+        fixture.insert_workflow_artifact(
+            "chapters",
+            EPISODE_ID,
+            version,
+            version,
+            "generated",
+            "available",
+            1_800_000_163.0,
+            true,
+            &workflow_chapters(version, true),
+        );
+    }
+
+    assert!(matches!(
+        crate::inspect_legacy_chapter_source(&fixture.source, &fixture.artifacts),
+        Err(StorageError::InvalidLegacyRecord {
+            detail: "multiple artifacts are selected",
+            ..
+        })
+    ));
+    assert!(!fixture.target.exists());
 }
 
 #[test]

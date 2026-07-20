@@ -1,12 +1,15 @@
+import uniffi.pod0_facade.sharedStoreSchemaVersion
+
 fun qualifySchemaFixture(fixture: Map<String, String>) {
+    val currentSchemaVersion = sharedStoreSchemaVersion()
     check(fixture["fixture_version"] == "1")
     check(fixture["schema_component"] == "kernel")
     check(fixture["stored_version"]?.toUInt() == 2u)
     check(fixture["supported_min"]?.toUInt() == 0u)
-    check(fixture["supported_max"]?.toUInt() == 13u)
+    check(fixture["supported_max"]?.toUInt() == currentSchemaVersion)
     check(fixture["access_mode"] == "migration_only")
     check(fixture["migration_state"] == "required")
-    check(fixture["target_version"]?.toUInt() == 13u)
+    check(fixture["target_version"]?.toUInt() == currentSchemaVersion)
     check(fixture["store_id_high"]?.toULong() == 10UL)
     check(fixture["store_id_low"]?.toULong() == 11UL)
     check(fixture["command_id_high"]?.toULong() == 1UL)

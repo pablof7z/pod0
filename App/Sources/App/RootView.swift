@@ -1,24 +1,6 @@
 import CoreSpotlight
 import SwiftUI
 
-/// The tabs available at the root navigation level.
-///
-/// Search is reachable via a top-right toolbar button. The Player lives behind
-/// a persistent mini-bar that expands into `PlayerView` on tap. Settings and
-/// Saved are reachable from the avatar sidebar.
-enum RootTab: String, CaseIterable {
-    case home = "Home"
-    case library = "Library"
-    case saved = "Saved"
-
-    var icon: String {
-        switch self {
-        case .home:    "house.fill"
-        case .library: "tray.fill"
-        case .saved:   "bookmark.fill"
-        }
-    }
-}
 /// The root view of the app. Hosts the main tab bar (hidden), onboarding gate,
 /// deep-link routing, and the avatar sidebar.
 struct RootView: View {
@@ -41,8 +23,12 @@ struct RootView: View {
 
     private let sidebarWidth: CGFloat = 300
 
+    @ViewBuilder
     var body: some View {
-        ZStack(alignment: .leading) {
+        if let reason = store.sharedLibraryUnavailableReason {
+            SharedCoreUnavailableView(reason: reason)
+        } else {
+            ZStack(alignment: .leading) {
             tabBar
                 .environment(playbackState)
                 .offset(x: showSidebar ? sidebarWidth : 0)
@@ -171,6 +157,7 @@ struct RootView: View {
             .ignoresSafeArea()
             .offset(x: showSidebar ? 0 : -sidebarWidth)
             .zIndex(100)
+            }
         }
     }
 

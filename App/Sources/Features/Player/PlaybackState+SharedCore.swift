@@ -25,6 +25,7 @@ extension PlaybackState {
             if projection.current == nil {
                 episode = nil
                 currentSegmentEndTime = nil
+                chapterContext = nil
                 pendingResumeSignal = nil
             }
             writeNowPlayingSnapshot(force: true)
@@ -33,7 +34,7 @@ extension PlaybackState {
 
         let isNewEpisode = episode?.id != resolved.id
         episode = resolved
-        adSegments = resolved.adSegments ?? []
+        chapterContext = current.chapterContext
         currentSegmentEndTime = current.segment?.endPositionMilliseconds.map {
             Double($0) / 1_000
         }
@@ -79,7 +80,6 @@ extension PlaybackState {
 
     func handleSharedPresentationTime(_ time: TimeInterval) {
         guard sharedCore != nil else { return }
-        applyAutoSkipAdsIfNeeded(at: time)
         writeNowPlayingSnapshot(force: false)
     }
 

@@ -225,10 +225,7 @@ fn row_digest(row: &LegacyTranscriptRow) -> ContentDigest {
 }
 
 pub(crate) const fn orphan_transcript_podcast_id() -> PodcastId {
-    PodcastId::from_bytes([
-        0x86, 0x36, 0x3c, 0xd2, 0x4b, 0x10, 0xa8, 0x8f, 0x98, 0x73, 0x54, 0x58, 0x4e, 0xbb, 0xed,
-        0x99,
-    ])
+    crate::retained_orphan_parent::retained_orphan_podcast_id()
 }
 
 fn database_digest(

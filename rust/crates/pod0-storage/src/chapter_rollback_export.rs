@@ -49,7 +49,6 @@ where
     if report.state != ChapterImportState::Imported {
         return Err(StorageError::ChapterImportConflict);
     }
-    require_authority_inactive(&connection)?;
     let manifest = build_manifest(&connection, &report)?;
     let manifest_bytes =
         serde_json::to_vec_pretty(&manifest).map_err(|_| StorageError::InvalidChapterArtifact)?;
@@ -151,21 +150,6 @@ fn latest_imported_id(connection: &rusqlite::Connection) -> Result<CommandId, St
         .try_into()
         .map_err(|_| StorageError::BackupConflict)?;
     Ok(CommandId::from_bytes(value))
-}
-
-fn require_authority_inactive(connection: &rusqlite::Connection) -> Result<(), StorageError> {
-    let active: bool = connection
-        .query_row(
-            "SELECT authority_active FROM pod0_chapter_state WHERE singleton=1",
-            [],
-            |row| row.get(0),
-        )
-        .map_err(|error| StorageError::sqlite("read chapter rollback authority", error))?;
-    if active {
-        Err(StorageError::CutoverAlreadyAuthoritative)
-    } else {
-        Ok(())
-    }
 }
 
 fn copy_synced(source: &Path, destination: &Path) -> Result<(), StorageError> {

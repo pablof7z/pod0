@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import Pod0Core
 import WidgetKit
 import os.log
 
@@ -119,7 +120,14 @@ final class AppStateStore {
         self.productSignals = productSignals
         var loadedState: AppState
         do {
-            loadedState = try persistence.load()
+            let chapterAuthorityActive = FileManager.default.fileExists(
+                atPath: persistence.sharedCoreStoreURL.path
+            ) && sharedChapterStoreIsAuthoritative(
+                targetPath: persistence.sharedCoreStoreURL.path
+            )
+            loadedState = try persistence.load(
+                loadLegacyChapterAdjuncts: !chapterAuthorityActive
+            )
         } catch {
             Self.logger.error("Persistence.load failed: \(error, privacy: .public) — starting with empty state")
             Task { await productSignals.record(.init(
@@ -172,6 +180,10 @@ final class AppStateStore {
         // already sees populated caches — otherwise the Library grid would
         // briefly read empty unplayed dots until the first mutation.
         recomputeEpisodeProjections()
+        // Fail closed before any service can mutate or persist the legacy
+        // migration source. A later launch resumes from the verified evidence
+        // after the core is repaired; Swift never becomes fallback authority.
+        guard sharedLibrary != nil else { return }
         // Attach the native capability host used by the Rust recall workflow.
         // Hand `self` to the service so provider settings and transcript
         // metadata can be resolved without moving recall policy into Swift.

@@ -22,7 +22,7 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
         outputVersion: String?
     ) async throws -> Bool {
         guard let outputVersion else { return false }
-        guard try isStillCurrent(job) else { return false }
+        guard isStillCurrent(job) else { return false }
         let records: [ArtifactRecord]
         switch job.kind {
         case .feedDiscovery:
@@ -62,59 +62,30 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
         case .metadataIndex:
             return false
         case .publisherChapters:
-            guard let verified = await fileVerifier.verifiedChapters(
-                episodeID: job.subjectID,
-                inputVersion: job.inputVersion,
-                leaseToken: leaseToken,
-                manifestHash: outputVersion
-            ), verified.output.chapterOrigin == .publisher else { return false }
-            let locations = try await fileVerifier.promoteChapters(
-                verified, episodeID: job.subjectID
+            guard let receipt = chapterReceipt(outputVersion),
+                  receipt.episodeID == job.subjectID,
+                  receipt.inputVersion == job.inputVersion,
+                  receipt.publisherInputVersion == job.inputVersion,
+                  appStore.sharedLibrary?.verifyChapterWorkflowReceipt(receipt) == true
+            else { return false }
+            try artifacts.completeWithoutArtifact(
+                outputVersion: outputVersion,
+                completingJobID: job.id,
+                leaseToken: leaseToken
             )
-            records = [record(
-                .chapters,
-                job: job,
-                output: verified.chaptersHash,
-                hash: verified.chaptersHash,
-                location: locations.chapters.path,
-                origin: DesiredStatePlanner.publisherChapterOrigin(
-                    sourceVersion: job.inputVersion,
-                    enriched: false
-                )
-            )]
+            return true
         case .chapterArtifacts:
-            guard let verified = await fileVerifier.verifiedChapters(
-                episodeID: job.subjectID,
-                inputVersion: job.inputVersion,
-                leaseToken: leaseToken,
-                manifestHash: outputVersion
-            ) else { return false }
-            let locations = try await fileVerifier.promoteChapters(
-                verified, episodeID: job.subjectID
+            guard let receipt = chapterReceipt(outputVersion),
+                  receipt.episodeID == job.subjectID,
+                  receipt.inputVersion == job.inputVersion,
+                  appStore.sharedLibrary?.verifyChapterWorkflowReceipt(receipt) == true
+            else { return false }
+            try artifacts.completeWithoutArtifact(
+                outputVersion: outputVersion,
+                completingJobID: job.id,
+                leaseToken: leaseToken
             )
-            let chapterOrigin: String
-            if verified.output.chapterOrigin == .publisherEnriched,
-               let episode = appStore.episode(id: job.subjectID),
-               let sourceVersion = DesiredStatePlanner.publisherChapterInputVersion(episode) {
-                chapterOrigin = DesiredStatePlanner.publisherChapterOrigin(
-                    sourceVersion: sourceVersion,
-                    enriched: true
-                )
-            } else {
-                chapterOrigin = verified.output.chapterOrigin.rawValue
-            }
-            records = [
-                record(
-                    .chapters, job: job, output: verified.chaptersHash,
-                    hash: verified.chaptersHash, location: locations.chapters.path,
-                    origin: chapterOrigin
-                ),
-                record(
-                    .adSegments, job: job, output: verified.adsHash,
-                    hash: verified.adsHash, location: locations.ads.path,
-                    origin: "generated"
-                ),
-            ]
+            return true
         case .autoDownload:
             records = [record(.autoDownloadDecision, job: job, output: outputVersion, hash: outputVersion)]
         case .newEpisodeNotification:
@@ -163,27 +134,43 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
         return true
     }
 
-    private func isStillCurrent(_ job: WorkJob) throws -> Bool {
+    func isStillCurrent(_ job: WorkJob) -> Bool {
         switch job.kind {
         case .download, .transcriptIngest:
             guard let episode = appStore.episode(id: job.subjectID) else { return false }
             return DesiredStatePlanner.audioVersion(episode) == job.inputVersion
-        case .metadataIndex, .transcriptIndex, .publisherChapters, .chapterArtifacts:
-            let desired = DesiredStatePlanner().plan(.init(
-                episodes: appStore.state.episodes,
-                settings: appStore.state.settings,
-                artifacts: try artifacts.all(),
-                transcripts: appStore.sharedLibrary?.transcriptWorkflowSnapshots(
-                    episodeIDs: appStore.state.episodes.map(\.id)
-                ) ?? [],
-                transcriptDesiredEpisodeIDs: Set(appStore.state.episodes.map(\.id)),
-                scheduledTasks: appStore.scheduledTasks,
-                now: Date()
-            ))
-            return desired.contains { $0.idempotencyKey == job.idempotencyKey }
+        case .metadataIndex:
+            return false
+        case .transcriptIndex:
+            guard let episode = appStore.episode(id: job.subjectID),
+                  let transcript = transcriptSnapshot(episodeID: episode.id),
+                  transcript.sourceRevision == DesiredStatePlanner.audioVersion(episode)
+            else { return false }
+            return DesiredStatePlanner.transcriptIndexInputVersion(
+                transcript,
+                settings: appStore.state.settings
+            ) == job.inputVersion
+        case .publisherChapters:
+            guard let episode = appStore.episode(id: job.subjectID) else { return false }
+            return DesiredStatePlanner.publisherChapterInputVersion(episode) == job.inputVersion
+        case .chapterArtifacts:
+            guard let episode = appStore.episode(id: job.subjectID),
+                  let transcript = transcriptSnapshot(episodeID: episode.id),
+                  transcript.sourceRevision == DesiredStatePlanner.audioVersion(episode)
+            else { return false }
+            return DesiredStatePlanner.chapterCompilerInputVersion(
+                transcript,
+                settings: appStore.state.settings
+            ) == job.inputVersion
         case .feedDiscovery, .autoDownload, .newEpisodeNotification, .scheduledAgentRun:
             return true
         }
+    }
+
+    private func transcriptSnapshot(episodeID: UUID) -> TranscriptWorkflowSnapshot? {
+        appStore.sharedLibrary?.transcriptWorkflowSnapshots(
+            episodeIDs: [episodeID]
+        ).first
     }
 
     private func applyStableProjection(for record: ArtifactRecord, job: WorkJob) async {
@@ -199,21 +186,14 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
                 fileURL: URL(fileURLWithPath: location),
                 byteCount: size.int64Value
             )), episodeID: record.subjectID)
-        case .chapters:
-            guard let location = record.location,
-                  let chapters = await fileVerifier.loadChapters(
-                    at: URL(fileURLWithPath: location)
-                  ) else { return }
-            appStore.setEpisodeChapters(record.subjectID, chapters: chapters)
-        case .adSegments:
-            guard let location = record.location,
-                  let ads = await fileVerifier.loadAds(
-                    at: URL(fileURLWithPath: location)
-                  ) else { return }
-            appStore.setEpisodeAdSegments(record.subjectID, segments: ads)
         default:
             break
         }
+    }
+
+    private func chapterReceipt(_ outputVersion: String) -> SharedChapterWorkflowReceipt? {
+        guard let data = Data(base64Encoded: outputVersion) else { return nil }
+        return try? Self.decoder.decode(SharedChapterWorkflowReceipt.self, from: data)
     }
 
     private func record(

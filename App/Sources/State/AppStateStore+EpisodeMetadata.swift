@@ -23,20 +23,6 @@ extension AppStateStore {
         ))
     }
 
-    /// Applies the stable projection of a verified chapter artifact. No-op
-    /// when an empty result would overwrite real chapter data.
-    func setEpisodeChapters(_ id: UUID, chapters: [Episode.Chapter]) {
-        guard let idx = state.episodes.firstIndex(where: { $0.id == id }) else { return }
-        if chapters.isEmpty, let existing = state.episodes[idx].chapters, !existing.isEmpty {
-            return
-        }
-        let projected = chapters.isEmpty ? nil : chapters
-        guard state.episodes[idx].chapters != projected else { return }
-        var episodes = state.episodes
-        episodes[idx].chapters = projected
-        mutateState { $0.episodes = episodes }
-    }
-
     /// Temporary agent-domain adjunct. Episode identity and durable library
     /// metadata remain core-owned; issue #60 moves this provenance into Rust.
     func setEpisodeGenerationSource(_ id: UUID, source: Episode.GenerationSource?) {

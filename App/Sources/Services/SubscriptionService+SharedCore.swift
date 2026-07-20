@@ -15,7 +15,7 @@ extension SubscriptionService {
             case .alreadySubscribed:
                 throw AddError.alreadySubscribed(title: "this podcast")
             case .notFound, .unavailable, .cancelled, .invalidNote, .invalidClip,
-                 .invalidTranscript, .revisionConflict:
+                 .invalidTranscript, .invalidChapter, .revisionConflict:
                 throw AddError.transport(error.localizedDescription)
             }
         }

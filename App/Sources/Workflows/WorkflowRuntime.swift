@@ -47,7 +47,7 @@ final class WorkflowRuntime {
             .download: DownloadJobExecutor(store: store, jobStore: jobs),
             .transcriptIngest: TranscriptIngestJobExecutor(store: store, jobStore: jobs),
             .transcriptIndex: TranscriptIndexJobExecutor(),
-            .publisherChapters: PublisherChaptersJobExecutor(),
+            .publisherChapters: PublisherChaptersJobExecutor(store: store),
             .chapterArtifacts: ChapterArtifactsJobExecutor(store: store),
             .metadataIndex: MetadataIndexJobExecutor(store: store),
             .autoDownload: AutoDownloadJobExecutor(store: store),

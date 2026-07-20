@@ -10,7 +10,7 @@ mod observations;
 pub(super) use observations::*;
 #[path = "runtime_chapter_playback_test_support.rs"]
 mod chapters;
-use chapters::install_chapter_fixture;
+use chapters::{install_chapter_fixture, install_empty_chapter_fixture};
 
 pub(super) struct PlaybackFixture {
     _directory: tempfile::TempDir,
@@ -161,6 +161,8 @@ impl PlaybackFixture {
         .unwrap();
         if chapters_available {
             install_chapter_fixture(&directory, &target);
+        } else {
+            install_empty_chapter_fixture(&directory, &target);
         }
         let facade = Pod0Facade::open(target.to_string_lossy().into_owned()).unwrap();
         let Projection::Library { value } = facade.snapshot(library_request()).projection else {
@@ -196,7 +198,7 @@ impl PlaybackFixture {
     }
 }
 
-fn transcript_input(fixture: &PlaybackFixture) -> TranscriptArtifactInput {
+pub(super) fn transcript_input(fixture: &PlaybackFixture) -> TranscriptArtifactInput {
     TranscriptArtifactInput {
         episode_id: fixture.episode_id,
         podcast_id: fixture.podcast_id,

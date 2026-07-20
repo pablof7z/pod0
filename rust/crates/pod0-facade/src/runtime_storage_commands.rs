@@ -35,6 +35,9 @@ pub(super) fn storage_failure(error: pod0_storage::StorageError) -> CoreFailureC
         pod0_storage::StorageError::TranscriptRevisionConflict => CoreFailureCode::RevisionConflict,
         pod0_storage::StorageError::TranscriptNotFound => CoreFailureCode::NotFound,
         pod0_storage::StorageError::TranscriptCommandConflict => CoreFailureCode::InvalidCommand,
+        pod0_storage::StorageError::InvalidChapterArtifact => CoreFailureCode::InvalidChapter,
+        pod0_storage::StorageError::ChapterRevisionConflict => CoreFailureCode::RevisionConflict,
+        pod0_storage::StorageError::ChapterCommandConflict => CoreFailureCode::InvalidCommand,
         _ => CoreFailureCode::StorageUnavailable,
     }
 }

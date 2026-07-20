@@ -1,7 +1,11 @@
 use pod0_domain::CommandId;
 
+use crate::chapter_import_test_support::{ChapterImportFixture, EPISODE_ID, PODCAST_ID};
 use crate::migration::{MigrationBoundary, MigrationObserver};
-use crate::{CoreStoreMigrator, MigrationClock, StorageError, verify_backup};
+use crate::{
+    CURRENT_SCHEMA_VERSION, ChapterImporter, CoreStoreMigrator, MigrationClock, StorageError,
+    chapter_store_is_authoritative, verify_backup,
+};
 
 #[derive(Clone, Copy)]
 struct FixedClock;
@@ -155,6 +159,98 @@ fn interrupted_chapter_schema_step_rolls_back_and_resumes_cleanly() {
         .unwrap();
     assert!(resumed.resumed_from_journal);
     assert_eq!(resumed.applied_versions, [13]);
+}
+
+#[test]
+fn schema_13_imported_history_revalidates_and_activates_after_upgrade() {
+    let fixture = ChapterImportFixture::new_v1();
+    fixture.insert_episode(
+        EPISODE_ID,
+        PODCAST_ID,
+        r#"{
+          "id":"11111111-1111-1111-1111-111111111111",
+          "podcastID":"22222222-2222-2222-2222-222222222222",
+          "pubDate":"2026-07-19T00:00:00Z",
+          "duration":120.0,
+          "chapters":[
+            {"startTime":0.0,"title":"Preserved","includeInTableOfContents":true,
+             "isAIGenerated":false}
+          ],
+          "adSegments":[]
+        }"#,
+    );
+    fixture.stage(1_800_000_000_000);
+    fixture.verify(1_800_000_000_001);
+    fixture.import(1_800_000_000_002);
+
+    fixture
+        .target_connection()
+        .execute_batch(
+            "DROP TABLE pod0_chapter_commands;
+             CREATE TABLE pod0_chapter_selections_v13(
+               episode_id BLOB NOT NULL CHECK(length(episode_id)=16),
+               selection_revision INTEGER NOT NULL CHECK(selection_revision>=1),
+               artifact_id BLOB NOT NULL CHECK(length(artifact_id)=16),
+               source_import_id BLOB NOT NULL CHECK(length(source_import_id)=16),
+               selected_at_ms INTEGER NOT NULL CHECK(selected_at_ms>=0),
+               PRIMARY KEY(episode_id,selection_revision),
+               UNIQUE(episode_id,source_import_id),
+               FOREIGN KEY(artifact_id,episode_id)
+                 REFERENCES pod0_chapter_artifacts(artifact_id,episode_id),
+               FOREIGN KEY(source_import_id) REFERENCES pod0_chapter_imports(import_id)
+             ) STRICT;
+             INSERT INTO pod0_chapter_selections_v13 SELECT * FROM pod0_chapter_selections;
+             DROP TABLE pod0_chapter_selections;
+             ALTER TABLE pod0_chapter_selections_v13 RENAME TO pod0_chapter_selections;
+             CREATE INDEX pod0_chapter_selections_import_idx
+               ON pod0_chapter_selections(source_import_id,selection_revision);
+             CREATE TABLE pod0_chapter_state_v13(
+               singleton INTEGER PRIMARY KEY NOT NULL CHECK(singleton=1),
+               collection_revision INTEGER NOT NULL CHECK(collection_revision>=0),
+               authority_active INTEGER NOT NULL CHECK(authority_active=0),
+               authority_import_id BLOB REFERENCES pod0_chapter_imports(import_id),
+               CHECK(authority_import_id IS NULL)
+             ) STRICT;
+             INSERT INTO pod0_chapter_state_v13 VALUES(1,1,0,NULL);
+             DROP TABLE pod0_chapter_state;
+             ALTER TABLE pod0_chapter_state_v13 RENAME TO pod0_chapter_state;
+             UPDATE pod0_schema_versions SET version=13 WHERE component='kernel';
+             PRAGMA user_version=13;",
+        )
+        .unwrap();
+
+    let upgrade_backup = fixture.target.with_extension("upgrade-backup.sqlite");
+    CoreStoreMigrator::new(FixedClock)
+        .migrate(
+            &fixture.target,
+            CURRENT_SCHEMA_VERSION,
+            &upgrade_backup,
+            CommandId::from_parts(70, 1),
+        )
+        .unwrap();
+    assert!(!chapter_store_is_authoritative(&fixture.target).unwrap());
+
+    let report = ChapterImporter::new(crate::chapter_import_test_support::FixedClock(
+        1_800_000_000_003,
+    ))
+    .commit(
+        &fixture.source,
+        &fixture.artifacts,
+        &fixture.target,
+        crate::chapter_import_test_support::IMPORT_ID,
+    )
+    .unwrap();
+    assert_eq!(report.state, crate::ChapterImportState::Imported);
+    assert!(chapter_store_is_authoritative(&fixture.target).unwrap());
+    assert_eq!(
+        fixture
+            .target_connection()
+            .query_row("SELECT COUNT(*) FROM pod0_chapter_selections", [], |row| {
+                row.get::<_, u32>(0)
+            })
+            .unwrap(),
+        1
+    );
 }
 
 struct InterruptChapterStep;

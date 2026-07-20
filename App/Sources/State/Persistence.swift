@@ -44,9 +44,9 @@ final class Persistence: Sendable {
     private let beforeBackgroundEnqueue: @Sendable (UInt64) async -> Void
     private let backgroundWriter = PersistenceBackgroundWriter()
     let writeLock = NSLock()
-    private let revision = OSAllocatedUnfairLock<UInt64>(initialState: 0)
-    private let lastWrittenRevision = OSAllocatedUnfairLock<UInt64>(initialState: 0)
-    private let episodeSnapshot = OSAllocatedUnfairLock<EpisodeSQLiteSnapshot?>(initialState: nil)
+    let revision = OSAllocatedUnfairLock<UInt64>(initialState: 0)
+    let lastWrittenRevision = OSAllocatedUnfairLock<UInt64>(initialState: 0)
+    let episodeSnapshot = OSAllocatedUnfairLock<EpisodeSQLiteSnapshot?>(initialState: nil)
     private let lastEpisodeWriteSummaryLock = OSAllocatedUnfairLock<EpisodeWriteSummary>(initialState: .none)
     let sharedArtifactAuthority = OSAllocatedUnfairLock<(notes: Bool, clips: Bool)>(initialState: (false, false))
 
@@ -231,71 +231,6 @@ final class Persistence: Sendable {
         return true
     }
 
-    /// Loads and decodes `AppState` from `fileURL`.
-    ///
-    /// - Returns: The previously saved `AppState`, or a fresh `AppState()`
-    ///   when authoritative SQLite and the one-shot legacy JSON source are
-    ///   both absent (the normal first-launch path).
-    /// - Throws: Any `DecodingError` produced by `JSONDecoder` when the
-    ///   stored data cannot be decoded. Callers fall back to a default state.
-    func load() throws -> AppState {
-        if let metadata = try episodeStore.loadMetadata() {
-            var state = try Self.decoder.decode(AppState.self, from: metadata)
-            state.episodes = try episodeStore.loadAll()
-            let loadedEpisodes = state.episodes
-            let generation = try episodeStore.loadGeneration()
-            state.persistenceGeneration = generation
-            episodeSnapshot.withLock { $0 = EpisodeSQLiteStore.snapshot(for: loadedEpisodes) }
-            revision.withLock { $0 = max($0, generation) }
-            lastWrittenRevision.withLock { $0 = max($0, generation) }
-            return state
-        }
-        if FileManager.default.fileExists(atPath: fileURL.path) {
-            let data = try Data(contentsOf: fileURL)
-            var state = try Self.decoder.decode(AppState.self, from: data)
-            hydrateEpisodesPreservingMetadata(into: &state)
-            let generation = max(state.persistenceGeneration, 1)
-            state.persistenceGeneration = generation
-            guard write(state, revision: generation) else {
-                throw EpisodeSQLiteStoreError.execute("Unable to commit legacy state migration")
-            }
-            return state
-        }
-        let sqliteOnlyEpisodes = try episodeStore.loadAll()
-        if !sqliteOnlyEpisodes.isEmpty {
-            var state = AppState()
-            state.episodes = sqliteOnlyEpisodes
-            let generation = max(try episodeStore.loadGeneration(), 1)
-            state.persistenceGeneration = generation
-            guard write(state, revision: generation) else {
-                throw EpisodeSQLiteStoreError.execute("Unable to commit SQLite-only migration")
-            }
-            return state
-        }
-        // One-shot migration: an earlier build wrote `AppState` to App Group
-        // `UserDefaults` under `legacyStateKey`. If a user is launching the
-        // first build that uses the file backend, recover whatever the prefs
-        // daemon was still serving (which is small enough to round-trip) so
-        // their settings + small libraries survive the upgrade. After a
-        // successful migration we wipe the legacy key so we never read it
-        // again. Migration only runs for `Persistence.shared`; isolated
-        // test instances point at temp files and have no legacy data.
-        if fileURL == Self.appGroupStateFileURL,
-           let legacyData = Self.appGroupDefaults.data(forKey: Self.legacyStateKey) {
-            var migrated = try Self.decoder.decode(AppState.self, from: legacyData)
-            try hydrateEpisodes(into: &migrated)
-            let generation = max(migrated.persistenceGeneration, 1)
-            migrated.persistenceGeneration = generation
-            guard write(migrated, revision: generation) else {
-                throw EpisodeSQLiteStoreError.execute("Unable to commit UserDefaults migration")
-            }
-            Self.appGroupDefaults.removeObject(forKey: Self.legacyStateKey)
-            Self.logger.info("Persistence.load: migrated \(legacyData.count, privacy: .public) bytes from legacy UserDefaults key")
-            return migrated
-        }
-        return AppState()
-    }
-
     func reset() {
         try? FileManager.default.removeItem(at: fileURL)
         episodeStore.reset()
@@ -309,23 +244,17 @@ final class Persistence: Sendable {
 
     // MARK: - Static helpers
 
-    private static let logger = Logger.app("Persistence")
+    static let logger = Logger.app("Persistence")
     /// Prior-art `UserDefaults` key the file backend migrates from on first
     /// run. Kept as a string constant (not exposed) so the migration path
     /// stays self-documenting.
-    private static let legacyStateKey = "podcastr.state.v1"
+    static let legacyStateKey = "podcastr.state.v1"
 
     private static let encoder: JSONEncoder = {
         let e = JSONEncoder()
         e.dateEncodingStrategy = .iso8601
         e.outputFormatting = [.sortedKeys]
         return e
-    }()
-
-    private static let decoder: JSONDecoder = {
-        let d = JSONDecoder()
-        d.dateDecodingStrategy = .iso8601
-        return d
     }()
 
     private static let maxIncrementalEpisodePayloadChanges = 128
@@ -438,40 +367,7 @@ final class Persistence: Sendable {
         )
     }
 
-    private func hydrateEpisodes(into state: inout AppState) throws {
-        let jsonEpisodes = state.episodes
-        let sqliteEpisodes = try episodeStore.loadAll()
-        if sqliteEpisodes.isEmpty {
-            guard !jsonEpisodes.isEmpty else {
-                episodeSnapshot.withLock { $0 = EpisodeSQLiteStore.snapshot(for: []) }
-                return
-            }
-            try episodeStore.replaceAll(jsonEpisodes)
-            episodeSnapshot.withLock {
-                $0 = EpisodeSQLiteStore.snapshot(for: jsonEpisodes)
-            }
-            try writeMetadataSnapshot(state)
-            return
-        }
-
-        state.episodes = sqliteEpisodes
-        episodeSnapshot.withLock {
-            $0 = EpisodeSQLiteStore.snapshot(for: sqliteEpisodes)
-        }
-        if !jsonEpisodes.isEmpty {
-            try writeMetadataSnapshot(state)
-        }
-    }
-
-    private func hydrateEpisodesPreservingMetadata(into state: inout AppState) {
-        do {
-            try hydrateEpisodes(into: &state)
-        } catch {
-            Self.logger.error("Persistence.load: episode SQLite hydration failed: \(error, privacy: .public); preserving JSON metadata")
-        }
-    }
-
-    private func writeMetadataSnapshot(_ state: AppState) throws {
+    func writeMetadataSnapshot(_ state: AppState) throws {
         let data = try Self.encoder.encode(metadataState(from: state))
         try ensureParentDirectoryExists()
         try data.write(to: fileURL, options: [.atomic])

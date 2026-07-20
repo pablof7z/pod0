@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-20T06:29:10Z",
+      "lines": [
+        "Chapters and ad skipping now survive relaunches reliably, stay tied to their original transcripts, and keep playback controls in sync."
+      ]
+    },
+    {
       "shipped_at": "2026-07-19T22:47:31Z",
       "lines": [
         "Transcripts now survive app updates and relaunches with their full history, saved notes, clips, and exact playback context intact."

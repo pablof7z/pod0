@@ -88,6 +88,25 @@ extension Persistence {
         episodeStore.fileURL.appendingPathExtension("transcript-backups")
     }
 
+    var legacyChapterArtifactRootURL: URL {
+        if let support = try? FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        ) {
+            return support
+                .appendingPathComponent("podcastr", isDirectory: true)
+                .appendingPathComponent("workflow-artifacts", isDirectory: true)
+        }
+        return FileManager.default.temporaryDirectory
+            .appendingPathComponent("podcastr-workflow-artifacts", isDirectory: true)
+    }
+
+    var legacyChapterBackupRootURL: URL {
+        episodeStore.fileURL.appendingPathExtension("chapter-backups")
+    }
+
     func legacyClipsBackupURL(for plan: LegacyClipImportPlan) -> URL {
         episodeStore.fileURL.appendingPathExtension(
             "clips-backup-\(plan.sourceGeneration)-\(plan.sourceHash)"
@@ -104,7 +123,8 @@ extension Persistence {
             legacyListeningBackupURL,
             legacyNotesBackupURL,
             legacyClipsBackupURL,
-            legacyTranscriptBackupRootURL
+            legacyTranscriptBackupRootURL,
+            legacyChapterBackupRootURL
         ]
         urls.append(contentsOf: (1...32).map {
             sharedCoreSchemaBackupURL(targetVersion: UInt32($0))

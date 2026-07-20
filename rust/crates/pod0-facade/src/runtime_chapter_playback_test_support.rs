@@ -100,3 +100,74 @@ pub(super) fn install_chapter_fixture(directory: &tempfile::TempDir, target: &st
         Some(LegacyChapterImportState::Imported)
     );
 }
+
+pub(super) fn install_empty_chapter_fixture(
+    directory: &tempfile::TempDir,
+    target: &std::path::Path,
+) {
+    let source = directory.path().join("legacy-empty-chapters.sqlite");
+    let artifact_root = directory.path().join("legacy-empty-chapter-artifacts");
+    let backup_root = directory.path().join("legacy-empty-chapter-backup");
+    let schema_backup = directory.path().join("empty-chapter-schema-backup.sqlite");
+    std::fs::create_dir_all(&artifact_root).unwrap();
+    Connection::open(&source)
+        .unwrap()
+        .execute_batch(
+            "CREATE TABLE episodes(id TEXT PRIMARY KEY,subscription_id TEXT NOT NULL,\
+             guid TEXT NOT NULL,pub_date REAL NOT NULL,sort_order INTEGER NOT NULL,\
+             payload BLOB NOT NULL);\
+             CREATE TABLE persistence_metadata(key TEXT PRIMARY KEY,value BLOB NOT NULL);\
+             INSERT INTO persistence_metadata VALUES('generation','7');\
+             CREATE TABLE artifacts(\
+             id INTEGER PRIMARY KEY AUTOINCREMENT,kind TEXT NOT NULL,subject_id TEXT NOT NULL,\
+             input_version TEXT NOT NULL,output_version TEXT NOT NULL,content_hash TEXT NOT NULL,\
+             location TEXT,origin TEXT,schema_version INTEGER NOT NULL,integrity TEXT NOT NULL,\
+             verified_at REAL NOT NULL,selected INTEGER NOT NULL,\
+             UNIQUE(kind,subject_id,input_version,output_version));\
+             CREATE TABLE workflow_schema_versions(component TEXT PRIMARY KEY,version INTEGER NOT NULL);\
+             INSERT INTO workflow_schema_versions VALUES('artifacts',1);",
+        )
+        .unwrap();
+    let plan = inspect_legacy_chapter_migration(
+        source.to_string_lossy().into_owned(),
+        artifact_root.to_string_lossy().into_owned(),
+    )
+    .plan
+    .unwrap();
+    let import_id = CommandId::from_parts(9, 18);
+    assert!(matches!(
+        stage_legacy_chapter_import(
+            source.to_string_lossy().into_owned(),
+            artifact_root.to_string_lossy().into_owned(),
+            backup_root.to_string_lossy().into_owned(),
+            target.to_string_lossy().into_owned(),
+            schema_backup.to_string_lossy().into_owned(),
+            plan,
+            import_id,
+            CommandId::from_parts(9, 2),
+        )
+        .stage,
+        LegacyChapterMigrationStage::Staged
+    ));
+    assert!(matches!(
+        verify_staged_legacy_chapter_import(
+            source.to_string_lossy().into_owned(),
+            artifact_root.to_string_lossy().into_owned(),
+            backup_root.to_string_lossy().into_owned(),
+            target.to_string_lossy().into_owned(),
+            import_id,
+        )
+        .stage,
+        LegacyChapterMigrationStage::Verified
+    ));
+    assert!(matches!(
+        commit_staged_legacy_chapter_import(
+            source.to_string_lossy().into_owned(),
+            artifact_root.to_string_lossy().into_owned(),
+            target.to_string_lossy().into_owned(),
+            import_id,
+        )
+        .stage,
+        LegacyChapterMigrationStage::Imported
+    ));
+}

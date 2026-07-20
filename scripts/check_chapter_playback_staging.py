@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Keep Rust chapter policy typed and dormant until the #104 authority cutover."""
+"""Keep chapter navigation and ad-skip policy active only in Rust."""
 
 from __future__ import annotations
 
@@ -11,10 +11,10 @@ import sys
 
 def source_findings(controls: str, host: str, production_swift: str) -> list[str]:
     errors: list[str] = []
-    if "autoSkipAds: false" not in controls or "#104" not in controls:
-        errors.append("iOS must keep shared auto-skip dormant with an explicit #104 cutover link")
-    if "autoSkipAds: settings.autoSkipAds" in controls:
-        errors.append("iOS activated shared auto-skip before chapter authority cutover")
+    if "autoSkipAds: settings.autoSkipAds" not in controls:
+        errors.append("iOS must pass the user preference to Rust auto-skip policy")
+    if "autoSkipAds: false" in controls:
+        errors.append("iOS must not keep Rust auto-skip dormant after authority cutover")
     if not re.search(
         r"case\s+\.seek\(let episodeID, let positionMilliseconds, _, _\):",
         host,
@@ -24,9 +24,12 @@ def source_findings(controls: str, host: str, production_swift: str) -> list[str
         errors.append("native playback host must execute the exact Rust millisecond target")
     if re.search(r"switch\s+(?:reason|chapterContext)", host):
         errors.append("native playback host must not interpret chapter seek policy")
-    for action in (".nextChapter(context:", ".previousChapter(context:"):
-        if action in production_swift:
-            errors.append(f"production Swift activated {action} before #104")
+    for action in ("nextChapter", "previousChapter"):
+        if not re.search(rf"\.{action}\s*\(\s*context\s*:", production_swift):
+            errors.append(f"production Swift must dispatch typed Rust action .{action}(context:)")
+    for policy in ("applyAutoSkipAdsIfNeeded", "nextChapter(after:", "previousChapter(from:"):
+        if policy in production_swift:
+            errors.append(f"production Swift retains chapter policy {policy}")
     return errors
 
 
@@ -52,15 +55,17 @@ def validate(root: Path) -> list[str]:
 
 
 def self_test() -> None:
-    safe_controls = "// #104\nautoSkipAds: false"
+    safe_controls = "autoSkipAds: settings.autoSkipAds"
     safe_host = (
         "case .seek(let episodeID, let positionMilliseconds, _, _):\n"
         "engine.seek(to: Self.seconds(positionMilliseconds))"
     )
-    assert not source_findings(safe_controls, safe_host, "")
-    assert source_findings("autoSkipAds: settings.autoSkipAds", safe_host, "")
-    assert source_findings(safe_controls, "switch reason {}", "")
-    assert source_findings(safe_controls, safe_host, ".nextChapter(context: value)")
+    actions = ".nextChapter(context: value)\n.previousChapter(context: value)"
+    assert not source_findings(safe_controls, safe_host, actions)
+    assert source_findings("autoSkipAds: false", safe_host, actions)
+    assert source_findings(safe_controls, "switch reason {}", actions)
+    assert source_findings(safe_controls, safe_host, "")
+    assert source_findings(safe_controls, safe_host, actions + "\napplyAutoSkipAdsIfNeeded()")
 
 
 def main() -> int:

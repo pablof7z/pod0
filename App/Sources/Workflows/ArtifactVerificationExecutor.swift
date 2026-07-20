@@ -177,38 +177,6 @@ actor ArtifactVerificationExecutor {
         return url
     }
 
-    func verifiedChapters(
-        episodeID: UUID,
-        inputVersion: String,
-        leaseToken: UUID,
-        manifestHash: String
-    ) -> VerifiedChapterArtifacts? {
-        guard !Task.isCancelled else { return nil }
-        let verified = DerivedArtifactStagingStore.shared.verifiedChapters(
-            episodeID: episodeID,
-            inputVersion: inputVersion,
-            leaseToken: leaseToken,
-            manifestHash: manifestHash
-        )
-        return Task.isCancelled ? nil : verified
-    }
-
-    func promoteChapters(
-        _ verified: VerifiedChapterArtifacts,
-        episodeID: UUID
-    ) throws -> (chapters: URL, ads: URL) {
-        try Task.checkCancellation()
-        return try DerivedArtifactStagingStore.shared.promote(verified, episodeID: episodeID)
-    }
-
-    func loadChapters(at url: URL) -> [Episode.Chapter]? {
-        DerivedArtifactStagingStore.shared.loadChapters(at: url)
-    }
-
-    func loadAds(at url: URL) -> [Episode.AdSegment]? {
-        DerivedArtifactStagingStore.shared.loadAds(at: url)
-    }
-
     private func fingerprint(_ url: URL) throws -> (hash: String, size: Int64) {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }

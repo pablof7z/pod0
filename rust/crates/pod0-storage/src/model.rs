@@ -5,7 +5,7 @@ use pod0_domain::CommandId;
 
 pub const APPLICATION_ID: i64 = 0x504F_4430;
 pub const MIN_SUPPORTED_SCHEMA_VERSION: u32 = 0;
-pub const CURRENT_SCHEMA_VERSION: u32 = 13;
+pub const CURRENT_SCHEMA_VERSION: u32 = 14;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AccessMode {
@@ -137,6 +137,8 @@ pub enum StorageError {
         supported: u32,
     },
     InvalidChapterArtifact,
+    ChapterCommandConflict,
+    ChapterRevisionConflict,
     ChapterImportConflict,
     ChapterImportNotFound,
     NewerLegacyChapterSchema {
@@ -189,6 +191,8 @@ impl StorageError {
             Self::TranscriptImportNotFound => "transcript_import_not_found",
             Self::NewerLegacyTranscriptSchema { .. } => "newer_legacy_transcript_schema",
             Self::InvalidChapterArtifact => "invalid_chapter_artifact",
+            Self::ChapterCommandConflict => "chapter_command_conflict",
+            Self::ChapterRevisionConflict => "chapter_revision_conflict",
             Self::ChapterImportConflict => "chapter_import_conflict",
             Self::ChapterImportNotFound => "chapter_import_not_found",
             Self::NewerLegacyChapterSchema { .. } => "newer_legacy_chapter_schema",

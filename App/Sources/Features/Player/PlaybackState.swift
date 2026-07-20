@@ -92,20 +92,6 @@ final class PlaybackState {
     /// gesture and would otherwise spam the download queue.
     var onEnsureDownloadEnqueued: (UUID) -> Void = { _ in }
 
-    /// Mirrors `Settings.autoSkipAds`. When `true`, native presentation-time
-    /// updates request a seek past any `Episode.AdSegment` the playhead enters,
-    /// throttled to one skip per segment per playback session.
-    /// Off by default so the toggle stays opt-in until detection quality
-    /// is proven.
-    var autoSkipAdsEnabled: Bool = false
-
-    /// Ad segments for the currently-loaded episode. Refreshed by
-    /// `RootView` whenever the episode changes (and after detection runs)
-    /// so the auto-skip loop doesn't have to reach into `AppStateStore`
-    /// from a tight 1-second tick. Empty when detection hasn't run or
-    /// found nothing.
-    var adSegments: [Episode.AdSegment] = []
-
     /// Resolves the parent show name for a given episode. Called by the
     /// snapshot writer so the widget can render the show subtitle without
     /// `PlaybackState` needing to know about `AppStateStore`. Returns `""`
@@ -135,12 +121,8 @@ final class PlaybackState {
     /// updates to once every 5 seconds — the widget's timeline refresh
     /// granularity makes finer writes wasted I/O.
     var lastSnapshotWrite: Date?
-    /// Ad segments already auto-skipped in this playback session, keyed by
-    /// `AdSegment.id`. Cleared on episode change so a user replaying the
-    /// same episode sees ads skipped again. Not persisted — purely
-    /// throttling state for native presentation updates.
-    var skippedAdSegmentIDs: Set<UUID> = []
     @ObservationIgnored weak var sharedCore: SharedLibraryClient?
+    @ObservationIgnored var chapterContext: ChapterPlaybackContext?
     @ObservationIgnored var pendingPlaySignal = false
     @ObservationIgnored var pendingResumeSignal: (episodeID: UUID, position: TimeInterval)?
     @ObservationIgnored var recordedMeaningfulEpisodeIDs: Set<UUID> = []

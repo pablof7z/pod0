@@ -185,60 +185,11 @@ fn ensure_orphan_parent(
     if artifact.podcast_id != orphan_transcript_podcast_id() {
         return Err(StorageError::InvalidTranscriptArtifact);
     }
-    let source_import_id: Vec<u8> = transaction
-        .query_row(
-            "SELECT import_id FROM pod0_listening_imports ORDER BY verified_at_ms DESC LIMIT 1",
-            [],
-            |row| row.get(0),
-        )
-        .map_err(|error| StorageError::sqlite("read orphan listening import", error))?;
-    transaction
-        .execute(
-            "INSERT OR IGNORE INTO pod0_podcasts(podcast_id,kind_code,kind_wire_code,feed_url,\
-             feed_key_v1,title,author,image_url,description,language,categories_json,\
-             discovered_at_ms,title_is_placeholder,last_refreshed_at_ms,etag,last_modified,\
-             source_import_id,library_visible) VALUES(?1,2,NULL,NULL,NULL,'Recovered transcripts',\
-             '',NULL,'Transcripts retained after their library episode disappeared.',NULL,'[]',\
-             ?2,1,NULL,NULL,NULL,?3,0)",
-            params![
-                artifact.podcast_id.into_bytes().as_slice(),
-                observed_at_ms,
-                source_import_id.as_slice(),
-            ],
-        )
-        .map_err(|error| StorageError::sqlite("create orphan transcript podcast", error))?;
-    let episode_key = hex_id(artifact.episode_id.into_bytes());
-    transaction
-        .execute(
-            "INSERT OR IGNORE INTO pod0_episodes(episode_id,podcast_id,publisher_guid,title,\
-             description,published_at_ms,duration_ms,enclosure_url,enclosure_mime_type,image_url,\
-             resume_position_ms,completion_code,completion_cause_code,completion_cause_wire_code,\
-             is_starred,download_code,download_wire_code,download_ref_version,download_ref_key,\
-             download_byte_count,transcript_code,transcript_wire_code,transcript_ref_version,\
-             transcript_ref_key,transcript_source_code,transcript_source_wire_code,legacy_payload,\
-             source_import_id) VALUES(?1,?2,?3,'Recovered transcript','',0,NULL,?4,NULL,NULL,0,1,\
-             NULL,NULL,0,1,NULL,NULL,NULL,NULL,1,NULL,NULL,NULL,NULL,NULL,X'7B7D',?5)",
-            params![
-                artifact.episode_id.into_bytes().as_slice(),
-                artifact.podcast_id.into_bytes().as_slice(),
-                format!("orphan-transcript:{episode_key}"),
-                format!("pod0-orphan-transcript://{episode_key}"),
-                source_import_id.as_slice(),
-            ],
-        )
-        .map_err(|error| StorageError::sqlite("create orphan transcript episode", error))?;
-    transaction
-        .execute(
-            "INSERT OR IGNORE INTO pod0_episode_feed_metadata(episode_id,persons_json,\
-             sound_bites_json) VALUES(?1,'[]','[]')",
-            [artifact.episode_id.into_bytes().as_slice()],
-        )
-        .map_err(|error| StorageError::sqlite("create orphan transcript metadata", error))?;
-    Ok(())
-}
-
-fn hex_id(bytes: [u8; 16]) -> String {
-    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+    crate::retained_orphan_parent::ensure_retained_orphan_parent(
+        transaction,
+        artifact.episode_id,
+        observed_at_ms,
+    )
 }
 
 fn next_target_revision(

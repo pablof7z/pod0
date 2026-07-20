@@ -101,7 +101,10 @@ pub(crate) fn qualify(observation: ModelChapterObservation) -> Qualification {
                 .map_err(|_| ChapterObservationRejection::InvalidBaseArtifact)?;
             if base.episode_id != observation.episode_id
                 || base.podcast_id != observation.podcast_id
-                || base.provenance.source != ChapterArtifactSource::Publisher
+                || !matches!(
+                    base.provenance.source,
+                    ChapterArtifactSource::Publisher | ChapterArtifactSource::PublisherEnriched
+                )
             {
                 return Err(ChapterObservationRejection::InvalidBaseArtifact);
             }
