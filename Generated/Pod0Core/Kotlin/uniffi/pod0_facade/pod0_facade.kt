@@ -34,12 +34,14 @@ import java.util.concurrent.atomic.AtomicBoolean
 import uniffi.pod0_application.AgentComposedChapterObservation
 import uniffi.pod0_application.ChapterContractProjection
 import uniffi.pod0_application.ChapterContractRequest
+import uniffi.pod0_application.ChapterObservationLimits
 import uniffi.pod0_application.ChapterObservationProjection
 import uniffi.pod0_application.ChapterProjectionScope
 import uniffi.pod0_application.CommandEnvelope
 import uniffi.pod0_application.FfiConverterTypeAgentComposedChapterObservation
 import uniffi.pod0_application.FfiConverterTypeChapterContractProjection
 import uniffi.pod0_application.FfiConverterTypeChapterContractRequest
+import uniffi.pod0_application.FfiConverterTypeChapterObservationLimits
 import uniffi.pod0_application.FfiConverterTypeChapterObservationProjection
 import uniffi.pod0_application.FfiConverterTypeChapterProjectionScope
 import uniffi.pod0_application.FfiConverterTypeCommandEnvelope
@@ -78,6 +80,7 @@ import uniffi.pod0_domain.SubscriptionId
 import uniffi.pod0_application.RustBuffer as RustBufferAgentComposedChapterObservation
 import uniffi.pod0_application.RustBuffer as RustBufferChapterContractProjection
 import uniffi.pod0_application.RustBuffer as RustBufferChapterContractRequest
+import uniffi.pod0_application.RustBuffer as RustBufferChapterObservationLimits
 import uniffi.pod0_application.RustBuffer as RustBufferChapterObservationProjection
 import uniffi.pod0_application.RustBuffer as RustBufferChapterProjectionScope
 import uniffi.pod0_application.RustBuffer as RustBufferCommandEnvelope
@@ -779,6 +782,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_func_verify_staged_legacy_chapter_import(
     ): Int
+    external fun uniffi_pod0_facade_checksum_func_chapter_observation_limits(
+    ): Int
     external fun uniffi_pod0_facade_checksum_func_qualify_agent_composed_chapter_observation(
     ): Int
     external fun uniffi_pod0_facade_checksum_func_qualify_model_chapter_observation(
@@ -914,6 +919,8 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_func_verify_staged_legacy_chapter_import(`sourceDatabasePath`: RustBuffer.ByValue,`artifactRootPath`: RustBuffer.ByValue,`legacyBackupRootPath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_chapter_observation_limits(uniffi_out_err: UniffiRustCallStatus,
+    ): RustBufferChapterObservationLimits.ByValue
     external fun uniffi_pod0_facade_fn_func_qualify_agent_composed_chapter_observation(`observation`: RustBufferAgentComposedChapterObservation.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBufferChapterObservationProjection.ByValue
     external fun uniffi_pod0_facade_fn_func_qualify_model_chapter_observation(`observation`: RustBufferModelChapterObservation.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1108,6 +1115,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_func_verify_staged_legacy_chapter_import() != 45954) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_chapter_observation_limits() != 45878) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_func_qualify_agent_composed_chapter_observation() != 59813) {
@@ -5002,6 +5012,8 @@ public object FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer<List<No
 
 
 
+
+
         /**
          * Produces bounded, state-shaped evidence for the typed chapter contract.
          * The storage slice will add durable commit and selection after this pure
@@ -5130,6 +5142,19 @@ public object FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer<List<No
         FfiConverterString.lower(`legacyBackupRootPath`),
         FfiConverterString.lower(`targetPath`),
         FfiConverterTypeCommandId.lower(`importId`),_status)
+}
+    )
+    }
+
+
+        /**
+         * Returns the core-owned bounds native capabilities must enforce before FFI.
+         */ fun `chapterObservationLimits`(): ChapterObservationLimits {
+            return FfiConverterTypeChapterObservationLimits.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_chapter_observation_limits(
+
+        _status)
 }
     )
     }

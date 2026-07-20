@@ -1153,6 +1153,84 @@ public func FfiConverterTypeChapterItemProjection_lower(_ value: ChapterItemProj
 }
 
 
+public struct ChapterObservationLimits: Equatable, Hashable {
+    public let publisherDocumentBytes: UInt64
+    public let modelPromptBytes: UInt64
+    public let modelCompletionBytes: UInt64
+    public let agentItems: UInt32
+    public let sourceUrlBytes: UInt64
+    public let publisherContentTypeBytes: UInt64
+    public let providerBytes: UInt64
+    public let modelBytes: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(publisherDocumentBytes: UInt64, modelPromptBytes: UInt64, modelCompletionBytes: UInt64, agentItems: UInt32, sourceUrlBytes: UInt64, publisherContentTypeBytes: UInt64, providerBytes: UInt64, modelBytes: UInt64) {
+        self.publisherDocumentBytes = publisherDocumentBytes
+        self.modelPromptBytes = modelPromptBytes
+        self.modelCompletionBytes = modelCompletionBytes
+        self.agentItems = agentItems
+        self.sourceUrlBytes = sourceUrlBytes
+        self.publisherContentTypeBytes = publisherContentTypeBytes
+        self.providerBytes = providerBytes
+        self.modelBytes = modelBytes
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterObservationLimits: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterObservationLimits: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterObservationLimits {
+        return
+            try ChapterObservationLimits(
+                publisherDocumentBytes: FfiConverterUInt64.read(from: &buf),
+                modelPromptBytes: FfiConverterUInt64.read(from: &buf),
+                modelCompletionBytes: FfiConverterUInt64.read(from: &buf),
+                agentItems: FfiConverterUInt32.read(from: &buf),
+                sourceUrlBytes: FfiConverterUInt64.read(from: &buf),
+                publisherContentTypeBytes: FfiConverterUInt64.read(from: &buf),
+                providerBytes: FfiConverterUInt64.read(from: &buf),
+                modelBytes: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ChapterObservationLimits, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.publisherDocumentBytes, into: &buf)
+        FfiConverterUInt64.write(value.modelPromptBytes, into: &buf)
+        FfiConverterUInt64.write(value.modelCompletionBytes, into: &buf)
+        FfiConverterUInt32.write(value.agentItems, into: &buf)
+        FfiConverterUInt64.write(value.sourceUrlBytes, into: &buf)
+        FfiConverterUInt64.write(value.publisherContentTypeBytes, into: &buf)
+        FfiConverterUInt64.write(value.providerBytes, into: &buf)
+        FfiConverterUInt64.write(value.modelBytes, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterObservationLimits_lift(_ buf: RustBuffer) throws -> ChapterObservationLimits {
+    return try FfiConverterTypeChapterObservationLimits.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterObservationLimits_lower(_ value: ChapterObservationLimits) -> RustBuffer {
+    return FfiConverterTypeChapterObservationLimits.lower(value)
+}
+
+
 public struct ChapterSummaryProjection: Equatable, Hashable {
     public let artifactId: ChapterArtifactId
     public let episodeId: EpisodeId

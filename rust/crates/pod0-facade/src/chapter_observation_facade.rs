@@ -1,7 +1,13 @@
 use crate::{
-    AgentComposedChapterObservation, ChapterObservationProjection, ModelChapterObservation,
-    PublisherChapterObservation,
+    AgentComposedChapterObservation, ChapterObservationLimits, ChapterObservationProjection,
+    ModelChapterObservation, PublisherChapterObservation,
 };
+
+/// Returns the core-owned bounds native capabilities must enforce before FFI.
+#[uniffi::export]
+pub fn chapter_observation_limits() -> ChapterObservationLimits {
+    pod0_application::chapter_observation_limits()
+}
 
 /// Qualifies bounded publisher bytes without network or persistence effects.
 #[uniffi::export]

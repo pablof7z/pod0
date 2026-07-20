@@ -5,7 +5,8 @@ use pod0_domain::{
 use crate::chapter_observation_test_support::{digest, model, publisher, qualified};
 use crate::{
     ChapterModelObservationMode, ChapterObservationProjection, ChapterObservationRejection,
-    MAX_MODEL_CHAPTER_COMPLETION_BYTES, ModelChapterObservation, qualify_model_chapter_observation,
+    MAX_MODEL_CHAPTER_COMPLETION_BYTES, MAX_MODEL_CHAPTER_PROMPT_BYTES, ModelChapterObservation,
+    chapter_observation_limits, qualify_model_chapter_observation,
     qualify_publisher_chapter_observation,
 };
 
@@ -25,6 +26,25 @@ const GENERATED: &str = r#"{
     {"start":110,"end":130,"kind":"postroll"}
   ]
 }"#;
+
+#[test]
+fn observation_limits_are_typed_core_policy() {
+    let limits = chapter_observation_limits();
+    assert_eq!(limits.publisher_document_bytes, 2 * 1_024 * 1_024);
+    assert_eq!(
+        limits.model_prompt_bytes,
+        MAX_MODEL_CHAPTER_PROMPT_BYTES as u64
+    );
+    assert_eq!(
+        limits.model_completion_bytes,
+        MAX_MODEL_CHAPTER_COMPLETION_BYTES as u64
+    );
+    assert_eq!(limits.agent_items, 4_096);
+    assert_eq!(limits.source_url_bytes, 4_096);
+    assert_eq!(limits.publisher_content_type_bytes, 512);
+    assert_eq!(limits.provider_bytes, 128);
+    assert_eq!(limits.model_bytes, 256);
+}
 
 #[test]
 fn generated_output_normalizes_chapters_summaries_and_ads() {

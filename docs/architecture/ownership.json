@@ -58,7 +58,43 @@
       "excludes": [
         "App/Sources/Core/SharedLibraryClient+Transcripts.swift",
         "App/Sources/Core/SharedTranscriptReader.swift",
-        "App/Sources/Core/TranscriptObservationMapper.swift"
+        "App/Sources/Core/TranscriptObservationMapper.swift",
+        "App/Sources/Core/ChapterObservationCapability.swift",
+        "App/Sources/Core/ChapterObservationCapabilityAdapter.swift",
+        "App/Sources/Core/ChapterObservationCapabilityAdapter+Mapping.swift",
+        "App/Sources/Core/ChapterPublisherTransport.swift",
+        "App/Sources/Core/ChapterModelTransport.swift"
+      ]
+    },
+    {
+      "id": "native-chapter-provider-capabilities",
+      "classification": "native_by_design",
+      "current_owner": "Swift URLSession and platform credential capability adapters",
+      "target_owner": "Swift and future Kotlin primitive provider executors",
+      "reason": "HTTP execution, streamed byte bounds, and secure platform credential access are native capabilities; semantic qualification and durable policy remain in Rust.",
+      "boundary": "Execute one typed request and return exact bounded bytes, provider envelopes, metadata, and raw typed failures without semantic parsing, retry, fallback, or persistence.",
+      "persisted_state": "None; credentials remain in platform security facilities and the adapters retain no response state.",
+      "priority": "keep_native",
+      "includes": [
+        "App/Sources/Core/ChapterPublisherTransport.swift",
+        "App/Sources/Core/ChapterModelTransport.swift"
+      ]
+    },
+    {
+      "id": "temporary-chapter-observation-orchestration",
+      "classification": "temporary_swift",
+      "current_owner": "Swift typed request mapping and transient in-flight task shell",
+      "target_owner": "Pod0 Rust workflow/application layer issuing typed native host requests",
+      "reason": "Issue #102 proves the raw provider boundary without activating a second durable writer; issue #100 moves request policy and workflow lifecycle into Rust.",
+      "boundary": "Consume core-owned bounds, map exact native results into generated observations, call Rust qualification, and retain only bounded in-memory task identities.",
+      "persisted_state": "None; no files, database rows, retry counters, selected artifacts, or canonical mirrors.",
+      "migration_issues": [100, 102],
+      "deletion_target": "Issue #100 deletes Swift request/workflow orchestration after Rust emits equivalent typed host requests; retain only primitive publisher/model capability execution.",
+      "priority": "high",
+      "includes": [
+        "App/Sources/Core/ChapterObservationCapability.swift",
+        "App/Sources/Core/ChapterObservationCapabilityAdapter.swift",
+        "App/Sources/Core/ChapterObservationCapabilityAdapter+Mapping.swift"
       ]
     },
     {

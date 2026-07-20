@@ -4182,6 +4182,16 @@ public func verifyStagedLegacyChapterImport(sourceDatabasePath: String, artifact
 })
 }
 /**
+ * Returns the core-owned bounds native capabilities must enforce before FFI.
+ */
+public func chapterObservationLimits() -> ChapterObservationLimits  {
+    return try!  FfiConverterTypeChapterObservationLimits_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_chapter_observation_limits(uniffiCallStatus
+    )
+})
+}
+/**
  * Qualifies ordered agent-composed chapter evidence as state.
  */
 public func qualifyAgentComposedChapterObservation(observation: AgentComposedChapterObservation) -> ChapterObservationProjection  {
@@ -4480,6 +4490,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_func_verify_staged_legacy_chapter_import() != 45954) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_chapter_observation_limits() != 45878) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_func_qualify_agent_composed_chapter_observation() != 59813) {

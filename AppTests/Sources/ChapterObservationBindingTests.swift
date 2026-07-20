@@ -4,6 +4,15 @@ import XCTest
 
 final class ChapterObservationBindingTests: XCTestCase {
     func testSwiftQualifiesPublisherModelAndAgentObservationsAsState() {
+        let limits = chapterObservationLimits()
+        XCTAssertEqual(limits.publisherDocumentBytes, 2_097_152)
+        XCTAssertEqual(limits.modelPromptBytes, 262_144)
+        XCTAssertEqual(limits.modelCompletionBytes, 1_048_576)
+        XCTAssertEqual(limits.agentItems, 4_096)
+        XCTAssertEqual(limits.sourceUrlBytes, 4_096)
+        XCTAssertEqual(limits.publisherContentTypeBytes, 512)
+        XCTAssertEqual(limits.providerBytes, 128)
+        XCTAssertEqual(limits.modelBytes, 256)
         let episodeID = EpisodeId(high: 11, low: 101)
         let podcastID = PodcastId(high: 12, low: 101)
         let observedAt = UnixTimestampMilliseconds(value: 1_721_322_123_456)

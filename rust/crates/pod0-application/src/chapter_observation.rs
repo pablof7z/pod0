@@ -5,8 +5,36 @@ use pod0_domain::{
 
 pub const CHAPTER_OBSERVATION_POLICY_VERSION: u32 = 1;
 pub const MAX_PUBLISHER_CHAPTER_DOCUMENT_BYTES: usize = 2 * 1_024 * 1_024;
+pub const MAX_PUBLISHER_CHAPTER_CONTENT_TYPE_BYTES: usize = 512;
 pub const MAX_MODEL_CHAPTER_COMPLETION_BYTES: usize = 1_024 * 1_024;
+pub const MAX_MODEL_CHAPTER_PROMPT_BYTES: usize = 256 * 1_024;
 pub const MAX_AGENT_COMPOSED_CHAPTER_ITEMS: usize = 4_096;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct ChapterObservationLimits {
+    pub publisher_document_bytes: u64,
+    pub model_prompt_bytes: u64,
+    pub model_completion_bytes: u64,
+    pub agent_items: u32,
+    pub source_url_bytes: u64,
+    pub publisher_content_type_bytes: u64,
+    pub provider_bytes: u64,
+    pub model_bytes: u64,
+}
+
+#[must_use]
+pub const fn chapter_observation_limits() -> ChapterObservationLimits {
+    ChapterObservationLimits {
+        publisher_document_bytes: MAX_PUBLISHER_CHAPTER_DOCUMENT_BYTES as u64,
+        model_prompt_bytes: MAX_MODEL_CHAPTER_PROMPT_BYTES as u64,
+        model_completion_bytes: MAX_MODEL_CHAPTER_COMPLETION_BYTES as u64,
+        agent_items: MAX_AGENT_COMPOSED_CHAPTER_ITEMS as u32,
+        source_url_bytes: pod0_domain::MAX_CHAPTER_URL_BYTES as u64,
+        publisher_content_type_bytes: MAX_PUBLISHER_CHAPTER_CONTENT_TYPE_BYTES as u64,
+        provider_bytes: pod0_domain::MAX_PROVENANCE_PROVIDER_BYTES as u64,
+        model_bytes: pod0_domain::MAX_CHAPTER_MODEL_BYTES as u64,
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct PublisherChapterObservation {

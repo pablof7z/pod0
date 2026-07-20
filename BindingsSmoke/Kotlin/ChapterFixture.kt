@@ -73,7 +73,7 @@ fun qualifyChapterContract(fixture: Map<String, String>) {
     )
 
     check(fixture["fixture_version"] == "1")
-    check(fixture["contract_version"]?.toUInt() == 15u)
+    check(fixture["contract_version"]?.toUInt() == 16u)
     check(fixture["unknown_future_field"] == "ignored-by-v1-readers")
     val qualified = projectChapterContract(
         request,
@@ -112,6 +112,15 @@ fun qualifyChapterContract(fixture: Map<String, String>) {
 }
 
 fun qualifyChapterObservations() {
+    val limits = chapterObservationLimits()
+    check(limits.publisherDocumentBytes == 2_097_152UL)
+    check(limits.modelPromptBytes == 262_144UL)
+    check(limits.modelCompletionBytes == 1_048_576UL)
+    check(limits.agentItems == 4_096u)
+    check(limits.sourceUrlBytes == 4_096UL)
+    check(limits.publisherContentTypeBytes == 512UL)
+    check(limits.providerBytes == 128UL)
+    check(limits.modelBytes == 256UL)
     val episode = EpisodeId(11UL, 101UL)
     val podcast = PodcastId(12UL, 101UL)
     val observedAt = UnixTimestampMilliseconds(1_721_322_123_456L)

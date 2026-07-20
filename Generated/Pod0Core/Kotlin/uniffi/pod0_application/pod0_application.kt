@@ -1705,6 +1705,74 @@ public object FfiConverterTypeChapterItemProjection: FfiConverterRustBuffer<Chap
 
 
 
+data class ChapterObservationLimits (
+    val `publisherDocumentBytes`: kotlin.ULong
+    ,
+    val `modelPromptBytes`: kotlin.ULong
+    ,
+    val `modelCompletionBytes`: kotlin.ULong
+    ,
+    val `agentItems`: kotlin.UInt
+    ,
+    val `sourceUrlBytes`: kotlin.ULong
+    ,
+    val `publisherContentTypeBytes`: kotlin.ULong
+    ,
+    val `providerBytes`: kotlin.ULong
+    ,
+    val `modelBytes`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterObservationLimits: FfiConverterRustBuffer<ChapterObservationLimits> {
+    override fun read(buf: ByteBuffer): ChapterObservationLimits {
+        return ChapterObservationLimits(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ChapterObservationLimits) = (
+            FfiConverterULong.allocationSize(value.`publisherDocumentBytes`) +
+            FfiConverterULong.allocationSize(value.`modelPromptBytes`) +
+            FfiConverterULong.allocationSize(value.`modelCompletionBytes`) +
+            FfiConverterUInt.allocationSize(value.`agentItems`) +
+            FfiConverterULong.allocationSize(value.`sourceUrlBytes`) +
+            FfiConverterULong.allocationSize(value.`publisherContentTypeBytes`) +
+            FfiConverterULong.allocationSize(value.`providerBytes`) +
+            FfiConverterULong.allocationSize(value.`modelBytes`)
+    )
+
+    override fun write(value: ChapterObservationLimits, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`publisherDocumentBytes`, buf)
+            FfiConverterULong.write(value.`modelPromptBytes`, buf)
+            FfiConverterULong.write(value.`modelCompletionBytes`, buf)
+            FfiConverterUInt.write(value.`agentItems`, buf)
+            FfiConverterULong.write(value.`sourceUrlBytes`, buf)
+            FfiConverterULong.write(value.`publisherContentTypeBytes`, buf)
+            FfiConverterULong.write(value.`providerBytes`, buf)
+            FfiConverterULong.write(value.`modelBytes`, buf)
+    }
+}
+
+
+
 data class ChapterSummaryProjection (
     val `artifactId`: ChapterArtifactId
     ,
