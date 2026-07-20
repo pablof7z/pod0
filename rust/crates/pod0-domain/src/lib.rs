@@ -72,6 +72,7 @@ opaque_id!(ChapterArtifactId, uniffi::Record);
 opaque_id!(ChapterId, uniffi::Record);
 opaque_id!(AdSpanId, uniffi::Record);
 opaque_id!(ChapterPlaybackSessionId, uniffi::Record);
+opaque_id!(ChapterModelSubmissionFenceId, uniffi::Record);
 opaque_id!(EvidenceSpanId, uniffi::Record);
 opaque_id!(EvidenceGenerationId, uniffi::Record);
 opaque_id!(NoteId, uniffi::Record);

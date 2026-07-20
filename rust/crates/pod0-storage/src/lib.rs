@@ -92,6 +92,7 @@ mod listening_store_write_entities;
 mod migration;
 mod migration_db;
 mod model;
+mod model_chapter_workflow;
 mod note_import;
 mod note_import_model;
 mod note_import_store;
@@ -186,6 +187,7 @@ pub use model::{
     APPLICATION_ID, AccessMode, BackupEvidence, BlockedReason, CURRENT_SCHEMA_VERSION,
     MIN_SUPPORTED_SCHEMA_VERSION, MigrationReport, MigrationState, SchemaStatus, StorageError,
 };
+pub use model_chapter_workflow::*;
 pub use note_import::{NoteImportClock, NoteImporter};
 pub(crate) use note_import_model::InspectedNoteSource;
 pub use note_import_model::{

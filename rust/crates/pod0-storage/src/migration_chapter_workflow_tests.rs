@@ -13,7 +13,7 @@ impl MigrationClock for FixedClock {
 }
 
 #[test]
-fn schema_14_through_16_preserves_and_adopts_current_publisher_chapters() {
+fn schema_14_through_17_preserves_and_adopts_current_publisher_chapters() {
     let (fixture, store, episode_id) = workflow_fixture();
     store
         .commit_and_select_chapter(
@@ -38,7 +38,7 @@ fn schema_14_through_16_preserves_and_adopts_current_publisher_chapters() {
     CoreStoreMigrator::new(FixedClock)
         .migrate(
             &fixture.target,
-            16,
+            17,
             &fixture.target.with_extension("v14-backup.sqlite"),
             CommandId::from_parts(70, 14),
         )
@@ -57,7 +57,7 @@ fn schema_14_through_16_preserves_and_adopts_current_publisher_chapters() {
 }
 
 #[test]
-fn schema_15_to_16_preserves_publisher_state_and_adds_fenced_model_storage() {
+fn schema_15_to_17_preserves_publisher_state_and_adds_fenced_model_storage() {
     let (fixture, store, episode_id) = workflow_fixture();
     let publisher = ensure(&store, episode_id, 3, false);
     drop(store);
@@ -75,12 +75,12 @@ fn schema_15_to_16_preserves_publisher_state_and_adds_fenced_model_storage() {
     let report = CoreStoreMigrator::new(FixedClock)
         .migrate(
             &fixture.target,
-            16,
+            17,
             &fixture.target.with_extension("v15-backup.sqlite"),
             CommandId::from_parts(70, 15),
         )
         .unwrap();
-    assert_eq!(report.applied_versions, [16]);
+    assert_eq!(report.applied_versions, [16, 17]);
 
     let reopened = crate::LibraryStore::open_authoritative(&fixture.target).unwrap();
     assert_eq!(
