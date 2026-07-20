@@ -108,6 +108,7 @@ mod schema_clips;
 mod schema_evidence;
 mod schema_introspection;
 mod schema_library;
+mod schema_model_chapter_workflows;
 mod schema_notes;
 mod schema_transcripts;
 mod transcript_authority;
@@ -133,6 +134,7 @@ mod transcript_store_write;
 mod transcript_store_write_artifact;
 mod transcript_store_write_rows;
 pub use backup::{restore_backup_to_new_store, verify_backup};
+pub use chapter_authority::chapter_store_is_authoritative;
 pub use chapter_import::{ChapterImportClock, ChapterImporter};
 pub use chapter_import_model::{
     ChapterBackupEvidence, ChapterImportPlan, ChapterImportReport, ChapterImportState,
@@ -174,10 +176,6 @@ pub use legacy_note_source::inspect_legacy_note_source;
 pub use legacy_source::inspect_legacy_listening_source;
 pub use legacy_transcript_source::inspect_legacy_transcript_source;
 pub use library_store::{LibraryStore, commit_listening_cutover};
-pub fn chapter_store_is_authoritative(path: &std::path::Path) -> Result<bool, StorageError> {
-    let connection = crate::chapter_import_store_read::open_current(path)?;
-    crate::chapter_authority::chapter_is_authoritative(&connection)
-}
 pub use library_store_playback::{
     PlaybackMutation, PlaybackMutationResult, PlaybackQueuePlacement,
 };

@@ -2,6 +2,11 @@ use rusqlite::Connection;
 
 use crate::StorageError;
 
+pub fn chapter_store_is_authoritative(path: &std::path::Path) -> Result<bool, StorageError> {
+    let connection = crate::chapter_import_store_read::open_current(path)?;
+    chapter_is_authoritative(&connection)
+}
+
 pub(crate) fn chapter_is_authoritative(connection: &Connection) -> Result<bool, StorageError> {
     let state: (bool, Option<Vec<u8>>) = connection
         .query_row(
