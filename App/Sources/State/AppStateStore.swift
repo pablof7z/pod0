@@ -95,6 +95,10 @@ final class AppStateStore {
     /// (the App Group suite); tests inject an instance over a unique
     /// in-memory suite so fixtures never leak into the real app.
     let persistence: Persistence
+    /// Only the production App Group store participates in the process-wide
+    /// iCloud settings channel. Injected stores are isolated test or preview
+    /// fixtures and must neither import nor publish account-wide preferences.
+    let syncSettingsWithICloud: Bool
 
     /// Retained observer token for iCloud external-change notifications.
     private var iCloudObserver: NSObjectProtocol?
@@ -117,6 +121,7 @@ final class AppStateStore {
         startSubscriptionRefresh: Bool = true
     ) {
         self.persistence = persistence
+        syncSettingsWithICloud = persistence === Persistence.shared
         self.productSignals = productSignals
         var loadedState: AppState
         do {
@@ -160,7 +165,9 @@ final class AppStateStore {
         }
         // Start iCloud KV sync before assigning state so that the first
         // push (triggered by the `didSet` below) reflects the merged values.
-        iCloudSettingsSync.shared.start(mergingInto: &loadedState.settings)
+        if syncSettingsWithICloud {
+            iCloudSettingsSync.shared.start(mergingInto: &loadedState.settings)
+        }
         self.state = loadedState
         let feedHost: any CoreFeedHosting = sharedFeedHost ?? CoreFeedHost()
         switch SharedLibraryBootstrap.run(
@@ -209,13 +216,15 @@ final class AppStateStore {
         SpotlightIndexer.clearAll()
         // Observe external iCloud changes so settings stay in sync while the
         // app is running on multiple devices simultaneously.
-        iCloudObserver = NotificationCenter.default.addObserver(
-            forName: iCloudSettingsSync.settingsDidChangeExternallyNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.applyExternalSettingsChange()
+        if syncSettingsWithICloud {
+            iCloudObserver = NotificationCenter.default.addObserver(
+                forName: iCloudSettingsSync.settingsDidChangeExternallyNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.applyExternalSettingsChange()
+                }
             }
         }
         // Refresh once for this foreground lifecycle. Later opportunities are

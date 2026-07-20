@@ -68,7 +68,9 @@ extension AppStateStore {
         pendingAtomicJobs.removeAll()
         persistence.save(snapshot, ensuring: jobs)
         scheduleWidgetReload()
-        iCloudSettingsSync.shared.push(state.settings)
+        if syncSettingsWithICloud {
+            iCloudSettingsSync.shared.push(state.settings)
+        }
     }
 
     /// Trailing-debounce `WidgetCenter.reloadAllTimelines()`. Bursts of

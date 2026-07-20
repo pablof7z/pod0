@@ -19,6 +19,7 @@ extension AppStateStore {
     }
 
     func applyExternalSettingsChange() {
+        guard syncSettingsWithICloud else { return }
         let sync = iCloudSettingsSync.shared
         sync.isApplyingRemoteChange = true
         defer { sync.isApplyingRemoteChange = false }

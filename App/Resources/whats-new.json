@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-20T20:05:57Z",
+      "lines": [
+        "Large podcast libraries now load smoothly without getting stuck checking chapters for episodes that have none."
+      ]
+    },
+    {
       "shipped_at": "2026-07-20T14:09:26Z",
       "lines": [
         "Publisher chapters now recover cleanly after interruptions, with reliable retry and cancel controls."

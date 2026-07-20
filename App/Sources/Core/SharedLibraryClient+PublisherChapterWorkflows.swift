@@ -15,41 +15,33 @@ extension SharedLibraryClient {
     /// Announces a native execution opportunity only. Rust derives whether a
     /// publisher workflow is needed from its authoritative episode metadata.
     func ensurePublisherChapters(episodeIDs: some Sequence<UUID>) {
-        let episodeIDs = Set(episodeIDs)
-            .subtracting(announcedPublisherChapterEpisodeIDs)
-        announcedPublisherChapterEpisodeIDs.formUnion(episodeIDs)
-        announcePublisherChapterOpportunity(episodeIDs: episodeIDs)
+        guard let cachedSnapshot else { return }
+        let eligibleEpisodeIDs = PublisherChapterOpportunityPlanner.requestedEpisodeIDs(
+            requested: episodeIDs,
+            current: cachedSnapshot,
+            excluding: announcedPublisherChapterEpisodeIDs
+        )
+        announcedPublisherChapterEpisodeIDs.formUnion(eligibleEpisodeIDs)
+        announcePublisherChapterOpportunity(episodeIDs: eligibleEpisodeIDs)
     }
 
     func announcePublisherSourceChanges(
         previous: SharedLibrarySnapshot?,
         current: SharedLibrarySnapshot
     ) {
-        let previousEpisodes: [EpisodeRecord] = if let previous {
-            previous.episodes
-        } else {
-            []
-        }
-        let previousSources: [UUID: String] = Dictionary(uniqueKeysWithValues:
-            previousEpisodes.compactMap { record in
-                record.episodeId.uuid.map {
-                    ($0, record.feedMetadata.chaptersUrl ?? "")
-                }
-            }
+        let changedEpisodeIDs = PublisherChapterOpportunityPlanner.changedEpisodeIDs(
+            previous: previous,
+            current: current
         )
-        let changed = current.episodes.compactMap { record -> UUID? in
-            guard let id = record.episodeId.uuid,
-                  previousSources[id] != (record.feedMetadata.chaptersUrl ?? "")
-            else { return nil }
-            return id
-        }
-        announcedPublisherChapterEpisodeIDs.formUnion(changed)
-        announcePublisherChapterOpportunity(episodeIDs: changed)
+        announcedPublisherChapterEpisodeIDs.formUnion(changedEpisodeIDs)
+        announcePublisherChapterOpportunity(episodeIDs: changedEpisodeIDs)
     }
 
     private func announcePublisherChapterOpportunity(
         episodeIDs: some Sequence<UUID>
     ) {
+        let episodeIDs = Array(episodeIDs)
+        guard !episodeIDs.isEmpty else { return }
         for episodeID in episodeIDs {
             facade.dispatch(command: CommandEnvelope(
                 commandId: CommandId(uuid: UUID()),
@@ -165,5 +157,54 @@ extension SharedLibraryClient {
             }
         }
         return Array(byEpisode.values)
+    }
+}
+
+/// Stateless coalescing over the latest typed Rust projection. This decides
+/// only whether native should announce an execution opportunity; Rust still
+/// owns workflow admission, replacement, retirement, retry, and persistence.
+enum PublisherChapterOpportunityPlanner {
+    static func requestedEpisodeIDs(
+        requested: some Sequence<UUID>,
+        current: SharedLibrarySnapshot,
+        excluding announced: Set<UUID>
+    ) -> [UUID] {
+        let requested = Set(requested).subtracting(announced)
+        guard !requested.isEmpty else { return [] }
+        return current.episodes.compactMap { record in
+            guard let id = record.episodeId.uuid,
+                  requested.contains(id),
+                  normalizedSource(record.feedMetadata.chaptersUrl) != nil
+            else { return nil }
+            return id
+        }
+    }
+
+    static func changedEpisodeIDs(
+        previous: SharedLibrarySnapshot?,
+        current: SharedLibrarySnapshot
+    ) -> [UUID] {
+        let previousSources = previous.map(sourceMap)
+        return current.episodes.compactMap { record in
+            guard let id = record.episodeId.uuid else { return nil }
+            let currentSource = normalizedSource(record.feedMetadata.chaptersUrl)
+            if previousSources == nil { return currentSource == nil ? nil : id }
+            return previousSources?[id] == currentSource ? nil : id
+        }
+    }
+
+    private static func sourceMap(_ snapshot: SharedLibrarySnapshot) -> [UUID: String] {
+        Dictionary(uniqueKeysWithValues: snapshot.episodes.compactMap { record in
+            guard let id = record.episodeId.uuid,
+                  let source = normalizedSource(record.feedMetadata.chaptersUrl)
+            else { return nil }
+            return (id, source)
+        })
+    }
+
+    private static func normalizedSource(_ source: String?) -> String? {
+        guard let source else { return nil }
+        let trimmed = source.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
