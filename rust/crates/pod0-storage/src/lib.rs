@@ -17,7 +17,9 @@ mod chapter_rollback_format;
 mod chapter_rollback_manifest;
 mod chapter_rollback_verify;
 mod chapter_store_codec;
+mod chapter_store_model;
 mod chapter_store_read_artifact;
+mod chapter_store_read_selection;
 mod chapter_store_write_artifact;
 mod clip_import;
 mod clip_import_model;
@@ -134,6 +136,7 @@ pub use chapter_import_store_read::{read_active_chapter_import, read_chapter_imp
 pub use chapter_rollback_export::{
     CHAPTER_ROLLBACK_FORMAT_VERSION, export_chapter_rollback_bundle,
 };
+pub use chapter_store_model::SelectedChapterArtifact;
 pub use clip_import::{ClipImportClock, ClipImporter};
 pub(crate) use clip_import_model::InspectedClipSource;
 pub use clip_import_model::{
@@ -206,6 +209,8 @@ mod chapter_import_test_support;
 mod chapter_import_tests;
 #[cfg(test)]
 mod chapter_rollback_export_tests;
+#[cfg(test)]
+mod chapter_store_read_tests;
 #[cfg(test)]
 mod clip_cutover_restart_tests;
 #[cfg(test)]

@@ -3,7 +3,8 @@ use pod0_application::{
 };
 
 use crate::runtime_command_fingerprint::command_fingerprint;
-use crate::runtime_state::{FacadeState, FeedIntent, PlaybackRuntime, failure};
+use crate::runtime_playback_state::PlaybackRuntime;
+use crate::runtime_state::{FacadeState, FeedIntent, failure};
 
 impl FacadeState {
     pub(super) fn accept_command(&mut self, envelope: CommandEnvelope) -> bool {

@@ -7,7 +7,7 @@ use pod0_domain::{
 
 use crate::{EvidenceChunkPolicy, RecallQuery, TranscriptEvidenceInput};
 
-pub const FACADE_CONTRACT_VERSION: u32 = 16;
+pub const FACADE_CONTRACT_VERSION: u32 = 17;
 pub const MAX_PROJECTION_ITEMS: u16 = 200;
 pub const MAX_OPERATION_ITEMS: usize = 32;
 pub const MAX_HOST_REQUEST_BATCH: u16 = 64;
@@ -170,6 +170,14 @@ pub enum PlaybackCommand {
     Seek {
         position_milliseconds: u64,
     },
+    NextChapter {
+        context: crate::ChapterPlaybackContext,
+        position_milliseconds: u64,
+    },
+    PreviousChapter {
+        context: crate::ChapterPlaybackContext,
+        position_milliseconds: u64,
+    },
     Enqueue {
         entry: QueueEntry,
         placement: QueuePlacement,
@@ -194,6 +202,7 @@ pub enum PlaybackCommand {
     SetPreferences {
         auto_mark_played_at_natural_end: bool,
         auto_play_next: bool,
+        auto_skip_ads: bool,
     },
     SetCompletion {
         episode_id: EpisodeId,

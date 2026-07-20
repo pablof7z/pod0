@@ -115,6 +115,12 @@ impl FacadeState {
                             CompletionStatus::Completed { .. }
                         ),
                         policy_state: self.playback.policy_state,
+                        chapter_context: self
+                            .playback
+                            .chapter
+                            .as_ref()
+                            .filter(|chapter| chapter.context.episode_id == episode.episode_id)
+                            .map(|chapter| chapter.context),
                     }),
                     queue: self.listening.playback.queue.clone(),
                     rate: self.listening.playback.rate,
@@ -124,6 +130,7 @@ impl FacadeState {
                         .playback
                         .auto_mark_played_at_natural_end,
                     auto_play_next: self.listening.playback.auto_play_next,
+                    auto_skip_ads: self.playback.auto_skip_ads,
                     allowed_actions: PlaybackAllowedActions {
                         can_play: has_active && !self.playback.desired_playing,
                         can_pause: has_active && self.playback.desired_playing,

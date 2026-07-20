@@ -55,6 +55,7 @@ pub enum PlaybackMutation {
 pub struct PlaybackMutationResult {
     pub revision: StateRevision,
     pub active_episode_id: Option<EpisodeId>,
+    pub reused_existing: bool,
 }
 
 impl LibraryStore {
@@ -70,6 +71,7 @@ impl LibraryStore {
                 return Ok(PlaybackMutationResult {
                     revision,
                     active_episode_id: active_episode(transaction)?,
+                    reused_existing: true,
                 });
             }
             apply_mutation(transaction, mutation, observed_at_ms)?;
@@ -77,6 +79,7 @@ impl LibraryStore {
             Ok(PlaybackMutationResult {
                 revision,
                 active_episode_id: active_episode(transaction)?,
+                reused_existing: false,
             })
         })
     }
@@ -118,6 +121,7 @@ impl LibraryStore {
             Ok(PlaybackMutationResult {
                 revision,
                 active_episode_id: active_episode(transaction)?,
+                reused_existing: false,
             })
         })
     }

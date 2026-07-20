@@ -1,7 +1,7 @@
 use pod0_domain::{
     CancellationId, CommandId, DomainEventId, EpisodeId, EvidenceGenerationId, HostRequestId,
-    PlaybackRatePermille, PodcastId, RecallQueryId, StateRevision, TranscriptArtifactId,
-    TranscriptVersionId, UnixTimestampMilliseconds,
+    PlaybackRatePermille, PlaybackSeekReason, PodcastId, RecallQueryId, StateRevision,
+    TranscriptArtifactId, TranscriptVersionId, UnixTimestampMilliseconds,
 };
 
 use crate::{
@@ -102,6 +102,8 @@ pub enum HostRequest {
     Seek {
         episode_id: EpisodeId,
         position_milliseconds: u64,
+        reason: PlaybackSeekReason,
+        chapter_context: Option<crate::ChapterPlaybackContext>,
     },
     SetRate {
         episode_id: EpisodeId,

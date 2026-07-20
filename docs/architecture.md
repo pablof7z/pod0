@@ -154,6 +154,12 @@ Swift and Kotlin bindings. CI rejects drift from Rust metadata.
   Swift remains the single production chapter writer until the staged
   migration and atomic authority cutover in #99–#104; the contract is not a
   shadow durable store.
+- Version 17 evaluates next/previous targets and half-open, one-time ad skips
+  from the Rust-selected immutable artifact. The bounded playback projection
+  carries its artifact/revision/session fence, and the native audio host
+  executes an exact typed seek. The policy remains dormant in production until
+  #104 atomically activates chapter authority, switches callers, and deletes
+  the temporary Swift rules.
 - Open views receive bounded, revisioned, screen-shaped projections.
 - Operation failure and cancellation appear in projection state, not thrown
   per-operation FFI results.

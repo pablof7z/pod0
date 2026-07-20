@@ -75,20 +75,21 @@ fn playback_slice_commits_selection_queue_resume_and_natural_advance_atomically(
             1_800_000_000_003,
         )
         .unwrap();
-    assert_eq!(
-        store
-            .apply_playback_mutation(
-                id(22),
-                &"q".repeat(64),
-                PlaybackMutation::Enqueue {
-                    entry: queue_entry,
-                    placement: PlaybackQueuePlacement::Back,
-                },
-                1_800_000_000_004,
-            )
-            .unwrap(),
-        queued
-    );
+    let replayed = store
+        .apply_playback_mutation(
+            id(22),
+            &"q".repeat(64),
+            PlaybackMutation::Enqueue {
+                entry: queue_entry,
+                placement: PlaybackQueuePlacement::Back,
+            },
+            1_800_000_000_004,
+        )
+        .unwrap();
+    assert_eq!(replayed.revision, queued.revision);
+    assert_eq!(replayed.active_episode_id, queued.active_episode_id);
+    assert!(!queued.reused_existing);
+    assert!(replayed.reused_existing);
     store
         .apply_playback_observation(
             PlaybackMutation::Checkpoint {

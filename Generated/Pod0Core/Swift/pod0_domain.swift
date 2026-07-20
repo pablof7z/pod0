@@ -1287,6 +1287,60 @@ public func FfiConverterTypeChapterLegacyProvenance_lower(_ value: ChapterLegacy
 }
 
 
+public struct ChapterPlaybackSessionId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterPlaybackSessionId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterPlaybackSessionId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterPlaybackSessionId {
+        return
+            try ChapterPlaybackSessionId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ChapterPlaybackSessionId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterPlaybackSessionId_lift(_ buf: RustBuffer) throws -> ChapterPlaybackSessionId {
+    return try FfiConverterTypeChapterPlaybackSessionId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterPlaybackSessionId_lower(_ value: ChapterPlaybackSessionId) -> RustBuffer {
+    return FfiConverterTypeChapterPlaybackSessionId.lower(value)
+}
+
+
 /**
  * Immutable provenance captured from the selected, verified evidence
  * generation. Transcript rebuilds never silently retarget a saved clip.
@@ -5482,6 +5536,103 @@ public func FfiConverterTypeNoteTarget_lift(_ buf: RustBuffer) throws -> NoteTar
 #endif
 public func FfiConverterTypeNoteTarget_lower(_ value: NoteTarget) -> RustBuffer {
     return FfiConverterTypeNoteTarget.lower(value)
+}
+
+
+
+
+public enum PlaybackSeekReason: Equatable, Hashable {
+
+    case userRequested
+    case nextChapter
+    case previousChapter
+    case previousChapterRestart
+    case automaticAdSkip
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PlaybackSeekReason: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePlaybackSeekReason: FfiConverterRustBuffer {
+    typealias SwiftType = PlaybackSeekReason
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PlaybackSeekReason {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .userRequested
+
+        case 2: return .nextChapter
+
+        case 3: return .previousChapter
+
+        case 4: return .previousChapterRestart
+
+        case 5: return .automaticAdSkip
+
+        case 6: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: PlaybackSeekReason, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .userRequested:
+            writeInt(&buf, Int32(1))
+
+
+        case .nextChapter:
+            writeInt(&buf, Int32(2))
+
+
+        case .previousChapter:
+            writeInt(&buf, Int32(3))
+
+
+        case .previousChapterRestart:
+            writeInt(&buf, Int32(4))
+
+
+        case .automaticAdSkip:
+            writeInt(&buf, Int32(5))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(6))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlaybackSeekReason_lift(_ buf: RustBuffer) throws -> PlaybackSeekReason {
+    return try FfiConverterTypePlaybackSeekReason.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlaybackSeekReason_lower(_ value: PlaybackSeekReason) -> RustBuffer {
+    return FfiConverterTypePlaybackSeekReason.lower(value)
 }
 
 

@@ -50,6 +50,15 @@ impl FacadeState {
             self.listening.playback.active_segment,
         );
         let force_checkpoint = segment_reached || newly_ended;
+        if !force_checkpoint
+            && self.evaluate_automatic_ad_skip(
+                &reaction,
+                observed_at_ms,
+                value.position_milliseconds,
+            )
+        {
+            return;
+        }
         self.checkpoint_observation(
             episode_id,
             value.position_milliseconds,

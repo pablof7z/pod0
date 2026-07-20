@@ -32,6 +32,9 @@ Native executor: Swift `AudioEngine` / AVFoundation through `CorePlaybackHost`
 | Shared queue identity, same-episode selection, and adjacent segment transitions remain deterministic | Rust `runtime_playback_recovery_tests`, `SharedPlaybackMappingTests` | Automated |
 | Completion and mark-played do not resurrect a stale position | `EpisodePlayedStateTests`, `AppTests` | Automated |
 | Pre-seek end callbacks and replaced-episode observations cannot overwrite newer shared state | Rust `runtime_playback_race_tests` | Automated |
+| Chapter next/previous targets, restart threshold, stale fences, and command replay are Rust-deterministic | Rust `runtime_chapter_playback_tests` | Automated; production activation gated by #104 |
+| Automatic ad skip uses half-open spans, one stable ID per session, coarse observations, and deliberate seek-back semantics | Rust `runtime_chapter_ad_skip_tests`, `chapter_playback_policy_tests` | Automated; production activation gated by #104 |
+| Native playback host executes the exact typed chapter/ad target without policy recomputation | `CorePlaybackHostTests` | Automated |
 | Sleep-timer pause travels through the same flush boundary | `PlaybackStateAudioCallbackTests`, `PlaybackSleepTimerLabelTests` | Automated |
 | Shared queue/resume/rate survive facade relaunch while the session timer clears | Rust `restart_restores_queue_resume_rate_and_clears_session_timer`, `SharedPlaybackVerticalSliceTests` | Automated |
 | Now Playing seek/pause uses the same persistence side effects | `PlaybackStateAudioCallbackTests` | Automated |

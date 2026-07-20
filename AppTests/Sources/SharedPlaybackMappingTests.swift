@@ -65,13 +65,15 @@ final class SharedPlaybackMappingTests: XCTestCase {
                 ),
                 label: "Current segment",
                 completed: false,
-                policyState: .paused
+                policyState: .paused,
+                chapterContext: nil
             ),
             queue: [queued.coreValue],
             rate: PlaybackRatePermille(value: 1_250),
             sleepMode: .endOfEpisode,
             autoMarkPlayedAtNaturalEnd: true,
             autoPlayNext: true,
+            autoSkipAds: false,
             allowedActions: PlaybackAllowedActions(
                 canPlay: true,
                 canPause: false,

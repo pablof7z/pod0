@@ -115,6 +115,7 @@ fn natural_end_completes_and_advances_the_queue_through_one_rust_transaction() {
         PlaybackCommand::SetPreferences {
             auto_mark_played_at_natural_end: true,
             auto_play_next: true,
+            auto_skip_ads: false,
         },
     );
     fixture.dispatch(
@@ -191,6 +192,7 @@ fn fired_sleep_timer_suppresses_autoplay_even_when_preferences_allow_it() {
         PlaybackCommand::SetPreferences {
             auto_mark_played_at_natural_end: true,
             auto_play_next: true,
+            auto_skip_ads: false,
         },
     );
     fixture.dispatch(

@@ -1641,6 +1641,44 @@ public object FfiConverterTypeChapterLegacyProvenance: FfiConverterRustBuffer<Ch
 
 
 
+data class ChapterPlaybackSessionId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterPlaybackSessionId: FfiConverterRustBuffer<ChapterPlaybackSessionId> {
+    override fun read(buf: ByteBuffer): ChapterPlaybackSessionId {
+        return ChapterPlaybackSessionId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ChapterPlaybackSessionId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: ChapterPlaybackSessionId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
 /**
  * Immutable provenance captured from the selected, verified evidence
  * generation. Transcript rebuilds never silently retarget a saved clip.
@@ -5572,6 +5610,135 @@ public object FfiConverterTypeNoteTarget : FfiConverterRustBuffer<NoteTarget>{
             }
             is NoteTarget.Unsupported -> {
                 buf.putInt(3)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class PlaybackSeekReason {
+
+    object UserRequested : PlaybackSeekReason()
+
+
+    object NextChapter : PlaybackSeekReason()
+
+
+    object PreviousChapter : PlaybackSeekReason()
+
+
+    object PreviousChapterRestart : PlaybackSeekReason()
+
+
+    object AutomaticAdSkip : PlaybackSeekReason()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : PlaybackSeekReason()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePlaybackSeekReason : FfiConverterRustBuffer<PlaybackSeekReason>{
+    override fun read(buf: ByteBuffer): PlaybackSeekReason {
+        return when(buf.getInt()) {
+            1 -> PlaybackSeekReason.UserRequested
+            2 -> PlaybackSeekReason.NextChapter
+            3 -> PlaybackSeekReason.PreviousChapter
+            4 -> PlaybackSeekReason.PreviousChapterRestart
+            5 -> PlaybackSeekReason.AutomaticAdSkip
+            6 -> PlaybackSeekReason.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: PlaybackSeekReason): ULong = when(value) {
+        is PlaybackSeekReason.UserRequested -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PlaybackSeekReason.NextChapter -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PlaybackSeekReason.PreviousChapter -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PlaybackSeekReason.PreviousChapterRestart -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PlaybackSeekReason.AutomaticAdSkip -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PlaybackSeekReason.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: PlaybackSeekReason, buf: ByteBuffer) {
+        when(value) {
+            is PlaybackSeekReason.UserRequested -> {
+                buf.putInt(1)
+                Unit
+            }
+            is PlaybackSeekReason.NextChapter -> {
+                buf.putInt(2)
+                Unit
+            }
+            is PlaybackSeekReason.PreviousChapter -> {
+                buf.putInt(3)
+                Unit
+            }
+            is PlaybackSeekReason.PreviousChapterRestart -> {
+                buf.putInt(4)
+                Unit
+            }
+            is PlaybackSeekReason.AutomaticAdSkip -> {
+                buf.putInt(5)
+                Unit
+            }
+            is PlaybackSeekReason.Unsupported -> {
+                buf.putInt(6)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }

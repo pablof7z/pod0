@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use pod0_domain::{CommandId, ListeningDomainSnapshot, StateRevision};
+use pod0_domain::{CommandId, EpisodeId, ListeningDomainSnapshot, StateRevision};
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, params};
 
 use crate::listening_store_read::read_snapshot;
@@ -39,6 +39,15 @@ impl LibraryStore {
         require_authoritative(&connection)?;
         crate::clip_store_read::require_clips_authoritative(&connection)?;
         crate::clip_store_read::read_clip_snapshot(&connection)
+    }
+
+    pub fn selected_chapter_artifact(
+        &self,
+        episode_id: EpisodeId,
+    ) -> Result<Option<crate::SelectedChapterArtifact>, StorageError> {
+        let connection = open_current(&self.path, true)?;
+        require_authoritative(&connection)?;
+        crate::chapter_store_read_selection::read_selected_chapter_artifact(&connection, episode_id)
     }
 
     pub fn require_clips_authoritative(&self) -> Result<(), StorageError> {

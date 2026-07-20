@@ -39,6 +39,7 @@ import uniffi.pod0_domain.ChapterArtifactId
 import uniffi.pod0_domain.ChapterArtifactInput
 import uniffi.pod0_domain.ChapterArtifactProvenance
 import uniffi.pod0_domain.ChapterId
+import uniffi.pod0_domain.ChapterPlaybackSessionId
 import uniffi.pod0_domain.ClipId
 import uniffi.pod0_domain.ClipRecord
 import uniffi.pod0_domain.ClipRevision
@@ -61,6 +62,7 @@ import uniffi.pod0_domain.FfiConverterTypeChapterArtifactId
 import uniffi.pod0_domain.FfiConverterTypeChapterArtifactInput
 import uniffi.pod0_domain.FfiConverterTypeChapterArtifactProvenance
 import uniffi.pod0_domain.FfiConverterTypeChapterId
+import uniffi.pod0_domain.FfiConverterTypeChapterPlaybackSessionId
 import uniffi.pod0_domain.FfiConverterTypeClipId
 import uniffi.pod0_domain.FfiConverterTypeClipRecord
 import uniffi.pod0_domain.FfiConverterTypeClipRevision
@@ -82,6 +84,7 @@ import uniffi.pod0_domain.FfiConverterTypeNoteRecord
 import uniffi.pod0_domain.FfiConverterTypeNoteRevision
 import uniffi.pod0_domain.FfiConverterTypeNoteTarget
 import uniffi.pod0_domain.FfiConverterTypePlaybackRatePermille
+import uniffi.pod0_domain.FfiConverterTypePlaybackSeekReason
 import uniffi.pod0_domain.FfiConverterTypePlaybackSegment
 import uniffi.pod0_domain.FfiConverterTypePlaybackSleepMode
 import uniffi.pod0_domain.FfiConverterTypePodcastId
@@ -107,6 +110,7 @@ import uniffi.pod0_domain.NoteRecord
 import uniffi.pod0_domain.NoteRevision
 import uniffi.pod0_domain.NoteTarget
 import uniffi.pod0_domain.PlaybackRatePermille
+import uniffi.pod0_domain.PlaybackSeekReason
 import uniffi.pod0_domain.PlaybackSegment
 import uniffi.pod0_domain.PlaybackSleepMode
 import uniffi.pod0_domain.PodcastId
@@ -133,6 +137,7 @@ import uniffi.pod0_domain.RustBuffer as RustBufferChapterArtifactId
 import uniffi.pod0_domain.RustBuffer as RustBufferChapterArtifactInput
 import uniffi.pod0_domain.RustBuffer as RustBufferChapterArtifactProvenance
 import uniffi.pod0_domain.RustBuffer as RustBufferChapterId
+import uniffi.pod0_domain.RustBuffer as RustBufferChapterPlaybackSessionId
 import uniffi.pod0_domain.RustBuffer as RustBufferClipId
 import uniffi.pod0_domain.RustBuffer as RustBufferClipRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferClipRevision
@@ -154,6 +159,7 @@ import uniffi.pod0_domain.RustBuffer as RustBufferNoteRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferNoteRevision
 import uniffi.pod0_domain.RustBuffer as RustBufferNoteTarget
 import uniffi.pod0_domain.RustBuffer as RustBufferPlaybackRatePermille
+import uniffi.pod0_domain.RustBuffer as RustBufferPlaybackSeekReason
 import uniffi.pod0_domain.RustBuffer as RustBufferPlaybackSegment
 import uniffi.pod0_domain.RustBuffer as RustBufferPlaybackSleepMode
 import uniffi.pod0_domain.RustBuffer as RustBufferPodcastId
@@ -1773,6 +1779,59 @@ public object FfiConverterTypeChapterObservationLimits: FfiConverterRustBuffer<C
 
 
 
+data class ChapterPlaybackContext (
+    val `episodeId`: EpisodeId
+    ,
+    val `artifactId`: ChapterArtifactId
+    ,
+    val `selectionRevision`: StateRevision
+    ,
+    val `sessionId`: ChapterPlaybackSessionId
+    ,
+    val `policyVersion`: kotlin.UInt
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterPlaybackContext: FfiConverterRustBuffer<ChapterPlaybackContext> {
+    override fun read(buf: ByteBuffer): ChapterPlaybackContext {
+        return ChapterPlaybackContext(
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterTypeChapterArtifactId.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterTypeChapterPlaybackSessionId.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ChapterPlaybackContext) = (
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterTypeChapterArtifactId.allocationSize(value.`artifactId`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`selectionRevision`) +
+            FfiConverterTypeChapterPlaybackSessionId.allocationSize(value.`sessionId`) +
+            FfiConverterUInt.allocationSize(value.`policyVersion`)
+    )
+
+    override fun write(value: ChapterPlaybackContext, buf: ByteBuffer) {
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterTypeChapterArtifactId.write(value.`artifactId`, buf)
+            FfiConverterTypeStateRevision.write(value.`selectionRevision`, buf)
+            FfiConverterTypeChapterPlaybackSessionId.write(value.`sessionId`, buf)
+            FfiConverterUInt.write(value.`policyVersion`, buf)
+    }
+}
+
+
+
 data class ChapterSummaryProjection (
     val `artifactId`: ChapterArtifactId
     ,
@@ -2814,6 +2873,8 @@ data class PlaybackItem (
     val `completed`: kotlin.Boolean
     ,
     val `policyState`: PlaybackPolicyState
+    ,
+    val `chapterContext`: ChapterPlaybackContext?
 
 ){
 
@@ -2838,6 +2899,7 @@ public object FfiConverterTypePlaybackItem: FfiConverterRustBuffer<PlaybackItem>
             FfiConverterOptionalString.read(buf),
             FfiConverterBoolean.read(buf),
             FfiConverterTypePlaybackPolicyState.read(buf),
+            FfiConverterOptionalTypeChapterPlaybackContext.read(buf),
         )
     }
 
@@ -2849,7 +2911,8 @@ public object FfiConverterTypePlaybackItem: FfiConverterRustBuffer<PlaybackItem>
             FfiConverterOptionalTypePlaybackSegment.allocationSize(value.`segment`) +
             FfiConverterOptionalString.allocationSize(value.`label`) +
             FfiConverterBoolean.allocationSize(value.`completed`) +
-            FfiConverterTypePlaybackPolicyState.allocationSize(value.`policyState`)
+            FfiConverterTypePlaybackPolicyState.allocationSize(value.`policyState`) +
+            FfiConverterOptionalTypeChapterPlaybackContext.allocationSize(value.`chapterContext`)
     )
 
     override fun write(value: PlaybackItem, buf: ByteBuffer) {
@@ -2861,6 +2924,7 @@ public object FfiConverterTypePlaybackItem: FfiConverterRustBuffer<PlaybackItem>
             FfiConverterOptionalString.write(value.`label`, buf)
             FfiConverterBoolean.write(value.`completed`, buf)
             FfiConverterTypePlaybackPolicyState.write(value.`policyState`, buf)
+            FfiConverterOptionalTypeChapterPlaybackContext.write(value.`chapterContext`, buf)
     }
 }
 
@@ -2942,6 +3006,8 @@ data class PlaybackProjection (
     ,
     val `autoPlayNext`: kotlin.Boolean
     ,
+    val `autoSkipAds`: kotlin.Boolean
+    ,
     val `allowedActions`: PlaybackAllowedActions
     ,
     val `hostState`: PlaybackHostState
@@ -2969,6 +3035,7 @@ public object FfiConverterTypePlaybackProjection: FfiConverterRustBuffer<Playbac
             FfiConverterTypePlaybackSleepMode.read(buf),
             FfiConverterBoolean.read(buf),
             FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
             FfiConverterTypePlaybackAllowedActions.read(buf),
             FfiConverterTypePlaybackHostState.read(buf),
             FfiConverterSequenceTypeOperationProjection.read(buf),
@@ -2982,6 +3049,7 @@ public object FfiConverterTypePlaybackProjection: FfiConverterRustBuffer<Playbac
             FfiConverterTypePlaybackSleepMode.allocationSize(value.`sleepMode`) +
             FfiConverterBoolean.allocationSize(value.`autoMarkPlayedAtNaturalEnd`) +
             FfiConverterBoolean.allocationSize(value.`autoPlayNext`) +
+            FfiConverterBoolean.allocationSize(value.`autoSkipAds`) +
             FfiConverterTypePlaybackAllowedActions.allocationSize(value.`allowedActions`) +
             FfiConverterTypePlaybackHostState.allocationSize(value.`hostState`) +
             FfiConverterSequenceTypeOperationProjection.allocationSize(value.`operations`)
@@ -2994,6 +3062,7 @@ public object FfiConverterTypePlaybackProjection: FfiConverterRustBuffer<Playbac
             FfiConverterTypePlaybackSleepMode.write(value.`sleepMode`, buf)
             FfiConverterBoolean.write(value.`autoMarkPlayedAtNaturalEnd`, buf)
             FfiConverterBoolean.write(value.`autoPlayNext`, buf)
+            FfiConverterBoolean.write(value.`autoSkipAds`, buf)
             FfiConverterTypePlaybackAllowedActions.write(value.`allowedActions`, buf)
             FfiConverterTypePlaybackHostState.write(value.`hostState`, buf)
             FfiConverterSequenceTypeOperationProjection.write(value.`operations`, buf)
@@ -7146,7 +7215,9 @@ sealed class HostRequest {
 
     data class Seek(
         val `episodeId`: uniffi.pod0_domain.EpisodeId,
-        val `positionMilliseconds`: kotlin.ULong) : HostRequest()
+        val `positionMilliseconds`: kotlin.ULong,
+        val `reason`: uniffi.pod0_domain.PlaybackSeekReason,
+        val `chapterContext`: uniffi.pod0_application.ChapterPlaybackContext?) : HostRequest()
 
     {
 
@@ -7295,6 +7366,8 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
             5 -> HostRequest.Seek(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterULong.read(buf),
+                FfiConverterTypePlaybackSeekReason.read(buf),
+                FfiConverterOptionalTypeChapterPlaybackContext.read(buf),
                 )
             6 -> HostRequest.SetRate(
                 FfiConverterTypeEpisodeId.read(buf),
@@ -7385,6 +7458,8 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 4UL
                 + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
                 + FfiConverterULong.allocationSize(value.`positionMilliseconds`)
+                + FfiConverterTypePlaybackSeekReason.allocationSize(value.`reason`)
+                + FfiConverterOptionalTypeChapterPlaybackContext.allocationSize(value.`chapterContext`)
             )
         }
         is HostRequest.SetRate -> {
@@ -7505,6 +7580,8 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 buf.putInt(5)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterULong.write(value.`positionMilliseconds`, buf)
+                FfiConverterTypePlaybackSeekReason.write(value.`reason`, buf)
+                FfiConverterOptionalTypeChapterPlaybackContext.write(value.`chapterContext`, buf)
                 Unit
             }
             is HostRequest.SetRate -> {
@@ -8587,6 +8664,26 @@ sealed class PlaybackCommand {
         companion object
     }
 
+    data class NextChapter(
+        val `context`: uniffi.pod0_application.ChapterPlaybackContext,
+        val `positionMilliseconds`: kotlin.ULong) : PlaybackCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class PreviousChapter(
+        val `context`: uniffi.pod0_application.ChapterPlaybackContext,
+        val `positionMilliseconds`: kotlin.ULong) : PlaybackCommand()
+
+    {
+
+
+        companion object
+    }
+
     data class Enqueue(
         val `entry`: uniffi.pod0_domain.QueueEntry,
         val `placement`: uniffi.pod0_application.QueuePlacement) : PlaybackCommand()
@@ -8650,7 +8747,8 @@ sealed class PlaybackCommand {
 
     data class SetPreferences(
         val `autoMarkPlayedAtNaturalEnd`: kotlin.Boolean,
-        val `autoPlayNext`: kotlin.Boolean) : PlaybackCommand()
+        val `autoPlayNext`: kotlin.Boolean,
+        val `autoSkipAds`: kotlin.Boolean) : PlaybackCommand()
 
     {
 
@@ -8717,43 +8815,52 @@ public object FfiConverterTypePlaybackCommand : FfiConverterRustBuffer<PlaybackC
             5 -> PlaybackCommand.Seek(
                 FfiConverterULong.read(buf),
                 )
-            6 -> PlaybackCommand.Enqueue(
+            6 -> PlaybackCommand.NextChapter(
+                FfiConverterTypeChapterPlaybackContext.read(buf),
+                FfiConverterULong.read(buf),
+                )
+            7 -> PlaybackCommand.PreviousChapter(
+                FfiConverterTypeChapterPlaybackContext.read(buf),
+                FfiConverterULong.read(buf),
+                )
+            8 -> PlaybackCommand.Enqueue(
                 FfiConverterTypeQueueEntry.read(buf),
                 FfiConverterTypeQueuePlacement.read(buf),
                 )
-            7 -> PlaybackCommand.RemoveQueueEntry(
+            9 -> PlaybackCommand.RemoveQueueEntry(
                 FfiConverterTypeQueueEntryId.read(buf),
                 )
-            8 -> PlaybackCommand.RemoveEpisodeFromQueue(
+            10 -> PlaybackCommand.RemoveEpisodeFromQueue(
                 FfiConverterTypeEpisodeId.read(buf),
                 )
-            9 -> PlaybackCommand.ReplaceQueueOrder(
+            11 -> PlaybackCommand.ReplaceQueueOrder(
                 FfiConverterSequenceTypeQueueEntryId.read(buf),
                 )
-            10 -> PlaybackCommand.ClearQueue
-            11 -> PlaybackCommand.AdvanceQueue
-            12 -> PlaybackCommand.SetRate(
+            12 -> PlaybackCommand.ClearQueue
+            13 -> PlaybackCommand.AdvanceQueue
+            14 -> PlaybackCommand.SetRate(
                 FfiConverterTypePlaybackRatePermille.read(buf),
                 )
-            13 -> PlaybackCommand.SetSleepTimer(
+            15 -> PlaybackCommand.SetSleepTimer(
                 FfiConverterTypePlaybackSleepMode.read(buf),
                 )
-            14 -> PlaybackCommand.SetPreferences(
+            16 -> PlaybackCommand.SetPreferences(
+                FfiConverterBoolean.read(buf),
                 FfiConverterBoolean.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
-            15 -> PlaybackCommand.SetCompletion(
+            17 -> PlaybackCommand.SetCompletion(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypeCompletionStatus.read(buf),
                 )
-            16 -> PlaybackCommand.ResetProgress(
+            18 -> PlaybackCommand.ResetProgress(
                 FfiConverterTypeEpisodeId.read(buf),
                 )
-            17 -> PlaybackCommand.Checkpoint(
+            19 -> PlaybackCommand.Checkpoint(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterULong.read(buf),
                 )
-            18 -> PlaybackCommand.NativeTimerFired
+            20 -> PlaybackCommand.NativeTimerFired
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
         }
     }
@@ -8790,6 +8897,22 @@ public object FfiConverterTypePlaybackCommand : FfiConverterRustBuffer<PlaybackC
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
+                + FfiConverterULong.allocationSize(value.`positionMilliseconds`)
+            )
+        }
+        is PlaybackCommand.NextChapter -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeChapterPlaybackContext.allocationSize(value.`context`)
+                + FfiConverterULong.allocationSize(value.`positionMilliseconds`)
+            )
+        }
+        is PlaybackCommand.PreviousChapter -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeChapterPlaybackContext.allocationSize(value.`context`)
                 + FfiConverterULong.allocationSize(value.`positionMilliseconds`)
             )
         }
@@ -8854,6 +8977,7 @@ public object FfiConverterTypePlaybackCommand : FfiConverterRustBuffer<PlaybackC
                 4UL
                 + FfiConverterBoolean.allocationSize(value.`autoMarkPlayedAtNaturalEnd`)
                 + FfiConverterBoolean.allocationSize(value.`autoPlayNext`)
+                + FfiConverterBoolean.allocationSize(value.`autoSkipAds`)
             )
         }
         is PlaybackCommand.SetCompletion -> {
@@ -8913,70 +9037,83 @@ public object FfiConverterTypePlaybackCommand : FfiConverterRustBuffer<PlaybackC
                 FfiConverterULong.write(value.`positionMilliseconds`, buf)
                 Unit
             }
-            is PlaybackCommand.Enqueue -> {
+            is PlaybackCommand.NextChapter -> {
                 buf.putInt(6)
+                FfiConverterTypeChapterPlaybackContext.write(value.`context`, buf)
+                FfiConverterULong.write(value.`positionMilliseconds`, buf)
+                Unit
+            }
+            is PlaybackCommand.PreviousChapter -> {
+                buf.putInt(7)
+                FfiConverterTypeChapterPlaybackContext.write(value.`context`, buf)
+                FfiConverterULong.write(value.`positionMilliseconds`, buf)
+                Unit
+            }
+            is PlaybackCommand.Enqueue -> {
+                buf.putInt(8)
                 FfiConverterTypeQueueEntry.write(value.`entry`, buf)
                 FfiConverterTypeQueuePlacement.write(value.`placement`, buf)
                 Unit
             }
             is PlaybackCommand.RemoveQueueEntry -> {
-                buf.putInt(7)
+                buf.putInt(9)
                 FfiConverterTypeQueueEntryId.write(value.`queueEntryId`, buf)
                 Unit
             }
             is PlaybackCommand.RemoveEpisodeFromQueue -> {
-                buf.putInt(8)
+                buf.putInt(10)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 Unit
             }
             is PlaybackCommand.ReplaceQueueOrder -> {
-                buf.putInt(9)
+                buf.putInt(11)
                 FfiConverterSequenceTypeQueueEntryId.write(value.`queueEntryIds`, buf)
                 Unit
             }
             is PlaybackCommand.ClearQueue -> {
-                buf.putInt(10)
+                buf.putInt(12)
                 Unit
             }
             is PlaybackCommand.AdvanceQueue -> {
-                buf.putInt(11)
+                buf.putInt(13)
                 Unit
             }
             is PlaybackCommand.SetRate -> {
-                buf.putInt(12)
+                buf.putInt(14)
                 FfiConverterTypePlaybackRatePermille.write(value.`rate`, buf)
                 Unit
             }
             is PlaybackCommand.SetSleepTimer -> {
-                buf.putInt(13)
+                buf.putInt(15)
                 FfiConverterTypePlaybackSleepMode.write(value.`mode`, buf)
                 Unit
             }
             is PlaybackCommand.SetPreferences -> {
-                buf.putInt(14)
+                buf.putInt(16)
                 FfiConverterBoolean.write(value.`autoMarkPlayedAtNaturalEnd`, buf)
                 FfiConverterBoolean.write(value.`autoPlayNext`, buf)
+                FfiConverterBoolean.write(value.`autoSkipAds`, buf)
                 Unit
             }
             is PlaybackCommand.SetCompletion -> {
-                buf.putInt(15)
+                buf.putInt(17)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypeCompletionStatus.write(value.`completion`, buf)
                 Unit
             }
             is PlaybackCommand.ResetProgress -> {
-                buf.putInt(16)
+                buf.putInt(18)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 Unit
             }
             is PlaybackCommand.Checkpoint -> {
-                buf.putInt(17)
+                buf.putInt(19)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterULong.write(value.`positionMilliseconds`, buf)
                 Unit
             }
             is PlaybackCommand.NativeTimerFired -> {
-                buf.putInt(18)
+                buf.putInt(20)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
@@ -11453,6 +11590,38 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
         } else {
             buf.put(1)
             FfiConverterString.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeChapterPlaybackContext: FfiConverterRustBuffer<ChapterPlaybackContext?> {
+    override fun read(buf: ByteBuffer): ChapterPlaybackContext? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeChapterPlaybackContext.read(buf)
+    }
+
+    override fun allocationSize(value: ChapterPlaybackContext?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeChapterPlaybackContext.allocationSize(value)
+        }
+    }
+
+    override fun write(value: ChapterPlaybackContext?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeChapterPlaybackContext.write(value, buf)
         }
     }
 }

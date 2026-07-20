@@ -33,7 +33,19 @@ final class CorePlaybackHostTests: XCTestCase {
         }
         XCTAssertEqual(playObservation.state, .playing)
 
-        _ = host.execute(.seek(episodeId: episodeID, positionMilliseconds: 21_250))
+        let chapterContext = ChapterPlaybackContext(
+            episodeId: episodeID,
+            artifactId: ChapterArtifactId(high: 1, low: 2),
+            selectionRevision: StateRevision(value: 3),
+            sessionId: ChapterPlaybackSessionId(high: 4, low: 5),
+            policyVersion: 1
+        )
+        _ = host.execute(.seek(
+            episodeId: episodeID,
+            positionMilliseconds: 21_250,
+            reason: .automaticAdSkip,
+            chapterContext: chapterContext
+        ))
         _ = host.execute(.setRate(
             episodeId: episodeID,
             rate: PlaybackRatePermille(value: 1_750)
@@ -98,7 +110,9 @@ final class CorePlaybackHostTests: XCTestCase {
 
         let stale = host.execute(.seek(
             episodeId: EpisodeId(uuid: UUID()),
-            positionMilliseconds: 99_000
+            positionMilliseconds: 99_000,
+            reason: .userRequested,
+            chapterContext: nil
         ))
         guard case .failed(code: .mediaUnavailable, safeDetail: _) = stale else {
             return XCTFail("Expected stale episode rejection")

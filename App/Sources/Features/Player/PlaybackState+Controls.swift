@@ -64,7 +64,10 @@ extension PlaybackState {
         engine.skipBackwardSeconds = Double(max(1, settings.skipBackwardSeconds))
         sharedCore?.dispatchPlayback(.setPreferences(
             autoMarkPlayedAtNaturalEnd: settings.autoMarkPlayedAtEnd,
-            autoPlayNext: settings.autoPlayNext
+            autoPlayNext: settings.autoPlayNext,
+            // #104 flips this to the user setting in the same change that
+            // activates Rust chapter authority and removes the Swift policy.
+            autoSkipAds: false
         ))
         autoSkipAdsEnabled = settings.autoSkipAds
         headphoneDoubleTapAction = settings.headphoneDoubleTapAction

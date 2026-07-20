@@ -71,6 +71,7 @@ opaque_id!(TranscriptSegmentId, uniffi::Record);
 opaque_id!(ChapterArtifactId, uniffi::Record);
 opaque_id!(ChapterId, uniffi::Record);
 opaque_id!(AdSpanId, uniffi::Record);
+opaque_id!(ChapterPlaybackSessionId, uniffi::Record);
 opaque_id!(EvidenceSpanId, uniffi::Record);
 opaque_id!(EvidenceGenerationId, uniffi::Record);
 opaque_id!(NoteId, uniffi::Record);
@@ -79,6 +80,7 @@ opaque_id!(ClipId, uniffi::Record);
 mod chapter_artifact;
 mod chapter_artifact_hash;
 mod chapter_artifact_validation;
+mod chapter_playback_policy;
 mod clips;
 mod knowledge;
 mod knowledge_artifact;
@@ -95,6 +97,7 @@ mod transcript_artifact_validation;
 mod transcript_command;
 
 pub use chapter_artifact::*;
+pub use chapter_playback_policy::*;
 pub use clips::*;
 pub use knowledge::*;
 pub use knowledge_identity::*;
@@ -108,6 +111,8 @@ pub use transcript_command::*;
 
 #[cfg(test)]
 mod chapter_artifact_tests;
+#[cfg(test)]
+mod chapter_playback_policy_tests;
 #[cfg(test)]
 mod listening_completion_tests;
 #[cfg(test)]

@@ -2,6 +2,7 @@ use pod0_application::{
     CommandEnvelope, CoreFailureCode, HostRequest, OperationResult, PlaybackCommand,
     PlaybackTransitionCue, QueuePlacement,
 };
+use pod0_domain::ChapterNavigationDirection;
 use pod0_storage::{PlaybackMutation, PlaybackQueuePlacement};
 
 use crate::runtime_state::FacadeState;
@@ -73,6 +74,26 @@ impl FacadeState {
             PlaybackCommand::Seek {
                 position_milliseconds,
             } => self.seek(envelope, fingerprint, position_milliseconds),
+            PlaybackCommand::NextChapter {
+                context,
+                position_milliseconds,
+            } => self.navigate_chapter(
+                envelope,
+                fingerprint,
+                context,
+                position_milliseconds,
+                ChapterNavigationDirection::Next,
+            ),
+            PlaybackCommand::PreviousChapter {
+                context,
+                position_milliseconds,
+            } => self.navigate_chapter(
+                envelope,
+                fingerprint,
+                context,
+                position_milliseconds,
+                ChapterNavigationDirection::Previous,
+            ),
             PlaybackCommand::Enqueue { entry, placement } => {
                 let placement = match placement {
                     QueuePlacement::Back => PlaybackQueuePlacement::Back,
@@ -148,8 +169,9 @@ impl FacadeState {
             PlaybackCommand::SetPreferences {
                 auto_mark_played_at_natural_end,
                 auto_play_next,
+                auto_skip_ads,
             } => {
-                self.apply_playback_command(
+                if self.apply_playback_command(
                     envelope,
                     fingerprint,
                     PlaybackMutation::SetPreferences {
@@ -159,7 +181,9 @@ impl FacadeState {
                     OperationResult::PlaybackUpdated {
                         episode_id: self.listening.playback.active_episode_id,
                     },
-                );
+                ) {
+                    self.playback.auto_skip_ads = auto_skip_ads;
+                }
             }
             PlaybackCommand::SetCompletion {
                 episode_id,

@@ -4,8 +4,9 @@ use sha2::{Digest, Sha256};
 
 use crate::runtime_command_fingerprint_values::{
     hash_clip_source, hash_evidence_input, hash_note_target, hash_optional, hash_optional_speaker,
-    hash_playback, hash_policy,
+    hash_policy,
 };
+use crate::runtime_playback_fingerprint::hash_playback;
 
 pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
     let mut hash = Sha256::new();

@@ -7,9 +7,9 @@ pub use pod0_application::{
     ApplicationCommand, ChapterArtifactProjection, ChapterCommitReceipt, ChapterContractProjection,
     ChapterContractRejection, ChapterContractRequest, ChapterItemProjection,
     ChapterModelObservationMode, ChapterObservationLimits, ChapterObservationProjection,
-    ChapterObservationRejection, ChapterProjectionScope, ChapterSummaryProjection,
-    ClipProjectionScope, ClipsProjection, CommandEnvelope, CoreFailure, CoreFailureCode,
-    DomainEvent, DomainEventEnvelope, EpisodeSummary, EvidenceIndexProjection,
+    ChapterObservationRejection, ChapterPlaybackContext, ChapterProjectionScope,
+    ChapterSummaryProjection, ClipProjectionScope, ClipsProjection, CommandEnvelope, CoreFailure,
+    CoreFailureCode, DomainEvent, DomainEventEnvelope, EpisodeSummary, EvidenceIndexProjection,
     EvidenceIndexSpanProjection, EvidenceIndexStage, FACADE_CONTRACT_VERSION, HostFailureCode,
     HostObservation, HostObservationEnvelope, HostRequest, HostRequestEnvelope, KernelProbeCommand,
     KernelProbeProjection, LibraryProjection, MAX_AGENT_COMPOSED_CHAPTER_ITEMS,
@@ -39,21 +39,21 @@ pub use pod0_domain::{
     AdSpanEvaluation, AdSpanId, AdSpanInput, ArtifactReference, AutoDownloadMode,
     AutoDownloadPolicy, CancellationId, ChapterAdKind, ChapterArtifactId, ChapterArtifactInput,
     ChapterArtifactProvenance, ChapterArtifactSource, ChapterId, ChapterInput,
-    ChapterLegacyProvenance, ChapterLegacySource, ClipEvidenceReference, ClipId, ClipRecord,
-    ClipRevision, ClipSource, CommandId, CompletionCause, CompletionStatus, ContentDigest,
-    DomainEventId, DownloadArtifactStatus, EpisodeId, EpisodeIdentityRecord,
+    ChapterLegacyProvenance, ChapterLegacySource, ChapterPlaybackSessionId, ClipEvidenceReference,
+    ClipId, ClipRecord, ClipRevision, ClipSource, CommandId, CompletionCause, CompletionStatus,
+    ContentDigest, DomainEventId, DownloadArtifactStatus, EpisodeId, EpisodeIdentityRecord,
     EpisodeIdentityResolution, EpisodeListeningState, EpisodeRecord, EvidenceChunkPolicy,
     EvidenceGenerationId, EvidenceSpanId, FeedIdentityV1, HostRequestId, ListeningDomainError,
     ListeningDomainSnapshot, ListeningPlaybackPolicy, NoteAuthor, NoteEvidenceReference, NoteId,
-    NoteKind, NoteRecord, NoteRevision, NoteTarget, PlaybackRatePermille, PlaybackSegment,
-    PlaybackSleepMode, PodcastId, PodcastIdentityRecord, PodcastIdentityResolution, PodcastKind,
-    PodcastRecord, PodcastSubscriptionRecord, QueueEntry, QueueEntryId, RecallQueryId, SpeakerId,
-    StateRevision, SubscriptionId, TranscriptArtifactId, TranscriptArtifactInput,
-    TranscriptArtifactSegmentInput, TranscriptArtifactSpeakerInput, TranscriptArtifactStatus,
-    TranscriptArtifactWordInput, TranscriptProvenance, TranscriptSegmentId, TranscriptSource,
-    TranscriptVersionId, UnixTimestampMilliseconds, make_feed_identity_v1,
-    resolve_episode_identity_v1, resolve_legacy_parent_id, resolve_podcast_identity_v1,
-    validate_listening_snapshot,
+    NoteKind, NoteRecord, NoteRevision, NoteTarget, PlaybackRatePermille, PlaybackSeekReason,
+    PlaybackSegment, PlaybackSleepMode, PodcastId, PodcastIdentityRecord,
+    PodcastIdentityResolution, PodcastKind, PodcastRecord, PodcastSubscriptionRecord, QueueEntry,
+    QueueEntryId, RecallQueryId, SpeakerId, StateRevision, SubscriptionId, TranscriptArtifactId,
+    TranscriptArtifactInput, TranscriptArtifactSegmentInput, TranscriptArtifactSpeakerInput,
+    TranscriptArtifactStatus, TranscriptArtifactWordInput, TranscriptProvenance,
+    TranscriptSegmentId, TranscriptSource, TranscriptVersionId, UnixTimestampMilliseconds,
+    make_feed_identity_v1, resolve_episode_identity_v1, resolve_legacy_parent_id,
+    resolve_podcast_identity_v1, validate_listening_snapshot,
 };
 
 uniffi::setup_scaffolding!();
@@ -67,6 +67,11 @@ mod clip_migration;
 mod listening_migration;
 mod note_migration;
 mod runtime;
+#[cfg(test)]
+mod runtime_chapter_ad_skip_tests;
+mod runtime_chapter_playback;
+#[cfg(test)]
+mod runtime_chapter_playback_tests;
 mod runtime_clip_commands;
 #[cfg(test)]
 mod runtime_clip_evidence_tests;
@@ -92,12 +97,14 @@ mod runtime_note_tests;
 mod runtime_observations;
 mod runtime_playback_actions;
 mod runtime_playback_commands;
+mod runtime_playback_fingerprint;
 mod runtime_playback_host;
 mod runtime_playback_observations;
 #[cfg(test)]
 mod runtime_playback_race_tests;
 #[cfg(test)]
 mod runtime_playback_recovery_tests;
+mod runtime_playback_state;
 #[cfg(test)]
 mod runtime_playback_test_support;
 #[cfg(test)]

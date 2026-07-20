@@ -4,18 +4,18 @@ use std::sync::Arc;
 use pod0_application::{
     Clock, CommandEnvelope, CommandLedger, CommandRegistration, CoreFailure, CoreFailureCode,
     HostRequestEnvelope, HostRequestLedger, OperationProjection, OperationResult, OperationStage,
-    PlaybackHostState, PlaybackLifecycleObservation, PlaybackPolicyState, Retryability,
-    SubscriptionRegistry, UserAction,
+    PlaybackPolicyState, Retryability, SubscriptionRegistry, UserAction,
 };
 use pod0_domain::{
-    CommandId, EpisodeId, FeedIdentityV1, HostRequestId, ListeningDomainSnapshot, PodcastId,
-    RecallQueryId, StateRevision, SubscriptionId,
+    CommandId, FeedIdentityV1, HostRequestId, ListeningDomainSnapshot, PodcastId, RecallQueryId,
+    StateRevision, SubscriptionId,
 };
 use pod0_storage::{EvidenceStore, LibraryStore, TranscriptStore};
 
 use crate::ProjectionSubscriber;
 use crate::runtime_clock::SystemClock;
 use crate::runtime_evidence_state::PendingEvidenceIndex;
+use crate::runtime_playback_state::PlaybackRuntime;
 use crate::runtime_recall_state::{PendingRecall, RecallWorkflow};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -33,37 +33,6 @@ pub(super) struct PendingFeed {
     pub intent: FeedIntent,
     pub feed_identity: FeedIdentityV1,
     pub podcast_id: PodcastId,
-}
-
-#[derive(Clone, Debug)]
-pub(super) struct PlaybackRuntime {
-    pub(super) policy_state: PlaybackPolicyState,
-    pub(super) host_state: PlaybackHostState,
-    pub(super) desired_playing: bool,
-    pub(super) media_episode_id: Option<EpisodeId>,
-    pub(super) interrupted_episode_id: Option<EpisodeId>,
-    pub(super) observation_request_id: Option<HostRequestId>,
-    pub(super) last_observation: Option<PlaybackLifecycleObservation>,
-    pub(super) last_position_commit_at_ms: Option<i64>,
-    pub(super) position_command_fence_at_ms: Option<i64>,
-    pub(super) timer_fired: bool,
-}
-
-impl Default for PlaybackRuntime {
-    fn default() -> Self {
-        Self {
-            policy_state: PlaybackPolicyState::Idle,
-            host_state: PlaybackHostState::Idle,
-            desired_playing: false,
-            media_episode_id: None,
-            interrupted_episode_id: None,
-            observation_request_id: None,
-            last_observation: None,
-            last_position_commit_at_ms: None,
-            position_command_fence_at_ms: None,
-            timer_fired: false,
-        }
-    }
 }
 
 pub(super) struct FacadeState {

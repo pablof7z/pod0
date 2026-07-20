@@ -1,5 +1,6 @@
 use pod0_domain::{
-    EpisodeId, PlaybackRatePermille, PlaybackSegment, PlaybackSleepMode, QueueEntry,
+    ChapterArtifactId, ChapterPlaybackSessionId, EpisodeId, PlaybackRatePermille, PlaybackSegment,
+    PlaybackSleepMode, QueueEntry, StateRevision,
 };
 
 use crate::{MAX_OPERATION_ITEMS, MAX_PROJECTION_ITEMS, OperationProjection, PlaybackHostState};
@@ -12,6 +13,7 @@ pub struct PlaybackProjection {
     pub sleep_mode: PlaybackSleepMode,
     pub auto_mark_played_at_natural_end: bool,
     pub auto_play_next: bool,
+    pub auto_skip_ads: bool,
     pub allowed_actions: PlaybackAllowedActions,
     pub host_state: PlaybackHostState,
     pub operations: Vec<OperationProjection>,
@@ -37,6 +39,16 @@ pub struct PlaybackItem {
     pub label: Option<String>,
     pub completed: bool,
     pub policy_state: PlaybackPolicyState,
+    pub chapter_context: Option<ChapterPlaybackContext>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct ChapterPlaybackContext {
+    pub episode_id: EpisodeId,
+    pub artifact_id: ChapterArtifactId,
+    pub selection_revision: StateRevision,
+    pub session_id: ChapterPlaybackSessionId,
+    pub policy_version: u32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Record)]

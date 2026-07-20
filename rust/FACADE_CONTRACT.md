@@ -71,11 +71,12 @@ until explicit cancellation. AVFoundation route names and errors are mapped to
 the bounded generated vocabulary. UI playhead animation never uses this stream.
 This expansion began with contract version 2. Version 4 added Rust-owned
 playback commands and projections for selection, queue, resume, completion,
-rate, bounded segments, preferences, and session sleep timers. The current
-version 5 surface makes synthetic podcasts and external/generated episode
-identity and metadata typed Rust-owned commands as well. It also exposes typed
-episode-star and listening-reset commands, plus the Rust-decided meaningful-
-listening outcome consumed by native product-signal adapters.
+rate, bounded segments, preferences, and session sleep timers. Contract version
+17 adds selected-artifact chapter context, deterministic next/previous chapter
+actions, bounded per-session ad suppression, and seek reasons. A chapter seek
+always carries episode, artifact, selection revision, session, policy version,
+and request identity; AVFoundation and future Media3 hosts execute the exact
+target without inspecting or recomputing the policy.
 
 ## Compatibility rules
 
@@ -104,3 +105,11 @@ and cannot commit migrated facts after cutover. Swift still owns unmigrated
 transcript, download, workflow, knowledge, agent, and presentation state until
 their complete vertical slices land. The NMP adapter remains isolated by the
 security hold in issue #85.
+
+Canonical chapter artifacts and selections are already staged in the Rust
+store, but production chapter authority remains inactive until issue #104.
+Version 17 deliberately keeps the iOS shared auto-skip preference disabled and
+leaves existing Swift callers in place until that atomic cutover. Rust policy
+is exercised through deterministic fixtures now; #104 switches callers and
+deletes the Swift target, membership, and per-session decision helpers in the
+same authority change.

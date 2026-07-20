@@ -58,6 +58,7 @@ impl FacadeState {
         play_after_load: bool,
         transition_cue: PlaybackTransitionCue,
     ) {
+        let _ = self.sync_active_chapter(envelope.command_id);
         let Some(episode_id) = self.listening.playback.active_episode_id else {
             self.playback.policy_state = pod0_application::PlaybackPolicyState::Idle;
             return;

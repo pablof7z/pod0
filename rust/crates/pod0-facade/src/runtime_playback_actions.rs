@@ -107,6 +107,8 @@ impl FacadeState {
                 HostRequest::Seek {
                     episode_id,
                     position_milliseconds,
+                    reason: pod0_domain::PlaybackSeekReason::UserRequested,
+                    chapter_context: None,
                 },
             );
         }

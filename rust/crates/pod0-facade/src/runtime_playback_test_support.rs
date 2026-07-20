@@ -8,6 +8,9 @@ use crate::*;
 #[path = "runtime_playback_observation_test_support.rs"]
 mod observations;
 pub(super) use observations::*;
+#[path = "runtime_chapter_playback_test_support.rs"]
+mod chapters;
+use chapters::install_chapter_fixture;
 
 pub(super) struct PlaybackFixture {
     _directory: tempfile::TempDir,
@@ -19,10 +22,18 @@ pub(super) struct PlaybackFixture {
 
 impl PlaybackFixture {
     pub(super) fn new() -> Self {
-        Self::new_with_transcript(false)
+        Self::new_with_options(false, false)
     }
 
     pub(super) fn new_with_transcript(transcript_available: bool) -> Self {
+        Self::new_with_options(transcript_available, false)
+    }
+
+    pub(super) fn new_with_chapters() -> Self {
+        Self::new_with_options(false, true)
+    }
+
+    fn new_with_options(transcript_available: bool, chapters_available: bool) -> Self {
         let directory = tempfile::tempdir().unwrap();
         let canonical_source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../../Fixtures/CoreImport/legacy-listening-v1.json");
@@ -148,6 +159,9 @@ impl PlaybackFixture {
             1_800_000_000_008,
         )
         .unwrap();
+        if chapters_available {
+            install_chapter_fixture(&directory, &target);
+        }
         let facade = Pod0Facade::open(target.to_string_lossy().into_owned()).unwrap();
         let Projection::Library { value } = facade.snapshot(library_request()).projection else {
             panic!("expected library projection");

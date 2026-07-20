@@ -55,7 +55,7 @@ final class CorePlaybackHost: CorePlaybackHosting {
             guard matchesLoadedEpisode(episodeID) else { return unavailable() }
             cancelTransition()
             engine.pause()
-        case .seek(let episodeID, let positionMilliseconds):
+        case .seek(let episodeID, let positionMilliseconds, _, _):
             guard matchesLoadedEpisode(episodeID) else { return unavailable() }
             engine.seek(to: Self.seconds(positionMilliseconds))
         case .setRate(let episodeID, let rate):
