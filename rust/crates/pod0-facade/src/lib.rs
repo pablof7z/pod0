@@ -8,10 +8,11 @@ pub use pod0_application::{
     ChapterContractRejection, ChapterContractRequest, ChapterItemProjection,
     ChapterModelObservationMode, ChapterObservationLimits, ChapterObservationProjection,
     ChapterObservationRejection, ChapterPlaybackContext, ChapterProjectionScope,
-    ChapterSummaryProjection, ClipProjectionScope, ClipsProjection, CommandEnvelope, CoreFailure,
-    CoreFailureCode, DomainEvent, DomainEventEnvelope, EpisodeSummary, EvidenceIndexProjection,
-    EvidenceIndexSpanProjection, EvidenceIndexStage, FACADE_CONTRACT_VERSION, HostFailureCode,
-    HostObservation, HostObservationEnvelope, HostRequest, HostRequestEnvelope, KernelProbeCommand,
+    ChapterSummaryProjection, ChapterWorkflowsProjection, ClipProjectionScope, ClipsProjection,
+    CommandEnvelope, CoreFailure, CoreFailureCode, DomainEvent, DomainEventEnvelope,
+    EpisodeSummary, EvidenceIndexProjection, EvidenceIndexSpanProjection, EvidenceIndexStage,
+    FACADE_CONTRACT_VERSION, HostCancellationRequest, HostFailureCode, HostObservation,
+    HostObservationEnvelope, HostRequest, HostRequestEnvelope, KernelProbeCommand,
     KernelProbeProjection, LibraryProjection, MAX_AGENT_COMPOSED_CHAPTER_ITEMS,
     MAX_EVIDENCE_INDEX_PAGE_ITEMS, MAX_FEED_RESPONSE_BYTES, MAX_HOST_REQUEST_BATCH,
     MAX_MODEL_CHAPTER_COMPLETION_BYTES, MAX_OPERATION_ITEMS,
@@ -25,14 +26,16 @@ pub use pod0_application::{
     PlaybackInterruption, PlaybackItem, PlaybackLifecycleObservation, PlaybackPolicyState,
     PlaybackProjection, PlaybackStopReason, PlaybackTransitionCue, PodcastSummary, Projection,
     ProjectionEnvelope, ProjectionRequest, ProjectionScope, PublisherChapterObservation,
-    QueuePlacement, RecallEmbeddingInput, RecallEmbeddingVector, RecallEvidenceProjection,
-    RecallPhase, RecallQuery, RecallRerankDocument, RecallRerankObservation,
-    RecallResultProjection, RecallScope, RecallScoreProjection, RecallSpanEmbeddingObservation,
-    RecallStage, Retryability, TranscriptCommitReceipt, TranscriptCommitRequest,
-    TranscriptContractProjection, TranscriptContractRejection, TranscriptEvidenceInput,
-    TranscriptProjection, TranscriptProjectionScope, TranscriptSegmentInput,
-    TranscriptSegmentProjection, TranscriptSpeakerProjection, TranscriptSummaryProjection,
-    TranscriptWordProjection, UnsupportedProjection, UserAction, bounded_host_request_count,
+    PublisherChapterWorkflowFailure, PublisherChapterWorkflowFailureCode,
+    PublisherChapterWorkflowProjection, PublisherChapterWorkflowStage, QueuePlacement,
+    RecallEmbeddingInput, RecallEmbeddingVector, RecallEvidenceProjection, RecallPhase,
+    RecallQuery, RecallRerankDocument, RecallRerankObservation, RecallResultProjection,
+    RecallScope, RecallScoreProjection, RecallSpanEmbeddingObservation, RecallStage, Retryability,
+    TranscriptCommitReceipt, TranscriptCommitRequest, TranscriptContractProjection,
+    TranscriptContractRejection, TranscriptEvidenceInput, TranscriptProjection,
+    TranscriptProjectionScope, TranscriptSegmentInput, TranscriptSegmentProjection,
+    TranscriptSpeakerProjection, TranscriptSummaryProjection, TranscriptWordProjection,
+    UnsupportedProjection, UserAction, bounded_host_request_count,
     bounded_playback_observation_interval,
 };
 use pod0_application::{Clock, KernelApplication};
@@ -85,6 +88,18 @@ mod runtime_chapter_playback_tests;
 mod runtime_chapter_projection;
 #[cfg(test)]
 mod runtime_chapter_tests;
+mod runtime_chapter_workflow;
+#[cfg(test)]
+mod runtime_chapter_workflow_admission_tests;
+mod runtime_chapter_workflow_commands;
+mod runtime_chapter_workflow_observations;
+mod runtime_chapter_workflow_projection;
+#[cfg(test)]
+mod runtime_chapter_workflow_race_tests;
+#[cfg(test)]
+mod runtime_chapter_workflow_test_support;
+#[cfg(test)]
+mod runtime_chapter_workflow_tests;
 mod runtime_clip_commands;
 #[cfg(test)]
 mod runtime_clip_evidence_tests;
@@ -102,6 +117,7 @@ mod runtime_evidence_state;
 #[cfg(test)]
 mod runtime_evidence_tests;
 mod runtime_feed_commands;
+mod runtime_feed_state;
 mod runtime_note_commands;
 #[cfg(test)]
 mod runtime_note_evidence_tests;
@@ -209,6 +225,8 @@ pub trait Pod0ApplicationApi: Send + Sync {
     ) -> SubscriptionId;
     fn unsubscribe(&self, subscription_id: SubscriptionId);
     fn next_host_requests(&self, maximum_count: u16) -> Vec<HostRequestEnvelope>;
+
+    fn next_host_cancellations(&self, maximum_count: u16) -> Vec<HostCancellationRequest>;
     fn record_host_observation(&self, observation: HostObservationEnvelope);
 }
 

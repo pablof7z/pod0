@@ -43,8 +43,7 @@ final class DesiredStatePlannerTests: XCTestCase {
             episodeID: episode.id,
             kind: .chapterArtifacts,
             inputVersion: chapterJob.inputVersion,
-            artifactID: selectedChapter.artifactID,
-            publisherInputVersion: nil
+            artifactID: selectedChapter.artifactID
         )
         XCTAssertTrue(planner.plan(.init(
             episodes: [episode], settings: settings,
@@ -124,49 +123,14 @@ final class DesiredStatePlannerTests: XCTestCase {
         )
     }
 
-    func testPublisherChapterURLCreatesVersionedOwedWorkUntilArtifactIsCurrent() throws {
+    func testPlannerNeverCreatesSwiftPublisherChapterWork() {
         var episode = makeEpisode()
         episode.chaptersURL = URL(string: "https://example.com/chapters-v1.json")!
-        let planner = DesiredStatePlanner()
-        let settings = Settings()
-        let first = planner.plan(.init(
-            episodes: [episode], settings: settings, artifacts: [], transcripts: [],
+        let jobs = DesiredStatePlanner().plan(.init(
+            episodes: [episode], settings: Settings(), artifacts: [], transcripts: [],
             transcriptDesiredEpisodeIDs: [], scheduledTasks: [], now: Date()
         ))
-        let publisher = try XCTUnwrap(first.first { $0.kind == .publisherChapters })
-        XCTAssertEqual(publisher.resourceClass, .planning)
-        let sourceVersion = try XCTUnwrap(DesiredStatePlanner.publisherChapterInputVersion(episode))
-        XCTAssertEqual(publisher.inputVersion, sourceVersion)
-
-        let selected = chapterSnapshot(
-            episodeID: episode.id,
-            artifactID: "publisher-output",
-            source: .publisher
-        )
-        let completion = ChapterWorkflowCompletion(
-            episodeID: episode.id,
-            kind: .publisherChapters,
-            inputVersion: sourceVersion,
-            artifactID: selected.artifactID,
-            publisherInputVersion: sourceVersion
-        )
-        let current = planner.plan(.init(
-            episodes: [episode], settings: settings, artifacts: [], transcripts: [],
-            chapters: [selected], chapterCompletions: [completion],
-            transcriptDesiredEpisodeIDs: [], scheduledTasks: [], now: Date()
-        ))
-        XCTAssertFalse(current.contains { $0.kind == .publisherChapters })
-
-        episode.chaptersURL = URL(string: "https://example.com/chapters-v2.json")!
-        let changed = planner.plan(.init(
-            episodes: [episode], settings: settings, artifacts: [], transcripts: [],
-            chapters: [selected], chapterCompletions: [completion],
-            transcriptDesiredEpisodeIDs: [], scheduledTasks: [], now: Date()
-        ))
-        XCTAssertNotEqual(
-            changed.first { $0.kind == .publisherChapters }?.inputVersion,
-            sourceVersion
-        )
+        XCTAssertFalse(jobs.contains { $0.kind == .publisherChapters })
     }
 
     func testPublisherObservationMustCommitBeforeModelEnrichmentIsOwed() throws {
@@ -183,12 +147,12 @@ final class DesiredStatePlannerTests: XCTestCase {
             transcriptDesiredEpisodeIDs: [], scheduledTasks: [], now: Date()
         ))
 
-        XCTAssertTrue(jobs.contains { $0.kind == .publisherChapters })
+        XCTAssertFalse(jobs.contains { $0.kind == .publisherChapters })
         XCTAssertTrue(jobs.contains { $0.kind == .transcriptIndex })
         XCTAssertFalse(jobs.contains { $0.kind == .chapterArtifacts })
     }
 
-    func testEnrichedReceiptPreservesPublisherCompletionAndStopsBothJobs() throws {
+    func testRustPublisherProjectionUnlocksEnrichmentAndCompletionStopsCompiler() throws {
         var episode = makeEpisode()
         episode.chaptersURL = URL(string: "https://example.com/chapters.json")!
         let transcript = TranscriptWorkflowSnapshot(
@@ -197,24 +161,15 @@ final class DesiredStatePlannerTests: XCTestCase {
             contentDigest: "transcript-hash",
             selectionRevision: 1
         )
-        let publisherVersion = try XCTUnwrap(
-            DesiredStatePlanner.publisherChapterInputVersion(episode)
-        )
         let publisher = chapterSnapshot(
             episodeID: episode.id,
             artifactID: "publisher-artifact",
             source: .publisher
         )
-        let publisherCompletion = ChapterWorkflowCompletion(
-            episodeID: episode.id,
-            kind: .publisherChapters,
-            inputVersion: publisherVersion,
-            artifactID: publisher.artifactID,
-            publisherInputVersion: publisherVersion
-        )
+        let publisherWorkflow = publisherWorkflow(episodeID: episode.id, stage: .succeeded)
         let enrichmentJobs = DesiredStatePlanner().plan(.init(
             episodes: [episode], settings: Settings(), artifacts: [], transcripts: [transcript],
-            chapters: [publisher], chapterCompletions: [publisherCompletion],
+            chapters: [publisher], publisherChapterWorkflows: [publisherWorkflow],
             transcriptDesiredEpisodeIDs: [], scheduledTasks: [], now: Date()
         ))
         let enrichment = try XCTUnwrap(
@@ -231,16 +186,40 @@ final class DesiredStatePlannerTests: XCTestCase {
             episodeID: episode.id,
             kind: .chapterArtifacts,
             inputVersion: enrichment.inputVersion,
-            artifactID: enriched.artifactID,
-            publisherInputVersion: publisherVersion
+            artifactID: enriched.artifactID
         )
         let current = DesiredStatePlanner().plan(.init(
             episodes: [episode], settings: Settings(), artifacts: [], transcripts: [transcript],
-            chapters: [enriched], chapterCompletions: [enrichedCompletion],
+            chapters: [enriched], publisherChapterWorkflows: [publisherWorkflow],
+            chapterCompletions: [enrichedCompletion],
             transcriptDesiredEpisodeIDs: [], scheduledTasks: [], now: Date()
         ))
         XCTAssertFalse(current.contains { $0.kind == .publisherChapters })
         XCTAssertFalse(current.contains { $0.kind == .chapterArtifacts })
+    }
+
+    private func publisherWorkflow(
+        episodeID: UUID,
+        stage: PublisherChapterWorkflowStage
+    ) -> PublisherChapterWorkflowProjection {
+        PublisherChapterWorkflowProjection(
+            episodeId: EpisodeId(uuid: episodeID),
+            sourceVersion: "rust-source-v1",
+            stage: stage,
+            workflowRevision: StateRevision(value: 2),
+            attempt: 1,
+            maxAttempts: 5,
+            requestId: nil,
+            cancellationId: CancellationId(high: 1, low: 2),
+            notBefore: nil,
+            selectedArtifactId: stage == .succeeded
+                ? ChapterArtifactId(high: 3, low: 4) : nil,
+            failure: nil,
+            createdAt: UnixTimestampMilliseconds(value: 1_000),
+            updatedAt: UnixTimestampMilliseconds(value: 2_000),
+            canRetry: false,
+            canCancel: false
+        )
     }
 
     private func makeEpisode() -> Episode {

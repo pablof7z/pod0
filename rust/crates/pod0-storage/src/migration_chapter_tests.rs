@@ -183,10 +183,11 @@ fn schema_13_imported_history_revalidates_and_activates_after_upgrade() {
     fixture.verify(1_800_000_000_001);
     fixture.import(1_800_000_000_002);
 
-    fixture
-        .target_connection()
+    rusqlite::Connection::open(&fixture.target)
+        .unwrap()
         .execute_batch(
-            "DROP TABLE pod0_chapter_commands;
+            "DROP TABLE pod0_publisher_chapter_workflows;
+             DROP TABLE pod0_chapter_commands;
              CREATE TABLE pod0_chapter_selections_v13(
                episode_id BLOB NOT NULL CHECK(length(episode_id)=16),
                selection_revision INTEGER NOT NULL CHECK(selection_revision>=1),

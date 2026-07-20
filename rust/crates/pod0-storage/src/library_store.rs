@@ -79,6 +79,15 @@ impl LibraryStore {
             .map_err(|error| StorageError::sqlite("commit library command", error))?;
         Ok(output)
     }
+
+    pub(crate) fn read<T>(
+        &self,
+        operation: impl FnOnce(&Connection) -> Result<T, StorageError>,
+    ) -> Result<T, StorageError> {
+        let connection = open_current(&self.path, true)?;
+        require_authoritative(&connection)?;
+        operation(&connection)
+    }
 }
 
 pub fn commit_listening_cutover(path: &Path, observed_at_ms: i64) -> Result<bool, StorageError> {

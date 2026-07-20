@@ -3,11 +3,18 @@ use pod0_application::{
     ObservationAcceptance, OperationResult, OperationStage,
 };
 
-use crate::runtime_state::{FacadeState, FeedIntent, PendingFeed, failure};
+use crate::runtime_feed_state::{FeedIntent, PendingFeed};
+use crate::runtime_state::{FacadeState, failure};
 use crate::runtime_storage_commands::storage_failure;
 
 impl FacadeState {
     pub(super) fn record_host_observation(&mut self, observation: HostObservationEnvelope) -> bool {
+        if self
+            .pending_publisher_observations
+            .contains_key(&observation.request_id)
+        {
+            return false;
+        }
         let command_id = self.host_requests.command_id(observation.request_id);
         let is_playback_request = self
             .host_requests
@@ -21,14 +28,36 @@ impl FacadeState {
             .pending_recall_cutovers
             .get(&observation.request_id)
             .copied();
-        if self.host_requests.accept_observation(&observation) != ObservationAcceptance::Accepted {
+        let pending_publisher = self
+            .pending_publisher_chapters
+            .get(&observation.request_id)
+            .cloned();
+        let acceptance = self.host_requests.accept_observation(&observation);
+        if acceptance == ObservationAcceptance::PayloadTooLarge && pending_publisher.is_some() {
+            self.advance_revision();
+            self.pending_publisher_observations.insert(
+                observation.request_id,
+                HostObservation::Failed {
+                    code: HostFailureCode::ResponseTooLarge,
+                    safe_detail: None,
+                },
+            );
+            self.retry_pending_publisher_observations();
+            self.trim_operations();
+            return true;
+        }
+        if acceptance != ObservationAcceptance::Accepted {
             return false;
         }
         let Some(command_id) = command_id else {
             return false;
         };
         self.advance_revision();
-        if let Some(pending) = self.pending_feeds.remove(&observation.request_id) {
+        if pending_publisher.is_some() {
+            self.pending_publisher_observations
+                .insert(observation.request_id, observation.observation);
+            self.retry_pending_publisher_observations();
+        } else if let Some(pending) = self.pending_feeds.remove(&observation.request_id) {
             self.finish_feed_observation(
                 pending,
                 observation.observation,
@@ -76,6 +105,7 @@ impl FacadeState {
                 HostObservation::RecallQueryEmbedded { .. }
                 | HostObservation::RecallSpansEmbedded { .. }
                 | HostObservation::RecallCandidatesReranked { .. }
+                | HostObservation::PublisherChaptersFetched { .. }
                 | HostObservation::LegacyRecallIndexArtifactsRemoved { .. } => {
                     self.fail(command_id, CoreFailureCode::InvalidCommand)
                 }
@@ -86,6 +116,36 @@ impl FacadeState {
         }
         self.trim_operations();
         true
+    }
+
+    pub(super) fn retry_pending_publisher_observations(&mut self) -> bool {
+        let request_ids = self
+            .pending_publisher_observations
+            .keys()
+            .copied()
+            .collect::<Vec<_>>();
+        let mut changed = false;
+        for request_id in request_ids {
+            let Some(record) = self.pending_publisher_chapters.get(&request_id).cloned() else {
+                self.pending_publisher_observations.remove(&request_id);
+                continue;
+            };
+            let Some(observation) = self
+                .pending_publisher_observations
+                .get(&request_id)
+                .cloned()
+            else {
+                continue;
+            };
+            if self.finish_publisher_chapter_observation(record, observation) {
+                self.retire_publisher_chapter_request(request_id);
+                changed = true;
+            }
+        }
+        if changed {
+            self.trim_operations();
+        }
+        changed
     }
 
     fn finish_feed_observation(
@@ -127,6 +187,7 @@ impl FacadeState {
             HostObservation::RecallQueryEmbedded { .. }
             | HostObservation::RecallSpansEmbedded { .. }
             | HostObservation::RecallCandidatesReranked { .. }
+            | HostObservation::PublisherChaptersFetched { .. }
             | HostObservation::LegacyRecallIndexArtifactsRemoved { .. } => {
                 self.fail(pending.command_id, CoreFailureCode::InvalidCommand)
             }

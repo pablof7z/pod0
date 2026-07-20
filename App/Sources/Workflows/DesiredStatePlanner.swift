@@ -8,6 +8,7 @@ struct DesiredStatePlanner: Sendable {
         let artifacts: [ArtifactRecord]
         let transcripts: [TranscriptWorkflowSnapshot]
         let chapters: [ChapterWorkflowSnapshot]
+        let publisherChapterWorkflows: [PublisherChapterWorkflowProjection]
         let chapterCompletions: [ChapterWorkflowCompletion]
         let transcriptDesiredEpisodeIDs: Set<UUID>
         let scheduledTasks: [AgentScheduledTask]
@@ -19,6 +20,7 @@ struct DesiredStatePlanner: Sendable {
             artifacts: [ArtifactRecord],
             transcripts: [TranscriptWorkflowSnapshot],
             chapters: [ChapterWorkflowSnapshot] = [],
+            publisherChapterWorkflows: [PublisherChapterWorkflowProjection] = [],
             chapterCompletions: [ChapterWorkflowCompletion] = [],
             transcriptDesiredEpisodeIDs: Set<UUID>,
             scheduledTasks: [AgentScheduledTask],
@@ -29,6 +31,7 @@ struct DesiredStatePlanner: Sendable {
             self.artifacts = artifacts
             self.transcripts = transcripts
             self.chapters = chapters
+            self.publisherChapterWorkflows = publisherChapterWorkflows
             self.chapterCompletions = chapterCompletions
             self.transcriptDesiredEpisodeIDs = transcriptDesiredEpisodeIDs
             self.scheduledTasks = scheduledTasks
@@ -46,6 +49,11 @@ struct DesiredStatePlanner: Sendable {
         )
         let chapters = Dictionary(
             uniqueKeysWithValues: input.chapters.map { ($0.episodeID, $0) }
+        )
+        let publisherChapterWorkflows = Dictionary(uniqueKeysWithValues:
+            input.publisherChapterWorkflows.compactMap { workflow in
+                workflow.episodeId.uuid.map { ($0, workflow) }
+            }
         )
         let chapterCompletions = Dictionary(
             grouping: input.chapterCompletions,
@@ -79,30 +87,10 @@ struct DesiredStatePlanner: Sendable {
 
             let chapter = chapters[episode.id]
             let completions = chapterCompletions[episode.id] ?? []
-            var publisherReady = true
-            if let publisherVersion = Self.publisherChapterInputVersion(episode),
-               let url = episode.chaptersURL {
-                publisherReady = Self.hasCurrentPublisherChapters(
-                chapter,
-                completions: completions,
-                sourceVersion: publisherVersion
+            let publisherReady = episode.chaptersURL == nil
+                || Self.hasSucceededPublisherWorkflow(
+                    workflow: publisherChapterWorkflows[episode.id]
                 )
-                if !publisherReady {
-                    let payload = PublisherChaptersJobPayload(
-                        url: url,
-                        sourceVersion: publisherVersion
-                    )
-                    jobs.append(DesiredJob(
-                        idempotencyKey: "publisher-chapters:\(episode.id):\(publisherVersion)",
-                        kind: .publisherChapters,
-                        subjectID: episode.id,
-                        inputVersion: publisherVersion,
-                        payload: try? Self.encoder.encode(payload),
-                        priority: 55,
-                        resourceClass: .planning
-                    ))
-                }
-            }
 
             guard let transcript, transcript.sourceRevision == audioVersion else { continue }
             let indexVersion = Self.transcriptIndexInputVersion(
@@ -180,24 +168,11 @@ struct DesiredStatePlanner: Sendable {
         "scheduled:\(taskID.uuidString):\(Int(scheduledFor.timeIntervalSince1970))"
     }
 
-    static func publisherChapterInputVersion(_ episode: Episode) -> String? {
-        guard let url = episode.chaptersURL else { return nil }
-        return ArtifactRepository.version(parts: [
-            url.absoluteString,
-            "podcasting2-chapters-v1",
-        ])
-    }
-
-    private static func hasCurrentPublisherChapters(
-        _ chapter: ChapterWorkflowSnapshot?,
-        completions: [ChapterWorkflowCompletion],
-        sourceVersion: String
+    private static func hasSucceededPublisherWorkflow(
+        workflow: PublisherChapterWorkflowProjection?
     ) -> Bool {
-        guard let chapter else { return false }
-        return completions.contains {
-            $0.artifactID == chapter.artifactID
-                && $0.publisherInputVersion == sourceVersion
-        }
+        workflow?.stage == .succeeded
+            && workflow?.selectedArtifactId != nil
     }
 
     private static func hasCurrentCompiledChapters(

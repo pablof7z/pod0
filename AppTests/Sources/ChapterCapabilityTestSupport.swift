@@ -9,9 +9,6 @@ enum ChapterCapabilityFixtures {
     static let transcriptID = TranscriptVersionId(high: 13, low: 102)
     static let transcriptDigest = ContentDigest(word0: 1, word1: 2, word2: 3, word3: 4)
     static let sourceDigest = ContentDigest(word0: 5, word1: 6, word2: 7, word3: 8)
-    static let publisherPayload = Data(
-        #"{"version":"1.2.0","chapters":[{"startTime":0,"title":"Opening"},{"startTime":50,"title":"Source"}]}"#.utf8
-    )
     static let modelCompletion = #"{"chapters":[{"start":0,"title":"Generated"},{"start":50,"title":"Source"}],"ads":[]}"#
 
     static func envelope(
@@ -22,19 +19,6 @@ enum ChapterCapabilityFixtures {
             requestID: HostRequestId(high: 102, low: id),
             cancellationID: CancellationId(high: 102, low: id),
             request: request
-        )
-    }
-
-    static func publisherRequest(
-        sourceURL: String = "https://example.test/chapters.json"
-    ) -> PublisherChapterCapabilityRequest {
-        PublisherChapterCapabilityRequest(
-            episodeID: episodeID,
-            podcastID: podcastID,
-            sourceURL: sourceURL,
-            generatedAt: generatedAt,
-            durationMilliseconds: 100_000,
-            deadlineAt: nil
         )
     }
 
@@ -97,20 +81,6 @@ enum ChapterCapabilityFixtures {
         )
     }
 
-    static func publisherResponse(
-        bytes: Data = publisherPayload,
-        contentType: String = "application/json"
-    ) -> ChapterPublisherTransportResponse {
-        ChapterPublisherTransportResponse(
-            bytes: bytes,
-            responseURL: "https://cdn.example.test/chapters.json",
-            contentType: contentType,
-            entityTag: "\"chapters-v1\"",
-            lastModified: "Mon, 20 Jul 2026 00:00:00 GMT",
-            httpStatus: 200
-        )
-    }
-
     static func modelResponse(
         completion: String = modelCompletion,
         provider: String = "openrouter",
@@ -131,17 +101,6 @@ enum ChapterCapabilityFixtures {
     }
 }
 
-struct StubChapterPublisherTransport: ChapterPublisherTransporting {
-    let result: Result<ChapterPublisherTransportResponse, ChapterCapabilityFailure>
-
-    func fetch(
-        _: PublisherChapterCapabilityRequest,
-        maximumResponseBytes _: UInt64
-    ) async -> Result<ChapterPublisherTransportResponse, ChapterCapabilityFailure> {
-        result
-    }
-}
-
 struct StubChapterModelTransport: ChapterModelTransporting {
     let result: Result<ChapterModelTransportResponse, ChapterCapabilityFailure>
 
@@ -153,16 +112,16 @@ struct StubChapterModelTransport: ChapterModelTransporting {
     }
 }
 
-actor SuspendingChapterPublisherTransport: ChapterPublisherTransporting {
+actor SuspendingChapterModelTransport: ChapterModelTransporting {
     private var continuation: CheckedContinuation<
-        Result<ChapterPublisherTransportResponse, ChapterCapabilityFailure>, Never
+        Result<ChapterModelTransportResponse, ChapterCapabilityFailure>, Never
     >?
     private var started = false
 
-    func fetch(
-        _: PublisherChapterCapabilityRequest,
-        maximumResponseBytes _: UInt64
-    ) async -> Result<ChapterPublisherTransportResponse, ChapterCapabilityFailure> {
+    func execute(
+        _: ModelChapterCapabilityRequest,
+        maximumCompletionBytes _: UInt64
+    ) async -> Result<ChapterModelTransportResponse, ChapterCapabilityFailure> {
         started = true
         return await withCheckedContinuation { continuation = $0 }
     }
@@ -172,7 +131,7 @@ actor SuspendingChapterPublisherTransport: ChapterPublisherTransporting {
     }
 
     func finish(
-        _ result: Result<ChapterPublisherTransportResponse, ChapterCapabilityFailure>
+        _ result: Result<ChapterModelTransportResponse, ChapterCapabilityFailure>
     ) {
         continuation?.resume(returning: result)
         continuation = nil

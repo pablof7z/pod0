@@ -3,8 +3,8 @@ use sha2::{Digest, Sha256};
 
 use crate::runtime_artifact_command_fingerprint::{hash_chapter_commit, hash_transcript_commit};
 use crate::runtime_command_fingerprint_values::{
-    hash_clip_source, hash_evidence_input, hash_note_target, hash_optional, hash_optional_speaker,
-    hash_policy,
+    hash_clip_source, hash_evidence_input, hash_note_author, hash_note_kind, hash_note_target,
+    hash_optional, hash_optional_speaker, hash_policy,
 };
 use crate::runtime_playback_fingerprint::hash_playback;
 
@@ -140,6 +140,26 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
         } => {
             hash_chapter_commit(&mut hash, *expected_selection_revision, artifact);
         }
+        ApplicationCommand::EnsurePublisherChapters { episode_id } => {
+            hash.update(b"ensure-publisher-chapters\0");
+            hash.update(episode_id.into_bytes());
+        }
+        ApplicationCommand::RetryPublisherChapters {
+            episode_id,
+            expected_workflow_revision,
+        } => {
+            hash.update(b"retry-publisher-chapters\0");
+            hash.update(episode_id.into_bytes());
+            hash.update(expected_workflow_revision.value.to_be_bytes());
+        }
+        ApplicationCommand::CancelPublisherChapters {
+            episode_id,
+            expected_workflow_revision,
+        } => {
+            hash.update(b"cancel-publisher-chapters\0");
+            hash.update(episode_id.into_bytes());
+            hash.update(expected_workflow_revision.value.to_be_bytes());
+        }
         ApplicationCommand::CreateNote {
             text,
             kind,
@@ -255,27 +275,4 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect()
-}
-
-fn hash_note_kind(hash: &mut Sha256, value: pod0_domain::NoteKind) {
-    match value {
-        pod0_domain::NoteKind::Free => hash.update([1]),
-        pod0_domain::NoteKind::Reflection => hash.update([2]),
-        pod0_domain::NoteKind::SystemEvent => hash.update([3]),
-        pod0_domain::NoteKind::Unsupported { wire_code } => {
-            hash.update([255]);
-            hash.update(wire_code.to_be_bytes());
-        }
-    }
-}
-
-fn hash_note_author(hash: &mut Sha256, value: pod0_domain::NoteAuthor) {
-    match value {
-        pod0_domain::NoteAuthor::User => hash.update([1]),
-        pod0_domain::NoteAuthor::Agent => hash.update([2]),
-        pod0_domain::NoteAuthor::Unsupported { wire_code } => {
-            hash.update([255]);
-            hash.update(wire_code.to_be_bytes());
-        }
-    }
 }

@@ -1,8 +1,9 @@
 use pod0_application::{ApplicationCommand, CommandEnvelope, CoreFailureCode, OperationResult};
 
 use crate::runtime_command_fingerprint::command_fingerprint;
+use crate::runtime_feed_state::FeedIntent;
 use crate::runtime_playback_state::PlaybackRuntime;
-use crate::runtime_state::{FacadeState, FeedIntent};
+use crate::runtime_state::FacadeState;
 
 impl FacadeState {
     pub(super) fn accept_command(&mut self, envelope: CommandEnvelope) -> bool {
@@ -178,6 +179,17 @@ impl FacadeState {
                 expected_selection_revision,
                 artifact,
             } => self.commit_chapter(&envelope, expected_selection_revision, artifact),
+            ApplicationCommand::EnsurePublisherChapters { episode_id } => {
+                self.ensure_publisher_chapters(&envelope, episode_id)
+            }
+            ApplicationCommand::RetryPublisherChapters {
+                episode_id,
+                expected_workflow_revision,
+            } => self.retry_publisher_chapters(&envelope, episode_id, expected_workflow_revision),
+            ApplicationCommand::CancelPublisherChapters {
+                episode_id,
+                expected_workflow_revision,
+            } => self.cancel_publisher_chapters(&envelope, episode_id, expected_workflow_revision),
             ApplicationCommand::CreateNote {
                 text,
                 kind,

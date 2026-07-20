@@ -18,8 +18,10 @@ the legacy Swift listening library, notes, clips, and selected transcripts. The
 Rust store is authoritative for podcasts, subscriptions, episode listening
 facts, active playback, queue, resume, completion, rate, playback preferences,
 session sleep mode, notes, saved clips with immutable transcript provenance,
-and selected canonical transcripts.
-The facade contract is now version 12 and includes an additive canonical
+and selected canonical transcripts and chapters/ad spans. Publisher chapter
+acquisition is also a Rust-owned durable workflow with persisted request,
+retry, cancellation, recovery, and selected-artifact state.
+The facade contract is now version 21 and includes an additive canonical
 transcript-artifact contract: exact integer milliseconds, full word and speaker
 records, deterministic semantic/version/artifact identities, unknown-source
 preservation, replay fingerprints, and separately bounded summary, speaker,
@@ -81,7 +83,8 @@ rewriting the Swift metadata snapshot.
 
 ### Durable workflows
 
-The Swift workflow runtime currently provides:
+The Swift workflow runtime currently provides these facilities for domains
+that have not yet migrated:
 
 - deterministic desired-job planning;
 - idempotency keys and occurrence identity;
@@ -91,8 +94,10 @@ The Swift workflow runtime currently provides:
 - BGTask opportunities and background URLSession reconciliation;
 - restartable schema migrations and a process-reconstruction harness.
 
-This implementation is a characterization baseline for the later Rust workflow
-migration. It is not disposable scaffolding.
+Publisher chapter acquisition no longer uses this runtime: Rust owns its
+desired state and lifecycle, while Swift performs only the exact bounded GET
+and renders the Rust projection. The remaining Swift runtime is a
+characterization baseline for later vertical-slice migrations.
 
 ### Presentation and platform capabilities
 
@@ -147,19 +152,25 @@ Swift and Kotlin bindings. CI rejects drift from Rust metadata.
   Swift maps native/provider observations into this command and reconstructs
   presentation values from these projections; it owns neither the selection
   nor a durable transcript copy.
-- Version 13 also defines the non-persisting canonical chapter/ad-span
+- Version 13 introduced the canonical chapter/ad-span
   contract: stable artifact/item IDs, integer-millisecond bounds, source and
   transcript provenance, explicit not-evaluated versus evaluated-empty ad
   state, deterministic inferred ends, and bounded summary/item projections.
-  Swift remains the single production chapter writer until the staged
-  migration and atomic authority cutover in #99–#104; the contract is not a
-  shadow durable store.
+  The #99–#104 cutover made the Rust store the sole production chapter writer
+  and deleted the former Swift authority.
 - Version 17 evaluates next/previous targets and half-open, one-time ad skips
   from the Rust-selected immutable artifact. The bounded playback projection
   carries its artifact/revision/session fence, and the native audio host
-  executes an exact typed seek. The policy remains dormant in production until
-  #104 atomically activates chapter authority, switches callers, and deletes
-  the temporary Swift rules.
+  executes an exact typed seek against the active Rust chapter authority.
+- Versions 20–21 add the first Rust-owned durable chapter workflow. Rust derives
+  publisher intent from feed metadata, persists stable request/cancellation
+  identity and absolute retry time, classifies raw HTTP facts, qualifies and
+  commits the artifact atomically, adopts current legacy selections, and
+  exposes bounded status/actions. Rust admission and native execution are both
+  bounded; source replacement produces an exact typed cancellation, and an
+  accepted observation remains recoverable until its SQLite transition
+  commits. Swift contains no publisher scheduler, retry policy, receipt,
+  verifier, or writer.
 - Open views receive bounded, revisioned, screen-shaped projections.
 - Operation failure and cancellation appear in projection state, not thrown
   per-operation FFI results.

@@ -1,5 +1,4 @@
 #![forbid(unsafe_code)]
-
 mod backup;
 mod chapter_authority;
 mod chapter_import;
@@ -21,7 +20,15 @@ mod chapter_store_codec;
 mod chapter_store_model;
 mod chapter_store_read_artifact;
 mod chapter_store_read_selection;
+mod chapter_store_receipt;
 mod chapter_store_write_artifact;
+mod chapter_workflow_model;
+mod chapter_workflow_store;
+mod chapter_workflow_store_adopt;
+mod chapter_workflow_store_complete;
+mod chapter_workflow_store_read;
+mod chapter_workflow_store_support;
+mod chapter_workflow_store_write;
 mod clip_import;
 mod clip_import_model;
 mod clip_import_store;
@@ -95,6 +102,7 @@ mod note_store_model;
 mod note_store_read;
 mod retained_orphan_parent;
 mod schema;
+mod schema_chapter_workflows;
 mod schema_chapters;
 mod schema_clips;
 mod schema_evidence;
@@ -124,7 +132,6 @@ mod transcript_store_read_rows;
 mod transcript_store_write;
 mod transcript_store_write_artifact;
 mod transcript_store_write_rows;
-
 pub use backup::{restore_backup_to_new_store, verify_backup};
 pub use chapter_import::{ChapterImportClock, ChapterImporter};
 pub use chapter_import_model::{
@@ -140,6 +147,11 @@ pub use chapter_rollback_export::{
     CHAPTER_ROLLBACK_FORMAT_VERSION, export_chapter_rollback_bundle,
 };
 pub use chapter_store_model::{ChapterCommitStorageReceipt, SelectedChapterArtifact};
+pub use chapter_workflow_model::{
+    PublisherChapterEnsureOutcome, PublisherChapterWorkflowFailureInput,
+    PublisherChapterWorkflowPage, PublisherChapterWorkflowRecord, PublisherChapterWorkflowState,
+    PublisherChapterWorkflowUpdate,
+};
 pub use clip_import::{ClipImportClock, ClipImporter};
 pub(crate) use clip_import_model::InspectedClipSource;
 pub use clip_import_model::{
@@ -201,7 +213,6 @@ pub use transcript_store_model::{
     StoredTranscriptWord, TranscriptCommitStorageReceipt, TranscriptPage,
     TranscriptSelectionSummary,
 };
-
 #[cfg(test)]
 mod chapter_import_evidence_tests;
 #[cfg(test)]
@@ -218,6 +229,10 @@ mod chapter_import_tests;
 mod chapter_rollback_export_tests;
 #[cfg(test)]
 mod chapter_store_read_tests;
+#[cfg(test)]
+mod chapter_workflow_test_support;
+#[cfg(test)]
+mod chapter_workflow_tests;
 #[cfg(test)]
 mod clip_cutover_restart_tests;
 #[cfg(test)]
@@ -246,6 +261,8 @@ mod listening_import_test_support;
 mod listening_import_tests;
 #[cfg(test)]
 mod migration_chapter_tests;
+#[cfg(test)]
+mod migration_chapter_workflow_tests;
 #[cfg(test)]
 mod migration_tests;
 #[cfg(test)]

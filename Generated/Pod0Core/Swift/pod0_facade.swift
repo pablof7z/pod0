@@ -609,6 +609,8 @@ public protocol Pod0FacadeProtocol: AnyObject, Sendable {
 
     func dispatch(command: CommandEnvelope)
 
+    func nextHostCancellations(maximumCount: UInt16)  -> [HostCancellationRequest]
+
     func nextHostRequests(maximumCount: UInt16)  -> [HostRequestEnvelope]
 
     func recordHostObservation(observation: HostObservationEnvelope)
@@ -697,6 +699,16 @@ open func dispatch(command: CommandEnvelope)  {try! rustCall() {
         FfiConverterTypeCommandEnvelope_lower(command),uniffiCallStatus
     )
 }
+}
+
+open func nextHostCancellations(maximumCount: UInt16) -> [HostCancellationRequest]  {
+    return try!  FfiConverterSequenceTypeHostCancellationRequest.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_next_host_cancellations(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt16.lower(maximumCount),uniffiCallStatus
+    )
+})
 }
 
 open func nextHostRequests(maximumCount: UInt16) -> [HostRequestEnvelope]  {
@@ -4004,6 +4016,31 @@ fileprivate struct FfiConverterSequenceUInt32: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeHostCancellationRequest: FfiConverterRustBuffer {
+    typealias SwiftType = [HostCancellationRequest]
+
+    public static func write(_ value: [HostCancellationRequest], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeHostCancellationRequest.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [HostCancellationRequest] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [HostCancellationRequest]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeHostCancellationRequest.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeHostRequestEnvelope: FfiConverterRustBuffer {
     typealias SwiftType = [HostRequestEnvelope]
 
@@ -4585,6 +4622,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_dispatch() != 36474) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_next_host_cancellations() != 35018) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_next_host_requests() != 62215) {

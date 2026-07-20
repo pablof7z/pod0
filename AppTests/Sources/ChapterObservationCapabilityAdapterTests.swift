@@ -5,27 +5,7 @@ import XCTest
 
 @MainActor
 final class ChapterObservationCapabilityAdapterTests: XCTestCase {
-    func testAllRawKindsMatchDirectRustQualification() async {
-        let publisherAdapter = adapter(
-            publisher: StubChapterPublisherTransport(result: .success(
-                ChapterCapabilityFixtures.publisherResponse()
-            ))
-        )
-        let publisher = await response(
-            from: publisherAdapter,
-            envelope: ChapterCapabilityFixtures.envelope(
-                id: 1,
-                request: .publisher(ChapterCapabilityFixtures.publisherRequest())
-            )
-        )
-        assertDirectQualification(publisher)
-        guard case let .observed(.publisher(observation), .publisher(evidence), _) = publisher.outcome else {
-            return XCTFail("Expected publisher observation")
-        }
-        XCTAssertEqual(observation.payload, ChapterCapabilityFixtures.publisherPayload)
-        XCTAssertEqual(evidence.entityTag, "\"chapters-v1\"")
-        XCTAssertEqual(evidence.payloadDigest, observation.payloadDigest)
-
+    func testRemainingRawKindsMatchDirectRustQualification() async {
         let modelAdapter = adapter(
             model: StubChapterModelTransport(result: .success(
                 ChapterCapabilityFixtures.modelResponse()
@@ -64,9 +44,6 @@ final class ChapterObservationCapabilityAdapterTests: XCTestCase {
 
     func testUnavailableCoreAndBoundsFailBeforeCapabilityExecution() async {
         let unavailable = ChapterObservationCapabilityAdapter(
-            publisherTransport: StubChapterPublisherTransport(
-                result: .success(ChapterCapabilityFixtures.publisherResponse())
-            ),
             modelTransport: defaultModel,
             qualifier: UnavailableChapterObservationQualifier()
         )
@@ -74,7 +51,7 @@ final class ChapterObservationCapabilityAdapterTests: XCTestCase {
             from: unavailable,
             envelope: ChapterCapabilityFixtures.envelope(
                 id: 4,
-                request: .publisher(ChapterCapabilityFixtures.publisherRequest())
+                request: .model(ChapterCapabilityFixtures.modelRequest())
             )
         )
         XCTAssertEqual(missing.outcome, .failed(.coreUnavailable))
@@ -93,30 +70,7 @@ final class ChapterObservationCapabilityAdapterTests: XCTestCase {
         assertFailure(bounded, code: .responseTooLarge)
     }
 
-    func testOversizedPayloadAndMalformedMetadataFailWithoutQualification() async {
-        let oversized = Data(count: 2_097_153)
-        let oversizedResponse = await response(
-            from: adapter(publisher: StubChapterPublisherTransport(
-                result: .success(ChapterCapabilityFixtures.publisherResponse(bytes: oversized))
-            )),
-            envelope: ChapterCapabilityFixtures.envelope(
-                id: 6,
-                request: .publisher(ChapterCapabilityFixtures.publisherRequest())
-            )
-        )
-        assertFailure(oversizedResponse, code: .responseTooLarge)
-
-        let malformedResponse = await response(
-            from: adapter(publisher: StubChapterPublisherTransport(
-                result: .success(ChapterCapabilityFixtures.publisherResponse(contentType: ""))
-            )),
-            envelope: ChapterCapabilityFixtures.envelope(
-                id: 7,
-                request: .publisher(ChapterCapabilityFixtures.publisherRequest())
-            )
-        )
-        assertFailure(malformedResponse, code: .invalidResponseMetadata)
-
+    func testOversizedModelIdentityFailsWithoutQualification() async {
         let oversizedIdentity = await response(
             from: adapter(model: StubChapterModelTransport(result: .success(
                 ChapterCapabilityFixtures.modelResponse(
@@ -132,20 +86,20 @@ final class ChapterObservationCapabilityAdapterTests: XCTestCase {
     }
 
     func testCancellationDuplicateAndLateCompletionDeliverExactlyOnce() async {
-        let publisher = SuspendingChapterPublisherTransport()
-        let capability = adapter(publisher: publisher)
+        let model = SuspendingChapterModelTransport()
+        let capability = adapter(model: model)
         let envelope = ChapterCapabilityFixtures.envelope(
             id: 8,
-            request: .publisher(ChapterCapabilityFixtures.publisherRequest())
+            request: .model(ChapterCapabilityFixtures.modelRequest())
         )
         var delivered: [ChapterCapabilityResponse] = []
 
         capability.execute(envelope) { delivered.append($0) }
         capability.execute(envelope) { delivered.append($0) }
-        await publisher.waitUntilStarted()
+        await model.waitUntilStarted()
         capability.cancel(cancellationID: envelope.cancellationID)
         capability.cancel(cancellationID: envelope.cancellationID)
-        await publisher.finish(.success(ChapterCapabilityFixtures.publisherResponse()))
+        await model.finish(.success(ChapterCapabilityFixtures.modelResponse()))
         await Task.yield()
 
         XCTAssertEqual(delivered.count, 1)
@@ -153,24 +107,24 @@ final class ChapterObservationCapabilityAdapterTests: XCTestCase {
     }
 
     func testShutdownIsIdempotentAndFreshAdapterCanReuseRequestAfterRelaunch() async {
-        let publisher = SuspendingChapterPublisherTransport()
-        let first = adapter(publisher: publisher)
+        let model = SuspendingChapterModelTransport()
+        let first = adapter(model: model)
         let envelope = ChapterCapabilityFixtures.envelope(
             id: 9,
-            request: .publisher(ChapterCapabilityFixtures.publisherRequest())
+            request: .model(ChapterCapabilityFixtures.modelRequest())
         )
         var firstDelivery: [ChapterCapabilityResponse] = []
         first.execute(envelope) { firstDelivery.append($0) }
-        await publisher.waitUntilStarted()
+        await model.waitUntilStarted()
 
         first.shutdown()
         first.shutdown()
-        await publisher.finish(.success(ChapterCapabilityFixtures.publisherResponse()))
+        await model.finish(.success(ChapterCapabilityFixtures.modelResponse()))
         await Task.yield()
         XCTAssertEqual(firstDelivery.map(\.outcome), [.failed(.cancelled)])
 
-        let relaunched = adapter(publisher: StubChapterPublisherTransport(
-            result: .success(ChapterCapabilityFixtures.publisherResponse())
+        let relaunched = adapter(model: StubChapterModelTransport(
+            result: .success(ChapterCapabilityFixtures.modelResponse())
         ))
         let second = await response(from: relaunched, envelope: envelope)
         guard case .observed = second.outcome else {
@@ -183,15 +137,11 @@ final class ChapterObservationCapabilityAdapterTests: XCTestCase {
     }
 
     private func adapter(
-        publisher: any ChapterPublisherTransporting = StubChapterPublisherTransport(
-            result: .failure(.invalidRequest("unused"))
-        ),
         model: any ChapterModelTransporting = StubChapterModelTransport(
             result: .failure(.invalidRequest("unused"))
         )
     ) -> ChapterObservationCapabilityAdapter {
         ChapterObservationCapabilityAdapter(
-            publisherTransport: publisher,
             modelTransport: model,
             qualifier: RustChapterObservationQualifier()
         )

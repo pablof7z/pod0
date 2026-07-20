@@ -11,24 +11,27 @@ final class SharedLibraryClient {
     nonisolated let facade: Pod0Facade
     let authoritativeTranscriptReader: SharedTranscriptReader
     let authoritativeChapterReader: SharedChapterReader
-    private let dispatcher: Pod0NativeHostDispatcher
+    let dispatcher: Pod0NativeHostDispatcher
     private let deferredPlaybackHost: DeferredPlaybackHost
     let deferredRecallHost: DeferredRecallHost
     private var subscriber: SharedLibrarySubscriber?
     private var librarySubscriptionID: SubscriptionId?
     private var playbackSubscriptionID: SubscriptionId?
+    private var chapterWorkflowSubscriptionID: SubscriptionId?
     private var notesSubscriptionID: SubscriptionId?
     private var clipsSubscriptionID: SubscriptionId?
     var waiters: [CommandId: Waiter] = [:]
-    private var lastLibraryRevision: UInt64 = 0
+    var lastLibraryRevision: UInt64 = 0
     private var lastPlaybackRevision: UInt64 = 0
+    var lastChapterWorkflowRevision: UInt64 = 0
     var lastNotesRevision: UInt64 = 0
     var lastClipsRevision: UInt64 = 0
     weak var store: AppStateStore?
     private weak var playbackState: PlaybackState?
-    private var cachedSnapshot: SharedLibrarySnapshot?
+    var cachedSnapshot: SharedLibrarySnapshot?
     var chapterScopeCounts: [UUID: Int] = [:]
     var chapterSnapshots: [UUID: SharedChapterSnapshot] = [:]
+    var announcedPublisherChapterEpisodeIDs: Set<UUID> = []
     var playbackChapterEpisodeID: UUID?
     private var cachedPlayback: PlaybackProjection?
     private var cachedPlaybackRevision: UInt64 = 0
@@ -40,6 +43,7 @@ final class SharedLibraryClient {
     var recallWaiters: [RecallQueryId: SharedRecallWaiter] = [:]
     var rebuildingEvidenceEpisodeIDs: Set<UUID> = []
     var recallHostAttached = false
+    weak var workflowClient: WorkflowClient?
 
     init(
         facade: Pod0Facade,
@@ -71,6 +75,14 @@ final class SharedLibraryClient {
         )
         playbackSubscriptionID = facade.subscribe(
             request: ProjectionRequest(scope: .playback, offset: 0, maxItems: 200),
+            subscriber: subscriber
+        )
+        chapterWorkflowSubscriptionID = facade.subscribe(
+            request: ProjectionRequest(
+                scope: .chapterWorkflows(episodeId: nil),
+                offset: 0,
+                maxItems: 1
+            ),
             subscriber: subscriber
         )
         notesSubscriptionID = facade.subscribe(
@@ -173,6 +185,8 @@ final class SharedLibraryClient {
             receiveLibrary(envelope)
         case .playback(let projection):
             receivePlayback(projection, revision: envelope.stateRevision.value)
+        case .chapterWorkflows:
+            receivePublisherChapterWorkflows(revision: envelope.stateRevision.value)
         case .notes:
             receiveNotes(revision: envelope.stateRevision.value)
         case .clips:
@@ -181,16 +195,6 @@ final class SharedLibraryClient {
              .unsupported:
             break
         }
-    }
-
-    private func receiveLibrary(_ envelope: ProjectionEnvelope) {
-        guard envelope.stateRevision.value >= lastLibraryRevision else { return }
-        lastLibraryRevision = envelope.stateRevision.value
-        let snapshot = loadAllPages()
-        cachedSnapshot = snapshot
-        store?.applySharedLibrary(snapshot)
-        resolveWaiters(snapshot.operations)
-        dispatcher.executePendingRequests(from: facade)
     }
 
     private func receivePlayback(_ projection: PlaybackProjection, revision: UInt64) {
@@ -219,43 +223,6 @@ final class SharedLibraryClient {
         dispatcher.executePendingRequests(from: facade)
     }
 
-    private func loadAllPages() -> SharedLibrarySnapshot {
-        var offset: UInt32 = 0
-        var podcasts: [PodcastRecord] = []
-        var subscriptions: [PodcastSubscriptionRecord] = []
-        var episodes: [EpisodeRecord] = []
-        var operations: [OperationProjection] = []
-        while true {
-            let envelope = facade.snapshot(request: ProjectionRequest(
-                scope: .library,
-                offset: offset,
-                maxItems: 200
-            ))
-            guard case .library(let page) = envelope.projection else { break }
-            podcasts.append(contentsOf: page.podcasts)
-            subscriptions.append(contentsOf: page.subscriptions)
-            episodes.append(contentsOf: page.episodes)
-            if operations.isEmpty { operations = page.operations }
-            guard page.hasMore else { break }
-            guard offset <= UInt32.max - 200 else { break }
-            offset += 200
-        }
-        let activeEpisodeIDs = Set(chapterScopeCounts.keys)
-        chapterSnapshots = Dictionary(uniqueKeysWithValues: activeEpisodeIDs.compactMap {
-            episodeID in
-            guard let snapshot = try? authoritativeChapterReader.load(episodeID: episodeID)
-            else { return nil }
-            return (episodeID, snapshot)
-        })
-        return SharedLibrarySnapshot(
-            podcasts: podcasts,
-            subscriptions: subscriptions,
-            episodes: episodes,
-            chaptersByEpisodeID: chapterSnapshots,
-            operations: operations
-        )
-    }
-
     func shutdown() {
         evidenceRebuildTask?.cancel()
         evidenceRebuildTask = nil
@@ -265,14 +232,20 @@ final class SharedLibraryClient {
         dispatcher.shutdown()
         if let librarySubscriptionID { facade.unsubscribe(subscriptionId: librarySubscriptionID) }
         if let playbackSubscriptionID { facade.unsubscribe(subscriptionId: playbackSubscriptionID) }
+        if let chapterWorkflowSubscriptionID {
+            facade.unsubscribe(subscriptionId: chapterWorkflowSubscriptionID)
+        }
         if let notesSubscriptionID { facade.unsubscribe(subscriptionId: notesSubscriptionID) }
         if let clipsSubscriptionID { facade.unsubscribe(subscriptionId: clipsSubscriptionID) }
         librarySubscriptionID = nil
         playbackSubscriptionID = nil
+        chapterWorkflowSubscriptionID = nil
         notesSubscriptionID = nil
         clipsSubscriptionID = nil
         chapterScopeCounts.removeAll()
         chapterSnapshots.removeAll()
+        announcedPublisherChapterEpisodeIDs.removeAll()
+        workflowClient?.detachPublisherChapterCore()
         playbackChapterEpisodeID = nil
         subscriber = nil
         for waiter in waiters.values {

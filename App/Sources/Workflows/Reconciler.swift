@@ -1,4 +1,5 @@
 import Foundation
+import Pod0Core
 
 struct ReconciliationReport: Equatable, Sendable {
     var ensured = 0
@@ -24,6 +25,7 @@ struct Reconciler {
             artifacts: try artifacts.all(),
             transcripts: transcriptSnapshots(),
             chapters: chapterSnapshots(),
+            publisherChapterWorkflows: publisherChapterWorkflowSnapshots(),
             chapterCompletions: try chapterCompletions(),
             transcriptDesiredEpisodeIDs: try transcriptDesiredIDs(),
             scheduledTasks: appStore.scheduledTasks,
@@ -180,11 +182,18 @@ struct Reconciler {
         ) ?? []
     }
 
+    private func publisherChapterWorkflowSnapshots()
+        -> [PublisherChapterWorkflowProjection] {
+        appStore.sharedLibrary?.publisherChapterWorkflowSnapshots(
+            episodeIDs: appStore.state.episodes.map(\.id)
+        ) ?? []
+    }
+
     private func chapterCompletions() throws -> [ChapterWorkflowCompletion] {
         guard let sharedLibrary = appStore.sharedLibrary else { return [] }
         return try jobStore.allJobs().compactMap { job in
             guard job.state == .succeeded,
-                  job.kind == .publisherChapters || job.kind == .chapterArtifacts,
+                  job.kind == .chapterArtifacts,
                   let output = job.outputVersion,
                   let data = Data(base64Encoded: output),
                   let receipt = try? Self.decoder.decode(
@@ -199,8 +208,7 @@ struct Reconciler {
                 episodeID: receipt.episodeID,
                 kind: job.kind,
                 inputVersion: receipt.inputVersion,
-                artifactID: receipt.artifactID,
-                publisherInputVersion: receipt.publisherInputVersion
+                artifactID: receipt.artifactID
             )
         }
     }
@@ -228,8 +236,6 @@ struct Reconciler {
         case .chapterArtifacts:
             let model = LLMModelReference(storedID: appStore.state.settings.chapterCompilationModel)
             return LLMProviderCredentialResolver.hasAPIKey(for: model.provider)
-        case .publisherChapters:
-            return true
         case .scheduledAgentRun:
             guard let payload = try? Self.decoder.decode(
                 ScheduledRunPayload.self, from: job.payload ?? Data()
@@ -237,7 +243,8 @@ struct Reconciler {
             return LLMProviderCredentialResolver.hasAPIKey(
                 for: LLMModelReference(storedID: payload.modelID).provider
             )
-        case .feedDiscovery, .download, .autoDownload, .newEpisodeNotification:
+        case .feedDiscovery, .download, .publisherChapters, .autoDownload,
+             .newEpisodeNotification:
             return true
         }
     }

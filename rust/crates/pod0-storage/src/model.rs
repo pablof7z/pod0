@@ -5,7 +5,7 @@ use pod0_domain::CommandId;
 
 pub const APPLICATION_ID: i64 = 0x504F_4430;
 pub const MIN_SUPPORTED_SCHEMA_VERSION: u32 = 0;
-pub const CURRENT_SCHEMA_VERSION: u32 = 14;
+pub const CURRENT_SCHEMA_VERSION: u32 = 15;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AccessMode {
@@ -141,6 +141,8 @@ pub enum StorageError {
     ChapterRevisionConflict,
     ChapterImportConflict,
     ChapterImportNotFound,
+    ChapterWorkflowConflict,
+    ChapterWorkflowNotFound,
     NewerLegacyChapterSchema {
         stored: u32,
         supported: u32,
@@ -195,6 +197,8 @@ impl StorageError {
             Self::ChapterRevisionConflict => "chapter_revision_conflict",
             Self::ChapterImportConflict => "chapter_import_conflict",
             Self::ChapterImportNotFound => "chapter_import_not_found",
+            Self::ChapterWorkflowConflict => "chapter_workflow_conflict",
+            Self::ChapterWorkflowNotFound => "chapter_workflow_not_found",
             Self::NewerLegacyChapterSchema { .. } => "newer_legacy_chapter_schema",
             Self::EvidenceCommandConflict => "evidence_command_conflict",
             Self::EvidenceNotFound => "evidence_not_found",

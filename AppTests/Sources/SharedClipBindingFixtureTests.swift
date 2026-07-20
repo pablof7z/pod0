@@ -65,7 +65,7 @@ final class SharedClipBindingFixtureTests: XCTestCase {
             hasMore: false
         )
 
-        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 19)
+        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 21)
         XCTAssertEqual(fixture["source"], "touch")
         XCTAssertEqual(projection.clips.first?.frozenTranscriptText, fixture["frozen_transcript_text"])
         XCTAssertEqual(projection.clips.first?.evidence?.spanId, evidence.spanId)

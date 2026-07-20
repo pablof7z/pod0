@@ -45,6 +45,7 @@ import uniffi.pod0_application.FfiConverterTypeChapterObservationLimits
 import uniffi.pod0_application.FfiConverterTypeChapterObservationProjection
 import uniffi.pod0_application.FfiConverterTypeChapterProjectionScope
 import uniffi.pod0_application.FfiConverterTypeCommandEnvelope
+import uniffi.pod0_application.FfiConverterTypeHostCancellationRequest
 import uniffi.pod0_application.FfiConverterTypeHostObservationEnvelope
 import uniffi.pod0_application.FfiConverterTypeHostRequestEnvelope
 import uniffi.pod0_application.FfiConverterTypeModelChapterObservation
@@ -54,6 +55,7 @@ import uniffi.pod0_application.FfiConverterTypePublisherChapterObservation
 import uniffi.pod0_application.FfiConverterTypeTranscriptCommitRequest
 import uniffi.pod0_application.FfiConverterTypeTranscriptContractProjection
 import uniffi.pod0_application.FfiConverterTypeTranscriptProjectionScope
+import uniffi.pod0_application.HostCancellationRequest
 import uniffi.pod0_application.HostObservationEnvelope
 import uniffi.pod0_application.HostRequestEnvelope
 import uniffi.pod0_application.ModelChapterObservation
@@ -84,6 +86,7 @@ import uniffi.pod0_application.RustBuffer as RustBufferChapterObservationLimits
 import uniffi.pod0_application.RustBuffer as RustBufferChapterObservationProjection
 import uniffi.pod0_application.RustBuffer as RustBufferChapterProjectionScope
 import uniffi.pod0_application.RustBuffer as RustBufferCommandEnvelope
+import uniffi.pod0_application.RustBuffer as RustBufferHostCancellationRequest
 import uniffi.pod0_application.RustBuffer as RustBufferHostObservationEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferHostRequestEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferModelChapterObservation
@@ -840,6 +843,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_dispatch(
     ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_next_host_cancellations(
+    ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_next_host_requests(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_record_host_observation(
@@ -893,6 +898,8 @@ internal object UniffiLib {
     ): Long
     external fun uniffi_pod0_facade_fn_method_pod0facade_dispatch(`ptr`: Long,`command`: RustBufferCommandEnvelope.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): Unit
+    external fun uniffi_pod0_facade_fn_method_pod0facade_next_host_cancellations(`ptr`: Long,`maximumCount`: Short,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_next_host_requests(`ptr`: Long,`maximumCount`: Short,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_record_host_observation(`ptr`: Long,`observation`: RustBufferHostObservationEnvelope.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1206,6 +1213,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_dispatch() != 36474) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_next_host_cancellations() != 35018) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_next_host_requests() != 62215) {
@@ -1693,6 +1703,8 @@ public interface Pod0FacadeInterface {
 
     fun `dispatch`(`command`: CommandEnvelope)
 
+    fun `nextHostCancellations`(`maximumCount`: kotlin.UShort): List<HostCancellationRequest>
+
     fun `nextHostRequests`(`maximumCount`: kotlin.UShort): List<HostRequestEnvelope>
 
     fun `recordHostObservation`(`observation`: HostObservationEnvelope)
@@ -1826,6 +1838,20 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
 }
     }
 
+
+
+    override fun `nextHostCancellations`(`maximumCount`: kotlin.UShort): List<HostCancellationRequest> {
+            return FfiConverterSequenceTypeHostCancellationRequest.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_next_host_cancellations(
+        it,
+
+        FfiConverterUShort.lower(`maximumCount`),_status)
+}
+    }
+    )
+    }
 
 
     override fun `nextHostRequests`(`maximumCount`: kotlin.UShort): List<HostRequestEnvelope> {
@@ -4898,6 +4924,34 @@ public object FfiConverterSequenceUInt: FfiConverterRustBuffer<List<kotlin.UInt>
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeHostCancellationRequest: FfiConverterRustBuffer<List<HostCancellationRequest>> {
+    override fun read(buf: ByteBuffer): List<HostCancellationRequest> {
+        val len = buf.getInt()
+        return List<HostCancellationRequest>(len) {
+            FfiConverterTypeHostCancellationRequest.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<HostCancellationRequest>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeHostCancellationRequest.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<HostCancellationRequest>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeHostCancellationRequest.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeHostRequestEnvelope: FfiConverterRustBuffer<List<HostRequestEnvelope>> {
     override fun read(buf: ByteBuffer): List<HostRequestEnvelope> {
         val len = buf.getInt()
@@ -4975,6 +5029,8 @@ public object FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer<List<No
         }
     }
 }
+
+
 
 
 

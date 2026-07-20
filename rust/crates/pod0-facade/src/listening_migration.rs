@@ -282,6 +282,8 @@ impl From<StorageError> for LegacyListeningMigrationError {
             | StorageError::ChapterRevisionConflict
             | StorageError::ChapterImportConflict
             | StorageError::ChapterImportNotFound
+            | StorageError::ChapterWorkflowConflict
+            | StorageError::ChapterWorkflowNotFound
             | StorageError::NewerLegacyChapterSchema { .. }
             | StorageError::FailedMigration { .. }
             | StorageError::EvidenceCommandConflict

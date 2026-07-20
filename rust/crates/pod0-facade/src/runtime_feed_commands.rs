@@ -6,7 +6,8 @@ use pod0_domain::{
     HostRequestId, PodcastId, PodcastKind, PodcastRecord, UnixTimestampMilliseconds,
 };
 
-use crate::runtime_state::{FacadeState, FeedIntent, PendingFeed};
+use crate::runtime_feed_state::{FeedIntent, PendingFeed};
+use crate::runtime_state::FacadeState;
 use crate::runtime_storage_commands::storage_failure;
 
 impl FacadeState {

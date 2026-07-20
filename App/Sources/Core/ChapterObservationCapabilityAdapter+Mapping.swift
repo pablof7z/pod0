@@ -8,10 +8,6 @@ extension ChapterObservationCapabilityAdapter {
         limits: ChapterObservationLimits
     ) -> ChapterCapabilityFailure? {
         switch request {
-        case .publisher(let value):
-            guard UInt64(value.sourceURL.utf8.count) <= limits.sourceUrlBytes else {
-                return .responseTooLarge("Publisher source URL exceeds core limit")
-            }
         case .model(let value):
             let systemBytes = UInt64(value.systemPrompt.utf8.count)
             let userBytes = UInt64(value.userPrompt.utf8.count)
@@ -25,47 +21,6 @@ extension ChapterObservationCapabilityAdapter {
             }
         }
         return nil
-    }
-
-    func qualifyPublisher(
-        _ response: ChapterPublisherTransportResponse,
-        request: PublisherChapterCapabilityRequest,
-        limits: ChapterObservationLimits
-    ) -> ChapterCapabilityOutcome {
-        guard (200...299).contains(response.httpStatus),
-              !response.responseURL.isEmpty,
-              UInt64(response.responseURL.utf8.count) <= limits.sourceUrlBytes,
-              !response.contentType.isEmpty,
-              UInt64(response.contentType.utf8.count) <= limits.publisherContentTypeBytes
-        else {
-            return .failed(.invalidMetadata("Malformed publisher response metadata"))
-        }
-        guard UInt64(response.bytes.count) <= limits.publisherDocumentBytes else {
-            return .failed(.responseTooLarge("Publisher response exceeds core limit"))
-        }
-        let digest = Self.digest(response.bytes)
-        let observation = PublisherChapterObservation(
-            episodeId: request.episodeID,
-            podcastId: request.podcastID,
-            resolvedSourceUrl: response.responseURL,
-            contentType: response.contentType,
-            payloadDigest: digest,
-            payload: response.bytes,
-            generatedAt: request.generatedAt,
-            durationMilliseconds: request.durationMilliseconds
-        )
-        return qualify(
-            .publisher(observation),
-            evidence: .publisher(ChapterPublisherEvidence(
-                responseURL: response.responseURL,
-                contentType: response.contentType,
-                entityTag: response.entityTag,
-                lastModified: response.lastModified,
-                httpStatus: response.httpStatus,
-                payloadDigest: digest,
-                payloadByteCount: UInt64(response.bytes.count)
-            ))
-        )
     }
 
     func qualifyModel(

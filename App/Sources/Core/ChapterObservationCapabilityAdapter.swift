@@ -1,7 +1,7 @@
 import Foundation
 import Pod0Core
 
-/// Temporary #102 orchestration shell. It owns only in-flight task handles;
+/// Temporary #110 model/agent shell. It owns only in-flight task handles;
 /// Rust qualifies every successful observation and remains the durable owner.
 @MainActor
 final class ChapterObservationCapabilityAdapter {
@@ -13,7 +13,6 @@ final class ChapterObservationCapabilityAdapter {
         let delivery: Delivery
     }
 
-    private let publisherTransport: any ChapterPublisherTransporting
     private let modelTransport: any ChapterModelTransporting
     private let qualifier: any ChapterObservationQualifying
     private var activeTasks: [HostRequestId: ActiveTask] = [:]
@@ -21,11 +20,9 @@ final class ChapterObservationCapabilityAdapter {
     private var completionOrder: [HostRequestId] = []
 
     init(
-        publisherTransport: any ChapterPublisherTransporting = LiveChapterPublisherTransport(),
         modelTransport: any ChapterModelTransporting = LiveChapterModelTransport(),
         qualifier: any ChapterObservationQualifying = RustChapterObservationQualifier()
     ) {
-        self.publisherTransport = publisherTransport
         self.modelTransport = modelTransport
         self.qualifier = qualifier
     }
@@ -109,29 +106,10 @@ final class ChapterObservationCapabilityAdapter {
     ) async -> ChapterCapabilityOutcome {
         if Task.isCancelled { return .failed(.cancelled) }
         switch request {
-        case .publisher(let value):
-            return await performPublisher(value, limits: limits)
         case .model(let value):
             return await performModel(value, limits: limits)
         case .agent(let value):
             return performAgent(value)
-        }
-    }
-
-    private func performPublisher(
-        _ request: PublisherChapterCapabilityRequest,
-        limits: ChapterObservationLimits
-    ) async -> ChapterCapabilityOutcome {
-        let result = await publisherTransport.fetch(
-            request,
-            maximumResponseBytes: limits.publisherDocumentBytes
-        )
-        if Task.isCancelled { return .failed(.cancelled) }
-        switch result {
-        case .failure(let failure):
-            return .failed(failure)
-        case .success(let response):
-            return qualifyPublisher(response, request: request, limits: limits)
         }
     }
 

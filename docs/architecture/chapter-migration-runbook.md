@@ -46,8 +46,9 @@ workflow artifacts to the Pod0 Rust core. It complements
 8. Reinspect the source and verify all staged counts and backup digests.
 9. Begin an immediate transaction, recheck the source, write selections and
    import state, activate authority, and commit atomically.
-10. Open `Pod0Facade`; iOS reads bounded projections and submits typed raw
-    publisher/model/agent observations only.
+10. Open `Pod0Facade`; iOS reads bounded projections. Rust issues recoverable
+    publisher HTTP requests and qualifies their raw native observations;
+    temporary model/agent adapters submit typed observations only.
 
 The logged diagnostic surface is limited to the bootstrap stage and a stable
 failure code. Chapter titles, summaries, provider payloads, URLs, file contents,
@@ -64,6 +65,11 @@ credentials, and raw SQLite/decoder errors must not be logged.
 | `discarded` | Treat as no active import and derive a stable identity from the current plan. |
 | `imported` with authority inactive | Replay commit for the same import and activate atomically. |
 | Authority active | Open Rust authority without consulting legacy chapter data. |
+| Publisher GET requested or retry scheduled | Reissue the same persisted request identity, absolute due time, and deadline. |
+| Publisher bytes delivered before core observation | Reissue the idempotent GET; accept one fenced observation. |
+| Publisher observation accepted but storage commit fails | Retain the bounded observation in process and replay it; after termination reissue the still-durable request. |
+| Publisher source removed and later restored | Preserve the source-absent tombstone and advance generation so the old request identity can never be reused. |
+| Publisher artifact committed | Reopen the succeeded workflow and selected artifact without another GET. |
 
 Repeated stage, verify, commit, command, and rollback-export calls are
 idempotent for the same typed identity and fingerprint. A different payload
@@ -112,8 +118,9 @@ Before shipping the cutover, require:
 
 - all Rust chapter import, evidence, recovery, rollback, lifecycle, storage,
   command-replay, projection, navigation, and ad-skip tests;
-- `SharedChapterRecoveryTests`, planner/executor tests, bounded projection
-  tests, playback host tests, and the complete iOS suite;
+- `SharedChapterRecoveryTests`, Rust publisher workflow tests, native bounded
+  HTTP host tests, projection/action tests, playback host tests, and the
+  complete iOS suite;
 - `scripts/check_chapter_single_writer.py`,
   `scripts/check_chapter_playback_staging.py`, and the architecture/schema/file
   length/privacy checks;

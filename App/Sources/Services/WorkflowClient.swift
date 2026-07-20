@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import Pod0Core
 import os.log
 
 /// Temporary Swift application adapter for the durable workflow system.
@@ -9,14 +10,19 @@ import os.log
 @Observable
 final class WorkflowClient {
     typealias Loader = @Sendable (WorkflowProjectionQuery) async throws -> [WorkflowJobProjection]
+    typealias PublisherLoader = @Sendable (WorkflowProjectionQuery) async
+        -> [PublisherChapterWorkflowProjection]
 
     nonisolated private static let logger = Logger.app("WorkflowClient")
     private(set) var revision: UInt64 = 0
     private var jobsByID: [UUID: WorkflowJobProjection] = [:]
+    private var swiftJobsByID: [UUID: WorkflowJobProjection] = [:]
+    private var corePublisherJobsByID: [UUID: WorkflowJobProjection] = [:]
     private var latestByKey: [WorkflowJobKey: WorkflowJobProjection] = [:]
 
     @ObservationIgnored private var registrations: [UUID: WorkflowProjectionRequest] = [:]
     @ObservationIgnored private var loader: Loader?
+    @ObservationIgnored private var publisherLoader: PublisherLoader?
     @ObservationIgnored private var databaseURL: URL?
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     @ObservationIgnored private var generation: UInt64 = 0
@@ -51,6 +57,16 @@ final class WorkflowClient {
             }.value
         }
         refresh()
+    }
+
+    func attachPublisherChapterCore(loader: @escaping PublisherLoader) {
+        publisherLoader = loader
+        refresh()
+    }
+
+    func detachPublisherChapterCore() {
+        publisherLoader = nil
+        refresh(immediately: true)
     }
 
     func latest(kind: WorkJobKind, subjectID: UUID) -> WorkflowJobProjection? {
@@ -96,17 +112,28 @@ final class WorkflowClient {
         generation &+= 1
         let requestedGeneration = generation
         loadTask?.cancel()
-        guard let loader, let query = mergedQuery() else {
-            replaceJobs([], generation: requestedGeneration)
+        guard let query = mergedQuery() else {
+            replaceJobs([], publisherWorkflows: [], generation: requestedGeneration)
+            return
+        }
+        let loader = loader
+        let publisherLoader = publisherLoader
+        guard loader != nil || publisherLoader != nil else {
+            replaceJobs([], publisherWorkflows: [], generation: requestedGeneration)
             return
         }
         let delay = immediately ? 0 : coalescingDelayNanoseconds
         loadTask = Task { @MainActor [weak self] in
             do {
                 if delay > 0 { try await Task.sleep(nanoseconds: delay) }
-                let jobs = try await loader(query)
+                let jobs = try await loader?(query) ?? []
+                let publisherWorkflows = await publisherLoader?(query) ?? []
                 guard !Task.isCancelled else { return }
-                self?.replaceJobs(jobs, generation: requestedGeneration)
+                self?.replaceJobs(
+                    jobs,
+                    publisherWorkflows: publisherWorkflows,
+                    generation: requestedGeneration
+                )
             } catch is CancellationError {
                 return
             } catch {
@@ -179,13 +206,29 @@ final class WorkflowClient {
         )
     }
 
-    private func replaceJobs(_ jobs: [WorkflowJobProjection], generation: UInt64) {
+    private func replaceJobs(
+        _ jobs: [WorkflowJobProjection],
+        publisherWorkflows: [PublisherChapterWorkflowProjection],
+        generation: UInt64
+    ) {
         guard generation == self.generation else { return }
-        let replacement = Dictionary(uniqueKeysWithValues: jobs.map { ($0.id, $0) })
+        swiftJobsByID = Dictionary(uniqueKeysWithValues: jobs
+            .filter { $0.kind != .publisherChapters }
+            .map { ($0.id, $0) })
+        corePublisherJobsByID = Dictionary(uniqueKeysWithValues: publisherWorkflows.map {
+            let projection = WorkflowJobProjection(publisherChapterWorkflow: $0)
+            return (projection.id, projection)
+        })
+        mergeJobs()
+    }
+
+    private func mergeJobs() {
+        let replacement = swiftJobsByID.merging(corePublisherJobsByID) { _, core in core }
         guard replacement != jobsByID else { return }
         jobsByID = replacement
         var latest: [WorkflowJobKey: WorkflowJobProjection] = [:]
-        for job in jobs.sorted(by: { $0.updatedAt > $1.updatedAt }) where latest[job.key] == nil {
+        for job in replacement.values.sorted(by: { $0.updatedAt > $1.updatedAt })
+            where latest[job.key] == nil {
             latest[job.key] = job
         }
         latestByKey = latest

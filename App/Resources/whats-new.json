@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-20T14:09:26Z",
+      "lines": [
+        "Publisher chapters now recover cleanly after interruptions, with reliable retry and cancel controls."
+      ]
+    },
+    {
       "shipped_at": "2026-07-20T06:29:10Z",
       "lines": [
         "Chapters and ad skipping now survive relaunches reliably, stay tied to their original transcripts, and keep playback controls in sync."

@@ -139,6 +139,12 @@ pub enum HostRequest {
         query: String,
         candidates: Vec<RecallRerankDocument>,
     },
+    FetchPublisherChapters {
+        episode_id: EpisodeId,
+        source_url: String,
+        not_before: Option<UnixTimestampMilliseconds>,
+        maximum_response_bytes: u64,
+    },
     RemoveLegacyRecallIndexArtifacts,
     Unsupported {
         wire_code: u32,
@@ -184,6 +190,15 @@ pub enum HostObservation {
     RecallCandidatesReranked {
         query_id: RecallQueryId,
         rankings: Vec<RecallRerankObservation>,
+    },
+    PublisherChaptersFetched {
+        episode_id: EpisodeId,
+        bytes: Vec<u8>,
+        content_type: String,
+        response_url: String,
+        entity_tag: Option<String>,
+        last_modified: Option<String>,
+        http_status: u16,
     },
     LegacyRecallIndexArtifactsRemoved {
         removed_file_count: u8,

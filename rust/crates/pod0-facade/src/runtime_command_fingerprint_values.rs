@@ -2,6 +2,29 @@ use pod0_application::TranscriptEvidenceInput;
 use pod0_domain::{AutoDownloadMode, AutoDownloadPolicy, TranscriptSource};
 use sha2::{Digest, Sha256};
 
+pub(super) fn hash_note_kind(hash: &mut Sha256, value: pod0_domain::NoteKind) {
+    match value {
+        pod0_domain::NoteKind::Free => hash.update([1]),
+        pod0_domain::NoteKind::Reflection => hash.update([2]),
+        pod0_domain::NoteKind::SystemEvent => hash.update([3]),
+        pod0_domain::NoteKind::Unsupported { wire_code } => {
+            hash.update([255]);
+            hash.update(wire_code.to_be_bytes());
+        }
+    }
+}
+
+pub(super) fn hash_note_author(hash: &mut Sha256, value: pod0_domain::NoteAuthor) {
+    match value {
+        pod0_domain::NoteAuthor::User => hash.update([1]),
+        pod0_domain::NoteAuthor::Agent => hash.update([2]),
+        pod0_domain::NoteAuthor::Unsupported { wire_code } => {
+            hash.update([255]);
+            hash.update(wire_code.to_be_bytes());
+        }
+    }
+}
+
 pub(super) fn hash_note_target(hash: &mut Sha256, value: Option<pod0_domain::NoteTarget>) {
     match value {
         None => hash.update([0]),

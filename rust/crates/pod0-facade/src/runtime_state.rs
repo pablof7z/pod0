@@ -3,12 +3,12 @@ use std::sync::Arc;
 
 use pod0_application::{
     Clock, CommandEnvelope, CommandLedger, CommandRegistration, CoreFailure, CoreFailureCode,
-    HostRequestEnvelope, HostRequestLedger, OperationProjection, OperationResult, OperationStage,
-    PlaybackPolicyState, Retryability, SubscriptionRegistry, UserAction,
+    HostCancellationRequest, HostObservation, HostRequestEnvelope, HostRequestLedger,
+    OperationProjection, OperationResult, OperationStage, PlaybackPolicyState, Retryability,
+    SubscriptionRegistry, UserAction,
 };
 use pod0_domain::{
-    CommandId, FeedIdentityV1, HostRequestId, ListeningDomainSnapshot, PodcastId, RecallQueryId,
-    StateRevision, SubscriptionId,
+    CommandId, HostRequestId, ListeningDomainSnapshot, RecallQueryId, StateRevision, SubscriptionId,
 };
 use pod0_recall_index::{RECALL_INDEX_DIMENSIONS, RecallIndex};
 use pod0_storage::{EvidenceStore, LibraryStore, TranscriptStore};
@@ -16,27 +16,11 @@ use pod0_storage::{EvidenceStore, LibraryStore, TranscriptStore};
 use crate::ProjectionSubscriber;
 use crate::runtime_clock::SystemClock;
 use crate::runtime_evidence_state::PendingEvidenceIndex;
+use crate::runtime_feed_state::PendingFeed;
 use crate::runtime_playback_state::PlaybackRuntime;
 use crate::runtime_recall_cutover::PendingRecallCutover;
 use crate::runtime_recall_interrupts::{RecallInterruptLease, RecallInterruptRegistry};
 use crate::runtime_recall_state::{PendingRecall, RecallWorkflow};
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum FeedIntent {
-    Subscribe,
-    Ensure,
-    Refresh,
-    Metadata,
-}
-
-#[derive(Clone, Debug)]
-pub(super) struct PendingFeed {
-    pub command_id: CommandId,
-    pub fingerprint: String,
-    pub intent: FeedIntent,
-    pub feed_identity: FeedIdentityV1,
-    pub podcast_id: PodcastId,
-}
 
 pub(super) struct FacadeState {
     clock: Arc<dyn Clock>,
@@ -52,7 +36,11 @@ pub(super) struct FacadeState {
     pub(super) commands: CommandLedger,
     pub(super) host_requests: HostRequestLedger,
     pub(super) host_queue: VecDeque<HostRequestEnvelope>,
+    pub(super) host_cancellations: VecDeque<HostCancellationRequest>,
     pub(super) pending_feeds: BTreeMap<pod0_domain::HostRequestId, PendingFeed>,
+    pub(super) pending_publisher_chapters:
+        BTreeMap<HostRequestId, pod0_storage::PublisherChapterWorkflowRecord>,
+    pub(super) pending_publisher_observations: BTreeMap<HostRequestId, HostObservation>,
     pub(super) pending_evidence_indexes: BTreeMap<HostRequestId, PendingEvidenceIndex>,
     pub(super) pending_recall_cutovers: BTreeMap<HostRequestId, PendingRecallCutover>,
     pub(super) pending_recalls: BTreeMap<HostRequestId, PendingRecall>,
@@ -86,7 +74,10 @@ impl Default for FacadeState {
             commands: CommandLedger::default(),
             host_requests: HostRequestLedger::default(),
             host_queue: VecDeque::new(),
+            host_cancellations: VecDeque::new(),
             pending_feeds: BTreeMap::new(),
+            pending_publisher_chapters: BTreeMap::new(),
+            pending_publisher_observations: BTreeMap::new(),
             pending_evidence_indexes: BTreeMap::new(),
             pending_recall_cutovers: BTreeMap::new(),
             pending_recalls: BTreeMap::new(),
@@ -106,6 +97,11 @@ impl FacadeState {
             clock,
             ..Self::default()
         }
+    }
+
+    #[cfg(test)]
+    pub(super) fn set_clock(&mut self, clock: Arc<dyn Clock>) {
+        self.clock = clock;
     }
 
     pub(super) fn now(&self) -> pod0_domain::UnixTimestampMilliseconds {
@@ -138,7 +134,7 @@ impl FacadeState {
             },
             ..PlaybackRuntime::default()
         };
-        Ok(Self {
+        let mut state = Self {
             revision: StateRevision::new(
                 listening
                     .playback
@@ -156,7 +152,9 @@ impl FacadeState {
             recall_index,
             playback,
             ..Self::default()
-        })
+        };
+        state.rehydrate_publisher_chapter_workflows()?;
+        Ok(state)
     }
 
     pub(super) fn dispatch(&mut self, envelope: CommandEnvelope) -> bool {

@@ -38,6 +38,8 @@ pub(super) fn storage_failure(error: pod0_storage::StorageError) -> CoreFailureC
         pod0_storage::StorageError::InvalidChapterArtifact => CoreFailureCode::InvalidChapter,
         pod0_storage::StorageError::ChapterRevisionConflict => CoreFailureCode::RevisionConflict,
         pod0_storage::StorageError::ChapterCommandConflict => CoreFailureCode::InvalidCommand,
+        pod0_storage::StorageError::ChapterWorkflowConflict => CoreFailureCode::RevisionConflict,
+        pod0_storage::StorageError::ChapterWorkflowNotFound => CoreFailureCode::NotFound,
         _ => CoreFailureCode::StorageUnavailable,
     }
 }

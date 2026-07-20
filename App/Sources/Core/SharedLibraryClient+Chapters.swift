@@ -12,7 +12,6 @@ struct SharedChapterWorkflowReceipt: Codable, Sendable, Equatable {
     let schemaVersion: Int
     let episodeID: UUID
     let inputVersion: String
-    let publisherInputVersion: String?
     let artifactID: String
     let contentDigest: String
     let integrityDigest: String
@@ -20,8 +19,7 @@ struct SharedChapterWorkflowReceipt: Codable, Sendable, Equatable {
 
     init(
         summary: ChapterSummaryProjection,
-        inputVersion: String,
-        publisherInputVersion: String? = nil
+        inputVersion: String
     ) throws {
         guard let episodeID = summary.episodeId.uuid else {
             throw SharedLibraryError.unavailable
@@ -29,7 +27,6 @@ struct SharedChapterWorkflowReceipt: Codable, Sendable, Equatable {
         self.schemaVersion = Self.currentSchemaVersion
         self.episodeID = episodeID
         self.inputVersion = inputVersion
-        self.publisherInputVersion = publisherInputVersion
         self.artifactID = summary.artifactId.stableString
         self.contentDigest = summary.contentDigest.stableString
         self.integrityDigest = summary.integrityDigest.stableString

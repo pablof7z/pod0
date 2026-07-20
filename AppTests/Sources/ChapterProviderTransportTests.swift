@@ -13,57 +13,6 @@ final class ChapterProviderTransportTests: XCTestCase {
         super.tearDown()
     }
 
-    func testPublisherReturnsExactBytesAndTransportMetadataWithoutParsing() async {
-        let raw = Data("not semantic chapter JSON".utf8)
-        ChapterProviderStubProtocol.responseBody = raw
-        ChapterProviderStubProtocol.responseHeaders = [
-            "Content-Type": "application/json+chapters; charset=utf-8",
-            "ETag": "\"publisher-v2\"",
-            "Last-Modified": "Mon, 20 Jul 2026 00:00:00 GMT",
-        ]
-        let session = makeSession()
-
-        let result = await LiveChapterPublisherTransport(session: session).fetch(
-            ChapterCapabilityFixtures.publisherRequest(),
-            maximumResponseBytes: 1_024
-        )
-
-        guard case .success(let response) = result else {
-            return XCTFail("Expected raw publisher response, got \(result)")
-        }
-        XCTAssertEqual(response.bytes, raw)
-        XCTAssertEqual(response.contentType, "application/json+chapters; charset=utf-8")
-        XCTAssertEqual(response.entityTag, "\"publisher-v2\"")
-        XCTAssertEqual(response.lastModified, "Mon, 20 Jul 2026 00:00:00 GMT")
-        XCTAssertEqual(response.httpStatus, 200)
-        XCTAssertEqual(
-            ChapterProviderStubProtocol.lastRequest?.value(forHTTPHeaderField: "Accept"),
-            "application/json, application/json+chapters, application/chapters+json"
-        )
-        session.invalidateAndCancel()
-    }
-
-    func testPublisherEnforcesCoreBoundAndMapsAuthenticationFailure() async {
-        ChapterProviderStubProtocol.responseBody = Data(repeating: 7, count: 5)
-        var session = makeSession()
-        let oversized = await LiveChapterPublisherTransport(session: session).fetch(
-            ChapterCapabilityFixtures.publisherRequest(),
-            maximumResponseBytes: 4
-        )
-        assertFailure(oversized, code: .responseTooLarge)
-        session.invalidateAndCancel()
-
-        ChapterProviderStubProtocol.responseStatus = 401
-        ChapterProviderStubProtocol.responseBody = Data("private provider body".utf8)
-        session = makeSession()
-        let unauthorized = await LiveChapterPublisherTransport(session: session).fetch(
-            ChapterCapabilityFixtures.publisherRequest(),
-            maximumResponseBytes: 1_024
-        )
-        assertFailure(unauthorized, code: .authentication, status: 401)
-        session.invalidateAndCancel()
-    }
-
     func testOpenRouterReturnsExactCompletionIdentityAndSnakeCaseUsage() async throws {
         let completion = #"{"chapters":[{"start":0,"title":"Exact"}],"ads":[]}"#
         ChapterProviderStubProtocol.responseBody = try JSONSerialization.data(withJSONObject: [

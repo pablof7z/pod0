@@ -48,11 +48,6 @@ struct DownloadJobPayload: Codable, Sendable, Equatable {
     let audioVersion: String
 }
 
-struct PublisherChaptersJobPayload: Codable, Sendable, Equatable {
-    let url: URL
-    let sourceVersion: String
-}
-
 struct FeedDiscoveryPayload: Codable, Sendable, Equatable {
     struct EpisodeInput: Codable, Sendable, Equatable {
         let episodeID: UUID
@@ -91,5 +86,4 @@ struct ChapterWorkflowCompletion: Sendable, Equatable {
     let kind: WorkJobKind
     let inputVersion: String
     let artifactID: String
-    let publisherInputVersion: String?
 }

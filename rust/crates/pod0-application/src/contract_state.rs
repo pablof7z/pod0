@@ -129,6 +129,30 @@ impl HostRequestLedger {
         true
     }
 
+    #[must_use]
+    pub fn matches_outstanding(&self, request: &HostRequestEnvelope) -> bool {
+        self.requests
+            .get(&request.request_id)
+            .is_some_and(|tracked| {
+                tracked.status == HostRequestStatus::Outstanding && tracked.envelope == *request
+            })
+    }
+
+    pub fn cancel_request(&mut self, request_id: HostRequestId) -> bool {
+        let Some(request) = self.requests.get_mut(&request_id) else {
+            return false;
+        };
+        if request.status != HostRequestStatus::Outstanding {
+            return false;
+        }
+        request.status = HostRequestStatus::Cancelled;
+        true
+    }
+
+    pub fn retire(&mut self, request_id: HostRequestId) -> bool {
+        self.requests.remove(&request_id).is_some()
+    }
+
     pub fn cancel(&mut self, cancellation_id: CancellationId) -> usize {
         let mut cancelled = 0;
         for request in self.requests.values_mut() {

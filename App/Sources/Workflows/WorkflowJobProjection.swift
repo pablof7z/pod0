@@ -1,4 +1,10 @@
 import Foundation
+import Pod0Core
+
+enum WorkflowProjectionAuthority: Sendable, Equatable {
+    case swiftJobStore
+    case sharedRustPublisherChapters
+}
 
 struct WorkflowJobKey: Hashable, Sendable {
     let kind: WorkJobKind
@@ -38,6 +44,8 @@ struct WorkflowJobProjection: Identifiable, Sendable, Equatable {
     let createdAt: Date
     let updatedAt: Date
     let allowedActions: Set<WorkflowJobAction>
+    let authority: WorkflowProjectionAuthority
+    let coreWorkflowRevision: UInt64?
 
     var key: WorkflowJobKey {
         WorkflowJobKey(kind: kind, subjectID: subjectID)
@@ -60,6 +68,43 @@ struct WorkflowJobProjection: Identifiable, Sendable, Equatable {
         createdAt = job.createdAt
         updatedAt = job.updatedAt
         allowedActions = Self.actions(for: job.state, errorClass: job.lastErrorClass)
+        authority = .swiftJobStore
+        coreWorkflowRevision = nil
+    }
+
+    init(publisherChapterWorkflow workflow: PublisherChapterWorkflowProjection) {
+        guard let episodeID = workflow.episodeId.uuid else {
+            preconditionFailure("Rust publisher workflow returned an invalid episode ID")
+        }
+        id = OccurrenceIdentity.uuid(
+            for: "rust-publisher-chapters:\(episodeID.uuidString)"
+        )
+        kind = .publisherChapters
+        subjectID = episodeID
+        state = switch workflow.stage {
+        case .requested: .running
+        case .retryScheduled: .retryScheduled
+        case .failed, .unsupported: .failedPermanent
+        case .cancelled: .cancelled
+        case .succeeded: .succeeded
+        }
+        resourceClass = .planning
+        attempt = Int(workflow.attempt)
+        maxAttempts = Int(workflow.maxAttempts)
+        notBefore = workflow.notBefore?.date ?? workflow.updatedAt.date
+        externalProvider = nil
+        externalOperationState = nil
+        outputVersion = workflow.selectedArtifactId?.stableString
+        lastErrorClass = workflow.failure.map { Self.errorClass($0.code) }
+        lastErrorMessage = workflow.failure?.safeDetail
+        createdAt = workflow.createdAt.date
+        updatedAt = workflow.updatedAt.date
+        var actions: Set<WorkflowJobAction> = []
+        if workflow.canRetry { actions.insert(.retry) }
+        if workflow.canCancel { actions.insert(.cancel) }
+        allowedActions = actions
+        authority = .sharedRustPublisherChapters
+        coreWorkflowRevision = workflow.workflowRevision.value
     }
 
     private static func actions(
@@ -85,6 +130,20 @@ struct WorkflowJobProjection: Identifiable, Sendable, Equatable {
             }
         case .obsolete, .succeeded:
             return []
+        }
+    }
+
+    private static func errorClass(
+        _ code: PublisherChapterWorkflowFailureCode
+    ) -> JobErrorClass {
+        switch code {
+        case .offline: .offline
+        case .timedOut, .transport: .network
+        case .notFound, .invalidResponse, .invalidDocument: .invalidInput
+        case .responseTooLarge: .unsupportedFormat
+        case .selectionChanged: .transient
+        case .storageUnavailable: .missingDependency
+        case .unsupported: .unexpected
         }
     }
 }

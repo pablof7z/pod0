@@ -51,6 +51,13 @@ pub(super) fn observation_matches_request(
             HostObservation::RecallCandidatesReranked { query_id, .. },
         ) => expected == query_id,
         (
+            HostRequest::FetchPublisherChapters {
+                episode_id: expected,
+                ..
+            },
+            HostObservation::PublisherChaptersFetched { episode_id, .. },
+        ) => expected == episode_id,
+        (
             HostRequest::RemoveLegacyRecallIndexArtifacts,
             HostObservation::LegacyRecallIndexArtifactsRemoved { removed_file_count },
         ) => *removed_file_count <= 3,
@@ -86,6 +93,13 @@ pub(super) fn recall_payload_is_bounded(
             HostRequest::RerankRecallCandidates { candidates, .. },
             HostObservation::RecallCandidatesReranked { rankings, .. },
         ) => rankings.len() <= candidates.len() && rankings.len() <= crate::MAX_RECALL_EVIDENCE,
+        (
+            HostRequest::FetchPublisherChapters {
+                maximum_response_bytes,
+                ..
+            },
+            HostObservation::PublisherChaptersFetched { bytes, .. },
+        ) => u64::try_from(bytes.len()).is_ok_and(|size| size <= *maximum_response_bytes),
         _ => true,
     }
 }
@@ -105,6 +119,7 @@ fn playback_request_episode_id(request: &HostRequest) -> Option<pod0_domain::Epi
         | HostRequest::EmbedRecallQuery { .. }
         | HostRequest::EmbedRecallSpans { .. }
         | HostRequest::RerankRecallCandidates { .. }
+        | HostRequest::FetchPublisherChapters { .. }
         | HostRequest::RemoveLegacyRecallIndexArtifacts
         | HostRequest::Unsupported { .. } => None,
     }

@@ -12,6 +12,7 @@ import sys
 DELETED_PATHS = (
     "App/Sources/Services/AIChapterCompiler.swift",
     "App/Sources/Podcast/ChaptersClient.swift",
+    "App/Sources/Core/ChapterPublisherTransport.swift",
     "App/Sources/Workflows/DerivedArtifactStagingStore.swift",
     "App/Sources/State/AppStateStore+AdSegments.swift",
     "App/Sources/Features/Player/PlaybackState+AdSkip.swift",
@@ -21,6 +22,14 @@ FORBIDDEN = (
     (re.compile(r"\bsetEpisode(?:Chapters|AdSegments)\s*\("), "deleted Swift writer"),
     (re.compile(r"\b(?:AIChapterCompiler|DerivedArtifactStagingStore|ChaptersClient)\b"), "deleted Swift authority"),
     (re.compile(r"\bapplyAutoSkipAdsIfNeeded\s*\("), "native ad-skip policy"),
+    (
+        re.compile(r"\b(?:PublisherChaptersJobExecutor|PublisherChapterRequestPayload)\b"),
+        "retired Swift publisher workflow authority",
+    ),
+    (
+        re.compile(r"DesiredJob\s*\([^)]*kind\s*:\s*\.publisherChapters\b", re.S),
+        "Swift publisher workflow scheduling",
+    ),
     (re.compile(r"encodeIfPresent\s*\(\s*(?:chapters|adSegments)\b"), "chapter/ad Codable output"),
     (
         re.compile(r"(?:current|history|markIntegrity)\s*\(\s*kind\s*:\s*\.(?:chapters|adSegments)\b"),
@@ -58,6 +67,24 @@ REQUIRED_TOKENS = {
         "SharedChapterWorkflowReceipt(",
         "ChapterObservationCapabilityAdapter",
         "expectedSelectionRevision: expectedSelectionRevision",
+    ),
+    "App/Sources/Workflows/WorkflowRuntime.swift": (
+        "removeJobs(kind: .publisherChapters)",
+        "projection.authority == .sharedRustPublisherChapters",
+    ),
+    "App/Sources/Services/WorkflowClient.swift": (
+        "attachPublisherChapterCore(",
+        ".filter { $0.kind != .publisherChapters }",
+    ),
+    "App/Sources/Core/SharedLibraryClient+PublisherChapterWorkflows.swift": (
+        ".ensurePublisherChapters(",
+        ".retryPublisherChapters(",
+        ".cancelPublisherChapters(",
+        ".chapterWorkflows(episodeId:",
+    ),
+    "App/Sources/Core/CorePublisherChapterHost.swift": (
+        "session.bytes(for: request)",
+        ".publisherChaptersFetched(",
     ),
     "App/Sources/Features/Player/PlaybackState+Chapters.swift": (
         ".nextChapter(",
@@ -131,6 +158,9 @@ def self_test() -> None:
         "repository.current(kind: .chapters, subjectID: id)",
         "ArtifactRecord(kind: .adSegments, subjectID: id)",
         "applyAutoSkipAdsIfNeeded(at: time)",
+        "let executor = PublisherChaptersJobExecutor()",
+        "PublisherChapterRequestPayload(sourceURL: url)",
+        "DesiredJob(idempotencyKey: key, kind: .publisherChapters, subjectID: id)",
     )
     for sample in samples:
         assert findings("App/Sources/Bad.swift", sample), sample

@@ -4,11 +4,11 @@ use pod0_domain::{
 };
 
 use crate::{
-    ChapterArtifactProjection, ChapterCommitReceipt, ChapterProjectionScope, ClipProjectionScope,
-    ClipsProjection, CoreFailure, EvidenceIndexProjection, MAX_OPERATION_ITEMS,
-    MAX_PROJECTION_ITEMS, NoteProjectionScope, NotesProjection, PlaybackProjection,
-    RecallResultProjection, TranscriptCommitReceipt, TranscriptProjection,
-    TranscriptProjectionScope,
+    ChapterArtifactProjection, ChapterCommitReceipt, ChapterProjectionScope,
+    ChapterWorkflowsProjection, ClipProjectionScope, ClipsProjection, CoreFailure,
+    EvidenceIndexProjection, MAX_OPERATION_ITEMS, MAX_PROJECTION_ITEMS, NoteProjectionScope,
+    NotesProjection, PlaybackProjection, RecallResultProjection, TranscriptCommitReceipt,
+    TranscriptProjection, TranscriptProjectionScope,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
@@ -34,6 +34,9 @@ pub enum ProjectionScope {
     Chapter {
         episode_id: EpisodeId,
         scope: ChapterProjectionScope,
+    },
+    ChapterWorkflows {
+        episode_id: Option<EpisodeId>,
     },
     Notes {
         scope: NoteProjectionScope,
@@ -86,6 +89,7 @@ pub enum Projection {
     EvidenceIndex { value: EvidenceIndexProjection },
     Transcript { value: TranscriptProjection },
     Chapter { value: ChapterArtifactProjection },
+    ChapterWorkflows { value: ChapterWorkflowsProjection },
     Notes { value: NotesProjection },
     Clips { value: ClipsProjection },
     Unsupported { value: UnsupportedProjection },

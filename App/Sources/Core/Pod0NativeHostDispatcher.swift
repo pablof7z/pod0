@@ -25,10 +25,13 @@ final class Pod0NativeHostDispatcher {
     }
 
     private let feedHost: any CoreFeedHosting
+    let publisherChapterHost: any CorePublisherChapterHosting
     private let playbackHost: any CorePlaybackHosting
+    private let maximumConcurrentTasks: Int
     let recallHost: any CoreRecallHosting
     let recallObservationRecorder = CoreRecallObservationRecorder()
-    private let now: @MainActor () -> Date
+    let publisherObservationRecorder = CorePublisherChapterObservationRecorder()
+    let now: @MainActor () -> Date
     var activeTasks: [HostRequestId: ActiveTask] = [:]
     var playbackStreams: [HostRequestId: PlaybackStream] = [:]
     private var completedRequestIDs: Set<HostRequestId> = []
@@ -36,13 +39,17 @@ final class Pod0NativeHostDispatcher {
 
     init(
         feedHost: any CoreFeedHosting,
+        publisherChapterHost: any CorePublisherChapterHosting = CorePublisherChapterHost(),
         playbackHost: any CorePlaybackHosting,
         recallHost: any CoreRecallHosting = UnavailableCoreRecallHost(),
+        maximumConcurrentTasks: Int = 8,
         now: @escaping @MainActor () -> Date = Date.init
     ) {
         self.feedHost = feedHost
+        self.publisherChapterHost = publisherChapterHost
         self.playbackHost = playbackHost
         self.recallHost = recallHost
+        self.maximumConcurrentTasks = max(1, maximumConcurrentTasks)
         self.now = now
         playbackHost.installObservationSink { [weak self] observation in
             self?.receivePlaybackObservation(observation)
@@ -50,9 +57,21 @@ final class Pod0NativeHostDispatcher {
     }
 
     func executePendingRequests(from facade: Pod0Facade, maximumCount: UInt16 = 64) {
-        for envelope in facade.nextHostRequests(maximumCount: maximumCount) {
+        for cancellation in facade.nextHostCancellations(maximumCount: maximumCount) {
+            cancel(
+                requestID: cancellation.requestId,
+                cancellationID: cancellation.cancellationId
+            )
+        }
+        let capacity = max(0, maximumConcurrentTasks - activeTasks.count)
+        let boundedCount = min(Int(maximumCount), capacity)
+        guard boundedCount > 0 else { return }
+        for envelope in facade.nextHostRequests(maximumCount: UInt16(boundedCount)) {
             execute(envelope) { [weak self] observation in
-                self?.record(observation, for: envelope.request, in: facade)
+                guard let self else { return }
+                record(observation, for: envelope.request, in: facade) { [weak self] in
+                    self?.executePendingRequests(from: facade, maximumCount: maximumCount)
+                }
             }
         }
     }
@@ -91,6 +110,20 @@ final class Pod0NativeHostDispatcher {
                 minimumIntervalMilliseconds: minimumIntervalMilliseconds,
                 delivery: delivery
             )
+        case .fetchPublisherChapters(
+            let episodeID,
+            let sourceURL,
+            let notBefore,
+            let maximumResponseBytes
+        ):
+            startPublisherChapterTask(
+                envelope,
+                episodeID: episodeID,
+                sourceURL: sourceURL,
+                notBefore: notBefore,
+                maximumResponseBytes: maximumResponseBytes,
+                delivery: delivery
+            )
         case .embedRecallQuery, .embedRecallSpans, .rerankRecallCandidates,
              .removeLegacyRecallIndexArtifacts:
             startRecallTask(envelope, delivery: delivery)
@@ -100,35 +133,6 @@ final class Pod0NativeHostDispatcher {
                 sequenceNumber: 0,
                 observation: playbackHost.execute(envelope.request),
                 delivery: delivery
-            )
-        }
-    }
-
-    func cancel(cancellationID: CancellationId) {
-        let taskIDs = activeTasks.compactMap { requestID, active in
-            active.envelope.cancellationId == cancellationID ? requestID : nil
-        }
-        for requestID in taskIDs {
-            guard let active = activeTasks.removeValue(forKey: requestID) else { continue }
-            active.task.cancel()
-            finish(
-                active.envelope,
-                sequenceNumber: 0,
-                observation: .cancelled,
-                delivery: active.delivery
-            )
-        }
-
-        let streamIDs = playbackStreams.compactMap { requestID, stream in
-            stream.envelope.cancellationId == cancellationID ? requestID : nil
-        }
-        for requestID in streamIDs {
-            guard let stream = playbackStreams.removeValue(forKey: requestID) else { continue }
-            finish(
-                stream.envelope,
-                sequenceNumber: stream.sequenceNumber + 1,
-                observation: .cancelled,
-                delivery: stream.delivery
             )
         }
     }
@@ -268,7 +272,7 @@ final class Pod0NativeHostDispatcher {
         envelope.deadlineAt.map { $0.date <= now() } ?? false
     }
 
-    private func rememberCompletion(_ requestID: HostRequestId) {
+    func rememberCompletion(_ requestID: HostRequestId) {
         guard completedRequestIDs.insert(requestID).inserted else { return }
         completionOrder.append(requestID)
         if completionOrder.count > 256 {

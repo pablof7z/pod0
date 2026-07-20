@@ -29,7 +29,7 @@ final class WorkflowReconcilerTests: XCTestCase {
         try await super.tearDown()
     }
 
-    func testSecondPassIsNoOpAndDerivableJournalWipeRecreatesOwedWork() throws {
+    func testReconcilerNeverCreatesSwiftPublisherChapterJobs() throws {
         var episode = Episode(
             podcastID: UUID(), guid: "owed", title: "Owed", pubDate: Date(),
             enclosureURL: URL(string: "https://example.com/owed.mp3")!
@@ -41,13 +41,13 @@ final class WorkflowReconcilerTests: XCTestCase {
             appStore: appStore, jobStore: jobs, artifacts: artifacts
         )
 
-        XCTAssertEqual(try reconciler.reconcile().ensured, 1)
         XCTAssertEqual(try reconciler.reconcile().ensured, 0)
-        XCTAssertEqual(try jobs.allJobs().map(\.kind), [.publisherChapters])
+        XCTAssertEqual(try reconciler.reconcile().ensured, 0)
+        XCTAssertTrue(try jobs.allJobs().isEmpty)
 
         try jobs.removeDerivableJobs()
-        XCTAssertEqual(try reconciler.reconcile().ensured, 1)
-        XCTAssertEqual(try jobs.allJobs().map(\.kind), [.publisherChapters])
+        XCTAssertEqual(try reconciler.reconcile().ensured, 0)
+        XCTAssertTrue(try jobs.allJobs().isEmpty)
     }
     func testReconcilerNeverInventsOrObsoletesAuthoritativeOccurrence() throws {
         let occurrence = DesiredJob(

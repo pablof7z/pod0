@@ -7,6 +7,7 @@ use rusqlite::{OptionalExtension, Transaction, params};
 use crate::chapter_authority::require_chapter_authoritative;
 use crate::chapter_store_codec::{artifact_id, digest, episode_id, revision};
 use crate::chapter_store_read_artifact::read_chapter_artifact;
+use crate::chapter_store_receipt::chapter_commit_receipt;
 use crate::chapter_store_write_artifact::insert_or_validate_chapter_artifact;
 use crate::transcript_authority::advance_listening_revision;
 use crate::{ChapterCommitStorageReceipt, LibraryStore, StorageError};
@@ -41,79 +42,100 @@ impl LibraryStore {
     {
         let artifact =
             ChapterArtifact::seal(input).map_err(|_| StorageError::InvalidChapterArtifact)?;
-        if completed_at_ms < 0 || artifact.generated_at.value < 0 {
-            return Err(StorageError::InvalidChapterArtifact);
-        }
-        let fingerprint = artifact.command_fingerprint(expected_selection_revision);
-        let resulting_revision = expected_selection_revision
-            .value
-            .checked_add(1)
-            .ok_or(StorageError::ChapterRevisionConflict)?;
-        let resulting_revision_i64 =
-            i64::try_from(resulting_revision).map_err(|_| StorageError::ChapterRevisionConflict)?;
-        let expected_revision_i64 = i64::try_from(expected_selection_revision.value)
-            .map_err(|_| StorageError::ChapterRevisionConflict)?;
-
         self.write(|transaction| {
-            require_chapter_authoritative(transaction)?;
-            if let Some(receipt) = replay(transaction, command_id, fingerprint, &artifact)? {
-                return Ok(receipt);
-            }
-            require_episode_parent(transaction, &artifact)?;
-            require_selected_transcript_provenance(transaction, &artifact)?;
-            let current = current_selection(transaction, artifact.episode_id)?;
-            let current_revision = current.as_ref().map_or(0, |item| item.1.value);
-            if current_revision != expected_selection_revision.value {
-                return Err(StorageError::ChapterRevisionConflict);
-            }
-            insert_or_validate_chapter_artifact(transaction, &artifact, None, completed_at_ms)?;
-            let previous_artifact_id = current.map(|item| item.0);
-            let already_selected = previous_artifact_id == Some(artifact.artifact_id);
-            transaction
-                .execute(
-                    "INSERT INTO pod0_chapter_selections(episode_id,selection_revision,artifact_id,\
-                     source_import_id,selected_at_ms) VALUES(?1,?2,?3,NULL,?4)",
-                    params![
-                        artifact.episode_id.into_bytes().as_slice(),
-                        resulting_revision_i64,
-                        artifact.artifact_id.into_bytes().as_slice(),
-                        completed_at_ms,
-                    ],
-                )
-                .map_err(|error| StorageError::sqlite("select chapter artifact", error))?;
-            advance_collection_revision(transaction)?;
-            let _ = advance_listening_revision(transaction)?;
-            let receipt = receipt(
+            commit_and_select_chapter_in_transaction(
+                transaction,
                 command_id,
-                fingerprint,
-                previous_artifact_id,
-                StateRevision::new(resulting_revision),
-                already_selected,
+                expected_selection_revision,
                 &artifact,
-            )?;
-            transaction
-                .execute(
-                    "INSERT INTO pod0_chapter_commands(command_id,operation_code,\
+                completed_at_ms,
+                before_commit,
+            )
+        })
+    }
+}
+
+pub(crate) fn commit_and_select_chapter_in_transaction<F>(
+    transaction: &Transaction<'_>,
+    command_id: CommandId,
+    expected_selection_revision: StateRevision,
+    artifact: &ChapterArtifact,
+    completed_at_ms: i64,
+    before_commit: F,
+) -> Result<ChapterCommitStorageReceipt, StorageError>
+where
+    F: FnOnce() -> Result<(), StorageError>,
+{
+    if completed_at_ms < 0 || artifact.generated_at.value < 0 {
+        return Err(StorageError::InvalidChapterArtifact);
+    }
+    let fingerprint = artifact.command_fingerprint(expected_selection_revision);
+    let resulting_revision = expected_selection_revision
+        .value
+        .checked_add(1)
+        .ok_or(StorageError::ChapterRevisionConflict)?;
+    let resulting_revision_i64 =
+        i64::try_from(resulting_revision).map_err(|_| StorageError::ChapterRevisionConflict)?;
+    let expected_revision_i64 = i64::try_from(expected_selection_revision.value)
+        .map_err(|_| StorageError::ChapterRevisionConflict)?;
+
+    require_chapter_authoritative(transaction)?;
+    if let Some(receipt) = replay(transaction, command_id, fingerprint, artifact)? {
+        return Ok(receipt);
+    }
+    require_episode_parent(transaction, artifact)?;
+    require_selected_transcript_provenance(transaction, artifact)?;
+    let current = current_selection(transaction, artifact.episode_id)?;
+    let current_revision = current.as_ref().map_or(0, |item| item.1.value);
+    if current_revision != expected_selection_revision.value {
+        return Err(StorageError::ChapterRevisionConflict);
+    }
+    insert_or_validate_chapter_artifact(transaction, artifact, None, completed_at_ms)?;
+    let previous_artifact_id = current.map(|item| item.0);
+    let already_selected = previous_artifact_id == Some(artifact.artifact_id);
+    transaction
+        .execute(
+            "INSERT INTO pod0_chapter_selections(episode_id,selection_revision,artifact_id,\
+                     source_import_id,selected_at_ms) VALUES(?1,?2,?3,NULL,?4)",
+            params![
+                artifact.episode_id.into_bytes().as_slice(),
+                resulting_revision_i64,
+                artifact.artifact_id.into_bytes().as_slice(),
+                completed_at_ms,
+            ],
+        )
+        .map_err(|error| StorageError::sqlite("select chapter artifact", error))?;
+    advance_collection_revision(transaction)?;
+    let _ = advance_listening_revision(transaction)?;
+    let receipt = chapter_commit_receipt(
+        command_id,
+        fingerprint,
+        previous_artifact_id,
+        StateRevision::new(resulting_revision),
+        already_selected,
+        artifact,
+    )?;
+    transaction
+        .execute(
+            "INSERT INTO pod0_chapter_commands(command_id,operation_code,\
                      command_fingerprint,episode_id,artifact_id,expected_selection_revision,\
                      previous_artifact_id,resulting_selection_revision,already_selected,\
                      completed_at_ms) VALUES(?1,1,?2,?3,?4,?5,?6,?7,?8,?9)",
-                    params![
-                        command_id.into_bytes().as_slice(),
-                        fingerprint.into_bytes().as_slice(),
-                        artifact.episode_id.into_bytes().as_slice(),
-                        artifact.artifact_id.into_bytes().as_slice(),
-                        expected_revision_i64,
-                        previous_artifact_id.map(|id| id.into_bytes().to_vec()),
-                        resulting_revision_i64,
-                        i64::from(receipt.already_selected),
-                        completed_at_ms,
-                    ],
-                )
-                .map_err(|error| StorageError::sqlite("record chapter command", error))?;
-            before_commit()?;
-            Ok(receipt)
-        })
-    }
+            params![
+                command_id.into_bytes().as_slice(),
+                fingerprint.into_bytes().as_slice(),
+                artifact.episode_id.into_bytes().as_slice(),
+                artifact.artifact_id.into_bytes().as_slice(),
+                expected_revision_i64,
+                previous_artifact_id.map(|id| id.into_bytes().to_vec()),
+                resulting_revision_i64,
+                i64::from(receipt.already_selected),
+                completed_at_ms,
+            ],
+        )
+        .map_err(|error| StorageError::sqlite("record chapter command", error))?;
+    before_commit()?;
+    Ok(receipt)
 }
 
 fn require_episode_parent(
@@ -262,7 +284,7 @@ fn replay(
         1 => true,
         _ => return Err(StorageError::InvalidChapterArtifact),
     };
-    Ok(Some(receipt(
+    Ok(Some(chapter_commit_receipt(
         command_id,
         fingerprint,
         row.5.as_deref().map(artifact_id).transpose()?,
@@ -270,28 +292,4 @@ fn replay(
         already_selected,
         &artifact,
     )?))
-}
-
-fn receipt(
-    command_id: CommandId,
-    command_fingerprint: ContentDigest,
-    previous_artifact_id: Option<ChapterArtifactId>,
-    selection_revision: StateRevision,
-    already_selected: bool,
-    artifact: &ChapterArtifact,
-) -> Result<ChapterCommitStorageReceipt, StorageError> {
-    Ok(ChapterCommitStorageReceipt {
-        command_id,
-        artifact_id: artifact.artifact_id,
-        content_digest: artifact.content_digest,
-        integrity_digest: artifact.integrity_digest,
-        command_fingerprint,
-        previous_artifact_id,
-        selection_revision,
-        chapter_count: u32::try_from(artifact.chapters.len())
-            .map_err(|_| StorageError::InvalidChapterArtifact)?,
-        ad_span_count: u32::try_from(artifact.ad_spans.len())
-            .map_err(|_| StorageError::InvalidChapterArtifact)?,
-        already_selected,
-    })
 }

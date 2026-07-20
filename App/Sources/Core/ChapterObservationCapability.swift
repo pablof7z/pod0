@@ -1,9 +1,9 @@
 import Foundation
 import Pod0Core
 
-// Temporary request orchestration for #102. Issue #100 deletes this Swift
-// workflow shell once Rust emits the equivalent typed host requests; the raw
-// URLSession and credential capabilities remain native by design.
+// Temporary model/agent request orchestration. Issue #110 deletes this Swift
+// workflow shell once Rust owns those durable workflows; the raw provider and
+// credential capabilities remain native by design.
 
 struct ChapterCapabilityRequestEnvelope: Equatable, Sendable {
     let requestID: HostRequestId
@@ -12,18 +12,8 @@ struct ChapterCapabilityRequestEnvelope: Equatable, Sendable {
 }
 
 enum ChapterCapabilityRequest: Equatable, Sendable {
-    case publisher(PublisherChapterCapabilityRequest)
     case model(ModelChapterCapabilityRequest)
     case agent(AgentChapterCapabilityRequest)
-}
-
-struct PublisherChapterCapabilityRequest: Equatable, Sendable {
-    let episodeID: EpisodeId
-    let podcastID: PodcastId
-    let sourceURL: String
-    let generatedAt: UnixTimestampMilliseconds
-    let durationMilliseconds: UInt64?
-    let deadlineAt: UnixTimestampMilliseconds?
 }
 
 struct ModelChapterCapabilityRequest: Equatable, Sendable {
@@ -58,7 +48,6 @@ struct AgentChapterCapabilityRequest: Equatable, Sendable {
 }
 
 enum ChapterRawObservation: Equatable, Sendable {
-    case publisher(PublisherChapterObservation)
     case model(ModelChapterObservation)
     case agent(AgentComposedChapterObservation)
 }
@@ -73,19 +62,8 @@ enum ChapterCapabilityOutcome: Equatable, Sendable {
 }
 
 enum ChapterCapabilityEvidence: Equatable, Sendable {
-    case publisher(ChapterPublisherEvidence)
     case model(ChapterModelEvidence)
     case agent(ChapterAgentEvidence)
-}
-
-struct ChapterPublisherEvidence: Equatable, Sendable {
-    let responseURL: String
-    let contentType: String
-    let entityTag: String?
-    let lastModified: String?
-    let httpStatus: UInt16
-    let payloadDigest: ContentDigest
-    let payloadByteCount: UInt64
 }
 
 struct ChapterModelEvidence: Equatable, Sendable {
@@ -159,8 +137,6 @@ struct RustChapterObservationQualifier: ChapterObservationQualifying {
 
     func qualify(_ observation: ChapterRawObservation) -> ChapterObservationProjection? {
         switch observation {
-        case .publisher(let value):
-            qualifyPublisherChapterObservation(observation: value)
         case .model(let value):
             qualifyModelChapterObservation(observation: value)
         case .agent(let value):

@@ -13,7 +13,8 @@ CAPABILITY_FILES = (
     "App/Sources/Core/ChapterObservationCapability.swift",
     "App/Sources/Core/ChapterObservationCapabilityAdapter.swift",
     "App/Sources/Core/ChapterObservationCapabilityAdapter+Mapping.swift",
-    "App/Sources/Core/ChapterPublisherTransport.swift",
+    "App/Sources/Core/CorePublisherChapterHost.swift",
+    "App/Sources/Core/Pod0NativeHostDispatcher+PublisherChapters.swift",
     "App/Sources/Core/ChapterModelTransport.swift",
 )
 MODEL_TRANSPORT = "App/Sources/Core/ChapterModelTransport.swift"
@@ -35,7 +36,6 @@ REQUIRED_TOKENS = {
         "ChapterCapabilityRequestEnvelope",
         "ChapterCapabilityEvidence",
         "chapterObservationLimits()",
-        "qualifyPublisherChapterObservation",
         "qualifyModelChapterObservation",
         "qualifyAgentComposedChapterObservation",
     ),
@@ -48,15 +48,21 @@ REQUIRED_TOKENS = {
         "activeTasks.removeValue",
     ),
     "App/Sources/Core/ChapterObservationCapabilityAdapter+Mapping.swift": (
-        "PublisherChapterObservation(",
         "ModelChapterObservation(",
         "SHA256.hash(data:",
         "generatedAt: request.generatedAt",
     ),
-    "App/Sources/Core/ChapterPublisherTransport.swift": (
+    "App/Sources/Core/CorePublisherChapterHost.swift": (
         "session.bytes(for:",
         "maximumResponseBytes",
-        "ChapterPublisherTransportResponse",
+        ".publisherChaptersFetched(",
+        "httpStatus: status",
+    ),
+    "App/Sources/Core/Pod0NativeHostDispatcher+PublisherChapters.swift": (
+        "notBefore.date.timeIntervalSince(now())",
+        "Task.sleep(nanoseconds:",
+        "publisherChapterHost.fetch(",
+        "activeTasks.removeValue",
     ),
     MODEL_TRANSPORT: (
         "session.bytes(for:",
@@ -144,7 +150,7 @@ def validate(root: Path) -> list[str]:
 
 def self_test() -> None:
     safe = "// AppStateStore and JSONDecoder are not used here\nlet bytes = Data()"
-    assert not findings("App/Sources/Core/ChapterPublisherTransport.swift", safe)
+    assert not findings("App/Sources/Core/CorePublisherChapterHost.swift", safe)
     samples = (
         "let chapter = Episode.Chapter()",
         "AppStateStore.shared.setEpisode(id)",

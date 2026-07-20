@@ -1,8 +1,8 @@
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use pod0_application::{
-    ApplicationCommand, CommandEnvelope, HostObservationEnvelope, HostRequestEnvelope,
-    ProjectionEnvelope, ProjectionRequest, bounded_host_request_count,
+    ApplicationCommand, CommandEnvelope, HostCancellationRequest, HostObservationEnvelope,
+    HostRequestEnvelope, ProjectionEnvelope, ProjectionRequest, bounded_host_request_count,
 };
 use pod0_domain::{CancellationId, SubscriptionId};
 use pod0_recall_index::{
@@ -58,6 +58,16 @@ impl Pod0Facade {
         self.state
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    #[cfg(test)]
+    pub(super) fn open_with_clock(
+        store_path: String,
+        clock: Arc<dyn pod0_application::Clock>,
+    ) -> Arc<Self> {
+        let facade = Self::open(store_path).expect("test store must open");
+        facade.state().set_clock(clock);
+        facade
     }
 
     fn notify_subscribers(&self) {
@@ -138,9 +148,24 @@ impl Pod0Facade {
     }
 
     pub fn next_host_requests(&self, maximum_count: u16) -> Vec<HostRequestEnvelope> {
+        let (changed, requests) = {
+            let mut state = self.state();
+            let changed = state.retry_pending_publisher_observations();
+            let _ = state.admit_publisher_chapter_requests();
+            let request_count =
+                bounded_host_request_count(maximum_count).min(state.host_queue.len());
+            (changed, state.host_queue.drain(..request_count).collect())
+        };
+        if changed {
+            self.notify_subscribers();
+        }
+        requests
+    }
+
+    pub fn next_host_cancellations(&self, maximum_count: u16) -> Vec<HostCancellationRequest> {
         let mut state = self.state();
-        let request_count = bounded_host_request_count(maximum_count).min(state.host_queue.len());
-        state.host_queue.drain(..request_count).collect()
+        let count = bounded_host_request_count(maximum_count).min(state.host_cancellations.len());
+        state.host_cancellations.drain(..count).collect()
     }
 
     pub fn record_host_observation(&self, observation: HostObservationEnvelope) {
@@ -205,6 +230,10 @@ impl Pod0ApplicationApi for Pod0Facade {
 
     fn next_host_requests(&self, maximum_count: u16) -> Vec<HostRequestEnvelope> {
         Self::next_host_requests(self, maximum_count)
+    }
+
+    fn next_host_cancellations(&self, maximum_count: u16) -> Vec<HostCancellationRequest> {
+        Self::next_host_cancellations(self, maximum_count)
     }
 
     fn record_host_observation(&self, observation: HostObservationEnvelope) {

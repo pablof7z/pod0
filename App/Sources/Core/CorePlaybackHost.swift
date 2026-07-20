@@ -72,8 +72,8 @@ final class CorePlaybackHost: CorePlaybackHosting {
             engine.setSleepTimer(.off)
         case .observePlayback:
             break
-        case .fetchFeed:
-            return .failed(code: .invalidResponse, safeDetail: "Feed request sent to player")
+        case .fetchFeed, .fetchPublisherChapters:
+            return .failed(code: .invalidResponse, safeDetail: "HTTP request sent to player")
         case .embedRecallQuery, .embedRecallSpans, .rerankRecallCandidates,
              .removeLegacyRecallIndexArtifacts:
             return .failed(code: .invalidResponse, safeDetail: "Recall request sent to player")

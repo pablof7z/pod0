@@ -32,9 +32,17 @@ final class WorkflowRuntime {
         let databaseURL = store.persistence.episodeStore.fileURL
         let jobs = JobStore(fileURL: databaseURL)
         let artifacts = ArtifactRepository(fileURL: databaseURL)
+        do {
+            try jobs.removeJobs(kind: .publisherChapters)
+        } catch {
+            Self.logger.error(
+                "Unable to remove retired Swift publisher workflows: \(error, privacy: .public)"
+            )
+        }
         jobStore = jobs
         artifactRepository = artifacts
         client?.attach(jobStore: jobs)
+        if let client { store.sharedLibrary?.attach(workflowClient: client) }
 
         let scheduled = ScheduledAgentRunJobExecutor(
             store: store,
@@ -47,7 +55,6 @@ final class WorkflowRuntime {
             .download: DownloadJobExecutor(store: store, jobStore: jobs),
             .transcriptIngest: TranscriptIngestJobExecutor(store: store, jobStore: jobs),
             .transcriptIndex: TranscriptIndexJobExecutor(),
-            .publisherChapters: PublisherChaptersJobExecutor(store: store),
             .chapterArtifacts: ChapterArtifactsJobExecutor(store: store),
             .metadataIndex: MetadataIndexJobExecutor(store: store),
             .autoDownload: AutoDownloadJobExecutor(store: store),
@@ -69,6 +76,7 @@ final class WorkflowRuntime {
         _ = persistenceObserver
         self.client = client
         if let jobStore { client.attach(jobStore: jobStore) }
+        appStore?.sharedLibrary?.attach(workflowClient: client)
     }
 
     func startAndReconcile() async {
@@ -178,6 +186,12 @@ final class WorkflowRuntime {
         _ action: WorkflowJobAction,
         on projection: WorkflowJobProjection
     ) -> WorkflowJobActionResult {
+        if projection.authority == .sharedRustPublisherChapters {
+            return appStore?.sharedLibrary?.performPublisherChapterAction(
+                action,
+                on: projection
+            ) ?? .failed
+        }
         guard let jobStore else { return .failed }
         do {
             let result = try jobStore.perform(
@@ -219,6 +233,9 @@ final class WorkflowRuntime {
     private func reconcile(signalOnly: Bool) async {
         guard let store = appStore, let jobStore, let artifactRepository, let coordinator else { return }
         do {
+            store.sharedLibrary?.ensurePublisherChapters(
+                episodeIDs: store.state.episodes.map(\.id)
+            )
             let reconciler = Reconciler(
                 appStore: store,
                 jobStore: jobStore,

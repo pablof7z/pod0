@@ -99,6 +99,25 @@ fn observations_commit_once_and_late_cancelled_results_are_rejected() {
 }
 
 #[test]
+fn exact_host_request_withdrawal_matches_then_retires_only_that_identity() {
+    let mut ledger = HostRequestLedger::default();
+    let request = host_request();
+    assert!(ledger.register(request.clone()));
+    assert!(ledger.matches_outstanding(&request));
+
+    let mut different = request.clone();
+    different.issued_revision = StateRevision::new(request.issued_revision.value + 1);
+    assert!(!ledger.matches_outstanding(&different));
+    assert!(ledger.cancel_request(request.request_id));
+    assert!(!ledger.matches_outstanding(&request));
+    assert!(ledger.retire(request.request_id));
+    assert_eq!(
+        ledger.accept_observation(&observation()),
+        ObservationAcceptance::UnknownRequest
+    );
+}
+
+#[test]
 fn mismatched_or_oversized_host_results_cannot_commit() {
     let mut ledger = HostRequestLedger::default();
     let mut request = host_request();

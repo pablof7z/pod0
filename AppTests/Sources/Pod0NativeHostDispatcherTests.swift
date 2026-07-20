@@ -80,6 +80,44 @@ final class Pod0NativeHostDispatcherTests: XCTestCase {
         XCTAssertEqual(observations.count, 1)
     }
 
+    func testPublisherRequestUsesRustTimingAndDeliversRawObservation() async {
+        let publisher = RecordingCorePublisherChapterHost()
+        let clock = Date(timeIntervalSince1970: 100)
+        let dispatcher = Pod0NativeHostDispatcher(
+            feedHost: RecordingCoreFeedHost(),
+            publisherChapterHost: publisher,
+            playbackHost: FakeCorePlaybackHost(),
+            now: { clock }
+        )
+        let request = envelope(
+            requestID: 5,
+            deadline: clock.addingTimeInterval(30),
+            request: .fetchPublisherChapters(
+                episodeId: EpisodeId(high: 3, low: 4),
+                sourceUrl: "https://example.test/chapters.json",
+                notBefore: UnixTimestampMilliseconds(date: clock.addingTimeInterval(-1)),
+                maximumResponseBytes: 4_096
+            )
+        )
+        var observations: [HostObservationEnvelope] = []
+        let delivered = expectation(description: "publisher observation delivered")
+
+        dispatcher.execute(request) {
+            observations.append($0)
+            delivered.fulfill()
+        }
+        await fulfillment(of: [delivered], timeout: 1)
+
+        let publisherCallCount = await publisher.callCount
+        XCTAssertEqual(publisherCallCount, 1)
+        guard case .publisherChaptersFetched(_, let bytes, _, _, _, _, let status)
+            = observations.first?.observation else {
+            return XCTFail("Expected raw publisher observation")
+        }
+        XCTAssertEqual(bytes, Data("raw".utf8))
+        XCTAssertEqual(status, 404)
+    }
+
     func testPlaybackStreamCoalescesPositionButNeverDropsLifecycleBoundaries() {
         let feed = RecordingCoreFeedHost()
         let playback = FakeCorePlaybackHost()
@@ -196,6 +234,28 @@ private actor SuspendingCoreFeedHost: CoreFeedHosting {
         } catch {
             return .cancelled
         }
+    }
+}
+
+private actor RecordingCorePublisherChapterHost: CorePublisherChapterHosting {
+    private(set) var callCount = 0
+
+    func fetch(
+        episodeID: EpisodeId,
+        sourceURL _: String,
+        maximumResponseBytes _: UInt64,
+        deadline _: Date?
+    ) async -> HostObservation {
+        callCount += 1
+        return .publisherChaptersFetched(
+            episodeId: episodeID,
+            bytes: Data("raw".utf8),
+            contentType: "application/json",
+            responseUrl: "https://example.test/chapters.json",
+            entityTag: nil,
+            lastModified: nil,
+            httpStatus: 404
+        )
     }
 }
 

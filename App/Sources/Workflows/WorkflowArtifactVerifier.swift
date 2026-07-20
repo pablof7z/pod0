@@ -62,18 +62,7 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
         case .metadataIndex:
             return false
         case .publisherChapters:
-            guard let receipt = chapterReceipt(outputVersion),
-                  receipt.episodeID == job.subjectID,
-                  receipt.inputVersion == job.inputVersion,
-                  receipt.publisherInputVersion == job.inputVersion,
-                  appStore.sharedLibrary?.verifyChapterWorkflowReceipt(receipt) == true
-            else { return false }
-            try artifacts.completeWithoutArtifact(
-                outputVersion: outputVersion,
-                completingJobID: job.id,
-                leaseToken: leaseToken
-            )
-            return true
+            return false
         case .chapterArtifacts:
             guard let receipt = chapterReceipt(outputVersion),
                   receipt.episodeID == job.subjectID,
@@ -151,8 +140,7 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
                 settings: appStore.state.settings
             ) == job.inputVersion
         case .publisherChapters:
-            guard let episode = appStore.episode(id: job.subjectID) else { return false }
-            return DesiredStatePlanner.publisherChapterInputVersion(episode) == job.inputVersion
+            return false
         case .chapterArtifacts:
             guard let episode = appStore.episode(id: job.subjectID),
                   let transcript = transcriptSnapshot(episodeID: episode.id),
