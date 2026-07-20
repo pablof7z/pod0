@@ -1138,6 +1138,29 @@ public object FfiConverterULong: FfiConverter<ULong, Long> {
 /**
  * @suppress
  */
+public object FfiConverterDouble: FfiConverter<Double, Double> {
+    override fun lift(value: Double): Double {
+        return value
+    }
+
+    override fun read(buf: ByteBuffer): Double {
+        return buf.getDouble()
+    }
+
+    override fun lower(value: Double): Double {
+        return value
+    }
+
+    override fun allocationSize(value: Double) = 8UL
+
+    override fun write(value: Double, buf: ByteBuffer) {
+        buf.putDouble(value)
+    }
+}
+
+/**
+ * @suppress
+ */
 public object FfiConverterBoolean: FfiConverter<Boolean, Byte> {
     override fun lift(value: Byte): Boolean {
         return value.toInt() != 0
@@ -1284,6 +1307,152 @@ public object FfiConverterTypeAdSpanProjection: FfiConverterRustBuffer<AdSpanPro
             FfiConverterULong.write(value.`startMilliseconds`, buf)
             FfiConverterULong.write(value.`endMilliseconds`, buf)
             FfiConverterTypeChapterAdKind.write(value.`kind`, buf)
+    }
+}
+
+
+
+data class AgentComposedChapterItem (
+    val `startSeconds`: kotlin.Double
+    ,
+    val `endSeconds`: kotlin.Double
+    ,
+    val `title`: kotlin.String
+    ,
+    val `summary`: kotlin.String?
+    ,
+    val `imageUrl`: kotlin.String?
+    ,
+    val `linkUrl`: kotlin.String?
+    ,
+    val `includeInTableOfContents`: kotlin.Boolean
+    ,
+    val `sourceEpisodeId`: EpisodeId?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentComposedChapterItem: FfiConverterRustBuffer<AgentComposedChapterItem> {
+    override fun read(buf: ByteBuffer): AgentComposedChapterItem {
+        return AgentComposedChapterItem(
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalTypeEpisodeId.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentComposedChapterItem) = (
+            FfiConverterDouble.allocationSize(value.`startSeconds`) +
+            FfiConverterDouble.allocationSize(value.`endSeconds`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterOptionalString.allocationSize(value.`summary`) +
+            FfiConverterOptionalString.allocationSize(value.`imageUrl`) +
+            FfiConverterOptionalString.allocationSize(value.`linkUrl`) +
+            FfiConverterBoolean.allocationSize(value.`includeInTableOfContents`) +
+            FfiConverterOptionalTypeEpisodeId.allocationSize(value.`sourceEpisodeId`)
+    )
+
+    override fun write(value: AgentComposedChapterItem, buf: ByteBuffer) {
+            FfiConverterDouble.write(value.`startSeconds`, buf)
+            FfiConverterDouble.write(value.`endSeconds`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterOptionalString.write(value.`summary`, buf)
+            FfiConverterOptionalString.write(value.`imageUrl`, buf)
+            FfiConverterOptionalString.write(value.`linkUrl`, buf)
+            FfiConverterBoolean.write(value.`includeInTableOfContents`, buf)
+            FfiConverterOptionalTypeEpisodeId.write(value.`sourceEpisodeId`, buf)
+    }
+}
+
+
+
+data class AgentComposedChapterObservation (
+    val `episodeId`: EpisodeId
+    ,
+    val `podcastId`: PodcastId
+    ,
+    val `compositionRevision`: kotlin.String
+    ,
+    val `policyVersion`: kotlin.UInt
+    ,
+    val `provider`: kotlin.String?
+    ,
+    val `model`: kotlin.String?
+    ,
+    val `sourcePayloadDigest`: ContentDigest
+    ,
+    val `generatedAt`: UnixTimestampMilliseconds
+    ,
+    val `durationMilliseconds`: kotlin.ULong?
+    ,
+    val `items`: List<AgentComposedChapterItem>
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentComposedChapterObservation: FfiConverterRustBuffer<AgentComposedChapterObservation> {
+    override fun read(buf: ByteBuffer): AgentComposedChapterObservation {
+        return AgentComposedChapterObservation(
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterTypePodcastId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterSequenceTypeAgentComposedChapterItem.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentComposedChapterObservation) = (
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterString.allocationSize(value.`compositionRevision`) +
+            FfiConverterUInt.allocationSize(value.`policyVersion`) +
+            FfiConverterOptionalString.allocationSize(value.`provider`) +
+            FfiConverterOptionalString.allocationSize(value.`model`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`sourcePayloadDigest`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`generatedAt`) +
+            FfiConverterOptionalULong.allocationSize(value.`durationMilliseconds`) +
+            FfiConverterSequenceTypeAgentComposedChapterItem.allocationSize(value.`items`)
+    )
+
+    override fun write(value: AgentComposedChapterObservation, buf: ByteBuffer) {
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterString.write(value.`compositionRevision`, buf)
+            FfiConverterUInt.write(value.`policyVersion`, buf)
+            FfiConverterOptionalString.write(value.`provider`, buf)
+            FfiConverterOptionalString.write(value.`model`, buf)
+            FfiConverterTypeContentDigest.write(value.`sourcePayloadDigest`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`generatedAt`, buf)
+            FfiConverterOptionalULong.write(value.`durationMilliseconds`, buf)
+            FfiConverterSequenceTypeAgentComposedChapterItem.write(value.`items`, buf)
     }
 }
 
@@ -2300,6 +2469,109 @@ public object FfiConverterTypeLibraryProjection: FfiConverterRustBuffer<LibraryP
 
 
 
+data class ModelChapterObservation (
+    val `episodeId`: EpisodeId
+    ,
+    val `podcastId`: PodcastId
+    ,
+    val `formatVersion`: kotlin.UInt
+    ,
+    val `requestedTranscriptVersionId`: TranscriptVersionId
+    ,
+    val `requestedTranscriptContentDigest`: ContentDigest
+    ,
+    val `selectedTranscriptVersionId`: TranscriptVersionId
+    ,
+    val `selectedTranscriptContentDigest`: ContentDigest
+    ,
+    val `policyVersion`: kotlin.UInt
+    ,
+    val `provider`: kotlin.String
+    ,
+    val `model`: kotlin.String
+    ,
+    val `completionDigest`: ContentDigest
+    ,
+    val `completion`: kotlin.String
+    ,
+    val `generatedAt`: UnixTimestampMilliseconds
+    ,
+    val `durationMilliseconds`: kotlin.ULong?
+    ,
+    val `mode`: ChapterModelObservationMode
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeModelChapterObservation: FfiConverterRustBuffer<ModelChapterObservation> {
+    override fun read(buf: ByteBuffer): ModelChapterObservation {
+        return ModelChapterObservation(
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterTypePodcastId.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterTypeTranscriptVersionId.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterTypeTranscriptVersionId.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterTypeChapterModelObservationMode.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ModelChapterObservation) = (
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterUInt.allocationSize(value.`formatVersion`) +
+            FfiConverterTypeTranscriptVersionId.allocationSize(value.`requestedTranscriptVersionId`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`requestedTranscriptContentDigest`) +
+            FfiConverterTypeTranscriptVersionId.allocationSize(value.`selectedTranscriptVersionId`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`selectedTranscriptContentDigest`) +
+            FfiConverterUInt.allocationSize(value.`policyVersion`) +
+            FfiConverterString.allocationSize(value.`provider`) +
+            FfiConverterString.allocationSize(value.`model`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`completionDigest`) +
+            FfiConverterString.allocationSize(value.`completion`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`generatedAt`) +
+            FfiConverterOptionalULong.allocationSize(value.`durationMilliseconds`) +
+            FfiConverterTypeChapterModelObservationMode.allocationSize(value.`mode`)
+    )
+
+    override fun write(value: ModelChapterObservation, buf: ByteBuffer) {
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterUInt.write(value.`formatVersion`, buf)
+            FfiConverterTypeTranscriptVersionId.write(value.`requestedTranscriptVersionId`, buf)
+            FfiConverterTypeContentDigest.write(value.`requestedTranscriptContentDigest`, buf)
+            FfiConverterTypeTranscriptVersionId.write(value.`selectedTranscriptVersionId`, buf)
+            FfiConverterTypeContentDigest.write(value.`selectedTranscriptContentDigest`, buf)
+            FfiConverterUInt.write(value.`policyVersion`, buf)
+            FfiConverterString.write(value.`provider`, buf)
+            FfiConverterString.write(value.`model`, buf)
+            FfiConverterTypeContentDigest.write(value.`completionDigest`, buf)
+            FfiConverterString.write(value.`completion`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`generatedAt`, buf)
+            FfiConverterOptionalULong.write(value.`durationMilliseconds`, buf)
+            FfiConverterTypeChapterModelObservationMode.write(value.`mode`, buf)
+    }
+}
+
+
+
 data class NotesProjection (
     val `scope`: NoteProjectionScope
     ,
@@ -2839,6 +3111,74 @@ public object FfiConverterTypeProjectionRequest: FfiConverterRustBuffer<Projecti
             FfiConverterTypeProjectionScope.write(value.`scope`, buf)
             FfiConverterUInt.write(value.`offset`, buf)
             FfiConverterUShort.write(value.`maxItems`, buf)
+    }
+}
+
+
+
+data class PublisherChapterObservation (
+    val `episodeId`: EpisodeId
+    ,
+    val `podcastId`: PodcastId
+    ,
+    val `resolvedSourceUrl`: kotlin.String
+    ,
+    val `contentType`: kotlin.String
+    ,
+    val `payloadDigest`: ContentDigest
+    ,
+    val `payload`: kotlin.ByteArray
+    ,
+    val `generatedAt`: UnixTimestampMilliseconds
+    ,
+    val `durationMilliseconds`: kotlin.ULong?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePublisherChapterObservation: FfiConverterRustBuffer<PublisherChapterObservation> {
+    override fun read(buf: ByteBuffer): PublisherChapterObservation {
+        return PublisherChapterObservation(
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterTypePodcastId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterByteArray.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterOptionalULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PublisherChapterObservation) = (
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterString.allocationSize(value.`resolvedSourceUrl`) +
+            FfiConverterString.allocationSize(value.`contentType`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`payloadDigest`) +
+            FfiConverterByteArray.allocationSize(value.`payload`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`generatedAt`) +
+            FfiConverterOptionalULong.allocationSize(value.`durationMilliseconds`)
+    )
+
+    override fun write(value: PublisherChapterObservation, buf: ByteBuffer) {
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterString.write(value.`resolvedSourceUrl`, buf)
+            FfiConverterString.write(value.`contentType`, buf)
+            FfiConverterTypeContentDigest.write(value.`payloadDigest`, buf)
+            FfiConverterByteArray.write(value.`payload`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`generatedAt`, buf)
+            FfiConverterOptionalULong.write(value.`durationMilliseconds`, buf)
     }
 }
 
@@ -4960,6 +5300,431 @@ public object FfiConverterTypeChapterContractRejection : FfiConverterRustBuffer<
             is ChapterContractRejection.Unsupported -> {
                 buf.putInt(9)
                 FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class ChapterModelObservationMode {
+
+    object Generate : ChapterModelObservationMode()
+
+
+    data class Enrich(
+        val `publisherArtifact`: uniffi.pod0_domain.ChapterArtifactInput) : ChapterModelObservationMode()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterModelObservationMode : FfiConverterRustBuffer<ChapterModelObservationMode>{
+    override fun read(buf: ByteBuffer): ChapterModelObservationMode {
+        return when(buf.getInt()) {
+            1 -> ChapterModelObservationMode.Generate
+            2 -> ChapterModelObservationMode.Enrich(
+                FfiConverterTypeChapterArtifactInput.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: ChapterModelObservationMode): ULong = when(value) {
+        is ChapterModelObservationMode.Generate -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterModelObservationMode.Enrich -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeChapterArtifactInput.allocationSize(value.`publisherArtifact`)
+            )
+        }
+    }
+
+    override fun write(value: ChapterModelObservationMode, buf: ByteBuffer) {
+        when(value) {
+            is ChapterModelObservationMode.Generate -> {
+                buf.putInt(1)
+                Unit
+            }
+            is ChapterModelObservationMode.Enrich -> {
+                buf.putInt(2)
+                FfiConverterTypeChapterArtifactInput.write(value.`publisherArtifact`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class ChapterObservationProjection {
+
+    data class Qualified(
+        val `artifact`: uniffi.pod0_domain.ChapterArtifactInput,
+        val `observationFingerprint`: uniffi.pod0_domain.ContentDigest) : ChapterObservationProjection()
+
+    {
+
+
+        companion object
+    }
+
+    data class Rejected(
+        val `reason`: uniffi.pod0_application.ChapterObservationRejection) : ChapterObservationProjection()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterObservationProjection : FfiConverterRustBuffer<ChapterObservationProjection>{
+    override fun read(buf: ByteBuffer): ChapterObservationProjection {
+        return when(buf.getInt()) {
+            1 -> ChapterObservationProjection.Qualified(
+                FfiConverterTypeChapterArtifactInput.read(buf),
+                FfiConverterTypeContentDigest.read(buf),
+                )
+            2 -> ChapterObservationProjection.Rejected(
+                FfiConverterTypeChapterObservationRejection.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: ChapterObservationProjection): ULong = when(value) {
+        is ChapterObservationProjection.Qualified -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeChapterArtifactInput.allocationSize(value.`artifact`)
+                + FfiConverterTypeContentDigest.allocationSize(value.`observationFingerprint`)
+            )
+        }
+        is ChapterObservationProjection.Rejected -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeChapterObservationRejection.allocationSize(value.`reason`)
+            )
+        }
+    }
+
+    override fun write(value: ChapterObservationProjection, buf: ByteBuffer) {
+        when(value) {
+            is ChapterObservationProjection.Qualified -> {
+                buf.putInt(1)
+                FfiConverterTypeChapterArtifactInput.write(value.`artifact`, buf)
+                FfiConverterTypeContentDigest.write(value.`observationFingerprint`, buf)
+                Unit
+            }
+            is ChapterObservationProjection.Rejected -> {
+                buf.putInt(2)
+                FfiConverterTypeChapterObservationRejection.write(value.`reason`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class ChapterObservationRejection {
+
+    object PayloadTooLarge : ChapterObservationRejection()
+
+
+    object DigestMismatch : ChapterObservationRejection()
+
+
+    object InvalidContentType : ChapterObservationRejection()
+
+
+    object InvalidUrl : ChapterObservationRejection()
+
+
+    object MalformedPayload : ChapterObservationRejection()
+
+
+    data class UnsupportedFormat(
+        val `formatVersion`: kotlin.UInt) : ChapterObservationRejection()
+
+    {
+
+
+        companion object
+    }
+
+    data class UnsupportedPolicy(
+        val `policyVersion`: kotlin.UInt) : ChapterObservationRejection()
+
+    {
+
+
+        companion object
+    }
+
+    object StaleTranscriptEvidence : ChapterObservationRejection()
+
+
+    object InvalidProvenance : ChapterObservationRejection()
+
+
+    object InvalidTimestamp : ChapterObservationRejection()
+
+
+    object InvalidRange : ChapterObservationRejection()
+
+
+    object InvalidBaseArtifact : ChapterObservationRejection()
+
+
+    object NoUsableChapters : ChapterObservationRejection()
+
+
+    object CollectionLimit : ChapterObservationRejection()
+
+
+    object TextLimit : ChapterObservationRejection()
+
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterObservationRejection : FfiConverterRustBuffer<ChapterObservationRejection>{
+    override fun read(buf: ByteBuffer): ChapterObservationRejection {
+        return when(buf.getInt()) {
+            1 -> ChapterObservationRejection.PayloadTooLarge
+            2 -> ChapterObservationRejection.DigestMismatch
+            3 -> ChapterObservationRejection.InvalidContentType
+            4 -> ChapterObservationRejection.InvalidUrl
+            5 -> ChapterObservationRejection.MalformedPayload
+            6 -> ChapterObservationRejection.UnsupportedFormat(
+                FfiConverterUInt.read(buf),
+                )
+            7 -> ChapterObservationRejection.UnsupportedPolicy(
+                FfiConverterUInt.read(buf),
+                )
+            8 -> ChapterObservationRejection.StaleTranscriptEvidence
+            9 -> ChapterObservationRejection.InvalidProvenance
+            10 -> ChapterObservationRejection.InvalidTimestamp
+            11 -> ChapterObservationRejection.InvalidRange
+            12 -> ChapterObservationRejection.InvalidBaseArtifact
+            13 -> ChapterObservationRejection.NoUsableChapters
+            14 -> ChapterObservationRejection.CollectionLimit
+            15 -> ChapterObservationRejection.TextLimit
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: ChapterObservationRejection): ULong = when(value) {
+        is ChapterObservationRejection.PayloadTooLarge -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterObservationRejection.DigestMismatch -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterObservationRejection.InvalidContentType -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterObservationRejection.InvalidUrl -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterObservationRejection.MalformedPayload -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterObservationRejection.UnsupportedFormat -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`formatVersion`)
+            )
+        }
+        is ChapterObservationRejection.UnsupportedPolicy -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`policyVersion`)
+            )
+        }
+        is ChapterObservationRejection.StaleTranscriptEvidence -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterObservationRejection.InvalidProvenance -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterObservationRejection.InvalidTimestamp -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterObservationRejection.InvalidRange -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterObservationRejection.InvalidBaseArtifact -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterObservationRejection.NoUsableChapters -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterObservationRejection.CollectionLimit -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterObservationRejection.TextLimit -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: ChapterObservationRejection, buf: ByteBuffer) {
+        when(value) {
+            is ChapterObservationRejection.PayloadTooLarge -> {
+                buf.putInt(1)
+                Unit
+            }
+            is ChapterObservationRejection.DigestMismatch -> {
+                buf.putInt(2)
+                Unit
+            }
+            is ChapterObservationRejection.InvalidContentType -> {
+                buf.putInt(3)
+                Unit
+            }
+            is ChapterObservationRejection.InvalidUrl -> {
+                buf.putInt(4)
+                Unit
+            }
+            is ChapterObservationRejection.MalformedPayload -> {
+                buf.putInt(5)
+                Unit
+            }
+            is ChapterObservationRejection.UnsupportedFormat -> {
+                buf.putInt(6)
+                FfiConverterUInt.write(value.`formatVersion`, buf)
+                Unit
+            }
+            is ChapterObservationRejection.UnsupportedPolicy -> {
+                buf.putInt(7)
+                FfiConverterUInt.write(value.`policyVersion`, buf)
+                Unit
+            }
+            is ChapterObservationRejection.StaleTranscriptEvidence -> {
+                buf.putInt(8)
+                Unit
+            }
+            is ChapterObservationRejection.InvalidProvenance -> {
+                buf.putInt(9)
+                Unit
+            }
+            is ChapterObservationRejection.InvalidTimestamp -> {
+                buf.putInt(10)
+                Unit
+            }
+            is ChapterObservationRejection.InvalidRange -> {
+                buf.putInt(11)
+                Unit
+            }
+            is ChapterObservationRejection.InvalidBaseArtifact -> {
+                buf.putInt(12)
+                Unit
+            }
+            is ChapterObservationRejection.NoUsableChapters -> {
+                buf.putInt(13)
+                Unit
+            }
+            is ChapterObservationRejection.CollectionLimit -> {
+                buf.putInt(14)
+                Unit
+            }
+            is ChapterObservationRejection.TextLimit -> {
+                buf.putInt(15)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
@@ -11280,6 +12045,34 @@ public object FfiConverterSequenceTypeAdSpanProjection: FfiConverterRustBuffer<L
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeAdSpanProjection.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeAgentComposedChapterItem: FfiConverterRustBuffer<List<AgentComposedChapterItem>> {
+    override fun read(buf: ByteBuffer): List<AgentComposedChapterItem> {
+        val len = buf.getInt()
+        return List<AgentComposedChapterItem>(len) {
+            FfiConverterTypeAgentComposedChapterItem.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<AgentComposedChapterItem>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeAgentComposedChapterItem.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<AgentComposedChapterItem>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeAgentComposedChapterItem.write(it, buf)
         }
     }
 }

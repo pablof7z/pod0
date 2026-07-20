@@ -3,31 +3,35 @@
 use std::sync::Arc;
 
 pub use pod0_application::{
-    AdSpanProjection, ApplicationCommand, ChapterArtifactProjection, ChapterCommitReceipt,
-    ChapterContractProjection, ChapterContractRejection, ChapterContractRequest,
-    ChapterItemProjection, ChapterProjectionScope, ChapterSummaryProjection, ClipProjectionScope,
-    ClipsProjection, CommandEnvelope, CoreFailure, CoreFailureCode, DomainEvent,
-    DomainEventEnvelope, EpisodeSummary, EvidenceIndexProjection, EvidenceIndexSpanProjection,
-    EvidenceIndexStage, FACADE_CONTRACT_VERSION, HostFailureCode, HostObservation,
-    HostObservationEnvelope, HostRequest, HostRequestEnvelope, KernelProbeCommand,
-    KernelProbeProjection, LibraryProjection, MAX_EVIDENCE_INDEX_PAGE_ITEMS,
-    MAX_FEED_RESPONSE_BYTES, MAX_HOST_REQUEST_BATCH, MAX_OPERATION_ITEMS,
-    MAX_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, MAX_PROJECTION_ITEMS, MAX_RECALL_CANDIDATES,
-    MAX_RECALL_EMBEDDING_DIMENSIONS, MAX_RECALL_EVIDENCE, MAX_RECALL_EXCERPT_BYTES,
-    MAX_RECALL_QUERY_BYTES, MIN_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, NativeTimerMode,
+    AdSpanProjection, AgentComposedChapterItem, AgentComposedChapterObservation,
+    ApplicationCommand, ChapterArtifactProjection, ChapterCommitReceipt, ChapterContractProjection,
+    ChapterContractRejection, ChapterContractRequest, ChapterItemProjection,
+    ChapterModelObservationMode, ChapterObservationProjection, ChapterObservationRejection,
+    ChapterProjectionScope, ChapterSummaryProjection, ClipProjectionScope, ClipsProjection,
+    CommandEnvelope, CoreFailure, CoreFailureCode, DomainEvent, DomainEventEnvelope,
+    EpisodeSummary, EvidenceIndexProjection, EvidenceIndexSpanProjection, EvidenceIndexStage,
+    FACADE_CONTRACT_VERSION, HostFailureCode, HostObservation, HostObservationEnvelope,
+    HostRequest, HostRequestEnvelope, KernelProbeCommand, KernelProbeProjection, LibraryProjection,
+    MAX_AGENT_COMPOSED_CHAPTER_ITEMS, MAX_EVIDENCE_INDEX_PAGE_ITEMS, MAX_FEED_RESPONSE_BYTES,
+    MAX_HOST_REQUEST_BATCH, MAX_MODEL_CHAPTER_COMPLETION_BYTES, MAX_OPERATION_ITEMS,
+    MAX_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, MAX_PROJECTION_ITEMS,
+    MAX_PUBLISHER_CHAPTER_DOCUMENT_BYTES, MAX_RECALL_CANDIDATES, MAX_RECALL_EMBEDDING_DIMENSIONS,
+    MAX_RECALL_EVIDENCE, MAX_RECALL_EXCERPT_BYTES, MAX_RECALL_QUERY_BYTES,
+    MIN_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, ModelChapterObservation, NativeTimerMode,
     NoteProjectionScope, NotesProjection, OperationProjection, OperationResult, OperationStage,
     PlaybackAllowedActions, PlaybackAudioRoute, PlaybackCommand, PlaybackHostState,
     PlaybackInterruption, PlaybackItem, PlaybackLifecycleObservation, PlaybackPolicyState,
     PlaybackProjection, PlaybackStopReason, PlaybackTransitionCue, PodcastSummary, Projection,
-    ProjectionEnvelope, ProjectionRequest, ProjectionScope, QueuePlacement,
-    RecallCandidateObservation, RecallEmbeddingVector, RecallEvidenceProjection, RecallPhase,
-    RecallQuery, RecallRerankDocument, RecallRerankObservation, RecallResultProjection,
-    RecallScope, RecallScoreProjection, RecallStage, Retryability, TranscriptCommitReceipt,
-    TranscriptCommitRequest, TranscriptContractProjection, TranscriptContractRejection,
-    TranscriptEvidenceInput, TranscriptProjection, TranscriptProjectionScope,
-    TranscriptSegmentInput, TranscriptSegmentProjection, TranscriptSpeakerProjection,
-    TranscriptSummaryProjection, TranscriptWordProjection, UnsupportedProjection, UserAction,
-    bounded_host_request_count, bounded_playback_observation_interval,
+    ProjectionEnvelope, ProjectionRequest, ProjectionScope, PublisherChapterObservation,
+    QueuePlacement, RecallCandidateObservation, RecallEmbeddingVector, RecallEvidenceProjection,
+    RecallPhase, RecallQuery, RecallRerankDocument, RecallRerankObservation,
+    RecallResultProjection, RecallScope, RecallScoreProjection, RecallStage, Retryability,
+    TranscriptCommitReceipt, TranscriptCommitRequest, TranscriptContractProjection,
+    TranscriptContractRejection, TranscriptEvidenceInput, TranscriptProjection,
+    TranscriptProjectionScope, TranscriptSegmentInput, TranscriptSegmentProjection,
+    TranscriptSpeakerProjection, TranscriptSummaryProjection, TranscriptWordProjection,
+    UnsupportedProjection, UserAction, bounded_host_request_count,
+    bounded_playback_observation_interval,
 };
 use pod0_application::{Clock, KernelApplication};
 pub use pod0_domain::{
@@ -57,6 +61,7 @@ mod chapter_migration;
 mod chapter_migration_mapping;
 #[cfg(test)]
 mod chapter_migration_tests;
+mod chapter_observation_facade;
 mod clip_migration;
 mod listening_migration;
 mod note_migration;
@@ -125,6 +130,10 @@ pub use chapter_migration::{
     export_legacy_chapter_rollback, inspect_legacy_chapter_migration,
     read_active_legacy_chapter_migration, stage_legacy_chapter_import,
     verify_staged_legacy_chapter_import,
+};
+pub use chapter_observation_facade::{
+    qualify_agent_composed_chapter_observation, qualify_model_chapter_observation,
+    qualify_publisher_chapter_observation,
 };
 pub use clip_migration::{
     LegacyClipBackupEvidence, LegacyClipImportPlan, LegacyClipImportReport,

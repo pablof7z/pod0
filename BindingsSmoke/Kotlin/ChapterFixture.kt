@@ -1,6 +1,7 @@
 import uniffi.pod0_application.*
 import uniffi.pod0_domain.*
 import uniffi.pod0_facade.*
+import java.security.MessageDigest
 
 fun qualifyChapterContract(fixture: Map<String, String>) {
     fun number(key: String) = fixture.getValue(key).toULong()
@@ -72,7 +73,7 @@ fun qualifyChapterContract(fixture: Map<String, String>) {
     )
 
     check(fixture["fixture_version"] == "1")
-    check(fixture["contract_version"]?.toUInt() == 14u)
+    check(fixture["contract_version"]?.toUInt() == 15u)
     check(fixture["unknown_future_field"] == "ignored-by-v1-readers")
     val qualified = projectChapterContract(
         request,
@@ -108,6 +109,123 @@ fun qualifyChapterContract(fixture: Map<String, String>) {
     val adId = id("expected_ad_span_0_id")
     check(adQualified.artifact.adSpans.single().adSpanId == AdSpanId(adId.first, adId.second))
     check(adQualified.artifact.adSpans.single().kind == ChapterAdKind.Midroll)
+}
+
+fun qualifyChapterObservations() {
+    val episode = EpisodeId(11UL, 101UL)
+    val podcast = PodcastId(12UL, 101UL)
+    val observedAt = UnixTimestampMilliseconds(1_721_322_123_456L)
+    val publisherBytes = """{"version":"1.2.0","chapters":[
+        {"startTime":0,"title":"Publisher opening"},
+        {"startTime":50,"title":"Publisher source","toc":false}
+    ]}""".toByteArray()
+    val publisher = qualifyPublisherChapterObservation(
+        PublisherChapterObservation(
+            episode,
+            podcast,
+            "https://example.test/chapters.json",
+            "application/json",
+            chapterDigest(publisherBytes),
+            publisherBytes,
+            observedAt,
+            100_000UL,
+        ),
+    )
+    check(publisher is ChapterObservationProjection.Qualified)
+    check(publisher.artifact.provenance.source == ChapterArtifactSource.Publisher)
+    check(publisher.artifact.chapters[1].includeInTableOfContents.not())
+
+    val transcriptDigest = chapterDigest("selected transcript".toByteArray())
+    val completion = """{"chapters":[
+        {"start":5,"title":"Generated one","summary":"One"},
+        {"start":25,"title":"Generated two"},
+        {"start":50,"title":"Generated three"},
+        {"start":75,"title":"Generated four"}
+    ],"ads":[]}"""
+    fun model(mode: ChapterModelObservationMode, body: String) = ModelChapterObservation(
+        episode,
+        podcast,
+        1u,
+        TranscriptVersionId(13UL, 101UL),
+        transcriptDigest,
+        TranscriptVersionId(13UL, 101UL),
+        transcriptDigest,
+        1u,
+        "openrouter",
+        "fixture-model-v1",
+        chapterDigest(body.toByteArray()),
+        body,
+        observedAt,
+        100_000UL,
+        mode,
+    )
+    val generated = qualifyModelChapterObservation(
+        model(ChapterModelObservationMode.Generate, completion),
+    )
+    check(generated is ChapterObservationProjection.Qualified)
+    check(generated.artifact.provenance.source == ChapterArtifactSource.Generated)
+    check(generated.artifact.chapters.first().startMilliseconds == 0UL)
+
+    val enrichment = """{"summaries":[{"index":0,"summary":"Enriched"}],"ads":[]}"""
+    val enriched = qualifyModelChapterObservation(
+        model(ChapterModelObservationMode.Enrich(publisher.artifact), enrichment),
+    )
+    check(enriched is ChapterObservationProjection.Qualified)
+    check(enriched.artifact.provenance.source == ChapterArtifactSource.PublisherEnriched)
+    check(enriched.artifact.chapters.first().summary == "Enriched")
+
+    val agent = qualifyAgentComposedChapterObservation(
+        AgentComposedChapterObservation(
+            episode,
+            podcast,
+            "agent-composition-v1",
+            1u,
+            "elevenlabs",
+            "eleven-multilingual-v2",
+            chapterDigest("ordered turns".toByteArray()),
+            observedAt,
+            30_000UL,
+            listOf(
+                AgentComposedChapterItem(0.0, 10.25, "Synthesis", null, null, null, true, null),
+                AgentComposedChapterItem(
+                    10.25,
+                    30.0,
+                    "Source moment",
+                    null,
+                    null,
+                    "https://example.test/source?t=42",
+                    true,
+                    EpisodeId(99UL, 7UL),
+                ),
+            ),
+        ),
+    )
+    check(agent is ChapterObservationProjection.Qualified)
+    check(agent.artifact.chapters[1].endMilliseconds == 30_000UL)
+    check(agent.artifact.chapters[1].sourceEpisodeId == EpisodeId(99UL, 7UL))
+
+    val rejected = qualifyPublisherChapterObservation(
+        PublisherChapterObservation(
+            episode,
+            podcast,
+            "https://example.test/chapters.json",
+            "text/html",
+            chapterDigest(publisherBytes),
+            publisherBytes,
+            observedAt,
+            100_000UL,
+        ),
+    )
+    check(rejected is ChapterObservationProjection.Rejected)
+    check(rejected.reason == ChapterObservationRejection.InvalidContentType)
+}
+
+private fun chapterDigest(bytes: ByteArray): ContentDigest {
+    val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
+    fun word(offset: Int): ULong = (offset until offset + 8).fold(0UL) { value, index ->
+        (value shl 8) or digest[index].toUByte().toULong()
+    }
+    return ContentDigest(word(0), word(8), word(16), word(24))
 }
 
 fun qualifyChapterMigrationBoundary() {

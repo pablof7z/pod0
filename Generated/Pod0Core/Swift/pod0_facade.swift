@@ -4181,6 +4181,39 @@ public func verifyStagedLegacyChapterImport(sourceDatabasePath: String, artifact
     )
 })
 }
+/**
+ * Qualifies ordered agent-composed chapter evidence as state.
+ */
+public func qualifyAgentComposedChapterObservation(observation: AgentComposedChapterObservation) -> ChapterObservationProjection  {
+    return try!  FfiConverterTypeChapterObservationProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_qualify_agent_composed_chapter_observation(
+        FfiConverterTypeAgentComposedChapterObservation_lower(observation),uniffiCallStatus
+    )
+})
+}
+/**
+ * Qualifies bounded generated or enriched model output as state.
+ */
+public func qualifyModelChapterObservation(observation: ModelChapterObservation) -> ChapterObservationProjection  {
+    return try!  FfiConverterTypeChapterObservationProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_qualify_model_chapter_observation(
+        FfiConverterTypeModelChapterObservation_lower(observation),uniffiCallStatus
+    )
+})
+}
+/**
+ * Qualifies bounded publisher bytes without network or persistence effects.
+ */
+public func qualifyPublisherChapterObservation(observation: PublisherChapterObservation) -> ChapterObservationProjection  {
+    return try!  FfiConverterTypeChapterObservationProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_qualify_publisher_chapter_observation(
+        FfiConverterTypePublisherChapterObservation_lower(observation),uniffiCallStatus
+    )
+})
+}
 public func commitStagedLegacyClipImport(sourcePath: String, targetPath: String, observedAtMilliseconds: Int64)throws  -> Bool  {
     return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeLegacyClipMigrationError_lift) {
         uniffiCallStatus in
@@ -4447,6 +4480,15 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_func_verify_staged_legacy_chapter_import() != 45954) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_qualify_agent_composed_chapter_observation() != 59813) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_qualify_model_chapter_observation() != 49256) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_qualify_publisher_chapter_observation() != 22434) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_func_commit_staged_legacy_clip_import() != 45677) {

@@ -529,6 +529,22 @@ fileprivate struct FfiConverterUInt64: FfiConverterPrimitive {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterDouble: FfiConverterPrimitive {
+    typealias FfiType = Double
+    typealias SwiftType = Double
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Double {
+        return try lift(readDouble(&buf))
+    }
+
+    public static func write(_ value: Double, into buf: inout [UInt8]) {
+        writeDouble(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterBool : FfiConverter {
     typealias FfiType = Int8
     typealias SwiftType = Bool
@@ -678,6 +694,170 @@ public func FfiConverterTypeAdSpanProjection_lift(_ buf: RustBuffer) throws -> A
 #endif
 public func FfiConverterTypeAdSpanProjection_lower(_ value: AdSpanProjection) -> RustBuffer {
     return FfiConverterTypeAdSpanProjection.lower(value)
+}
+
+
+public struct AgentComposedChapterItem: Equatable, Hashable {
+    public let startSeconds: Double
+    public let endSeconds: Double
+    public let title: String
+    public let summary: String?
+    public let imageUrl: String?
+    public let linkUrl: String?
+    public let includeInTableOfContents: Bool
+    public let sourceEpisodeId: EpisodeId?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(startSeconds: Double, endSeconds: Double, title: String, summary: String?, imageUrl: String?, linkUrl: String?, includeInTableOfContents: Bool, sourceEpisodeId: EpisodeId?) {
+        self.startSeconds = startSeconds
+        self.endSeconds = endSeconds
+        self.title = title
+        self.summary = summary
+        self.imageUrl = imageUrl
+        self.linkUrl = linkUrl
+        self.includeInTableOfContents = includeInTableOfContents
+        self.sourceEpisodeId = sourceEpisodeId
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentComposedChapterItem: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentComposedChapterItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentComposedChapterItem {
+        return
+            try AgentComposedChapterItem(
+                startSeconds: FfiConverterDouble.read(from: &buf),
+                endSeconds: FfiConverterDouble.read(from: &buf),
+                title: FfiConverterString.read(from: &buf),
+                summary: FfiConverterOptionString.read(from: &buf),
+                imageUrl: FfiConverterOptionString.read(from: &buf),
+                linkUrl: FfiConverterOptionString.read(from: &buf),
+                includeInTableOfContents: FfiConverterBool.read(from: &buf),
+                sourceEpisodeId: FfiConverterOptionTypeEpisodeId.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentComposedChapterItem, into buf: inout [UInt8]) {
+        FfiConverterDouble.write(value.startSeconds, into: &buf)
+        FfiConverterDouble.write(value.endSeconds, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.summary, into: &buf)
+        FfiConverterOptionString.write(value.imageUrl, into: &buf)
+        FfiConverterOptionString.write(value.linkUrl, into: &buf)
+        FfiConverterBool.write(value.includeInTableOfContents, into: &buf)
+        FfiConverterOptionTypeEpisodeId.write(value.sourceEpisodeId, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentComposedChapterItem_lift(_ buf: RustBuffer) throws -> AgentComposedChapterItem {
+    return try FfiConverterTypeAgentComposedChapterItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentComposedChapterItem_lower(_ value: AgentComposedChapterItem) -> RustBuffer {
+    return FfiConverterTypeAgentComposedChapterItem.lower(value)
+}
+
+
+public struct AgentComposedChapterObservation: Equatable, Hashable {
+    public let episodeId: EpisodeId
+    public let podcastId: PodcastId
+    public let compositionRevision: String
+    public let policyVersion: UInt32
+    public let provider: String?
+    public let model: String?
+    public let sourcePayloadDigest: ContentDigest
+    public let generatedAt: UnixTimestampMilliseconds
+    public let durationMilliseconds: UInt64?
+    public let items: [AgentComposedChapterItem]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(episodeId: EpisodeId, podcastId: PodcastId, compositionRevision: String, policyVersion: UInt32, provider: String?, model: String?, sourcePayloadDigest: ContentDigest, generatedAt: UnixTimestampMilliseconds, durationMilliseconds: UInt64?, items: [AgentComposedChapterItem]) {
+        self.episodeId = episodeId
+        self.podcastId = podcastId
+        self.compositionRevision = compositionRevision
+        self.policyVersion = policyVersion
+        self.provider = provider
+        self.model = model
+        self.sourcePayloadDigest = sourcePayloadDigest
+        self.generatedAt = generatedAt
+        self.durationMilliseconds = durationMilliseconds
+        self.items = items
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentComposedChapterObservation: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentComposedChapterObservation: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentComposedChapterObservation {
+        return
+            try AgentComposedChapterObservation(
+                episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
+                podcastId: FfiConverterTypePodcastId.read(from: &buf),
+                compositionRevision: FfiConverterString.read(from: &buf),
+                policyVersion: FfiConverterUInt32.read(from: &buf),
+                provider: FfiConverterOptionString.read(from: &buf),
+                model: FfiConverterOptionString.read(from: &buf),
+                sourcePayloadDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                generatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                durationMilliseconds: FfiConverterOptionUInt64.read(from: &buf),
+                items: FfiConverterSequenceTypeAgentComposedChapterItem.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentComposedChapterObservation, into buf: inout [UInt8]) {
+        FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
+        FfiConverterTypePodcastId.write(value.podcastId, into: &buf)
+        FfiConverterString.write(value.compositionRevision, into: &buf)
+        FfiConverterUInt32.write(value.policyVersion, into: &buf)
+        FfiConverterOptionString.write(value.provider, into: &buf)
+        FfiConverterOptionString.write(value.model, into: &buf)
+        FfiConverterTypeContentDigest.write(value.sourcePayloadDigest, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.generatedAt, into: &buf)
+        FfiConverterOptionUInt64.write(value.durationMilliseconds, into: &buf)
+        FfiConverterSequenceTypeAgentComposedChapterItem.write(value.items, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentComposedChapterObservation_lift(_ buf: RustBuffer) throws -> AgentComposedChapterObservation {
+    return try FfiConverterTypeAgentComposedChapterObservation.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentComposedChapterObservation_lower(_ value: AgentComposedChapterObservation) -> RustBuffer {
+    return FfiConverterTypeAgentComposedChapterObservation.lower(value)
 }
 
 
@@ -1891,6 +2071,112 @@ public func FfiConverterTypeLibraryProjection_lower(_ value: LibraryProjection) 
 }
 
 
+public struct ModelChapterObservation: Equatable, Hashable {
+    public let episodeId: EpisodeId
+    public let podcastId: PodcastId
+    public let formatVersion: UInt32
+    public let requestedTranscriptVersionId: TranscriptVersionId
+    public let requestedTranscriptContentDigest: ContentDigest
+    public let selectedTranscriptVersionId: TranscriptVersionId
+    public let selectedTranscriptContentDigest: ContentDigest
+    public let policyVersion: UInt32
+    public let provider: String
+    public let model: String
+    public let completionDigest: ContentDigest
+    public let completion: String
+    public let generatedAt: UnixTimestampMilliseconds
+    public let durationMilliseconds: UInt64?
+    public let mode: ChapterModelObservationMode
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(episodeId: EpisodeId, podcastId: PodcastId, formatVersion: UInt32, requestedTranscriptVersionId: TranscriptVersionId, requestedTranscriptContentDigest: ContentDigest, selectedTranscriptVersionId: TranscriptVersionId, selectedTranscriptContentDigest: ContentDigest, policyVersion: UInt32, provider: String, model: String, completionDigest: ContentDigest, completion: String, generatedAt: UnixTimestampMilliseconds, durationMilliseconds: UInt64?, mode: ChapterModelObservationMode) {
+        self.episodeId = episodeId
+        self.podcastId = podcastId
+        self.formatVersion = formatVersion
+        self.requestedTranscriptVersionId = requestedTranscriptVersionId
+        self.requestedTranscriptContentDigest = requestedTranscriptContentDigest
+        self.selectedTranscriptVersionId = selectedTranscriptVersionId
+        self.selectedTranscriptContentDigest = selectedTranscriptContentDigest
+        self.policyVersion = policyVersion
+        self.provider = provider
+        self.model = model
+        self.completionDigest = completionDigest
+        self.completion = completion
+        self.generatedAt = generatedAt
+        self.durationMilliseconds = durationMilliseconds
+        self.mode = mode
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ModelChapterObservation: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeModelChapterObservation: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ModelChapterObservation {
+        return
+            try ModelChapterObservation(
+                episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
+                podcastId: FfiConverterTypePodcastId.read(from: &buf),
+                formatVersion: FfiConverterUInt32.read(from: &buf),
+                requestedTranscriptVersionId: FfiConverterTypeTranscriptVersionId.read(from: &buf),
+                requestedTranscriptContentDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                selectedTranscriptVersionId: FfiConverterTypeTranscriptVersionId.read(from: &buf),
+                selectedTranscriptContentDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                policyVersion: FfiConverterUInt32.read(from: &buf),
+                provider: FfiConverterString.read(from: &buf),
+                model: FfiConverterString.read(from: &buf),
+                completionDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                completion: FfiConverterString.read(from: &buf),
+                generatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                durationMilliseconds: FfiConverterOptionUInt64.read(from: &buf),
+                mode: FfiConverterTypeChapterModelObservationMode.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ModelChapterObservation, into buf: inout [UInt8]) {
+        FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
+        FfiConverterTypePodcastId.write(value.podcastId, into: &buf)
+        FfiConverterUInt32.write(value.formatVersion, into: &buf)
+        FfiConverterTypeTranscriptVersionId.write(value.requestedTranscriptVersionId, into: &buf)
+        FfiConverterTypeContentDigest.write(value.requestedTranscriptContentDigest, into: &buf)
+        FfiConverterTypeTranscriptVersionId.write(value.selectedTranscriptVersionId, into: &buf)
+        FfiConverterTypeContentDigest.write(value.selectedTranscriptContentDigest, into: &buf)
+        FfiConverterUInt32.write(value.policyVersion, into: &buf)
+        FfiConverterString.write(value.provider, into: &buf)
+        FfiConverterString.write(value.model, into: &buf)
+        FfiConverterTypeContentDigest.write(value.completionDigest, into: &buf)
+        FfiConverterString.write(value.completion, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.generatedAt, into: &buf)
+        FfiConverterOptionUInt64.write(value.durationMilliseconds, into: &buf)
+        FfiConverterTypeChapterModelObservationMode.write(value.mode, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModelChapterObservation_lift(_ buf: RustBuffer) throws -> ModelChapterObservation {
+    return try FfiConverterTypeModelChapterObservation.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModelChapterObservation_lower(_ value: ModelChapterObservation) -> RustBuffer {
+    return FfiConverterTypeModelChapterObservation.lower(value)
+}
+
+
 public struct NotesProjection: Equatable, Hashable {
     public let scope: NoteProjectionScope
     public let collectionRevision: StateRevision
@@ -2564,6 +2850,84 @@ public func FfiConverterTypeProjectionRequest_lift(_ buf: RustBuffer) throws -> 
 #endif
 public func FfiConverterTypeProjectionRequest_lower(_ value: ProjectionRequest) -> RustBuffer {
     return FfiConverterTypeProjectionRequest.lower(value)
+}
+
+
+public struct PublisherChapterObservation: Equatable, Hashable {
+    public let episodeId: EpisodeId
+    public let podcastId: PodcastId
+    public let resolvedSourceUrl: String
+    public let contentType: String
+    public let payloadDigest: ContentDigest
+    public let payload: Data
+    public let generatedAt: UnixTimestampMilliseconds
+    public let durationMilliseconds: UInt64?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(episodeId: EpisodeId, podcastId: PodcastId, resolvedSourceUrl: String, contentType: String, payloadDigest: ContentDigest, payload: Data, generatedAt: UnixTimestampMilliseconds, durationMilliseconds: UInt64?) {
+        self.episodeId = episodeId
+        self.podcastId = podcastId
+        self.resolvedSourceUrl = resolvedSourceUrl
+        self.contentType = contentType
+        self.payloadDigest = payloadDigest
+        self.payload = payload
+        self.generatedAt = generatedAt
+        self.durationMilliseconds = durationMilliseconds
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PublisherChapterObservation: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePublisherChapterObservation: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PublisherChapterObservation {
+        return
+            try PublisherChapterObservation(
+                episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
+                podcastId: FfiConverterTypePodcastId.read(from: &buf),
+                resolvedSourceUrl: FfiConverterString.read(from: &buf),
+                contentType: FfiConverterString.read(from: &buf),
+                payloadDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                payload: FfiConverterData.read(from: &buf),
+                generatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                durationMilliseconds: FfiConverterOptionUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PublisherChapterObservation, into buf: inout [UInt8]) {
+        FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
+        FfiConverterTypePodcastId.write(value.podcastId, into: &buf)
+        FfiConverterString.write(value.resolvedSourceUrl, into: &buf)
+        FfiConverterString.write(value.contentType, into: &buf)
+        FfiConverterTypeContentDigest.write(value.payloadDigest, into: &buf)
+        FfiConverterData.write(value.payload, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.generatedAt, into: &buf)
+        FfiConverterOptionUInt64.write(value.durationMilliseconds, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublisherChapterObservation_lift(_ buf: RustBuffer) throws -> PublisherChapterObservation {
+    return try FfiConverterTypePublisherChapterObservation.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublisherChapterObservation_lower(_ value: PublisherChapterObservation) -> RustBuffer {
+    return FfiConverterTypePublisherChapterObservation.lower(value)
 }
 
 
@@ -4429,6 +4793,311 @@ public func FfiConverterTypeChapterContractRejection_lift(_ buf: RustBuffer) thr
 #endif
 public func FfiConverterTypeChapterContractRejection_lower(_ value: ChapterContractRejection) -> RustBuffer {
     return FfiConverterTypeChapterContractRejection.lower(value)
+}
+
+
+
+
+public enum ChapterModelObservationMode: Equatable, Hashable {
+
+    case generate
+    case enrich(publisherArtifact: ChapterArtifactInput
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterModelObservationMode: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterModelObservationMode: FfiConverterRustBuffer {
+    typealias SwiftType = ChapterModelObservationMode
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterModelObservationMode {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .generate
+
+        case 2: return .enrich(publisherArtifact: try FfiConverterTypeChapterArtifactInput.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ChapterModelObservationMode, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .generate:
+            writeInt(&buf, Int32(1))
+
+
+        case let .enrich(publisherArtifact):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeChapterArtifactInput.write(publisherArtifact, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterModelObservationMode_lift(_ buf: RustBuffer) throws -> ChapterModelObservationMode {
+    return try FfiConverterTypeChapterModelObservationMode.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterModelObservationMode_lower(_ value: ChapterModelObservationMode) -> RustBuffer {
+    return FfiConverterTypeChapterModelObservationMode.lower(value)
+}
+
+
+
+
+public enum ChapterObservationProjection: Equatable, Hashable {
+
+    case qualified(artifact: ChapterArtifactInput, observationFingerprint: ContentDigest
+    )
+    case rejected(reason: ChapterObservationRejection
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterObservationProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterObservationProjection: FfiConverterRustBuffer {
+    typealias SwiftType = ChapterObservationProjection
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterObservationProjection {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .qualified(artifact: try FfiConverterTypeChapterArtifactInput.read(from: &buf), observationFingerprint: try FfiConverterTypeContentDigest.read(from: &buf)
+        )
+
+        case 2: return .rejected(reason: try FfiConverterTypeChapterObservationRejection.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ChapterObservationProjection, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case let .qualified(artifact,observationFingerprint):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeChapterArtifactInput.write(artifact, into: &buf)
+            FfiConverterTypeContentDigest.write(observationFingerprint, into: &buf)
+
+
+        case let .rejected(reason):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeChapterObservationRejection.write(reason, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterObservationProjection_lift(_ buf: RustBuffer) throws -> ChapterObservationProjection {
+    return try FfiConverterTypeChapterObservationProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterObservationProjection_lower(_ value: ChapterObservationProjection) -> RustBuffer {
+    return FfiConverterTypeChapterObservationProjection.lower(value)
+}
+
+
+
+
+public enum ChapterObservationRejection: Equatable, Hashable {
+
+    case payloadTooLarge
+    case digestMismatch
+    case invalidContentType
+    case invalidUrl
+    case malformedPayload
+    case unsupportedFormat(formatVersion: UInt32
+    )
+    case unsupportedPolicy(policyVersion: UInt32
+    )
+    case staleTranscriptEvidence
+    case invalidProvenance
+    case invalidTimestamp
+    case invalidRange
+    case invalidBaseArtifact
+    case noUsableChapters
+    case collectionLimit
+    case textLimit
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterObservationRejection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterObservationRejection: FfiConverterRustBuffer {
+    typealias SwiftType = ChapterObservationRejection
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterObservationRejection {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .payloadTooLarge
+
+        case 2: return .digestMismatch
+
+        case 3: return .invalidContentType
+
+        case 4: return .invalidUrl
+
+        case 5: return .malformedPayload
+
+        case 6: return .unsupportedFormat(formatVersion: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        case 7: return .unsupportedPolicy(policyVersion: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        case 8: return .staleTranscriptEvidence
+
+        case 9: return .invalidProvenance
+
+        case 10: return .invalidTimestamp
+
+        case 11: return .invalidRange
+
+        case 12: return .invalidBaseArtifact
+
+        case 13: return .noUsableChapters
+
+        case 14: return .collectionLimit
+
+        case 15: return .textLimit
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ChapterObservationRejection, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .payloadTooLarge:
+            writeInt(&buf, Int32(1))
+
+
+        case .digestMismatch:
+            writeInt(&buf, Int32(2))
+
+
+        case .invalidContentType:
+            writeInt(&buf, Int32(3))
+
+
+        case .invalidUrl:
+            writeInt(&buf, Int32(4))
+
+
+        case .malformedPayload:
+            writeInt(&buf, Int32(5))
+
+
+        case let .unsupportedFormat(formatVersion):
+            writeInt(&buf, Int32(6))
+            FfiConverterUInt32.write(formatVersion, into: &buf)
+
+
+        case let .unsupportedPolicy(policyVersion):
+            writeInt(&buf, Int32(7))
+            FfiConverterUInt32.write(policyVersion, into: &buf)
+
+
+        case .staleTranscriptEvidence:
+            writeInt(&buf, Int32(8))
+
+
+        case .invalidProvenance:
+            writeInt(&buf, Int32(9))
+
+
+        case .invalidTimestamp:
+            writeInt(&buf, Int32(10))
+
+
+        case .invalidRange:
+            writeInt(&buf, Int32(11))
+
+
+        case .invalidBaseArtifact:
+            writeInt(&buf, Int32(12))
+
+
+        case .noUsableChapters:
+            writeInt(&buf, Int32(13))
+
+
+        case .collectionLimit:
+            writeInt(&buf, Int32(14))
+
+
+        case .textLimit:
+            writeInt(&buf, Int32(15))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterObservationRejection_lift(_ buf: RustBuffer) throws -> ChapterObservationRejection {
+    return try FfiConverterTypeChapterObservationRejection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterObservationRejection_lower(_ value: ChapterObservationRejection) -> RustBuffer {
+    return FfiConverterTypeChapterObservationRejection.lower(value)
 }
 
 
@@ -8567,6 +9236,31 @@ fileprivate struct FfiConverterSequenceTypeAdSpanProjection: FfiConverterRustBuf
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeAdSpanProjection.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeAgentComposedChapterItem: FfiConverterRustBuffer {
+    typealias SwiftType = [AgentComposedChapterItem]
+
+    public static func write(_ value: [AgentComposedChapterItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAgentComposedChapterItem.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AgentComposedChapterItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AgentComposedChapterItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAgentComposedChapterItem.read(from: &buf))
         }
         return seq
     }

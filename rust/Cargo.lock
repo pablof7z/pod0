@@ -1526,6 +1526,8 @@ version = "0.1.0"
 dependencies = [
  "pod0-domain",
  "quick-xml",
+ "serde",
+ "serde_json",
  "sha2",
  "time",
  "uniffi",

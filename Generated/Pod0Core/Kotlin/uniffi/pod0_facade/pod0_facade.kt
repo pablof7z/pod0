@@ -31,25 +31,33 @@ import java.nio.charset.CodingErrorAction
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import uniffi.pod0_application.AgentComposedChapterObservation
 import uniffi.pod0_application.ChapterContractProjection
 import uniffi.pod0_application.ChapterContractRequest
+import uniffi.pod0_application.ChapterObservationProjection
 import uniffi.pod0_application.ChapterProjectionScope
 import uniffi.pod0_application.CommandEnvelope
+import uniffi.pod0_application.FfiConverterTypeAgentComposedChapterObservation
 import uniffi.pod0_application.FfiConverterTypeChapterContractProjection
 import uniffi.pod0_application.FfiConverterTypeChapterContractRequest
+import uniffi.pod0_application.FfiConverterTypeChapterObservationProjection
 import uniffi.pod0_application.FfiConverterTypeChapterProjectionScope
 import uniffi.pod0_application.FfiConverterTypeCommandEnvelope
 import uniffi.pod0_application.FfiConverterTypeHostObservationEnvelope
 import uniffi.pod0_application.FfiConverterTypeHostRequestEnvelope
+import uniffi.pod0_application.FfiConverterTypeModelChapterObservation
 import uniffi.pod0_application.FfiConverterTypeProjectionEnvelope
 import uniffi.pod0_application.FfiConverterTypeProjectionRequest
+import uniffi.pod0_application.FfiConverterTypePublisherChapterObservation
 import uniffi.pod0_application.FfiConverterTypeTranscriptCommitRequest
 import uniffi.pod0_application.FfiConverterTypeTranscriptContractProjection
 import uniffi.pod0_application.FfiConverterTypeTranscriptProjectionScope
 import uniffi.pod0_application.HostObservationEnvelope
 import uniffi.pod0_application.HostRequestEnvelope
+import uniffi.pod0_application.ModelChapterObservation
 import uniffi.pod0_application.ProjectionEnvelope
 import uniffi.pod0_application.ProjectionRequest
+import uniffi.pod0_application.PublisherChapterObservation
 import uniffi.pod0_application.TranscriptCommitRequest
 import uniffi.pod0_application.TranscriptContractProjection
 import uniffi.pod0_application.TranscriptProjectionScope
@@ -67,14 +75,18 @@ import uniffi.pod0_domain.ListeningDomainSnapshot
 import uniffi.pod0_domain.NoteRecord
 import uniffi.pod0_domain.StateRevision
 import uniffi.pod0_domain.SubscriptionId
+import uniffi.pod0_application.RustBuffer as RustBufferAgentComposedChapterObservation
 import uniffi.pod0_application.RustBuffer as RustBufferChapterContractProjection
 import uniffi.pod0_application.RustBuffer as RustBufferChapterContractRequest
+import uniffi.pod0_application.RustBuffer as RustBufferChapterObservationProjection
 import uniffi.pod0_application.RustBuffer as RustBufferChapterProjectionScope
 import uniffi.pod0_application.RustBuffer as RustBufferCommandEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferHostObservationEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferHostRequestEnvelope
+import uniffi.pod0_application.RustBuffer as RustBufferModelChapterObservation
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionRequest
+import uniffi.pod0_application.RustBuffer as RustBufferPublisherChapterObservation
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptCommitRequest
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptContractProjection
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptProjectionScope
@@ -767,6 +779,12 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_func_verify_staged_legacy_chapter_import(
     ): Int
+    external fun uniffi_pod0_facade_checksum_func_qualify_agent_composed_chapter_observation(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_qualify_model_chapter_observation(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_qualify_publisher_chapter_observation(
+    ): Int
     external fun uniffi_pod0_facade_checksum_func_commit_staged_legacy_clip_import(
     ): Int
     external fun uniffi_pod0_facade_checksum_func_inspect_legacy_clip_source(
@@ -896,6 +914,12 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_func_verify_staged_legacy_chapter_import(`sourceDatabasePath`: RustBuffer.ByValue,`artifactRootPath`: RustBuffer.ByValue,`legacyBackupRootPath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_qualify_agent_composed_chapter_observation(`observation`: RustBufferAgentComposedChapterObservation.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBufferChapterObservationProjection.ByValue
+    external fun uniffi_pod0_facade_fn_func_qualify_model_chapter_observation(`observation`: RustBufferModelChapterObservation.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBufferChapterObservationProjection.ByValue
+    external fun uniffi_pod0_facade_fn_func_qualify_publisher_chapter_observation(`observation`: RustBufferPublisherChapterObservation.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBufferChapterObservationProjection.ByValue
     external fun uniffi_pod0_facade_fn_func_commit_staged_legacy_clip_import(`sourcePath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): Byte
     external fun uniffi_pod0_facade_fn_func_inspect_legacy_clip_source(`sourcePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1084,6 +1108,15 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_func_verify_staged_legacy_chapter_import() != 45954) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_qualify_agent_composed_chapter_observation() != 59813) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_qualify_model_chapter_observation() != 49256) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_qualify_publisher_chapter_observation() != 22434) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_func_commit_staged_legacy_clip_import() != 45677) {
@@ -4961,6 +4994,14 @@ public object FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer<List<No
 
 
 
+
+
+
+
+
+
+
+
         /**
          * Produces bounded, state-shaped evidence for the typed chapter contract.
          * The storage slice will add durable commit and selection after this pure
@@ -5089,6 +5130,48 @@ public object FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer<List<No
         FfiConverterString.lower(`legacyBackupRootPath`),
         FfiConverterString.lower(`targetPath`),
         FfiConverterTypeCommandId.lower(`importId`),_status)
+}
+    )
+    }
+
+
+        /**
+         * Qualifies ordered agent-composed chapter evidence as state.
+         */ fun `qualifyAgentComposedChapterObservation`(`observation`: AgentComposedChapterObservation): ChapterObservationProjection {
+            return FfiConverterTypeChapterObservationProjection.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_qualify_agent_composed_chapter_observation(
+
+
+        FfiConverterTypeAgentComposedChapterObservation.lower(`observation`),_status)
+}
+    )
+    }
+
+
+        /**
+         * Qualifies bounded generated or enriched model output as state.
+         */ fun `qualifyModelChapterObservation`(`observation`: ModelChapterObservation): ChapterObservationProjection {
+            return FfiConverterTypeChapterObservationProjection.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_qualify_model_chapter_observation(
+
+
+        FfiConverterTypeModelChapterObservation.lower(`observation`),_status)
+}
+    )
+    }
+
+
+        /**
+         * Qualifies bounded publisher bytes without network or persistence effects.
+         */ fun `qualifyPublisherChapterObservation`(`observation`: PublisherChapterObservation): ChapterObservationProjection {
+            return FfiConverterTypeChapterObservationProjection.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_qualify_publisher_chapter_observation(
+
+
+        FfiConverterTypePublisherChapterObservation.lower(`observation`),_status)
 }
     )
     }

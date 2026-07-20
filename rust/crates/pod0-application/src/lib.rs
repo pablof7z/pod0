@@ -9,6 +9,19 @@ mod chapter_contract;
 mod chapter_contract_fixture_tests;
 #[cfg(test)]
 mod chapter_contract_tests;
+mod chapter_observation;
+mod chapter_observation_agent;
+#[cfg(test)]
+mod chapter_observation_agent_tests;
+mod chapter_observation_model;
+#[cfg(test)]
+mod chapter_observation_model_tests;
+mod chapter_observation_publisher;
+#[cfg(test)]
+mod chapter_observation_publisher_tests;
+#[cfg(test)]
+mod chapter_observation_test_support;
+mod chapter_observation_values;
 mod chapter_projection;
 mod clip_contract;
 mod contract;
@@ -49,6 +62,7 @@ mod transcript_contract_tests;
 mod transcript_projection;
 
 pub use chapter_contract::*;
+pub use chapter_observation::*;
 pub use chapter_projection::*;
 pub use clip_contract::*;
 pub use contract::*;

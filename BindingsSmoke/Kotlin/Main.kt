@@ -24,6 +24,7 @@ fun main(args: Array<String>) {
     qualifyClipProjection(decodeProperties(File(args[5]).readText()))
     qualifyTranscriptContract(decodeProperties(File(args[6]).readText()))
     qualifyChapterContract(decodeProperties(File(args[7]).readText()))
+    qualifyChapterObservations()
     qualifyChapterMigrationBoundary()
     qualifyNativeHostContract()
 
@@ -45,7 +46,7 @@ fun main(args: Array<String>) {
         check(subscriber.revisions == listOf(0UL, 1UL))
 
         val projection = facade.snapshot(request).projection
-        check(facade.snapshot(request).contractVersion == 14u)
+        check(facade.snapshot(request).contractVersion == 15u)
         check(projection is Projection.Library)
         val unsupportedOperation = projection.value.operations.single()
         check(unsupportedOperation.commandId == CommandId(0UL, 1UL))

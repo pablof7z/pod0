@@ -249,7 +249,8 @@ impl ChapterArtifact {
         chapter_command_fingerprint(expected_revision, self)
     }
 
-    fn as_input(&self) -> ChapterArtifactInput {
+    #[must_use]
+    pub fn as_input(&self) -> ChapterArtifactInput {
         ChapterArtifactInput {
             episode_id: self.episode_id,
             podcast_id: self.podcast_id,
