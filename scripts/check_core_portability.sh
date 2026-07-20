@@ -62,13 +62,13 @@ done
 
 cd "$REPO_ROOT/rust"
 for target in aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios; do
-  cargo build -p pod0-recall-index-spike \
+  cargo build -p pod0-recall-index \
     --bin pod0-recall-index-benchmark --release --locked --target "$target"
 done
 cargo ndk -t arm64-v8a -P "$ANDROID_API_LEVEL" \
   check --workspace --all-targets --all-features --locked
 cargo ndk -t arm64-v8a -t x86_64 -P "$ANDROID_API_LEVEL" \
-  build -p pod0-recall-index-spike \
+  build -p pod0-recall-index \
   --bin pod0-recall-index-benchmark --release --locked
 
 FACADE_VERSION=$(sed -nE 's/^version = "([^"]+)"$/\1/p' Cargo.toml | head -n 1)

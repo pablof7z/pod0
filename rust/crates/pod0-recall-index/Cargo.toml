@@ -1,5 +1,5 @@
 [package]
-name = "pod0-recall-index-spike"
+name = "pod0-recall-index"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -13,8 +13,12 @@ pod0-domain.workspace = true
 rusqlite.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 sqlite-vec.workspace = true
 tempfile.workspace = true
+
+[dev-dependencies]
+rusqlite = { workspace = true, features = ["hooks"] }
 
 [lib]
 path = "src/lib.rs"

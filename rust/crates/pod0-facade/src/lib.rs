@@ -16,22 +16,23 @@ pub use pod0_application::{
     MAX_EVIDENCE_INDEX_PAGE_ITEMS, MAX_FEED_RESPONSE_BYTES, MAX_HOST_REQUEST_BATCH,
     MAX_MODEL_CHAPTER_COMPLETION_BYTES, MAX_OPERATION_ITEMS,
     MAX_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, MAX_PROJECTION_ITEMS,
-    MAX_PUBLISHER_CHAPTER_DOCUMENT_BYTES, MAX_RECALL_CANDIDATES, MAX_RECALL_EMBEDDING_DIMENSIONS,
-    MAX_RECALL_EVIDENCE, MAX_RECALL_EXCERPT_BYTES, MAX_RECALL_QUERY_BYTES,
+    MAX_PUBLISHER_CHAPTER_DOCUMENT_BYTES, MAX_RECALL_CANDIDATES, MAX_RECALL_EMBEDDING_BATCH,
+    MAX_RECALL_EMBEDDING_DIMENSIONS, MAX_RECALL_EMBEDDING_TEXT_BYTES, MAX_RECALL_EVIDENCE,
+    MAX_RECALL_EXCERPT_BYTES, MAX_RECALL_QUERY_BYTES,
     MIN_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, ModelChapterObservation, NativeTimerMode,
     NoteProjectionScope, NotesProjection, OperationProjection, OperationResult, OperationStage,
     PlaybackAllowedActions, PlaybackAudioRoute, PlaybackCommand, PlaybackHostState,
     PlaybackInterruption, PlaybackItem, PlaybackLifecycleObservation, PlaybackPolicyState,
     PlaybackProjection, PlaybackStopReason, PlaybackTransitionCue, PodcastSummary, Projection,
     ProjectionEnvelope, ProjectionRequest, ProjectionScope, PublisherChapterObservation,
-    QueuePlacement, RecallCandidateObservation, RecallEmbeddingVector, RecallEvidenceProjection,
+    QueuePlacement, RecallEmbeddingInput, RecallEmbeddingVector, RecallEvidenceProjection,
     RecallPhase, RecallQuery, RecallRerankDocument, RecallRerankObservation,
-    RecallResultProjection, RecallScope, RecallScoreProjection, RecallStage, Retryability,
-    TranscriptCommitReceipt, TranscriptCommitRequest, TranscriptContractProjection,
-    TranscriptContractRejection, TranscriptEvidenceInput, TranscriptProjection,
-    TranscriptProjectionScope, TranscriptSegmentInput, TranscriptSegmentProjection,
-    TranscriptSpeakerProjection, TranscriptSummaryProjection, TranscriptWordProjection,
-    UnsupportedProjection, UserAction, bounded_host_request_count,
+    RecallResultProjection, RecallScope, RecallScoreProjection, RecallSpanEmbeddingObservation,
+    RecallStage, Retryability, TranscriptCommitReceipt, TranscriptCommitRequest,
+    TranscriptContractProjection, TranscriptContractRejection, TranscriptEvidenceInput,
+    TranscriptProjection, TranscriptProjectionScope, TranscriptSegmentInput,
+    TranscriptSegmentProjection, TranscriptSpeakerProjection, TranscriptSummaryProjection,
+    TranscriptWordProjection, UnsupportedProjection, UserAction, bounded_host_request_count,
     bounded_playback_observation_interval,
 };
 use pod0_application::{Clock, KernelApplication};
@@ -64,10 +65,15 @@ mod chapter_migration_mapping;
 mod chapter_migration_tests;
 mod chapter_observation_facade;
 mod clip_migration;
+#[cfg(test)]
+mod facade_contract_tests;
 mod listening_migration;
 mod note_migration;
 mod runtime;
 mod runtime_artifact_command_fingerprint;
+mod runtime_cancellation;
+#[cfg(test)]
+mod runtime_cancellation_tests;
 #[cfg(test)]
 mod runtime_chapter_ad_skip_tests;
 mod runtime_chapter_commands;
@@ -119,6 +125,10 @@ mod runtime_playback_tests;
 mod runtime_playback_transitions;
 mod runtime_projection;
 mod runtime_recall_commands;
+mod runtime_recall_cutover;
+#[cfg(test)]
+mod runtime_recall_cutover_tests;
+mod runtime_recall_interrupts;
 mod runtime_recall_observations;
 mod runtime_recall_rerank;
 mod runtime_recall_state;
@@ -244,56 +254,5 @@ impl<C: Clock> KernelProbeFacade<C> {
     #[must_use]
     pub fn dispatch_probe(&self, command: KernelProbeCommand) -> KernelProbeProjection {
         self.application.dispatch_probe(command)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    struct FixedClock;
-
-    impl Clock for FixedClock {
-        fn now(&self) -> UnixTimestampMilliseconds {
-            UnixTimestampMilliseconds::new(42)
-        }
-    }
-
-    #[test]
-    fn facade_preserves_the_typed_application_projection() {
-        let command = KernelProbeCommand {
-            command_id: CommandId::from_bytes([4; 16]),
-        };
-
-        let projection = KernelProbeFacade::new(FixedClock).dispatch_probe(command);
-
-        assert_eq!(projection.command_id, command.command_id);
-        assert_eq!(projection.observed_at.value(), 42);
-    }
-
-    #[test]
-    fn listening_actions_are_typed_without_dynamic_dispatch() {
-        let command = CommandEnvelope {
-            command_id: CommandId::from_parts(0, 1),
-            cancellation_id: CancellationId::from_parts(0, 2),
-            expected_revision: Some(StateRevision::new(3)),
-            command: ApplicationCommand::RequestPlayback {
-                episode_id: EpisodeId::from_parts(0, 4),
-            },
-        };
-
-        assert!(matches!(
-            command.command,
-            ApplicationCommand::RequestPlayback { episode_id }
-                if episode_id == EpisodeId::from_parts(0, 4)
-        ));
-        assert_eq!(bounded_host_request_count(0), 1);
-        assert_eq!(
-            bounded_host_request_count(u16::MAX),
-            usize::from(MAX_HOST_REQUEST_BATCH)
-        );
-        assert_eq!(bounded_playback_observation_interval(0), 500);
-        assert_eq!(bounded_playback_observation_interval(1_000), 1_000);
-        assert_eq!(bounded_playback_observation_interval(u32::MAX), 5_000);
     }
 }

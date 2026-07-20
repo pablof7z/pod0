@@ -1,6 +1,21 @@
 import Pod0Core
 
 extension Pod0NativeHostDispatcher {
+    func record(
+        _ observation: HostObservationEnvelope,
+        for request: HostRequest,
+        in facade: Pod0Facade
+    ) {
+        switch request {
+        case .embedRecallQuery, .embedRecallSpans, .rerankRecallCandidates,
+             .removeLegacyRecallIndexArtifacts:
+            let recorder = recallObservationRecorder
+            Task { await recorder.record(observation, in: facade) }
+        default:
+            facade.recordHostObservation(observation: observation)
+        }
+    }
+
     func startRecallTask(
         _ envelope: HostRequestEnvelope,
         delivery: @escaping Delivery
@@ -32,5 +47,13 @@ extension Pod0NativeHostDispatcher {
         }
         activeTasks.removeAll()
         playbackStreams.removeAll()
+    }
+}
+
+/// Serializes recall observations away from the main actor so Rust-owned
+/// SQLite work can be interrupted without blocking native rendering.
+actor CoreRecallObservationRecorder {
+    func record(_ observation: HostObservationEnvelope, in facade: Pod0Facade) {
+        facade.recordHostObservation(observation: observation)
     }
 }

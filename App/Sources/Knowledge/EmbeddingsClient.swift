@@ -12,10 +12,9 @@ import os.log
 // docs and downstream providers vary; we cap at 100 to stay well clear of
 // payload-size and provider-specific limits, and to keep latency predictable.
 
-/// Anything that can turn texts into vectors. The protocol stays minimal so
-/// `VectorIndex` can be tested with a synthetic embedder if we ever wire up
-/// integration tests, and so we can swap providers without touching the
-/// vector store.
+/// Anything that can turn bounded Rust-requested text batches into vectors.
+/// The protocol stays minimal so providers can be tested and swapped without
+/// giving native code ownership of recall index state or retrieval policy.
 protocol EmbeddingsClient: Sendable {
     /// Embed `texts` in input order. The returned array has the same length
     /// as the input; each vector is `dimensions` floats long.

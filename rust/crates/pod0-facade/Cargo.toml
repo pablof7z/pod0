@@ -9,6 +9,7 @@ publish.workspace = true
 [dependencies]
 pod0-application.workspace = true
 pod0-domain.workspace = true
+pod0-recall-index.workspace = true
 pod0-storage.workspace = true
 sha2.workspace = true
 uniffi.workspace = true

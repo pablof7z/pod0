@@ -1,19 +1,24 @@
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use pod0_application::{
-    CommandEnvelope, HostObservationEnvelope, HostRequestEnvelope, ProjectionEnvelope,
-    ProjectionRequest, bounded_host_request_count,
+    ApplicationCommand, CommandEnvelope, HostObservationEnvelope, HostRequestEnvelope,
+    ProjectionEnvelope, ProjectionRequest, bounded_host_request_count,
 };
-use pod0_domain::SubscriptionId;
+use pod0_domain::{CancellationId, SubscriptionId};
+use pod0_recall_index::{
+    RECALL_INDEX_DIMENSIONS, RecallIndex, RecallIndexError, recall_index_path_for_core_store,
+};
 use pod0_storage::{EvidenceStore, LibraryStore, TranscriptStore};
 use std::path::Path;
 
+use crate::runtime_recall_interrupts::RecallInterruptRegistry;
 use crate::runtime_state::FacadeState;
 use crate::{Pod0ApplicationApi, ProjectionSubscriber};
 
 #[derive(uniffi::Object)]
 pub struct Pod0Facade {
     state: Mutex<FacadeState>,
+    pub(super) recall_interrupts: Arc<RecallInterruptRegistry>,
 }
 
 #[derive(Debug, uniffi::Error)]
@@ -38,12 +43,18 @@ impl std::error::Error for FacadeOpenError {}
 impl Pod0Facade {
     #[cfg(test)]
     pub(super) fn with_clock(clock: Arc<dyn pod0_application::Clock>) -> Arc<Self> {
+        Self::from_state(FacadeState::with_clock(clock))
+    }
+
+    fn from_state(state: FacadeState) -> Arc<Self> {
+        let recall_interrupts = Arc::clone(&state.recall_interrupts);
         Arc::new(Self {
-            state: Mutex::new(FacadeState::with_clock(clock)),
+            state: Mutex::new(state),
+            recall_interrupts,
         })
     }
 
-    fn state(&self) -> MutexGuard<'_, FacadeState> {
+    pub(super) fn state(&self) -> MutexGuard<'_, FacadeState> {
         self.state
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
@@ -61,9 +72,7 @@ impl Pod0Facade {
 impl Pod0Facade {
     #[uniffi::constructor]
     pub fn new() -> Arc<Self> {
-        Arc::new(Self {
-            state: Mutex::new(FacadeState::default()),
-        })
+        Self::from_state(FacadeState::default())
     }
 
     #[uniffi::constructor]
@@ -79,15 +88,26 @@ impl Pod0Facade {
         let evidence_store = EvidenceStore::open(path).map_err(FacadeOpenError::from)?;
         let transcript_store =
             TranscriptStore::open_authoritative(path).map_err(FacadeOpenError::from)?;
-        let state = FacadeState::open(store, evidence_store, transcript_store)
+        let recall_index = RecallIndex::open(
+            &recall_index_path_for_core_store(path),
+            RECALL_INDEX_DIMENSIONS,
+        )
+        .map_err(FacadeOpenError::from)?;
+        let state = FacadeState::open(store, evidence_store, transcript_store, recall_index)
             .map_err(FacadeOpenError::from)?;
-        Ok(Arc::new(Self {
-            state: Mutex::new(state),
-        }))
+        Ok(Self::from_state(state))
     }
 
     pub fn dispatch(&self, command: CommandEnvelope) {
-        if self.state().dispatch(command) {
+        let cancellation_id = cancellation_target(&command);
+        if let Some(cancellation_id) = cancellation_id {
+            self.recall_interrupts.signal(cancellation_id);
+        }
+        let changed = self.state().dispatch(command);
+        if let Some(cancellation_id) = cancellation_id {
+            self.recall_interrupts.finish_signal(cancellation_id);
+        }
+        if changed {
             self.notify_subscribers();
         }
     }
@@ -130,6 +150,13 @@ impl Pod0Facade {
     }
 }
 
+fn cancellation_target(command: &CommandEnvelope) -> Option<CancellationId> {
+    match command.command {
+        ApplicationCommand::CancelOperation { cancellation_id } => Some(cancellation_id),
+        _ => None,
+    }
+}
+
 impl From<pod0_storage::StorageError> for FacadeOpenError {
     fn from(value: pod0_storage::StorageError) -> Self {
         match value {
@@ -141,6 +168,15 @@ impl From<pod0_storage::StorageError> for FacadeOpenError {
             | pod0_storage::StorageError::FailedMigration { .. }
             | pod0_storage::StorageError::DowngradeForbidden { .. }
             | pod0_storage::StorageError::UnsupportedTarget { .. } => Self::SchemaBlocked,
+            _ => Self::StorageUnavailable,
+        }
+    }
+}
+
+impl From<RecallIndexError> for FacadeOpenError {
+    fn from(value: RecallIndexError) -> Self {
+        match value {
+            RecallIndexError::IncompatibleSchema => Self::SchemaBlocked,
             _ => Self::StorageUnavailable,
         }
     }

@@ -1,10 +1,8 @@
-use pod0_application::{
-    ApplicationCommand, CommandEnvelope, CoreFailureCode, OperationResult, OperationStage,
-};
+use pod0_application::{ApplicationCommand, CommandEnvelope, CoreFailureCode, OperationResult};
 
 use crate::runtime_command_fingerprint::command_fingerprint;
 use crate::runtime_playback_state::PlaybackRuntime;
-use crate::runtime_state::{FacadeState, FeedIntent, failure};
+use crate::runtime_state::{FacadeState, FeedIntent};
 
 impl FacadeState {
     pub(super) fn accept_command(&mut self, envelope: CommandEnvelope) -> bool {
@@ -156,26 +154,7 @@ impl FacadeState {
                 }
             }
             ApplicationCommand::CancelOperation { cancellation_id } => {
-                self.host_requests.cancel(cancellation_id);
-                self.host_queue
-                    .retain(|request| request.cancellation_id != cancellation_id);
-                self.pending_feeds.retain(|_, pending| {
-                    self.operations
-                        .iter()
-                        .find(|operation| operation.command_id == pending.command_id)
-                        .is_none_or(|operation| operation.cancellation_id != cancellation_id)
-                });
-                self.pending_evidence_indexes
-                    .retain(|_, pending| pending.cancellation_id != cancellation_id);
-                self.cancel_recall(cancellation_id);
-                for operation in &mut self.operations {
-                    if operation.cancellation_id == cancellation_id
-                        && !operation.stage.is_terminal()
-                    {
-                        operation.stage = OperationStage::Cancelled;
-                        operation.failure = Some(failure(CoreFailureCode::Cancelled));
-                    }
-                }
+                self.cancel_operation(cancellation_id);
                 self.succeed(envelope.command_id, None);
             }
             ApplicationCommand::RequestPlayback { .. } => {
@@ -187,6 +166,9 @@ impl FacadeState {
             ApplicationCommand::RecallQuery { query } => self.start_recall(&envelope, query),
             ApplicationCommand::RebuildTranscriptEvidence { input, policy } => {
                 self.rebuild_transcript_evidence(&envelope, input, policy);
+            }
+            ApplicationCommand::CommitRecallIndexCutover => {
+                self.start_recall_index_cutover(&envelope);
             }
             ApplicationCommand::CommitTranscript {
                 expected_selection_revision,

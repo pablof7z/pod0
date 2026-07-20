@@ -21,27 +21,3 @@ actor DeferredRecallHost: CoreRecallHosting {
         await host.execute(request)
     }
 }
-
-protocol CoreEvidenceProjectionProviding: Sendable {
-    func evidenceIndexPage(
-        episodeID: EpisodeId,
-        offset: UInt32,
-        maximumItems: UInt16
-    ) -> EvidenceIndexProjection?
-}
-
-extension Pod0Facade: CoreEvidenceProjectionProviding {
-    func evidenceIndexPage(
-        episodeID: EpisodeId,
-        offset: UInt32,
-        maximumItems: UInt16
-    ) -> EvidenceIndexProjection? {
-        let envelope = snapshot(request: ProjectionRequest(
-            scope: .evidenceIndex(episodeId: episodeID),
-            offset: offset,
-            maxItems: maximumItems
-        ))
-        guard case .evidenceIndex(let projection) = envelope.projection else { return nil }
-        return projection
-    }
-}

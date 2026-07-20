@@ -1,15 +1,16 @@
 use std::collections::BTreeMap;
 
-use pod0_application::{RecallCandidateObservation, RecallEmbeddingVector, RecallScope};
+use pod0_application::{RecallEmbeddingVector, RecallScope};
 use rusqlite::{OptionalExtension, params, params_from_iter};
 
-use crate::store::{
-    check_cancelled, embedding_blob, episode_key, parse_episode_key, parse_generation_key,
-    parse_span_key, podcast_key,
+use crate::cache::vector_embedding_blob;
+use crate::identity::{
+    episode_key, parse_episode_key, parse_generation_key, parse_span_key, podcast_key,
 };
-use crate::{RecallCancellation, RecallIndexError, RecallIndexSpike};
+use crate::store::check_cancelled;
+use crate::{RecallCancellation, RecallIndex, RecallIndexCandidate, RecallIndexError};
 
-impl RecallIndexSpike {
+impl RecallIndex {
     #[allow(clippy::too_many_arguments)]
     pub fn retrieve(
         &self,
@@ -20,10 +21,11 @@ impl RecallIndexSpike {
         maximum_lexical_candidates: u16,
         maximum_total_candidates: u16,
         cancellation: &RecallCancellation,
-    ) -> Result<Vec<RecallCandidateObservation>, RecallIndexError> {
+    ) -> Result<Vec<RecallIndexCandidate>, RecallIndexError> {
         if query_embedding.values.len() != self.dimensions
             || usize::from(maximum_vector_candidates) + usize::from(maximum_lexical_candidates)
                 > usize::from(maximum_total_candidates)
+            || usize::from(maximum_total_candidates) > pod0_application::MAX_RECALL_CANDIDATES
         {
             return Err(RecallIndexError::InvalidInput(
                 "recall candidate request violates bounds",
@@ -64,13 +66,13 @@ impl RecallIndexSpike {
             return Ok(Vec::new());
         }
         let sql = format!(
-            "SELECT span_id FROM recall_spike_vec
+            "SELECT span_id FROM pod0_recall_vec_v1
              WHERE embedding MATCH ?1{}
              ORDER BY distance LIMIT ?2",
             filter.sql
         );
         let mut values = vec![
-            rusqlite::types::Value::Blob(embedding_blob(query)),
+            rusqlite::types::Value::Blob(vector_embedding_blob(query)),
             rusqlite::types::Value::Integer(i64::from(limit)),
         ];
         values.extend(filter.values.clone());
@@ -94,9 +96,9 @@ impl RecallIndexSpike {
             return Ok(Vec::new());
         }
         let sql = format!(
-            "SELECT span_id FROM recall_spike_fts
-             WHERE recall_spike_fts MATCH ?1{}
-             ORDER BY bm25(recall_spike_fts),span_id LIMIT ?2",
+            "SELECT span_id FROM pod0_recall_fts_v1
+             WHERE pod0_recall_fts_v1 MATCH ?1{}
+             ORDER BY bm25(pod0_recall_fts_v1),span_id LIMIT ?2",
             filter.sql
         );
         let mut values = vec![
@@ -146,7 +148,7 @@ fn combine_candidates(
     vector: &[String],
     lexical: &[String],
     maximum_total: u16,
-) -> Result<Vec<RecallCandidateObservation>, RecallIndexError> {
+) -> Result<Vec<RecallIndexCandidate>, RecallIndexError> {
     let mut ranks: BTreeMap<&str, (Option<u16>, Option<u16>)> = BTreeMap::new();
     add_ranks(&mut ranks, vector, true)?;
     add_ranks(&mut ranks, lexical, false)?;
@@ -155,8 +157,13 @@ fn combine_candidates(
             "recall candidate union exceeds its declared bound",
         ));
     }
-    let mut metadata = connection
-        .prepare("SELECT generation_id,episode_id FROM recall_spike_meta WHERE span_id=?1")?;
+    let mut metadata = connection.prepare(
+        "SELECT m.generation_id,m.episode_id
+         FROM pod0_recall_meta_v1 m
+         JOIN pod0_recall_generations_v1 g
+           ON g.episode_id=m.episode_id AND g.generation_id=m.generation_id
+         WHERE m.span_id=?1",
+    )?;
     ranks
         .into_iter()
         .map(|(span_key, (vector_rank, lexical_rank))| {
@@ -168,7 +175,7 @@ fn combine_candidates(
                 .ok_or(RecallIndexError::InvalidInput(
                     "recall candidate metadata is incomplete",
                 ))?;
-            Ok(RecallCandidateObservation {
+            Ok(RecallIndexCandidate {
                 episode_id: parse_episode_key(&row.1).ok_or(RecallIndexError::InvalidInput(
                     "recall episode identity is malformed",
                 ))?,

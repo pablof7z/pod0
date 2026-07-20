@@ -14,7 +14,7 @@
     {"id": "episode-sqlite-access", "regex": "\\bEpisodeSQLiteStore\\b"},
     {"id": "persistence-access", "regex": "\\bPersistence\\b"},
     {"id": "chat-history-store-access", "regex": "\\bChatHistoryStore\\b"},
-    {"id": "recall-capability-access", "regex": "\\bRecallCapabilityService\\b"},
+    {"id": "recall-capability-access", "regex": "\\b(RecallCapabilityService|RecallProviderService)\\b"},
     {"id": "vector-index-access", "regex": "\\bVectorIndex\\b"},
     {"id": "sqlite-import", "regex": "\\bimport\\s+(SQLite3|SQLiteVec)\\b"},
     {"id": "sqlite-call", "regex": "\\bsqlite3_[A-Za-z0-9_]+\\s*\\("},

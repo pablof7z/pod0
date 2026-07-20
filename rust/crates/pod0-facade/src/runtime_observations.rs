@@ -16,6 +16,10 @@ impl FacadeState {
         let pending_evidence = self
             .pending_evidence_indexes
             .get(&observation.request_id)
+            .cloned();
+        let pending_cutover = self
+            .pending_recall_cutovers
+            .get(&observation.request_id)
             .copied();
         if self.host_requests.accept_observation(&observation) != ObservationAcceptance::Accepted {
             return false;
@@ -37,6 +41,9 @@ impl FacadeState {
             self.pending_evidence_indexes
                 .remove(&observation.request_id);
             self.finish_evidence_index_observation(pending, observation.observation);
+        } else if let Some(pending) = pending_cutover {
+            self.pending_recall_cutovers.remove(&observation.request_id);
+            self.finish_recall_index_cutover(pending, observation.observation);
         } else {
             match observation.observation {
                 HostObservation::Failed { code, .. } if is_playback_request => {
@@ -67,9 +74,9 @@ impl FacadeState {
                     self.fail(command_id, CoreFailureCode::InvalidCommand)
                 }
                 HostObservation::RecallQueryEmbedded { .. }
-                | HostObservation::RecallCandidatesRetrieved { .. }
+                | HostObservation::RecallSpansEmbedded { .. }
                 | HostObservation::RecallCandidatesReranked { .. }
-                | HostObservation::RecallIndexRebuilt { .. } => {
+                | HostObservation::LegacyRecallIndexArtifactsRemoved { .. } => {
                     self.fail(command_id, CoreFailureCode::InvalidCommand)
                 }
                 HostObservation::Unsupported { wire_code } => {
@@ -118,9 +125,9 @@ impl FacadeState {
                 self.fail(pending.command_id, CoreFailureCode::InvalidCommand)
             }
             HostObservation::RecallQueryEmbedded { .. }
-            | HostObservation::RecallCandidatesRetrieved { .. }
+            | HostObservation::RecallSpansEmbedded { .. }
             | HostObservation::RecallCandidatesReranked { .. }
-            | HostObservation::RecallIndexRebuilt { .. } => {
+            | HostObservation::LegacyRecallIndexArtifactsRemoved { .. } => {
                 self.fail(pending.command_id, CoreFailureCode::InvalidCommand)
             }
         }

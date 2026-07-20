@@ -16,14 +16,13 @@ struct SharedEvidenceReceipt: Codable, Sendable, Equatable {
 extension SharedLibraryClient {
     private static let evidenceLogger = Logger.app("SharedEvidenceRebuild")
 
-    func attachRecall(_ capabilities: RecallCapabilityService, store: AppStateStore) {
+    func attachRecall(_ providers: RecallProviderService, store: AppStateStore) {
         guard !recallHostAttached else { return }
         recallHostAttached = true
         let host = CoreRecallHost(
-            projections: facade,
-            index: capabilities.index,
-            embedder: capabilities.embedder,
+            embedder: providers.embedder,
             reranker: OpenRouterRerankerClient(),
+            legacyIndexURL: store.persistence.legacyRecallIndexURL,
             isRerankingEnabled: { [weak store] in
                 await MainActor.run { store?.state.settings.rerankerEnabled ?? false }
             }
@@ -32,7 +31,17 @@ extension SharedLibraryClient {
             guard let self else { return }
             await deferredRecallHost.attach(host)
             guard !Task.isCancelled, let store else { return }
-            await rebuildExistingEvidence(in: store)
+            guard await rebuildExistingEvidence(in: store), !Task.isCancelled else { return }
+            do {
+                guard case .recallIndexCutoverCommitted = try await execute(
+                    .commitRecallIndexCutover
+                ) else {
+                    Self.evidenceLogger.notice("recall index ownership cutover deferred")
+                    return
+                }
+            } catch {
+                Self.evidenceLogger.notice("recall index ownership cutover deferred")
+            }
         }
     }
 
@@ -105,16 +114,17 @@ extension SharedLibraryClient {
         return true
     }
 
-    private func rebuildExistingEvidence(in store: AppStateStore) async {
+    private func rebuildExistingEvidence(in store: AppStateStore) async -> Bool {
+        var rebuiltAllEvidence = true
         let episodes = store.state.episodes
             .filter { if case .ready = $0.transcriptState { true } else { false } }
             .sorted { $0.id.uuidString < $1.id.uuidString }
         for episode in episodes {
-            guard !Task.isCancelled,
-                  let transcript = authoritativeTranscriptReader.load(episodeID: episode.id),
-                  let summary = try? authoritativeTranscriptReader.summary(
-                    episodeID: episode.id
-                  ) else {
+            guard !Task.isCancelled else { return false }
+            guard let transcript = authoritativeTranscriptReader.load(episodeID: episode.id),
+                  let summary = try? authoritativeTranscriptReader.summary(episodeID: episode.id)
+            else {
+                rebuiltAllEvidence = false
                 continue
             }
             do {
@@ -123,13 +133,15 @@ extension SharedLibraryClient {
                     summary: summary
                 )
             } catch is CancellationError {
-                return
+                return false
             } catch {
+                rebuiltAllEvidence = false
                 Self.evidenceLogger.notice(
                     "recall evidence rebuild deferred for one episode"
                 )
             }
         }
+        return rebuiltAllEvidence
     }
 
     private static func milliseconds(_ seconds: TimeInterval) throws -> UInt64 {

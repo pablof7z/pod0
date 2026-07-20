@@ -41,10 +41,10 @@
     {
       "id": "native-core-binding-adapter",
       "classification": "native_by_design",
-      "current_owner": "Swift generated-core module integration",
-      "target_owner": "Swift and future Kotlin projection adapters",
-      "reason": "Native shells import the generated app-owned facade and translate bounded projections into platform-observable presentation state.",
-      "boundary": "Use generated facade types directly; do not mirror durable models or make product decisions in the adapter.",
+      "current_owner": "Swift generated-core integration, typed host dispatch, and bounded platform capabilities",
+      "target_owner": "Swift and future Kotlin projection and platform-capability adapters",
+      "reason": "Native shells translate bounded projections into platform-observable presentation state and execute typed platform primitives requested by the shared core.",
+      "boundary": "Use generated facade types directly; do not mirror durable models or make product decisions in adapters. Host capabilities return correlated typed observations without durable writes.",
       "persisted_state": "None.",
       "priority": "keep_native",
       "includes": [
@@ -56,6 +56,7 @@
         "App/Sources/Features/Player/PlaybackTypes.swift"
       ],
       "excludes": [
+        "App/Sources/Core/CoreRecallHost.swift",
         "App/Sources/Core/SharedLibraryClient+Transcripts.swift",
         "App/Sources/Core/SharedTranscriptReader.swift",
         "App/Sources/Core/TranscriptObservationMapper.swift",
@@ -192,7 +193,7 @@
       "reason": "Durable application state and mutation policy require one cross-platform writer.",
       "boundary": "Swift renders projections and dispatches commands; importer reads legacy Swift state once.",
       "persisted_state": "Rust listening/note/clip tables plus AppState metadata for unmigrated domains; migrated projections are stripped from Swift persistence.",
-      "migration_issues": [64, 75, 79, 81, 82, 83, 92, 93, 94, 95, 96, 97],
+      "migration_issues": [64, 75, 79, 81, 82, 83, 92, 93, 94, 95, 96, 97, 107],
       "deletion_target": "Delete migrated AppState fields/mutation methods; retain only supported read-only import and native projection adapters.",
       "priority": "highest",
       "includes": ["App/Sources/State/"]
@@ -205,7 +206,7 @@
       "reason": "Desired state, leases, fencing, retry, recovery, and artifact adoption are durable cross-platform decisions.",
       "boundary": "Native executes BGTask, URLSession, notification, and platform provider capabilities.",
       "persisted_state": "Versioned workflow and artifact tables plus staged files.",
-      "migration_issues": [48, 51, 52, 60, 100],
+      "migration_issues": [48, 51, 52, 60, 100, 107],
       "deletion_target": "Delete each Swift workflow-kind owner after drain/import/cutover and recovery proof.",
       "priority": "high",
       "includes": ["App/Sources/Workflows/"],
@@ -277,28 +278,39 @@
     {
       "id": "shared-recall-execution-index",
       "classification": "shared_rust_now",
-      "current_owner": "Swift sqlite-vec execution index pending the one-way cutover",
+      "current_owner": "Pod0 Rust recall-index crate and application facade",
       "target_owner": "Pod0 Rust knowledge/application storage behind the typed facade",
-      "reason": "ADR-0006 proves portable performance and selects Rust ownership for reconstructible schema, rebuild, scoped retrieval, recovery, limits, and cancellation.",
+      "reason": "ADR-0006 selected Rust ownership; issue #106 cut schema, embedding cache, rebuild, scoped retrieval, recovery, limits, and cancellation over without dual writes.",
       "boundary": "Rust consumes stable evidence and typed embedding observations, then returns only Rust-ranked recall projections; native code never owns raw lane policy or index state.",
-      "persisted_state": "A versioned disposable sqlite-vec/FTS index rebuilt exclusively from canonical Rust evidence and valid embedding observations.",
+      "persisted_state": "A versioned disposable Rust sqlite-vec/FTS index plus reconstructible cached embedding observations, rebuilt exclusively from canonical Rust evidence.",
       "migration_issues": [59, 105, 106],
-      "deletion_target": "Issue #106 deletes Swift VectorIndex execution, its recall schema/query extensions, and the SQLiteVec package after verified single-writer cutover.",
+      "deletion_target": "Completed by #106: Swift VectorIndex execution, its schema/query files, raw-candidate FFI variants, and RecallCapabilityService were deleted. The non-recall CSQLiteVec package bridge retained by legacy state/workflow stores is explicitly tracked by #107.",
       "priority": "high",
-      "includes": ["App/Sources/Knowledge/VectorIndex.swift", "App/Sources/Knowledge/VectorIndex+CoreRecall.swift", "App/Sources/Knowledge/VectorIndex+CoreRecallRetrieval.swift", "App/Sources/Services/RecallCapabilityService.swift"]
+      "includes": ["rust/crates/pod0-recall-index/", "rust/crates/pod0-facade/src/runtime_recall_commands.rs", "rust/crates/pod0-facade/src/runtime_recall_observations.rs"]
     },
     {
-      "id": "temporary-recall-provider-capabilities",
+      "id": "native-recall-provider-executors",
+      "classification": "native_by_design",
+      "current_owner": "Swift URLSession, credential, embedding, reranking, and legacy-index file capability adapters",
+      "target_owner": "Swift and future Kotlin primitive recall-capability executors",
+      "reason": "Platform credentials, provider network execution, and sandbox file primitives remain native while Rust owns when they run, batching, cache identity, index state, ranking, retries, cutover state, and workflow outcomes.",
+      "boundary": "Execute one bounded typed provider or exact-file request and return an ordered or correlated observation without durable product decisions or writes to authoritative state.",
+      "persisted_state": "None; provider credentials remain in platform security facilities.",
+      "priority": "keep_native",
+      "includes": ["App/Sources/Core/CoreRecallHost.swift", "App/Sources/Knowledge/EmbeddingsClient.swift", "App/Sources/Knowledge/OllamaEmbeddingsClient.swift", "App/Sources/Knowledge/RerankerClient.swift", "App/Sources/Services/RecallProviderService.swift"]
+    },
+    {
+      "id": "temporary-recall-provider-selection",
       "classification": "temporary_swift",
-      "current_owner": "Swift provider selection, batching, network execution, and error mapping",
-      "target_owner": "Native provider execution adapters driven by bounded typed Rust requests",
-      "reason": "Provider credentials and platform networking remain native, but current Swift files still contain selection and workflow policy that #106 must remove from the permanent adapter.",
-      "boundary": "Execute a bounded embedding or reranking request and return ordered typed observations/failures; never select evidence, retry, fall back, rank, or commit durable state.",
-      "persisted_state": "No index or canonical evidence; provider settings and cost signals use their separately classified stores.",
-      "migration_issues": [59, 106],
-      "deletion_target": "Issue #106 deletes provider selection, retry, fallback, and workflow policy from these files, retaining only native credential/network adapters.",
+      "current_owner": "Swift maps the existing intelligence setting to one provider executor",
+      "target_owner": "Rust-owned intelligence/provider configuration from issue #60",
+      "reason": "The index cutover cannot invent a second settings store; this single isolated selector remains until the agent/workflow configuration slice moves the durable preference into Rust.",
+      "boundary": "Select exactly one provider from the existing setting, execute it once, and return its typed result; no retry, fallback, index, ranking, or workflow state.",
+      "persisted_state": "None in the adapter; the existing Swift setting remains separately classified temporary state.",
+      "migration_issues": [60, 108],
+      "deletion_target": "Issue #108 replaces this selector with Rust-issued provider-specific host requests and deletes ProviderEmbeddingsClient within epic #60.",
       "priority": "high",
-      "includes": ["App/Sources/Knowledge/EmbeddingsClient.swift", "App/Sources/Knowledge/OllamaEmbeddingsClient.swift", "App/Sources/Knowledge/ProviderEmbeddingsClient.swift", "App/Sources/Knowledge/RerankerClient.swift"]
+      "includes": ["App/Sources/Knowledge/ProviderEmbeddingsClient.swift"]
     },
     {
       "id": "shared-agent-application-policy",
@@ -377,7 +389,7 @@
       "deletion_target": "Delete or reduce each service to a platform capability adapter at its domain cutover.",
       "priority": "high",
       "includes": ["App/Sources/Services/"],
-      "excludes": ["App/Sources/Services/AssemblyAICredentialStore.swift", "App/Sources/Services/BYOK", "App/Sources/Services/ClipExporter.swift", "App/Sources/Services/DataExport.swift", "App/Sources/Services/DeepLinkHandler.swift", "App/Sources/Services/ElevenLabsCredentialStore.swift", "App/Sources/Services/EpisodeDownloadService+Delegate.swift", "App/Sources/Services/HandoffActivityType.swift", "App/Sources/Services/KeychainStore.swift", "App/Sources/Services/NotificationService.swift", "App/Sources/Services/NowPlayingSnapshotStore.swift", "App/Sources/Services/OllamaCredentialStore.swift", "App/Sources/Services/OpenRouterCredentialStore.swift", "App/Sources/Services/PerplexityCredentialStore.swift", "App/Sources/Services/Pod0FeedbackProtocol.swift", "App/Sources/Services/RecallCapabilityService.swift", "App/Sources/Services/ReviewPrompt.swift", "App/Sources/Services/SpotlightIndexer.swift", "App/Sources/Services/WhatsNew.swift", "App/Sources/Services/iCloudSettingsSync.swift"]
+      "excludes": ["App/Sources/Services/AssemblyAICredentialStore.swift", "App/Sources/Services/BYOK", "App/Sources/Services/ClipExporter.swift", "App/Sources/Services/DataExport.swift", "App/Sources/Services/DeepLinkHandler.swift", "App/Sources/Services/ElevenLabsCredentialStore.swift", "App/Sources/Services/EpisodeDownloadService+Delegate.swift", "App/Sources/Services/HandoffActivityType.swift", "App/Sources/Services/KeychainStore.swift", "App/Sources/Services/NotificationService.swift", "App/Sources/Services/NowPlayingSnapshotStore.swift", "App/Sources/Services/OllamaCredentialStore.swift", "App/Sources/Services/OpenRouterCredentialStore.swift", "App/Sources/Services/PerplexityCredentialStore.swift", "App/Sources/Services/Pod0FeedbackProtocol.swift", "App/Sources/Services/RecallProviderService.swift", "App/Sources/Services/ReviewPrompt.swift", "App/Sources/Services/SpotlightIndexer.swift", "App/Sources/Services/WhatsNew.swift", "App/Sources/Services/iCloudSettingsSync.swift"]
     }
   ]
 }

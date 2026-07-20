@@ -96,7 +96,11 @@ def validate_inventory(root: Path, inventory_path: Path) -> tuple[list[str], Cou
         matched_entries[entry["id"]] += 1
 
     for entry in entries:
-        if matched_entries[entry["id"]] == 0:
+        has_non_swift_evidence = any(
+            selector.startswith("rust/") and (root / selector).exists()
+            for selector in entry["includes"]
+        )
+        if matched_entries[entry["id"]] == 0 and not has_non_swift_evidence:
             errors.append(f"stale inventory entry matches no file: {entry['id']}")
 
     counts["total"] = len(files)

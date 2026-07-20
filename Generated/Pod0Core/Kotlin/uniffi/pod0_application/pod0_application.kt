@@ -1048,6 +1048,33 @@ object NoHandle
 /**
  * @suppress
  */
+public object FfiConverterUByte: FfiConverter<UByte, Byte> {
+    override fun lift(value: Byte): UByte {
+        return value.toUByte()
+    }
+
+    fun lift(value: Int): UByte {
+        return value.toUByte()
+    }
+
+    override fun read(buf: ByteBuffer): UByte {
+        return lift(buf.get())
+    }
+
+    override fun lower(value: UByte): Byte {
+        return value.toByte()
+    }
+
+    override fun allocationSize(value: UByte) = 1UL
+
+    override fun write(value: UByte, buf: ByteBuffer) {
+        buf.put(value.toByte())
+    }
+}
+
+/**
+ * @suppress
+ */
 public object FfiConverterUShort: FfiConverter<UShort, Short> {
     override fun lift(value: Short): UShort {
         return value.toUShort()
@@ -3331,16 +3358,10 @@ public object FfiConverterTypePublisherChapterObservation: FfiConverterRustBuffe
 
 
 
-data class RecallCandidateObservation (
-    val `episodeId`: EpisodeId
-    ,
-    val `generationId`: EvidenceGenerationId
-    ,
+data class RecallEmbeddingInput (
     val `spanId`: EvidenceSpanId
     ,
-    val `vectorRank`: kotlin.UShort?
-    ,
-    val `lexicalRank`: kotlin.UShort?
+    val `text`: kotlin.String
 
 ){
 
@@ -3354,31 +3375,22 @@ data class RecallCandidateObservation (
 /**
  * @suppress
  */
-public object FfiConverterTypeRecallCandidateObservation: FfiConverterRustBuffer<RecallCandidateObservation> {
-    override fun read(buf: ByteBuffer): RecallCandidateObservation {
-        return RecallCandidateObservation(
-            FfiConverterTypeEpisodeId.read(buf),
-            FfiConverterTypeEvidenceGenerationId.read(buf),
+public object FfiConverterTypeRecallEmbeddingInput: FfiConverterRustBuffer<RecallEmbeddingInput> {
+    override fun read(buf: ByteBuffer): RecallEmbeddingInput {
+        return RecallEmbeddingInput(
             FfiConverterTypeEvidenceSpanId.read(buf),
-            FfiConverterOptionalUShort.read(buf),
-            FfiConverterOptionalUShort.read(buf),
+            FfiConverterString.read(buf),
         )
     }
 
-    override fun allocationSize(value: RecallCandidateObservation) = (
-            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
-            FfiConverterTypeEvidenceGenerationId.allocationSize(value.`generationId`) +
+    override fun allocationSize(value: RecallEmbeddingInput) = (
             FfiConverterTypeEvidenceSpanId.allocationSize(value.`spanId`) +
-            FfiConverterOptionalUShort.allocationSize(value.`vectorRank`) +
-            FfiConverterOptionalUShort.allocationSize(value.`lexicalRank`)
+            FfiConverterString.allocationSize(value.`text`)
     )
 
-    override fun write(value: RecallCandidateObservation, buf: ByteBuffer) {
-            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
-            FfiConverterTypeEvidenceGenerationId.write(value.`generationId`, buf)
+    override fun write(value: RecallEmbeddingInput, buf: ByteBuffer) {
             FfiConverterTypeEvidenceSpanId.write(value.`spanId`, buf)
-            FfiConverterOptionalUShort.write(value.`vectorRank`, buf)
-            FfiConverterOptionalUShort.write(value.`lexicalRank`, buf)
+            FfiConverterString.write(value.`text`, buf)
     }
 }
 
@@ -3753,6 +3765,44 @@ public object FfiConverterTypeRecallScoreProjection: FfiConverterRustBuffer<Reca
             FfiConverterULong.write(value.`totalRrfUnits`, buf)
             FfiConverterUShort.write(value.`baseRank`, buf)
             FfiConverterOptionalUShort.write(value.`rerankRank`, buf)
+    }
+}
+
+
+
+data class RecallSpanEmbeddingObservation (
+    val `spanId`: EvidenceSpanId
+    ,
+    val `embedding`: RecallEmbeddingVector
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeRecallSpanEmbeddingObservation: FfiConverterRustBuffer<RecallSpanEmbeddingObservation> {
+    override fun read(buf: ByteBuffer): RecallSpanEmbeddingObservation {
+        return RecallSpanEmbeddingObservation(
+            FfiConverterTypeEvidenceSpanId.read(buf),
+            FfiConverterTypeRecallEmbeddingVector.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: RecallSpanEmbeddingObservation) = (
+            FfiConverterTypeEvidenceSpanId.allocationSize(value.`spanId`) +
+            FfiConverterTypeRecallEmbeddingVector.allocationSize(value.`embedding`)
+    )
+
+    override fun write(value: RecallSpanEmbeddingObservation, buf: ByteBuffer) {
+            FfiConverterTypeEvidenceSpanId.write(value.`spanId`, buf)
+            FfiConverterTypeRecallEmbeddingVector.write(value.`embedding`, buf)
     }
 }
 
@@ -4565,6 +4615,9 @@ sealed class ApplicationCommand {
         companion object
     }
 
+    object CommitRecallIndexCutover : ApplicationCommand()
+
+
     data class CommitTranscript(
         val `expectedSelectionRevision`: uniffi.pod0_domain.StateRevision,
         val `artifact`: uniffi.pod0_domain.TranscriptArtifactInput) : ApplicationCommand()
@@ -4763,36 +4816,37 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterTypeTranscriptEvidenceInput.read(buf),
                 FfiConverterTypeEvidenceChunkPolicy.read(buf),
                 )
-            16 -> ApplicationCommand.CommitTranscript(
+            16 -> ApplicationCommand.CommitRecallIndexCutover
+            17 -> ApplicationCommand.CommitTranscript(
                 FfiConverterTypeStateRevision.read(buf),
                 FfiConverterTypeTranscriptArtifactInput.read(buf),
                 )
-            17 -> ApplicationCommand.CommitChapter(
+            18 -> ApplicationCommand.CommitChapter(
                 FfiConverterTypeStateRevision.read(buf),
                 FfiConverterTypeChapterArtifactInput.read(buf),
                 )
-            18 -> ApplicationCommand.CreateNote(
+            19 -> ApplicationCommand.CreateNote(
                 FfiConverterString.read(buf),
                 FfiConverterTypeNoteKind.read(buf),
                 FfiConverterTypeNoteAuthor.read(buf),
                 FfiConverterOptionalTypeNoteTarget.read(buf),
                 )
-            19 -> ApplicationCommand.UpdateNote(
+            20 -> ApplicationCommand.UpdateNote(
                 FfiConverterTypeNoteId.read(buf),
                 FfiConverterTypeNoteRevision.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterTypeNoteKind.read(buf),
                 FfiConverterOptionalTypeNoteTarget.read(buf),
                 )
-            20 -> ApplicationCommand.SetNoteDeleted(
+            21 -> ApplicationCommand.SetNoteDeleted(
                 FfiConverterTypeNoteId.read(buf),
                 FfiConverterTypeNoteRevision.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
-            21 -> ApplicationCommand.ClearNotes(
+            22 -> ApplicationCommand.ClearNotes(
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            22 -> ApplicationCommand.CreateClip(
+            23 -> ApplicationCommand.CreateClip(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypePodcastId.read(buf),
@@ -4803,7 +4857,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterString.read(buf),
                 FfiConverterTypeClipSource.read(buf),
                 )
-            23 -> ApplicationCommand.UpdateClip(
+            24 -> ApplicationCommand.UpdateClip(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterULong.read(buf),
@@ -4812,18 +4866,18 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterOptionalTypeSpeakerId.read(buf),
                 FfiConverterString.read(buf),
                 )
-            24 -> ApplicationCommand.SetClipDeleted(
+            25 -> ApplicationCommand.SetClipDeleted(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
-            25 -> ApplicationCommand.ClearClips(
+            26 -> ApplicationCommand.ClearClips(
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            26 -> ApplicationCommand.CancelOperation(
+            27 -> ApplicationCommand.CancelOperation(
                 FfiConverterTypeCancellationId.read(buf),
                 )
-            27 -> ApplicationCommand.Unsupported(
+            28 -> ApplicationCommand.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -4937,6 +4991,12 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 4UL
                 + FfiConverterTypeTranscriptEvidenceInput.allocationSize(value.`input`)
                 + FfiConverterTypeEvidenceChunkPolicy.allocationSize(value.`policy`)
+            )
+        }
+        is ApplicationCommand.CommitRecallIndexCutover -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
             )
         }
         is ApplicationCommand.CommitTranscript -> {
@@ -5132,20 +5192,24 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterTypeEvidenceChunkPolicy.write(value.`policy`, buf)
                 Unit
             }
-            is ApplicationCommand.CommitTranscript -> {
+            is ApplicationCommand.CommitRecallIndexCutover -> {
                 buf.putInt(16)
+                Unit
+            }
+            is ApplicationCommand.CommitTranscript -> {
+                buf.putInt(17)
                 FfiConverterTypeStateRevision.write(value.`expectedSelectionRevision`, buf)
                 FfiConverterTypeTranscriptArtifactInput.write(value.`artifact`, buf)
                 Unit
             }
             is ApplicationCommand.CommitChapter -> {
-                buf.putInt(17)
+                buf.putInt(18)
                 FfiConverterTypeStateRevision.write(value.`expectedSelectionRevision`, buf)
                 FfiConverterTypeChapterArtifactInput.write(value.`artifact`, buf)
                 Unit
             }
             is ApplicationCommand.CreateNote -> {
-                buf.putInt(18)
+                buf.putInt(19)
                 FfiConverterString.write(value.`text`, buf)
                 FfiConverterTypeNoteKind.write(value.`kind`, buf)
                 FfiConverterTypeNoteAuthor.write(value.`author`, buf)
@@ -5153,7 +5217,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.UpdateNote -> {
-                buf.putInt(19)
+                buf.putInt(20)
                 FfiConverterTypeNoteId.write(value.`noteId`, buf)
                 FfiConverterTypeNoteRevision.write(value.`expectedNoteRevision`, buf)
                 FfiConverterString.write(value.`text`, buf)
@@ -5162,19 +5226,19 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.SetNoteDeleted -> {
-                buf.putInt(20)
+                buf.putInt(21)
                 FfiConverterTypeNoteId.write(value.`noteId`, buf)
                 FfiConverterTypeNoteRevision.write(value.`expectedNoteRevision`, buf)
                 FfiConverterBoolean.write(value.`deleted`, buf)
                 Unit
             }
             is ApplicationCommand.ClearNotes -> {
-                buf.putInt(21)
+                buf.putInt(22)
                 FfiConverterTypeStateRevision.write(value.`expectedCollectionRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CreateClip -> {
-                buf.putInt(22)
+                buf.putInt(23)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
@@ -5187,7 +5251,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.UpdateClip -> {
-                buf.putInt(23)
+                buf.putInt(24)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`expectedClipRevision`, buf)
                 FfiConverterULong.write(value.`startMilliseconds`, buf)
@@ -5198,24 +5262,24 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.SetClipDeleted -> {
-                buf.putInt(24)
+                buf.putInt(25)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`expectedClipRevision`, buf)
                 FfiConverterBoolean.write(value.`deleted`, buf)
                 Unit
             }
             is ApplicationCommand.ClearClips -> {
-                buf.putInt(25)
+                buf.putInt(26)
                 FfiConverterTypeStateRevision.write(value.`expectedCollectionRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CancelOperation -> {
-                buf.putInt(26)
+                buf.putInt(27)
                 FfiConverterTypeCancellationId.write(value.`cancellationId`, buf)
                 Unit
             }
             is ApplicationCommand.Unsupported -> {
-                buf.putInt(27)
+                buf.putInt(28)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -6953,9 +7017,10 @@ sealed class HostObservation {
         companion object
     }
 
-    data class RecallCandidatesRetrieved(
-        val `queryId`: uniffi.pod0_domain.RecallQueryId,
-        val `candidates`: List<uniffi.pod0_application.RecallCandidateObservation>) : HostObservation()
+    data class RecallSpansEmbedded(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `generationId`: uniffi.pod0_domain.EvidenceGenerationId,
+        val `embeddings`: List<uniffi.pod0_application.RecallSpanEmbeddingObservation>) : HostObservation()
 
     {
 
@@ -6973,10 +7038,8 @@ sealed class HostObservation {
         companion object
     }
 
-    data class RecallIndexRebuilt(
-        val `episodeId`: uniffi.pod0_domain.EpisodeId,
-        val `generationId`: uniffi.pod0_domain.EvidenceGenerationId,
-        val `indexedSpanCount`: kotlin.UInt) : HostObservation()
+    data class LegacyRecallIndexArtifactsRemoved(
+        val `removedFileCount`: kotlin.UByte) : HostObservation()
 
     {
 
@@ -7041,18 +7104,17 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 FfiConverterTypeRecallQueryId.read(buf),
                 FfiConverterTypeRecallEmbeddingVector.read(buf),
                 )
-            5 -> HostObservation.RecallCandidatesRetrieved(
-                FfiConverterTypeRecallQueryId.read(buf),
-                FfiConverterSequenceTypeRecallCandidateObservation.read(buf),
+            5 -> HostObservation.RecallSpansEmbedded(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeEvidenceGenerationId.read(buf),
+                FfiConverterSequenceTypeRecallSpanEmbeddingObservation.read(buf),
                 )
             6 -> HostObservation.RecallCandidatesReranked(
                 FfiConverterTypeRecallQueryId.read(buf),
                 FfiConverterSequenceTypeRecallRerankObservation.read(buf),
                 )
-            7 -> HostObservation.RecallIndexRebuilt(
-                FfiConverterTypeEpisodeId.read(buf),
-                FfiConverterTypeEvidenceGenerationId.read(buf),
-                FfiConverterUInt.read(buf),
+            7 -> HostObservation.LegacyRecallIndexArtifactsRemoved(
+                FfiConverterUByte.read(buf),
                 )
             8 -> HostObservation.Failed(
                 FfiConverterTypeHostFailureCode.read(buf),
@@ -7102,12 +7164,13 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 + FfiConverterTypeRecallEmbeddingVector.allocationSize(value.`embedding`)
             )
         }
-        is HostObservation.RecallCandidatesRetrieved -> {
+        is HostObservation.RecallSpansEmbedded -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterTypeRecallQueryId.allocationSize(value.`queryId`)
-                + FfiConverterSequenceTypeRecallCandidateObservation.allocationSize(value.`candidates`)
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeEvidenceGenerationId.allocationSize(value.`generationId`)
+                + FfiConverterSequenceTypeRecallSpanEmbeddingObservation.allocationSize(value.`embeddings`)
             )
         }
         is HostObservation.RecallCandidatesReranked -> {
@@ -7118,13 +7181,11 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 + FfiConverterSequenceTypeRecallRerankObservation.allocationSize(value.`rankings`)
             )
         }
-        is HostObservation.RecallIndexRebuilt -> {
+        is HostObservation.LegacyRecallIndexArtifactsRemoved -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
-                + FfiConverterTypeEvidenceGenerationId.allocationSize(value.`generationId`)
-                + FfiConverterUInt.allocationSize(value.`indexedSpanCount`)
+                + FfiConverterUByte.allocationSize(value.`removedFileCount`)
             )
         }
         is HostObservation.Failed -> {
@@ -7179,10 +7240,11 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 FfiConverterTypeRecallEmbeddingVector.write(value.`embedding`, buf)
                 Unit
             }
-            is HostObservation.RecallCandidatesRetrieved -> {
+            is HostObservation.RecallSpansEmbedded -> {
                 buf.putInt(5)
-                FfiConverterTypeRecallQueryId.write(value.`queryId`, buf)
-                FfiConverterSequenceTypeRecallCandidateObservation.write(value.`candidates`, buf)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeEvidenceGenerationId.write(value.`generationId`, buf)
+                FfiConverterSequenceTypeRecallSpanEmbeddingObservation.write(value.`embeddings`, buf)
                 Unit
             }
             is HostObservation.RecallCandidatesReranked -> {
@@ -7191,11 +7253,9 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 FfiConverterSequenceTypeRecallRerankObservation.write(value.`rankings`, buf)
                 Unit
             }
-            is HostObservation.RecallIndexRebuilt -> {
+            is HostObservation.LegacyRecallIndexArtifactsRemoved -> {
                 buf.putInt(7)
-                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
-                FfiConverterTypeEvidenceGenerationId.write(value.`generationId`, buf)
-                FfiConverterUInt.write(value.`indexedSpanCount`, buf)
+                FfiConverterUByte.write(value.`removedFileCount`, buf)
                 Unit
             }
             is HostObservation.Failed -> {
@@ -7336,14 +7396,11 @@ sealed class HostRequest {
         companion object
     }
 
-    data class RetrieveRecallCandidates(
-        val `queryId`: uniffi.pod0_domain.RecallQueryId,
-        val `scope`: uniffi.pod0_application.RecallScope,
-        val `lexicalQuery`: kotlin.String,
-        val `embedding`: uniffi.pod0_application.RecallEmbeddingVector,
-        val `maximumVectorCandidates`: kotlin.UShort,
-        val `maximumLexicalCandidates`: kotlin.UShort,
-        val `maximumTotalCandidates`: kotlin.UShort) : HostRequest()
+    data class EmbedRecallSpans(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `generationId`: uniffi.pod0_domain.EvidenceGenerationId,
+        val `spans`: List<uniffi.pod0_application.RecallEmbeddingInput>,
+        val `maximumDimensions`: kotlin.UShort) : HostRequest()
 
     {
 
@@ -7362,15 +7419,8 @@ sealed class HostRequest {
         companion object
     }
 
-    data class RebuildRecallIndex(
-        val `episodeId`: uniffi.pod0_domain.EpisodeId,
-        val `generationId`: uniffi.pod0_domain.EvidenceGenerationId) : HostRequest()
+    object RemoveLegacyRecallIndexArtifacts : HostRequest()
 
-    {
-
-
-        companion object
-    }
 
     data class Unsupported(
         val `wireCode`: kotlin.UInt) : HostRequest()
@@ -7444,13 +7494,10 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 FfiConverterString.read(buf),
                 FfiConverterUShort.read(buf),
                 )
-            12 -> HostRequest.RetrieveRecallCandidates(
-                FfiConverterTypeRecallQueryId.read(buf),
-                FfiConverterTypeRecallScope.read(buf),
-                FfiConverterString.read(buf),
-                FfiConverterTypeRecallEmbeddingVector.read(buf),
-                FfiConverterUShort.read(buf),
-                FfiConverterUShort.read(buf),
+            12 -> HostRequest.EmbedRecallSpans(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeEvidenceGenerationId.read(buf),
+                FfiConverterSequenceTypeRecallEmbeddingInput.read(buf),
                 FfiConverterUShort.read(buf),
                 )
             13 -> HostRequest.RerankRecallCandidates(
@@ -7458,10 +7505,7 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 FfiConverterString.read(buf),
                 FfiConverterSequenceTypeRecallRerankDocument.read(buf),
                 )
-            14 -> HostRequest.RebuildRecallIndex(
-                FfiConverterTypeEpisodeId.read(buf),
-                FfiConverterTypeEvidenceGenerationId.read(buf),
-                )
+            14 -> HostRequest.RemoveLegacyRecallIndexArtifacts
             15 -> HostRequest.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
@@ -7561,17 +7605,14 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 + FfiConverterUShort.allocationSize(value.`maximumDimensions`)
             )
         }
-        is HostRequest.RetrieveRecallCandidates -> {
+        is HostRequest.EmbedRecallSpans -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterTypeRecallQueryId.allocationSize(value.`queryId`)
-                + FfiConverterTypeRecallScope.allocationSize(value.`scope`)
-                + FfiConverterString.allocationSize(value.`lexicalQuery`)
-                + FfiConverterTypeRecallEmbeddingVector.allocationSize(value.`embedding`)
-                + FfiConverterUShort.allocationSize(value.`maximumVectorCandidates`)
-                + FfiConverterUShort.allocationSize(value.`maximumLexicalCandidates`)
-                + FfiConverterUShort.allocationSize(value.`maximumTotalCandidates`)
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeEvidenceGenerationId.allocationSize(value.`generationId`)
+                + FfiConverterSequenceTypeRecallEmbeddingInput.allocationSize(value.`spans`)
+                + FfiConverterUShort.allocationSize(value.`maximumDimensions`)
             )
         }
         is HostRequest.RerankRecallCandidates -> {
@@ -7583,12 +7624,10 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 + FfiConverterSequenceTypeRecallRerankDocument.allocationSize(value.`candidates`)
             )
         }
-        is HostRequest.RebuildRecallIndex -> {
+        is HostRequest.RemoveLegacyRecallIndexArtifacts -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
-                + FfiConverterTypeEvidenceGenerationId.allocationSize(value.`generationId`)
             )
         }
         is HostRequest.Unsupported -> {
@@ -7671,15 +7710,12 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 FfiConverterUShort.write(value.`maximumDimensions`, buf)
                 Unit
             }
-            is HostRequest.RetrieveRecallCandidates -> {
+            is HostRequest.EmbedRecallSpans -> {
                 buf.putInt(12)
-                FfiConverterTypeRecallQueryId.write(value.`queryId`, buf)
-                FfiConverterTypeRecallScope.write(value.`scope`, buf)
-                FfiConverterString.write(value.`lexicalQuery`, buf)
-                FfiConverterTypeRecallEmbeddingVector.write(value.`embedding`, buf)
-                FfiConverterUShort.write(value.`maximumVectorCandidates`, buf)
-                FfiConverterUShort.write(value.`maximumLexicalCandidates`, buf)
-                FfiConverterUShort.write(value.`maximumTotalCandidates`, buf)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeEvidenceGenerationId.write(value.`generationId`, buf)
+                FfiConverterSequenceTypeRecallEmbeddingInput.write(value.`spans`, buf)
+                FfiConverterUShort.write(value.`maximumDimensions`, buf)
                 Unit
             }
             is HostRequest.RerankRecallCandidates -> {
@@ -7689,10 +7725,8 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 FfiConverterSequenceTypeRecallRerankDocument.write(value.`candidates`, buf)
                 Unit
             }
-            is HostRequest.RebuildRecallIndex -> {
+            is HostRequest.RemoveLegacyRecallIndexArtifacts -> {
                 buf.putInt(14)
-                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
-                FfiConverterTypeEvidenceGenerationId.write(value.`generationId`, buf)
                 Unit
             }
             is HostRequest.Unsupported -> {
@@ -8000,6 +8034,16 @@ sealed class OperationResult {
         companion object
     }
 
+    data class RecallIndexCutoverCommitted(
+        val `schemaVersion`: kotlin.UInt,
+        val `removedLegacyFileCount`: kotlin.UByte) : OperationResult()
+
+    {
+
+
+        companion object
+    }
+
     data class TranscriptCommitted(
         val `receipt`: uniffi.pod0_application.TranscriptCommitReceipt) : OperationResult()
 
@@ -8125,33 +8169,37 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
                 FfiConverterTypeEvidenceGenerationId.read(buf),
                 FfiConverterUInt.read(buf),
                 )
-            11 -> OperationResult.TranscriptCommitted(
+            11 -> OperationResult.RecallIndexCutoverCommitted(
+                FfiConverterUInt.read(buf),
+                FfiConverterUByte.read(buf),
+                )
+            12 -> OperationResult.TranscriptCommitted(
                 FfiConverterTypeTranscriptCommitReceipt.read(buf),
                 )
-            12 -> OperationResult.ChapterCommitted(
+            13 -> OperationResult.ChapterCommitted(
                 FfiConverterTypeChapterCommitReceipt.read(buf),
                 )
-            13 -> OperationResult.NoteCreated(
+            14 -> OperationResult.NoteCreated(
                 FfiConverterTypeNoteId.read(buf),
                 )
-            14 -> OperationResult.NoteUpdated(
+            15 -> OperationResult.NoteUpdated(
                 FfiConverterTypeNoteId.read(buf),
                 )
-            15 -> OperationResult.NotesCleared
-            16 -> OperationResult.ClipCreated(
+            16 -> OperationResult.NotesCleared
+            17 -> OperationResult.ClipCreated(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            17 -> OperationResult.ClipUpdated(
+            18 -> OperationResult.ClipUpdated(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            18 -> OperationResult.ClipsCleared(
+            19 -> OperationResult.ClipsCleared(
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            19 -> OperationResult.Unsupported(
+            20 -> OperationResult.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -8229,6 +8277,14 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
                 + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
                 + FfiConverterTypeEvidenceGenerationId.allocationSize(value.`generationId`)
                 + FfiConverterUInt.allocationSize(value.`spanCount`)
+            )
+        }
+        is OperationResult.RecallIndexCutoverCommitted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`schemaVersion`)
+                + FfiConverterUByte.allocationSize(value.`removedLegacyFileCount`)
             )
         }
         is OperationResult.TranscriptCommitted -> {
@@ -8353,51 +8409,57 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
                 FfiConverterUInt.write(value.`spanCount`, buf)
                 Unit
             }
-            is OperationResult.TranscriptCommitted -> {
+            is OperationResult.RecallIndexCutoverCommitted -> {
                 buf.putInt(11)
+                FfiConverterUInt.write(value.`schemaVersion`, buf)
+                FfiConverterUByte.write(value.`removedLegacyFileCount`, buf)
+                Unit
+            }
+            is OperationResult.TranscriptCommitted -> {
+                buf.putInt(12)
                 FfiConverterTypeTranscriptCommitReceipt.write(value.`receipt`, buf)
                 Unit
             }
             is OperationResult.ChapterCommitted -> {
-                buf.putInt(12)
+                buf.putInt(13)
                 FfiConverterTypeChapterCommitReceipt.write(value.`receipt`, buf)
                 Unit
             }
             is OperationResult.NoteCreated -> {
-                buf.putInt(13)
-                FfiConverterTypeNoteId.write(value.`noteId`, buf)
-                Unit
-            }
-            is OperationResult.NoteUpdated -> {
                 buf.putInt(14)
                 FfiConverterTypeNoteId.write(value.`noteId`, buf)
                 Unit
             }
-            is OperationResult.NotesCleared -> {
+            is OperationResult.NoteUpdated -> {
                 buf.putInt(15)
+                FfiConverterTypeNoteId.write(value.`noteId`, buf)
+                Unit
+            }
+            is OperationResult.NotesCleared -> {
+                buf.putInt(16)
                 Unit
             }
             is OperationResult.ClipCreated -> {
-                buf.putInt(16)
-                FfiConverterTypeClipId.write(value.`clipId`, buf)
-                FfiConverterTypeClipRevision.write(value.`clipRevision`, buf)
-                FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
-                Unit
-            }
-            is OperationResult.ClipUpdated -> {
                 buf.putInt(17)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`clipRevision`, buf)
                 FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
                 Unit
             }
-            is OperationResult.ClipsCleared -> {
+            is OperationResult.ClipUpdated -> {
                 buf.putInt(18)
+                FfiConverterTypeClipId.write(value.`clipId`, buf)
+                FfiConverterTypeClipRevision.write(value.`clipRevision`, buf)
+                FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
+                Unit
+            }
+            is OperationResult.ClipsCleared -> {
+                buf.putInt(19)
                 FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
                 Unit
             }
             is OperationResult.Unsupported -> {
-                buf.putInt(19)
+                buf.putInt(20)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -12532,24 +12594,24 @@ public object FfiConverterSequenceTypeOperationProjection: FfiConverterRustBuffe
 /**
  * @suppress
  */
-public object FfiConverterSequenceTypeRecallCandidateObservation: FfiConverterRustBuffer<List<RecallCandidateObservation>> {
-    override fun read(buf: ByteBuffer): List<RecallCandidateObservation> {
+public object FfiConverterSequenceTypeRecallEmbeddingInput: FfiConverterRustBuffer<List<RecallEmbeddingInput>> {
+    override fun read(buf: ByteBuffer): List<RecallEmbeddingInput> {
         val len = buf.getInt()
-        return List<RecallCandidateObservation>(len) {
-            FfiConverterTypeRecallCandidateObservation.read(buf)
+        return List<RecallEmbeddingInput>(len) {
+            FfiConverterTypeRecallEmbeddingInput.read(buf)
         }
     }
 
-    override fun allocationSize(value: List<RecallCandidateObservation>): ULong {
+    override fun allocationSize(value: List<RecallEmbeddingInput>): ULong {
         val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeRecallCandidateObservation.allocationSize(it) }.sum()
+        val sizeForItems = value.map { FfiConverterTypeRecallEmbeddingInput.allocationSize(it) }.sum()
         return sizeForLength + sizeForItems
     }
 
-    override fun write(value: List<RecallCandidateObservation>, buf: ByteBuffer) {
+    override fun write(value: List<RecallEmbeddingInput>, buf: ByteBuffer) {
         buf.putInt(value.size)
         value.iterator().forEach {
-            FfiConverterTypeRecallCandidateObservation.write(it, buf)
+            FfiConverterTypeRecallEmbeddingInput.write(it, buf)
         }
     }
 }
@@ -12634,6 +12696,34 @@ public object FfiConverterSequenceTypeRecallRerankObservation: FfiConverterRustB
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeRecallRerankObservation.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeRecallSpanEmbeddingObservation: FfiConverterRustBuffer<List<RecallSpanEmbeddingObservation>> {
+    override fun read(buf: ByteBuffer): List<RecallSpanEmbeddingObservation> {
+        val len = buf.getInt()
+        return List<RecallSpanEmbeddingObservation>(len) {
+            FfiConverterTypeRecallSpanEmbeddingObservation.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<RecallSpanEmbeddingObservation>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeRecallSpanEmbeddingObservation.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<RecallSpanEmbeddingObservation>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeRecallSpanEmbeddingObservation.write(it, buf)
         }
     }
 }

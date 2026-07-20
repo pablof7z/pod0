@@ -1,0 +1,95 @@
+{
+  "evidence_version": 1,
+  "recorded_at": "2026-07-20T11:14:03Z",
+  "issues": [106, 107, 108],
+  "status": "production_cutover_qualified",
+  "architecture": {
+    "canonical_evidence_owner": "pod0-storage Rust core store",
+    "execution_index_owner": "pod0-recall-index Rust crate",
+    "execution_index_suffix": ".recall-index.sqlite",
+    "legacy_index": "vectors.sqlite",
+    "native_responsibility": "bounded credentialed embedding/reranking execution and exact legacy-artifact file removal requested by Rust",
+    "dual_writer": false
+  },
+  "production_release_benchmark": {
+    "environment": "Apple M2 Mac mini, macOS host release",
+    "backend": "rust-sqlite-vec-production",
+    "sqlite_vec_version": "v0.1.9",
+    "spans": 5000,
+    "dimensions": 1024,
+    "samples": 20,
+    "rebuild_milliseconds": 457.437375,
+    "cold_query_milliseconds": 8.600708,
+    "warm_query_p50_milliseconds": 7.949875,
+    "warm_query_p95_milliseconds": 8.135542,
+    "cancellation_response_microseconds": 0.125,
+    "candidate_count": 20,
+    "maximum_candidate_count": 40,
+    "index_bytes": 52908032,
+    "executable_bytes": 2589392,
+    "peak_resident_bytes": 8110080,
+    "private_text_leaves_process": false,
+    "budgets_passed": true
+  },
+  "android_api_34_arm64_runtime": {
+    "sqlite_vec_version": "v0.1.9",
+    "spans": 500,
+    "dimensions": 1024,
+    "samples": 20,
+    "rebuild_milliseconds": 36.782459,
+    "cold_query_milliseconds": 1.171042,
+    "warm_query_p50_milliseconds": 0.778208,
+    "warm_query_p95_milliseconds": 0.876542,
+    "cancellation_response_microseconds": 0.042,
+    "candidate_count": 20,
+    "maximum_candidate_count": 40,
+    "index_bytes": 5406720,
+    "executable_bytes": 3046936,
+    "peak_resident_bytes": 8892416,
+    "private_text_leaves_process": false,
+    "passed": true
+  },
+  "portability": {
+    "apple_targets": [
+      "aarch64-apple-ios",
+      "aarch64-apple-ios-sim",
+      "x86_64-apple-ios"
+    ],
+    "android_api_23_targets": [
+      "aarch64-linux-android",
+      "x86_64-linux-android"
+    ],
+    "kotlin_binding_compile_and_jna_smoke": "passed",
+    "apple_specific_shared_types": false
+  },
+  "ios_validation": {
+    "debug_tests": {"passed": 623, "failed": 0, "skipped": 0},
+    "release_tests": {
+      "passed": 623,
+      "failed": 0,
+      "skipped": 0,
+      "test_override": "ENABLE_TESTABILITY=YES; release optimization retained"
+    },
+    "preexisting_warnings": 26,
+    "simulator_build_install_launch": "passed",
+    "blank_or_crashed_surface": false
+  },
+  "cutover_guarantees": {
+    "populated_legacy_database_test": "passed",
+    "typed_native_deletion_observation_before_marker": "passed",
+    "legacy_directory_and_symlink_fail_closed": "passed",
+    "unresolved_legacy_location_fails_closed": "passed",
+    "selected_active_library_generation_and_lane_coverage_before_marker": "passed",
+    "corrupt_disposable_index_rebuild": "passed",
+    "newer_schema_preserved": "passed",
+    "cached_restart_without_provider": "passed",
+    "in_flight_sqlite_cancellation_under_50_ms": "passed",
+    "facade_interrupt_precedes_state_lock": "passed",
+    "partial_generation_commit": false,
+    "canonical_evidence_modified_by_cutover": false
+  },
+  "tracked_remaining_native_boundaries": {
+    "sqlite_c_module_bridge": 107,
+    "temporary_provider_selector": 108
+  }
+}

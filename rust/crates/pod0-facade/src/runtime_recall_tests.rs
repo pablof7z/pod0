@@ -152,7 +152,7 @@ fn invalid_missing_and_unsupported_queries_have_explicit_terminal_state() {
 }
 
 #[test]
-fn indexing_empty_results_and_process_restart_are_explicit() {
+fn indexing_and_process_restart_are_explicit() {
     let indexing = RecallFixture::new(false);
     indexing.base.facade.dispatch(CommandEnvelope {
         command_id: CommandId::from_parts(40, 1),
@@ -165,28 +165,6 @@ fn indexing_empty_results_and_process_restart_are_explicit() {
     });
     indexing.dispatch(41, 41, "question during indexing");
     assert_eq!(indexing.projection(41).stage, RecallStage::Indexing);
-
-    let empty = RecallFixture::new(true);
-    empty.dispatch(42, 42, "evidence-free result");
-    let embed = empty.base.facade.next_host_requests(1).pop().unwrap();
-    record(
-        &empty.base.facade,
-        &embed,
-        HostObservation::RecallQueryEmbedded {
-            query_id: RecallQueryId::from_parts(32, 42),
-            embedding: RecallEmbeddingVector { values: vec![1] },
-        },
-    );
-    let retrieve = empty.base.facade.next_host_requests(1).pop().unwrap();
-    record(
-        &empty.base.facade,
-        &retrieve,
-        HostObservation::RecallCandidatesRetrieved {
-            query_id: RecallQueryId::from_parts(32, 42),
-            candidates: Vec::new(),
-        },
-    );
-    assert_eq!(empty.projection(42).stage, RecallStage::NoEvidence);
 
     let interrupted = RecallFixture::new(true);
     interrupted.dispatch(43, 43, "interrupted query");
@@ -212,7 +190,7 @@ fn indexing_empty_results_and_process_restart_are_explicit() {
 }
 
 #[test]
-fn malformed_candidates_fail_closed_and_optional_rerank_falls_back() {
+fn malformed_query_embedding_fails_closed_and_optional_rerank_falls_back() {
     let malformed = RecallFixture::new(true);
     malformed.dispatch(30, 30, "habit cues");
     let embed = malformed.base.facade.next_host_requests(1).pop().unwrap();
@@ -226,22 +204,11 @@ fn malformed_candidates_fail_closed_and_optional_rerank_falls_back() {
             },
         },
     );
-    let retrieve = malformed.base.facade.next_host_requests(1).pop().unwrap();
-    record(
-        &malformed.base.facade,
-        &retrieve,
-        HostObservation::RecallCandidatesRetrieved {
-            query_id: RecallQueryId::from_parts(32, 30),
-            candidates: vec![RecallCandidateObservation {
-                episode_id: malformed.base.episode_id,
-                generation_id: EvidenceGenerationId::from_parts(99, 99),
-                span_id: malformed.artifact.spans[0].span_id,
-                vector_rank: Some(1),
-                lexical_rank: None,
-            }],
-        },
+    assert_eq!(
+        malformed.projection(30).stage,
+        RecallStage::IndexUnavailable
     );
-    assert_eq!(malformed.projection(30).stage, RecallStage::CorruptArtifact);
+    assert!(malformed.base.facade.next_host_requests(1).is_empty());
 
     let fallback = RecallFixture::new(true);
     fallback.dispatch(31, 31, "habit cues");

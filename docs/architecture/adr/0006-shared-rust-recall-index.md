@@ -1,6 +1,6 @@
 # ADR-0006: Shared Rust recall-index execution
 
-- Status: Accepted
+- Status: Implemented by #106
 - Date: 2026-07-20
 - Decision owners: Pod0 knowledge and application architecture
 - Related issues: #59, #61, #105, #106
@@ -9,9 +9,9 @@
 
 Rust already owns canonical transcript evidence, selected generations, stable
 span identities, query workflow, RRF policy, reranking orchestration, final
-citations, and recall projections. The current Swift `VectorIndex` owns a
-disposable sqlite-vec/FTS execution index and returns exact IDs plus raw vector
-and lexical lane ranks. It owns no canonical evidence.
+citations, and recall projections. Before #106, Swift `VectorIndex` owned a
+disposable sqlite-vec/FTS execution index and returned exact IDs plus raw vector
+and lexical lane ranks. It owned no canonical evidence.
 
 That temporary boundary preserved iOS velocity, but leaving it in Swift would
 make Android reproduce schema, scoped retrieval, rebuild, recovery, limits,
@@ -30,14 +30,14 @@ citation authority in either design.
 
 ## Decision
 
-The production target is a **Rust-owned recall execution index**. Issue #106
-will promote the prototype through a complete cutover; this ADR does not make
-the prototype a production source of truth.
+The production implementation is a **Rust-owned recall execution index** in
+`pod0-recall-index`, reached only through the app-owned facade. Issue #106
+promoted and replaced the prototype through a complete vertical cutover.
 
 Rust will own:
 
 - the disposable index schema and its version;
-- rebuild, verification, deletion, corruption recovery, and desired state;
+- rebuild, verification, deletion policy, corruption recovery, and desired state;
 - scoped vector/lexical retrieval, candidate bounds, and raw lane ranks;
 - cancellation and safe execution diagnostics;
 - all existing final ranking, reranking policy, citations, and projections.
@@ -45,6 +45,8 @@ Rust will own:
 Native code will continue to own:
 
 - provider credentials and platform network execution for embeddings/reranking;
+- the bounded filesystem primitive that validates and removes only the three
+  exact legacy index artifacts when Rust requests it;
 - native UI and transient presentation;
 - thin typed adapters that execute bounded Rust host requests.
 
@@ -109,6 +111,14 @@ Peak-resident measurements are also process envelopes, not an incremental
 ownership comparison: roughly 27–28 MB for the standalone Rust simulator
 process and 318–323 MB for the app-hosted XCTest process.
 
+Production cutover evidence is recorded separately in
+[`recall-index-cutover-2026-07-20.json`](../evidence/recall-index-cutover-2026-07-20.json).
+The final 5,000-span/1,024-dimension release run rebuilt in 457 ms, returned an
+8.14 ms warm p95, and used a 52.9 MB execution index. A deterministic query
+test enters SQLite before signalling cancellation and completes below the
+50 ms budget. The facade signals that token before waiting for its application
+state lock.
+
 ## Production budgets
 
 The cutover must ratchet these release budgets on the iOS simulator fixture:
@@ -121,9 +131,10 @@ The cutover must ratchet these release budgets on the iOS simulator fixture:
   in-flight test;
 - no private transcript text appears in diagnostics, logs, or analytics.
 
-These are guardrails, not product-performance targets for every device. Issue
-#106 must add physical-device evidence and may tighten budgets, but it may not
-weaken them without a superseding ADR.
+These are guardrails, not product-performance targets for every device. Apple
+device/simulator builds, simulator runtime, and Android runtime/target evidence
+must remain green. A later change may tighten budgets, but it may not weaken
+them without a superseding ADR.
 
 ## Typed boundary
 
@@ -138,16 +149,30 @@ collection enters the shared API.
 
 ## Migration and rollback
 
-Issue #106 will use one writer and a one-way ownership marker:
+Issue #106 implemented one writer and a one-way ownership marker:
 
-1. stop Swift index writes;
-2. create the Rust index only from canonical Rust evidence and valid cached
-   embeddings, requesting missing embeddings through the typed host;
-3. verify selected generation, exact span coverage, schema version, and query;
-4. atomically mark Rust ownership;
-5. delete the Swift execution index and its SQLiteVec dependency.
+1. delete the Swift index writer and raw-candidate bridge;
+2. open the separate versioned Rust index and rebuild only from canonical Rust
+   evidence plus valid cached embeddings, requesting missing embeddings through
+   the typed host;
+3. verify every selected active-library generation and exact
+   metadata/vector/lexical span coverage in Rust;
+4. issue a typed Rust host request; native validates and deletes only the exact
+   legacy `vectors.sqlite`, `-wal`, and `-shm` regular files and returns a typed
+   deletion observation;
+5. let Rust commit the ownership marker only after accepting that observation.
 
-Before the marker, rollback may run the old app. After the marker, an old app
+Failed, cancelled, or incomplete rebuilds leave both the ownership marker and
+legacy artifacts untouched for a later retry. A deletion interruption may leave
+some disposable legacy sidecars absent while the marker remains false; retry is
+idempotent, and an older app can rebuild the non-authoritative index. This order
+prevents a committed marker from ever coexisting with a usable stale legacy
+database. Corrupt Rust execution artifacts are deleted and rebuilt without
+touching canonical evidence; a newer or incompatible schema fails closed and is
+never destroyed.
+
+Before the marker, rollback may run the old app; it can use any remaining
+legacy index or rebuild missing disposable files. After the marker, an old app
 must treat its disposable index as missing and rebuild; it must never roll back
 canonical evidence. There is no dual-write steady state.
 
@@ -159,7 +184,13 @@ canonical evidence. There is no dual-write steady state.
 - Rust gains responsibility for an additional disposable schema and migration.
 - sqlite-vec remains pre-1.0 and pinned; dependency review and portability
   checks are required on every upgrade.
-- Swift `VectorIndex` and the SQLiteVec package become deletion targets in #106.
+- Swift `VectorIndex`, its schema/query files, raw-candidate bridge, and
+  `RecallCapabilityService` were deleted by #106.
+- SQLiteVec remains linked only as the C header/module bridge for non-vector
+  legacy Swift state/workflow stores. Its evidence-backed removal is tracked by
+  #107; it has no recall ownership.
+- The isolated Swift provider selector is explicitly temporary and tracked by
+  #108. Credentialed provider execution remains native by design.
 
 ## Rejected alternatives
 

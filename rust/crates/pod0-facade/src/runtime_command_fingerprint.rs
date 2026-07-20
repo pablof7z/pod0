@@ -125,6 +125,9 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
         ApplicationCommand::RebuildTranscriptEvidence { input, policy } => {
             hash_evidence_input(&mut hash, input, *policy);
         }
+        ApplicationCommand::CommitRecallIndexCutover => {
+            hash.update(b"commit-recall-index-cutover\0");
+        }
         ApplicationCommand::CommitTranscript {
             expected_selection_revision,
             artifact,

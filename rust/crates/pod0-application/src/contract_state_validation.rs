@@ -33,11 +33,17 @@ pub(super) fn observation_matches_request(
             HostObservation::RecallQueryEmbedded { query_id, .. },
         ) => expected == query_id,
         (
-            HostRequest::RetrieveRecallCandidates {
-                query_id: expected, ..
+            HostRequest::EmbedRecallSpans {
+                episode_id: expected_episode,
+                generation_id: expected_generation,
+                ..
             },
-            HostObservation::RecallCandidatesRetrieved { query_id, .. },
-        ) => expected == query_id,
+            HostObservation::RecallSpansEmbedded {
+                episode_id,
+                generation_id,
+                ..
+            },
+        ) => expected_episode == episode_id && expected_generation == generation_id,
         (
             HostRequest::RerankRecallCandidates {
                 query_id: expected, ..
@@ -45,16 +51,9 @@ pub(super) fn observation_matches_request(
             HostObservation::RecallCandidatesReranked { query_id, .. },
         ) => expected == query_id,
         (
-            HostRequest::RebuildRecallIndex {
-                episode_id: expected_episode,
-                generation_id: expected_generation,
-            },
-            HostObservation::RecallIndexRebuilt {
-                episode_id,
-                generation_id,
-                ..
-            },
-        ) => expected_episode == episode_id && expected_generation == generation_id,
+            HostRequest::RemoveLegacyRecallIndexArtifacts,
+            HostObservation::LegacyRecallIndexArtifactsRemoved { removed_file_count },
+        ) => *removed_file_count <= 3,
         (HostRequest::Unsupported { .. }, HostObservation::Unsupported { .. }) => true,
         _ => false,
     }
@@ -76,20 +75,13 @@ pub(super) fn recall_payload_is_bounded(
                 && embedding.values.len() <= crate::MAX_RECALL_EMBEDDING_DIMENSIONS
         }
         (
-            HostRequest::RetrieveRecallCandidates {
-                maximum_vector_candidates,
-                maximum_lexical_candidates,
-                maximum_total_candidates,
+            HostRequest::EmbedRecallSpans {
+                spans,
+                maximum_dimensions,
                 ..
             },
-            HostObservation::RecallCandidatesRetrieved { candidates, .. },
-        ) => {
-            usize::from(*maximum_vector_candidates)
-                .saturating_add(usize::from(*maximum_lexical_candidates))
-                <= usize::from(*maximum_total_candidates)
-                && candidates.len() <= usize::from(*maximum_total_candidates)
-                && candidates.len() <= crate::MAX_RECALL_CANDIDATES
-        }
+            HostObservation::RecallSpansEmbedded { embeddings, .. },
+        ) => bounded_span_embeddings(spans, embeddings, *maximum_dimensions),
         (
             HostRequest::RerankRecallCandidates { candidates, .. },
             HostObservation::RecallCandidatesReranked { rankings, .. },
@@ -111,9 +103,40 @@ fn playback_request_episode_id(request: &HostRequest) -> Option<pod0_domain::Epi
         HostRequest::FetchFeed { .. }
         | HostRequest::ObservePlayback { .. }
         | HostRequest::EmbedRecallQuery { .. }
-        | HostRequest::RetrieveRecallCandidates { .. }
+        | HostRequest::EmbedRecallSpans { .. }
         | HostRequest::RerankRecallCandidates { .. }
-        | HostRequest::RebuildRecallIndex { .. }
+        | HostRequest::RemoveLegacyRecallIndexArtifacts
         | HostRequest::Unsupported { .. } => None,
     }
+}
+
+fn bounded_span_embeddings(
+    spans: &[crate::RecallEmbeddingInput],
+    embeddings: &[crate::RecallSpanEmbeddingObservation],
+    maximum_dimensions: u16,
+) -> bool {
+    use std::collections::BTreeSet;
+
+    let expected = spans
+        .iter()
+        .map(|span| span.span_id)
+        .collect::<BTreeSet<_>>();
+    let observed = embeddings
+        .iter()
+        .map(|embedding| embedding.span_id)
+        .collect::<BTreeSet<_>>();
+    !spans.is_empty()
+        && spans.len() <= crate::MAX_RECALL_EMBEDDING_BATCH
+        && spans.len() == embeddings.len()
+        && expected.len() == spans.len()
+        && observed.len() == embeddings.len()
+        && expected == observed
+        && spans.iter().all(|span| {
+            !span.text.is_empty() && span.text.len() <= crate::MAX_RECALL_EMBEDDING_TEXT_BYTES
+        })
+        && embeddings.iter().all(|embedding| {
+            !embedding.embedding.values.is_empty()
+                && embedding.embedding.values.len() <= usize::from(maximum_dimensions)
+                && embedding.embedding.values.len() <= crate::MAX_RECALL_EMBEDDING_DIMENSIONS
+        })
 }

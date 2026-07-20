@@ -187,8 +187,8 @@ final class AppStateStore {
         // Attach the native capability host used by the Rust recall workflow.
         // Hand `self` to the service so provider settings and transcript
         // metadata can be resolved without moving recall policy into Swift.
-        RecallCapabilityService.shared.attach(appStore: self)
-        sharedLibrary?.attachRecall(RecallCapabilityService.shared, store: self)
+        RecallProviderService.shared.attach(appStore: self)
+        sharedLibrary?.attachRecall(RecallProviderService.shared, store: self)
         TranscriptIngestService.shared.attach(appStore: self)
         EpisodeDownloadService.shared.attach(appStore: self)
         WorkflowRuntime.shared.attach(store: self)

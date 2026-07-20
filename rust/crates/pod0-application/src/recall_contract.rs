@@ -7,6 +7,8 @@ use crate::{CoreFailure, OperationProjection};
 
 pub const MAX_RECALL_QUERY_BYTES: usize = 512;
 pub const MAX_RECALL_EMBEDDING_DIMENSIONS: usize = 4_096;
+pub const MAX_RECALL_EMBEDDING_BATCH: usize = 16;
+pub const MAX_RECALL_EMBEDDING_TEXT_BYTES: usize = 65_536;
 pub const MAX_RECALL_CANDIDATES: usize = 512;
 pub const MAX_RECALL_EVIDENCE: usize = 20;
 pub const MAX_RECALL_EXCERPT_BYTES: usize = 4_096;
@@ -127,13 +129,25 @@ pub struct RecallEmbeddingVector {
     pub values: Vec<i32>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RecallCandidateObservation {
     pub episode_id: EpisodeId,
     pub generation_id: EvidenceGenerationId,
     pub span_id: EvidenceSpanId,
     pub vector_rank: Option<u16>,
     pub lexical_rank: Option<u16>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct RecallEmbeddingInput {
+    pub span_id: EvidenceSpanId,
+    pub text: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct RecallSpanEmbeddingObservation {
+    pub span_id: EvidenceSpanId,
+    pub embedding: RecallEmbeddingVector,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]

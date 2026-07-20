@@ -35,6 +35,16 @@ impl RecallFixture {
                     1_800_000_000_102,
                 )
                 .unwrap();
+            base.facade.dispatch(CommandEnvelope {
+                command_id: CommandId::from_parts(29, 1),
+                cancellation_id: CancellationId::from_parts(29, 2),
+                expected_revision: None,
+                command: ApplicationCommand::RebuildTranscriptEvidence {
+                    input: evidence_input(&base),
+                    policy: evidence_policy(),
+                },
+            });
+            complete_evidence_embedding_requests(&base.facade);
         }
         Self { base, artifact }
     }
@@ -220,37 +230,8 @@ pub(super) fn advance_to_rerank(fixture: &RecallFixture, query_id: u64) {
         HostObservation::RecallQueryEmbedded {
             query_id: RecallQueryId::from_parts(32, query_id),
             embedding: RecallEmbeddingVector {
-                values: vec![100, -200, 300],
+                values: recall_test_embedding(),
             },
-        },
-    );
-    assert_eq!(
-        fixture.projection(query_id).stage,
-        RecallStage::Running {
-            phase: RecallPhase::Retrieving
-        }
-    );
-    let retrieve = fixture.base.facade.next_host_requests(1).pop().unwrap();
-    let candidates = fixture
-        .artifact
-        .spans
-        .iter()
-        .take(2)
-        .enumerate()
-        .map(|(index, span)| RecallCandidateObservation {
-            episode_id: fixture.base.episode_id,
-            generation_id: fixture.artifact.generation_id,
-            span_id: span.span_id,
-            vector_rank: Some(u16::try_from(index + 1).unwrap()),
-            lexical_rank: Some(u16::try_from(2 - index).unwrap()),
-        })
-        .collect();
-    record(
-        &fixture.base.facade,
-        &retrieve,
-        HostObservation::RecallCandidatesRetrieved {
-            query_id: RecallQueryId::from_parts(32, query_id),
-            candidates,
         },
     );
     assert_eq!(
@@ -259,6 +240,46 @@ pub(super) fn advance_to_rerank(fixture: &RecallFixture, query_id: u64) {
             phase: RecallPhase::Reranking
         }
     );
+}
+
+pub(super) fn complete_evidence_embedding_requests(facade: &Pod0Facade) {
+    loop {
+        let Some(request) = facade.next_host_requests(1).pop() else {
+            break;
+        };
+        let HostRequest::EmbedRecallSpans {
+            episode_id,
+            generation_id,
+            spans,
+            ..
+        } = &request.request
+        else {
+            panic!("expected evidence embedding request")
+        };
+        record(
+            facade,
+            &request,
+            HostObservation::RecallSpansEmbedded {
+                episode_id: *episode_id,
+                generation_id: *generation_id,
+                embeddings: spans
+                    .iter()
+                    .map(|span| RecallSpanEmbeddingObservation {
+                        span_id: span.span_id,
+                        embedding: RecallEmbeddingVector {
+                            values: recall_test_embedding(),
+                        },
+                    })
+                    .collect(),
+            },
+        );
+    }
+}
+
+pub(super) fn recall_test_embedding() -> Vec<i32> {
+    let mut values = vec![0; pod0_recall_index::RECALL_INDEX_DIMENSIONS];
+    values[0] = 1_000_000;
+    values
 }
 
 fn segment(

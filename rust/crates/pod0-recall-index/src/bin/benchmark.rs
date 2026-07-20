@@ -1,10 +1,15 @@
+#![allow(unsafe_code)]
+
 use std::env;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
 use pod0_application::{RecallEmbeddingVector, RecallScope};
 use pod0_domain::{EpisodeId, EvidenceGenerationId, EvidenceSpanId, PodcastId};
-use pod0_recall_index_spike::{RecallIndexError, RecallIndexSpan, RecallIndexSpike};
+use pod0_recall_index::{
+    RecallIndex, RecallIndexCandidate, RecallIndexError, RecallIndexPlan, RecallIndexSpan,
+    RecallSpanEmbedding,
+};
 use serde::Serialize;
 use tempfile::tempdir;
 
@@ -21,7 +26,6 @@ struct BenchmarkResult {
     dimensions: usize,
     samples: usize,
     rebuild_milliseconds: f64,
-    rebuild_spans_per_second: f64,
     cold_query_milliseconds: f64,
     warm_query_p50_milliseconds: f64,
     warm_query_p95_milliseconds: f64,
@@ -54,15 +58,17 @@ fn run(options: Options) -> Result<BenchmarkResult, RecallIndexError> {
     let directory = tempdir()?;
     let path = directory.path().join("recall-index.sqlite");
     let rebuild_started = Instant::now();
-    let mut index = RecallIndexSpike::open(&path, options.dimensions)?;
+    let mut index = RecallIndex::open(&path, options.dimensions)?;
     let sqlite_vec_version = index.sqlite_vec_version()?;
     let mut remaining = options.spans;
     let mut episode_offset = 0_u64;
     while remaining > 0 {
         let count = remaining.min(SPANS_PER_EPISODE);
-        let episode_low = episode_offset + 1;
-        let spans = generated_episode(episode_low, count, options.dimensions);
-        index.rebuild_episode(&spans, &index.cancellation())?;
+        index_episode(
+            &mut index,
+            &generated_episode(episode_offset + 1, count),
+            options.dimensions,
+        )?;
         remaining -= count;
         episode_offset += 1;
     }
@@ -74,14 +80,12 @@ fn run(options: Options) -> Result<BenchmarkResult, RecallIndexError> {
         ));
     }
     drop(index);
-
     let index_bytes = directory_size(directory.path())?;
-    let index = RecallIndexSpike::open(&path, options.dimensions)?;
+    let index = RecallIndex::open(&path, options.dimensions)?;
     let query = query_embedding(options.dimensions);
     let cold_started = Instant::now();
     let cold_candidates = retrieve(&index, &query)?;
     let cold_duration = cold_started.elapsed();
-
     let mut warm_samples = Vec::with_capacity(options.samples);
     let mut candidate_count = cold_candidates.len();
     for _ in 0..options.samples {
@@ -90,7 +94,6 @@ fn run(options: Options) -> Result<BenchmarkResult, RecallIndexError> {
         warm_samples.push(started.elapsed());
     }
     warm_samples.sort_unstable();
-
     let cancellation = index.cancellation();
     cancellation.cancel();
     let cancellation_started = Instant::now();
@@ -108,20 +111,17 @@ fn run(options: Options) -> Result<BenchmarkResult, RecallIndexError> {
             "benchmark cancellation did not surface as typed cancellation",
         ));
     }
-    let cancellation_duration = cancellation_started.elapsed();
-
     Ok(BenchmarkResult {
-        backend: "rust-sqlite-vec",
+        backend: "rust-sqlite-vec-production",
         sqlite_vec_version,
         spans: options.spans,
         dimensions: options.dimensions,
         samples: options.samples,
         rebuild_milliseconds: milliseconds(rebuild_duration),
-        rebuild_spans_per_second: options.spans as f64 / rebuild_duration.as_secs_f64(),
         cold_query_milliseconds: milliseconds(cold_duration),
         warm_query_p50_milliseconds: milliseconds(percentile(&warm_samples, 50)),
         warm_query_p95_milliseconds: milliseconds(percentile(&warm_samples, 95)),
-        cancellation_response_microseconds: microseconds(cancellation_duration),
+        cancellation_response_microseconds: cancellation_started.elapsed().as_secs_f64() * 1e6,
         candidate_count,
         maximum_candidate_count: TOTAL_CANDIDATES,
         index_bytes,
@@ -131,10 +131,41 @@ fn run(options: Options) -> Result<BenchmarkResult, RecallIndexError> {
     })
 }
 
+fn index_episode(
+    index: &mut RecallIndex,
+    spans: &[RecallIndexSpan],
+    dimensions: usize,
+) -> Result<(), RecallIndexError> {
+    loop {
+        match index.prepare_episode(spans, &index.cancellation())? {
+            RecallIndexPlan::Ready { .. } => return Ok(()),
+            RecallIndexPlan::NeedsEmbeddings { spans: requested } => {
+                let ids = requested
+                    .iter()
+                    .map(|request| request.span_id)
+                    .collect::<Vec<_>>();
+                let batch = spans
+                    .iter()
+                    .filter(|span| ids.contains(&span.span_id))
+                    .cloned()
+                    .collect::<Vec<_>>();
+                let observations = ids
+                    .into_iter()
+                    .map(|span_id| RecallSpanEmbedding {
+                        span_id,
+                        embedding: generated_embedding(span_id.low as usize - 1, dimensions),
+                    })
+                    .collect::<Vec<_>>();
+                index.cache_embeddings(&batch, &observations, &index.cancellation())?;
+            }
+        }
+    }
+}
+
 fn retrieve(
-    index: &RecallIndexSpike,
+    index: &RecallIndex,
     query: &RecallEmbeddingVector,
-) -> Result<Vec<pod0_application::RecallCandidateObservation>, RecallIndexError> {
+) -> Result<Vec<RecallIndexCandidate>, RecallIndexError> {
     index.retrieve(
         query,
         "needle evidence",
@@ -146,26 +177,30 @@ fn retrieve(
     )
 }
 
-fn generated_episode(episode_low: u64, count: usize, dimensions: usize) -> Vec<RecallIndexSpan> {
+fn generated_episode(episode_low: u64, count: usize) -> Vec<RecallIndexSpan> {
     (0..count)
-        .map(|offset| {
-            let needle = offset == SPANS_PER_EPISODE / 2;
-            let mut values = vec![0; dimensions];
-            values[if needle { 0 } else { (offset + 1) % dimensions }] = 1_000_000;
-            RecallIndexSpan {
-                span_id: EvidenceSpanId::from_parts(100 + episode_low, offset as u64 + 1),
-                generation_id: EvidenceGenerationId::from_parts(200, episode_low),
-                episode_id: EpisodeId::from_parts(300, episode_low),
-                podcast_id: PodcastId::from_parts(400, 1),
-                text: if needle {
-                    format!("needle evidence in representative episode {episode_low}")
-                } else {
-                    format!("background discussion {offset} in episode {episode_low}")
-                },
-                embedding: RecallEmbeddingVector { values },
-            }
+        .map(|offset| RecallIndexSpan {
+            span_id: EvidenceSpanId::from_parts(100 + episode_low, offset as u64 + 1),
+            generation_id: EvidenceGenerationId::from_parts(200, episode_low),
+            episode_id: EpisodeId::from_parts(300, episode_low),
+            podcast_id: PodcastId::from_parts(400, 1),
+            text: if offset == SPANS_PER_EPISODE / 2 {
+                format!("needle evidence in representative episode {episode_low}")
+            } else {
+                format!("background discussion {offset} in episode {episode_low}")
+            },
         })
         .collect()
+}
+
+fn generated_embedding(offset: usize, dimensions: usize) -> RecallEmbeddingVector {
+    let mut values = vec![0; dimensions];
+    values[if offset == SPANS_PER_EPISODE / 2 {
+        0
+    } else {
+        (offset + 1) % dimensions
+    }] = 1_000_000;
+    RecallEmbeddingVector { values }
 }
 
 fn query_embedding(dimensions: usize) -> RecallEmbeddingVector {
@@ -193,16 +228,14 @@ fn option(arguments: &[String], name: &str, default: usize) -> usize {
 }
 
 fn percentile(samples: &[Duration], percentile: usize) -> Duration {
-    let index = (samples.len().saturating_sub(1) * percentile) / 100;
-    samples.get(index).copied().unwrap_or_default()
+    samples
+        .get((samples.len().saturating_sub(1) * percentile) / 100)
+        .copied()
+        .unwrap_or_default()
 }
 
 fn milliseconds(duration: Duration) -> f64 {
     duration.as_secs_f64() * 1_000.0
-}
-
-fn microseconds(duration: Duration) -> f64 {
-    duration.as_secs_f64() * 1_000_000.0
 }
 
 fn directory_size(path: &Path) -> Result<u64, std::io::Error> {
@@ -219,12 +252,10 @@ fn directory_size(path: &Path) -> Result<u64, std::io::Error> {
 
 fn peak_resident_bytes() -> u64 {
     let mut usage = std::mem::MaybeUninit::<libc::rusage>::zeroed();
-    // SAFETY: getrusage initializes the supplied rusage structure on success.
     let result = unsafe { libc::getrusage(libc::RUSAGE_SELF, usage.as_mut_ptr()) };
     if result != 0 {
         return 0;
     }
-    // SAFETY: the successful call above initialized the value.
     let value = unsafe { usage.assume_init() }.ru_maxrss as u64;
     if cfg!(target_vendor = "apple") {
         value

@@ -46,13 +46,12 @@ final class CoreRecallVerticalSliceTests: XCTestCase {
             ]
         )
         let embedder = RestartCountingEmbedder()
-        let index = try VectorIndex(embedder: embedder, inMemory: true, dimensions: 3)
 
         guard case .ready(let first) = SharedLibraryBootstrap.run(
             persistence: persistence,
             feedHost: VerticalSliceFeedHost()
         ) else { return XCTFail("Expected an authoritative shared store") }
-        await attachRecall(to: first, index: index, embedder: embedder)
+        await attachRecall(to: first, embedder: embedder)
         let committed = try first.submitTranscriptObservation(
             transcript,
             context: TranscriptObservationContext(
@@ -114,7 +113,6 @@ final class CoreRecallVerticalSliceTests: XCTestCase {
 
         let reopened = await makeClient(
             facade: reopenedFacade,
-            index: index,
             embedder: embedder
         )
         let reopenedSummary = try XCTUnwrap(
@@ -143,25 +141,24 @@ final class CoreRecallVerticalSliceTests: XCTestCase {
 
     private func makeClient(
         facade: Pod0Facade,
-        index: VectorIndex,
         embedder: RestartCountingEmbedder
     ) async -> SharedLibraryClient {
         let client = SharedLibraryClient(facade: facade, feedHost: VerticalSliceFeedHost())
-        await attachRecall(to: client, index: index, embedder: embedder)
+        await attachRecall(to: client, embedder: embedder)
         client.start()
         return client
     }
 
     private func attachRecall(
         to client: SharedLibraryClient,
-        index: VectorIndex,
         embedder: RestartCountingEmbedder
     ) async {
         await client.deferredRecallHost.attach(CoreRecallHost(
-            projections: client.facade,
-            index: index,
             embedder: embedder,
             reranker: VerticalSliceReranker(),
+            legacyIndexURL: FileManager.default.temporaryDirectory
+                .appendingPathComponent("pod0-recall-vertical-\(UUID().uuidString)")
+                .appendingPathComponent("vectors.sqlite"),
             isRerankingEnabled: { false }
         ))
     }
@@ -181,7 +178,11 @@ private actor RestartCountingEmbedder: EmbeddingsClient {
 
     func embed(_ texts: [String]) async throws -> [[Float]] {
         callCount += 1
-        return texts.map { _ in [1, 0, 0] }
+        return texts.map { _ in
+            var values = [Float](repeating: 0, count: 1_024)
+            values[0] = 1
+            return values
+        }
     }
 }
 

@@ -1,11 +1,22 @@
 use std::fmt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use pod0_application::RecallEmbeddingVector;
 use pod0_domain::{EpisodeId, EvidenceGenerationId, EvidenceSpanId, PodcastId};
 use rusqlite::Connection;
+
+pub const RECALL_INDEX_SCHEMA_VERSION: u32 = 1;
+pub const RECALL_INDEX_DIMENSIONS: usize = 1_024;
+pub const MAX_RECALL_EMBEDDING_BATCH: usize = 16;
+
+#[must_use]
+pub fn recall_index_path_for_core_store(core_store: &Path) -> PathBuf {
+    let mut value = std::ffi::OsString::from(core_store.as_os_str());
+    value.push(".recall-index.sqlite");
+    PathBuf::from(value)
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RecallIndexSpan {
@@ -14,7 +25,39 @@ pub struct RecallIndexSpan {
     pub episode_id: EpisodeId,
     pub podcast_id: PodcastId,
     pub text: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RecallEmbeddingRequest {
+    pub span_id: EvidenceSpanId,
+    pub text: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RecallSpanEmbedding {
+    pub span_id: EvidenceSpanId,
     pub embedding: RecallEmbeddingVector,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RecallIndexPlan {
+    Ready { indexed_span_count: u32 },
+    NeedsEmbeddings { spans: Vec<RecallEmbeddingRequest> },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RecallIndexCandidate {
+    pub episode_id: EpisodeId,
+    pub generation_id: EvidenceGenerationId,
+    pub span_id: EvidenceSpanId,
+    pub vector_rank: Option<u16>,
+    pub lexical_rank: Option<u16>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RecallIndexCutoverReceipt {
+    pub schema_version: u32,
+    pub removed_legacy_file_count: u8,
 }
 
 #[derive(Clone, Default)]
@@ -31,6 +74,7 @@ impl RecallCancellation {
         }
     }
 
+    #[must_use]
     pub fn is_cancelled(&self) -> bool {
         self.cancelled.load(Ordering::Acquire)
     }
@@ -40,6 +84,7 @@ impl RecallCancellation {
 pub enum RecallIndexError {
     Cancelled,
     InvalidInput(&'static str),
+    IncompatibleSchema,
     Sqlite(rusqlite::Error),
     Io(std::io::Error),
 }
@@ -49,8 +94,9 @@ impl fmt::Display for RecallIndexError {
         match self {
             Self::Cancelled => formatter.write_str("recall index operation cancelled"),
             Self::InvalidInput(detail) => formatter.write_str(detail),
-            Self::Sqlite(error) => write!(formatter, "recall index sqlite error: {error}"),
-            Self::Io(error) => write!(formatter, "recall index io error: {error}"),
+            Self::IncompatibleSchema => formatter.write_str("recall index schema is incompatible"),
+            Self::Sqlite(_) => formatter.write_str("recall index storage is unavailable"),
+            Self::Io(_) => formatter.write_str("recall index artifact is unavailable"),
         }
     }
 }
@@ -69,15 +115,26 @@ impl From<std::io::Error> for RecallIndexError {
     }
 }
 
-pub struct RecallIndexSpike {
+pub struct RecallIndex {
     pub(crate) connection: Connection,
     pub(crate) dimensions: usize,
 }
 
-impl RecallIndexSpike {
+impl RecallIndex {
     pub fn open(path: &Path, dimensions: usize) -> Result<Self, RecallIndexError> {
         crate::schema::register_sqlite_vec()?;
-        Self::open_connection(Connection::open(path)?, dimensions)
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        crate::migration::validate_disposable_artifacts(path)?;
+        let result = Self::open_connection(Connection::open(path)?, dimensions);
+        match result {
+            Err(error) if error.is_recoverable_corruption() => {
+                crate::migration::remove_disposable_artifacts(path)?;
+                Self::open_connection(Connection::open(path)?, dimensions)
+            }
+            result => result,
+        }
     }
 
     pub fn in_memory(dimensions: usize) -> Result<Self, RecallIndexError> {
@@ -89,7 +146,7 @@ impl RecallIndexSpike {
         connection: Connection,
         dimensions: usize,
     ) -> Result<Self, RecallIndexError> {
-        if !(1..=4_096).contains(&dimensions) {
+        if !(1..=pod0_application::MAX_RECALL_EMBEDDING_DIMENSIONS).contains(&dimensions) {
             return Err(RecallIndexError::InvalidInput(
                 "recall index dimensions are outside the bounded contract",
             ));
@@ -102,10 +159,7 @@ impl RecallIndexSpike {
         Ok(value)
     }
 
-    pub fn interrupt_handle(&self) -> rusqlite::InterruptHandle {
-        self.connection.get_interrupt_handle()
-    }
-
+    #[must_use]
     pub fn cancellation(&self) -> RecallCancellation {
         RecallCancellation {
             cancelled: Arc::default(),
@@ -117,5 +171,19 @@ impl RecallIndexSpike {
         self.connection
             .query_row("SELECT vec_version()", [], |row| row.get(0))
             .map_err(Into::into)
+    }
+}
+
+impl RecallIndexError {
+    fn is_recoverable_corruption(&self) -> bool {
+        matches!(
+            self,
+            Self::Sqlite(rusqlite::Error::SqliteFailure(error, _))
+                if matches!(
+                    error.code,
+                    rusqlite::ffi::ErrorCode::DatabaseCorrupt
+                        | rusqlite::ffi::ErrorCode::NotADatabase
+                )
+        )
     }
 }

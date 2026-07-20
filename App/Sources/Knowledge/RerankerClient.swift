@@ -20,33 +20,6 @@ protocol RerankerClient: Sendable {
     func rerank(query: String, documents: [String], topN: Int?) async throws -> [Int]
 }
 
-// MARK: - Settings-aware wrapper
-
-struct SettingsAwareRerankerClient<Base: RerankerClient>: RerankerClient {
-    private let base: Base
-    private let isEnabled: @Sendable () async -> Bool
-
-    init(
-        base: Base,
-        isEnabled: @Sendable @escaping () async -> Bool
-    ) {
-        self.base = base
-        self.isEnabled = isEnabled
-    }
-
-    func rerank(
-        query: String,
-        documents: [String],
-        topN: Int?
-    ) async throws -> [Int] {
-        guard await isEnabled() else {
-            let limit = min(topN ?? documents.count, documents.count)
-            return Array(0..<limit)
-        }
-        return try await base.rerank(query: query, documents: documents, topN: topN)
-    }
-}
-
 // MARK: - OpenRouter implementation
 
 struct OpenRouterRerankerClient: RerankerClient {

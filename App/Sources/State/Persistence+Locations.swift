@@ -107,6 +107,18 @@ extension Persistence {
         episodeStore.fileURL.appendingPathExtension("chapter-backups")
     }
 
+    var legacyRecallIndexURL: URL? {
+        guard let support = try? FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        ) else { return nil }
+        return support
+            .appendingPathComponent("podcastr", isDirectory: true)
+            .appendingPathComponent("vectors.sqlite", isDirectory: false)
+    }
+
     func legacyClipsBackupURL(for plan: LegacyClipImportPlan) -> URL {
         episodeStore.fileURL.appendingPathExtension(
             "clips-backup-\(plan.sourceGeneration)-\(plan.sourceHash)"

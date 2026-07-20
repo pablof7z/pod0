@@ -10,12 +10,15 @@ use pod0_domain::{
     CommandId, FeedIdentityV1, HostRequestId, ListeningDomainSnapshot, PodcastId, RecallQueryId,
     StateRevision, SubscriptionId,
 };
+use pod0_recall_index::{RECALL_INDEX_DIMENSIONS, RecallIndex};
 use pod0_storage::{EvidenceStore, LibraryStore, TranscriptStore};
 
 use crate::ProjectionSubscriber;
 use crate::runtime_clock::SystemClock;
 use crate::runtime_evidence_state::PendingEvidenceIndex;
 use crate::runtime_playback_state::PlaybackRuntime;
+use crate::runtime_recall_cutover::PendingRecallCutover;
+use crate::runtime_recall_interrupts::{RecallInterruptLease, RecallInterruptRegistry};
 use crate::runtime_recall_state::{PendingRecall, RecallWorkflow};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -44,11 +47,14 @@ pub(super) struct FacadeState {
     pub(super) store: Option<LibraryStore>,
     pub(super) evidence_store: Option<EvidenceStore>,
     pub(super) transcript_store: Option<TranscriptStore>,
+    pub(super) recall_index: RecallIndex,
+    pub(super) recall_interrupts: Arc<RecallInterruptRegistry>,
     pub(super) commands: CommandLedger,
     pub(super) host_requests: HostRequestLedger,
     pub(super) host_queue: VecDeque<HostRequestEnvelope>,
     pub(super) pending_feeds: BTreeMap<pod0_domain::HostRequestId, PendingFeed>,
     pub(super) pending_evidence_indexes: BTreeMap<HostRequestId, PendingEvidenceIndex>,
+    pub(super) pending_recall_cutovers: BTreeMap<HostRequestId, PendingRecallCutover>,
     pub(super) pending_recalls: BTreeMap<HostRequestId, PendingRecall>,
     pub(super) recalls: BTreeMap<RecallQueryId, RecallWorkflow>,
     pub(super) playback: PlaybackRuntime,
@@ -74,11 +80,15 @@ impl Default for FacadeState {
             store: None,
             evidence_store: None,
             transcript_store: None,
+            recall_index: RecallIndex::in_memory(RECALL_INDEX_DIMENSIONS)
+                .expect("in-memory recall index must initialize"),
+            recall_interrupts: Arc::default(),
             commands: CommandLedger::default(),
             host_requests: HostRequestLedger::default(),
             host_queue: VecDeque::new(),
             pending_feeds: BTreeMap::new(),
             pending_evidence_indexes: BTreeMap::new(),
+            pending_recall_cutovers: BTreeMap::new(),
             pending_recalls: BTreeMap::new(),
             recalls: BTreeMap::new(),
             playback: PlaybackRuntime::default(),
@@ -102,10 +112,19 @@ impl FacadeState {
         self.clock.now()
     }
 
+    pub(super) fn begin_recall_index_operation(
+        &self,
+        cancellation_id: pod0_domain::CancellationId,
+    ) -> RecallInterruptLease {
+        self.recall_interrupts
+            .begin(cancellation_id, self.recall_index.cancellation())
+    }
+
     pub(super) fn open(
         store: LibraryStore,
         evidence_store: EvidenceStore,
         transcript_store: TranscriptStore,
+        recall_index: RecallIndex,
     ) -> Result<Self, pod0_storage::StorageError> {
         let _ = store.clear_session_sleep_timer()?;
         let listening = store.snapshot()?;
@@ -134,6 +153,7 @@ impl FacadeState {
             store: Some(store),
             evidence_store: Some(evidence_store),
             transcript_store: Some(transcript_store),
+            recall_index,
             playback,
             ..Self::default()
         })

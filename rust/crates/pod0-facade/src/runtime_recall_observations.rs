@@ -2,11 +2,12 @@ use std::collections::BTreeMap;
 
 use pod0_application::{
     CoreFailureCode, EvidenceCandidateObservation, HostFailureCode, HostObservation, HostRequest,
-    MAX_RECALL_CANDIDATES, MAX_RECALL_EXCERPT_BYTES, RecallCandidateObservation,
-    RecallEvidenceProjection, RecallPhase, RecallRerankDocument, RecallRerankObservation,
-    RecallScope, RecallScoreProjection, RecallStage, bounded_recall_text, rank_evidence,
+    MAX_RECALL_CANDIDATES, MAX_RECALL_EXCERPT_BYTES, RecallEvidenceProjection, RecallPhase,
+    RecallRerankDocument, RecallRerankObservation, RecallScope, RecallScoreProjection, RecallStage,
+    bounded_recall_text, rank_evidence,
 };
 use pod0_domain::{EpisodeId, RecallQueryId, TranscriptEvidenceArtifact};
+use pod0_recall_index::{RecallIndexCandidate, RecallIndexError};
 use pod0_storage::EvidenceStore;
 
 use crate::runtime_recall_rerank::validate_rerank;
@@ -24,10 +25,6 @@ impl FacadeState {
                 RecallHostPhase::Embedding,
                 HostObservation::RecallQueryEmbedded { embedding, .. },
             ) => self.begin_retrieval(pending.query_id, embedding),
-            (
-                RecallHostPhase::Retrieval,
-                HostObservation::RecallCandidatesRetrieved { candidates, .. },
-            ) => self.accept_retrieval(pending.query_id, candidates),
             (
                 RecallHostPhase::Reranking,
                 HostObservation::RecallCandidatesReranked { rankings, .. },
@@ -54,13 +51,6 @@ impl FacadeState {
                 RecallStage::ProviderUnavailable,
                 CoreFailureCode::HostUnavailable,
             ),
-            (RecallHostPhase::Retrieval, HostObservation::Failed { .. })
-            | (RecallHostPhase::Retrieval, HostObservation::Unsupported { .. }) => self
-                .fail_recall(
-                    pending.query_id,
-                    RecallStage::IndexUnavailable,
-                    CoreFailureCode::HostUnavailable,
-                ),
             (_, HostObservation::Cancelled) => self.cancel_recall(pending.cancellation_id),
             _ => self.fail_recall(
                 pending.query_id,
@@ -82,29 +72,33 @@ impl FacadeState {
             phase: RecallPhase::Retrieving,
         };
         let scope = workflow.scope;
+        let cancellation_id = workflow.cancellation_id;
         let lexical_query = workflow.normalized_text.clone();
-        self.queue_recall_request(
-            query_id,
-            RecallHostPhase::Retrieval,
-            HostRequest::RetrieveRecallCandidates {
-                query_id,
-                scope,
-                lexical_query,
-                embedding,
-                maximum_vector_candidates: u16::try_from(MAX_RECALL_CANDIDATES / 2)
-                    .unwrap_or(u16::MAX),
-                maximum_lexical_candidates: u16::try_from(MAX_RECALL_CANDIDATES / 2)
-                    .unwrap_or(u16::MAX),
-                maximum_total_candidates: u16::try_from(MAX_RECALL_CANDIDATES).unwrap_or(u16::MAX),
-            },
+        let interrupt = self.begin_recall_index_operation(cancellation_id);
+        let result = self.recall_index.retrieve(
+            &embedding,
+            &lexical_query,
+            scope,
+            u16::try_from(MAX_RECALL_CANDIDATES / 2).unwrap_or(u16::MAX),
+            u16::try_from(MAX_RECALL_CANDIDATES / 2).unwrap_or(u16::MAX),
+            u16::try_from(MAX_RECALL_CANDIDATES).unwrap_or(u16::MAX),
+            interrupt.cancellation(),
         );
+        match result {
+            Ok(candidates) => self.accept_retrieval(query_id, candidates),
+            Err(RecallIndexError::Cancelled) => {
+                let cancellation_id = self.recalls[&query_id].cancellation_id;
+                self.cancel_recall(cancellation_id);
+            }
+            Err(_) => self.fail_recall(
+                query_id,
+                RecallStage::IndexUnavailable,
+                CoreFailureCode::StorageUnavailable,
+            ),
+        }
     }
 
-    fn accept_retrieval(
-        &mut self,
-        query_id: RecallQueryId,
-        candidates: Vec<RecallCandidateObservation>,
-    ) {
+    fn accept_retrieval(&mut self, query_id: RecallQueryId, candidates: Vec<RecallIndexCandidate>) {
         if candidates.is_empty() {
             self.complete_recall(query_id, RecallStage::NoEvidence, Vec::new());
             return;
@@ -199,7 +193,7 @@ impl FacadeState {
 fn resolve_candidates(
     store: &EvidenceStore,
     scope: RecallScope,
-    candidates: &[RecallCandidateObservation],
+    candidates: &[RecallIndexCandidate],
     limit: u16,
 ) -> Result<Vec<RecallEvidenceProjection>, CandidateResolutionError> {
     let mut artifacts = BTreeMap::<EpisodeId, TranscriptEvidenceArtifact>::new();

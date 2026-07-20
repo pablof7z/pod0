@@ -1,8 +1,16 @@
 use pod0_application::{
     CoreFailureCode, EvidenceChunkPolicy, HostObservation, HostRequest, HostRequestEnvelope,
-    OperationResult, OperationStage, TranscriptEvidenceInput, build_evidence_artifact,
+    OperationResult, OperationStage, RecallEmbeddingInput, TranscriptEvidenceInput,
+    build_evidence_artifact,
 };
-use pod0_domain::{CommandId, EvidenceGenerationId, HostRequestId, UnixTimestampMilliseconds};
+use pod0_domain::{
+    CommandId, EvidenceGenerationId, EvidenceSpanId, HostRequestId, TranscriptEvidenceArtifact,
+    UnixTimestampMilliseconds,
+};
+use pod0_recall_index::{
+    RECALL_INDEX_DIMENSIONS, RecallIndexError, RecallIndexPlan, RecallIndexSpan,
+    RecallSpanEmbedding,
+};
 use sha2::{Digest, Sha256};
 
 use crate::runtime_evidence_state::PendingEvidenceIndex;
@@ -52,35 +60,14 @@ impl FacadeState {
             self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
             return;
         }
-
-        let request_id = evidence_index_request_id(envelope.command_id, generation_id);
-        let request = HostRequestEnvelope {
-            request_id,
+        self.advance_evidence_index(PendingEvidenceIndex {
             command_id: envelope.command_id,
             cancellation_id: envelope.cancellation_id,
-            issued_revision: self.revision,
-            deadline_at: Some(UnixTimestampMilliseconds::new(now.saturating_add(600_000))),
-            request: HostRequest::RebuildRecallIndex {
-                episode_id,
-                generation_id,
-            },
-        };
-        if !self.host_requests.register(request.clone()) {
-            self.fail(envelope.command_id, CoreFailureCode::InvalidCommand);
-            return;
-        }
-        self.pending_evidence_indexes.insert(
-            request_id,
-            PendingEvidenceIndex {
-                command_id: envelope.command_id,
-                cancellation_id: envelope.cancellation_id,
-                episode_id,
-                generation_id,
-                expected_span_count: span_count,
-            },
-        );
-        self.host_queue.push_back(request);
-        self.finish(envelope.command_id, OperationStage::Running, None, None);
+            episode_id,
+            generation_id,
+            expected_span_count: span_count,
+            requested_span_ids: Vec::new(),
+        });
     }
 
     pub(super) fn finish_evidence_index_observation(
@@ -89,10 +76,75 @@ impl FacadeState {
         observation: HostObservation,
     ) {
         match observation {
-            HostObservation::RecallIndexRebuilt {
-                indexed_span_count, ..
-            } if indexed_span_count == pending.expected_span_count
-                && self.selected_generation_is(pending.episode_id, pending.generation_id) =>
+            HostObservation::RecallSpansEmbedded { embeddings, .. } => {
+                let Some(artifact) = self.selected_artifact(&pending) else {
+                    self.fail(pending.command_id, CoreFailureCode::StorageUnavailable);
+                    return;
+                };
+                let spans = index_spans(&artifact)
+                    .into_iter()
+                    .filter(|span| pending.requested_span_ids.contains(&span.span_id))
+                    .collect::<Vec<_>>();
+                let observations = embeddings
+                    .into_iter()
+                    .map(|value| RecallSpanEmbedding {
+                        span_id: value.span_id,
+                        embedding: value.embedding,
+                    })
+                    .collect::<Vec<_>>();
+                let interrupt = self.begin_recall_index_operation(pending.cancellation_id);
+                let result = self.recall_index.cache_embeddings(
+                    &spans,
+                    &observations,
+                    interrupt.cancellation(),
+                );
+                match result {
+                    Ok(()) => {}
+                    Err(RecallIndexError::Cancelled) => {
+                        self.finish(
+                            pending.command_id,
+                            OperationStage::Cancelled,
+                            Some(failure(CoreFailureCode::Cancelled)),
+                            None,
+                        );
+                        return;
+                    }
+                    Err(_) => {
+                        self.fail(pending.command_id, CoreFailureCode::HostRejected);
+                        return;
+                    }
+                }
+                self.advance_evidence_index(PendingEvidenceIndex {
+                    requested_span_ids: Vec::new(),
+                    ..pending
+                });
+            }
+            HostObservation::Cancelled => self.finish(
+                pending.command_id,
+                OperationStage::Cancelled,
+                Some(failure(CoreFailureCode::Cancelled)),
+                None,
+            ),
+            HostObservation::Failed { .. } | HostObservation::Unsupported { .. } => {
+                self.fail(pending.command_id, CoreFailureCode::HostUnavailable);
+            }
+            _ => self.fail(pending.command_id, CoreFailureCode::HostRejected),
+        }
+    }
+
+    fn advance_evidence_index(&mut self, mut pending: PendingEvidenceIndex) {
+        let Some(artifact) = self.selected_artifact(&pending) else {
+            self.fail(pending.command_id, CoreFailureCode::StorageUnavailable);
+            return;
+        };
+        let spans = index_spans(&artifact);
+        let interrupt = self.begin_recall_index_operation(pending.cancellation_id);
+        let plan = self
+            .recall_index
+            .prepare_episode(&spans, interrupt.cancellation());
+        match plan {
+            Ok(RecallIndexPlan::Ready { indexed_span_count })
+                if indexed_span_count == pending.expected_span_count =>
             {
                 self.succeed(
                     pending.command_id,
@@ -103,31 +155,83 @@ impl FacadeState {
                     }),
                 );
             }
-            HostObservation::Cancelled => {
-                self.finish(
+            Ok(RecallIndexPlan::NeedsEmbeddings { spans }) => {
+                pending.requested_span_ids = spans.iter().map(|span| span.span_id).collect();
+                let request_id = evidence_index_request_id(
                     pending.command_id,
-                    OperationStage::Cancelled,
-                    Some(failure(CoreFailureCode::Cancelled)),
-                    None,
+                    pending.generation_id,
+                    &pending.requested_span_ids,
                 );
+                let request = HostRequestEnvelope {
+                    request_id,
+                    command_id: pending.command_id,
+                    cancellation_id: pending.cancellation_id,
+                    issued_revision: self.revision,
+                    deadline_at: Some(UnixTimestampMilliseconds::new(
+                        self.now().value.saturating_add(600_000),
+                    )),
+                    request: HostRequest::EmbedRecallSpans {
+                        episode_id: pending.episode_id,
+                        generation_id: pending.generation_id,
+                        spans: spans
+                            .into_iter()
+                            .map(|span| RecallEmbeddingInput {
+                                span_id: span.span_id,
+                                text: span.text,
+                            })
+                            .collect(),
+                        maximum_dimensions: u16::try_from(RECALL_INDEX_DIMENSIONS)
+                            .expect("bounded recall dimensions"),
+                    },
+                };
+                if !self.host_requests.register(request.clone()) {
+                    self.fail(pending.command_id, CoreFailureCode::InvalidCommand);
+                    return;
+                }
+                self.pending_evidence_indexes
+                    .insert(request_id, pending.clone());
+                self.host_queue.push_back(request);
+                self.finish(pending.command_id, OperationStage::Running, None, None);
             }
-            HostObservation::Failed { .. } | HostObservation::Unsupported { .. } => {
-                self.fail(pending.command_id, CoreFailureCode::HostUnavailable);
+            Err(RecallIndexError::Cancelled) => self.finish(
+                pending.command_id,
+                OperationStage::Cancelled,
+                Some(failure(CoreFailureCode::Cancelled)),
+                None,
+            ),
+            Ok(RecallIndexPlan::Ready { .. }) | Err(_) => {
+                self.fail(pending.command_id, CoreFailureCode::StorageUnavailable);
             }
-            _ => self.fail(pending.command_id, CoreFailureCode::HostRejected),
         }
     }
 
-    fn selected_generation_is(
+    fn selected_artifact(
         &self,
-        episode_id: pod0_domain::EpisodeId,
-        generation_id: EvidenceGenerationId,
-    ) -> bool {
-        self.evidence_store
-            .as_ref()
-            .and_then(|store| store.selected_generation(episode_id).ok().flatten())
-            .is_some_and(|selected| selected.generation_id == generation_id)
+        pending: &PendingEvidenceIndex,
+    ) -> Option<TranscriptEvidenceArtifact> {
+        let artifact = self
+            .evidence_store
+            .as_ref()?
+            .selected_artifact(pending.episode_id)
+            .ok()??;
+        (artifact.generation_id == pending.generation_id
+            && u32::try_from(artifact.spans.len()).ok() == Some(pending.expected_span_count))
+        .then_some(artifact)
     }
+}
+
+fn index_spans(artifact: &TranscriptEvidenceArtifact) -> Vec<RecallIndexSpan> {
+    artifact
+        .spans
+        .iter()
+        .map(|span| RecallIndexSpan {
+            span_id: span.span_id,
+            generation_id: artifact.generation_id,
+            episode_id: span.episode_id,
+            podcast_id: span.podcast_id,
+            text: span.text.clone(),
+        })
+        .collect()
 }
 
 fn evidence_phase_command_id(generation_id: EvidenceGenerationId, phase: &[u8]) -> CommandId {
@@ -141,11 +245,15 @@ fn evidence_phase_command_id(generation_id: EvidenceGenerationId, phase: &[u8]) 
 fn evidence_index_request_id(
     command_id: CommandId,
     generation_id: EvidenceGenerationId,
+    spans: &[EvidenceSpanId],
 ) -> HostRequestId {
     let mut hash = Sha256::new();
-    hash.update(b"pod0-evidence-index-request-v1\0");
+    hash.update(b"pod0-evidence-embedding-request-v2\0");
     hash.update(command_id.into_bytes());
     hash.update(generation_id.into_bytes());
+    for span_id in spans {
+        hash.update(span_id.into_bytes());
+    }
     let digest = hash.finalize();
     let mut bytes = [0_u8; 16];
     bytes.copy_from_slice(&digest[..16]);

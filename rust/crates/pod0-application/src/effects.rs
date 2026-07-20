@@ -5,8 +5,8 @@ use pod0_domain::{
 };
 
 use crate::{
-    OperationStage, RecallCandidateObservation, RecallEmbeddingVector, RecallRerankDocument,
-    RecallRerankObservation, RecallScope,
+    OperationStage, RecallEmbeddingInput, RecallEmbeddingVector, RecallRerankDocument,
+    RecallRerankObservation, RecallSpanEmbeddingObservation,
 };
 
 pub const MAX_FEED_RESPONSE_BYTES: u64 = 8 * 1_024 * 1_024;
@@ -128,24 +128,18 @@ pub enum HostRequest {
         text: String,
         maximum_dimensions: u16,
     },
-    RetrieveRecallCandidates {
-        query_id: RecallQueryId,
-        scope: RecallScope,
-        lexical_query: String,
-        embedding: RecallEmbeddingVector,
-        maximum_vector_candidates: u16,
-        maximum_lexical_candidates: u16,
-        maximum_total_candidates: u16,
+    EmbedRecallSpans {
+        episode_id: EpisodeId,
+        generation_id: EvidenceGenerationId,
+        spans: Vec<RecallEmbeddingInput>,
+        maximum_dimensions: u16,
     },
     RerankRecallCandidates {
         query_id: RecallQueryId,
         query: String,
         candidates: Vec<RecallRerankDocument>,
     },
-    RebuildRecallIndex {
-        episode_id: EpisodeId,
-        generation_id: EvidenceGenerationId,
-    },
+    RemoveLegacyRecallIndexArtifacts,
     Unsupported {
         wire_code: u32,
     },
@@ -182,18 +176,17 @@ pub enum HostObservation {
         query_id: RecallQueryId,
         embedding: RecallEmbeddingVector,
     },
-    RecallCandidatesRetrieved {
-        query_id: RecallQueryId,
-        candidates: Vec<RecallCandidateObservation>,
+    RecallSpansEmbedded {
+        episode_id: EpisodeId,
+        generation_id: EvidenceGenerationId,
+        embeddings: Vec<RecallSpanEmbeddingObservation>,
     },
     RecallCandidatesReranked {
         query_id: RecallQueryId,
         rankings: Vec<RecallRerankObservation>,
     },
-    RecallIndexRebuilt {
-        episode_id: EpisodeId,
-        generation_id: EvidenceGenerationId,
-        indexed_span_count: u32,
+    LegacyRecallIndexArtifactsRemoved {
+        removed_file_count: u8,
     },
     Failed {
         code: HostFailureCode,

@@ -27,6 +27,7 @@ final class Pod0NativeHostDispatcher {
     private let feedHost: any CoreFeedHosting
     private let playbackHost: any CorePlaybackHosting
     let recallHost: any CoreRecallHosting
+    let recallObservationRecorder = CoreRecallObservationRecorder()
     private let now: @MainActor () -> Date
     var activeTasks: [HostRequestId: ActiveTask] = [:]
     var playbackStreams: [HostRequestId: PlaybackStream] = [:]
@@ -50,8 +51,8 @@ final class Pod0NativeHostDispatcher {
 
     func executePendingRequests(from facade: Pod0Facade, maximumCount: UInt16 = 64) {
         for envelope in facade.nextHostRequests(maximumCount: maximumCount) {
-            execute(envelope) { observation in
-                facade.recordHostObservation(observation: observation)
+            execute(envelope) { [weak self] observation in
+                self?.record(observation, for: envelope.request, in: facade)
             }
         }
     }
@@ -90,8 +91,8 @@ final class Pod0NativeHostDispatcher {
                 minimumIntervalMilliseconds: minimumIntervalMilliseconds,
                 delivery: delivery
             )
-        case .embedRecallQuery, .retrieveRecallCandidates,
-             .rerankRecallCandidates, .rebuildRecallIndex:
+        case .embedRecallQuery, .embedRecallSpans, .rerankRecallCandidates,
+             .removeLegacyRecallIndexArtifacts:
             startRecallTask(envelope, delivery: delivery)
         default:
             finish(

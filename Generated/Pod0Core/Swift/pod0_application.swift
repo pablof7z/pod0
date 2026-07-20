@@ -465,6 +465,22 @@ fileprivate final class UniffiHandleMap<T>: @unchecked Sendable {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterUInt8: FfiConverterPrimitive {
+    typealias FfiType = UInt8
+    typealias SwiftType = UInt8
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt8 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: UInt8, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterUInt16: FfiConverterPrimitive {
     typealias FfiType = UInt16
     typealias SwiftType = UInt16
@@ -3091,21 +3107,15 @@ public func FfiConverterTypePublisherChapterObservation_lower(_ value: Publisher
 }
 
 
-public struct RecallCandidateObservation: Equatable, Hashable {
-    public let episodeId: EpisodeId
-    public let generationId: EvidenceGenerationId
+public struct RecallEmbeddingInput: Equatable, Hashable {
     public let spanId: EvidenceSpanId
-    public let vectorRank: UInt16?
-    public let lexicalRank: UInt16?
+    public let text: String
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(episodeId: EpisodeId, generationId: EvidenceGenerationId, spanId: EvidenceSpanId, vectorRank: UInt16?, lexicalRank: UInt16?) {
-        self.episodeId = episodeId
-        self.generationId = generationId
+    public init(spanId: EvidenceSpanId, text: String) {
         self.spanId = spanId
-        self.vectorRank = vectorRank
-        self.lexicalRank = lexicalRank
+        self.text = text
     }
 
 
@@ -3114,30 +3124,24 @@ public struct RecallCandidateObservation: Equatable, Hashable {
 }
 
 #if compiler(>=6)
-extension RecallCandidateObservation: Sendable {}
+extension RecallEmbeddingInput: Sendable {}
 #endif
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public struct FfiConverterTypeRecallCandidateObservation: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RecallCandidateObservation {
+public struct FfiConverterTypeRecallEmbeddingInput: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RecallEmbeddingInput {
         return
-            try RecallCandidateObservation(
-                episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
-                generationId: FfiConverterTypeEvidenceGenerationId.read(from: &buf),
+            try RecallEmbeddingInput(
                 spanId: FfiConverterTypeEvidenceSpanId.read(from: &buf),
-                vectorRank: FfiConverterOptionUInt16.read(from: &buf),
-                lexicalRank: FfiConverterOptionUInt16.read(from: &buf)
+                text: FfiConverterString.read(from: &buf)
         )
     }
 
-    public static func write(_ value: RecallCandidateObservation, into buf: inout [UInt8]) {
-        FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
-        FfiConverterTypeEvidenceGenerationId.write(value.generationId, into: &buf)
+    public static func write(_ value: RecallEmbeddingInput, into buf: inout [UInt8]) {
         FfiConverterTypeEvidenceSpanId.write(value.spanId, into: &buf)
-        FfiConverterOptionUInt16.write(value.vectorRank, into: &buf)
-        FfiConverterOptionUInt16.write(value.lexicalRank, into: &buf)
+        FfiConverterString.write(value.text, into: &buf)
     }
 }
 
@@ -3145,15 +3149,15 @@ public struct FfiConverterTypeRecallCandidateObservation: FfiConverterRustBuffer
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeRecallCandidateObservation_lift(_ buf: RustBuffer) throws -> RecallCandidateObservation {
-    return try FfiConverterTypeRecallCandidateObservation.lift(buf)
+public func FfiConverterTypeRecallEmbeddingInput_lift(_ buf: RustBuffer) throws -> RecallEmbeddingInput {
+    return try FfiConverterTypeRecallEmbeddingInput.lift(buf)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeRecallCandidateObservation_lower(_ value: RecallCandidateObservation) -> RustBuffer {
-    return FfiConverterTypeRecallCandidateObservation.lower(value)
+public func FfiConverterTypeRecallEmbeddingInput_lower(_ value: RecallEmbeddingInput) -> RustBuffer {
+    return FfiConverterTypeRecallEmbeddingInput.lower(value)
 }
 
 
@@ -3622,6 +3626,60 @@ public func FfiConverterTypeRecallScoreProjection_lift(_ buf: RustBuffer) throws
 #endif
 public func FfiConverterTypeRecallScoreProjection_lower(_ value: RecallScoreProjection) -> RustBuffer {
     return FfiConverterTypeRecallScoreProjection.lower(value)
+}
+
+
+public struct RecallSpanEmbeddingObservation: Equatable, Hashable {
+    public let spanId: EvidenceSpanId
+    public let embedding: RecallEmbeddingVector
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(spanId: EvidenceSpanId, embedding: RecallEmbeddingVector) {
+        self.spanId = spanId
+        self.embedding = embedding
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension RecallSpanEmbeddingObservation: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRecallSpanEmbeddingObservation: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RecallSpanEmbeddingObservation {
+        return
+            try RecallSpanEmbeddingObservation(
+                spanId: FfiConverterTypeEvidenceSpanId.read(from: &buf),
+                embedding: FfiConverterTypeRecallEmbeddingVector.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: RecallSpanEmbeddingObservation, into buf: inout [UInt8]) {
+        FfiConverterTypeEvidenceSpanId.write(value.spanId, into: &buf)
+        FfiConverterTypeRecallEmbeddingVector.write(value.embedding, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallSpanEmbeddingObservation_lift(_ buf: RustBuffer) throws -> RecallSpanEmbeddingObservation {
+    return try FfiConverterTypeRecallSpanEmbeddingObservation.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallSpanEmbeddingObservation_lower(_ value: RecallSpanEmbeddingObservation) -> RustBuffer {
+    return FfiConverterTypeRecallSpanEmbeddingObservation.lower(value)
 }
 
 
@@ -4459,6 +4517,7 @@ public enum ApplicationCommand: Equatable, Hashable {
     )
     case rebuildTranscriptEvidence(input: TranscriptEvidenceInput, policy: EvidenceChunkPolicy
     )
+    case commitRecallIndexCutover
     case commitTranscript(expectedSelectionRevision: StateRevision, artifact: TranscriptArtifactInput
     )
     case commitChapter(expectedSelectionRevision: StateRevision, artifact: ChapterArtifactInput
@@ -4548,40 +4607,42 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
         case 15: return .rebuildTranscriptEvidence(input: try FfiConverterTypeTranscriptEvidenceInput.read(from: &buf), policy: try FfiConverterTypeEvidenceChunkPolicy.read(from: &buf)
         )
 
-        case 16: return .commitTranscript(expectedSelectionRevision: try FfiConverterTypeStateRevision.read(from: &buf), artifact: try FfiConverterTypeTranscriptArtifactInput.read(from: &buf)
+        case 16: return .commitRecallIndexCutover
+
+        case 17: return .commitTranscript(expectedSelectionRevision: try FfiConverterTypeStateRevision.read(from: &buf), artifact: try FfiConverterTypeTranscriptArtifactInput.read(from: &buf)
         )
 
-        case 17: return .commitChapter(expectedSelectionRevision: try FfiConverterTypeStateRevision.read(from: &buf), artifact: try FfiConverterTypeChapterArtifactInput.read(from: &buf)
+        case 18: return .commitChapter(expectedSelectionRevision: try FfiConverterTypeStateRevision.read(from: &buf), artifact: try FfiConverterTypeChapterArtifactInput.read(from: &buf)
         )
 
-        case 18: return .createNote(text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), author: try FfiConverterTypeNoteAuthor.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
+        case 19: return .createNote(text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), author: try FfiConverterTypeNoteAuthor.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
         )
 
-        case 19: return .updateNote(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
+        case 20: return .updateNote(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
         )
 
-        case 20: return .setNoteDeleted(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
+        case 21: return .setNoteDeleted(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
         )
 
-        case 21: return .clearNotes(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 22: return .clearNotes(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 22: return .createClip(clipId: try FfiConverterTypeClipId.read(from: &buf), episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), podcastId: try FfiConverterTypePodcastId.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf), source: try FfiConverterTypeClipSource.read(from: &buf)
+        case 23: return .createClip(clipId: try FfiConverterTypeClipId.read(from: &buf), episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), podcastId: try FfiConverterTypePodcastId.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf), source: try FfiConverterTypeClipSource.read(from: &buf)
         )
 
-        case 23: return .updateClip(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf)
+        case 24: return .updateClip(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf)
         )
 
-        case 24: return .setClipDeleted(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
+        case 25: return .setClipDeleted(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
         )
 
-        case 25: return .clearClips(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 26: return .clearClips(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 26: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
+        case 27: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
         )
 
-        case 27: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 28: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -4670,20 +4731,24 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
             FfiConverterTypeEvidenceChunkPolicy.write(policy, into: &buf)
 
 
-        case let .commitTranscript(expectedSelectionRevision,artifact):
+        case .commitRecallIndexCutover:
             writeInt(&buf, Int32(16))
+
+
+        case let .commitTranscript(expectedSelectionRevision,artifact):
+            writeInt(&buf, Int32(17))
             FfiConverterTypeStateRevision.write(expectedSelectionRevision, into: &buf)
             FfiConverterTypeTranscriptArtifactInput.write(artifact, into: &buf)
 
 
         case let .commitChapter(expectedSelectionRevision,artifact):
-            writeInt(&buf, Int32(17))
+            writeInt(&buf, Int32(18))
             FfiConverterTypeStateRevision.write(expectedSelectionRevision, into: &buf)
             FfiConverterTypeChapterArtifactInput.write(artifact, into: &buf)
 
 
         case let .createNote(text,kind,author,target):
-            writeInt(&buf, Int32(18))
+            writeInt(&buf, Int32(19))
             FfiConverterString.write(text, into: &buf)
             FfiConverterTypeNoteKind.write(kind, into: &buf)
             FfiConverterTypeNoteAuthor.write(author, into: &buf)
@@ -4691,7 +4756,7 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .updateNote(noteId,expectedNoteRevision,text,kind,target):
-            writeInt(&buf, Int32(19))
+            writeInt(&buf, Int32(20))
             FfiConverterTypeNoteId.write(noteId, into: &buf)
             FfiConverterTypeNoteRevision.write(expectedNoteRevision, into: &buf)
             FfiConverterString.write(text, into: &buf)
@@ -4700,19 +4765,19 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .setNoteDeleted(noteId,expectedNoteRevision,deleted):
-            writeInt(&buf, Int32(20))
+            writeInt(&buf, Int32(21))
             FfiConverterTypeNoteId.write(noteId, into: &buf)
             FfiConverterTypeNoteRevision.write(expectedNoteRevision, into: &buf)
             FfiConverterBool.write(deleted, into: &buf)
 
 
         case let .clearNotes(expectedCollectionRevision):
-            writeInt(&buf, Int32(21))
+            writeInt(&buf, Int32(22))
             FfiConverterTypeStateRevision.write(expectedCollectionRevision, into: &buf)
 
 
         case let .createClip(clipId,episodeId,podcastId,startMilliseconds,endMilliseconds,caption,speakerId,frozenTranscriptText,source):
-            writeInt(&buf, Int32(22))
+            writeInt(&buf, Int32(23))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypePodcastId.write(podcastId, into: &buf)
@@ -4725,7 +4790,7 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .updateClip(clipId,expectedClipRevision,startMilliseconds,endMilliseconds,caption,speakerId,frozenTranscriptText):
-            writeInt(&buf, Int32(23))
+            writeInt(&buf, Int32(24))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeClipRevision.write(expectedClipRevision, into: &buf)
             FfiConverterUInt64.write(startMilliseconds, into: &buf)
@@ -4736,24 +4801,24 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .setClipDeleted(clipId,expectedClipRevision,deleted):
-            writeInt(&buf, Int32(24))
+            writeInt(&buf, Int32(25))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeClipRevision.write(expectedClipRevision, into: &buf)
             FfiConverterBool.write(deleted, into: &buf)
 
 
         case let .clearClips(expectedCollectionRevision):
-            writeInt(&buf, Int32(25))
+            writeInt(&buf, Int32(26))
             FfiConverterTypeStateRevision.write(expectedCollectionRevision, into: &buf)
 
 
         case let .cancelOperation(cancellationId):
-            writeInt(&buf, Int32(26))
+            writeInt(&buf, Int32(27))
             FfiConverterTypeCancellationId.write(cancellationId, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(27))
+            writeInt(&buf, Int32(28))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -5975,11 +6040,11 @@ public enum HostObservation: Equatable, Hashable {
     )
     case recallQueryEmbedded(queryId: RecallQueryId, embedding: RecallEmbeddingVector
     )
-    case recallCandidatesRetrieved(queryId: RecallQueryId, candidates: [RecallCandidateObservation]
+    case recallSpansEmbedded(episodeId: EpisodeId, generationId: EvidenceGenerationId, embeddings: [RecallSpanEmbeddingObservation]
     )
     case recallCandidatesReranked(queryId: RecallQueryId, rankings: [RecallRerankObservation]
     )
-    case recallIndexRebuilt(episodeId: EpisodeId, generationId: EvidenceGenerationId, indexedSpanCount: UInt32
+    case legacyRecallIndexArtifactsRemoved(removedFileCount: UInt8
     )
     case failed(code: HostFailureCode, safeDetail: String?
     )
@@ -6019,13 +6084,13 @@ public struct FfiConverterTypeHostObservation: FfiConverterRustBuffer {
         case 4: return .recallQueryEmbedded(queryId: try FfiConverterTypeRecallQueryId.read(from: &buf), embedding: try FfiConverterTypeRecallEmbeddingVector.read(from: &buf)
         )
 
-        case 5: return .recallCandidatesRetrieved(queryId: try FfiConverterTypeRecallQueryId.read(from: &buf), candidates: try FfiConverterSequenceTypeRecallCandidateObservation.read(from: &buf)
+        case 5: return .recallSpansEmbedded(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), generationId: try FfiConverterTypeEvidenceGenerationId.read(from: &buf), embeddings: try FfiConverterSequenceTypeRecallSpanEmbeddingObservation.read(from: &buf)
         )
 
         case 6: return .recallCandidatesReranked(queryId: try FfiConverterTypeRecallQueryId.read(from: &buf), rankings: try FfiConverterSequenceTypeRecallRerankObservation.read(from: &buf)
         )
 
-        case 7: return .recallIndexRebuilt(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), generationId: try FfiConverterTypeEvidenceGenerationId.read(from: &buf), indexedSpanCount: try FfiConverterUInt32.read(from: &buf)
+        case 7: return .legacyRecallIndexArtifactsRemoved(removedFileCount: try FfiConverterUInt8.read(from: &buf)
         )
 
         case 8: return .failed(code: try FfiConverterTypeHostFailureCode.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf)
@@ -6071,10 +6136,11 @@ public struct FfiConverterTypeHostObservation: FfiConverterRustBuffer {
             FfiConverterTypeRecallEmbeddingVector.write(embedding, into: &buf)
 
 
-        case let .recallCandidatesRetrieved(queryId,candidates):
+        case let .recallSpansEmbedded(episodeId,generationId,embeddings):
             writeInt(&buf, Int32(5))
-            FfiConverterTypeRecallQueryId.write(queryId, into: &buf)
-            FfiConverterSequenceTypeRecallCandidateObservation.write(candidates, into: &buf)
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeEvidenceGenerationId.write(generationId, into: &buf)
+            FfiConverterSequenceTypeRecallSpanEmbeddingObservation.write(embeddings, into: &buf)
 
 
         case let .recallCandidatesReranked(queryId,rankings):
@@ -6083,11 +6149,9 @@ public struct FfiConverterTypeHostObservation: FfiConverterRustBuffer {
             FfiConverterSequenceTypeRecallRerankObservation.write(rankings, into: &buf)
 
 
-        case let .recallIndexRebuilt(episodeId,generationId,indexedSpanCount):
+        case let .legacyRecallIndexArtifactsRemoved(removedFileCount):
             writeInt(&buf, Int32(7))
-            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
-            FfiConverterTypeEvidenceGenerationId.write(generationId, into: &buf)
-            FfiConverterUInt32.write(indexedSpanCount, into: &buf)
+            FfiConverterUInt8.write(removedFileCount, into: &buf)
 
 
         case let .failed(code,safeDetail):
@@ -6150,12 +6214,11 @@ public enum HostRequest: Equatable, Hashable {
     )
     case embedRecallQuery(queryId: RecallQueryId, text: String, maximumDimensions: UInt16
     )
-    case retrieveRecallCandidates(queryId: RecallQueryId, scope: RecallScope, lexicalQuery: String, embedding: RecallEmbeddingVector, maximumVectorCandidates: UInt16, maximumLexicalCandidates: UInt16, maximumTotalCandidates: UInt16
+    case embedRecallSpans(episodeId: EpisodeId, generationId: EvidenceGenerationId, spans: [RecallEmbeddingInput], maximumDimensions: UInt16
     )
     case rerankRecallCandidates(queryId: RecallQueryId, query: String, candidates: [RecallRerankDocument]
     )
-    case rebuildRecallIndex(episodeId: EpisodeId, generationId: EvidenceGenerationId
-    )
+    case removeLegacyRecallIndexArtifacts
     case unsupported(wireCode: UInt32
     )
 
@@ -6212,14 +6275,13 @@ public struct FfiConverterTypeHostRequest: FfiConverterRustBuffer {
         case 11: return .embedRecallQuery(queryId: try FfiConverterTypeRecallQueryId.read(from: &buf), text: try FfiConverterString.read(from: &buf), maximumDimensions: try FfiConverterUInt16.read(from: &buf)
         )
 
-        case 12: return .retrieveRecallCandidates(queryId: try FfiConverterTypeRecallQueryId.read(from: &buf), scope: try FfiConverterTypeRecallScope.read(from: &buf), lexicalQuery: try FfiConverterString.read(from: &buf), embedding: try FfiConverterTypeRecallEmbeddingVector.read(from: &buf), maximumVectorCandidates: try FfiConverterUInt16.read(from: &buf), maximumLexicalCandidates: try FfiConverterUInt16.read(from: &buf), maximumTotalCandidates: try FfiConverterUInt16.read(from: &buf)
+        case 12: return .embedRecallSpans(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), generationId: try FfiConverterTypeEvidenceGenerationId.read(from: &buf), spans: try FfiConverterSequenceTypeRecallEmbeddingInput.read(from: &buf), maximumDimensions: try FfiConverterUInt16.read(from: &buf)
         )
 
         case 13: return .rerankRecallCandidates(queryId: try FfiConverterTypeRecallQueryId.read(from: &buf), query: try FfiConverterString.read(from: &buf), candidates: try FfiConverterSequenceTypeRecallRerankDocument.read(from: &buf)
         )
 
-        case 14: return .rebuildRecallIndex(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), generationId: try FfiConverterTypeEvidenceGenerationId.read(from: &buf)
-        )
+        case 14: return .removeLegacyRecallIndexArtifacts
 
         case 15: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
@@ -6301,15 +6363,12 @@ public struct FfiConverterTypeHostRequest: FfiConverterRustBuffer {
             FfiConverterUInt16.write(maximumDimensions, into: &buf)
 
 
-        case let .retrieveRecallCandidates(queryId,scope,lexicalQuery,embedding,maximumVectorCandidates,maximumLexicalCandidates,maximumTotalCandidates):
+        case let .embedRecallSpans(episodeId,generationId,spans,maximumDimensions):
             writeInt(&buf, Int32(12))
-            FfiConverterTypeRecallQueryId.write(queryId, into: &buf)
-            FfiConverterTypeRecallScope.write(scope, into: &buf)
-            FfiConverterString.write(lexicalQuery, into: &buf)
-            FfiConverterTypeRecallEmbeddingVector.write(embedding, into: &buf)
-            FfiConverterUInt16.write(maximumVectorCandidates, into: &buf)
-            FfiConverterUInt16.write(maximumLexicalCandidates, into: &buf)
-            FfiConverterUInt16.write(maximumTotalCandidates, into: &buf)
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeEvidenceGenerationId.write(generationId, into: &buf)
+            FfiConverterSequenceTypeRecallEmbeddingInput.write(spans, into: &buf)
+            FfiConverterUInt16.write(maximumDimensions, into: &buf)
 
 
         case let .rerankRecallCandidates(queryId,query,candidates):
@@ -6319,10 +6378,8 @@ public struct FfiConverterTypeHostRequest: FfiConverterRustBuffer {
             FfiConverterSequenceTypeRecallRerankDocument.write(candidates, into: &buf)
 
 
-        case let .rebuildRecallIndex(episodeId,generationId):
+        case .removeLegacyRecallIndexArtifacts:
             writeInt(&buf, Int32(14))
-            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
-            FfiConverterTypeEvidenceGenerationId.write(generationId, into: &buf)
 
 
         case let .unsupported(wireCode):
@@ -6536,6 +6593,8 @@ public enum OperationResult: Equatable, Hashable {
     )
     case evidenceRebuilt(episodeId: EpisodeId, generationId: EvidenceGenerationId, spanCount: UInt32
     )
+    case recallIndexCutoverCommitted(schemaVersion: UInt32, removedLegacyFileCount: UInt8
+    )
     case transcriptCommitted(receipt: TranscriptCommitReceipt
     )
     case chapterCommitted(receipt: ChapterCommitReceipt
@@ -6602,30 +6661,33 @@ public struct FfiConverterTypeOperationResult: FfiConverterRustBuffer {
         case 10: return .evidenceRebuilt(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), generationId: try FfiConverterTypeEvidenceGenerationId.read(from: &buf), spanCount: try FfiConverterUInt32.read(from: &buf)
         )
 
-        case 11: return .transcriptCommitted(receipt: try FfiConverterTypeTranscriptCommitReceipt.read(from: &buf)
+        case 11: return .recallIndexCutoverCommitted(schemaVersion: try FfiConverterUInt32.read(from: &buf), removedLegacyFileCount: try FfiConverterUInt8.read(from: &buf)
         )
 
-        case 12: return .chapterCommitted(receipt: try FfiConverterTypeChapterCommitReceipt.read(from: &buf)
+        case 12: return .transcriptCommitted(receipt: try FfiConverterTypeTranscriptCommitReceipt.read(from: &buf)
         )
 
-        case 13: return .noteCreated(noteId: try FfiConverterTypeNoteId.read(from: &buf)
+        case 13: return .chapterCommitted(receipt: try FfiConverterTypeChapterCommitReceipt.read(from: &buf)
         )
 
-        case 14: return .noteUpdated(noteId: try FfiConverterTypeNoteId.read(from: &buf)
+        case 14: return .noteCreated(noteId: try FfiConverterTypeNoteId.read(from: &buf)
         )
 
-        case 15: return .notesCleared
-
-        case 16: return .clipCreated(clipId: try FfiConverterTypeClipId.read(from: &buf), clipRevision: try FfiConverterTypeClipRevision.read(from: &buf), collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 15: return .noteUpdated(noteId: try FfiConverterTypeNoteId.read(from: &buf)
         )
 
-        case 17: return .clipUpdated(clipId: try FfiConverterTypeClipId.read(from: &buf), clipRevision: try FfiConverterTypeClipRevision.read(from: &buf), collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 16: return .notesCleared
+
+        case 17: return .clipCreated(clipId: try FfiConverterTypeClipId.read(from: &buf), clipRevision: try FfiConverterTypeClipRevision.read(from: &buf), collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 18: return .clipsCleared(collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 18: return .clipUpdated(clipId: try FfiConverterTypeClipId.read(from: &buf), clipRevision: try FfiConverterTypeClipRevision.read(from: &buf), collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 19: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 19: return .clipsCleared(collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        )
+
+        case 20: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -6688,51 +6750,57 @@ public struct FfiConverterTypeOperationResult: FfiConverterRustBuffer {
             FfiConverterUInt32.write(spanCount, into: &buf)
 
 
-        case let .transcriptCommitted(receipt):
+        case let .recallIndexCutoverCommitted(schemaVersion,removedLegacyFileCount):
             writeInt(&buf, Int32(11))
+            FfiConverterUInt32.write(schemaVersion, into: &buf)
+            FfiConverterUInt8.write(removedLegacyFileCount, into: &buf)
+
+
+        case let .transcriptCommitted(receipt):
+            writeInt(&buf, Int32(12))
             FfiConverterTypeTranscriptCommitReceipt.write(receipt, into: &buf)
 
 
         case let .chapterCommitted(receipt):
-            writeInt(&buf, Int32(12))
+            writeInt(&buf, Int32(13))
             FfiConverterTypeChapterCommitReceipt.write(receipt, into: &buf)
 
 
         case let .noteCreated(noteId):
-            writeInt(&buf, Int32(13))
-            FfiConverterTypeNoteId.write(noteId, into: &buf)
-
-
-        case let .noteUpdated(noteId):
             writeInt(&buf, Int32(14))
             FfiConverterTypeNoteId.write(noteId, into: &buf)
 
 
-        case .notesCleared:
+        case let .noteUpdated(noteId):
             writeInt(&buf, Int32(15))
+            FfiConverterTypeNoteId.write(noteId, into: &buf)
+
+
+        case .notesCleared:
+            writeInt(&buf, Int32(16))
 
 
         case let .clipCreated(clipId,clipRevision,collectionRevision):
-            writeInt(&buf, Int32(16))
-            FfiConverterTypeClipId.write(clipId, into: &buf)
-            FfiConverterTypeClipRevision.write(clipRevision, into: &buf)
-            FfiConverterTypeStateRevision.write(collectionRevision, into: &buf)
-
-
-        case let .clipUpdated(clipId,clipRevision,collectionRevision):
             writeInt(&buf, Int32(17))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeClipRevision.write(clipRevision, into: &buf)
             FfiConverterTypeStateRevision.write(collectionRevision, into: &buf)
 
 
-        case let .clipsCleared(collectionRevision):
+        case let .clipUpdated(clipId,clipRevision,collectionRevision):
             writeInt(&buf, Int32(18))
+            FfiConverterTypeClipId.write(clipId, into: &buf)
+            FfiConverterTypeClipRevision.write(clipRevision, into: &buf)
+            FfiConverterTypeStateRevision.write(collectionRevision, into: &buf)
+
+
+        case let .clipsCleared(collectionRevision):
+            writeInt(&buf, Int32(19))
             FfiConverterTypeStateRevision.write(collectionRevision, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(19))
+            writeInt(&buf, Int32(20))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -9602,23 +9670,23 @@ fileprivate struct FfiConverterSequenceTypeOperationProjection: FfiConverterRust
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-fileprivate struct FfiConverterSequenceTypeRecallCandidateObservation: FfiConverterRustBuffer {
-    typealias SwiftType = [RecallCandidateObservation]
+fileprivate struct FfiConverterSequenceTypeRecallEmbeddingInput: FfiConverterRustBuffer {
+    typealias SwiftType = [RecallEmbeddingInput]
 
-    public static func write(_ value: [RecallCandidateObservation], into buf: inout [UInt8]) {
+    public static func write(_ value: [RecallEmbeddingInput], into buf: inout [UInt8]) {
         let len = Int32(value.count)
         writeInt(&buf, len)
         for item in value {
-            FfiConverterTypeRecallCandidateObservation.write(item, into: &buf)
+            FfiConverterTypeRecallEmbeddingInput.write(item, into: &buf)
         }
     }
 
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [RecallCandidateObservation] {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [RecallEmbeddingInput] {
         let len: Int32 = try readInt(&buf)
-        var seq = [RecallCandidateObservation]()
+        var seq = [RecallEmbeddingInput]()
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
-            seq.append(try FfiConverterTypeRecallCandidateObservation.read(from: &buf))
+            seq.append(try FfiConverterTypeRecallEmbeddingInput.read(from: &buf))
         }
         return seq
     }
@@ -9694,6 +9762,31 @@ fileprivate struct FfiConverterSequenceTypeRecallRerankObservation: FfiConverter
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeRecallRerankObservation.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeRecallSpanEmbeddingObservation: FfiConverterRustBuffer {
+    typealias SwiftType = [RecallSpanEmbeddingObservation]
+
+    public static func write(_ value: [RecallSpanEmbeddingObservation], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeRecallSpanEmbeddingObservation.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [RecallSpanEmbeddingObservation] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [RecallSpanEmbeddingObservation]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeRecallSpanEmbeddingObservation.read(from: &buf))
         }
         return seq
     }

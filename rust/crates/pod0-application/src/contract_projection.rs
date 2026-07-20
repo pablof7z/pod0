@@ -213,6 +213,10 @@ pub enum OperationResult {
         generation_id: pod0_domain::EvidenceGenerationId,
         span_count: u32,
     },
+    RecallIndexCutoverCommitted {
+        schema_version: u32,
+        removed_legacy_file_count: u8,
+    },
     TranscriptCommitted {
         receipt: TranscriptCommitReceipt,
     },

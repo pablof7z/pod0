@@ -1,12 +1,13 @@
 use pod0_application::{
-    CommandEnvelope, CoreFailureCode, HostRequest, HostRequestEnvelope,
-    MAX_RECALL_EMBEDDING_DIMENSIONS, MAX_RECALL_EVIDENCE, MAX_RECALL_QUERY_BYTES, OperationResult,
-    OperationStage, RecallEvidenceProjection, RecallQuery, RecallScope, RecallStage,
+    CommandEnvelope, CoreFailureCode, HostRequest, HostRequestEnvelope, MAX_RECALL_EVIDENCE,
+    MAX_RECALL_QUERY_BYTES, OperationResult, OperationStage, RecallEvidenceProjection, RecallQuery,
+    RecallScope, RecallStage,
 };
 use pod0_domain::{
     CancellationId, CommandId, EpisodeId, HostRequestId, RecallQueryId, TranscriptArtifactStatus,
     UnixTimestampMilliseconds,
 };
+use pod0_recall_index::RECALL_INDEX_DIMENSIONS;
 use sha2::{Digest, Sha256};
 
 use crate::runtime_recall_state::{PendingRecall, RecallHostPhase, RecallWorkflow};
@@ -88,14 +89,29 @@ impl FacadeState {
             }
             Ok(true) => {}
         }
+        match self.recall_index.has_ready_scope(query.scope) {
+            Ok(true) => {}
+            Ok(false) => {
+                self.complete_recall(query_id, RecallStage::IndexMissing, Vec::new());
+                return;
+            }
+            Err(_) => {
+                self.fail_recall(
+                    query_id,
+                    RecallStage::IndexUnavailable,
+                    CoreFailureCode::StorageUnavailable,
+                );
+                return;
+            }
+        }
         self.queue_recall_request(
             query_id,
             RecallHostPhase::Embedding,
             HostRequest::EmbedRecallQuery {
                 query_id,
                 text: self.recalls[&query_id].normalized_text.clone(),
-                maximum_dimensions: u16::try_from(MAX_RECALL_EMBEDDING_DIMENSIONS)
-                    .unwrap_or(u16::MAX),
+                maximum_dimensions: u16::try_from(RECALL_INDEX_DIMENSIONS)
+                    .expect("bounded recall dimensions"),
             },
         );
     }
@@ -254,7 +270,6 @@ impl FacadeState {
 fn recall_request_id(command_id: CommandId, phase: RecallHostPhase) -> HostRequestId {
     let tag = match phase {
         RecallHostPhase::Embedding => b"embedding".as_slice(),
-        RecallHostPhase::Retrieval => b"retrieval".as_slice(),
         RecallHostPhase::Reranking => b"reranking".as_slice(),
     };
     let mut hash = Sha256::new();

@@ -14,11 +14,14 @@ fn rebuild_selects_exact_generation_and_exposes_bounded_pages() {
     let request = fixture.base.facade.next_host_requests(1).pop().unwrap();
     assert!(matches!(
         &request.request,
-        HostRequest::RebuildRecallIndex {
+        HostRequest::EmbedRecallSpans {
             episode_id,
             generation_id,
+            spans,
+            ..
         } if *episode_id == fixture.base.episode_id
             && *generation_id == fixture.artifact.generation_id
+            && spans.len() == fixture.artifact.spans.len()
     ));
     let first = evidence_page(&fixture.base.facade, fixture.base.episode_id, 0, 1);
     assert_eq!(first.stage, EvidenceIndexStage::Ready);
@@ -28,7 +31,7 @@ fn rebuild_selects_exact_generation_and_exposes_bounded_pages() {
     assert_eq!(first.spans[0].span_id, fixture.artifact.spans[0].span_id);
     assert_eq!(first.spans[0].text, fixture.artifact.spans[0].text);
 
-    record_rebuild_success(&fixture.base.facade, &request, first.total_spans);
+    record_rebuild_success(&fixture.base.facade, &request);
     let operation = operation(&fixture.base.facade, envelope.command_id);
     assert_eq!(operation.stage, OperationStage::Succeeded);
     assert!(matches!(
@@ -62,7 +65,7 @@ fn interrupted_rebuild_restarts_idempotently_after_facade_reopen() {
     let page = evidence_page(&reopened, fixture.base.episode_id, 0, u16::MAX);
     assert_eq!(page.generation_id, Some(fixture.artifact.generation_id));
 
-    record_rebuild_success(&reopened, &request, page.total_spans);
+    record_rebuild_success(&reopened, &request);
     assert_eq!(
         operation(&reopened, restarted.command_id).stage,
         OperationStage::Succeeded
@@ -88,7 +91,7 @@ fn cancellation_and_malformed_rebuild_observations_fail_closed() {
         .facade
         .snapshot(library_request())
         .state_revision;
-    record_rebuild_success(&cancelled.base.facade, &request, u32::MAX);
+    record_rebuild_success(&cancelled.base.facade, &request);
     assert_eq!(
         cancelled
             .base
@@ -106,7 +109,7 @@ fn cancellation_and_malformed_rebuild_observations_fail_closed() {
     let command = rebuild_command(6, &malformed, input_from_fixture(&malformed));
     malformed.base.facade.dispatch(command.clone());
     let request = malformed.base.facade.next_host_requests(1).pop().unwrap();
-    record_rebuild_success(&malformed.base.facade, &request, u32::MAX);
+    record_rebuild_malformed(&malformed.base.facade, &request);
     let failed = operation(&malformed.base.facade, command.command_id);
     assert_eq!(failed.stage, OperationStage::Failed);
     assert_eq!(
@@ -172,17 +175,15 @@ fn evidence_page(
     value
 }
 
-fn record_rebuild_success(
-    facade: &Pod0Facade,
-    request: &HostRequestEnvelope,
-    indexed_span_count: u32,
-) {
-    let HostRequest::RebuildRecallIndex {
+fn record_rebuild_success(facade: &Pod0Facade, request: &HostRequestEnvelope) {
+    let HostRequest::EmbedRecallSpans {
         episode_id,
         generation_id,
+        spans,
+        ..
     } = &request.request
     else {
-        panic!("expected rebuild request");
+        panic!("expected embedding request");
     };
     facade.record_host_observation(HostObservationEnvelope {
         request_id: request.request_id,
@@ -190,10 +191,48 @@ fn record_rebuild_success(
         observed_request_revision: request.issued_revision,
         sequence_number: 0,
         observed_at: UnixTimestampMilliseconds::new(1_800_000_000_300),
-        observation: HostObservation::RecallIndexRebuilt {
+        observation: HostObservation::RecallSpansEmbedded {
             episode_id: *episode_id,
             generation_id: *generation_id,
-            indexed_span_count,
+            embeddings: spans
+                .iter()
+                .map(|span| RecallSpanEmbeddingObservation {
+                    span_id: span.span_id,
+                    embedding: RecallEmbeddingVector {
+                        values: crate::runtime_recall_test_support::recall_test_embedding(),
+                    },
+                })
+                .collect(),
+        },
+    });
+}
+
+fn record_rebuild_malformed(facade: &Pod0Facade, request: &HostRequestEnvelope) {
+    let HostRequest::EmbedRecallSpans {
+        episode_id,
+        generation_id,
+        spans,
+        ..
+    } = &request.request
+    else {
+        panic!("expected embedding request");
+    };
+    facade.record_host_observation(HostObservationEnvelope {
+        request_id: request.request_id,
+        cancellation_id: request.cancellation_id,
+        observed_request_revision: request.issued_revision,
+        sequence_number: 0,
+        observed_at: UnixTimestampMilliseconds::new(1_800_000_000_300),
+        observation: HostObservation::RecallSpansEmbedded {
+            episode_id: *episode_id,
+            generation_id: *generation_id,
+            embeddings: spans
+                .iter()
+                .map(|span| RecallSpanEmbeddingObservation {
+                    span_id: span.span_id,
+                    embedding: RecallEmbeddingVector { values: vec![1] },
+                })
+                .collect(),
         },
     });
 }

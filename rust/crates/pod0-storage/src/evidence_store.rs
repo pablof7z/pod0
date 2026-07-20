@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use pod0_domain::{EpisodeId, EvidenceGenerationId, PodcastId, TranscriptEvidenceArtifact};
 use rusqlite::{Connection, Transaction, TransactionBehavior};
 
+use crate::evidence_codec::generation_id;
 use crate::evidence_store_read::{read_artifact, read_summary, selected_generation_id};
 use crate::migration_db::{configure, open_connection, user_version, validate_open_database};
 use crate::{CURRENT_SCHEMA_VERSION, EvidenceGenerationSummary, StorageError};
@@ -105,6 +106,29 @@ impl EvidenceStore {
                 |row| row.get(0),
             )
             .map_err(|error| StorageError::sqlite("check selected evidence", error))
+    }
+
+    pub fn selected_generations(&self) -> Result<Vec<EvidenceGenerationSummary>, StorageError> {
+        let connection = open_current(&self.path, true)?;
+        let mut statement = connection
+            .prepare("SELECT generation_id FROM pod0_evidence_selection ORDER BY episode_id")
+            .map_err(|error| StorageError::sqlite("prepare selected evidence", error))?;
+        let generation_ids = statement
+            .query_map([], |row| row.get::<_, Vec<u8>>(0))
+            .map_err(|error| StorageError::sqlite("read selected evidence", error))?
+            .map(|row| {
+                let bytes =
+                    row.map_err(|error| StorageError::sqlite("decode selected evidence", error))?;
+                generation_id(&bytes)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        generation_ids
+            .into_iter()
+            .map(|generation_id| {
+                read_summary(&connection, generation_id)?
+                    .ok_or(StorageError::InvalidEvidenceArtifact)
+            })
+            .collect()
     }
 
     pub(crate) fn write<T>(

@@ -3,34 +3,14 @@ import XCTest
 @testable import Podcastr
 
 final class CoreRecallHostTests: XCTestCase {
-    func testRebuildIsIdempotentAndRecallCapabilitiesPreserveExactCoreIdentity() async throws {
+    func testProviderHostEmbedsQueriesAndStableSpanBatchesThenReranks() async throws {
         let embedder = CountingRecallEmbedder()
-        let index = try VectorIndex(embedder: embedder, inMemory: true, dimensions: 3)
-        let fixture = RecallProjectionFixture()
         let host = CoreRecallHost(
-            projections: fixture,
-            index: index,
             embedder: embedder,
             reranker: ReverseRecallReranker(),
+            legacyIndexURL: temporaryLegacyIndexURL(),
             isRerankingEnabled: { true }
         )
-        let rebuild = HostRequest.rebuildRecallIndex(
-            episodeId: fixture.episodeID,
-            generationId: fixture.generationID
-        )
-
-        let first = await host.execute(rebuild)
-        let second = await host.execute(rebuild)
-
-        XCTAssertEqual(first, .recallIndexRebuilt(
-            episodeId: fixture.episodeID,
-            generationId: fixture.generationID,
-            indexedSpanCount: 2
-        ))
-        XCTAssertEqual(second, first)
-        let embeddingCallCount = await embedder.callCount
-        XCTAssertEqual(embeddingCallCount, 1)
-
         let queryID = RecallQueryId(high: 7, low: 8)
         let embedded = await host.execute(.embedRecallQuery(
             queryId: queryID,
@@ -42,52 +22,64 @@ final class CoreRecallHostTests: XCTestCase {
             embedding: RecallEmbeddingVector(values: [1_000_000, 0, 0])
         ))
 
-        let retrieved = await host.execute(.retrieveRecallCandidates(
-            queryId: queryID,
-            scope: .episode(episodeId: fixture.episodeID),
-            lexicalQuery: "memory",
-            embedding: RecallEmbeddingVector(values: [1_000_000, 0, 0]),
-            maximumVectorCandidates: 2,
-            maximumLexicalCandidates: 2,
-            maximumTotalCandidates: 4
+        let episodeID = EpisodeId(high: 10, low: 11)
+        let generationID = EvidenceGenerationId(high: 12, low: 13)
+        let spans = [
+            RecallEmbeddingInput(
+                spanId: EvidenceSpanId(high: 14, low: 15),
+                text: "A durable memory model connects exact evidence."
+            ),
+            RecallEmbeddingInput(
+                spanId: EvidenceSpanId(high: 16, low: 17),
+                text: "Queue policy remains owned by the shared kernel."
+            ),
+        ]
+        let batch = await host.execute(.embedRecallSpans(
+            episodeId: episodeID,
+            generationId: generationID,
+            spans: spans,
+            maximumDimensions: 3
         ))
-        guard case .recallCandidatesRetrieved(_, let candidates) = retrieved else {
-            return XCTFail("Expected typed raw candidates")
-        }
-        XCTAssertEqual(Set(candidates.map(\.generationId)), [fixture.generationID])
-        XCTAssertEqual(Set(candidates.map(\.spanId)), Set(fixture.spans.map(\.spanId)))
-        let memory = try XCTUnwrap(candidates.first { $0.spanId == fixture.spans[0].spanId })
-        XCTAssertEqual(memory.vectorRank, 1)
-        XCTAssertEqual(memory.lexicalRank, 1)
+        XCTAssertEqual(batch, .recallSpansEmbedded(
+            episodeId: episodeID,
+            generationId: generationID,
+            embeddings: [
+                RecallSpanEmbeddingObservation(
+                    spanId: spans[0].spanId,
+                    embedding: RecallEmbeddingVector(values: [1_000_000, 0, 0])
+                ),
+                RecallSpanEmbeddingObservation(
+                    spanId: spans[1].spanId,
+                    embedding: RecallEmbeddingVector(values: [0, 1_000_000, 0])
+                ),
+            ]
+        ))
 
         let reranked = await host.execute(.rerankRecallCandidates(
             queryId: queryID,
             query: "memory",
-            candidates: fixture.spans.map {
+            candidates: spans.map {
                 RecallRerankDocument(spanId: $0.spanId, excerpt: $0.text)
             }
         ))
         XCTAssertEqual(reranked, .recallCandidatesReranked(
             queryId: queryID,
             rankings: [
-                RecallRerankObservation(spanId: fixture.spans[1].spanId, rank: 1),
-                RecallRerankObservation(spanId: fixture.spans[0].spanId, rank: 2),
+                RecallRerankObservation(spanId: spans[1].spanId, rank: 1),
+                RecallRerankObservation(spanId: spans[0].spanId, rank: 2),
             ]
         ))
+        let callCount = await embedder.callCount
+        XCTAssertEqual(callCount, 2)
     }
 
-    func testProviderFailureMalformedGenerationAndDisabledRerankFailTyped() async throws {
-        let failing = FailingRecallEmbedder()
-        let index = try VectorIndex(embedder: failing, inMemory: true, dimensions: 3)
-        let fixture = RecallProjectionFixture()
+    func testProviderFailureMalformedBatchAndDisabledRerankFailTyped() async {
         let host = CoreRecallHost(
-            projections: fixture,
-            index: index,
-            embedder: failing,
+            embedder: FailingRecallEmbedder(),
             reranker: ReverseRecallReranker(),
+            legacyIndexURL: temporaryLegacyIndexURL(),
             isRerankingEnabled: { false }
         )
-
         let provider = await host.execute(.embedRecallQuery(
             queryId: RecallQueryId(high: 1, low: 1),
             text: "private query",
@@ -97,68 +89,34 @@ final class CoreRecallHostTests: XCTestCase {
             return XCTFail("Expected content-free provider failure")
         }
 
+        let malformed = await host.execute(.embedRecallSpans(
+            episodeId: EpisodeId(high: 1, low: 2),
+            generationId: EvidenceGenerationId(high: 1, low: 3),
+            spans: [],
+            maximumDimensions: 3
+        ))
+        guard case .failed(code: .invalidResponse, safeDetail: _) = malformed else {
+            return XCTFail("Expected malformed batch to fail closed")
+        }
+
         let rerank = await host.execute(.rerankRecallCandidates(
-            queryId: RecallQueryId(high: 1, low: 2),
+            queryId: RecallQueryId(high: 1, low: 4),
             query: "private query",
-            candidates: [RecallRerankDocument(spanId: fixture.spans[0].spanId, excerpt: "text")]
+            candidates: [RecallRerankDocument(
+                spanId: EvidenceSpanId(high: 1, low: 5),
+                excerpt: "text"
+            )]
         ))
         guard case .failed(code: .providerUnavailable, safeDetail: _) = rerank else {
             return XCTFail("Expected disabled reranker fallback signal")
         }
-
-        let stale = await host.execute(.rebuildRecallIndex(
-            episodeId: fixture.episodeID,
-            generationId: EvidenceGenerationId(high: 99, low: 99)
-        ))
-        guard case .failed(code: .indexUnavailable, safeDetail: _) = stale else {
-            return XCTFail("Expected stale generation to fail closed")
-        }
     }
 }
 
-private struct RecallProjectionFixture: CoreEvidenceProjectionProviding {
-    let episodeID = EpisodeId(high: 10, low: 11)
-    let podcastID = PodcastId(high: 12, low: 13)
-    let generationID = EvidenceGenerationId(high: 14, low: 15)
-    let spans: [EvidenceIndexSpanProjection]
-
-    init() {
-        spans = [
-            EvidenceIndexSpanProjection(
-                spanId: EvidenceSpanId(high: 20, low: 21),
-                generationId: generationID,
-                episodeId: episodeID,
-                podcastId: podcastID,
-                text: "A durable memory model connects exact evidence."
-            ),
-            EvidenceIndexSpanProjection(
-                spanId: EvidenceSpanId(high: 22, low: 23),
-                generationId: generationID,
-                episodeId: episodeID,
-                podcastId: podcastID,
-                text: "Queue policy remains owned by the shared kernel."
-            ),
-        ]
-    }
-
-    func evidenceIndexPage(
-        episodeID: EpisodeId,
-        offset: UInt32,
-        maximumItems: UInt16
-    ) -> EvidenceIndexProjection? {
-        let start = Int(offset)
-        let end = min(spans.count, start + Int(maximumItems))
-        let page = start < spans.count ? Array(spans[start..<end]) : []
-        return EvidenceIndexProjection(
-            episodeId: episodeID,
-            stage: .ready,
-            generationId: generationID,
-            transcriptContentDigest: ContentDigest(word0: 1, word1: 2, word2: 3, word3: 4),
-            spans: page,
-            totalSpans: UInt32(spans.count),
-            hasMore: end < spans.count
-        )
-    }
+private func temporaryLegacyIndexURL() -> URL {
+    FileManager.default.temporaryDirectory
+        .appendingPathComponent("pod0-recall-host-\(UUID().uuidString)", isDirectory: true)
+        .appendingPathComponent("vectors.sqlite")
 }
 
 private actor CountingRecallEmbedder: EmbeddingsClient {

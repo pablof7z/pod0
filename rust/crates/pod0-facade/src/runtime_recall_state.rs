@@ -4,7 +4,6 @@ use pod0_domain::{CancellationId, CommandId, RecallQueryId};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum RecallHostPhase {
     Embedding,
-    Retrieval,
     Reranking,
 }
 

@@ -13,7 +13,8 @@ FORBIDDEN = (
     (
         re.compile(
             r"\b(?:struct|class|actor|enum|protocol)\s+"
-            r"(?:RAGSearch|ChunkBuilder|TranscriptHit|ChunkMatch|VectorArtifactReceipt|VectorStore)\b"
+            r"(?:RAGSearch|ChunkBuilder|TranscriptHit|ChunkMatch|VectorArtifactReceipt|"
+            r"VectorStore|VectorIndex|RecallCapabilityService)\b"
         ),
         "deleted Swift recall authority type",
     ),
@@ -32,6 +33,10 @@ DELETED_PATHS = (
     "App/Sources/Knowledge/Chunk.swift",
     "App/Sources/Core/SharedLibraryClient+RecallShadow.swift",
     "App/Sources/Agent/AgentTools+TranscriptEvidence.swift",
+    "App/Sources/Knowledge/VectorIndex.swift",
+    "App/Sources/Knowledge/VectorIndex+CoreRecall.swift",
+    "App/Sources/Knowledge/VectorIndex+CoreRecallRetrieval.swift",
+    "App/Sources/Services/RecallCapabilityService.swift",
 )
 
 REQUIRED_TOKENS = {
@@ -44,10 +49,13 @@ REQUIRED_TOKENS = {
         "RecallResultProjection",
         "RecallEvidenceProjection",
     ),
-    "App/Sources/Knowledge/VectorIndex+CoreRecallRetrieval.swift": (
-        "RecallCandidateObservation",
-        "vectorRank:",
-        "lexicalRank:",
+    "App/Sources/Core/CoreRecallHost.swift": (
+        ".embedRecallSpans(",
+        "RecallSpanEmbeddingObservation",
+    ),
+    "App/Sources/Services/RecallProviderService.swift": (
+        "ProviderEmbeddingsClient",
+        "owns no durable index",
     ),
 }
 

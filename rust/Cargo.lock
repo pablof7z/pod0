@@ -1548,6 +1548,7 @@ version = "0.1.0"
 dependencies = [
  "pod0-application",
  "pod0-domain",
+ "pod0-recall-index",
  "pod0-storage",
  "rusqlite",
  "sha2",
@@ -1563,7 +1564,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pod0-recall-index-spike"
+name = "pod0-recall-index"
 version = "0.1.0"
 dependencies = [
  "libc",
@@ -1572,6 +1573,7 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "sha2",
  "sqlite-vec",
  "tempfile",
 ]
