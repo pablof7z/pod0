@@ -1,0 +1,135 @@
+{
+  "evidence_version": 1,
+  "recorded_at": "2026-07-20T07:22:00Z",
+  "issues": [105, 106],
+  "environment": {
+    "hardware": "Apple M2 Mac mini, 24 GB RAM",
+    "host_os": "macOS 26.4 (25E246)",
+    "xcode": "26.6 (17F113)",
+    "ios_simulator": "iPhone 17 Pro, iOS 26.5, ARM64",
+    "android_runtime": "AOSP Android 14/API 34 emulator, ARM64",
+    "rust": "1.93.0",
+    "dimensions": 1024,
+    "spans_per_episode": 100,
+    "warm_samples": 20
+  },
+  "method": {
+    "native": "Release XCTest with ENABLE_TESTABILITY=YES via xcodebuildmcp",
+    "rust": "release benchmark executable spawned inside the iOS simulator",
+    "parity_fixture": "Fixtures/CoreKnowledge/recall-index-v1.json",
+    "candidate_limit": 40,
+    "notes": [
+      "Peak RSS is a process envelope and is not directly comparable.",
+      "Executable sizes describe different artifacts and are not incremental app deltas."
+    ]
+  },
+  "apple_simulator_release": [
+    {
+      "backend": "swift-sqlite-vec-v0.1.6",
+      "spans": 500,
+      "rebuild_ms": 102.051917,
+      "cold_ms": 8.945709,
+      "warm_p50_ms": 5.45725,
+      "warm_p95_ms": 7.106584,
+      "index_bytes": 21422080,
+      "peak_rss_bytes": 323026944,
+      "executable_bytes": 36165328,
+      "cancellation_honored": false,
+      "cancellation_response_ms": 5.282875
+    },
+    {
+      "backend": "rust-sqlite-vec-v0.1.9",
+      "spans": 500,
+      "rebuild_ms": 18.8015,
+      "cold_ms": 1.4795,
+      "warm_p50_ms": 1.169416,
+      "warm_p95_ms": 1.1945,
+      "index_bytes": 2998272,
+      "peak_rss_bytes": 27787264,
+      "executable_bytes": 2471264,
+      "cancellation_honored": true,
+      "cancellation_response_ms": 0.000042
+    },
+    {
+      "backend": "swift-sqlite-vec-v0.1.6",
+      "spans": 5000,
+      "rebuild_ms": 2294.015958,
+      "cold_ms": 49.275167,
+      "warm_p50_ms": 43.809125,
+      "warm_p95_ms": 49.793167,
+      "index_bytes": 213471232,
+      "peak_rss_bytes": 323076096,
+      "executable_bytes": 36165328,
+      "cancellation_honored": false,
+      "cancellation_response_ms": 41.728292
+    },
+    {
+      "backend": "rust-sqlite-vec-v0.1.9",
+      "spans": 5000,
+      "rebuild_ms": 170.505791,
+      "cold_ms": 8.985666,
+      "warm_p50_ms": 8.425,
+      "warm_p95_ms": 8.506833,
+      "index_bytes": 29171712,
+      "peak_rss_bytes": 27901952,
+      "executable_bytes": 2471264,
+      "cancellation_honored": true,
+      "cancellation_response_ms": 0.000041
+    },
+    {
+      "backend": "swift-sqlite-vec-v0.1.6",
+      "spans": 20000,
+      "rebuild_ms": 30912.7505,
+      "cold_ms": 542.917458,
+      "warm_p50_ms": 171.236292,
+      "warm_p95_ms": 203.691375,
+      "index_bytes": 853737472,
+      "peak_rss_bytes": 318193664,
+      "executable_bytes": 36165328,
+      "cancellation_honored": false,
+      "cancellation_response_ms": 166.593375
+    },
+    {
+      "backend": "rust-sqlite-vec-v0.1.9",
+      "spans": 20000,
+      "rebuild_ms": 710.648583,
+      "cold_ms": 34.553458,
+      "warm_p50_ms": 33.959709,
+      "warm_p95_ms": 34.966125,
+      "index_bytes": 116555776,
+      "peak_rss_bytes": 28033024,
+      "executable_bytes": 2471264,
+      "cancellation_honored": true,
+      "cancellation_response_ms": 0.000083
+    }
+  ],
+  "runtime_smokes": {
+    "ios_26_5_arm64": {
+      "spans": 500,
+      "sqlite_vec_version": "v0.1.9",
+      "candidate_count": 20,
+      "passed": true
+    },
+    "android_api_34_arm64": {
+      "spans": 500,
+      "sqlite_vec_version": "v0.1.9",
+      "rebuild_ms": 29.815583,
+      "warm_p95_ms": 0.928208,
+      "index_bytes": 2998272,
+      "candidate_count": 20,
+      "passed": true
+    }
+  },
+  "compile_targets": [
+    "aarch64-apple-ios",
+    "aarch64-apple-ios-sim",
+    "x86_64-apple-ios",
+    "aarch64-linux-android-api23",
+    "x86_64-linux-android-api23"
+  ],
+  "privacy": {
+    "prototype_network_dependencies": 0,
+    "private_text_in_errors_or_debug": false,
+    "benchmark_outputs_text": false
+  }
+}

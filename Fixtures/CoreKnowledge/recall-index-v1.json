@@ -1,0 +1,47 @@
+{
+  "fixture_version": 1,
+  "dimensions": 4,
+  "lexical_query": "needle evidence",
+  "query_embedding": [1000000, 0, 0, 0],
+  "query_episode_low": 1,
+  "spans": [
+    {
+      "span_low": 1,
+      "generation_low": 11,
+      "episode_low": 1,
+      "podcast_low": 21,
+      "text": "needle evidence for durable podcast recall",
+      "embedding": [1000000, 0, 0, 0]
+    },
+    {
+      "span_low": 2,
+      "generation_low": 11,
+      "episode_low": 1,
+      "podcast_low": 21,
+      "text": "needle context with an exact source",
+      "embedding": [900000, 100000, 0, 0]
+    },
+    {
+      "span_low": 3,
+      "generation_low": 11,
+      "episode_low": 1,
+      "podcast_low": 21,
+      "text": "background discussion about another topic",
+      "embedding": [0, 1000000, 0, 0]
+    },
+    {
+      "span_low": 4,
+      "generation_low": 12,
+      "episode_low": 2,
+      "podcast_low": 21,
+      "text": "needle evidence from a different episode",
+      "embedding": [800000, 200000, 0, 0]
+    }
+  ],
+  "expected": [
+    {"span_low": 1, "vector_rank": 1, "lexical_rank": 1},
+    {"span_low": 2, "vector_rank": 2, "lexical_rank": null},
+    {"span_low": 3, "vector_rank": 3, "lexical_rank": null}
+  ],
+  "expected_ranked_span_lows": [1, 2, 3]
+}

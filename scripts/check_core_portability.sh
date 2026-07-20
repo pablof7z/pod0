@@ -61,8 +61,15 @@ done
 "$SCRIPT_DIR/build_pod0_core_apple.sh"
 
 cd "$REPO_ROOT/rust"
+for target in aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios; do
+  cargo build -p pod0-recall-index-spike \
+    --bin pod0-recall-index-benchmark --release --locked --target "$target"
+done
 cargo ndk -t arm64-v8a -P "$ANDROID_API_LEVEL" \
   check --workspace --all-targets --all-features --locked
+cargo ndk -t arm64-v8a -t x86_64 -P "$ANDROID_API_LEVEL" \
+  build -p pod0-recall-index-spike \
+  --bin pod0-recall-index-benchmark --release --locked
 
 FACADE_VERSION=$(sed -nE 's/^version = "([^"]+)"$/\1/p' Cargo.toml | head -n 1)
 SCHEMA_VERSION=$(sed -nE \
@@ -77,6 +84,19 @@ ARM_LIBRARY="$ANDROID_OUTPUT/arm64-v8a/libpod0_facade.so"
 X86_LIBRARY="$ANDROID_OUTPUT/x86_64/libpod0_facade.so"
 file "$ARM_LIBRARY" | grep -q "ARM aarch64"
 file "$X86_LIBRARY" | grep -q "x86-64"
+CARGO_OUTPUT=$(cargo metadata --format-version 1 --no-deps --locked \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["target_directory"])')
+file "$CARGO_OUTPUT/aarch64-apple-ios/release/pod0-recall-index-benchmark" \
+  | grep -q "Mach-O 64-bit executable arm64"
+file "$CARGO_OUTPUT/aarch64-apple-ios-sim/release/pod0-recall-index-benchmark" \
+  | grep -q "Mach-O 64-bit executable arm64"
+file "$CARGO_OUTPUT/x86_64-apple-ios/release/pod0-recall-index-benchmark" \
+  | grep -q "Mach-O 64-bit executable x86_64"
+file "$CARGO_OUTPUT/aarch64-linux-android/release/pod0-recall-index-benchmark" \
+  | grep -q "ARM aarch64"
+file "$CARGO_OUTPUT/x86_64-linux-android/release/pod0-recall-index-benchmark" \
+  | grep -q "x86-64"
 
 echo "Apple device/simulator and Android API $ANDROID_API_LEVEL core portability passed"
+echo "Recall-index evidence binaries compile for every guarded mobile target"
 echo "Android artifacts: $ANDROID_OUTPUT"

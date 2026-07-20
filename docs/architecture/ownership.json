@@ -275,17 +275,30 @@
       "includes": ["App/Sources/Knowledge/UtilityLLMClient.swift", "App/Sources/Knowledge/UtilityLLMFailureMapping.swift"]
     },
     {
-      "id": "temporary-recall-capability-host",
+      "id": "shared-recall-execution-index",
+      "classification": "shared_rust_now",
+      "current_owner": "Swift sqlite-vec execution index pending the one-way cutover",
+      "target_owner": "Pod0 Rust knowledge/application storage behind the typed facade",
+      "reason": "ADR-0006 proves portable performance and selects Rust ownership for reconstructible schema, rebuild, scoped retrieval, recovery, limits, and cancellation.",
+      "boundary": "Rust consumes stable evidence and typed embedding observations, then returns only Rust-ranked recall projections; native code never owns raw lane policy or index state.",
+      "persisted_state": "A versioned disposable sqlite-vec/FTS index rebuilt exclusively from canonical Rust evidence and valid embedding observations.",
+      "migration_issues": [59, 105, 106],
+      "deletion_target": "Issue #106 deletes Swift VectorIndex execution, its recall schema/query extensions, and the SQLiteVec package after verified single-writer cutover.",
+      "priority": "high",
+      "includes": ["App/Sources/Knowledge/VectorIndex.swift", "App/Sources/Knowledge/VectorIndex+CoreRecall.swift", "App/Sources/Knowledge/VectorIndex+CoreRecallRetrieval.swift", "App/Sources/Services/RecallCapabilityService.swift"]
+    },
+    {
+      "id": "temporary-recall-provider-capabilities",
       "classification": "temporary_swift",
-      "current_owner": "Swift provider and sqlite-vec capability host",
-      "target_owner": "Rust-owned retrieval backend or a retained typed platform capability selected by M3 portability evidence",
-      "reason": "The cutover removes Swift product authority now while preserving iOS velocity; the host stores only reconstructible rows and returns raw observations.",
-      "boundary": "Consume bounded typed rebuild/retrieval requests and return exact generation/span identities with raw lane ranks; never select citations or expose final recall answers.",
-      "persisted_state": "A disposable sqlite-vec/FTS capability index rebuilt exclusively from the Rust-selected evidence projection.",
-      "migration_issues": [59, 105],
-      "deletion_target": "Delete this Swift host if the M3 backend proof selects Rust; otherwise reclassify the proven provider/index executor as native by design without expanding its typed boundary.",
-      "priority": "next",
-      "includes": ["App/Sources/Knowledge/EmbeddingsClient.swift", "App/Sources/Knowledge/OllamaEmbeddingsClient.swift", "App/Sources/Knowledge/ProviderEmbeddingsClient.swift", "App/Sources/Knowledge/RerankerClient.swift", "App/Sources/Knowledge/VectorIndex.swift", "App/Sources/Knowledge/VectorIndex+CoreRecall.swift", "App/Sources/Knowledge/VectorIndex+CoreRecallRetrieval.swift", "App/Sources/Services/RecallCapabilityService.swift"]
+      "current_owner": "Swift provider selection, batching, network execution, and error mapping",
+      "target_owner": "Native provider execution adapters driven by bounded typed Rust requests",
+      "reason": "Provider credentials and platform networking remain native, but current Swift files still contain selection and workflow policy that #106 must remove from the permanent adapter.",
+      "boundary": "Execute a bounded embedding or reranking request and return ordered typed observations/failures; never select evidence, retry, fall back, rank, or commit durable state.",
+      "persisted_state": "No index or canonical evidence; provider settings and cost signals use their separately classified stores.",
+      "migration_issues": [59, 106],
+      "deletion_target": "Issue #106 deletes provider selection, retry, fallback, and workflow policy from these files, retaining only native credential/network adapters.",
+      "priority": "high",
+      "includes": ["App/Sources/Knowledge/EmbeddingsClient.swift", "App/Sources/Knowledge/OllamaEmbeddingsClient.swift", "App/Sources/Knowledge/ProviderEmbeddingsClient.swift", "App/Sources/Knowledge/RerankerClient.swift"]
     },
     {
       "id": "shared-agent-application-policy",
