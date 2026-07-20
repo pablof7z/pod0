@@ -1002,6 +1002,504 @@ public func FfiConverterTypeProjectionSubscriber_lower(_ value: ProjectionSubscr
 
 
 
+public struct LegacyChapterBackupEvidence: Equatable, Hashable {
+    public let databaseDigest: ContentDigest
+    public let databaseByteCount: UInt64
+    public let fileCount: UInt32
+    public let fileByteCount: UInt64
+    public let reusedDatabase: Bool
+    public let reusedFiles: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(databaseDigest: ContentDigest, databaseByteCount: UInt64, fileCount: UInt32, fileByteCount: UInt64, reusedDatabase: Bool, reusedFiles: UInt32) {
+        self.databaseDigest = databaseDigest
+        self.databaseByteCount = databaseByteCount
+        self.fileCount = fileCount
+        self.fileByteCount = fileByteCount
+        self.reusedDatabase = reusedDatabase
+        self.reusedFiles = reusedFiles
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyChapterBackupEvidence: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyChapterBackupEvidence: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyChapterBackupEvidence {
+        return
+            try LegacyChapterBackupEvidence(
+                databaseDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                databaseByteCount: FfiConverterUInt64.read(from: &buf),
+                fileCount: FfiConverterUInt32.read(from: &buf),
+                fileByteCount: FfiConverterUInt64.read(from: &buf),
+                reusedDatabase: FfiConverterBool.read(from: &buf),
+                reusedFiles: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyChapterBackupEvidence, into buf: inout [UInt8]) {
+        FfiConverterTypeContentDigest.write(value.databaseDigest, into: &buf)
+        FfiConverterUInt64.write(value.databaseByteCount, into: &buf)
+        FfiConverterUInt32.write(value.fileCount, into: &buf)
+        FfiConverterUInt64.write(value.fileByteCount, into: &buf)
+        FfiConverterBool.write(value.reusedDatabase, into: &buf)
+        FfiConverterUInt32.write(value.reusedFiles, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyChapterBackupEvidence_lift(_ buf: RustBuffer) throws -> LegacyChapterBackupEvidence {
+    return try FfiConverterTypeLegacyChapterBackupEvidence.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyChapterBackupEvidence_lower(_ value: LegacyChapterBackupEvidence) -> RustBuffer {
+    return FfiConverterTypeLegacyChapterBackupEvidence.lower(value)
+}
+
+
+public struct LegacyChapterImportPlan: Equatable, Hashable {
+    public let sourceKind: LegacyChapterSourceKind
+    public let sourceGeneration: UInt64
+    public let sourceFileIdentity: ContentDigest
+    public let sourceDatabaseByteCount: UInt64
+    public let sourceDatabaseDigest: ContentDigest
+    public let sourceSelectionDigest: ContentDigest
+    public let evidenceCount: UInt32
+    public let canonicalArtifactCount: UInt32
+    public let selectedCount: UInt32
+    public let blockedCount: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sourceKind: LegacyChapterSourceKind, sourceGeneration: UInt64, sourceFileIdentity: ContentDigest, sourceDatabaseByteCount: UInt64, sourceDatabaseDigest: ContentDigest, sourceSelectionDigest: ContentDigest, evidenceCount: UInt32, canonicalArtifactCount: UInt32, selectedCount: UInt32, blockedCount: UInt32) {
+        self.sourceKind = sourceKind
+        self.sourceGeneration = sourceGeneration
+        self.sourceFileIdentity = sourceFileIdentity
+        self.sourceDatabaseByteCount = sourceDatabaseByteCount
+        self.sourceDatabaseDigest = sourceDatabaseDigest
+        self.sourceSelectionDigest = sourceSelectionDigest
+        self.evidenceCount = evidenceCount
+        self.canonicalArtifactCount = canonicalArtifactCount
+        self.selectedCount = selectedCount
+        self.blockedCount = blockedCount
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyChapterImportPlan: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyChapterImportPlan: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyChapterImportPlan {
+        return
+            try LegacyChapterImportPlan(
+                sourceKind: FfiConverterTypeLegacyChapterSourceKind.read(from: &buf),
+                sourceGeneration: FfiConverterUInt64.read(from: &buf),
+                sourceFileIdentity: FfiConverterTypeContentDigest.read(from: &buf),
+                sourceDatabaseByteCount: FfiConverterUInt64.read(from: &buf),
+                sourceDatabaseDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                sourceSelectionDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                evidenceCount: FfiConverterUInt32.read(from: &buf),
+                canonicalArtifactCount: FfiConverterUInt32.read(from: &buf),
+                selectedCount: FfiConverterUInt32.read(from: &buf),
+                blockedCount: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyChapterImportPlan, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyChapterSourceKind.write(value.sourceKind, into: &buf)
+        FfiConverterUInt64.write(value.sourceGeneration, into: &buf)
+        FfiConverterTypeContentDigest.write(value.sourceFileIdentity, into: &buf)
+        FfiConverterUInt64.write(value.sourceDatabaseByteCount, into: &buf)
+        FfiConverterTypeContentDigest.write(value.sourceDatabaseDigest, into: &buf)
+        FfiConverterTypeContentDigest.write(value.sourceSelectionDigest, into: &buf)
+        FfiConverterUInt32.write(value.evidenceCount, into: &buf)
+        FfiConverterUInt32.write(value.canonicalArtifactCount, into: &buf)
+        FfiConverterUInt32.write(value.selectedCount, into: &buf)
+        FfiConverterUInt32.write(value.blockedCount, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyChapterImportPlan_lift(_ buf: RustBuffer) throws -> LegacyChapterImportPlan {
+    return try FfiConverterTypeLegacyChapterImportPlan.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyChapterImportPlan_lower(_ value: LegacyChapterImportPlan) -> RustBuffer {
+    return FfiConverterTypeLegacyChapterImportPlan.lower(value)
+}
+
+
+public struct LegacyChapterImportReport: Equatable, Hashable {
+    public let importId: CommandId
+    public let plan: LegacyChapterImportPlan
+    public let targetRevision: StateRevision
+    public let backup: LegacyChapterBackupEvidence
+    public let state: LegacyChapterImportState
+    public let diagnosticCode: String?
+    public let reusedExisting: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(importId: CommandId, plan: LegacyChapterImportPlan, targetRevision: StateRevision, backup: LegacyChapterBackupEvidence, state: LegacyChapterImportState, diagnosticCode: String?, reusedExisting: Bool) {
+        self.importId = importId
+        self.plan = plan
+        self.targetRevision = targetRevision
+        self.backup = backup
+        self.state = state
+        self.diagnosticCode = diagnosticCode
+        self.reusedExisting = reusedExisting
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyChapterImportReport: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyChapterImportReport: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyChapterImportReport {
+        return
+            try LegacyChapterImportReport(
+                importId: FfiConverterTypeCommandId.read(from: &buf),
+                plan: FfiConverterTypeLegacyChapterImportPlan.read(from: &buf),
+                targetRevision: FfiConverterTypeStateRevision.read(from: &buf),
+                backup: FfiConverterTypeLegacyChapterBackupEvidence.read(from: &buf),
+                state: FfiConverterTypeLegacyChapterImportState.read(from: &buf),
+                diagnosticCode: FfiConverterOptionString.read(from: &buf),
+                reusedExisting: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyChapterImportReport, into buf: inout [UInt8]) {
+        FfiConverterTypeCommandId.write(value.importId, into: &buf)
+        FfiConverterTypeLegacyChapterImportPlan.write(value.plan, into: &buf)
+        FfiConverterTypeStateRevision.write(value.targetRevision, into: &buf)
+        FfiConverterTypeLegacyChapterBackupEvidence.write(value.backup, into: &buf)
+        FfiConverterTypeLegacyChapterImportState.write(value.state, into: &buf)
+        FfiConverterOptionString.write(value.diagnosticCode, into: &buf)
+        FfiConverterBool.write(value.reusedExisting, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyChapterImportReport_lift(_ buf: RustBuffer) throws -> LegacyChapterImportReport {
+    return try FfiConverterTypeLegacyChapterImportReport.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyChapterImportReport_lower(_ value: LegacyChapterImportReport) -> RustBuffer {
+    return FfiConverterTypeLegacyChapterImportReport.lower(value)
+}
+
+
+public struct LegacyChapterImportVerification: Equatable, Hashable {
+    public let report: LegacyChapterImportReport
+    public let verifiedEvidenceCount: UInt32
+    public let verifiedArtifactCount: UInt32
+    public let verifiedChapterCount: UInt64
+    public let verifiedAdSpanCount: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(report: LegacyChapterImportReport, verifiedEvidenceCount: UInt32, verifiedArtifactCount: UInt32, verifiedChapterCount: UInt64, verifiedAdSpanCount: UInt64) {
+        self.report = report
+        self.verifiedEvidenceCount = verifiedEvidenceCount
+        self.verifiedArtifactCount = verifiedArtifactCount
+        self.verifiedChapterCount = verifiedChapterCount
+        self.verifiedAdSpanCount = verifiedAdSpanCount
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyChapterImportVerification: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyChapterImportVerification: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyChapterImportVerification {
+        return
+            try LegacyChapterImportVerification(
+                report: FfiConverterTypeLegacyChapterImportReport.read(from: &buf),
+                verifiedEvidenceCount: FfiConverterUInt32.read(from: &buf),
+                verifiedArtifactCount: FfiConverterUInt32.read(from: &buf),
+                verifiedChapterCount: FfiConverterUInt64.read(from: &buf),
+                verifiedAdSpanCount: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyChapterImportVerification, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyChapterImportReport.write(value.report, into: &buf)
+        FfiConverterUInt32.write(value.verifiedEvidenceCount, into: &buf)
+        FfiConverterUInt32.write(value.verifiedArtifactCount, into: &buf)
+        FfiConverterUInt64.write(value.verifiedChapterCount, into: &buf)
+        FfiConverterUInt64.write(value.verifiedAdSpanCount, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyChapterImportVerification_lift(_ buf: RustBuffer) throws -> LegacyChapterImportVerification {
+    return try FfiConverterTypeLegacyChapterImportVerification.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyChapterImportVerification_lower(_ value: LegacyChapterImportVerification) -> RustBuffer {
+    return FfiConverterTypeLegacyChapterImportVerification.lower(value)
+}
+
+
+public struct LegacyChapterMigrationFailure: Equatable, Hashable {
+    public let code: LegacyChapterMigrationFailureCode
+    public let diagnosticCode: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(code: LegacyChapterMigrationFailureCode, diagnosticCode: String) {
+        self.code = code
+        self.diagnosticCode = diagnosticCode
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyChapterMigrationFailure: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyChapterMigrationFailure: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyChapterMigrationFailure {
+        return
+            try LegacyChapterMigrationFailure(
+                code: FfiConverterTypeLegacyChapterMigrationFailureCode.read(from: &buf),
+                diagnosticCode: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyChapterMigrationFailure, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyChapterMigrationFailureCode.write(value.code, into: &buf)
+        FfiConverterString.write(value.diagnosticCode, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyChapterMigrationFailure_lift(_ buf: RustBuffer) throws -> LegacyChapterMigrationFailure {
+    return try FfiConverterTypeLegacyChapterMigrationFailure.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyChapterMigrationFailure_lower(_ value: LegacyChapterMigrationFailure) -> RustBuffer {
+    return FfiConverterTypeLegacyChapterMigrationFailure.lower(value)
+}
+
+
+public struct LegacyChapterMigrationProjection: Equatable, Hashable {
+    public let stage: LegacyChapterMigrationStage
+    public let plan: LegacyChapterImportPlan?
+    public let report: LegacyChapterImportReport?
+    public let verification: LegacyChapterImportVerification?
+    public let rollbackExport: LegacyChapterRollbackExportReport?
+    public let failure: LegacyChapterMigrationFailure?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(stage: LegacyChapterMigrationStage, plan: LegacyChapterImportPlan?, report: LegacyChapterImportReport?, verification: LegacyChapterImportVerification?, rollbackExport: LegacyChapterRollbackExportReport?, failure: LegacyChapterMigrationFailure?) {
+        self.stage = stage
+        self.plan = plan
+        self.report = report
+        self.verification = verification
+        self.rollbackExport = rollbackExport
+        self.failure = failure
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyChapterMigrationProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyChapterMigrationProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyChapterMigrationProjection {
+        return
+            try LegacyChapterMigrationProjection(
+                stage: FfiConverterTypeLegacyChapterMigrationStage.read(from: &buf),
+                plan: FfiConverterOptionTypeLegacyChapterImportPlan.read(from: &buf),
+                report: FfiConverterOptionTypeLegacyChapterImportReport.read(from: &buf),
+                verification: FfiConverterOptionTypeLegacyChapterImportVerification.read(from: &buf),
+                rollbackExport: FfiConverterOptionTypeLegacyChapterRollbackExportReport.read(from: &buf),
+                failure: FfiConverterOptionTypeLegacyChapterMigrationFailure.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyChapterMigrationProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyChapterMigrationStage.write(value.stage, into: &buf)
+        FfiConverterOptionTypeLegacyChapterImportPlan.write(value.plan, into: &buf)
+        FfiConverterOptionTypeLegacyChapterImportReport.write(value.report, into: &buf)
+        FfiConverterOptionTypeLegacyChapterImportVerification.write(value.verification, into: &buf)
+        FfiConverterOptionTypeLegacyChapterRollbackExportReport.write(value.rollbackExport, into: &buf)
+        FfiConverterOptionTypeLegacyChapterMigrationFailure.write(value.failure, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyChapterMigrationProjection_lift(_ buf: RustBuffer) throws -> LegacyChapterMigrationProjection {
+    return try FfiConverterTypeLegacyChapterMigrationProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyChapterMigrationProjection_lower(_ value: LegacyChapterMigrationProjection) -> RustBuffer {
+    return FfiConverterTypeLegacyChapterMigrationProjection.lower(value)
+}
+
+
+public struct LegacyChapterRollbackExportReport: Equatable, Hashable {
+    public let bundlePath: String
+    public let formatVersion: UInt32
+    public let coreSchemaVersion: UInt32
+    public let sourceGeneration: UInt64
+    public let evidenceCount: UInt32
+    public let artifactCount: UInt32
+    public let bundleDigest: ContentDigest
+    public let reusedExisting: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(bundlePath: String, formatVersion: UInt32, coreSchemaVersion: UInt32, sourceGeneration: UInt64, evidenceCount: UInt32, artifactCount: UInt32, bundleDigest: ContentDigest, reusedExisting: Bool) {
+        self.bundlePath = bundlePath
+        self.formatVersion = formatVersion
+        self.coreSchemaVersion = coreSchemaVersion
+        self.sourceGeneration = sourceGeneration
+        self.evidenceCount = evidenceCount
+        self.artifactCount = artifactCount
+        self.bundleDigest = bundleDigest
+        self.reusedExisting = reusedExisting
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyChapterRollbackExportReport: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyChapterRollbackExportReport: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyChapterRollbackExportReport {
+        return
+            try LegacyChapterRollbackExportReport(
+                bundlePath: FfiConverterString.read(from: &buf),
+                formatVersion: FfiConverterUInt32.read(from: &buf),
+                coreSchemaVersion: FfiConverterUInt32.read(from: &buf),
+                sourceGeneration: FfiConverterUInt64.read(from: &buf),
+                evidenceCount: FfiConverterUInt32.read(from: &buf),
+                artifactCount: FfiConverterUInt32.read(from: &buf),
+                bundleDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                reusedExisting: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyChapterRollbackExportReport, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.bundlePath, into: &buf)
+        FfiConverterUInt32.write(value.formatVersion, into: &buf)
+        FfiConverterUInt32.write(value.coreSchemaVersion, into: &buf)
+        FfiConverterUInt64.write(value.sourceGeneration, into: &buf)
+        FfiConverterUInt32.write(value.evidenceCount, into: &buf)
+        FfiConverterUInt32.write(value.artifactCount, into: &buf)
+        FfiConverterTypeContentDigest.write(value.bundleDigest, into: &buf)
+        FfiConverterBool.write(value.reusedExisting, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyChapterRollbackExportReport_lift(_ buf: RustBuffer) throws -> LegacyChapterRollbackExportReport {
+    return try FfiConverterTypeLegacyChapterRollbackExportReport.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyChapterRollbackExportReport_lower(_ value: LegacyChapterRollbackExportReport) -> RustBuffer {
+    return FfiConverterTypeLegacyChapterRollbackExportReport.lower(value)
+}
+
+
 public struct LegacyClipBackupEvidence: Equatable, Hashable {
     public let sourceKind: LegacyListeningSourceKind
     public let sourceHash: String
@@ -2265,6 +2763,375 @@ public func FfiConverterTypeFacadeOpenError_lower(_ value: FacadeOpenError) -> R
 }
 
 
+
+public enum LegacyChapterImportState: Equatable, Hashable {
+
+    case staged
+    case verified
+    case imported
+    case corrupt
+    case discarded
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyChapterImportState: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyChapterImportState: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyChapterImportState
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyChapterImportState {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .staged
+
+        case 2: return .verified
+
+        case 3: return .imported
+
+        case 4: return .corrupt
+
+        case 5: return .discarded
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyChapterImportState, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .staged:
+            writeInt(&buf, Int32(1))
+
+
+        case .verified:
+            writeInt(&buf, Int32(2))
+
+
+        case .imported:
+            writeInt(&buf, Int32(3))
+
+
+        case .corrupt:
+            writeInt(&buf, Int32(4))
+
+
+        case .discarded:
+            writeInt(&buf, Int32(5))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyChapterImportState_lift(_ buf: RustBuffer) throws -> LegacyChapterImportState {
+    return try FfiConverterTypeLegacyChapterImportState.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyChapterImportState_lower(_ value: LegacyChapterImportState) -> RustBuffer {
+    return FfiConverterTypeLegacyChapterImportState.lower(value)
+}
+
+
+
+
+public enum LegacyChapterMigrationFailureCode: Equatable, Hashable {
+
+    case sourceChanged
+    case sourceInvalid
+    case backupConflict
+    case importConflict
+    case importNotFound
+    case alreadyAuthoritative
+    case targetBlocked
+    case interrupted
+    case storageUnavailable
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyChapterMigrationFailureCode: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyChapterMigrationFailureCode: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyChapterMigrationFailureCode
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyChapterMigrationFailureCode {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .sourceChanged
+
+        case 2: return .sourceInvalid
+
+        case 3: return .backupConflict
+
+        case 4: return .importConflict
+
+        case 5: return .importNotFound
+
+        case 6: return .alreadyAuthoritative
+
+        case 7: return .targetBlocked
+
+        case 8: return .interrupted
+
+        case 9: return .storageUnavailable
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyChapterMigrationFailureCode, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .sourceChanged:
+            writeInt(&buf, Int32(1))
+
+
+        case .sourceInvalid:
+            writeInt(&buf, Int32(2))
+
+
+        case .backupConflict:
+            writeInt(&buf, Int32(3))
+
+
+        case .importConflict:
+            writeInt(&buf, Int32(4))
+
+
+        case .importNotFound:
+            writeInt(&buf, Int32(5))
+
+
+        case .alreadyAuthoritative:
+            writeInt(&buf, Int32(6))
+
+
+        case .targetBlocked:
+            writeInt(&buf, Int32(7))
+
+
+        case .interrupted:
+            writeInt(&buf, Int32(8))
+
+
+        case .storageUnavailable:
+            writeInt(&buf, Int32(9))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyChapterMigrationFailureCode_lift(_ buf: RustBuffer) throws -> LegacyChapterMigrationFailureCode {
+    return try FfiConverterTypeLegacyChapterMigrationFailureCode.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyChapterMigrationFailureCode_lower(_ value: LegacyChapterMigrationFailureCode) -> RustBuffer {
+    return FfiConverterTypeLegacyChapterMigrationFailureCode.lower(value)
+}
+
+
+
+
+public enum LegacyChapterMigrationStage: Equatable, Hashable {
+
+    case notStarted
+    case inspected
+    case staged
+    case verified
+    case imported
+    case discarded
+    case blocked
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyChapterMigrationStage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyChapterMigrationStage: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyChapterMigrationStage
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyChapterMigrationStage {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .notStarted
+
+        case 2: return .inspected
+
+        case 3: return .staged
+
+        case 4: return .verified
+
+        case 5: return .imported
+
+        case 6: return .discarded
+
+        case 7: return .blocked
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyChapterMigrationStage, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .notStarted:
+            writeInt(&buf, Int32(1))
+
+
+        case .inspected:
+            writeInt(&buf, Int32(2))
+
+
+        case .staged:
+            writeInt(&buf, Int32(3))
+
+
+        case .verified:
+            writeInt(&buf, Int32(4))
+
+
+        case .imported:
+            writeInt(&buf, Int32(5))
+
+
+        case .discarded:
+            writeInt(&buf, Int32(6))
+
+
+        case .blocked:
+            writeInt(&buf, Int32(7))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyChapterMigrationStage_lift(_ buf: RustBuffer) throws -> LegacyChapterMigrationStage {
+    return try FfiConverterTypeLegacyChapterMigrationStage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyChapterMigrationStage_lower(_ value: LegacyChapterMigrationStage) -> RustBuffer {
+    return FfiConverterTypeLegacyChapterMigrationStage.lower(value)
+}
+
+
+
+
+public enum LegacyChapterSourceKind: Equatable, Hashable {
+
+    case artifactSqliteV0
+    case artifactSqliteV1
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyChapterSourceKind: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyChapterSourceKind: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyChapterSourceKind
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyChapterSourceKind {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .artifactSqliteV0
+
+        case 2: return .artifactSqliteV1
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyChapterSourceKind, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .artifactSqliteV0:
+            writeInt(&buf, Int32(1))
+
+
+        case .artifactSqliteV1:
+            writeInt(&buf, Int32(2))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyChapterSourceKind_lift(_ buf: RustBuffer) throws -> LegacyChapterSourceKind {
+    return try FfiConverterTypeLegacyChapterSourceKind.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyChapterSourceKind_lower(_ value: LegacyChapterSourceKind) -> RustBuffer {
+    return FfiConverterTypeLegacyChapterSourceKind.lower(value)
+}
+
+
+
 public
 enum LegacyClipMigrationError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
@@ -2968,6 +3835,126 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeLegacyChapterImportPlan: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyChapterImportPlan?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeLegacyChapterImportPlan.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeLegacyChapterImportPlan.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeLegacyChapterImportReport: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyChapterImportReport?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeLegacyChapterImportReport.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeLegacyChapterImportReport.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeLegacyChapterImportVerification: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyChapterImportVerification?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeLegacyChapterImportVerification.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeLegacyChapterImportVerification.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeLegacyChapterMigrationFailure: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyChapterMigrationFailure?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeLegacyChapterMigrationFailure.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeLegacyChapterMigrationFailure.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeLegacyChapterRollbackExportReport: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyChapterRollbackExportReport?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeLegacyChapterRollbackExportReport.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeLegacyChapterRollbackExportReport.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeLegacyTranscriptImportReport: FfiConverterRustBuffer {
     typealias SwiftType = LegacyTranscriptImportReport?
 
@@ -3117,6 +4104,80 @@ public func projectTranscriptContract(request: TranscriptCommitRequest, scope: T
         FfiConverterTypeTranscriptProjectionScope_lower(scope),
         FfiConverterUInt32.lower(offset),
         FfiConverterUInt16.lower(maxItems),uniffiCallStatus
+    )
+})
+}
+public func commitStagedLegacyChapterImport(sourceDatabasePath: String, artifactRootPath: String, targetPath: String, importId: CommandId) -> LegacyChapterMigrationProjection  {
+    return try!  FfiConverterTypeLegacyChapterMigrationProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_commit_staged_legacy_chapter_import(
+        FfiConverterString.lower(sourceDatabasePath),
+        FfiConverterString.lower(artifactRootPath),
+        FfiConverterString.lower(targetPath),
+        FfiConverterTypeCommandId_lower(importId),uniffiCallStatus
+    )
+})
+}
+public func discardStagedLegacyChapterImport(targetPath: String, importId: CommandId) -> LegacyChapterMigrationProjection  {
+    return try!  FfiConverterTypeLegacyChapterMigrationProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_discard_staged_legacy_chapter_import(
+        FfiConverterString.lower(targetPath),
+        FfiConverterTypeCommandId_lower(importId),uniffiCallStatus
+    )
+})
+}
+public func exportLegacyChapterRollback(targetPath: String, legacyBackupRootPath: String, exportRootPath: String) -> LegacyChapterMigrationProjection  {
+    return try!  FfiConverterTypeLegacyChapterMigrationProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_export_legacy_chapter_rollback(
+        FfiConverterString.lower(targetPath),
+        FfiConverterString.lower(legacyBackupRootPath),
+        FfiConverterString.lower(exportRootPath),uniffiCallStatus
+    )
+})
+}
+public func inspectLegacyChapterMigration(sourceDatabasePath: String, artifactRootPath: String) -> LegacyChapterMigrationProjection  {
+    return try!  FfiConverterTypeLegacyChapterMigrationProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_inspect_legacy_chapter_migration(
+        FfiConverterString.lower(sourceDatabasePath),
+        FfiConverterString.lower(artifactRootPath),uniffiCallStatus
+    )
+})
+}
+public func readActiveLegacyChapterMigration(targetPath: String) -> LegacyChapterMigrationProjection  {
+    return try!  FfiConverterTypeLegacyChapterMigrationProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_read_active_legacy_chapter_migration(
+        FfiConverterString.lower(targetPath),uniffiCallStatus
+    )
+})
+}
+public func stageLegacyChapterImport(sourceDatabasePath: String, artifactRootPath: String, legacyBackupRootPath: String, targetPath: String, targetSchemaBackupPath: String, expectedPlan: LegacyChapterImportPlan, importId: CommandId, targetStoreId: CommandId) -> LegacyChapterMigrationProjection  {
+    return try!  FfiConverterTypeLegacyChapterMigrationProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_stage_legacy_chapter_import(
+        FfiConverterString.lower(sourceDatabasePath),
+        FfiConverterString.lower(artifactRootPath),
+        FfiConverterString.lower(legacyBackupRootPath),
+        FfiConverterString.lower(targetPath),
+        FfiConverterString.lower(targetSchemaBackupPath),
+        FfiConverterTypeLegacyChapterImportPlan_lower(expectedPlan),
+        FfiConverterTypeCommandId_lower(importId),
+        FfiConverterTypeCommandId_lower(targetStoreId),uniffiCallStatus
+    )
+})
+}
+public func verifyStagedLegacyChapterImport(sourceDatabasePath: String, artifactRootPath: String, legacyBackupRootPath: String, targetPath: String, importId: CommandId) -> LegacyChapterMigrationProjection  {
+    return try!  FfiConverterTypeLegacyChapterMigrationProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_verify_staged_legacy_chapter_import(
+        FfiConverterString.lower(sourceDatabasePath),
+        FfiConverterString.lower(artifactRootPath),
+        FfiConverterString.lower(legacyBackupRootPath),
+        FfiConverterString.lower(targetPath),
+        FfiConverterTypeCommandId_lower(importId),uniffiCallStatus
     )
 })
 }
@@ -3365,6 +4426,27 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_func_project_transcript_contract() != 30792) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_commit_staged_legacy_chapter_import() != 44295) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_discard_staged_legacy_chapter_import() != 46920) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_export_legacy_chapter_rollback() != 4715) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_inspect_legacy_chapter_migration() != 34629) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_read_active_legacy_chapter_migration() != 11340) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_stage_legacy_chapter_import() != 56104) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_verify_staged_legacy_chapter_import() != 45954) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_func_commit_staged_legacy_clip_import() != 45677) {

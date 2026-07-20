@@ -61,6 +61,7 @@ fun qualifyChapterContract(fixture: Map<String, String>) {
                 digest("source_payload_digest"),
                 TranscriptVersionId(transcriptVersionId.first, transcriptVersionId.second),
                 digest("transcript_content_digest"),
+                null,
             ),
             UnixTimestampMilliseconds(fixture.getValue("generated_at_milliseconds").toLong()),
             number("duration_milliseconds"),
@@ -71,7 +72,7 @@ fun qualifyChapterContract(fixture: Map<String, String>) {
     )
 
     check(fixture["fixture_version"] == "1")
-    check(fixture["contract_version"]?.toUInt() == 13u)
+    check(fixture["contract_version"]?.toUInt() == 14u)
     check(fixture["unknown_future_field"] == "ignored-by-v1-readers")
     val qualified = projectChapterContract(
         request,
@@ -107,4 +108,20 @@ fun qualifyChapterContract(fixture: Map<String, String>) {
     val adId = id("expected_ad_span_0_id")
     check(adQualified.artifact.adSpans.single().adSpanId == AdSpanId(adId.first, adId.second))
     check(adQualified.artifact.adSpans.single().kind == ChapterAdKind.Midroll)
+}
+
+fun qualifyChapterMigrationBoundary() {
+    val missing = "/definitely-missing-pod0-chapter-source"
+    val inspected = inspectLegacyChapterMigration(missing, missing)
+    check(inspected.stage == LegacyChapterMigrationStage.BLOCKED)
+    check(inspected.failure?.code == LegacyChapterMigrationFailureCode.STORAGE_UNAVAILABLE)
+    check(inspected.report == null && inspected.rollbackExport == null)
+
+    val status = readActiveLegacyChapterMigration(missing)
+    check(status.stage == LegacyChapterMigrationStage.BLOCKED)
+    check(status.failure?.diagnosticCode == "storage_sqlite")
+
+    val rollback = exportLegacyChapterRollback(missing, missing, missing)
+    check(rollback.stage == LegacyChapterMigrationStage.BLOCKED)
+    check(rollback.rollbackExport == null)
 }

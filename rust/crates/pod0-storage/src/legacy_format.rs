@@ -164,7 +164,7 @@ pub(crate) struct RawPodcastSoundBite {
     pub(crate) title: Option<String>,
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(untagged)]
 pub(crate) enum RawTimestamp {
     Iso8601(String),
@@ -206,7 +206,7 @@ pub(crate) fn finite_milliseconds(
     index: u32,
 ) -> Result<i64, StorageError> {
     let milliseconds = seconds * 1_000.0;
-    if !milliseconds.is_finite() || milliseconds < 0.0 || milliseconds > i64::MAX as f64 {
+    if !milliseconds.is_finite() || milliseconds < 0.0 || milliseconds >= i64::MAX as f64 {
         return Err(StorageError::InvalidLegacyRecord {
             entity,
             index,

@@ -22,6 +22,7 @@ fn input() -> ChapterArtifactInput {
             source_payload_digest: ContentDigest::default(),
             transcript_version_id: None,
             transcript_content_digest: None,
+            legacy_import: None,
         },
         generated_at: UnixTimestampMilliseconds::new(1_700_000_000_000),
         duration_milliseconds: Some(30_000),

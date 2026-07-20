@@ -34,24 +34,29 @@ pub use pod0_domain::{
     AdSpanEvaluation, AdSpanId, AdSpanInput, ArtifactReference, AutoDownloadMode,
     AutoDownloadPolicy, CancellationId, ChapterAdKind, ChapterArtifactId, ChapterArtifactInput,
     ChapterArtifactProvenance, ChapterArtifactSource, ChapterId, ChapterInput,
-    ClipEvidenceReference, ClipId, ClipRecord, ClipRevision, ClipSource, CommandId,
-    CompletionCause, CompletionStatus, ContentDigest, DomainEventId, DownloadArtifactStatus,
-    EpisodeId, EpisodeIdentityRecord, EpisodeIdentityResolution, EpisodeListeningState,
-    EpisodeRecord, EvidenceChunkPolicy, EvidenceGenerationId, EvidenceSpanId, FeedIdentityV1,
-    HostRequestId, ListeningDomainError, ListeningDomainSnapshot, ListeningPlaybackPolicy,
-    NoteAuthor, NoteEvidenceReference, NoteId, NoteKind, NoteRecord, NoteRevision, NoteTarget,
-    PlaybackRatePermille, PlaybackSegment, PlaybackSleepMode, PodcastId, PodcastIdentityRecord,
-    PodcastIdentityResolution, PodcastKind, PodcastRecord, PodcastSubscriptionRecord, QueueEntry,
-    QueueEntryId, RecallQueryId, SpeakerId, StateRevision, SubscriptionId, TranscriptArtifactId,
-    TranscriptArtifactInput, TranscriptArtifactSegmentInput, TranscriptArtifactSpeakerInput,
-    TranscriptArtifactStatus, TranscriptArtifactWordInput, TranscriptProvenance,
-    TranscriptSegmentId, TranscriptSource, TranscriptVersionId, UnixTimestampMilliseconds,
-    make_feed_identity_v1, resolve_episode_identity_v1, resolve_legacy_parent_id,
-    resolve_podcast_identity_v1, validate_listening_snapshot,
+    ChapterLegacyProvenance, ChapterLegacySource, ClipEvidenceReference, ClipId, ClipRecord,
+    ClipRevision, ClipSource, CommandId, CompletionCause, CompletionStatus, ContentDigest,
+    DomainEventId, DownloadArtifactStatus, EpisodeId, EpisodeIdentityRecord,
+    EpisodeIdentityResolution, EpisodeListeningState, EpisodeRecord, EvidenceChunkPolicy,
+    EvidenceGenerationId, EvidenceSpanId, FeedIdentityV1, HostRequestId, ListeningDomainError,
+    ListeningDomainSnapshot, ListeningPlaybackPolicy, NoteAuthor, NoteEvidenceReference, NoteId,
+    NoteKind, NoteRecord, NoteRevision, NoteTarget, PlaybackRatePermille, PlaybackSegment,
+    PlaybackSleepMode, PodcastId, PodcastIdentityRecord, PodcastIdentityResolution, PodcastKind,
+    PodcastRecord, PodcastSubscriptionRecord, QueueEntry, QueueEntryId, RecallQueryId, SpeakerId,
+    StateRevision, SubscriptionId, TranscriptArtifactId, TranscriptArtifactInput,
+    TranscriptArtifactSegmentInput, TranscriptArtifactSpeakerInput, TranscriptArtifactStatus,
+    TranscriptArtifactWordInput, TranscriptProvenance, TranscriptSegmentId, TranscriptSource,
+    TranscriptVersionId, UnixTimestampMilliseconds, make_feed_identity_v1,
+    resolve_episode_identity_v1, resolve_legacy_parent_id, resolve_podcast_identity_v1,
+    validate_listening_snapshot,
 };
 
 uniffi::setup_scaffolding!();
 
+mod chapter_migration;
+mod chapter_migration_mapping;
+#[cfg(test)]
+mod chapter_migration_tests;
 mod clip_migration;
 mod listening_migration;
 mod note_migration;
@@ -111,6 +116,16 @@ mod runtime_transcript_projection;
 mod runtime_transcript_tests;
 mod transcript_migration;
 mod transcript_migration_mapping;
+pub use chapter_migration::{
+    LegacyChapterBackupEvidence, LegacyChapterImportPlan, LegacyChapterImportReport,
+    LegacyChapterImportState, LegacyChapterImportVerification, LegacyChapterMigrationFailure,
+    LegacyChapterMigrationFailureCode, LegacyChapterMigrationProjection,
+    LegacyChapterMigrationStage, LegacyChapterRollbackExportReport, LegacyChapterSourceKind,
+    commit_staged_legacy_chapter_import, discard_staged_legacy_chapter_import,
+    export_legacy_chapter_rollback, inspect_legacy_chapter_migration,
+    read_active_legacy_chapter_migration, stage_legacy_chapter_import,
+    verify_staged_legacy_chapter_import,
+};
 pub use clip_migration::{
     LegacyClipBackupEvidence, LegacyClipImportPlan, LegacyClipImportReport,
     LegacyClipImportVerification, LegacyClipMigrationError, commit_staged_legacy_clip_import,

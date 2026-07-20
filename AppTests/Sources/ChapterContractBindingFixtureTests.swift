@@ -16,7 +16,7 @@ final class ChapterContractBindingFixtureTests: XCTestCase {
         }
 
         XCTAssertEqual(fixture["fixture_version"], "1")
-        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 13)
+        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 14)
         XCTAssertEqual(fixture["unknown_future_field"], "ignored-by-v1-readers")
         XCTAssertEqual(receipt.artifactId, try id("expected_artifact_id", fixture, ChapterArtifactId.init))
         XCTAssertEqual(receipt.contentDigest, try digest("expected_content_digest", fixture))
@@ -60,6 +60,30 @@ final class ChapterContractBindingFixtureTests: XCTestCase {
         guard case .midroll = adArtifact.adSpans[0].kind else {
             return XCTFail("Ad kind changed")
         }
+    }
+
+    func testMigrationFailuresAreStateShapedAcrossSwiftBinding() {
+        let missing = "/definitely-missing-pod0-chapter-source"
+        let inspected = inspectLegacyChapterMigration(
+            sourceDatabasePath: missing,
+            artifactRootPath: missing
+        )
+        XCTAssertEqual(inspected.stage, .blocked)
+        XCTAssertEqual(inspected.failure?.code, .storageUnavailable)
+        XCTAssertNil(inspected.report)
+        XCTAssertNil(inspected.rollbackExport)
+
+        let status = readActiveLegacyChapterMigration(targetPath: missing)
+        XCTAssertEqual(status.stage, .blocked)
+        XCTAssertEqual(status.failure?.diagnosticCode, "storage_sqlite")
+
+        let rollback = exportLegacyChapterRollback(
+            targetPath: missing,
+            legacyBackupRootPath: missing,
+            exportRootPath: missing
+        )
+        XCTAssertEqual(rollback.stage, .blocked)
+        XCTAssertNil(rollback.rollbackExport)
     }
 
     private func makeRequest(_ fixture: [String: String]) throws -> ChapterContractRequest {
@@ -111,7 +135,8 @@ final class ChapterContractBindingFixtureTests: XCTestCase {
                         fixture,
                         TranscriptVersionId.init
                     ),
-                    transcriptContentDigest: try digest("transcript_content_digest", fixture)
+                    transcriptContentDigest: try digest("transcript_content_digest", fixture),
+                    legacyImport: nil
                 ),
                 generatedAt: UnixTimestampMilliseconds(
                     value: Int64(try number("generated_at_milliseconds", fixture))

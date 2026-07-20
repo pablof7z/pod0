@@ -4,37 +4,25 @@ use rusqlite::{Connection, Transaction, params};
 use crate::model::{APPLICATION_ID, StorageError};
 use crate::schema_introspection::{require_columns, table_names};
 
-const MIGRATION_1: &str = include_str!("../../../schema/migrations/0001_kernel_metadata.sql");
-const MIGRATION_2: &str = include_str!("../../../schema/migrations/0002_migration_journal.sql");
-const MIGRATION_3: &str = include_str!("../../../schema/migrations/0003_domain_cutovers.sql");
-const MIGRATION_4: &str = include_str!("../../../schema/migrations/0004_listening_import.sql");
-const MIGRATION_5: &str = include_str!("../../../schema/migrations/0005_library_runtime.sql");
-const MIGRATION_6: &str = include_str!("../../../schema/migrations/0006_playback_runtime.sql");
-const MIGRATION_7: &str = include_str!("../../../schema/migrations/0007_evidence_artifacts.sql");
-const MIGRATION_8: &str = include_str!("../../../schema/migrations/0008_notes.sql");
-const MIGRATION_9: &str = include_str!("../../../schema/migrations/0009_clips.sql");
-const MIGRATION_10: &str = include_str!("../../../schema/migrations/0010_transcript_artifacts.sql");
-const MIGRATION_11: &str =
-    include_str!("../../../schema/migrations/0011_retained_library_artifacts.sql");
-const MIGRATION_12: &str =
-    include_str!("../../../schema/migrations/0012_complete_transcript_history.sql");
+const MIGRATIONS: &[&str] = &[
+    include_str!("../../../schema/migrations/0001_kernel_metadata.sql"),
+    include_str!("../../../schema/migrations/0002_migration_journal.sql"),
+    include_str!("../../../schema/migrations/0003_domain_cutovers.sql"),
+    include_str!("../../../schema/migrations/0004_listening_import.sql"),
+    include_str!("../../../schema/migrations/0005_library_runtime.sql"),
+    include_str!("../../../schema/migrations/0006_playback_runtime.sql"),
+    include_str!("../../../schema/migrations/0007_evidence_artifacts.sql"),
+    include_str!("../../../schema/migrations/0008_notes.sql"),
+    include_str!("../../../schema/migrations/0009_clips.sql"),
+    include_str!("../../../schema/migrations/0010_transcript_artifacts.sql"),
+    include_str!("../../../schema/migrations/0011_retained_library_artifacts.sql"),
+    include_str!("../../../schema/migrations/0012_complete_transcript_history.sql"),
+    include_str!("../../../schema/migrations/0013_chapter_artifacts.sql"),
+];
 
 pub(crate) fn migration_sql(version: u32) -> Option<&'static str> {
-    match version {
-        1 => Some(MIGRATION_1),
-        2 => Some(MIGRATION_2),
-        3 => Some(MIGRATION_3),
-        4 => Some(MIGRATION_4),
-        5 => Some(MIGRATION_5),
-        6 => Some(MIGRATION_6),
-        7 => Some(MIGRATION_7),
-        8 => Some(MIGRATION_8),
-        9 => Some(MIGRATION_9),
-        10 => Some(MIGRATION_10),
-        11 => Some(MIGRATION_11),
-        12 => Some(MIGRATION_12),
-        _ => None,
-    }
+    let index = usize::try_from(version.checked_sub(1)?).ok()?;
+    MIGRATIONS.get(index).copied()
 }
 
 pub(crate) fn apply_step(
@@ -293,6 +281,9 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
     }
     if version >= 10 {
         crate::schema_transcripts::validate_transcripts_schema(connection, version)?;
+    }
+    if version >= 13 {
+        crate::schema_chapters::validate_chapters_schema(connection)?;
     }
     Ok(())
 }

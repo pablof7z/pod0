@@ -277,6 +277,10 @@ impl From<StorageError> for LegacyListeningMigrationError {
             | StorageError::TranscriptImportConflict
             | StorageError::TranscriptImportNotFound
             | StorageError::NewerLegacyTranscriptSchema { .. }
+            | StorageError::InvalidChapterArtifact
+            | StorageError::ChapterImportConflict
+            | StorageError::ChapterImportNotFound
+            | StorageError::NewerLegacyChapterSchema { .. }
             | StorageError::FailedMigration { .. }
             | StorageError::EvidenceCommandConflict
             | StorageError::EvidenceNotFound

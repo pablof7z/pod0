@@ -1434,6 +1434,12 @@ data class ChapterArtifactProvenance (
     val `transcriptVersionId`: TranscriptVersionId?
     ,
     val `transcriptContentDigest`: ContentDigest?
+    ,
+    /**
+     * Present only while preserving a pre-kernel artifact whose historical
+     * provider/model/transcript provenance was never recorded by Swift.
+     */
+    val `legacyImport`: ChapterLegacyProvenance?
 
 ){
 
@@ -1457,6 +1463,7 @@ public object FfiConverterTypeChapterArtifactProvenance: FfiConverterRustBuffer<
             FfiConverterTypeContentDigest.read(buf),
             FfiConverterOptionalTypeTranscriptVersionId.read(buf),
             FfiConverterOptionalTypeContentDigest.read(buf),
+            FfiConverterOptionalTypeChapterLegacyProvenance.read(buf),
         )
     }
 
@@ -1467,7 +1474,8 @@ public object FfiConverterTypeChapterArtifactProvenance: FfiConverterRustBuffer<
             FfiConverterUInt.allocationSize(value.`policyVersion`) +
             FfiConverterTypeContentDigest.allocationSize(value.`sourcePayloadDigest`) +
             FfiConverterOptionalTypeTranscriptVersionId.allocationSize(value.`transcriptVersionId`) +
-            FfiConverterOptionalTypeContentDigest.allocationSize(value.`transcriptContentDigest`)
+            FfiConverterOptionalTypeContentDigest.allocationSize(value.`transcriptContentDigest`) +
+            FfiConverterOptionalTypeChapterLegacyProvenance.allocationSize(value.`legacyImport`)
     )
 
     override fun write(value: ChapterArtifactProvenance, buf: ByteBuffer) {
@@ -1478,6 +1486,7 @@ public object FfiConverterTypeChapterArtifactProvenance: FfiConverterRustBuffer<
             FfiConverterTypeContentDigest.write(value.`sourcePayloadDigest`, buf)
             FfiConverterOptionalTypeTranscriptVersionId.write(value.`transcriptVersionId`, buf)
             FfiConverterOptionalTypeContentDigest.write(value.`transcriptContentDigest`, buf)
+            FfiConverterOptionalTypeChapterLegacyProvenance.write(value.`legacyImport`, buf)
     }
 }
 
@@ -1584,6 +1593,49 @@ public object FfiConverterTypeChapterInput: FfiConverterRustBuffer<ChapterInput>
             FfiConverterOptionalString.write(value.`linkUrl`, buf)
             FfiConverterBoolean.write(value.`includeInTableOfContents`, buf)
             FfiConverterOptionalTypeEpisodeId.write(value.`sourceEpisodeId`, buf)
+    }
+}
+
+
+
+data class ChapterLegacyProvenance (
+    val `source`: ChapterLegacySource
+    ,
+    val `originalOrigin`: kotlin.String?
+    ,
+    val `generatedAtWasUnknown`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterLegacyProvenance: FfiConverterRustBuffer<ChapterLegacyProvenance> {
+    override fun read(buf: ByteBuffer): ChapterLegacyProvenance {
+        return ChapterLegacyProvenance(
+            FfiConverterTypeChapterLegacySource.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ChapterLegacyProvenance) = (
+            FfiConverterTypeChapterLegacySource.allocationSize(value.`source`) +
+            FfiConverterOptionalString.allocationSize(value.`originalOrigin`) +
+            FfiConverterBoolean.allocationSize(value.`generatedAtWasUnknown`)
+    )
+
+    override fun write(value: ChapterLegacyProvenance, buf: ByteBuffer) {
+            FfiConverterTypeChapterLegacySource.write(value.`source`, buf)
+            FfiConverterOptionalString.write(value.`originalOrigin`, buf)
+            FfiConverterBoolean.write(value.`generatedAtWasUnknown`, buf)
     }
 }
 
@@ -4251,6 +4303,107 @@ public object FfiConverterTypeChapterArtifactSource : FfiConverterRustBuffer<Cha
 
 
 
+sealed class ChapterLegacySource {
+
+    object EpisodeAdjunct : ChapterLegacySource()
+
+
+    object WorkflowArtifactV0 : ChapterLegacySource()
+
+
+    object WorkflowArtifactV1 : ChapterLegacySource()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : ChapterLegacySource()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterLegacySource : FfiConverterRustBuffer<ChapterLegacySource>{
+    override fun read(buf: ByteBuffer): ChapterLegacySource {
+        return when(buf.getInt()) {
+            1 -> ChapterLegacySource.EpisodeAdjunct
+            2 -> ChapterLegacySource.WorkflowArtifactV0
+            3 -> ChapterLegacySource.WorkflowArtifactV1
+            4 -> ChapterLegacySource.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: ChapterLegacySource): ULong = when(value) {
+        is ChapterLegacySource.EpisodeAdjunct -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterLegacySource.WorkflowArtifactV0 -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterLegacySource.WorkflowArtifactV1 -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterLegacySource.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: ChapterLegacySource, buf: ByteBuffer) {
+        when(value) {
+            is ChapterLegacySource.EpisodeAdjunct -> {
+                buf.putInt(1)
+                Unit
+            }
+            is ChapterLegacySource.WorkflowArtifactV0 -> {
+                buf.putInt(2)
+                Unit
+            }
+            is ChapterLegacySource.WorkflowArtifactV1 -> {
+                buf.putInt(3)
+                Unit
+            }
+            is ChapterLegacySource.Unsupported -> {
+                buf.putInt(4)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 sealed class ClipSource {
 
     object Touch : ClipSource()
@@ -6156,6 +6309,38 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
         } else {
             buf.put(1)
             FfiConverterString.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeChapterLegacyProvenance: FfiConverterRustBuffer<ChapterLegacyProvenance?> {
+    override fun read(buf: ByteBuffer): ChapterLegacyProvenance? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeChapterLegacyProvenance.read(buf)
+    }
+
+    override fun allocationSize(value: ChapterLegacyProvenance?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeChapterLegacyProvenance.allocationSize(value)
+        }
+    }
+
+    override fun write(value: ChapterLegacyProvenance?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeChapterLegacyProvenance.write(value, buf)
         }
     }
 }

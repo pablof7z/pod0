@@ -1019,10 +1019,19 @@ public struct ChapterArtifactProvenance: Equatable, Hashable {
     public let sourcePayloadDigest: ContentDigest
     public let transcriptVersionId: TranscriptVersionId?
     public let transcriptContentDigest: ContentDigest?
+    /**
+     * Present only while preserving a pre-kernel artifact whose historical
+     * provider/model/transcript provenance was never recorded by Swift.
+     */
+    public let legacyImport: ChapterLegacyProvenance?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(source: ChapterArtifactSource, provider: String?, model: String?, policyVersion: UInt32, sourcePayloadDigest: ContentDigest, transcriptVersionId: TranscriptVersionId?, transcriptContentDigest: ContentDigest?) {
+    public init(source: ChapterArtifactSource, provider: String?, model: String?, policyVersion: UInt32, sourcePayloadDigest: ContentDigest, transcriptVersionId: TranscriptVersionId?, transcriptContentDigest: ContentDigest?,
+        /**
+         * Present only while preserving a pre-kernel artifact whose historical
+         * provider/model/transcript provenance was never recorded by Swift.
+         */legacyImport: ChapterLegacyProvenance?) {
         self.source = source
         self.provider = provider
         self.model = model
@@ -1030,6 +1039,7 @@ public struct ChapterArtifactProvenance: Equatable, Hashable {
         self.sourcePayloadDigest = sourcePayloadDigest
         self.transcriptVersionId = transcriptVersionId
         self.transcriptContentDigest = transcriptContentDigest
+        self.legacyImport = legacyImport
     }
 
 
@@ -1054,7 +1064,8 @@ public struct FfiConverterTypeChapterArtifactProvenance: FfiConverterRustBuffer 
                 policyVersion: FfiConverterUInt32.read(from: &buf),
                 sourcePayloadDigest: FfiConverterTypeContentDigest.read(from: &buf),
                 transcriptVersionId: FfiConverterOptionTypeTranscriptVersionId.read(from: &buf),
-                transcriptContentDigest: FfiConverterOptionTypeContentDigest.read(from: &buf)
+                transcriptContentDigest: FfiConverterOptionTypeContentDigest.read(from: &buf),
+                legacyImport: FfiConverterOptionTypeChapterLegacyProvenance.read(from: &buf)
         )
     }
 
@@ -1066,6 +1077,7 @@ public struct FfiConverterTypeChapterArtifactProvenance: FfiConverterRustBuffer 
         FfiConverterTypeContentDigest.write(value.sourcePayloadDigest, into: &buf)
         FfiConverterOptionTypeTranscriptVersionId.write(value.transcriptVersionId, into: &buf)
         FfiConverterOptionTypeContentDigest.write(value.transcriptContentDigest, into: &buf)
+        FfiConverterOptionTypeChapterLegacyProvenance.write(value.legacyImport, into: &buf)
     }
 }
 
@@ -1214,6 +1226,64 @@ public func FfiConverterTypeChapterInput_lift(_ buf: RustBuffer) throws -> Chapt
 #endif
 public func FfiConverterTypeChapterInput_lower(_ value: ChapterInput) -> RustBuffer {
     return FfiConverterTypeChapterInput.lower(value)
+}
+
+
+public struct ChapterLegacyProvenance: Equatable, Hashable {
+    public let source: ChapterLegacySource
+    public let originalOrigin: String?
+    public let generatedAtWasUnknown: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(source: ChapterLegacySource, originalOrigin: String?, generatedAtWasUnknown: Bool) {
+        self.source = source
+        self.originalOrigin = originalOrigin
+        self.generatedAtWasUnknown = generatedAtWasUnknown
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterLegacyProvenance: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterLegacyProvenance: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterLegacyProvenance {
+        return
+            try ChapterLegacyProvenance(
+                source: FfiConverterTypeChapterLegacySource.read(from: &buf),
+                originalOrigin: FfiConverterOptionString.read(from: &buf),
+                generatedAtWasUnknown: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ChapterLegacyProvenance, into buf: inout [UInt8]) {
+        FfiConverterTypeChapterLegacySource.write(value.source, into: &buf)
+        FfiConverterOptionString.write(value.originalOrigin, into: &buf)
+        FfiConverterBool.write(value.generatedAtWasUnknown, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterLegacyProvenance_lift(_ buf: RustBuffer) throws -> ChapterLegacyProvenance {
+    return try FfiConverterTypeChapterLegacyProvenance.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterLegacyProvenance_lower(_ value: ChapterLegacyProvenance) -> RustBuffer {
+    return FfiConverterTypeChapterLegacyProvenance.lower(value)
 }
 
 
@@ -4482,6 +4552,89 @@ public func FfiConverterTypeChapterArtifactSource_lower(_ value: ChapterArtifact
 
 
 
+public enum ChapterLegacySource: Equatable, Hashable {
+
+    case episodeAdjunct
+    case workflowArtifactV0
+    case workflowArtifactV1
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterLegacySource: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterLegacySource: FfiConverterRustBuffer {
+    typealias SwiftType = ChapterLegacySource
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterLegacySource {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .episodeAdjunct
+
+        case 2: return .workflowArtifactV0
+
+        case 3: return .workflowArtifactV1
+
+        case 4: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ChapterLegacySource, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .episodeAdjunct:
+            writeInt(&buf, Int32(1))
+
+
+        case .workflowArtifactV0:
+            writeInt(&buf, Int32(2))
+
+
+        case .workflowArtifactV1:
+            writeInt(&buf, Int32(3))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(4))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterLegacySource_lift(_ buf: RustBuffer) throws -> ChapterLegacySource {
+    return try FfiConverterTypeChapterLegacySource.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterLegacySource_lower(_ value: ChapterLegacySource) -> RustBuffer {
+    return FfiConverterTypeChapterLegacySource.lower(value)
+}
+
+
+
+
 public enum ClipSource: Equatable, Hashable {
 
     case touch
@@ -5897,6 +6050,30 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterString.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeChapterLegacyProvenance: FfiConverterRustBuffer {
+    typealias SwiftType = ChapterLegacyProvenance?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeChapterLegacyProvenance.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeChapterLegacyProvenance.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }

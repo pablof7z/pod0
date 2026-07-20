@@ -1,7 +1,10 @@
 use pod0_domain::{StateRevision, TranscriptArtifact};
 
 use crate::transcript_store_test_support::{TranscriptFixture, command, input};
-use crate::{StorageError, export_transcript_rollback_bundle, inspect_legacy_transcript_source};
+use crate::{
+    CURRENT_SCHEMA_VERSION, StorageError, export_transcript_rollback_bundle,
+    inspect_legacy_transcript_source,
+};
 
 #[test]
 fn authoritative_selection_exports_as_versioned_verified_legacy_bundle() {
@@ -19,16 +22,14 @@ fn authoritative_selection_exports_as_versioned_verified_legacy_bundle() {
     let root = fixture.import._directory.path().join("rollback-exports");
 
     let first = export_transcript_rollback_bundle(&fixture.import.target, &root).unwrap();
-    assert_eq!(first.core_schema_version, 12);
+    assert_eq!(first.core_schema_version, CURRENT_SCHEMA_VERSION);
     assert_eq!(first.transcript_revision, 2);
     assert_eq!(first.artifact_count, 1);
     assert_eq!(first.selected_count, 1);
     assert!(!first.reused_existing);
-    assert!(
-        first
-            .bundle_path
-            .ends_with("transcripts-v1-core-v12-revision-2")
-    );
+    assert!(first.bundle_path.ends_with(format!(
+        "transcripts-v1-core-v{CURRENT_SCHEMA_VERSION}-revision-2"
+    )));
 
     let plan = inspect_legacy_transcript_source(
         &first.bundle_path.join("transcript-selection.sqlite"),

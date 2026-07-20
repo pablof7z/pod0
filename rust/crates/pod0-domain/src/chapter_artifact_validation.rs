@@ -1,8 +1,9 @@
 use crate::{
     AdSpanEvaluation, ChapterAdKind, ChapterArtifactError, ChapterArtifactInput,
     ChapterArtifactSource, EpisodeId, MAX_AD_SPANS, MAX_CHAPTER_ARTIFACT_BYTES,
-    MAX_CHAPTER_MODEL_BYTES, MAX_CHAPTER_SUMMARY_BYTES, MAX_CHAPTER_TITLE_BYTES,
-    MAX_CHAPTER_URL_BYTES, MAX_CHAPTERS, MAX_PROVENANCE_PROVIDER_BYTES, MAX_SOURCE_REVISION_BYTES,
+    MAX_CHAPTER_LEGACY_ORIGIN_BYTES, MAX_CHAPTER_MODEL_BYTES, MAX_CHAPTER_SUMMARY_BYTES,
+    MAX_CHAPTER_TITLE_BYTES, MAX_CHAPTER_URL_BYTES, MAX_CHAPTERS, MAX_PROVENANCE_PROVIDER_BYTES,
+    MAX_SOURCE_REVISION_BYTES,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -167,6 +168,36 @@ fn validate_provenance(input: &ChapterArtifactInput) -> Result<(), ChapterArtifa
     );
     if !matches!(transcript_pair, (false, false) | (true, true)) {
         return Err(ChapterArtifactError::InvalidProvenance);
+    }
+    if let Some(legacy) = &provenance.legacy_import {
+        if matches!(
+            legacy.source,
+            crate::ChapterLegacySource::Unsupported { .. }
+        ) || legacy
+            .original_origin
+            .as_ref()
+            .is_some_and(|value| invalid_exact_text(value, MAX_CHAPTER_LEGACY_ORIGIN_BYTES))
+            || (legacy.generated_at_was_unknown && input.generated_at.value != 0)
+        {
+            return Err(ChapterArtifactError::InvalidProvenance);
+        }
+        return match provenance.source {
+            ChapterArtifactSource::Publisher
+                if provenance.policy_version == 0
+                    && provenance.provider.is_none()
+                    && provenance.model.is_none()
+                    && transcript_pair == (false, false) =>
+            {
+                Ok(())
+            }
+            ChapterArtifactSource::Generated
+            | ChapterArtifactSource::PublisherEnriched
+            | ChapterArtifactSource::AgentComposed => Ok(()),
+            ChapterArtifactSource::Unsupported { wire_code } => {
+                Err(ChapterArtifactError::UnsupportedSource { wire_code })
+            }
+            _ => Err(ChapterArtifactError::InvalidProvenance),
+        };
     }
     match provenance.source {
         ChapterArtifactSource::Publisher

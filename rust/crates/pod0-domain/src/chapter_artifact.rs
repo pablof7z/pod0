@@ -18,6 +18,7 @@ pub const MAX_CHAPTER_SUMMARY_BYTES: usize = 16_384;
 pub const MAX_CHAPTER_URL_BYTES: usize = 4_096;
 pub const MAX_CHAPTER_ARTIFACT_BYTES: usize = 2 * 1_024 * 1_024;
 pub const MAX_CHAPTER_MODEL_BYTES: usize = 256;
+pub const MAX_CHAPTER_LEGACY_ORIGIN_BYTES: usize = 4_096;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum ChapterArtifactSource {
@@ -43,6 +44,21 @@ pub enum AdSpanEvaluation {
     Unsupported { wire_code: u32 },
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum ChapterLegacySource {
+    EpisodeAdjunct,
+    WorkflowArtifactV0,
+    WorkflowArtifactV1,
+    Unsupported { wire_code: u32 },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct ChapterLegacyProvenance {
+    pub source: ChapterLegacySource,
+    pub original_origin: Option<String>,
+    pub generated_at_was_unknown: bool,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct ChapterArtifactProvenance {
     pub source: ChapterArtifactSource,
@@ -52,6 +68,9 @@ pub struct ChapterArtifactProvenance {
     pub source_payload_digest: ContentDigest,
     pub transcript_version_id: Option<TranscriptVersionId>,
     pub transcript_content_digest: Option<ContentDigest>,
+    /// Present only while preserving a pre-kernel artifact whose historical
+    /// provider/model/transcript provenance was never recorded by Swift.
+    pub legacy_import: Option<ChapterLegacyProvenance>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]

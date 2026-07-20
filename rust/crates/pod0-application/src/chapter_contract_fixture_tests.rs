@@ -111,6 +111,7 @@ fn request(values: &BTreeMap<&str, &str>) -> ChapterContractRequest {
                     transcript_low,
                 )),
                 transcript_content_digest: Some(digest(values, "transcript_content_digest")),
+                legacy_import: None,
             },
             generated_at: UnixTimestampMilliseconds::new(number(
                 values,

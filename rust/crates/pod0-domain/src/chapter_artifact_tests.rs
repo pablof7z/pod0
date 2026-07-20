@@ -22,6 +22,7 @@ fn input() -> ChapterArtifactInput {
             source_payload_digest: digest(1),
             transcript_version_id: Some(TranscriptVersionId::from_parts(13, 98)),
             transcript_content_digest: Some(digest(8)),
+            legacy_import: None,
         },
         generated_at: UnixTimestampMilliseconds::new(1_721_322_123_456),
         duration_milliseconds: Some(120_000),
@@ -210,6 +211,41 @@ fn provenance_collection_and_text_limits_fail_closed() {
     assert_eq!(
         ChapterArtifact::seal(unevaluated_with_span),
         Err(ChapterArtifactError::InvalidAdSpan)
+    );
+}
+
+#[test]
+fn explicit_legacy_provenance_preserves_unknown_generation_evidence() {
+    let mut legacy = input();
+    legacy.generated_at = UnixTimestampMilliseconds::new(0);
+    legacy.provenance.provider = None;
+    legacy.provenance.model = None;
+    legacy.provenance.transcript_version_id = None;
+    legacy.provenance.transcript_content_digest = None;
+    legacy.provenance.legacy_import = Some(ChapterLegacyProvenance {
+        source: ChapterLegacySource::EpisodeAdjunct,
+        original_origin: None,
+        generated_at_was_unknown: true,
+    });
+    let artifact = ChapterArtifact::seal(legacy).expect("legacy artifact");
+    assert_eq!(
+        artifact
+            .provenance
+            .legacy_import
+            .expect("legacy evidence")
+            .source,
+        ChapterLegacySource::EpisodeAdjunct
+    );
+
+    let mut invalid = input();
+    invalid.provenance.legacy_import = Some(ChapterLegacyProvenance {
+        source: ChapterLegacySource::EpisodeAdjunct,
+        original_origin: None,
+        generated_at_was_unknown: true,
+    });
+    assert_eq!(
+        ChapterArtifact::seal(invalid),
+        Err(ChapterArtifactError::InvalidProvenance)
     );
 }
 

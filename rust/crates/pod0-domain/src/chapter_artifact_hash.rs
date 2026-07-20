@@ -134,6 +134,24 @@ fn hash_provenance(hash: &mut StableHash, provenance: &ChapterArtifactProvenance
             .map(crate::TranscriptVersionId::into_bytes),
     );
     optional_digest(hash, provenance.transcript_content_digest);
+    if let Some(legacy) = &provenance.legacy_import {
+        hash.u8(1);
+        hash_legacy_source(hash, legacy.source);
+        hash.optional_text(legacy.original_origin.as_deref());
+        hash.u8(u8::from(legacy.generated_at_was_unknown));
+    }
+}
+
+fn hash_legacy_source(hash: &mut StableHash, source: crate::ChapterLegacySource) {
+    match source {
+        crate::ChapterLegacySource::EpisodeAdjunct => hash.u32(1),
+        crate::ChapterLegacySource::WorkflowArtifactV0 => hash.u32(2),
+        crate::ChapterLegacySource::WorkflowArtifactV1 => hash.u32(3),
+        crate::ChapterLegacySource::Unsupported { wire_code } => {
+            hash.u32(u32::MAX);
+            hash.u32(wire_code);
+        }
+    }
 }
 
 fn hash_source(hash: &mut StableHash, source: ChapterArtifactSource) {

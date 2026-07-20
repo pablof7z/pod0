@@ -1,6 +1,24 @@
 #![forbid(unsafe_code)]
 
 mod backup;
+mod chapter_import;
+mod chapter_import_commit;
+mod chapter_import_discard;
+mod chapter_import_identity_verification;
+mod chapter_import_model;
+mod chapter_import_store_read;
+mod chapter_import_store_rows;
+mod chapter_import_store_write;
+mod chapter_import_verification;
+mod chapter_legacy_backup;
+mod chapter_rollback_database;
+mod chapter_rollback_export;
+mod chapter_rollback_format;
+mod chapter_rollback_manifest;
+mod chapter_rollback_verify;
+mod chapter_store_codec;
+mod chapter_store_read_artifact;
+mod chapter_store_write_artifact;
 mod clip_import;
 mod clip_import_model;
 mod clip_import_store;
@@ -18,6 +36,15 @@ mod evidence_store_read;
 mod evidence_store_stage;
 mod import_model;
 mod legacy_backup;
+mod legacy_chapter_artifact_source;
+mod legacy_chapter_db;
+mod legacy_chapter_db_artifacts;
+mod legacy_chapter_db_schema;
+mod legacy_chapter_episode;
+mod legacy_chapter_files;
+mod legacy_chapter_format;
+mod legacy_chapter_source;
+mod legacy_chapter_transform;
 mod legacy_clip_format;
 mod legacy_clip_source;
 mod legacy_episode;
@@ -63,6 +90,7 @@ mod note_store_codec;
 mod note_store_model;
 mod note_store_read;
 mod schema;
+mod schema_chapters;
 mod schema_clips;
 mod schema_evidence;
 mod schema_introspection;
@@ -93,6 +121,19 @@ mod transcript_store_write_artifact;
 mod transcript_store_write_rows;
 
 pub use backup::{restore_backup_to_new_store, verify_backup};
+pub use chapter_import::{ChapterImportClock, ChapterImporter};
+pub use chapter_import_model::{
+    ChapterBackupEvidence, ChapterImportPlan, ChapterImportReport, ChapterImportState,
+    ChapterImportVerification, ChapterRollbackExportReport, LegacyChapterSourceKind,
+};
+pub(crate) use chapter_import_model::{
+    ChapterEvidenceKind, ChapterEvidenceValidation, InspectedChapterEvidence,
+    InspectedChapterSource, LegacyAdSpanIdentity, LegacyChapterIdentity, StoredChapterEvidence,
+};
+pub use chapter_import_store_read::{read_active_chapter_import, read_chapter_import};
+pub use chapter_rollback_export::{
+    CHAPTER_ROLLBACK_FORMAT_VERSION, export_chapter_rollback_bundle,
+};
 pub use clip_import::{ClipImportClock, ClipImporter};
 pub(crate) use clip_import_model::InspectedClipSource;
 pub use clip_import_model::{
@@ -109,6 +150,7 @@ pub use import_model::{
     LegacyBackupEvidence, LegacyImportPlan, LegacySourceKind, ListeningImportReport,
     ListeningImportVerification,
 };
+pub use legacy_chapter_source::inspect_legacy_chapter_source;
 pub use legacy_clip_source::inspect_legacy_clip_source;
 pub use legacy_note_source::inspect_legacy_note_source;
 pub use legacy_source::inspect_legacy_listening_source;
@@ -151,6 +193,20 @@ pub use transcript_store_model::{
 };
 
 #[cfg(test)]
+mod chapter_import_evidence_tests;
+#[cfg(test)]
+mod chapter_import_failure_tests;
+#[cfg(test)]
+mod chapter_import_recovery_tests;
+#[cfg(test)]
+mod chapter_import_source_tests;
+#[cfg(test)]
+mod chapter_import_test_support;
+#[cfg(test)]
+mod chapter_import_tests;
+#[cfg(test)]
+mod chapter_rollback_export_tests;
+#[cfg(test)]
 mod clip_cutover_restart_tests;
 #[cfg(test)]
 mod clip_import_failure_tests;
@@ -176,6 +232,8 @@ mod listening_import_failure_tests;
 mod listening_import_test_support;
 #[cfg(test)]
 mod listening_import_tests;
+#[cfg(test)]
+mod migration_chapter_tests;
 #[cfg(test)]
 mod migration_tests;
 #[cfg(test)]
