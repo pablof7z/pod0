@@ -64,7 +64,6 @@
         "App/Sources/Core/ChapterObservationCapability.swift",
         "App/Sources/Core/ChapterObservationCapabilityAdapter.swift",
         "App/Sources/Core/ChapterObservationCapabilityAdapter+Mapping.swift",
-        "App/Sources/Core/ChapterModelPromptBuilder.swift",
         "App/Sources/Core/ChapterModelTransport.swift",
         "App/Sources/Core/SharedChapterReader.swift",
         "App/Sources/Core/SharedLibraryClient+Chapters.swift",
@@ -77,7 +76,7 @@
       "current_owner": "Swift URLSession and platform credential capability adapters",
       "target_owner": "Swift and future Kotlin primitive provider executors",
       "reason": "HTTP execution, streamed byte bounds, and secure platform credential access are native capabilities; semantic qualification and durable policy remain in Rust.",
-      "boundary": "Execute one typed request and return exact bounded bytes, provider envelopes, metadata, and raw typed failures without semantic parsing, retry, fallback, or persistence.",
+      "boundary": "Execute the exact Rust-planned typed request and return bounded provider envelopes, metadata, and raw typed failures without prompt construction, provider selection, semantic parsing, retry, fallback, or persistence.",
       "persisted_state": "None; credentials remain in platform security facilities and the adapters retain no response state.",
       "priority": "keep_native",
       "includes": [
@@ -88,10 +87,10 @@
     {
       "id": "temporary-chapter-observation-orchestration",
       "classification": "temporary_swift",
-      "current_owner": "Swift typed request mapping and transient in-flight task shell",
+      "current_owner": "Swift transient in-flight task shell and raw observation mapping",
       "target_owner": "Pod0 Rust workflow/application layer issuing typed native host requests",
       "reason": "Publisher acquisition moved to Rust in issue #109; issue #110 moves the remaining generated/enriched model workflow without activating a second durable writer.",
-      "boundary": "Consume core-owned bounds, map exact native results into generated observations, call Rust qualification, and retain only bounded in-memory task identities.",
+      "boundary": "Execute the exact core-planned request, map raw native results into typed observations, call Rust qualification, and retain only bounded in-memory task identities.",
       "persisted_state": "None; no files, database rows, retry counters, selected artifacts, or canonical mirrors.",
       "migration_issues": [110],
       "deletion_target": "Issue #110 deletes the remaining Swift model/agent request orchestration after Rust emits equivalent typed host requests; retain only primitive model capability execution.",
@@ -99,8 +98,7 @@
       "includes": [
         "App/Sources/Core/ChapterObservationCapability.swift",
         "App/Sources/Core/ChapterObservationCapabilityAdapter.swift",
-        "App/Sources/Core/ChapterObservationCapabilityAdapter+Mapping.swift",
-        "App/Sources/Core/ChapterModelPromptBuilder.swift"
+        "App/Sources/Core/ChapterObservationCapabilityAdapter+Mapping.swift"
       ]
     },
     {
@@ -233,8 +231,8 @@
       "reason": "Normalized segments, speakers, timestamps, chapters, and provenance are durable evidence.",
       "boundary": "Provider/native capabilities return raw typed payloads; Rust normalizes and versions artifacts.",
       "persisted_state": "Rust SQLite owns canonical transcript and chapter/ad immutable history, selections, command receipts, and authority state. Legacy Swift values are decode-only migration evidence.",
-      "migration_issues": [59, 69, 94, 95, 96, 97, 98, 99, 101, 102, 103, 104],
-      "deletion_target": "Issue #100 deletes the remaining Swift chapter request/prompt orchestration; retain only primitive provider execution and bounded native presentation adapters.",
+      "migration_issues": [59, 69, 94, 95, 96, 97, 98, 99, 101, 102, 103, 104, 112],
+      "deletion_target": "Completed by #112: Swift chapter prompt, model-selection, mode-selection, and input-version policy were deleted. Issue #110 deletes the remaining transient Swift workflow orchestration; retain only primitive provider execution and bounded native presentation adapters.",
       "priority": "high",
       "includes": ["App/Sources/Transcript/Transcript.swift", "App/Sources/Transcript/Parsing/"]
     },

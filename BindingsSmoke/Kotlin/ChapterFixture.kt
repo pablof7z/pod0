@@ -73,7 +73,7 @@ fun qualifyChapterContract(fixture: Map<String, String>) {
     )
 
     check(fixture["fixture_version"] == "1")
-    check(fixture["contract_version"]?.toUInt() == 21u)
+    check(fixture["contract_version"]?.toUInt() == 22u)
     check(fixture["unknown_future_field"] == "ignored-by-v1-readers")
     val qualified = projectChapterContract(
         request,
@@ -145,6 +145,54 @@ fun qualifyChapterObservations() {
     check(publisher.artifact.chapters[1].includeInTableOfContents.not())
 
     val transcriptDigest = chapterDigest("selected transcript".toByteArray())
+    fun modelPlan(artifact: ChapterArtifactInput?): ChapterModelPlan = planChapterModelRequest(
+        ChapterModelPlanInput(
+            ChapterModelEpisodeInput(
+                episode,
+                podcast,
+                "Kotlin chapter planning",
+                "Prompt v1 ignores this description",
+                100.0,
+            ),
+            TranscriptVersionId(13UL, 101UL),
+            transcriptDigest,
+            ChapterModelTranscriptInput(
+                TranscriptVersionId(13UL, 101UL),
+                transcriptDigest,
+                listOf(
+                    ChapterModelTranscriptSegmentInput(0.0, "Opening evidence"),
+                    ChapterModelTranscriptSegmentInput(50.0, "Source evidence"),
+                ),
+            ),
+            artifact,
+            StateRevision(0UL),
+            "openai/gpt-4o-mini",
+        ),
+    )
+    val generatedPlan = modelPlan(null)
+    check(generatedPlan is ChapterModelPlan.Ready)
+    check(generatedPlan.request.provider == "openrouter")
+    check(generatedPlan.request.model == "openai/gpt-4o-mini")
+    check(generatedPlan.request.responseFormat == ChapterModelResponseFormat.JsonObject)
+    check(generatedPlan.request.maximumCompletionBytes == 1_048_576UL)
+    check(generatedPlan.request.mode == ChapterModelObservationMode.Generate)
+    check(generatedPlan.request.expectedArtifactSource == ChapterArtifactSource.Generated)
+
+    val enrichedPlan = modelPlan(publisher.artifact)
+    check(enrichedPlan is ChapterModelPlan.Ready)
+    check(enrichedPlan.request.mode is ChapterModelObservationMode.Enrich)
+    check(enrichedPlan.request.expectedArtifactSource == ChapterArtifactSource.PublisherEnriched)
+    check(enrichedPlan.request.userPrompt.contains("use these exact indices"))
+    val desired = planChapterModelDesiredState(
+        ChapterModelDesiredStateInput(
+            transcriptDigest,
+            "openai/gpt-4o-mini",
+            ChapterArtifactSource.Generated,
+        ),
+    )
+    check(desired is ChapterModelDesiredStatePlan.Compile)
+    check(desired.inputVersion.length == 64)
+
     val completion = """{"chapters":[
         {"start":5,"title":"Generated one","summary":"One"},
         {"start":25,"title":"Generated two"},

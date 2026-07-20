@@ -38,6 +38,7 @@ import uniffi.pod0_domain.ChapterAdKind
 import uniffi.pod0_domain.ChapterArtifactId
 import uniffi.pod0_domain.ChapterArtifactInput
 import uniffi.pod0_domain.ChapterArtifactProvenance
+import uniffi.pod0_domain.ChapterArtifactSource
 import uniffi.pod0_domain.ChapterId
 import uniffi.pod0_domain.ChapterPlaybackSessionId
 import uniffi.pod0_domain.ClipId
@@ -61,6 +62,7 @@ import uniffi.pod0_domain.FfiConverterTypeChapterAdKind
 import uniffi.pod0_domain.FfiConverterTypeChapterArtifactId
 import uniffi.pod0_domain.FfiConverterTypeChapterArtifactInput
 import uniffi.pod0_domain.FfiConverterTypeChapterArtifactProvenance
+import uniffi.pod0_domain.FfiConverterTypeChapterArtifactSource
 import uniffi.pod0_domain.FfiConverterTypeChapterId
 import uniffi.pod0_domain.FfiConverterTypeChapterPlaybackSessionId
 import uniffi.pod0_domain.FfiConverterTypeClipId
@@ -136,6 +138,7 @@ import uniffi.pod0_domain.RustBuffer as RustBufferChapterAdKind
 import uniffi.pod0_domain.RustBuffer as RustBufferChapterArtifactId
 import uniffi.pod0_domain.RustBuffer as RustBufferChapterArtifactInput
 import uniffi.pod0_domain.RustBuffer as RustBufferChapterArtifactProvenance
+import uniffi.pod0_domain.RustBuffer as RustBufferChapterArtifactSource
 import uniffi.pod0_domain.RustBuffer as RustBufferChapterId
 import uniffi.pod0_domain.RustBuffer as RustBufferChapterPlaybackSessionId
 import uniffi.pod0_domain.RustBuffer as RustBufferClipId
@@ -1748,6 +1751,246 @@ public object FfiConverterTypeChapterItemProjection: FfiConverterRustBuffer<Chap
 
 
 
+data class ChapterModelDesiredStateInput (
+    val `transcriptContentDigest`: ContentDigest
+    ,
+    val `configuredModel`: kotlin.String
+    ,
+    val `selectedChapterSource`: ChapterArtifactSource?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterModelDesiredStateInput: FfiConverterRustBuffer<ChapterModelDesiredStateInput> {
+    override fun read(buf: ByteBuffer): ChapterModelDesiredStateInput {
+        return ChapterModelDesiredStateInput(
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalTypeChapterArtifactSource.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ChapterModelDesiredStateInput) = (
+            FfiConverterTypeContentDigest.allocationSize(value.`transcriptContentDigest`) +
+            FfiConverterString.allocationSize(value.`configuredModel`) +
+            FfiConverterOptionalTypeChapterArtifactSource.allocationSize(value.`selectedChapterSource`)
+    )
+
+    override fun write(value: ChapterModelDesiredStateInput, buf: ByteBuffer) {
+            FfiConverterTypeContentDigest.write(value.`transcriptContentDigest`, buf)
+            FfiConverterString.write(value.`configuredModel`, buf)
+            FfiConverterOptionalTypeChapterArtifactSource.write(value.`selectedChapterSource`, buf)
+    }
+}
+
+
+
+data class ChapterModelEpisodeInput (
+    val `episodeId`: EpisodeId
+    ,
+    val `podcastId`: PodcastId
+    ,
+    val `title`: kotlin.String
+    ,
+    val `description`: kotlin.String
+    ,
+    val `durationSeconds`: kotlin.Double?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterModelEpisodeInput: FfiConverterRustBuffer<ChapterModelEpisodeInput> {
+    override fun read(buf: ByteBuffer): ChapterModelEpisodeInput {
+        return ChapterModelEpisodeInput(
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterTypePodcastId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ChapterModelEpisodeInput) = (
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterString.allocationSize(value.`description`) +
+            FfiConverterOptionalDouble.allocationSize(value.`durationSeconds`)
+    )
+
+    override fun write(value: ChapterModelEpisodeInput, buf: ByteBuffer) {
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterString.write(value.`description`, buf)
+            FfiConverterOptionalDouble.write(value.`durationSeconds`, buf)
+    }
+}
+
+
+
+data class ChapterModelPlanInput (
+    val `episode`: ChapterModelEpisodeInput
+    ,
+    val `requestedTranscriptVersionId`: TranscriptVersionId
+    ,
+    val `requestedTranscriptContentDigest`: ContentDigest
+    ,
+    val `selectedTranscript`: ChapterModelTranscriptInput?
+    ,
+    val `selectedChapterArtifact`: ChapterArtifactInput?
+    ,
+    val `expectedChapterSelectionRevision`: StateRevision
+    ,
+    val `configuredModel`: kotlin.String
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterModelPlanInput: FfiConverterRustBuffer<ChapterModelPlanInput> {
+    override fun read(buf: ByteBuffer): ChapterModelPlanInput {
+        return ChapterModelPlanInput(
+            FfiConverterTypeChapterModelEpisodeInput.read(buf),
+            FfiConverterTypeTranscriptVersionId.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterOptionalTypeChapterModelTranscriptInput.read(buf),
+            FfiConverterOptionalTypeChapterArtifactInput.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ChapterModelPlanInput) = (
+            FfiConverterTypeChapterModelEpisodeInput.allocationSize(value.`episode`) +
+            FfiConverterTypeTranscriptVersionId.allocationSize(value.`requestedTranscriptVersionId`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`requestedTranscriptContentDigest`) +
+            FfiConverterOptionalTypeChapterModelTranscriptInput.allocationSize(value.`selectedTranscript`) +
+            FfiConverterOptionalTypeChapterArtifactInput.allocationSize(value.`selectedChapterArtifact`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`expectedChapterSelectionRevision`) +
+            FfiConverterString.allocationSize(value.`configuredModel`)
+    )
+
+    override fun write(value: ChapterModelPlanInput, buf: ByteBuffer) {
+            FfiConverterTypeChapterModelEpisodeInput.write(value.`episode`, buf)
+            FfiConverterTypeTranscriptVersionId.write(value.`requestedTranscriptVersionId`, buf)
+            FfiConverterTypeContentDigest.write(value.`requestedTranscriptContentDigest`, buf)
+            FfiConverterOptionalTypeChapterModelTranscriptInput.write(value.`selectedTranscript`, buf)
+            FfiConverterOptionalTypeChapterArtifactInput.write(value.`selectedChapterArtifact`, buf)
+            FfiConverterTypeStateRevision.write(value.`expectedChapterSelectionRevision`, buf)
+            FfiConverterString.write(value.`configuredModel`, buf)
+    }
+}
+
+
+
+data class ChapterModelTranscriptInput (
+    val `transcriptVersionId`: TranscriptVersionId
+    ,
+    val `transcriptContentDigest`: ContentDigest
+    ,
+    val `segments`: List<ChapterModelTranscriptSegmentInput>
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterModelTranscriptInput: FfiConverterRustBuffer<ChapterModelTranscriptInput> {
+    override fun read(buf: ByteBuffer): ChapterModelTranscriptInput {
+        return ChapterModelTranscriptInput(
+            FfiConverterTypeTranscriptVersionId.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterSequenceTypeChapterModelTranscriptSegmentInput.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ChapterModelTranscriptInput) = (
+            FfiConverterTypeTranscriptVersionId.allocationSize(value.`transcriptVersionId`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`transcriptContentDigest`) +
+            FfiConverterSequenceTypeChapterModelTranscriptSegmentInput.allocationSize(value.`segments`)
+    )
+
+    override fun write(value: ChapterModelTranscriptInput, buf: ByteBuffer) {
+            FfiConverterTypeTranscriptVersionId.write(value.`transcriptVersionId`, buf)
+            FfiConverterTypeContentDigest.write(value.`transcriptContentDigest`, buf)
+            FfiConverterSequenceTypeChapterModelTranscriptSegmentInput.write(value.`segments`, buf)
+    }
+}
+
+
+
+data class ChapterModelTranscriptSegmentInput (
+    val `startSeconds`: kotlin.Double
+    ,
+    val `text`: kotlin.String
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterModelTranscriptSegmentInput: FfiConverterRustBuffer<ChapterModelTranscriptSegmentInput> {
+    override fun read(buf: ByteBuffer): ChapterModelTranscriptSegmentInput {
+        return ChapterModelTranscriptSegmentInput(
+            FfiConverterDouble.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ChapterModelTranscriptSegmentInput) = (
+            FfiConverterDouble.allocationSize(value.`startSeconds`) +
+            FfiConverterString.allocationSize(value.`text`)
+    )
+
+    override fun write(value: ChapterModelTranscriptSegmentInput, buf: ByteBuffer) {
+            FfiConverterDouble.write(value.`startSeconds`, buf)
+            FfiConverterString.write(value.`text`, buf)
+    }
+}
+
+
+
 data class ChapterObservationLimits (
     val `publisherDocumentBytes`: kotlin.ULong
     ,
@@ -2922,6 +3165,129 @@ public object FfiConverterTypeOperationProjection: FfiConverterRustBuffer<Operat
             FfiConverterTypeOperationStage.write(value.`stage`, buf)
             FfiConverterOptionalTypeCoreFailure.write(value.`failure`, buf)
             FfiConverterOptionalTypeOperationResult.write(value.`result`, buf)
+    }
+}
+
+
+
+data class PlannedChapterModelRequest (
+    val `sourceVersion`: kotlin.String
+    ,
+    val `episodeId`: EpisodeId
+    ,
+    val `podcastId`: PodcastId
+    ,
+    val `formatVersion`: kotlin.UInt
+    ,
+    val `requestedTranscriptVersionId`: TranscriptVersionId
+    ,
+    val `requestedTranscriptContentDigest`: ContentDigest
+    ,
+    val `selectedTranscriptVersionId`: TranscriptVersionId
+    ,
+    val `selectedTranscriptContentDigest`: ContentDigest
+    ,
+    val `policyVersion`: kotlin.UInt
+    ,
+    val `provider`: kotlin.String
+    ,
+    val `model`: kotlin.String
+    ,
+    val `systemPrompt`: kotlin.String
+    ,
+    val `userPrompt`: kotlin.String
+    ,
+    val `responseFormat`: ChapterModelResponseFormat
+    ,
+    val `maximumCompletionBytes`: kotlin.ULong
+    ,
+    val `durationMilliseconds`: kotlin.ULong?
+    ,
+    val `mode`: ChapterModelObservationMode
+    ,
+    val `expectedArtifactSource`: ChapterArtifactSource
+    ,
+    val `expectedChapterSelectionRevision`: StateRevision
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePlannedChapterModelRequest: FfiConverterRustBuffer<PlannedChapterModelRequest> {
+    override fun read(buf: ByteBuffer): PlannedChapterModelRequest {
+        return PlannedChapterModelRequest(
+            FfiConverterString.read(buf),
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterTypePodcastId.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterTypeTranscriptVersionId.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterTypeTranscriptVersionId.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeChapterModelResponseFormat.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterTypeChapterModelObservationMode.read(buf),
+            FfiConverterTypeChapterArtifactSource.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PlannedChapterModelRequest) = (
+            FfiConverterString.allocationSize(value.`sourceVersion`) +
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterUInt.allocationSize(value.`formatVersion`) +
+            FfiConverterTypeTranscriptVersionId.allocationSize(value.`requestedTranscriptVersionId`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`requestedTranscriptContentDigest`) +
+            FfiConverterTypeTranscriptVersionId.allocationSize(value.`selectedTranscriptVersionId`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`selectedTranscriptContentDigest`) +
+            FfiConverterUInt.allocationSize(value.`policyVersion`) +
+            FfiConverterString.allocationSize(value.`provider`) +
+            FfiConverterString.allocationSize(value.`model`) +
+            FfiConverterString.allocationSize(value.`systemPrompt`) +
+            FfiConverterString.allocationSize(value.`userPrompt`) +
+            FfiConverterTypeChapterModelResponseFormat.allocationSize(value.`responseFormat`) +
+            FfiConverterULong.allocationSize(value.`maximumCompletionBytes`) +
+            FfiConverterOptionalULong.allocationSize(value.`durationMilliseconds`) +
+            FfiConverterTypeChapterModelObservationMode.allocationSize(value.`mode`) +
+            FfiConverterTypeChapterArtifactSource.allocationSize(value.`expectedArtifactSource`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`expectedChapterSelectionRevision`)
+    )
+
+    override fun write(value: PlannedChapterModelRequest, buf: ByteBuffer) {
+            FfiConverterString.write(value.`sourceVersion`, buf)
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterUInt.write(value.`formatVersion`, buf)
+            FfiConverterTypeTranscriptVersionId.write(value.`requestedTranscriptVersionId`, buf)
+            FfiConverterTypeContentDigest.write(value.`requestedTranscriptContentDigest`, buf)
+            FfiConverterTypeTranscriptVersionId.write(value.`selectedTranscriptVersionId`, buf)
+            FfiConverterTypeContentDigest.write(value.`selectedTranscriptContentDigest`, buf)
+            FfiConverterUInt.write(value.`policyVersion`, buf)
+            FfiConverterString.write(value.`provider`, buf)
+            FfiConverterString.write(value.`model`, buf)
+            FfiConverterString.write(value.`systemPrompt`, buf)
+            FfiConverterString.write(value.`userPrompt`, buf)
+            FfiConverterTypeChapterModelResponseFormat.write(value.`responseFormat`, buf)
+            FfiConverterULong.write(value.`maximumCompletionBytes`, buf)
+            FfiConverterOptionalULong.write(value.`durationMilliseconds`, buf)
+            FfiConverterTypeChapterModelObservationMode.write(value.`mode`, buf)
+            FfiConverterTypeChapterArtifactSource.write(value.`expectedArtifactSource`, buf)
+            FfiConverterTypeStateRevision.write(value.`expectedChapterSelectionRevision`, buf)
     }
 }
 
@@ -5860,6 +6226,93 @@ public object FfiConverterTypeChapterContractRejection : FfiConverterRustBuffer<
 
 
 
+sealed class ChapterModelDesiredStatePlan {
+
+    data class Compile(
+        val `inputVersion`: kotlin.String) : ChapterModelDesiredStatePlan()
+
+    {
+
+
+        companion object
+    }
+
+    object PreserveAgentComposed : ChapterModelDesiredStatePlan()
+
+
+    object UnsupportedArtifact : ChapterModelDesiredStatePlan()
+
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterModelDesiredStatePlan : FfiConverterRustBuffer<ChapterModelDesiredStatePlan>{
+    override fun read(buf: ByteBuffer): ChapterModelDesiredStatePlan {
+        return when(buf.getInt()) {
+            1 -> ChapterModelDesiredStatePlan.Compile(
+                FfiConverterString.read(buf),
+                )
+            2 -> ChapterModelDesiredStatePlan.PreserveAgentComposed
+            3 -> ChapterModelDesiredStatePlan.UnsupportedArtifact
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: ChapterModelDesiredStatePlan): ULong = when(value) {
+        is ChapterModelDesiredStatePlan.Compile -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`inputVersion`)
+            )
+        }
+        is ChapterModelDesiredStatePlan.PreserveAgentComposed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterModelDesiredStatePlan.UnsupportedArtifact -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: ChapterModelDesiredStatePlan, buf: ByteBuffer) {
+        when(value) {
+            is ChapterModelDesiredStatePlan.Compile -> {
+                buf.putInt(1)
+                FfiConverterString.write(value.`inputVersion`, buf)
+                Unit
+            }
+            is ChapterModelDesiredStatePlan.PreserveAgentComposed -> {
+                buf.putInt(2)
+                Unit
+            }
+            is ChapterModelDesiredStatePlan.UnsupportedArtifact -> {
+                buf.putInt(3)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 sealed class ChapterModelObservationMode {
 
     object Generate : ChapterModelObservationMode()
@@ -5923,6 +6376,278 @@ public object FfiConverterTypeChapterModelObservationMode : FfiConverterRustBuff
             is ChapterModelObservationMode.Enrich -> {
                 buf.putInt(2)
                 FfiConverterTypeChapterArtifactInput.write(value.`publisherArtifact`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class ChapterModelPlan {
+
+    data class Ready(
+        val `request`: uniffi.pod0_application.PlannedChapterModelRequest) : ChapterModelPlan()
+
+    {
+
+
+        companion object
+    }
+
+    object EpisodeUnavailable : ChapterModelPlan()
+
+
+    object TranscriptUnavailable : ChapterModelPlan()
+
+
+    object StaleTranscript : ChapterModelPlan()
+
+
+    object PreserveAgentComposed : ChapterModelPlan()
+
+
+    object InvalidConfiguration : ChapterModelPlan()
+
+
+    object UnsupportedArtifact : ChapterModelPlan()
+
+
+    object InvalidInput : ChapterModelPlan()
+
+
+    object EmptyTranscript : ChapterModelPlan()
+
+
+    object InputTooLarge : ChapterModelPlan()
+
+
+    object CoreUnavailable : ChapterModelPlan()
+
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterModelPlan : FfiConverterRustBuffer<ChapterModelPlan>{
+    override fun read(buf: ByteBuffer): ChapterModelPlan {
+        return when(buf.getInt()) {
+            1 -> ChapterModelPlan.Ready(
+                FfiConverterTypePlannedChapterModelRequest.read(buf),
+                )
+            2 -> ChapterModelPlan.EpisodeUnavailable
+            3 -> ChapterModelPlan.TranscriptUnavailable
+            4 -> ChapterModelPlan.StaleTranscript
+            5 -> ChapterModelPlan.PreserveAgentComposed
+            6 -> ChapterModelPlan.InvalidConfiguration
+            7 -> ChapterModelPlan.UnsupportedArtifact
+            8 -> ChapterModelPlan.InvalidInput
+            9 -> ChapterModelPlan.EmptyTranscript
+            10 -> ChapterModelPlan.InputTooLarge
+            11 -> ChapterModelPlan.CoreUnavailable
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: ChapterModelPlan): ULong = when(value) {
+        is ChapterModelPlan.Ready -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePlannedChapterModelRequest.allocationSize(value.`request`)
+            )
+        }
+        is ChapterModelPlan.EpisodeUnavailable -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterModelPlan.TranscriptUnavailable -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterModelPlan.StaleTranscript -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterModelPlan.PreserveAgentComposed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterModelPlan.InvalidConfiguration -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterModelPlan.UnsupportedArtifact -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterModelPlan.InvalidInput -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterModelPlan.EmptyTranscript -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterModelPlan.InputTooLarge -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterModelPlan.CoreUnavailable -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: ChapterModelPlan, buf: ByteBuffer) {
+        when(value) {
+            is ChapterModelPlan.Ready -> {
+                buf.putInt(1)
+                FfiConverterTypePlannedChapterModelRequest.write(value.`request`, buf)
+                Unit
+            }
+            is ChapterModelPlan.EpisodeUnavailable -> {
+                buf.putInt(2)
+                Unit
+            }
+            is ChapterModelPlan.TranscriptUnavailable -> {
+                buf.putInt(3)
+                Unit
+            }
+            is ChapterModelPlan.StaleTranscript -> {
+                buf.putInt(4)
+                Unit
+            }
+            is ChapterModelPlan.PreserveAgentComposed -> {
+                buf.putInt(5)
+                Unit
+            }
+            is ChapterModelPlan.InvalidConfiguration -> {
+                buf.putInt(6)
+                Unit
+            }
+            is ChapterModelPlan.UnsupportedArtifact -> {
+                buf.putInt(7)
+                Unit
+            }
+            is ChapterModelPlan.InvalidInput -> {
+                buf.putInt(8)
+                Unit
+            }
+            is ChapterModelPlan.EmptyTranscript -> {
+                buf.putInt(9)
+                Unit
+            }
+            is ChapterModelPlan.InputTooLarge -> {
+                buf.putInt(10)
+                Unit
+            }
+            is ChapterModelPlan.CoreUnavailable -> {
+                buf.putInt(11)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class ChapterModelResponseFormat {
+
+    object JsonObject : ChapterModelResponseFormat()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : ChapterModelResponseFormat()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterModelResponseFormat : FfiConverterRustBuffer<ChapterModelResponseFormat>{
+    override fun read(buf: ByteBuffer): ChapterModelResponseFormat {
+        return when(buf.getInt()) {
+            1 -> ChapterModelResponseFormat.JsonObject
+            2 -> ChapterModelResponseFormat.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: ChapterModelResponseFormat): ULong = when(value) {
+        is ChapterModelResponseFormat.JsonObject -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ChapterModelResponseFormat.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: ChapterModelResponseFormat, buf: ByteBuffer) {
+        when(value) {
+            is ChapterModelResponseFormat.JsonObject -> {
+                buf.putInt(1)
+                Unit
+            }
+            is ChapterModelResponseFormat.Unsupported -> {
+                buf.putInt(2)
+                FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
@@ -12515,6 +13240,38 @@ public object FfiConverterOptionalULong: FfiConverterRustBuffer<kotlin.ULong?> {
 /**
  * @suppress
  */
+public object FfiConverterOptionalDouble: FfiConverterRustBuffer<kotlin.Double?> {
+    override fun read(buf: ByteBuffer): kotlin.Double? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterDouble.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.Double?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterDouble.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.Double?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterDouble.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?> {
     override fun read(buf: ByteBuffer): kotlin.String? {
         if (buf.get().toInt() == 0) {
@@ -12537,6 +13294,38 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
         } else {
             buf.put(1)
             FfiConverterString.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeChapterModelTranscriptInput: FfiConverterRustBuffer<ChapterModelTranscriptInput?> {
+    override fun read(buf: ByteBuffer): ChapterModelTranscriptInput? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeChapterModelTranscriptInput.read(buf)
+    }
+
+    override fun allocationSize(value: ChapterModelTranscriptInput?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeChapterModelTranscriptInput.allocationSize(value)
+        }
+    }
+
+    override fun write(value: ChapterModelTranscriptInput?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeChapterModelTranscriptInput.write(value, buf)
         }
     }
 }
@@ -12793,6 +13582,38 @@ public object FfiConverterOptionalTypeChapterArtifactId: FfiConverterRustBuffer<
         } else {
             buf.put(1)
             FfiConverterTypeChapterArtifactId.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeChapterArtifactInput: FfiConverterRustBuffer<ChapterArtifactInput?> {
+    override fun read(buf: ByteBuffer): ChapterArtifactInput? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeChapterArtifactInput.read(buf)
+    }
+
+    override fun allocationSize(value: ChapterArtifactInput?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeChapterArtifactInput.allocationSize(value)
+        }
+    }
+
+    override fun write(value: ChapterArtifactInput?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeChapterArtifactInput.write(value, buf)
         }
     }
 }
@@ -13219,6 +14040,38 @@ public object FfiConverterOptionalTypeOperationResult: FfiConverterRustBuffer<Op
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeChapterArtifactSource: FfiConverterRustBuffer<ChapterArtifactSource?> {
+    override fun read(buf: ByteBuffer): ChapterArtifactSource? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeChapterArtifactSource.read(buf)
+    }
+
+    override fun allocationSize(value: ChapterArtifactSource?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeChapterArtifactSource.allocationSize(value)
+        }
+    }
+
+    override fun write(value: ChapterArtifactSource?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeChapterArtifactSource.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeNoteTarget: FfiConverterRustBuffer<NoteTarget?> {
     override fun read(buf: ByteBuffer): NoteTarget? {
         if (buf.get().toInt() == 0) {
@@ -13381,6 +14234,34 @@ public object FfiConverterSequenceTypeChapterItemProjection: FfiConverterRustBuf
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeChapterItemProjection.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeChapterModelTranscriptSegmentInput: FfiConverterRustBuffer<List<ChapterModelTranscriptSegmentInput>> {
+    override fun read(buf: ByteBuffer): List<ChapterModelTranscriptSegmentInput> {
+        val len = buf.getInt()
+        return List<ChapterModelTranscriptSegmentInput>(len) {
+            FfiConverterTypeChapterModelTranscriptSegmentInput.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<ChapterModelTranscriptSegmentInput>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeChapterModelTranscriptSegmentInput.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<ChapterModelTranscriptSegmentInput>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeChapterModelTranscriptSegmentInput.write(it, buf)
         }
     }
 }

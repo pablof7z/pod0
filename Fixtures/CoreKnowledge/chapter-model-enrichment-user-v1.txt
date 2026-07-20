@@ -1,0 +1,8 @@
+Episode duration: 125 seconds.
+Title: A Calm Test
+Existing chapters (use these exact indices in your "summaries" output):
+[0] 0s — Opening
+[1] 60s — Deeper work
+Transcript (timestamped):
+[0s] Opening thought
+[13s] Second idea

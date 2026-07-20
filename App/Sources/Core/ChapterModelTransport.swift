@@ -1,4 +1,5 @@
 import Foundation
+import Pod0Core
 
 struct ChapterModelUsage: Equatable, Sendable {
     let promptTokens: Int
@@ -17,8 +18,7 @@ struct ChapterModelTransportResponse: Equatable, Sendable {
 
 protocol ChapterModelTransporting: Sendable {
     func execute(
-        _ request: ModelChapterCapabilityRequest,
-        maximumCompletionBytes: UInt64
+        _ request: ModelChapterCapabilityRequest
     ) async -> Result<ChapterModelTransportResponse, ChapterCapabilityFailure>
 }
 
@@ -47,13 +47,14 @@ struct LiveChapterModelTransport: ChapterModelTransporting, Sendable {
     }
 
     func execute(
-        _ request: ModelChapterCapabilityRequest,
-        maximumCompletionBytes: UInt64
+        _ request: ModelChapterCapabilityRequest
     ) async -> Result<ChapterModelTransportResponse, ChapterCapabilityFailure> {
-        guard maximumCompletionBytes > 0,
-              let provider = LLMProvider(rawValue: request.provider),
-              !request.model.isEmpty,
-              request.model.trimmed == request.model
+        let planned = request.planned
+        guard planned.maximumCompletionBytes > 0,
+              planned.responseFormat == .jsonObject,
+              let provider = LLMProvider(rawValue: planned.provider),
+              !planned.model.isEmpty,
+              planned.model.trimmed == planned.model
         else {
             return .failure(.invalidRequest("Invalid chapter model identity"))
         }
@@ -78,19 +79,19 @@ struct LiveChapterModelTransport: ChapterModelTransporting, Sendable {
 
         let urlRequest: URLRequest
         do {
-            urlRequest = try makeRequest(request, provider: provider, apiKey: apiKey)
+            urlRequest = try makeRequest(planned, provider: provider, apiKey: apiKey)
         } catch {
             return .failure(.invalidRequest("Chapter model request encoding failed"))
         }
         return await send(
             urlRequest,
             provider: provider,
-            maximumCompletionBytes: maximumCompletionBytes
+            maximumCompletionBytes: planned.maximumCompletionBytes
         )
     }
 
     private func makeRequest(
-        _ request: ModelChapterCapabilityRequest,
+        _ request: PlannedChapterModelRequest,
         provider: LLMProvider,
         apiKey: String
     ) throws -> URLRequest {

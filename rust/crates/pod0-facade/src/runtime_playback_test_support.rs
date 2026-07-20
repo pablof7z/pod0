@@ -33,6 +33,10 @@ impl PlaybackFixture {
         Self::new_with_options(false, true)
     }
 
+    pub(super) fn new_with_transcript_and_chapters() -> Self {
+        Self::new_with_options(true, true)
+    }
+
     fn new_with_options(transcript_available: bool, chapters_available: bool) -> Self {
         let directory = tempfile::tempdir().unwrap();
         let canonical_source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))

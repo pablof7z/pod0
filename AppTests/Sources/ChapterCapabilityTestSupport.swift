@@ -24,24 +24,34 @@ enum ChapterCapabilityFixtures {
 
     static func modelRequest(
         systemPrompt: String = "Return chapter JSON.",
-        userPrompt: String = "Use this bounded transcript evidence."
+        userPrompt: String = "Use this bounded transcript evidence.",
+        provider: String = "openrouter",
+        model: String = "fixture-model-v1",
+        maximumCompletionBytes: UInt64 = 1_048_576
     ) -> ModelChapterCapabilityRequest {
         ModelChapterCapabilityRequest(
-            episodeID: episodeID,
-            podcastID: podcastID,
-            formatVersion: 1,
-            requestedTranscriptVersionID: transcriptID,
-            requestedTranscriptContentDigest: transcriptDigest,
-            selectedTranscriptVersionID: transcriptID,
-            selectedTranscriptContentDigest: transcriptDigest,
-            policyVersion: 1,
-            provider: "openrouter",
-            model: "fixture-model-v1",
-            systemPrompt: systemPrompt,
-            userPrompt: userPrompt,
-            generatedAt: generatedAt,
-            durationMilliseconds: 100_000,
-            mode: .generate
+            planned: PlannedChapterModelRequest(
+                sourceVersion: "fixture-source-v1",
+                episodeId: episodeID,
+                podcastId: podcastID,
+                formatVersion: 1,
+                requestedTranscriptVersionId: transcriptID,
+                requestedTranscriptContentDigest: transcriptDigest,
+                selectedTranscriptVersionId: transcriptID,
+                selectedTranscriptContentDigest: transcriptDigest,
+                policyVersion: 1,
+                provider: provider,
+                model: model,
+                systemPrompt: systemPrompt,
+                userPrompt: userPrompt,
+                responseFormat: .jsonObject,
+                maximumCompletionBytes: maximumCompletionBytes,
+                durationMilliseconds: 100_000,
+                mode: .generate,
+                expectedArtifactSource: .generated,
+                expectedChapterSelectionRevision: StateRevision(value: 0)
+            ),
+            generatedAt: generatedAt
         )
     }
 
@@ -105,8 +115,7 @@ struct StubChapterModelTransport: ChapterModelTransporting {
     let result: Result<ChapterModelTransportResponse, ChapterCapabilityFailure>
 
     func execute(
-        _: ModelChapterCapabilityRequest,
-        maximumCompletionBytes _: UInt64
+        _: ModelChapterCapabilityRequest
     ) async -> Result<ChapterModelTransportResponse, ChapterCapabilityFailure> {
         result
     }
@@ -119,8 +128,7 @@ actor SuspendingChapterModelTransport: ChapterModelTransporting {
     private var started = false
 
     func execute(
-        _: ModelChapterCapabilityRequest,
-        maximumCompletionBytes _: UInt64
+        _: ModelChapterCapabilityRequest
     ) async -> Result<ChapterModelTransportResponse, ChapterCapabilityFailure> {
         started = true
         return await withCheckedContinuation { continuation = $0 }

@@ -234,8 +234,14 @@ struct Reconciler {
             let model = LLMModelReference(storedID: appStore.state.settings.embeddingsModel)
             return LLMProviderCredentialResolver.hasAPIKey(for: model.provider)
         case .chapterArtifacts:
-            let model = LLMModelReference(storedID: appStore.state.settings.chapterCompilationModel)
-            return LLMProviderCredentialResolver.hasAPIKey(for: model.provider)
+            guard let sharedLibrary = appStore.sharedLibrary,
+                  case .ready(let request) = sharedLibrary.chapterModelPlan(
+                    episodeID: job.subjectID,
+                    configuredModel: appStore.state.settings.chapterCompilationModel
+                  ),
+                  let provider = LLMProvider(rawValue: request.provider)
+            else { return false }
+            return LLMProviderCredentialResolver.hasAPIKey(for: provider)
         case .scheduledAgentRun:
             guard let payload = try? Self.decoder.decode(
                 ScheduledRunPayload.self, from: job.payload ?? Data()

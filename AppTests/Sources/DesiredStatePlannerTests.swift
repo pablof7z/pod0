@@ -20,7 +20,7 @@ final class DesiredStatePlannerTests: XCTestCase {
         let transcript = TranscriptWorkflowSnapshot(
             episodeID: episode.id,
             sourceRevision: DesiredStatePlanner.audioVersion(episode),
-            contentDigest: "transcript-hash",
+            contentDigest: String(repeating: "1", count: 64),
             selectionRevision: 1
         )
         let withTranscript = planner.plan(.init(
@@ -139,7 +139,7 @@ final class DesiredStatePlannerTests: XCTestCase {
         let transcript = TranscriptWorkflowSnapshot(
             episodeID: episode.id,
             sourceRevision: DesiredStatePlanner.audioVersion(episode),
-            contentDigest: "transcript-hash",
+            contentDigest: String(repeating: "1", count: 64),
             selectionRevision: 1
         )
         let jobs = DesiredStatePlanner().plan(.init(
@@ -158,7 +158,7 @@ final class DesiredStatePlannerTests: XCTestCase {
         let transcript = TranscriptWorkflowSnapshot(
             episodeID: episode.id,
             sourceRevision: DesiredStatePlanner.audioVersion(episode),
-            contentDigest: "transcript-hash",
+            contentDigest: String(repeating: "1", count: 64),
             selectionRevision: 1
         )
         let publisher = chapterSnapshot(

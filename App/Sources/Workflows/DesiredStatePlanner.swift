@@ -109,13 +109,15 @@ struct DesiredStatePlanner: Sendable {
                 ))
             }
 
-            if !publisherReady || chapter?.provenance.source == .agentComposed {
-                continue
-            }
-            let compilerVersion = Self.chapterCompilerInputVersion(
-                transcript,
-                settings: input.settings
-            )
+            guard publisherReady,
+                  let transcriptDigest = ContentDigest(hexadecimal: transcript.contentDigest)
+            else { continue }
+            let modelPlan = planChapterModelDesiredState(input: .init(
+                transcriptContentDigest: transcriptDigest,
+                configuredModel: input.settings.chapterCompilationModel,
+                selectedChapterSource: chapter?.provenance.source
+            ))
+            guard case .compile(let compilerVersion) = modelPlan else { continue }
             if !Self.hasCurrentCompiledChapters(
                 chapter,
                 completions: completions,
@@ -204,15 +206,6 @@ struct DesiredStatePlanner: Sendable {
         ArtifactRepository.version(parts: [
             transcript.contentDigest, settings.embeddingsModel,
             "rust-evidence-v1", "core-recall-index-v1",
-        ])
-    }
-
-    static func chapterCompilerInputVersion(
-        _ transcript: TranscriptWorkflowSnapshot,
-        settings: Settings
-    ) -> String {
-        ArtifactRepository.version(parts: [
-            transcript.contentDigest, settings.chapterCompilationModel, "chapter-prompt-v1",
         ])
     }
 

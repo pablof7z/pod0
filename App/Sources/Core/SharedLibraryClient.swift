@@ -108,6 +108,16 @@ final class SharedLibraryClient {
         store.applySharedClips(clips)
     }
 
+    nonisolated func chapterModelPlan(
+        episodeID: UUID,
+        configuredModel: String
+    ) -> ChapterModelPlan {
+        facade.planChapterModelRequest(
+            episodeId: EpisodeId(uuid: episodeID),
+            configuredModel: configuredModel
+        )
+    }
+
     func attachPlayback(_ playback: PlaybackState, store: AppStateStore) {
         self.playbackState = playback
         playback.attachSharedCore(self)

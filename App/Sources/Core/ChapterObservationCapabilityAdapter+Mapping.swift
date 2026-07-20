@@ -9,10 +9,16 @@ extension ChapterObservationCapabilityAdapter {
     ) -> ChapterCapabilityFailure? {
         switch request {
         case .model(let value):
-            let systemBytes = UInt64(value.systemPrompt.utf8.count)
-            let userBytes = UInt64(value.userPrompt.utf8.count)
+            let systemBytes = UInt64(value.planned.systemPrompt.utf8.count)
+            let userBytes = UInt64(value.planned.userPrompt.utf8.count)
             let total = systemBytes.addingReportingOverflow(userBytes)
-            guard !total.overflow, total.partialValue <= limits.modelPromptBytes else {
+            guard value.planned.maximumCompletionBytes > 0,
+                  value.planned.maximumCompletionBytes <= limits.modelCompletionBytes,
+                  value.planned.responseFormat == .jsonObject
+            else { return .invalidRequest("Invalid shared chapter model policy") }
+            guard !total.overflow,
+                  total.partialValue <= limits.modelPromptBytes
+            else {
                 return .responseTooLarge("Chapter model prompt exceeds core limit")
             }
         case .agent(let value):
@@ -42,22 +48,23 @@ extension ChapterObservationCapabilityAdapter {
             return .failed(.invalidMetadata("Malformed chapter model metadata"))
         }
         let digest = Self.digest(Data(response.completion.utf8))
+        let planned = request.planned
         let observation = ModelChapterObservation(
-            episodeId: request.episodeID,
-            podcastId: request.podcastID,
-            formatVersion: request.formatVersion,
-            requestedTranscriptVersionId: request.requestedTranscriptVersionID,
-            requestedTranscriptContentDigest: request.requestedTranscriptContentDigest,
-            selectedTranscriptVersionId: request.selectedTranscriptVersionID,
-            selectedTranscriptContentDigest: request.selectedTranscriptContentDigest,
-            policyVersion: request.policyVersion,
+            episodeId: planned.episodeId,
+            podcastId: planned.podcastId,
+            formatVersion: planned.formatVersion,
+            requestedTranscriptVersionId: planned.requestedTranscriptVersionId,
+            requestedTranscriptContentDigest: planned.requestedTranscriptContentDigest,
+            selectedTranscriptVersionId: planned.selectedTranscriptVersionId,
+            selectedTranscriptContentDigest: planned.selectedTranscriptContentDigest,
+            policyVersion: planned.policyVersion,
             provider: response.provider,
             model: response.model,
             completionDigest: digest,
             completion: response.completion,
             generatedAt: request.generatedAt,
-            durationMilliseconds: request.durationMilliseconds,
-            mode: request.mode
+            durationMilliseconds: planned.durationMilliseconds,
+            mode: planned.mode
         )
         return qualify(
             .model(observation),

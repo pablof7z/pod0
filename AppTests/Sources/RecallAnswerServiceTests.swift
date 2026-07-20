@@ -203,6 +203,9 @@ final class RecallAnswerServiceTests: XCTestCase {
         )
 
         XCTAssertTrue(RecallPlaybackHandoff.open(evidence, store: made.store, playback: playback))
+        // Supply the native host observation explicitly; this contract test
+        // must not depend on DNS or AVPlayer timing for its fake remote URL.
+        playback.engine.setState(.playing)
         await fulfillment(of: [committed], timeout: 1)
         XCTAssertEqual(playback.episode?.id, episode.id)
         XCTAssertEqual(playback.currentTime, 47.125, accuracy: 0.001)

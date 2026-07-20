@@ -29,10 +29,9 @@ final class ChapterProviderTransportTests: XCTestCase {
         let session = makeSession()
         let transport = modelTransport(session: session)
 
-        let result = await transport.execute(
-            ChapterCapabilityFixtures.modelRequest(),
+        let result = await transport.execute(ChapterCapabilityFixtures.modelRequest(
             maximumCompletionBytes: 1_024
-        )
+        ))
 
         guard case .success(let response) = result else {
             return XCTFail("Expected raw model response, got \(result)")
@@ -66,26 +65,12 @@ final class ChapterProviderTransportTests: XCTestCase {
         ])
         let session = makeSession()
         let transport = modelTransport(session: session)
-        var request = ChapterCapabilityFixtures.modelRequest()
-        request = ModelChapterCapabilityRequest(
-            episodeID: request.episodeID,
-            podcastID: request.podcastID,
-            formatVersion: request.formatVersion,
-            requestedTranscriptVersionID: request.requestedTranscriptVersionID,
-            requestedTranscriptContentDigest: request.requestedTranscriptContentDigest,
-            selectedTranscriptVersionID: request.selectedTranscriptVersionID,
-            selectedTranscriptContentDigest: request.selectedTranscriptContentDigest,
-            policyVersion: request.policyVersion,
+        let request = ChapterCapabilityFixtures.modelRequest(
             provider: "ollama",
             model: "requested-ollama-model",
-            systemPrompt: request.systemPrompt,
-            userPrompt: request.userPrompt,
-            generatedAt: request.generatedAt,
-            durationMilliseconds: request.durationMilliseconds,
-            mode: request.mode
+            maximumCompletionBytes: 1_024
         )
-
-        let result = await transport.execute(request, maximumCompletionBytes: 1_024)
+        let result = await transport.execute(request)
 
         guard case .success(let response) = result else {
             return XCTFail("Expected Ollama response, got \(result)")
@@ -104,10 +89,9 @@ final class ChapterProviderTransportTests: XCTestCase {
             session: session,
             credentialResolver: { _ in nil }
         )
-        let unauthorized = await missing.execute(
-            ChapterCapabilityFixtures.modelRequest(),
+        let unauthorized = await missing.execute(ChapterCapabilityFixtures.modelRequest(
             maximumCompletionBytes: 100
-        )
+        ))
         assertFailure(unauthorized, code: .authentication)
 
         ChapterProviderStubProtocol.responseBody = try JSONSerialization.data(withJSONObject: [
@@ -115,15 +99,13 @@ final class ChapterProviderTransportTests: XCTestCase {
             "choices": [["message": ["content": "five!"]]],
         ])
         let oversized = await modelTransport(session: session).execute(
-            ChapterCapabilityFixtures.modelRequest(),
-            maximumCompletionBytes: 4
+            ChapterCapabilityFixtures.modelRequest(maximumCompletionBytes: 4)
         )
         assertFailure(oversized, code: .responseTooLarge)
 
         ChapterProviderStubProtocol.responseBody = Data(#"{"choices":[]}"#.utf8)
         let malformed = await modelTransport(session: session).execute(
-            ChapterCapabilityFixtures.modelRequest(),
-            maximumCompletionBytes: 100
+            ChapterCapabilityFixtures.modelRequest(maximumCompletionBytes: 100)
         )
         assertFailure(malformed, code: .invalidResponseMetadata)
         session.invalidateAndCancel()

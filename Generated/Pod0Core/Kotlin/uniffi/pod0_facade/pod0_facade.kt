@@ -34,6 +34,10 @@ import java.util.concurrent.atomic.AtomicBoolean
 import uniffi.pod0_application.AgentComposedChapterObservation
 import uniffi.pod0_application.ChapterContractProjection
 import uniffi.pod0_application.ChapterContractRequest
+import uniffi.pod0_application.ChapterModelDesiredStateInput
+import uniffi.pod0_application.ChapterModelDesiredStatePlan
+import uniffi.pod0_application.ChapterModelPlan
+import uniffi.pod0_application.ChapterModelPlanInput
 import uniffi.pod0_application.ChapterObservationLimits
 import uniffi.pod0_application.ChapterObservationProjection
 import uniffi.pod0_application.ChapterProjectionScope
@@ -41,6 +45,10 @@ import uniffi.pod0_application.CommandEnvelope
 import uniffi.pod0_application.FfiConverterTypeAgentComposedChapterObservation
 import uniffi.pod0_application.FfiConverterTypeChapterContractProjection
 import uniffi.pod0_application.FfiConverterTypeChapterContractRequest
+import uniffi.pod0_application.FfiConverterTypeChapterModelDesiredStateInput
+import uniffi.pod0_application.FfiConverterTypeChapterModelDesiredStatePlan
+import uniffi.pod0_application.FfiConverterTypeChapterModelPlan
+import uniffi.pod0_application.FfiConverterTypeChapterModelPlanInput
 import uniffi.pod0_application.FfiConverterTypeChapterObservationLimits
 import uniffi.pod0_application.FfiConverterTypeChapterObservationProjection
 import uniffi.pod0_application.FfiConverterTypeChapterProjectionScope
@@ -68,9 +76,11 @@ import uniffi.pod0_application.TranscriptProjectionScope
 import uniffi.pod0_domain.ClipRecord
 import uniffi.pod0_domain.CommandId
 import uniffi.pod0_domain.ContentDigest
+import uniffi.pod0_domain.EpisodeId
 import uniffi.pod0_domain.FfiConverterTypeClipRecord
 import uniffi.pod0_domain.FfiConverterTypeCommandId
 import uniffi.pod0_domain.FfiConverterTypeContentDigest
+import uniffi.pod0_domain.FfiConverterTypeEpisodeId
 import uniffi.pod0_domain.FfiConverterTypeListeningDomainSnapshot
 import uniffi.pod0_domain.FfiConverterTypeNoteRecord
 import uniffi.pod0_domain.FfiConverterTypeStateRevision
@@ -82,6 +92,10 @@ import uniffi.pod0_domain.SubscriptionId
 import uniffi.pod0_application.RustBuffer as RustBufferAgentComposedChapterObservation
 import uniffi.pod0_application.RustBuffer as RustBufferChapterContractProjection
 import uniffi.pod0_application.RustBuffer as RustBufferChapterContractRequest
+import uniffi.pod0_application.RustBuffer as RustBufferChapterModelDesiredStateInput
+import uniffi.pod0_application.RustBuffer as RustBufferChapterModelDesiredStatePlan
+import uniffi.pod0_application.RustBuffer as RustBufferChapterModelPlan
+import uniffi.pod0_application.RustBuffer as RustBufferChapterModelPlanInput
 import uniffi.pod0_application.RustBuffer as RustBufferChapterObservationLimits
 import uniffi.pod0_application.RustBuffer as RustBufferChapterObservationProjection
 import uniffi.pod0_application.RustBuffer as RustBufferChapterProjectionScope
@@ -99,6 +113,7 @@ import uniffi.pod0_application.RustBuffer as RustBufferTranscriptProjectionScope
 import uniffi.pod0_domain.RustBuffer as RustBufferClipRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferCommandId
 import uniffi.pod0_domain.RustBuffer as RustBufferContentDigest
+import uniffi.pod0_domain.RustBuffer as RustBufferEpisodeId
 import uniffi.pod0_domain.RustBuffer as RustBufferListeningDomainSnapshot
 import uniffi.pod0_domain.RustBuffer as RustBufferNoteRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferStateRevision
@@ -767,6 +782,10 @@ internal object IntegrityCheckingUniffiLib {
         uniffiCheckContractApiVersion(this)
         uniffiCheckApiChecksums(this)
     }
+    external fun uniffi_pod0_facade_checksum_func_plan_chapter_model_desired_state(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_plan_chapter_model_request(
+    ): Int
     external fun uniffi_pod0_facade_checksum_func_project_chapter_contract(
     ): Int
     external fun uniffi_pod0_facade_checksum_func_project_transcript_contract(
@@ -847,6 +866,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_next_host_requests(
     ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_plan_chapter_model_request(
+    ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_record_host_observation(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_snapshot(
@@ -902,6 +923,8 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_next_host_requests(`ptr`: Long,`maximumCount`: Short,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_plan_chapter_model_request(`ptr`: Long,`episodeId`: RustBufferEpisodeId.ByValue,`configuredModel`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBufferChapterModelPlan.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_record_host_observation(`ptr`: Long,`observation`: RustBufferHostObservationEnvelope.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): Unit
     external fun uniffi_pod0_facade_fn_method_pod0facade_snapshot(`ptr`: Long,`request`: RustBufferProjectionRequest.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -910,6 +933,10 @@ internal object UniffiLib {
     ): RustBufferSubscriptionId.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_unsubscribe(`ptr`: Long,`subscriptionId`: RustBufferSubscriptionId.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): Unit
+    external fun uniffi_pod0_facade_fn_func_plan_chapter_model_desired_state(`input`: RustBufferChapterModelDesiredStateInput.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBufferChapterModelDesiredStatePlan.ByValue
+    external fun uniffi_pod0_facade_fn_func_plan_chapter_model_request(`input`: RustBufferChapterModelPlanInput.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBufferChapterModelPlan.ByValue
     external fun uniffi_pod0_facade_fn_func_project_chapter_contract(`request`: RustBufferChapterContractRequest.ByValue,`scope`: RustBufferChapterProjectionScope.ByValue,`offset`: Int,`maxItems`: Short,uniffi_out_err: UniffiRustCallStatus,
     ): RustBufferChapterContractProjection.ByValue
     external fun uniffi_pod0_facade_fn_func_project_transcript_contract(`request`: RustBufferTranscriptCommitRequest.ByValue,`scope`: RustBufferTranscriptProjectionScope.ByValue,`offset`: Int,`maxItems`: Short,uniffi_out_err: UniffiRustCallStatus,
@@ -1101,6 +1128,12 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if (lib.uniffi_pod0_facade_checksum_func_plan_chapter_model_desired_state() != 8953) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_plan_chapter_model_request() != 29990) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_pod0_facade_checksum_func_project_chapter_contract() != 22970) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1219,6 +1252,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_next_host_requests() != 62215) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_plan_chapter_model_request() != 53024) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_host_observation() != 12873) {
@@ -1707,6 +1743,12 @@ public interface Pod0FacadeInterface {
 
     fun `nextHostRequests`(`maximumCount`: kotlin.UShort): List<HostRequestEnvelope>
 
+    /**
+     * Plans the exact bounded chapter-model capability request from the
+     * authoritative Rust episode, transcript, and chapter selections.
+     */
+    fun `planChapterModelRequest`(`episodeId`: EpisodeId, `configuredModel`: kotlin.String): ChapterModelPlan
+
     fun `recordHostObservation`(`observation`: HostObservationEnvelope)
 
     fun `snapshot`(`request`: ProjectionRequest): ProjectionEnvelope
@@ -1862,6 +1904,25 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
         it,
 
         FfiConverterUShort.lower(`maximumCount`),_status)
+}
+    }
+    )
+    }
+
+
+
+    /**
+     * Plans the exact bounded chapter-model capability request from the
+     * authoritative Rust episode, transcript, and chapter selections.
+     */override fun `planChapterModelRequest`(`episodeId`: EpisodeId, `configuredModel`: kotlin.String): ChapterModelPlan {
+            return FfiConverterTypeChapterModelPlan.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_plan_chapter_model_request(
+        it,
+
+        FfiConverterTypeEpisodeId.lower(`episodeId`),
+        FfiConverterString.lower(`configuredModel`),_status)
 }
     }
     )
@@ -5075,6 +5136,46 @@ public object FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer<List<No
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+        /**
+         * Classifies whether the temporary native workflow owes model work and
+         * returns the exact legacy-compatible input version owned by Rust.
+         */ fun `planChapterModelDesiredState`(`input`: ChapterModelDesiredStateInput): ChapterModelDesiredStatePlan {
+            return FfiConverterTypeChapterModelDesiredStatePlan.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_plan_chapter_model_desired_state(
+
+
+        FfiConverterTypeChapterModelDesiredStateInput.lower(`input`),_status)
+}
+    )
+    }
+
+
+        /**
+         * Pure cross-language planner used by binding fixtures. Production native
+         * shells call the facade method so authoritative artifacts do not round-trip.
+         */ fun `planChapterModelRequest`(`input`: ChapterModelPlanInput): ChapterModelPlan {
+            return FfiConverterTypeChapterModelPlan.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_plan_chapter_model_request(
+
+
+        FfiConverterTypeChapterModelPlanInput.lower(`input`),_status)
+}
+    )
+    }
 
 
         /**

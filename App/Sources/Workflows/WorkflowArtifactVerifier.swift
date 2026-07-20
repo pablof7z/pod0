@@ -146,10 +146,13 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
                   let transcript = transcriptSnapshot(episodeID: episode.id),
                   transcript.sourceRevision == DesiredStatePlanner.audioVersion(episode)
             else { return false }
-            return DesiredStatePlanner.chapterCompilerInputVersion(
-                transcript,
-                settings: appStore.state.settings
-            ) == job.inputVersion
+            guard let sharedLibrary = appStore.sharedLibrary,
+                  case .ready(let request) = sharedLibrary.chapterModelPlan(
+                    episodeID: episode.id,
+                    configuredModel: appStore.state.settings.chapterCompilationModel
+                  )
+            else { return false }
+            return request.sourceVersion == job.inputVersion
         case .feedDiscovery, .autoDownload, .newEpisodeNotification, .scheduledAgentRun:
             return true
         }

@@ -613,6 +613,12 @@ public protocol Pod0FacadeProtocol: AnyObject, Sendable {
 
     func nextHostRequests(maximumCount: UInt16)  -> [HostRequestEnvelope]
 
+    /**
+     * Plans the exact bounded chapter-model capability request from the
+     * authoritative Rust episode, transcript, and chapter selections.
+     */
+    func planChapterModelRequest(episodeId: EpisodeId, configuredModel: String)  -> ChapterModelPlan
+
     func recordHostObservation(observation: HostObservationEnvelope)
 
     func snapshot(request: ProjectionRequest)  -> ProjectionEnvelope
@@ -717,6 +723,21 @@ open func nextHostRequests(maximumCount: UInt16) -> [HostRequestEnvelope]  {
     uniffi_pod0_facade_fn_method_pod0facade_next_host_requests(
             self.uniffiCloneHandle(),
         FfiConverterUInt16.lower(maximumCount),uniffiCallStatus
+    )
+})
+}
+
+    /**
+     * Plans the exact bounded chapter-model capability request from the
+     * authoritative Rust episode, transcript, and chapter selections.
+     */
+open func planChapterModelRequest(episodeId: EpisodeId, configuredModel: String) -> ChapterModelPlan  {
+    return try!  FfiConverterTypeChapterModelPlan_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_plan_chapter_model_request(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeEpisodeId_lower(episodeId),
+        FfiConverterString.lower(configuredModel),uniffiCallStatus
     )
 })
 }
@@ -4113,6 +4134,30 @@ fileprivate struct FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer {
     }
 }
 /**
+ * Classifies whether the temporary native workflow owes model work and
+ * returns the exact legacy-compatible input version owned by Rust.
+ */
+public func planChapterModelDesiredState(input: ChapterModelDesiredStateInput) -> ChapterModelDesiredStatePlan  {
+    return try!  FfiConverterTypeChapterModelDesiredStatePlan_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_plan_chapter_model_desired_state(
+        FfiConverterTypeChapterModelDesiredStateInput_lower(input),uniffiCallStatus
+    )
+})
+}
+/**
+ * Pure cross-language planner used by binding fixtures. Production native
+ * shells call the facade method so authoritative artifacts do not round-trip.
+ */
+public func planChapterModelRequest(input: ChapterModelPlanInput) -> ChapterModelPlan  {
+    return try!  FfiConverterTypeChapterModelPlan_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_plan_chapter_model_request(
+        FfiConverterTypeChapterModelPlanInput_lower(input),uniffiCallStatus
+    )
+})
+}
+/**
  * Produces bounded, state-shaped evidence for the typed chapter contract.
  * The storage slice will add durable commit and selection after this pure
  * cross-language contract is proven.
@@ -4510,6 +4555,12 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
+    if (uniffi_pod0_facade_checksum_func_plan_chapter_model_desired_state() != 8953) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_plan_chapter_model_request() != 29990) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_pod0_facade_checksum_func_project_chapter_contract() != 22970) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -4628,6 +4679,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_next_host_requests() != 62215) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_plan_chapter_model_request() != 53024) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_record_host_observation() != 12873) {

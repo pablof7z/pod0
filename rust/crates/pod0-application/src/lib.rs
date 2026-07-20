@@ -9,6 +9,13 @@ mod chapter_contract;
 mod chapter_contract_fixture_tests;
 #[cfg(test)]
 mod chapter_contract_tests;
+mod chapter_model_policy;
+#[cfg(test)]
+mod chapter_model_policy_fixture_tests;
+mod chapter_model_policy_prompt;
+mod chapter_model_policy_source;
+#[cfg(test)]
+mod chapter_model_policy_tests;
 mod chapter_observation;
 mod chapter_observation_agent;
 #[cfg(test)]
@@ -64,6 +71,7 @@ mod transcript_contract_tests;
 mod transcript_projection;
 
 pub use chapter_contract::*;
+pub use chapter_model_policy::*;
 pub use chapter_observation::*;
 pub use chapter_projection::*;
 pub use chapter_workflow::*;

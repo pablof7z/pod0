@@ -21,7 +21,7 @@ session sleep mode, notes, saved clips with immutable transcript provenance,
 and selected canonical transcripts and chapters/ad spans. Publisher chapter
 acquisition is also a Rust-owned durable workflow with persisted request,
 retry, cancellation, recovery, and selected-artifact state.
-The facade contract is now version 21 and includes an additive canonical
+The facade contract is now version 22 and includes an additive canonical
 transcript-artifact contract: exact integer milliseconds, full word and speaker
 records, deterministic semantic/version/artifact identities, unknown-source
 preservation, replay fingerprints, and separately bounded summary, speaker,
@@ -162,7 +162,7 @@ Swift and Kotlin bindings. CI rejects drift from Rust metadata.
   from the Rust-selected immutable artifact. The bounded playback projection
   carries its artifact/revision/session fence, and the native audio host
   executes an exact typed seek against the active Rust chapter authority.
-- Versions 20–21 add the first Rust-owned durable chapter workflow. Rust derives
+- Versions 20–21 add the first Rust-owned durable publisher-chapter workflow. Rust derives
   publisher intent from feed metadata, persists stable request/cancellation
   identity and absolute retry time, classifies raw HTTP facts, qualifies and
   commits the artifact atomically, adopts current legacy selections, and
@@ -171,6 +171,13 @@ Swift and Kotlin bindings. CI rejects drift from Rust metadata.
   accepted observation remains recoverable until its SQLite transition
   commits. Swift contains no publisher scheduler, retry policy, receipt,
   verifier, or writer.
+- Version 22 moves generated/enriched chapter-model request policy into Rust.
+  The facade reads the authoritative episode, selected transcript, and selected
+  chapter directly; it returns one typed, bounded request containing the exact
+  provider/model, prompt contract, response format, provenance expectation,
+  input version, and chapter-selection fence. Swift executes that request and
+  returns raw provider evidence. It no longer constructs prompts, selects the
+  generation/enrichment mode, parses model settings, or versions model inputs.
 - Open views receive bounded, revisioned, screen-shaped projections.
 - Operation failure and cancellation appear in projection state, not thrown
   per-operation FFI results.

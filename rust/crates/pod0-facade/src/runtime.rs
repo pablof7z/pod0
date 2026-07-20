@@ -126,6 +126,16 @@ impl Pod0Facade {
         self.state().snapshot(request)
     }
 
+    /// Plans the exact bounded chapter-model capability request from the
+    /// authoritative Rust episode, transcript, and chapter selections.
+    pub fn plan_chapter_model_request(
+        &self,
+        episode_id: pod0_domain::EpisodeId,
+        configured_model: String,
+    ) -> pod0_application::ChapterModelPlan {
+        self.chapter_model_plan(episode_id, configured_model)
+    }
+
     pub fn subscribe(
         &self,
         request: ProjectionRequest,

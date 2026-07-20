@@ -118,8 +118,7 @@ final class ChapterObservationCapabilityAdapter {
         limits: ChapterObservationLimits
     ) async -> ChapterCapabilityOutcome {
         let result = await modelTransport.execute(
-            request,
-            maximumCompletionBytes: limits.modelCompletionBytes
+            request
         )
         if Task.isCancelled { return .failed(.cancelled) }
         switch result {

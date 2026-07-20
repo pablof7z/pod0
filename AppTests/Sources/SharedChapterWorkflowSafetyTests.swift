@@ -69,13 +69,11 @@ final class SharedChapterWorkflowSafetyTests: XCTestCase {
             ),
             expectedSelectionRevision: StateRevision(value: 0)
         )
-        let snapshot = try XCTUnwrap(
-            client.transcriptWorkflowSnapshots(episodeIDs: [fixture.episode.id]).first
-        )
-        let inputVersion = DesiredStatePlanner.chapterCompilerInputVersion(
-            snapshot,
-            settings: fixture.store.state.settings
-        )
+        guard case .ready(let planned) = client.chapterModelPlan(
+            episodeID: fixture.episode.id,
+            configuredModel: fixture.store.state.settings.chapterCompilationModel
+        ) else { return XCTFail("Rust chapter model plan is unavailable") }
+        let inputVersion = planned.sourceVersion
         let jobs = JobStore(fileURL: fixture.store.persistence.episodeStore.fileURL)
         let key = "compile:\(fixture.episode.id):\(inputVersion)"
         _ = try jobs.ensureJob(DesiredJob(

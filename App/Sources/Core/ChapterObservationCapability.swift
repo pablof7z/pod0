@@ -17,21 +17,8 @@ enum ChapterCapabilityRequest: Equatable, Sendable {
 }
 
 struct ModelChapterCapabilityRequest: Equatable, Sendable {
-    let episodeID: EpisodeId
-    let podcastID: PodcastId
-    let formatVersion: UInt32
-    let requestedTranscriptVersionID: TranscriptVersionId
-    let requestedTranscriptContentDigest: ContentDigest
-    let selectedTranscriptVersionID: TranscriptVersionId
-    let selectedTranscriptContentDigest: ContentDigest
-    let policyVersion: UInt32
-    let provider: String
-    let model: String
-    let systemPrompt: String
-    let userPrompt: String
+    let planned: PlannedChapterModelRequest
     let generatedAt: UnixTimestampMilliseconds
-    let durationMilliseconds: UInt64?
-    let mode: ChapterModelObservationMode
 }
 
 struct AgentChapterCapabilityRequest: Equatable, Sendable {

@@ -6,37 +6,41 @@ pub use pod0_application::{
     AdSpanProjection, AgentComposedChapterItem, AgentComposedChapterObservation,
     ApplicationCommand, ChapterArtifactProjection, ChapterCommitReceipt, ChapterContractProjection,
     ChapterContractRejection, ChapterContractRequest, ChapterItemProjection,
-    ChapterModelObservationMode, ChapterObservationLimits, ChapterObservationProjection,
-    ChapterObservationRejection, ChapterPlaybackContext, ChapterProjectionScope,
-    ChapterSummaryProjection, ChapterWorkflowsProjection, ClipProjectionScope, ClipsProjection,
-    CommandEnvelope, CoreFailure, CoreFailureCode, DomainEvent, DomainEventEnvelope,
-    EpisodeSummary, EvidenceIndexProjection, EvidenceIndexSpanProjection, EvidenceIndexStage,
-    FACADE_CONTRACT_VERSION, HostCancellationRequest, HostFailureCode, HostObservation,
-    HostObservationEnvelope, HostRequest, HostRequestEnvelope, KernelProbeCommand,
-    KernelProbeProjection, LibraryProjection, MAX_AGENT_COMPOSED_CHAPTER_ITEMS,
-    MAX_EVIDENCE_INDEX_PAGE_ITEMS, MAX_FEED_RESPONSE_BYTES, MAX_HOST_REQUEST_BATCH,
-    MAX_MODEL_CHAPTER_COMPLETION_BYTES, MAX_OPERATION_ITEMS,
+    ChapterModelDesiredStateInput, ChapterModelDesiredStatePlan, ChapterModelEpisodeInput,
+    ChapterModelObservationMode, ChapterModelPlan, ChapterModelPlanInput,
+    ChapterModelResponseFormat, ChapterModelTranscriptInput, ChapterModelTranscriptSegmentInput,
+    ChapterObservationLimits, ChapterObservationProjection, ChapterObservationRejection,
+    ChapterPlaybackContext, ChapterProjectionScope, ChapterSummaryProjection,
+    ChapterWorkflowsProjection, ClipProjectionScope, ClipsProjection, CommandEnvelope, CoreFailure,
+    CoreFailureCode, DomainEvent, DomainEventEnvelope, EpisodeSummary, EvidenceIndexProjection,
+    EvidenceIndexSpanProjection, EvidenceIndexStage, FACADE_CONTRACT_VERSION,
+    HostCancellationRequest, HostFailureCode, HostObservation, HostObservationEnvelope,
+    HostRequest, HostRequestEnvelope, KernelProbeCommand, KernelProbeProjection, LibraryProjection,
+    MAX_AGENT_COMPOSED_CHAPTER_ITEMS, MAX_CHAPTER_MODEL_EPISODE_TEXT_BYTES,
+    MAX_CHAPTER_MODEL_TRANSCRIPT_CHARACTERS, MAX_CHAPTER_MODEL_TRANSCRIPT_INPUT_BYTES,
+    MAX_CHAPTER_MODEL_TRANSCRIPT_SEGMENTS, MAX_EVIDENCE_INDEX_PAGE_ITEMS, MAX_FEED_RESPONSE_BYTES,
+    MAX_HOST_REQUEST_BATCH, MAX_MODEL_CHAPTER_COMPLETION_BYTES, MAX_OPERATION_ITEMS,
     MAX_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, MAX_PROJECTION_ITEMS,
     MAX_PUBLISHER_CHAPTER_DOCUMENT_BYTES, MAX_RECALL_CANDIDATES, MAX_RECALL_EMBEDDING_BATCH,
     MAX_RECALL_EMBEDDING_DIMENSIONS, MAX_RECALL_EMBEDDING_TEXT_BYTES, MAX_RECALL_EVIDENCE,
     MAX_RECALL_EXCERPT_BYTES, MAX_RECALL_QUERY_BYTES,
     MIN_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, ModelChapterObservation, NativeTimerMode,
     NoteProjectionScope, NotesProjection, OperationProjection, OperationResult, OperationStage,
-    PlaybackAllowedActions, PlaybackAudioRoute, PlaybackCommand, PlaybackHostState,
-    PlaybackInterruption, PlaybackItem, PlaybackLifecycleObservation, PlaybackPolicyState,
-    PlaybackProjection, PlaybackStopReason, PlaybackTransitionCue, PodcastSummary, Projection,
-    ProjectionEnvelope, ProjectionRequest, ProjectionScope, PublisherChapterObservation,
-    PublisherChapterWorkflowFailure, PublisherChapterWorkflowFailureCode,
-    PublisherChapterWorkflowProjection, PublisherChapterWorkflowStage, QueuePlacement,
-    RecallEmbeddingInput, RecallEmbeddingVector, RecallEvidenceProjection, RecallPhase,
-    RecallQuery, RecallRerankDocument, RecallRerankObservation, RecallResultProjection,
-    RecallScope, RecallScoreProjection, RecallSpanEmbeddingObservation, RecallStage, Retryability,
-    TranscriptCommitReceipt, TranscriptCommitRequest, TranscriptContractProjection,
-    TranscriptContractRejection, TranscriptEvidenceInput, TranscriptProjection,
-    TranscriptProjectionScope, TranscriptSegmentInput, TranscriptSegmentProjection,
-    TranscriptSpeakerProjection, TranscriptSummaryProjection, TranscriptWordProjection,
-    UnsupportedProjection, UserAction, bounded_host_request_count,
-    bounded_playback_observation_interval,
+    PlannedChapterModelRequest, PlaybackAllowedActions, PlaybackAudioRoute, PlaybackCommand,
+    PlaybackHostState, PlaybackInterruption, PlaybackItem, PlaybackLifecycleObservation,
+    PlaybackPolicyState, PlaybackProjection, PlaybackStopReason, PlaybackTransitionCue,
+    PodcastSummary, Projection, ProjectionEnvelope, ProjectionRequest, ProjectionScope,
+    PublisherChapterObservation, PublisherChapterWorkflowFailure,
+    PublisherChapterWorkflowFailureCode, PublisherChapterWorkflowProjection,
+    PublisherChapterWorkflowStage, QueuePlacement, RecallEmbeddingInput, RecallEmbeddingVector,
+    RecallEvidenceProjection, RecallPhase, RecallQuery, RecallRerankDocument,
+    RecallRerankObservation, RecallResultProjection, RecallScope, RecallScoreProjection,
+    RecallSpanEmbeddingObservation, RecallStage, Retryability, TranscriptCommitReceipt,
+    TranscriptCommitRequest, TranscriptContractProjection, TranscriptContractRejection,
+    TranscriptEvidenceInput, TranscriptProjection, TranscriptProjectionScope,
+    TranscriptSegmentInput, TranscriptSegmentProjection, TranscriptSpeakerProjection,
+    TranscriptSummaryProjection, TranscriptWordProjection, UnsupportedProjection, UserAction,
+    bounded_host_request_count, bounded_playback_observation_interval,
 };
 use pod0_application::{Clock, KernelApplication};
 pub use pod0_domain::{
@@ -82,6 +86,9 @@ mod runtime_chapter_ad_skip_tests;
 mod runtime_chapter_commands;
 #[cfg(test)]
 mod runtime_chapter_lifecycle_tests;
+mod runtime_chapter_model_plan;
+#[cfg(test)]
+mod runtime_chapter_model_plan_tests;
 mod runtime_chapter_playback;
 #[cfg(test)]
 mod runtime_chapter_playback_tests;
@@ -254,6 +261,22 @@ pub fn project_chapter_contract(
     max_items: u16,
 ) -> ChapterContractProjection {
     pod0_application::project_chapter_contract(request, scope, offset, max_items)
+}
+
+/// Classifies whether the temporary native workflow owes model work and
+/// returns the exact legacy-compatible input version owned by Rust.
+#[uniffi::export]
+pub fn plan_chapter_model_desired_state(
+    input: ChapterModelDesiredStateInput,
+) -> ChapterModelDesiredStatePlan {
+    pod0_application::plan_chapter_model_desired_state(input)
+}
+
+/// Pure cross-language planner used by binding fixtures. Production native
+/// shells call the facade method so authoritative artifacts do not round-trip.
+#[uniffi::export]
+pub fn plan_chapter_model_request(input: ChapterModelPlanInput) -> ChapterModelPlan {
+    pod0_application::plan_chapter_model_request(input)
 }
 
 /// An internal deterministic probe retained for injected-time characterization.

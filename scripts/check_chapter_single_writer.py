@@ -16,6 +16,7 @@ DELETED_PATHS = (
     "App/Sources/Workflows/DerivedArtifactStagingStore.swift",
     "App/Sources/State/AppStateStore+AdSegments.swift",
     "App/Sources/Features/Player/PlaybackState+AdSkip.swift",
+    "App/Sources/Core/ChapterModelPromptBuilder.swift",
 )
 
 FORBIDDEN = (
@@ -29,6 +30,12 @@ FORBIDDEN = (
     (
         re.compile(r"DesiredJob\s*\([^)]*kind\s*:\s*\.publisherChapters\b", re.S),
         "Swift publisher workflow scheduling",
+    ),
+    (re.compile(r"\bChapterModelPromptBuilder\b"), "retired Swift chapter prompt policy"),
+    (re.compile(r"\bchapterCompilerInputVersion\b"), "retired Swift chapter version policy"),
+    (
+        re.compile(r"You analyse podcast episode transcripts"),
+        "chapter model prompt contract outside Rust",
     ),
     (re.compile(r"encodeIfPresent\s*\(\s*(?:chapters|adSegments)\b"), "chapter/ad Codable output"),
     (
@@ -63,10 +70,28 @@ REQUIRED_TOKENS = {
         "kind NOT IN ('transcript','chapters','adSegments')",
     ),
     "App/Sources/Workflows/ChapterWorkflowExecutors.swift": (
+        "chapterModelPlan(",
+        "PlannedChapterModelRequest",
+        "request.sourceVersion == context.job.inputVersion",
         "submitChapterObservation(",
         "SharedChapterWorkflowReceipt(",
         "ChapterObservationCapabilityAdapter",
-        "expectedSelectionRevision: expectedSelectionRevision",
+        "expectedSelectionRevision: request.expectedChapterSelectionRevision",
+    ),
+    "App/Sources/Workflows/DesiredStatePlanner.swift": (
+        "planChapterModelDesiredState(",
+        "transcriptContentDigest:",
+        "selectedChapterSource:",
+    ),
+    "App/Sources/Core/SharedLibraryClient.swift": (
+        "facade.planChapterModelRequest(",
+        "episodeId: EpisodeId(uuid: episodeID)",
+    ),
+    "App/Sources/Core/ChapterModelTransport.swift": (
+        "request.systemPrompt",
+        "request.userPrompt",
+        "planned.responseFormat",
+        "planned.maximumCompletionBytes",
     ),
     "App/Sources/Workflows/WorkflowRuntime.swift": (
         "removeJobs(kind: .publisherChapters)",
@@ -99,6 +124,24 @@ REQUIRED_TOKENS = {
         "decoder.userInfo[.loadLegacyChapterAdjuncts]",
         "chapters = loadLegacyChapterAdjuncts",
         "adSegments = loadLegacyChapterAdjuncts",
+    ),
+}
+
+SHARED_POLICY_TOKENS = {
+    "rust/crates/pod0-application/src/chapter_model_policy.rs": (
+        "pub fn plan_chapter_model_desired_state",
+        "pub fn plan_chapter_model_request",
+        "pub struct PlannedChapterModelRequest",
+    ),
+    "rust/crates/pod0-application/src/chapter_model_policy_prompt.rs": (
+        "GENERATION_SYSTEM_PROMPT",
+        "ENRICHMENT_SYSTEM_PROMPT",
+        "MAX_CHAPTER_MODEL_TRANSCRIPT_CHARACTERS",
+    ),
+    "rust/crates/pod0-facade/src/runtime_chapter_model_plan.rs": (
+        "selected_artifact(episode_id)",
+        "selected_chapter_artifact(episode_id)",
+        "expected_chapter_selection_revision",
     ),
 }
 
@@ -146,6 +189,15 @@ def validate(root: Path) -> list[str]:
         for token in tokens:
             if token not in source:
                 errors.append(f"{relative}: required boundary token {token!r} is missing")
+    for relative, tokens in SHARED_POLICY_TOKENS.items():
+        path = root / relative
+        if not path.is_file():
+            errors.append(f"{relative}: required Rust chapter model policy is missing")
+            continue
+        source = path.read_text(encoding="utf-8")
+        for token in tokens:
+            if token not in source:
+                errors.append(f"{relative}: required shared policy token {token!r} is missing")
     return errors
 
 
@@ -161,6 +213,9 @@ def self_test() -> None:
         "let executor = PublisherChaptersJobExecutor()",
         "PublisherChapterRequestPayload(sourceURL: url)",
         "DesiredJob(idempotencyKey: key, kind: .publisherChapters, subjectID: id)",
+        "ChapterModelPromptBuilder.build(input)",
+        "Self.chapterCompilerInputVersion(input)",
+        'let prompt = "You analyse podcast episode transcripts"',
     )
     for sample in samples:
         assert findings("App/Sources/Bad.swift", sample), sample

@@ -15,74 +15,44 @@ final class ChapterArtifactsJobExecutor: JobExecutor {
     }
 
     func run(_ context: JobAttemptContext) async throws -> JobOutcome {
-        guard let episode = store.episode(id: context.job.subjectID) else { return .obsolete }
         guard let sharedLibrary = store.sharedLibrary else {
             return .waitingForDependency(.init(
                 classification: .missingDependency,
                 message: "The shared chapter core is unavailable."
             ))
         }
-        guard let transcriptSummary = try sharedLibrary.authoritativeTranscriptReader.summary(
-            episodeID: episode.id
-        ), let transcript = sharedLibrary.authoritativeTranscriptReader.load(episodeID: episode.id)
-        else {
+        let plan = sharedLibrary.chapterModelPlan(
+            episodeID: context.job.subjectID,
+            configuredModel: store.state.settings.chapterCompilationModel
+        )
+        let request: PlannedChapterModelRequest
+        switch plan {
+        case .ready(let value): request = value
+        case .episodeUnavailable, .staleTranscript, .preserveAgentComposed:
+            return .obsolete
+        case .transcriptUnavailable, .coreUnavailable:
             return .waitingForDependency(.init(
                 classification: .missingDependency,
                 message: "The selected transcript is unavailable."
             ))
+        case .unsupportedArtifact:
+            return .failedPermanent(.init(
+                classification: .unsupportedFormat,
+                message: "The selected chapter provenance is unsupported."
+            ))
+        case .invalidConfiguration, .invalidInput, .emptyTranscript, .inputTooLarge:
+            return .failedPermanent(.init(
+                classification: .invalidInput,
+                message: "The shared chapter model request is invalid."
+            ))
         }
-
-        let selected = try sharedLibrary.authoritativeChapterReader.selectedArtifactInput(
-            episodeID: episode.id
-        )
-        let expectedSelectionRevision = selected?.selectionRevision ?? StateRevision(value: 0)
-        let publisherArtifact: ChapterArtifactInput?
-        if let selected {
-            switch selected.artifact.provenance.source {
-            case .publisher, .publisherEnriched:
-                publisherArtifact = selected.artifact
-            case .agentComposed:
-                return .obsolete
-            case .generated:
-                publisherArtifact = nil
-            case .unsupported:
-                return .failedPermanent(.init(
-                    classification: .unsupportedFormat,
-                    message: "The selected chapter provenance is unsupported."
-                ))
-            }
-        } else {
-            publisherArtifact = nil
-        }
-
-        let prompt = ChapterModelPromptBuilder.make(
-            episode: episode,
-            transcript: transcript,
-            publisherChapters: publisherArtifact?.chapters
-        )
-        let model = LLMModelReference(storedID: store.state.settings.chapterCompilationModel)
-        let mode: ChapterModelObservationMode = publisherArtifact.map {
-            .enrich(publisherArtifact: $0)
-        } ?? .generate
+        guard request.sourceVersion == context.job.inputVersion else { return .obsolete }
         let envelope = ChapterCapabilityRequestEnvelope(
             requestID: HostRequestId(uuid: UUID()),
             cancellationID: CancellationId(uuid: context.leaseToken),
             request: .model(.init(
-                episodeID: EpisodeId(uuid: episode.id),
-                podcastID: PodcastId(uuid: episode.podcastID),
-                formatVersion: 1,
-                requestedTranscriptVersionID: transcriptSummary.transcriptVersionId,
-                requestedTranscriptContentDigest: transcriptSummary.transcriptContentDigest,
-                selectedTranscriptVersionID: transcriptSummary.transcriptVersionId,
-                selectedTranscriptContentDigest: transcriptSummary.transcriptContentDigest,
-                policyVersion: 1,
-                provider: model.provider.rawValue,
-                model: model.modelID,
-                systemPrompt: prompt.system,
-                userPrompt: prompt.user,
-                generatedAt: UnixTimestampMilliseconds(date: Date()),
-                durationMilliseconds: durationMilliseconds(episode.duration),
-                mode: mode
+                planned: request,
+                generatedAt: UnixTimestampMilliseconds(date: Date())
             ))
         )
         let response = await capability.execute(envelope)
@@ -95,7 +65,7 @@ final class ChapterArtifactsJobExecutor: JobExecutor {
                     qualification,
                     commandID: CommandId(uuid: context.leaseToken),
                     cancellationID: CancellationId(uuid: context.leaseToken),
-                    expectedSelectionRevision: expectedSelectionRevision
+                    expectedSelectionRevision: request.expectedChapterSelectionRevision
                 )
                 let receipt = try SharedChapterWorkflowReceipt(
                     summary: committed.snapshot.summary,
@@ -107,13 +77,6 @@ final class ChapterArtifactsJobExecutor: JobExecutor {
             }
         }
     }
-}
-
-private func durationMilliseconds(_ duration: TimeInterval?) -> UInt64? {
-    guard let duration, duration.isFinite, duration >= 0 else { return nil }
-    let milliseconds = duration * 1_000
-    guard milliseconds <= Double(UInt64.max) else { return nil }
-    return UInt64(milliseconds.rounded())
 }
 
 private func modelFailureOutcome(_ failure: ChapterCapabilityFailure) throws -> JobOutcome {
