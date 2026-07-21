@@ -1641,6 +1641,44 @@ public object FfiConverterTypeChapterLegacyProvenance: FfiConverterRustBuffer<Ch
 
 
 
+data class ChapterModelSubmissionFenceId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChapterModelSubmissionFenceId: FfiConverterRustBuffer<ChapterModelSubmissionFenceId> {
+    override fun read(buf: ByteBuffer): ChapterModelSubmissionFenceId {
+        return ChapterModelSubmissionFenceId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ChapterModelSubmissionFenceId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: ChapterModelSubmissionFenceId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
 data class ChapterPlaybackSessionId (
     val `high`: kotlin.ULong
     ,

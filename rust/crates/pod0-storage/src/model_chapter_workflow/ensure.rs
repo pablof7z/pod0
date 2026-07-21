@@ -1,5 +1,6 @@
 use pod0_domain::StateRevision;
 
+use super::ensure_replacement::{next_revision, replacement_record};
 use super::model::{
     ModelChapterDesiredPlan, ModelChapterEnsureInput, ModelChapterEnsureOutcome,
     ModelChapterWorkflowRecord, ModelChapterWorkflowState,
@@ -7,8 +8,8 @@ use super::model::{
 use super::persist::persist_workflow;
 use super::read::read_workflow;
 use super::support::{
-    request_id, submission_fence_id, validate_ensure_values, validate_preserved_selection,
-    validate_request,
+    validate_blocked_plan, validate_current_model_selection, validate_ensure_values,
+    validate_preserved_selection, validate_request,
 };
 use crate::{LibraryStore, StorageError};
 
@@ -67,6 +68,19 @@ fn validate_plan(
             *artifact_id,
             *selection_revision,
         ),
+        ModelChapterDesiredPlan::Current {
+            artifact_id,
+            selection_revision,
+        } => validate_current_model_selection(
+            transaction,
+            input.episode_id,
+            *artifact_id,
+            *selection_revision,
+        ),
+        ModelChapterDesiredPlan::Blocked {
+            failure_code,
+            failure_detail,
+        } => validate_blocked_plan(failure_code, failure_detail.as_deref()),
         ModelChapterDesiredPlan::AwaitingTranscript
         | ModelChapterDesiredPlan::AwaitingPublisher => Ok(()),
     }
@@ -99,6 +113,16 @@ fn should_keep(record: &ModelChapterWorkflowRecord, input: &ModelChapterEnsureIn
         ModelChapterDesiredPlan::PreserveAgentComposed { artifact_id, .. } => {
             record.state == ModelChapterWorkflowState::Preserved
                 && record.selected_artifact_id == Some(*artifact_id)
+                && record.desired_configured_model == input.configured_model
+        }
+        ModelChapterDesiredPlan::Current { artifact_id, .. } => {
+            record.state == ModelChapterWorkflowState::Succeeded
+                && record.selected_artifact_id == Some(*artifact_id)
+                && record.desired_configured_model == input.configured_model
+        }
+        ModelChapterDesiredPlan::Blocked { failure_code, .. } => {
+            record.state == ModelChapterWorkflowState::Blocked
+                && record.failure_code.as_deref() == Some(failure_code.as_str())
                 && record.desired_configured_model == input.configured_model
         }
         ModelChapterDesiredPlan::Ready(request) => {
@@ -160,103 +184,4 @@ fn mark_replan_pending(
         record: changed,
         replaced: None,
     })
-}
-
-fn replacement_record(
-    existing: Option<&ModelChapterWorkflowRecord>,
-    input: &ModelChapterEnsureInput,
-) -> Result<ModelChapterWorkflowRecord, StorageError> {
-    let generation = match (&input.desired_plan, existing) {
-        (ModelChapterDesiredPlan::Ready(_), Some(record)) => record
-            .generation
-            .checked_add(1)
-            .ok_or(StorageError::ChapterWorkflowConflict)?,
-        (ModelChapterDesiredPlan::Ready(_), None) => 1,
-        (_, Some(record)) => record.generation,
-        (_, None) => 0,
-    };
-    let workflow_revision = existing.map_or(Ok(StateRevision::new(1)), |record| {
-        next_revision(record.workflow_revision)
-    })?;
-    let (state, active, selected_artifact_id) = match &input.desired_plan {
-        ModelChapterDesiredPlan::AwaitingTranscript => {
-            (ModelChapterWorkflowState::AwaitingTranscript, None, None)
-        }
-        ModelChapterDesiredPlan::AwaitingPublisher => {
-            (ModelChapterWorkflowState::AwaitingPublisher, None, None)
-        }
-        ModelChapterDesiredPlan::PreserveAgentComposed { artifact_id, .. } => (
-            ModelChapterWorkflowState::Preserved,
-            None,
-            Some(*artifact_id),
-        ),
-        ModelChapterDesiredPlan::Ready(request) => (
-            ModelChapterWorkflowState::Requested,
-            Some((**request).clone()),
-            None,
-        ),
-    };
-    let request = active
-        .as_ref()
-        .map(|value| request_id(input.episode_id, value.request_fingerprint, generation));
-    let fence = request.map(|value| {
-        submission_fence_id(
-            input.episode_id,
-            value,
-            input.cancellation_id,
-            input.issued_revision,
-        )
-    });
-    let same_fingerprint = existing
-        .and_then(|record| record.active_request.as_ref())
-        .zip(active.as_ref())
-        .is_some_and(|(old, new)| old.request_fingerprint == new.request_fingerprint);
-    let attempt = if active.is_some() {
-        if same_fingerprint {
-            existing
-                .expect("same fingerprint has existing record")
-                .attempt
-                .checked_add(1)
-                .ok_or(StorageError::ChapterWorkflowConflict)?
-        } else {
-            1
-        }
-    } else {
-        0
-    };
-    Ok(ModelChapterWorkflowRecord {
-        episode_id: input.episode_id,
-        state,
-        desired_configured_model: input.configured_model.clone(),
-        active_request: active,
-        replan_pending: false,
-        generation,
-        workflow_revision,
-        attempt,
-        max_attempts: input.max_attempts,
-        command_id: input.command_id,
-        cancellation_id: input.cancellation_id,
-        request_id: request,
-        submission_fence_id: fence,
-        issued_revision: input.issued_revision,
-        deadline_at_ms: request.map(|_| input.request_deadline_ms),
-        not_before_ms: None,
-        submission_authorized_at_ms: None,
-        provider_operation_id: None,
-        provider_status: None,
-        selected_artifact_id,
-        failure_code: None,
-        failure_detail: None,
-        may_have_submitted: false,
-        created_at_ms: existing.map_or(input.now_ms, |record| record.created_at_ms),
-        updated_at_ms: input.now_ms,
-    })
-}
-
-fn next_revision(current: StateRevision) -> Result<StateRevision, StorageError> {
-    current
-        .value
-        .checked_add(1)
-        .map(StateRevision::new)
-        .ok_or(StorageError::ChapterWorkflowConflict)
 }

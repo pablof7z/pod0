@@ -7,7 +7,7 @@ must not create a parallel wire model.
 
 ## Interaction model
 
-`Pod0ApplicationApi` has six operations:
+`Pod0ApplicationApi` has seven operations:
 
 1. `dispatch(command)` enqueues a typed semantic command and returns no
    operation result.
@@ -19,8 +19,13 @@ must not create a parallel wire model.
    must call it; native polling is forbidden.
 5. `next_host_requests(maximum_count)` drains a bounded batch of native
    capability work.
-6. `record_host_observation(observation)` submits raw, correlated capability
-   evidence and returns no product decision.
+6. `next_host_cancellations(maximum_count)` drains a bounded batch of native
+   cancellation requests.
+7. `record_host_observation(observation)` submits raw, correlated capability
+   evidence and returns a typed retention receipt. `Persisted` is the only
+   acknowledgement that permits native code to discard paid or otherwise
+   irreproducible model evidence; `RetainAndRetry` requires the native host to
+   keep and redeliver the exact observation.
 
 The application actor introduced with the first vertical slice is the one
 writer. Dispatch and observation calls are actor inputs. Reducers do not await
@@ -64,6 +69,20 @@ are bounded by the request's declared maximum and carry only HTTP/cache
 evidence; feed normalization remains in Rust. The native host reports raw
 failure codes; Rust decides retry, fallback, and durable state.
 
+Model-chapter execution follows claim-before-return semantics. Rust durably
+authorizes a single POST before an `ExecuteChapterModel` request can leave the
+facade. Provider acceptance updates form an ordered, non-terminal stream for
+one provider operation ID. A completion is stored as raw immutable evidence
+before the facade returns `Persisted { terminal: true }`; qualification,
+provenance validation, artifact commit, and source-of-truth selection then run
+inside Rust. On restart, an accepted provider operation is recovered by ID and
+an authorized request without provider evidence becomes ambiguous rather than
+being submitted again. Credentials never cross or persist at this boundary.
+Delayed retries and completion-finalization recovery use `ScheduleCoreWake`;
+native schedules the requested time and echoes the typed reason, while Rust
+retains all retry policy and durable workflow state. Provider generation time
+is optional evidence; when absent, Rust assigns injected kernel time.
+
 Playback uses typed load/play/pause/seek/rate/timer requests. A long-lived
 `ObservePlayback` request returns lifecycle boundaries immediately and
 coalesces position-only updates to `500...5000 ms`; its sequence remains open
@@ -106,10 +125,12 @@ transcript, download, workflow, knowledge, agent, and presentation state until
 their complete vertical slices land. The NMP adapter remains isolated by the
 security hold in issue #85.
 
-Canonical chapter artifacts and selections are already staged in the Rust
-store, but production chapter authority remains inactive until issue #104.
-Version 17 deliberately keeps the iOS shared auto-skip preference disabled and
-leaves existing Swift callers in place until that atomic cutover. Rust policy
-is exercised through deterministic fixtures now; #104 switches callers and
-deletes the Swift target, membership, and per-session decision helpers in the
-same authority change.
+Canonical chapter artifacts and selections are Rust-owned after the chapter
+cutover. Contract version 24 adds durable source-version provenance to the
+model-chapter command, projection, host-request, observation, and receipt
+surface. The native iOS
+model executor remains temporarily behind its existing Swift capability
+boundary until the version-24 host is connected and legacy workflow state is
+imported. The cutover must atomically disable the Swift workflow writer and
+delete it after restart and rollback validation; long-lived dual writes are
+forbidden.

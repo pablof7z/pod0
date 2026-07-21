@@ -160,11 +160,19 @@ impl Pod0Facade {
     pub fn next_host_requests(&self, maximum_count: u16) -> Vec<HostRequestEnvelope> {
         let (changed, requests) = {
             let mut state = self.state();
-            let changed = state.retry_pending_publisher_observations();
+            let mut changed = state.retry_pending_publisher_observations();
             let _ = state.admit_publisher_chapter_requests();
-            let request_count =
-                bounded_host_request_count(maximum_count).min(state.host_queue.len());
-            (changed, state.host_queue.drain(..request_count).collect())
+            let maximum = bounded_host_request_count(maximum_count);
+            let first_count = maximum.min(state.host_queue.len());
+            let mut requests = state.host_queue.drain(..first_count).collect::<Vec<_>>();
+            if requests.len() < maximum && state.prepare_model_chapter_host_request() {
+                changed = true;
+            }
+            let remaining = maximum
+                .saturating_sub(requests.len())
+                .min(state.host_queue.len());
+            requests.extend(state.host_queue.drain(..remaining));
+            (changed, requests)
         };
         if changed {
             self.notify_subscribers();
@@ -178,10 +186,15 @@ impl Pod0Facade {
         state.host_cancellations.drain(..count).collect()
     }
 
-    pub fn record_host_observation(&self, observation: HostObservationEnvelope) {
-        if self.state().record_host_observation(observation) {
+    pub fn record_host_observation(
+        &self,
+        observation: HostObservationEnvelope,
+    ) -> pod0_application::HostObservationReceipt {
+        let (changed, receipt) = self.state().record_host_observation(observation);
+        if changed {
             self.notify_subscribers();
         }
+        receipt
     }
 }
 
@@ -246,7 +259,10 @@ impl Pod0ApplicationApi for Pod0Facade {
         Self::next_host_cancellations(self, maximum_count)
     }
 
-    fn record_host_observation(&self, observation: HostObservationEnvelope) {
-        Self::record_host_observation(self, observation);
+    fn record_host_observation(
+        &self,
+        observation: HostObservationEnvelope,
+    ) -> pod0_application::HostObservationReceipt {
+        Self::record_host_observation(self, observation)
     }
 }

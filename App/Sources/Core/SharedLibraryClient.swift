@@ -47,7 +47,8 @@ final class SharedLibraryClient {
 
     init(
         facade: Pod0Facade,
-        feedHost: any CoreFeedHosting
+        feedHost: any CoreFeedHosting,
+        observationOutbox: NativeHostObservationOutbox? = nil
     ) {
         self.facade = facade
         self.authoritativeTranscriptReader = SharedTranscriptReader(facade: facade)
@@ -59,7 +60,8 @@ final class SharedLibraryClient {
         self.dispatcher = Pod0NativeHostDispatcher(
             feedHost: feedHost,
             playbackHost: playbackHost,
-            recallHost: recallHost
+            recallHost: recallHost,
+            observationOutbox: observationOutbox
         )
     }
 
@@ -93,6 +95,7 @@ final class SharedLibraryClient {
             request: ProjectionRequest(scope: .clips(scope: .active), offset: 0, maxItems: 200),
             subscriber: subscriber
         )
+        dispatcher.executePendingRequests(from: facade)
     }
 
     func attach(store: AppStateStore) {
@@ -256,6 +259,7 @@ final class SharedLibraryClient {
         chapterSnapshots.removeAll()
         announcedPublisherChapterEpisodeIDs.removeAll()
         workflowClient?.detachPublisherChapterCore()
+        workflowClient?.detachModelChapterCore()
         playbackChapterEpisodeID = nil
         subscriber = nil
         for waiter in waiters.values {

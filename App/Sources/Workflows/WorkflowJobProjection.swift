@@ -4,6 +4,7 @@ import Pod0Core
 enum WorkflowProjectionAuthority: Sendable, Equatable {
     case swiftJobStore
     case sharedRustPublisherChapters
+    case sharedRustModelChapters
 }
 
 struct WorkflowJobKey: Hashable, Sendable {

@@ -2,6 +2,8 @@ use pod0_domain::{
     CancellationId, ChapterArtifactId, CommandId, EpisodeId, HostRequestId, StateRevision,
 };
 
+pub use crate::chapter_workflow_combined::{ChapterWorkflowPage, ChapterWorkflowRecord};
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PublisherChapterWorkflowState {
     Requested,

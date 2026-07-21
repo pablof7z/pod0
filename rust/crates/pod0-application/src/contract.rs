@@ -7,7 +7,7 @@ use pod0_domain::{
 
 use crate::{EvidenceChunkPolicy, RecallQuery, TranscriptEvidenceInput};
 
-pub const FACADE_CONTRACT_VERSION: u32 = 22;
+pub const FACADE_CONTRACT_VERSION: u32 = 24;
 pub const MAX_PROJECTION_ITEMS: u16 = 200;
 pub const MAX_OPERATION_ITEMS: usize = 32;
 pub const MAX_HOST_REQUEST_BATCH: u16 = 64;
@@ -113,6 +113,19 @@ pub enum ApplicationCommand {
         expected_workflow_revision: StateRevision,
     },
     CancelPublisherChapters {
+        episode_id: EpisodeId,
+        expected_workflow_revision: StateRevision,
+    },
+    EnsureModelChapters {
+        episode_id: EpisodeId,
+        configured_model: String,
+    },
+    RetryModelChapters {
+        episode_id: EpisodeId,
+        configured_model: String,
+        expected_workflow_revision: StateRevision,
+    },
+    CancelModelChapters {
         episode_id: EpisodeId,
         expected_workflow_revision: StateRevision,
     },

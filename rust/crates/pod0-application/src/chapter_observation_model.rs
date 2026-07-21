@@ -1,19 +1,19 @@
 use pod0_domain::{
     AdSpanEvaluation, AdSpanInput, ChapterAdKind, ChapterArtifact, ChapterArtifactInput,
     ChapterArtifactProvenance, ChapterArtifactSource, ChapterInput, MAX_AD_SPANS, MAX_CHAPTERS,
+    MAX_SOURCE_REVISION_BYTES,
 };
 use serde::Deserialize;
 
 use crate::chapter_observation_values::{
     ObservationHash, canonicalize, clamped_milliseconds, exact_model, exact_provider,
-    payload_digest, source_revision,
+    payload_digest,
 };
 use crate::{
-    CHAPTER_OBSERVATION_POLICY_VERSION, ChapterModelObservationMode, ChapterObservationRejection,
-    ModelChapterObservation, Qualification, QualifiedObservation,
+    CHAPTER_MODEL_FORMAT_VERSION, CHAPTER_OBSERVATION_POLICY_VERSION, ChapterModelObservationMode,
+    ChapterObservationRejection, ModelChapterObservation, Qualification, QualifiedObservation,
 };
 
-const MODEL_FORMAT_VERSION: u32 = 1;
 const MIN_GENERATED_CHAPTERS: usize = 4;
 const MAX_GENERATED_CHAPTERS: usize = 12;
 
@@ -58,7 +58,7 @@ pub(crate) fn qualify(observation: ModelChapterObservation) -> Qualification {
     if payload_digest(observation.completion.as_bytes()) != observation.completion_digest {
         return Err(ChapterObservationRejection::DigestMismatch);
     }
-    if observation.format_version != MODEL_FORMAT_VERSION {
+    if observation.format_version != CHAPTER_MODEL_FORMAT_VERSION {
         return Err(ChapterObservationRejection::UnsupportedFormat {
             format_version: observation.format_version,
         });
@@ -76,6 +76,13 @@ pub(crate) fn qualify(observation: ModelChapterObservation) -> Qualification {
     }
     let provider = exact_provider(&observation.provider)?;
     let model = exact_model(&observation.model)?;
+    let source_version = observation.source_version.trim();
+    if source_version.is_empty()
+        || source_version != observation.source_version
+        || source_version.len() > MAX_SOURCE_REVISION_BYTES
+    {
+        return Err(ChapterObservationRejection::InvalidProvenance);
+    }
 
     let (source, duration, chapters, ads, mode_tag, base_integrity) = match observation.mode {
         ChapterModelObservationMode::Generate => {
@@ -141,20 +148,16 @@ pub(crate) fn qualify(observation: ModelChapterObservation) -> Qualification {
     hash.text(&model);
     hash.bytes(&observation.selected_transcript_version_id.into_bytes());
     hash.bytes(&observation.selected_transcript_content_digest.into_bytes());
+    hash.text(source_version);
     hash.bytes(&observation.completion_digest.into_bytes());
     hash.optional_u64(duration);
     hash.u8(mode_tag);
     hash.optional_digest(base_integrity);
     let fingerprint = hash.finish();
-    let revision_prefix = if mode_tag == 0 {
-        "generated-json-v1"
-    } else {
-        "publisher-enriched-json-v1"
-    };
     let artifact = canonicalize(ChapterArtifactInput {
         episode_id: observation.episode_id,
         podcast_id: observation.podcast_id,
-        source_revision: source_revision(revision_prefix, fingerprint),
+        source_revision: source_version.to_owned(),
         provenance: ChapterArtifactProvenance {
             source,
             provider: Some(provider),

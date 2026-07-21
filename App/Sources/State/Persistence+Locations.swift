@@ -51,6 +51,10 @@ extension Persistence {
         sharedCoreStoreURL.appendingPathExtension("schema-backup")
     }
 
+    var nativeHostObservationOutboxURL: URL {
+        sharedCoreStoreURL.appendingPathExtension("host-observations-v1.json")
+    }
+
     /// Schema migrations retain version-specific rollback evidence so a
     /// later upgrade never mistakes an older valid backup for its own.
     func sharedCoreSchemaBackupURL(targetVersion: UInt32) -> URL {
@@ -131,6 +135,7 @@ extension Persistence {
             core,
             URL(fileURLWithPath: core.path + "-wal"),
             URL(fileURLWithPath: core.path + "-shm"),
+            nativeHostObservationOutboxURL,
             sharedCoreSchemaBackupURL,
             legacyListeningBackupURL,
             legacyNotesBackupURL,

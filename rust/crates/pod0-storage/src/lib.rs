@@ -22,6 +22,7 @@ mod chapter_store_read_artifact;
 mod chapter_store_read_selection;
 mod chapter_store_receipt;
 mod chapter_store_write_artifact;
+mod chapter_workflow_combined;
 mod chapter_workflow_model;
 mod chapter_workflow_store;
 mod chapter_workflow_store_adopt;
@@ -150,11 +151,7 @@ pub use chapter_rollback_export::{
     CHAPTER_ROLLBACK_FORMAT_VERSION, export_chapter_rollback_bundle,
 };
 pub use chapter_store_model::{ChapterCommitStorageReceipt, SelectedChapterArtifact};
-pub use chapter_workflow_model::{
-    PublisherChapterEnsureOutcome, PublisherChapterWorkflowFailureInput,
-    PublisherChapterWorkflowPage, PublisherChapterWorkflowRecord, PublisherChapterWorkflowState,
-    PublisherChapterWorkflowUpdate,
-};
+pub use chapter_workflow_model::*;
 pub use clip_import::{ClipImportClock, ClipImporter};
 pub(crate) use clip_import_model::InspectedClipSource;
 pub use clip_import_model::{

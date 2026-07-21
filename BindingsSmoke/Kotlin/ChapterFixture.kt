@@ -73,7 +73,7 @@ fun qualifyChapterContract(fixture: Map<String, String>) {
     )
 
     check(fixture["fixture_version"] == "1")
-    check(fixture["contract_version"]?.toUInt() == 22u)
+    check(fixture["contract_version"]?.toUInt() == 24u)
     check(fixture["unknown_future_field"] == "ignored-by-v1-readers")
     val qualified = projectChapterContract(
         request,
@@ -165,6 +165,7 @@ fun qualifyChapterObservations() {
                 ),
             ),
             artifact,
+            if (artifact?.provenance?.source == ChapterArtifactSource.Publisher) artifact else publisher.artifact,
             StateRevision(0UL),
             "openai/gpt-4o-mini",
         ),
@@ -202,12 +203,13 @@ fun qualifyChapterObservations() {
     fun model(mode: ChapterModelObservationMode, body: String) = ModelChapterObservation(
         episode,
         podcast,
-        1u,
+        2u,
         TranscriptVersionId(13UL, 101UL),
         transcriptDigest,
         TranscriptVersionId(13UL, 101UL),
         transcriptDigest,
         1u,
+        "model-input-v1",
         "openrouter",
         "fixture-model-v1",
         chapterDigest(body.toByteArray()),

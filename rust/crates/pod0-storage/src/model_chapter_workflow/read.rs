@@ -2,12 +2,11 @@ use pod0_domain::{
     CancellationId, ChapterArtifactId, ChapterArtifactSource, ChapterModelSubmissionFenceId,
     CommandId, ContentDigest, EpisodeId, HostRequestId, StateRevision, TranscriptVersionId,
 };
-use rusqlite::{Connection, OptionalExtension, Row};
+use rusqlite::{Connection, OptionalExtension, Row, params};
 
-use super::inputs::ModelChapterCompletionRecord;
 use super::model::{
-    ModelChapterWorkflowMode, ModelChapterWorkflowRecord, ModelChapterWorkflowState,
-    StoredModelChapterRequest,
+    ModelChapterWorkflowMode, ModelChapterWorkflowPage, ModelChapterWorkflowRecord,
+    ModelChapterWorkflowState, StoredModelChapterRequest,
 };
 use crate::{LibraryStore, StorageError};
 
@@ -28,12 +27,54 @@ impl LibraryStore {
         self.read(|connection| read_active_workflows(connection, max_items))
     }
 
-    pub fn model_chapter_completion(
+    pub fn dispatchable_model_chapter_workflows(
         &self,
-        request_id: HostRequestId,
-    ) -> Result<Option<ModelChapterCompletionRecord>, StorageError> {
-        self.read(|connection| read_completion(connection, request_id))
+        max_items: u16,
+    ) -> Result<Vec<ModelChapterWorkflowRecord>, StorageError> {
+        self.read(|connection| read_dispatchable_workflows(connection, max_items))
     }
+
+    pub fn model_chapter_workflow_page(
+        &self,
+        episode_id: Option<EpisodeId>,
+        offset: u32,
+        max_items: u16,
+    ) -> Result<ModelChapterWorkflowPage, StorageError> {
+        self.read(|connection| read_workflow_page(connection, episode_id, offset, max_items))
+    }
+}
+
+fn read_workflow_page(
+    connection: &Connection,
+    episode_id: Option<EpisodeId>,
+    offset: u32,
+    max_items: u16,
+) -> Result<ModelChapterWorkflowPage, StorageError> {
+    let limit = usize::from(max_items.max(1));
+    let fetch = i64::try_from(limit + 1).expect("bounded model workflow page limit");
+    let mut statement = connection
+        .prepare(&format!(
+            "SELECT {WORKFLOW_COLUMNS} FROM pod0_model_chapter_workflows \
+             WHERE (?1 IS NULL OR episode_id=?1) \
+             ORDER BY updated_at_ms DESC,episode_id LIMIT ?2 OFFSET ?3"
+        ))
+        .map_err(|error| StorageError::sqlite("prepare bounded model workflows", error))?;
+    let rows = statement
+        .query_map(
+            params![
+                episode_id.map(|id| id.into_bytes().to_vec()),
+                fetch,
+                i64::from(offset)
+            ],
+            workflow_row,
+        )
+        .map_err(|error| StorageError::sqlite("query bounded model workflows", error))?;
+    let mut items = rows
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| StorageError::sqlite("decode bounded model workflows", error))?;
+    let has_more = items.len() > limit;
+    items.truncate(limit);
+    Ok(ModelChapterWorkflowPage { items, has_more })
 }
 
 pub(crate) fn read_workflow(
@@ -70,22 +111,40 @@ pub(crate) fn read_active_workflows(
         .map_err(|error| StorageError::sqlite("decode active model chapter workflows", error))
 }
 
-pub(crate) fn read_completion(
+fn read_dispatchable_workflows(
     connection: &Connection,
-    request_id: HostRequestId,
-) -> Result<Option<ModelChapterCompletionRecord>, StorageError> {
-    connection
-        .query_row(
-            "SELECT request_id,episode_id,generation,submission_fence_id,completion,\
-             completion_digest,provider,model,prompt_tokens,completion_tokens,cached_tokens,\
-             reasoning_tokens,cost_microusd,provider_operation_id,provider_status,\
-             generated_at_ms,observed_at_ms FROM pod0_model_chapter_completions \
-             WHERE request_id=?1",
-            [request_id.into_bytes().as_slice()],
-            completion_row,
-        )
-        .optional()
-        .map_err(|error| StorageError::sqlite("read model chapter completion", error))
+    max_items: u16,
+) -> Result<Vec<ModelChapterWorkflowRecord>, StorageError> {
+    let mut statement = connection
+        .prepare(&format!(
+            "SELECT {WORKFLOW_COLUMNS} FROM pod0_model_chapter_workflows \
+             WHERE state IN('requested','provider_accepted','retry_scheduled') \
+             ORDER BY not_before_ms,episode_id LIMIT ?1"
+        ))
+        .map_err(|error| StorageError::sqlite("prepare dispatchable model workflows", error))?;
+    let rows = statement
+        .query_map([i64::from(max_items.max(1))], workflow_row)
+        .map_err(|error| StorageError::sqlite("query dispatchable model workflows", error))?;
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|error| StorageError::sqlite("decode dispatchable model workflows", error))
+}
+
+pub(crate) fn read_recoverable_workflows(
+    connection: &Connection,
+    max_items: u16,
+) -> Result<Vec<ModelChapterWorkflowRecord>, StorageError> {
+    let mut statement = connection
+        .prepare(&format!(
+            "SELECT {WORKFLOW_COLUMNS} FROM pod0_model_chapter_workflows \
+             WHERE state IN('submission_authorized','provider_accepted','completion_observed') \
+             ORDER BY updated_at_ms,episode_id LIMIT ?1"
+        ))
+        .map_err(|error| StorageError::sqlite("prepare recoverable model workflows", error))?;
+    let rows = statement
+        .query_map([i64::from(max_items.max(1))], workflow_row)
+        .map_err(|error| StorageError::sqlite("query recoverable model workflows", error))?;
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|error| StorageError::sqlite("decode recoverable model workflows", error))
 }
 
 fn workflow_row(row: &Row<'_>) -> rusqlite::Result<ModelChapterWorkflowRecord> {
@@ -166,28 +225,6 @@ fn decode_request(
     })
 }
 
-fn completion_row(row: &Row<'_>) -> rusqlite::Result<ModelChapterCompletionRecord> {
-    Ok(ModelChapterCompletionRecord {
-        request_id: HostRequestId::from_bytes(bytes16(row.get(0)?)?),
-        episode_id: EpisodeId::from_bytes(bytes16(row.get(1)?)?),
-        generation: unsigned(row.get(2)?)?,
-        submission_fence_id: ChapterModelSubmissionFenceId::from_bytes(bytes16(row.get(3)?)?),
-        completion: row.get(4)?,
-        completion_digest: digest(row.get(5)?)?,
-        provider: row.get(6)?,
-        model: row.get(7)?,
-        prompt_tokens: optional_unsigned(row.get(8)?)?,
-        completion_tokens: optional_unsigned(row.get(9)?)?,
-        cached_tokens: optional_unsigned(row.get(10)?)?,
-        reasoning_tokens: optional_unsigned(row.get(11)?)?,
-        cost_microusd: optional_unsigned(row.get(12)?)?,
-        provider_operation_id: row.get(13)?,
-        provider_status: row.get(14)?,
-        generated_at_ms: row.get(15)?,
-        observed_at_ms: row.get(16)?,
-    })
-}
-
 fn required<T>(value: Option<T>) -> rusqlite::Result<T> {
     value.ok_or_else(invalid_row)
 }
@@ -216,10 +253,6 @@ fn optional_digest(value: Option<Vec<u8>>) -> rusqlite::Result<Option<ContentDig
 
 fn unsigned(value: i64) -> rusqlite::Result<u64> {
     u64::try_from(value).map_err(|_| invalid_row())
-}
-
-fn optional_unsigned(value: Option<i64>) -> rusqlite::Result<Option<u64>> {
-    value.map(unsigned).transpose()
 }
 
 fn unsigned16(value: i64) -> rusqlite::Result<u16> {

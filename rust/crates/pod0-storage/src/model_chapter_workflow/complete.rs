@@ -4,7 +4,9 @@ use super::model::{
     ModelChapterWorkflowRecord, ModelChapterWorkflowState, StoredModelChapterRequest,
 };
 use super::persist::persist_workflow;
-use super::read::{read_completion, read_workflow};
+use super::read::read_workflow;
+use super::read_completion::read_completion;
+use crate::chapter_store_read_artifact::read_chapter_artifact;
 use crate::library_store_chapters::commit_and_select_chapter_in_transaction;
 use crate::{ChapterCommitStorageReceipt, LibraryStore, StorageError};
 
@@ -54,7 +56,7 @@ impl LibraryStore {
                 .ok_or(StorageError::ChapterWorkflowConflict)?;
             let completion = read_completion(transaction, input.request_id)?
                 .ok_or(StorageError::ChapterWorkflowConflict)?;
-            validate_artifact(&artifact, request, &completion)?;
+            validate_artifact(transaction, &artifact, request, &completion)?;
             let chapter = commit_and_select_chapter_in_transaction(
                 transaction,
                 workflow.command_id,
@@ -84,15 +86,17 @@ impl LibraryStore {
 }
 
 fn validate_artifact(
+    transaction: &rusqlite::Transaction<'_>,
     artifact: &ChapterArtifact,
     request: &StoredModelChapterRequest,
     completion: &super::inputs::ModelChapterCompletionRecord,
 ) -> Result<(), StorageError> {
     let provenance = &artifact.provenance;
     if artifact.episode_id != completion.episode_id
+        || artifact.source_revision != request.source_version
         || provenance.source != request.expected_artifact_source
-        || provenance.provider.as_deref() != Some(request.provider.as_str())
-        || provenance.model.as_deref() != Some(request.model.as_str())
+        || provenance.provider.as_deref() != Some(completion.provider.as_str())
+        || provenance.model.as_deref() != Some(completion.model.as_str())
         || provenance.policy_version != request.policy_version
         || provenance.source_payload_digest != completion.completion_digest
         || provenance.transcript_version_id != Some(request.selected_transcript_version_id)
@@ -103,7 +107,54 @@ fn validate_artifact(
     {
         return Err(StorageError::ChapterWorkflowConflict);
     }
+    validate_enrichment_base(transaction, artifact, request)?;
     Ok(())
+}
+
+fn validate_enrichment_base(
+    transaction: &rusqlite::Transaction<'_>,
+    artifact: &ChapterArtifact,
+    request: &StoredModelChapterRequest,
+) -> Result<(), StorageError> {
+    if request.mode == super::model::ModelChapterWorkflowMode::Generate {
+        return Ok(());
+    }
+    let base_id = request
+        .base_artifact_id
+        .ok_or(StorageError::ChapterWorkflowConflict)?;
+    let expected_digest = request
+        .base_integrity_digest
+        .ok_or(StorageError::ChapterWorkflowConflict)?;
+    let base = read_chapter_artifact(transaction, base_id)?
+        .ok_or(StorageError::ChapterWorkflowConflict)?;
+    if base.integrity_digest != expected_digest
+        || base.episode_id != artifact.episode_id
+        || base.podcast_id != artifact.podcast_id
+        || base.provenance.source != ChapterArtifactSource::Publisher
+        || base.chapters.len() != artifact.chapters.len()
+        || !base
+            .chapters
+            .iter()
+            .zip(&artifact.chapters)
+            .all(|(base, enriched)| chapter_shape_is_preserved(base, enriched))
+    {
+        return Err(StorageError::ChapterWorkflowConflict);
+    }
+    Ok(())
+}
+
+fn chapter_shape_is_preserved(
+    base: &pod0_domain::ChapterRecord,
+    enriched: &pod0_domain::ChapterRecord,
+) -> bool {
+    base.ordinal == enriched.ordinal
+        && base.start_milliseconds == enriched.start_milliseconds
+        && base.end_milliseconds == enriched.end_milliseconds
+        && base.title == enriched.title
+        && base.image_url == enriched.image_url
+        && base.link_url == enriched.link_url
+        && base.include_in_table_of_contents == enriched.include_in_table_of_contents
+        && base.source_episode_id == enriched.source_episode_id
 }
 
 fn valid_mode_source(

@@ -99,7 +99,7 @@ REQUIRED_TOKENS = {
     ),
     "App/Sources/Services/WorkflowClient.swift": (
         "attachPublisherChapterCore(",
-        ".filter { $0.kind != .publisherChapters }",
+        ".filter { $0.kind != .publisherChapters && $0.kind != .chapterArtifacts }",
     ),
     "App/Sources/Core/SharedLibraryClient+PublisherChapterWorkflows.swift": (
         ".ensurePublisherChapters(",

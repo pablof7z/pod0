@@ -61,8 +61,40 @@ pub struct PublisherChapterWorkflowProjection {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct ModelChapterWorkflowFailure {
+    pub code: crate::ModelChapterWorkflowFailureCode,
+    pub safe_detail: Option<String>,
+    pub retry: crate::ChapterModelRetryDisposition,
+    pub may_have_submitted: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct ModelChapterWorkflowProjection {
+    pub episode_id: EpisodeId,
+    pub configured_model: String,
+    pub mode: Option<crate::ModelChapterWorkflowMode>,
+    pub source_version: Option<String>,
+    pub stage: crate::ModelChapterWorkflowStage,
+    pub workflow_revision: StateRevision,
+    pub generation: u64,
+    pub attempt: u16,
+    pub max_attempts: u16,
+    pub request_id: Option<HostRequestId>,
+    pub cancellation_id: CancellationId,
+    pub not_before: Option<UnixTimestampMilliseconds>,
+    pub selected_artifact_id: Option<ChapterArtifactId>,
+    pub failure: Option<ModelChapterWorkflowFailure>,
+    pub replan_pending: bool,
+    pub may_have_submitted: bool,
+    pub created_at: UnixTimestampMilliseconds,
+    pub updated_at: UnixTimestampMilliseconds,
+    pub allowed_actions: crate::ModelChapterWorkflowAllowedActions,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct ChapterWorkflowsProjection {
     pub publisher: Vec<PublisherChapterWorkflowProjection>,
+    pub model: Vec<ModelChapterWorkflowProjection>,
     pub has_more: bool,
     pub failure: Option<crate::CoreFailure>,
 }
@@ -73,6 +105,9 @@ impl ChapterWorkflowsProjection {
         let count = self.publisher.len();
         self.publisher = self.publisher.drain(..).skip(offset).take(limit).collect();
         self.has_more |= count > offset.saturating_add(self.publisher.len());
+        let model_count = self.model.len();
+        self.model = self.model.drain(..).skip(offset).take(limit).collect();
+        self.has_more |= model_count > offset.saturating_add(self.model.len());
     }
 }
 

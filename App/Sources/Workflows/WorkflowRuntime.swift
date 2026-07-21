@@ -192,6 +192,12 @@ final class WorkflowRuntime {
                 on: projection
             ) ?? .failed
         }
+        if projection.authority == .sharedRustModelChapters {
+            return appStore?.sharedLibrary?.performModelChapterAction(
+                action,
+                on: projection
+            ) ?? .failed
+        }
         guard let jobStore else { return .failed }
         do {
             let result = try jobStore.perform(

@@ -1,19 +1,52 @@
 use pod0_application::{
     CoreFailureCode, HostFailureCode, HostObservation, HostObservationEnvelope,
-    ObservationAcceptance, OperationResult, OperationStage,
+    HostObservationReceipt, HostObservationRejection, ObservationAcceptance, OperationStage,
 };
 
-use crate::runtime_feed_state::{FeedIntent, PendingFeed};
 use crate::runtime_state::{FacadeState, failure};
-use crate::runtime_storage_commands::storage_failure;
 
 impl FacadeState {
-    pub(super) fn record_host_observation(&mut self, observation: HostObservationEnvelope) -> bool {
+    pub(super) fn record_host_observation(
+        &mut self,
+        observation: HostObservationEnvelope,
+    ) -> (bool, HostObservationReceipt) {
+        let request_id = observation.request_id;
+        if let Some(receipt) = self.replayed_model_completion_receipt(&observation) {
+            return (false, receipt);
+        }
+        if let Some(record) = self.late_ambiguous_model_record(&observation) {
+            let receipt = self.persist_model_observation(record, observation);
+            let changed = matches!(receipt, HostObservationReceipt::Persisted { .. });
+            return (changed, receipt);
+        }
+        if let Some(pending) = self.pending_model_observations.get(&request_id).cloned() {
+            if pending != observation {
+                return (false, retain(request_id));
+            }
+            let record = self
+                .pending_model_chapters
+                .get(&request_id)
+                .and_then(|episode_id| {
+                    self.store
+                        .as_ref()
+                        .and_then(|store| store.model_chapter_workflow(*episode_id).ok())
+                        .flatten()
+                });
+            let Some(record) = record else {
+                return (false, retain(request_id));
+            };
+            let receipt = self.persist_model_observation(record, observation);
+            let changed = matches!(receipt, HostObservationReceipt::Persisted { .. });
+            if !matches!(receipt, HostObservationReceipt::RetainAndRetry { .. }) {
+                self.pending_model_observations.remove(&request_id);
+            }
+            return (changed, receipt);
+        }
         if self
             .pending_publisher_observations
-            .contains_key(&observation.request_id)
+            .contains_key(&request_id)
         {
-            return false;
+            return (false, accepted(request_id));
         }
         let command_id = self.host_requests.command_id(observation.request_id);
         let is_playback_request = self
@@ -32,7 +65,24 @@ impl FacadeState {
             .pending_publisher_chapters
             .get(&observation.request_id)
             .cloned();
+        let pending_model = self
+            .pending_model_chapters
+            .get(&request_id)
+            .and_then(|episode_id| {
+                self.store
+                    .as_ref()
+                    .and_then(|store| store.model_chapter_workflow(*episode_id).ok())
+                    .flatten()
+            });
+        let pending_wake = self.pending_core_wakes.contains_key(&request_id);
         let acceptance = self.host_requests.accept_observation(&observation);
+        if acceptance == ObservationAcceptance::PayloadTooLarge
+            && let Some(record) = pending_model
+        {
+            let receipt = self.persist_oversized_model_observation(record);
+            let changed = matches!(receipt, HostObservationReceipt::Persisted { .. });
+            return (changed, receipt);
+        }
         if acceptance == ObservationAcceptance::PayloadTooLarge && pending_publisher.is_some() {
             self.advance_revision();
             self.pending_publisher_observations.insert(
@@ -44,14 +94,33 @@ impl FacadeState {
             );
             self.retry_pending_publisher_observations();
             self.trim_operations();
-            return true;
+            return (true, accepted(request_id));
         }
         if acceptance != ObservationAcceptance::Accepted {
-            return false;
+            return (false, rejected(request_id, acceptance));
         }
         let Some(command_id) = command_id else {
-            return false;
+            return (
+                false,
+                HostObservationReceipt::Rejected {
+                    request_id,
+                    reason: HostObservationRejection::UnknownRequest,
+                },
+            );
         };
+        if let Some(record) = pending_model {
+            let retained = observation.clone();
+            let receipt = self.persist_model_observation(record, observation);
+            if matches!(receipt, HostObservationReceipt::RetainAndRetry { .. }) {
+                self.pending_model_observations.insert(request_id, retained);
+            }
+            let changed = matches!(receipt, HostObservationReceipt::Persisted { .. });
+            return (changed, receipt);
+        }
+        if pending_wake {
+            let changed = self.finish_core_wake(request_id, observation.observation);
+            return (changed, accepted(request_id));
+        }
         self.advance_revision();
         if pending_publisher.is_some() {
             self.pending_publisher_observations
@@ -106,6 +175,10 @@ impl FacadeState {
                 | HostObservation::RecallSpansEmbedded { .. }
                 | HostObservation::RecallCandidatesReranked { .. }
                 | HostObservation::PublisherChaptersFetched { .. }
+                | HostObservation::ChapterModelProviderAccepted { .. }
+                | HostObservation::ChapterModelCompleted { .. }
+                | HostObservation::ChapterModelFailed { .. }
+                | HostObservation::CoreWakeReached { .. }
                 | HostObservation::LegacyRecallIndexArtifactsRemoved { .. } => {
                     self.fail(command_id, CoreFailureCode::InvalidCommand)
                 }
@@ -115,7 +188,7 @@ impl FacadeState {
             }
         }
         self.trim_operations();
-        true
+        (true, accepted(request_id))
     }
 
     pub(super) fn retry_pending_publisher_observations(&mut self) -> bool {
@@ -148,139 +221,30 @@ impl FacadeState {
         changed
     }
 
-    fn finish_feed_observation(
-        &mut self,
-        pending: PendingFeed,
-        observation: HostObservation,
-        observed_at_ms: i64,
-    ) {
-        match observation {
-            HostObservation::FeedBytesFetched {
-                bytes,
-                entity_tag,
-                last_modified,
-                ..
-            } => {
-                self.apply_fetched_feed(pending, &bytes, entity_tag, last_modified, observed_at_ms)
-            }
-            HostObservation::FeedNotModified {
-                entity_tag,
-                last_modified,
-                ..
-            } => self.apply_not_modified(pending, entity_tag, last_modified, observed_at_ms),
-            HostObservation::Failed { code, .. } => {
-                self.fail(pending.command_id, host_failure(code))
-            }
-            HostObservation::Cancelled => self.finish(
-                pending.command_id,
-                OperationStage::Cancelled,
-                Some(failure(CoreFailureCode::Cancelled)),
-                None,
-            ),
-            HostObservation::Unsupported { wire_code } => self.fail(
-                pending.command_id,
-                CoreFailureCode::Unsupported { wire_code },
-            ),
-            HostObservation::PlaybackObserved { .. } => {
-                self.fail(pending.command_id, CoreFailureCode::InvalidCommand)
-            }
-            HostObservation::RecallQueryEmbedded { .. }
-            | HostObservation::RecallSpansEmbedded { .. }
-            | HostObservation::RecallCandidatesReranked { .. }
-            | HostObservation::PublisherChaptersFetched { .. }
-            | HostObservation::LegacyRecallIndexArtifactsRemoved { .. } => {
-                self.fail(pending.command_id, CoreFailureCode::InvalidCommand)
-            }
-        }
-    }
-
-    fn apply_fetched_feed(
-        &mut self,
-        pending: PendingFeed,
-        bytes: &[u8],
-        entity_tag: Option<String>,
-        last_modified: Option<String>,
-        observed_at_ms: i64,
-    ) {
-        let parsed = pod0_application::parse_podcast_feed(
-            bytes,
-            pending.feed_identity,
-            pending.podcast_id,
-            pod0_domain::UnixTimestampMilliseconds::new(observed_at_ms),
-        );
-        let Ok(parsed) = parsed else {
-            self.fail(pending.command_id, CoreFailureCode::FeedMalformed);
-            return;
+    fn late_ambiguous_model_record(
+        &self,
+        observation: &HostObservationEnvelope,
+    ) -> Option<pod0_storage::ModelChapterWorkflowRecord> {
+        let episode_id = match observation.observation {
+            HostObservation::ChapterModelProviderAccepted { episode_id, .. }
+            | HostObservation::ChapterModelCompleted { episode_id, .. }
+            | HostObservation::ChapterModelFailed { episode_id, .. } => episode_id,
+            _ => return None,
         };
-        let Some(store) = &self.store else {
-            self.fail(pending.command_id, CoreFailureCode::StorageUnavailable);
-            return;
-        };
-        let mut episodes = parsed.episodes;
-        if pending.intent == FeedIntent::Metadata {
-            episodes.clear();
-        }
-        let result = store.apply_feed(
-            pending.command_id,
-            &pending.fingerprint,
-            parsed.podcast,
-            episodes,
-            pending.intent == FeedIntent::Subscribe,
-            entity_tag,
-            last_modified,
-            observed_at_ms,
-        );
-        match result {
-            Ok((_, podcast_id)) => match self.reload_listening() {
-                Ok(()) => self.succeed(
-                    pending.command_id,
-                    Some(OperationResult::Podcast { podcast_id }),
-                ),
-                Err(error) => self.fail(pending.command_id, storage_failure(error)),
-            },
-            Err(error) => self.fail(pending.command_id, storage_failure(error)),
-        }
-    }
-
-    fn apply_not_modified(
-        &mut self,
-        pending: PendingFeed,
-        entity_tag: Option<String>,
-        last_modified: Option<String>,
-        observed_at_ms: i64,
-    ) {
-        if !matches!(pending.intent, FeedIntent::Refresh | FeedIntent::Metadata) {
-            self.fail(pending.command_id, CoreFailureCode::FeedMalformed);
-            return;
-        }
-        let Some(store) = &self.store else {
-            self.fail(pending.command_id, CoreFailureCode::StorageUnavailable);
-            return;
-        };
-        let result = store.mark_feed_not_modified(
-            pending.command_id,
-            &pending.fingerprint,
-            pending.podcast_id,
-            entity_tag,
-            last_modified,
-            observed_at_ms,
-        );
-        match result {
-            Ok(_) => match self.reload_listening() {
-                Ok(()) => self.succeed(
-                    pending.command_id,
-                    Some(OperationResult::Podcast {
-                        podcast_id: pending.podcast_id,
-                    }),
-                ),
-                Err(error) => self.fail(pending.command_id, storage_failure(error)),
-            },
-            Err(error) => self.fail(pending.command_id, storage_failure(error)),
-        }
+        let record = self
+            .store
+            .as_ref()?
+            .model_chapter_workflow(episode_id)
+            .ok()??;
+        (record.state == pod0_storage::ModelChapterWorkflowState::Ambiguous
+            && record.request_id == Some(observation.request_id)
+            && record.cancellation_id == observation.cancellation_id
+            && record.issued_revision == observation.observed_request_revision)
+            .then_some(record)
     }
 }
 
-fn host_failure(code: HostFailureCode) -> CoreFailureCode {
+pub(super) fn host_failure(code: HostFailureCode) -> CoreFailureCode {
     match code {
         HostFailureCode::PermissionDenied => CoreFailureCode::HostRejected,
         HostFailureCode::InvalidResponse | HostFailureCode::ResponseTooLarge => {
@@ -288,4 +252,34 @@ fn host_failure(code: HostFailureCode) -> CoreFailureCode {
         }
         _ => CoreFailureCode::HostUnavailable,
     }
+}
+
+fn accepted(request_id: pod0_domain::HostRequestId) -> HostObservationReceipt {
+    HostObservationReceipt::AcceptedTransient { request_id }
+}
+
+fn retain(request_id: pod0_domain::HostRequestId) -> HostObservationReceipt {
+    HostObservationReceipt::RetainAndRetry { request_id }
+}
+
+fn rejected(
+    request_id: pod0_domain::HostRequestId,
+    acceptance: ObservationAcceptance,
+) -> HostObservationReceipt {
+    let reason = match acceptance {
+        ObservationAcceptance::UnknownRequest => HostObservationRejection::UnknownRequest,
+        ObservationAcceptance::Duplicate => HostObservationRejection::Duplicate,
+        ObservationAcceptance::Cancelled => HostObservationRejection::Cancelled,
+        ObservationAcceptance::CancellationMismatch => {
+            HostObservationRejection::CancellationMismatch
+        }
+        ObservationAcceptance::StaleRequestRevision => {
+            HostObservationRejection::StaleRequestRevision
+        }
+        ObservationAcceptance::OutOfOrder => HostObservationRejection::OutOfOrder,
+        ObservationAcceptance::MismatchedPayload => HostObservationRejection::MismatchedPayload,
+        ObservationAcceptance::PayloadTooLarge => HostObservationRejection::PayloadTooLarge,
+        ObservationAcceptance::Accepted => unreachable!("accepted observations are handled above"),
+    };
+    HostObservationReceipt::Rejected { request_id, reason }
 }

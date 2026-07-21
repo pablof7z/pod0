@@ -1,13 +1,16 @@
-use pod0_domain::ContentDigest;
 use rusqlite::params;
-use sha2::{Digest as _, Sha256};
 
 use super::inputs::{
     ModelChapterCompletionInput, ModelChapterCompletionRecord, ModelChapterProviderAcceptedInput,
     ModelChapterSubmissionClaim, ModelChapterSubmissionClaimInput,
 };
 use super::model::{ModelChapterWorkflowRecord, ModelChapterWorkflowState};
-use super::read::{read_completion, read_workflow};
+use super::read::read_workflow;
+use super::read_completion::read_completion;
+use super::submit_completion::{
+    completion_record, completion_replays, insert_completion, validate_completion,
+    validate_completion_shape,
+};
 use super::support::i64_value;
 use crate::{LibraryStore, StorageError};
 
@@ -74,6 +77,7 @@ impl LibraryStore {
                 input.submission_fence_id,
             )?;
             if input.observed_at_ms < 0
+                || input.observed_at_ms < current.updated_at_ms
                 || input.provider_operation_id.is_empty()
                 || input.provider_operation_id.len() > 1_024
                 || input
@@ -90,7 +94,18 @@ impl LibraryStore {
             {
                 return Ok(current);
             }
-            if current.state != ModelChapterWorkflowState::SubmissionAuthorized {
+            if current.state == ModelChapterWorkflowState::ProviderAccepted
+                && current.provider_operation_id.as_deref()
+                    != Some(input.provider_operation_id.as_str())
+            {
+                return Err(StorageError::ChapterWorkflowConflict);
+            }
+            if !matches!(
+                current.state,
+                ModelChapterWorkflowState::SubmissionAuthorized
+                    | ModelChapterWorkflowState::ProviderAccepted
+                    | ModelChapterWorkflowState::Ambiguous
+            ) {
                 return Err(StorageError::ChapterWorkflowConflict);
             }
             transaction
@@ -99,7 +114,7 @@ impl LibraryStore {
                      workflow_revision=workflow_revision+1,provider_operation_id=?1,\
                      provider_status=?2,updated_at_ms=?3 WHERE episode_id=?4 AND request_id=?5 \
                      AND generation=?6 AND submission_fence_id=?7 \
-                     AND state='submission_authorized'",
+                     AND state IN('submission_authorized','provider_accepted','ambiguous')",
                     params![
                         input.provider_operation_id,
                         input.provider_status,
@@ -126,32 +141,48 @@ impl LibraryStore {
         input: ModelChapterCompletionInput,
     ) -> Result<ModelChapterCompletionRecord, StorageError> {
         self.write(|transaction| {
-            let workflow = exact_submission_record(
-                transaction,
-                input.episode_id,
-                input.request_id,
-                input.generation,
-                input.submission_fence_id,
-            )?;
-            let active = workflow
-                .active_request
-                .as_ref()
-                .ok_or(StorageError::ChapterWorkflowConflict)?;
-            validate_completion(&input, active)?;
-            let completion = completion_record(input);
+            validate_completion_shape(&input)?;
+            let mut completion = completion_record(input);
             if let Some(existing) = read_completion(transaction, completion.request_id)? {
-                return if existing == completion
-                    && workflow.state == ModelChapterWorkflowState::CompletionObserved
-                {
+                return if completion_replays(&existing, &completion) {
                     Ok(existing)
                 } else {
                     Err(StorageError::ChapterWorkflowConflict)
                 };
             }
+            let workflow = exact_submission_record(
+                transaction,
+                completion.episode_id,
+                completion.request_id,
+                completion.generation,
+                completion.submission_fence_id,
+            )?;
+            if completion.observed_at_ms < workflow.updated_at_ms {
+                return Err(StorageError::ChapterWorkflowConflict);
+            }
+            match (
+                workflow.provider_operation_id.as_deref(),
+                completion.provider_operation_id.as_deref(),
+            ) {
+                (Some(expected), Some(observed)) if expected != observed => {
+                    return Err(StorageError::ChapterWorkflowConflict);
+                }
+                (Some(expected), None) => completion.provider_operation_id = Some(expected.into()),
+                _ => {}
+            }
+            if completion.provider_status.is_none() {
+                completion.provider_status = workflow.provider_status.clone();
+            }
+            let active = workflow
+                .active_request
+                .as_ref()
+                .ok_or(StorageError::ChapterWorkflowConflict)?;
+            validate_completion(&completion, active)?;
             if !matches!(
                 workflow.state,
                 ModelChapterWorkflowState::SubmissionAuthorized
                     | ModelChapterWorkflowState::ProviderAccepted
+                    | ModelChapterWorkflowState::Ambiguous
             ) {
                 return Err(StorageError::ChapterWorkflowConflict);
             }
@@ -163,7 +194,7 @@ impl LibraryStore {
                      provider_operation_id),provider_status=COALESCE(?2,provider_status),\
                      updated_at_ms=?3 WHERE episode_id=?4 AND request_id=?5 AND generation=?6 \
                      AND submission_fence_id=?7 \
-                     AND state IN('submission_authorized','provider_accepted')",
+                     AND state IN('submission_authorized','provider_accepted','ambiguous')",
                     params![
                         completion.provider_operation_id,
                         completion.provider_status,
@@ -215,80 +246,4 @@ fn exact_submission_record(
         return Err(StorageError::ChapterWorkflowConflict);
     }
     Ok(record)
-}
-
-fn validate_completion(
-    input: &ModelChapterCompletionInput,
-    request: &super::model::StoredModelChapterRequest,
-) -> Result<(), StorageError> {
-    if input.completion.is_empty()
-        || input.completion.len() as u64 > request.maximum_completion_bytes
-        || input.completion.len() > 1_048_576
-        || input.provider != request.provider
-        || input.model != request.model
-        || input.generated_at_ms < 0
-        || input.observed_at_ms < 0
-    {
-        return Err(StorageError::ChapterWorkflowConflict);
-    }
-    Ok(())
-}
-
-fn completion_record(input: ModelChapterCompletionInput) -> ModelChapterCompletionRecord {
-    ModelChapterCompletionRecord {
-        request_id: input.request_id,
-        episode_id: input.episode_id,
-        generation: input.generation,
-        submission_fence_id: input.submission_fence_id,
-        completion_digest: ContentDigest::from_bytes(
-            Sha256::digest(input.completion.as_bytes()).into(),
-        ),
-        completion: input.completion,
-        provider: input.provider,
-        model: input.model,
-        prompt_tokens: input.prompt_tokens,
-        completion_tokens: input.completion_tokens,
-        cached_tokens: input.cached_tokens,
-        reasoning_tokens: input.reasoning_tokens,
-        cost_microusd: input.cost_microusd,
-        provider_operation_id: input.provider_operation_id,
-        provider_status: input.provider_status,
-        generated_at_ms: input.generated_at_ms,
-        observed_at_ms: input.observed_at_ms,
-    }
-}
-
-fn insert_completion(
-    transaction: &rusqlite::Transaction<'_>,
-    completion: &ModelChapterCompletionRecord,
-) -> Result<(), StorageError> {
-    transaction
-        .execute(
-            "INSERT INTO pod0_model_chapter_completions(request_id,episode_id,generation,\
-         submission_fence_id,completion,completion_digest,provider,model,prompt_tokens,\
-         completion_tokens,cached_tokens,reasoning_tokens,cost_microusd,provider_operation_id,\
-         provider_status,generated_at_ms,observed_at_ms) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,\
-         ?9,?10,?11,?12,?13,?14,?15,?16,?17)",
-            params![
-                completion.request_id.into_bytes().as_slice(),
-                completion.episode_id.into_bytes().as_slice(),
-                i64_value(completion.generation)?,
-                completion.submission_fence_id.into_bytes().as_slice(),
-                completion.completion,
-                completion.completion_digest.into_bytes().as_slice(),
-                completion.provider,
-                completion.model,
-                completion.prompt_tokens.map(i64_value).transpose()?,
-                completion.completion_tokens.map(i64_value).transpose()?,
-                completion.cached_tokens.map(i64_value).transpose()?,
-                completion.reasoning_tokens.map(i64_value).transpose()?,
-                completion.cost_microusd.map(i64_value).transpose()?,
-                completion.provider_operation_id,
-                completion.provider_status,
-                completion.generated_at_ms,
-                completion.observed_at_ms,
-            ],
-        )
-        .map_err(|error| StorageError::sqlite("insert model chapter completion", error))?;
-    Ok(())
 }

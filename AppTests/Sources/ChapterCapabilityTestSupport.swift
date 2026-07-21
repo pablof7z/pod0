@@ -34,7 +34,7 @@ enum ChapterCapabilityFixtures {
                 sourceVersion: "fixture-source-v1",
                 episodeId: episodeID,
                 podcastId: podcastID,
-                formatVersion: 1,
+                formatVersion: 2,
                 requestedTranscriptVersionId: transcriptID,
                 requestedTranscriptContentDigest: transcriptDigest,
                 selectedTranscriptVersionId: transcriptID,

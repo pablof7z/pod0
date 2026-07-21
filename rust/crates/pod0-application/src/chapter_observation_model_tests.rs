@@ -54,6 +54,7 @@ fn generated_output_normalizes_chapters_summaries_and_ads() {
     )));
 
     assert_eq!(artifact.provenance.source, ChapterArtifactSource::Generated);
+    assert_eq!(artifact.source_revision, "model-input-v1");
     assert_eq!(artifact.provenance.provider.as_deref(), Some("openrouter"));
     assert_eq!(
         artifact.provenance.model.as_deref(),
@@ -138,10 +139,10 @@ fn model_rejects_malformed_version_policy_digest_and_stale_evidence() {
     );
 
     let mut future_format = model(GENERATED, ChapterModelObservationMode::Generate);
-    future_format.format_version = 2;
+    future_format.format_version = 3;
     assert_rejected(
         future_format,
-        ChapterObservationRejection::UnsupportedFormat { format_version: 2 },
+        ChapterObservationRejection::UnsupportedFormat { format_version: 3 },
     );
     let mut future_policy = model(GENERATED, ChapterModelObservationMode::Generate);
     future_policy.policy_version = 2;
@@ -158,6 +159,13 @@ fn model_rejects_malformed_version_policy_digest_and_stale_evidence() {
     invalid_provider.provider = " openrouter".into();
     assert_rejected(
         invalid_provider,
+        ChapterObservationRejection::InvalidProvenance,
+    );
+
+    let mut missing_source = model(GENERATED, ChapterModelObservationMode::Generate);
+    missing_source.source_version.clear();
+    assert_rejected(
+        missing_source,
         ChapterObservationRejection::InvalidProvenance,
     );
 }

@@ -7,12 +7,26 @@ use sha2::{Digest as _, Sha256};
 
 use super::model::{ModelChapterWorkflowMode, StoredModelChapterRequest};
 use crate::StorageError;
+use crate::chapter_store_read_artifact::read_chapter_artifact;
 
 const MAX_COMPLETION_BYTES: u64 = 1_048_576;
 const MAX_PROVIDER_BYTES: usize = 128;
 const MAX_MODEL_BYTES: usize = 256;
 const MAX_CONFIGURED_MODEL_BYTES: usize = 256;
 const MAX_PROMPT_BYTES: usize = 1_048_576;
+
+pub(super) fn validate_blocked_plan(
+    failure_code: &str,
+    failure_detail: Option<&str>,
+) -> Result<(), StorageError> {
+    if failure_code.is_empty()
+        || failure_code.len() > 256
+        || failure_detail.is_some_and(|value| value.len() > 16_384)
+    {
+        return Err(StorageError::ChapterWorkflowConflict);
+    }
+    Ok(())
+}
 
 pub(crate) fn validate_ensure_values(
     configured_model: &str,
@@ -23,7 +37,6 @@ pub(crate) fn validate_ensure_values(
     if now_ms < 0
         || deadline_ms < now_ms
         || max_attempts == 0
-        || configured_model.is_empty()
         || configured_model.len() > MAX_CONFIGURED_MODEL_BYTES
     {
         return Err(StorageError::ChapterWorkflowConflict);
@@ -118,9 +131,21 @@ fn validate_chapter_selection(
         (ModelChapterWorkflowMode::Enrich, Some((_, id, digest, source))) => {
             let stored_id = artifact_id(&id)?;
             let stored_digest = content_digest(&digest)?;
-            if Some(stored_id) != request.base_artifact_id
-                || Some(stored_digest) != request.base_integrity_digest
-                || !matches!(source, 1 | 3)
+            if !matches!(source, 1 | 3) {
+                return Err(StorageError::ChapterWorkflowConflict);
+            }
+            let base_id = request
+                .base_artifact_id
+                .ok_or(StorageError::ChapterWorkflowConflict)?;
+            let base_digest = request
+                .base_integrity_digest
+                .ok_or(StorageError::ChapterWorkflowConflict)?;
+            let base = read_chapter_artifact(transaction, base_id)?
+                .ok_or(StorageError::ChapterWorkflowConflict)?;
+            if base.integrity_digest != base_digest
+                || base.episode_id != episode_id
+                || base.provenance.source != ChapterArtifactSource::Publisher
+                || (source == 1 && (stored_id != base_id || stored_digest != base_digest))
             {
                 return Err(StorageError::ChapterWorkflowConflict);
             }
@@ -150,6 +175,31 @@ pub(crate) fn validate_preserved_selection(
             |row| row.get(0),
         )
         .map_err(|error| StorageError::sqlite("validate preserved chapter selection", error))?;
+    matches
+        .then_some(())
+        .ok_or(StorageError::ChapterWorkflowConflict)
+}
+
+pub(crate) fn validate_current_model_selection(
+    transaction: &Transaction<'_>,
+    episode_id: EpisodeId,
+    artifact_id: ChapterArtifactId,
+    revision: StateRevision,
+) -> Result<(), StorageError> {
+    let matches: bool = transaction
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM pod0_chapter_selections selection \
+             JOIN pod0_chapter_artifacts artifact ON artifact.artifact_id=selection.artifact_id \
+             WHERE selection.episode_id=?1 AND selection.selection_revision=?2 \
+             AND selection.artifact_id=?3 AND artifact.source_code IN(2,3))",
+            rusqlite::params![
+                episode_id.into_bytes().as_slice(),
+                i64_value(revision.value)?,
+                artifact_id.into_bytes().as_slice()
+            ],
+            |row| row.get(0),
+        )
+        .map_err(|error| StorageError::sqlite("validate current model chapter selection", error))?;
     matches
         .then_some(())
         .ok_or(StorageError::ChapterWorkflowConflict)

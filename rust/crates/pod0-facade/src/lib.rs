@@ -2,67 +2,9 @@
 
 use std::sync::Arc;
 
-pub use pod0_application::{
-    AdSpanProjection, AgentComposedChapterItem, AgentComposedChapterObservation,
-    ApplicationCommand, ChapterArtifactProjection, ChapterCommitReceipt, ChapterContractProjection,
-    ChapterContractRejection, ChapterContractRequest, ChapterItemProjection,
-    ChapterModelDesiredStateInput, ChapterModelDesiredStatePlan, ChapterModelEpisodeInput,
-    ChapterModelObservationMode, ChapterModelPlan, ChapterModelPlanInput,
-    ChapterModelResponseFormat, ChapterModelTranscriptInput, ChapterModelTranscriptSegmentInput,
-    ChapterObservationLimits, ChapterObservationProjection, ChapterObservationRejection,
-    ChapterPlaybackContext, ChapterProjectionScope, ChapterSummaryProjection,
-    ChapterWorkflowsProjection, ClipProjectionScope, ClipsProjection, CommandEnvelope, CoreFailure,
-    CoreFailureCode, DomainEvent, DomainEventEnvelope, EpisodeSummary, EvidenceIndexProjection,
-    EvidenceIndexSpanProjection, EvidenceIndexStage, FACADE_CONTRACT_VERSION,
-    HostCancellationRequest, HostFailureCode, HostObservation, HostObservationEnvelope,
-    HostRequest, HostRequestEnvelope, KernelProbeCommand, KernelProbeProjection, LibraryProjection,
-    MAX_AGENT_COMPOSED_CHAPTER_ITEMS, MAX_CHAPTER_MODEL_EPISODE_TEXT_BYTES,
-    MAX_CHAPTER_MODEL_TRANSCRIPT_CHARACTERS, MAX_CHAPTER_MODEL_TRANSCRIPT_INPUT_BYTES,
-    MAX_CHAPTER_MODEL_TRANSCRIPT_SEGMENTS, MAX_EVIDENCE_INDEX_PAGE_ITEMS, MAX_FEED_RESPONSE_BYTES,
-    MAX_HOST_REQUEST_BATCH, MAX_MODEL_CHAPTER_COMPLETION_BYTES, MAX_OPERATION_ITEMS,
-    MAX_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, MAX_PROJECTION_ITEMS,
-    MAX_PUBLISHER_CHAPTER_DOCUMENT_BYTES, MAX_RECALL_CANDIDATES, MAX_RECALL_EMBEDDING_BATCH,
-    MAX_RECALL_EMBEDDING_DIMENSIONS, MAX_RECALL_EMBEDDING_TEXT_BYTES, MAX_RECALL_EVIDENCE,
-    MAX_RECALL_EXCERPT_BYTES, MAX_RECALL_QUERY_BYTES,
-    MIN_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS, ModelChapterObservation, NativeTimerMode,
-    NoteProjectionScope, NotesProjection, OperationProjection, OperationResult, OperationStage,
-    PlannedChapterModelRequest, PlaybackAllowedActions, PlaybackAudioRoute, PlaybackCommand,
-    PlaybackHostState, PlaybackInterruption, PlaybackItem, PlaybackLifecycleObservation,
-    PlaybackPolicyState, PlaybackProjection, PlaybackStopReason, PlaybackTransitionCue,
-    PodcastSummary, Projection, ProjectionEnvelope, ProjectionRequest, ProjectionScope,
-    PublisherChapterObservation, PublisherChapterWorkflowFailure,
-    PublisherChapterWorkflowFailureCode, PublisherChapterWorkflowProjection,
-    PublisherChapterWorkflowStage, QueuePlacement, RecallEmbeddingInput, RecallEmbeddingVector,
-    RecallEvidenceProjection, RecallPhase, RecallQuery, RecallRerankDocument,
-    RecallRerankObservation, RecallResultProjection, RecallScope, RecallScoreProjection,
-    RecallSpanEmbeddingObservation, RecallStage, Retryability, TranscriptCommitReceipt,
-    TranscriptCommitRequest, TranscriptContractProjection, TranscriptContractRejection,
-    TranscriptEvidenceInput, TranscriptProjection, TranscriptProjectionScope,
-    TranscriptSegmentInput, TranscriptSegmentProjection, TranscriptSpeakerProjection,
-    TranscriptSummaryProjection, TranscriptWordProjection, UnsupportedProjection, UserAction,
-    bounded_host_request_count, bounded_playback_observation_interval,
-};
 use pod0_application::{Clock, KernelApplication};
-pub use pod0_domain::{
-    AdSpanEvaluation, AdSpanId, AdSpanInput, ArtifactReference, AutoDownloadMode,
-    AutoDownloadPolicy, CancellationId, ChapterAdKind, ChapterArtifactId, ChapterArtifactInput,
-    ChapterArtifactProvenance, ChapterArtifactSource, ChapterId, ChapterInput,
-    ChapterLegacyProvenance, ChapterLegacySource, ChapterPlaybackSessionId, ClipEvidenceReference,
-    ClipId, ClipRecord, ClipRevision, ClipSource, CommandId, CompletionCause, CompletionStatus,
-    ContentDigest, DomainEventId, DownloadArtifactStatus, EpisodeId, EpisodeIdentityRecord,
-    EpisodeIdentityResolution, EpisodeListeningState, EpisodeRecord, EvidenceChunkPolicy,
-    EvidenceGenerationId, EvidenceSpanId, FeedIdentityV1, HostRequestId, ListeningDomainError,
-    ListeningDomainSnapshot, ListeningPlaybackPolicy, NoteAuthor, NoteEvidenceReference, NoteId,
-    NoteKind, NoteRecord, NoteRevision, NoteTarget, PlaybackRatePermille, PlaybackSeekReason,
-    PlaybackSegment, PlaybackSleepMode, PodcastId, PodcastIdentityRecord,
-    PodcastIdentityResolution, PodcastKind, PodcastRecord, PodcastSubscriptionRecord, QueueEntry,
-    QueueEntryId, RecallQueryId, SpeakerId, StateRevision, SubscriptionId, TranscriptArtifactId,
-    TranscriptArtifactInput, TranscriptArtifactSegmentInput, TranscriptArtifactSpeakerInput,
-    TranscriptArtifactStatus, TranscriptArtifactWordInput, TranscriptProvenance,
-    TranscriptSegmentId, TranscriptSource, TranscriptVersionId, UnixTimestampMilliseconds,
-    make_feed_identity_v1, resolve_episode_identity_v1, resolve_legacy_parent_id,
-    resolve_podcast_identity_v1, validate_listening_snapshot,
-};
+mod facade_exports;
+pub use facade_exports::*;
 
 uniffi::setup_scaffolding!();
 
@@ -86,9 +28,19 @@ mod runtime_chapter_ad_skip_tests;
 mod runtime_chapter_commands;
 #[cfg(test)]
 mod runtime_chapter_lifecycle_tests;
+mod runtime_chapter_model_commands;
+mod runtime_chapter_model_completion;
+mod runtime_chapter_model_mapping;
+mod runtime_chapter_model_observations;
 mod runtime_chapter_model_plan;
 #[cfg(test)]
 mod runtime_chapter_model_plan_tests;
+mod runtime_chapter_model_queue;
+mod runtime_chapter_model_receipts;
+#[cfg(test)]
+mod runtime_chapter_model_wake_tests;
+#[cfg(test)]
+mod runtime_chapter_model_workflow_tests;
 mod runtime_chapter_playback;
 #[cfg(test)]
 mod runtime_chapter_playback_tests;
@@ -102,11 +54,14 @@ mod runtime_chapter_workflow_commands;
 mod runtime_chapter_workflow_observations;
 mod runtime_chapter_workflow_projection;
 #[cfg(test)]
+mod runtime_chapter_workflow_projection_tests;
+#[cfg(test)]
 mod runtime_chapter_workflow_race_tests;
 #[cfg(test)]
 mod runtime_chapter_workflow_test_support;
 #[cfg(test)]
 mod runtime_chapter_workflow_tests;
+mod runtime_clip_command_fingerprint;
 mod runtime_clip_commands;
 #[cfg(test)]
 mod runtime_clip_evidence_tests;
@@ -118,13 +73,16 @@ mod runtime_clock;
 mod runtime_command_fingerprint;
 mod runtime_command_fingerprint_values;
 mod runtime_commands;
+mod runtime_core_wakes;
 mod runtime_evidence_commands;
 mod runtime_evidence_projection;
 mod runtime_evidence_state;
 #[cfg(test)]
 mod runtime_evidence_tests;
 mod runtime_feed_commands;
+mod runtime_feed_observations;
 mod runtime_feed_state;
+mod runtime_listening_commands;
 mod runtime_note_commands;
 #[cfg(test)]
 mod runtime_note_evidence_tests;
@@ -220,8 +178,8 @@ pub trait ProjectionSubscriber: Send + Sync {
     fn receive(&self, projection: ProjectionEnvelope);
 }
 
-/// Shape of the one native/core API. Dispatch and host observation methods do
-/// not return per-operation success; durable outcomes appear in projections.
+/// Shape of the one native/core API. Durable operation outcomes appear in
+/// projections; host observations return only evidence-retention receipts.
 pub trait Pod0ApplicationApi: Send + Sync {
     fn dispatch(&self, command: CommandEnvelope);
     fn snapshot(&self, request: ProjectionRequest) -> ProjectionEnvelope;
@@ -234,7 +192,10 @@ pub trait Pod0ApplicationApi: Send + Sync {
     fn next_host_requests(&self, maximum_count: u16) -> Vec<HostRequestEnvelope>;
 
     fn next_host_cancellations(&self, maximum_count: u16) -> Vec<HostCancellationRequest>;
-    fn record_host_observation(&self, observation: HostObservationEnvelope);
+    fn record_host_observation(
+        &self,
+        observation: HostObservationEnvelope,
+    ) -> HostObservationReceipt;
 }
 
 /// Produces bounded, state-shaped evidence for the typed transcript contract.

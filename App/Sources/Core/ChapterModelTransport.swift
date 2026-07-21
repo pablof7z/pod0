@@ -22,15 +22,22 @@ protocol ChapterModelTransporting: Sendable {
     ) async -> Result<ChapterModelTransportResponse, ChapterCapabilityFailure>
 }
 
+protocol CoreChapterModelTransporting: Sendable {
+    func execute(
+        _ request: ChapterModelExecutionRequest
+    ) async -> Result<ChapterModelTransportResponse, ChapterCapabilityFailure>
+}
+
 /// Credential-backed provider executor. It decodes only the provider envelope;
 /// chapter JSON remains opaque until Rust qualification.
-struct LiveChapterModelTransport: ChapterModelTransporting, Sendable {
+struct LiveChapterModelTransport: ChapterModelTransporting, CoreChapterModelTransporting, Sendable {
     typealias CredentialResolver = @Sendable (LLMProvider) throws -> String?
 
     private let session: URLSession
     private let openRouterEndpoint: URL
     private let ollamaEndpoint: URL
     private let credentialResolver: CredentialResolver
+    private let now: @Sendable () -> Date
 
     init(
         session: URLSession = .shared,
@@ -38,23 +45,37 @@ struct LiveChapterModelTransport: ChapterModelTransporting, Sendable {
         ollamaEndpoint: URL = UtilityLLMClient.defaultOllamaEndpoint,
         credentialResolver: @escaping CredentialResolver = {
             try LLMProviderCredentialResolver.apiKey(for: $0)
-        }
+        },
+        now: @escaping @Sendable () -> Date = Date.init
     ) {
         self.session = session
         self.openRouterEndpoint = openRouterEndpoint
         self.ollamaEndpoint = ollamaEndpoint
         self.credentialResolver = credentialResolver
+        self.now = now
     }
 
     func execute(
         _ request: ModelChapterCapabilityRequest
     ) async -> Result<ChapterModelTransportResponse, ChapterCapabilityFailure> {
-        let planned = request.planned
-        guard planned.maximumCompletionBytes > 0,
-              planned.responseFormat == .jsonObject,
-              let provider = LLMProvider(rawValue: planned.provider),
-              !planned.model.isEmpty,
-              planned.model.trimmed == planned.model
+        await execute(ChapterModelExecutionRequest(
+            provider: request.planned.provider,
+            model: request.planned.model,
+            systemPrompt: request.planned.systemPrompt,
+            userPrompt: request.planned.userPrompt,
+            responseFormat: request.planned.responseFormat,
+            maximumCompletionBytes: request.planned.maximumCompletionBytes
+        ))
+    }
+
+    func execute(
+        _ request: ChapterModelExecutionRequest
+    ) async -> Result<ChapterModelTransportResponse, ChapterCapabilityFailure> {
+        guard request.maximumCompletionBytes > 0,
+              request.responseFormat == .jsonObject,
+              let provider = LLMProvider(rawValue: request.provider),
+              !request.model.isEmpty,
+              request.model.trimmed == request.model
         else {
             return .failure(.invalidRequest("Invalid chapter model identity"))
         }
@@ -79,19 +100,19 @@ struct LiveChapterModelTransport: ChapterModelTransporting, Sendable {
 
         let urlRequest: URLRequest
         do {
-            urlRequest = try makeRequest(planned, provider: provider, apiKey: apiKey)
+            urlRequest = try makeRequest(request, provider: provider, apiKey: apiKey)
         } catch {
             return .failure(.invalidRequest("Chapter model request encoding failed"))
         }
         return await send(
             urlRequest,
             provider: provider,
-            maximumCompletionBytes: planned.maximumCompletionBytes
+            maximumCompletionBytes: request.maximumCompletionBytes
         )
     }
 
     private func makeRequest(
-        _ request: PlannedChapterModelRequest,
+        _ request: ChapterModelExecutionRequest,
         provider: LLMProvider,
         apiKey: String
     ) throws -> URLRequest {
@@ -138,7 +159,11 @@ struct LiveChapterModelTransport: ChapterModelTransporting, Sendable {
                 return .failure(.invalidMetadata("Non-HTTP chapter model response"))
             }
             guard (200...299).contains(http.statusCode) else {
-                return .failure(Self.httpFailure(status))
+                return .failure(Self.httpFailure(
+                    status,
+                    retryAfter: http.value(forHTTPHeaderField: "Retry-After"),
+                    now: now()
+                ))
             }
             if http.expectedContentLength > 0,
                UInt64(http.expectedContentLength) > maximumEnvelopeBytes.partialValue {
@@ -222,19 +247,6 @@ struct LiveChapterModelTransport: ChapterModelTransporting, Sendable {
         } catch {
             return .failure(.invalidMetadata("Malformed chapter model response"))
         }
-    }
-
-    private static func httpFailure(_ status: UInt16) -> ChapterCapabilityFailure {
-        let code: ChapterCapabilityFailureCode = switch status {
-        case 401, 403: .authentication
-        case 413: .responseTooLarge
-        default: .transport
-        }
-        return ChapterCapabilityFailure(
-            code: code,
-            httpStatus: status,
-            safeDetail: "Chapter model HTTP \(status)"
-        )
     }
 
     private static func decoder() -> JSONDecoder {

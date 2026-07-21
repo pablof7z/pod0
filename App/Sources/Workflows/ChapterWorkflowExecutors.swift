@@ -28,7 +28,7 @@ final class ChapterArtifactsJobExecutor: JobExecutor {
         let request: PlannedChapterModelRequest
         switch plan {
         case .ready(let value): request = value
-        case .episodeUnavailable, .staleTranscript, .preserveAgentComposed:
+        case .current, .episodeUnavailable, .staleTranscript, .preserveAgentComposed:
             return .obsolete
         case .transcriptUnavailable, .coreUnavailable:
             return .waitingForDependency(.init(

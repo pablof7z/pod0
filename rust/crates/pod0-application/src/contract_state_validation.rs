@@ -58,6 +58,72 @@ pub(super) fn observation_matches_request(
             HostObservation::PublisherChaptersFetched { episode_id, .. },
         ) => expected == episode_id,
         (
+            HostRequest::ExecuteChapterModel {
+                episode_id: expected_episode,
+                generation: expected_generation,
+                submission_fence_id: expected_fence,
+                ..
+            },
+            HostObservation::ChapterModelProviderAccepted {
+                episode_id,
+                generation,
+                submission_fence_id,
+                ..
+            }
+            | HostObservation::ChapterModelCompleted {
+                episode_id,
+                generation,
+                submission_fence_id,
+                ..
+            }
+            | HostObservation::ChapterModelFailed {
+                episode_id,
+                generation,
+                submission_fence_id,
+                ..
+            },
+        ) => {
+            expected_episode == episode_id
+                && expected_generation == generation
+                && expected_fence == submission_fence_id
+        }
+        (
+            HostRequest::RecoverChapterModelOperation {
+                episode_id: expected_episode,
+                generation: expected_generation,
+                submission_fence_id: expected_fence,
+                ..
+            },
+            HostObservation::ChapterModelProviderAccepted {
+                episode_id,
+                generation,
+                submission_fence_id,
+                ..
+            }
+            | HostObservation::ChapterModelCompleted {
+                episode_id,
+                generation,
+                submission_fence_id,
+                ..
+            }
+            | HostObservation::ChapterModelFailed {
+                episode_id,
+                generation,
+                submission_fence_id,
+                ..
+            },
+        ) => {
+            expected_episode == episode_id
+                && expected_generation == generation
+                && expected_fence == submission_fence_id
+        }
+        (
+            HostRequest::ScheduleCoreWake {
+                reason: expected, ..
+            },
+            HostObservation::CoreWakeReached { reason },
+        ) => expected == reason,
+        (
             HostRequest::RemoveLegacyRecallIndexArtifacts,
             HostObservation::LegacyRecallIndexArtifactsRemoved { removed_file_count },
         ) => *removed_file_count <= 3,
@@ -100,6 +166,67 @@ pub(super) fn recall_payload_is_bounded(
             },
             HostObservation::PublisherChaptersFetched { bytes, .. },
         ) => u64::try_from(bytes.len()).is_ok_and(|size| size <= *maximum_response_bytes),
+        (
+            HostRequest::ExecuteChapterModel { execution, .. },
+            HostObservation::ChapterModelCompleted { completion, .. },
+        ) => u64::try_from(completion.completion.len())
+            .is_ok_and(|size| size <= execution.maximum_completion_bytes),
+        (
+            HostRequest::RecoverChapterModelOperation {
+                maximum_completion_bytes,
+                ..
+            },
+            HostObservation::ChapterModelCompleted { completion, .. },
+        ) => u64::try_from(completion.completion.len())
+            .is_ok_and(|size| size <= *maximum_completion_bytes),
+        _ => true,
+    }
+}
+
+pub(super) fn chapter_model_payload_is_bounded(
+    request: &HostRequest,
+    observation: &HostObservation,
+) -> bool {
+    if !matches!(
+        request,
+        HostRequest::ExecuteChapterModel { .. } | HostRequest::RecoverChapterModelOperation { .. }
+    ) {
+        return true;
+    }
+    match observation {
+        HostObservation::ChapterModelProviderAccepted { update, .. } => {
+            !update.provider_operation_id.is_empty()
+                && update.provider_operation_id.len() <= 1_024
+                && update
+                    .provider_status
+                    .as_ref()
+                    .is_none_or(|value| value.len() <= 1_024)
+        }
+        HostObservation::ChapterModelCompleted { completion, .. } => {
+            !completion.completion.is_empty()
+                && !completion.provider.is_empty()
+                && completion.provider.len() <= 128
+                && !completion.model.is_empty()
+                && completion.model.len() <= 256
+                && completion
+                    .provider_operation_id
+                    .as_ref()
+                    .is_none_or(|value| !value.is_empty() && value.len() <= 1_024)
+                && completion
+                    .provider_status
+                    .as_ref()
+                    .is_none_or(|value| value.len() <= 1_024)
+        }
+        HostObservation::ChapterModelFailed {
+            safe_detail,
+            retry_after_milliseconds,
+            ..
+        } => {
+            safe_detail
+                .as_ref()
+                .is_none_or(|value| value.len() <= 16_384)
+                && retry_after_milliseconds.is_none_or(|value| value <= 86_400_000)
+        }
         _ => true,
     }
 }
@@ -120,6 +247,9 @@ fn playback_request_episode_id(request: &HostRequest) -> Option<pod0_domain::Epi
         | HostRequest::EmbedRecallSpans { .. }
         | HostRequest::RerankRecallCandidates { .. }
         | HostRequest::FetchPublisherChapters { .. }
+        | HostRequest::ExecuteChapterModel { .. }
+        | HostRequest::RecoverChapterModelOperation { .. }
+        | HostRequest::ScheduleCoreWake { .. }
         | HostRequest::RemoveLegacyRecallIndexArtifacts
         | HostRequest::Unsupported { .. } => None,
     }

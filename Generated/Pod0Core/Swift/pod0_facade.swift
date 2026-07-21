@@ -619,7 +619,7 @@ public protocol Pod0FacadeProtocol: AnyObject, Sendable {
      */
     func planChapterModelRequest(episodeId: EpisodeId, configuredModel: String)  -> ChapterModelPlan
 
-    func recordHostObservation(observation: HostObservationEnvelope)
+    func recordHostObservation(observation: HostObservationEnvelope)  -> HostObservationReceipt
 
     func snapshot(request: ProjectionRequest)  -> ProjectionEnvelope
 
@@ -742,13 +742,14 @@ open func planChapterModelRequest(episodeId: EpisodeId, configuredModel: String)
 })
 }
 
-open func recordHostObservation(observation: HostObservationEnvelope)  {try! rustCall() {
+open func recordHostObservation(observation: HostObservationEnvelope) -> HostObservationReceipt  {
+    return try!  FfiConverterTypeHostObservationReceipt_lift(try! rustCall() {
         uniffiCallStatus in
     uniffi_pod0_facade_fn_method_pod0facade_record_host_observation(
             self.uniffiCloneHandle(),
         FfiConverterTypeHostObservationEnvelope_lower(observation),uniffiCallStatus
     )
-}
+})
 }
 
 open func snapshot(request: ProjectionRequest) -> ProjectionEnvelope  {
@@ -4684,7 +4685,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_pod0_facade_checksum_method_pod0facade_plan_chapter_model_request() != 53024) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_record_host_observation() != 12873) {
+    if (uniffi_pod0_facade_checksum_method_pod0facade_record_host_observation() != 26676) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_snapshot() != 17086) {

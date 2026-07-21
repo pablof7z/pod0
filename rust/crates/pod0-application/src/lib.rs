@@ -9,13 +9,19 @@ mod chapter_contract;
 mod chapter_contract_fixture_tests;
 #[cfg(test)]
 mod chapter_contract_tests;
+mod chapter_model_host;
 mod chapter_model_policy;
 #[cfg(test)]
 mod chapter_model_policy_fixture_tests;
 mod chapter_model_policy_prompt;
+#[cfg(test)]
+mod chapter_model_policy_prompt_tests;
 mod chapter_model_policy_source;
 #[cfg(test)]
 mod chapter_model_policy_tests;
+mod chapter_model_policy_version;
+#[cfg(test)]
+mod chapter_model_policy_version_tests;
 mod chapter_model_workflow;
 #[cfg(test)]
 mod chapter_model_workflow_tests;
@@ -45,6 +51,7 @@ mod contract_state;
 #[cfg(test)]
 mod contract_state_tests;
 mod contract_state_validation;
+mod core_wake;
 mod effects;
 mod evidence_contract;
 mod feed;
@@ -74,6 +81,7 @@ mod transcript_contract_tests;
 mod transcript_projection;
 
 pub use chapter_contract::*;
+pub use chapter_model_host::*;
 pub use chapter_model_policy::*;
 pub use chapter_model_workflow::*;
 pub use chapter_observation::*;
@@ -85,6 +93,7 @@ pub use contract_failure::*;
 pub use contract_playback_projection::*;
 pub use contract_projection::*;
 pub use contract_state::*;
+pub use core_wake::*;
 pub use effects::*;
 pub use evidence_contract::*;
 pub use feed::*;

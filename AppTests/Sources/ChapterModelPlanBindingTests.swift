@@ -69,6 +69,7 @@ final class ChapterModelPlanBindingTests: XCTestCase {
             requestedTranscriptContentDigest: invalid.requestedTranscriptContentDigest,
             selectedTranscript: nil,
             selectedChapterArtifact: nil,
+            publisherBaseArtifact: nil,
             expectedChapterSelectionRevision: invalid.expectedChapterSelectionRevision,
             configuredModel: invalid.configuredModel
         )
@@ -107,6 +108,9 @@ final class ChapterModelPlanBindingTests: XCTestCase {
                 ]
             ),
             selectedChapterArtifact: artifact,
+            publisherBaseArtifact: artifact?.provenance.source == .publisher
+                ? artifact
+                : publisherArtifact(),
             expectedChapterSelectionRevision: StateRevision(value: 0),
             configuredModel: configuredModel
         )

@@ -1287,6 +1287,60 @@ public func FfiConverterTypeChapterLegacyProvenance_lower(_ value: ChapterLegacy
 }
 
 
+public struct ChapterModelSubmissionFenceId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterModelSubmissionFenceId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterModelSubmissionFenceId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterModelSubmissionFenceId {
+        return
+            try ChapterModelSubmissionFenceId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ChapterModelSubmissionFenceId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterModelSubmissionFenceId_lift(_ buf: RustBuffer) throws -> ChapterModelSubmissionFenceId {
+    return try FfiConverterTypeChapterModelSubmissionFenceId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterModelSubmissionFenceId_lower(_ value: ChapterModelSubmissionFenceId) -> RustBuffer {
+    return FfiConverterTypeChapterModelSubmissionFenceId.lower(value)
+}
+
+
 public struct ChapterPlaybackSessionId: Equatable, Hashable {
     public let high: UInt64
     public let low: UInt64

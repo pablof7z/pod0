@@ -3,7 +3,8 @@ use pod0_domain::StateRevision;
 use super::inputs::{ModelChapterFailureDisposition, ModelChapterFailureInput};
 use super::model::{ModelChapterWorkflowRecord, ModelChapterWorkflowState};
 use super::persist::persist_workflow;
-use super::read::{read_completion, read_workflow};
+use super::read::read_workflow;
+use super::read_completion::read_completion;
 use super::support::{request_id, submission_fence_id};
 use crate::{LibraryStore, StorageError};
 

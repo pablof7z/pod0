@@ -5,8 +5,9 @@ use pod0_domain::{
 
 use crate::chapter_observation_values::payload_digest;
 use crate::{
-    AgentComposedChapterItem, AgentComposedChapterObservation, ChapterModelObservationMode,
-    ChapterObservationProjection, ModelChapterObservation, PublisherChapterObservation,
+    AgentComposedChapterItem, AgentComposedChapterObservation, CHAPTER_MODEL_FORMAT_VERSION,
+    ChapterModelObservationMode, ChapterObservationProjection, ModelChapterObservation,
+    PublisherChapterObservation,
 };
 
 pub(crate) fn digest(value: &[u8]) -> ContentDigest {
@@ -34,12 +35,13 @@ pub(crate) fn model(
     ModelChapterObservation {
         episode_id: EpisodeId::from_parts(11, 101),
         podcast_id: PodcastId::from_parts(12, 101),
-        format_version: 1,
+        format_version: CHAPTER_MODEL_FORMAT_VERSION,
         requested_transcript_version_id: TranscriptVersionId::from_parts(13, 101),
         requested_transcript_content_digest: transcript_digest,
         selected_transcript_version_id: TranscriptVersionId::from_parts(13, 101),
         selected_transcript_content_digest: transcript_digest,
         policy_version: 1,
+        source_version: "model-input-v1".into(),
         provider: "openrouter".into(),
         model: "fixture-model-v1".into(),
         completion_digest: digest(completion.as_bytes()),

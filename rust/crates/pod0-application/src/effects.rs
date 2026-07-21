@@ -1,13 +1,18 @@
 use pod0_domain::{
-    CancellationId, CommandId, DomainEventId, EpisodeId, EvidenceGenerationId, HostRequestId,
-    PlaybackRatePermille, PlaybackSeekReason, PodcastId, RecallQueryId, StateRevision,
-    TranscriptArtifactId, TranscriptVersionId, UnixTimestampMilliseconds,
+    CancellationId, ChapterModelSubmissionFenceId, CommandId, DomainEventId, EpisodeId,
+    EvidenceGenerationId, HostRequestId, PlaybackRatePermille, PlaybackSeekReason, PodcastId,
+    RecallQueryId, StateRevision, TranscriptArtifactId, TranscriptVersionId,
+    UnixTimestampMilliseconds,
 };
 
 use crate::{
     OperationStage, RecallEmbeddingInput, RecallEmbeddingVector, RecallRerankDocument,
     RecallRerankObservation, RecallSpanEmbeddingObservation,
 };
+
+mod playback;
+
+pub use playback::*;
 
 pub const MAX_FEED_RESPONSE_BYTES: u64 = 8 * 1_024 * 1_024;
 pub const MIN_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS: u32 = 500;
@@ -145,6 +150,26 @@ pub enum HostRequest {
         not_before: Option<UnixTimestampMilliseconds>,
         maximum_response_bytes: u64,
     },
+    ExecuteChapterModel {
+        episode_id: EpisodeId,
+        generation: u64,
+        submission_fence_id: ChapterModelSubmissionFenceId,
+        execution: crate::ChapterModelExecutionRequest,
+    },
+    RecoverChapterModelOperation {
+        episode_id: EpisodeId,
+        generation: u64,
+        submission_fence_id: ChapterModelSubmissionFenceId,
+        provider: String,
+        model: String,
+        provider_operation_id: String,
+        provider_status: Option<String>,
+        maximum_completion_bytes: u64,
+    },
+    ScheduleCoreWake {
+        wake_at: UnixTimestampMilliseconds,
+        reason: crate::CoreWakeReason,
+    },
     RemoveLegacyRecallIndexArtifacts,
     Unsupported {
         wire_code: u32,
@@ -200,6 +225,29 @@ pub enum HostObservation {
         last_modified: Option<String>,
         http_status: u16,
     },
+    ChapterModelProviderAccepted {
+        episode_id: EpisodeId,
+        generation: u64,
+        submission_fence_id: ChapterModelSubmissionFenceId,
+        update: crate::ChapterModelProviderUpdate,
+    },
+    ChapterModelCompleted {
+        episode_id: EpisodeId,
+        generation: u64,
+        submission_fence_id: ChapterModelSubmissionFenceId,
+        completion: crate::ChapterModelCompletionObservation,
+    },
+    ChapterModelFailed {
+        episode_id: EpisodeId,
+        generation: u64,
+        submission_fence_id: ChapterModelSubmissionFenceId,
+        code: crate::ChapterModelHostFailureCode,
+        safe_detail: Option<String>,
+        retry_after_milliseconds: Option<u64>,
+    },
+    CoreWakeReached {
+        reason: crate::CoreWakeReason,
+    },
     LegacyRecallIndexArtifactsRemoved {
         removed_file_count: u8,
     },
@@ -211,76 +259,6 @@ pub enum HostObservation {
     Unsupported {
         wire_code: u32,
     },
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
-pub enum PlaybackTransitionCue {
-    Immediate,
-    FadeIn { duration_milliseconds: u32 },
-    Unsupported { wire_code: u32 },
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
-pub enum NativeTimerMode {
-    Duration { duration_milliseconds: u64 },
-    EndOfEpisode,
-    Unsupported { wire_code: u32 },
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
-pub struct PlaybackLifecycleObservation {
-    pub episode_id: Option<EpisodeId>,
-    pub state: PlaybackHostState,
-    pub position_milliseconds: u64,
-    pub duration_milliseconds: u64,
-    pub route: PlaybackAudioRoute,
-    pub interruption: PlaybackInterruption,
-    pub ended: bool,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
-pub enum PlaybackHostState {
-    Idle,
-    Loading,
-    Prepared,
-    Playing,
-    Paused,
-    Buffering,
-    Failed,
-    Unsupported { wire_code: u32 },
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
-pub enum PlaybackAudioRoute {
-    BuiltIn,
-    Wired,
-    Bluetooth,
-    AirPlay,
-    Car,
-    External,
-    Unknown,
-    Unsupported { wire_code: u32 },
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
-pub enum PlaybackInterruption {
-    None,
-    Began,
-    EndedShouldResume,
-    EndedShouldRemainPaused,
-    RouteLost,
-    MediaServicesReset,
-    Unsupported { wire_code: u32 },
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
-pub enum PlaybackStopReason {
-    UserInitiated,
-    ReachedEnd,
-    AudioRouteLost,
-    Interrupted,
-    HostFailure,
-    Unsupported { wire_code: u32 },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]

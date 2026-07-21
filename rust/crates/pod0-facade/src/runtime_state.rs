@@ -3,9 +3,9 @@ use std::sync::Arc;
 
 use pod0_application::{
     Clock, CommandEnvelope, CommandLedger, CommandRegistration, CoreFailure, CoreFailureCode,
-    HostCancellationRequest, HostObservation, HostRequestEnvelope, HostRequestLedger,
-    OperationProjection, OperationResult, OperationStage, PlaybackPolicyState, Retryability,
-    SubscriptionRegistry, UserAction,
+    CoreWakeReason, HostCancellationRequest, HostObservation, HostRequestEnvelope,
+    HostRequestLedger, OperationProjection, OperationResult, OperationStage, PlaybackPolicyState,
+    Retryability, SubscriptionRegistry, UserAction,
 };
 use pod0_domain::{
     CommandId, HostRequestId, ListeningDomainSnapshot, RecallQueryId, StateRevision, SubscriptionId,
@@ -41,6 +41,10 @@ pub(super) struct FacadeState {
     pub(super) pending_publisher_chapters:
         BTreeMap<HostRequestId, pod0_storage::PublisherChapterWorkflowRecord>,
     pub(super) pending_publisher_observations: BTreeMap<HostRequestId, HostObservation>,
+    pub(super) pending_model_chapters: BTreeMap<HostRequestId, pod0_domain::EpisodeId>,
+    pub(super) pending_model_observations:
+        BTreeMap<HostRequestId, pod0_application::HostObservationEnvelope>,
+    pub(super) pending_core_wakes: BTreeMap<HostRequestId, CoreWakeReason>,
     pub(super) pending_evidence_indexes: BTreeMap<HostRequestId, PendingEvidenceIndex>,
     pub(super) pending_recall_cutovers: BTreeMap<HostRequestId, PendingRecallCutover>,
     pub(super) pending_recalls: BTreeMap<HostRequestId, PendingRecall>,
@@ -78,6 +82,9 @@ impl Default for FacadeState {
             pending_feeds: BTreeMap::new(),
             pending_publisher_chapters: BTreeMap::new(),
             pending_publisher_observations: BTreeMap::new(),
+            pending_model_chapters: BTreeMap::new(),
+            pending_model_observations: BTreeMap::new(),
+            pending_core_wakes: BTreeMap::new(),
             pending_evidence_indexes: BTreeMap::new(),
             pending_recall_cutovers: BTreeMap::new(),
             pending_recalls: BTreeMap::new(),
@@ -154,6 +161,7 @@ impl FacadeState {
             ..Self::default()
         };
         state.rehydrate_publisher_chapter_workflows()?;
+        state.rehydrate_model_chapter_workflows()?;
         Ok(state)
     }
 

@@ -41,6 +41,7 @@ fn qualified_commit_is_atomic_and_completion_history_survives_replan() {
         selected_transcript_version_id: request.selected_transcript_version_id,
         selected_transcript_content_digest: request.selected_transcript_digest,
         policy_version: request.policy_version,
+        source_version: request.source_version.clone(),
         provider: request.provider.clone(),
         model: request.model.clone(),
         completion_digest: completion.completion_digest,

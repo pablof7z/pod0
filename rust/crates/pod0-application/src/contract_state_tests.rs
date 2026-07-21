@@ -1,6 +1,6 @@
 use pod0_domain::{
-    CancellationId, CommandId, EpisodeId, HostRequestId, RecallQueryId, StateRevision,
-    UnixTimestampMilliseconds,
+    CancellationId, ChapterModelSubmissionFenceId, CommandId, EpisodeId, HostRequestId,
+    RecallQueryId, StateRevision, UnixTimestampMilliseconds,
 };
 
 use crate::{
@@ -8,6 +8,8 @@ use crate::{
     HostObservationEnvelope, HostRequest, HostRequestEnvelope, HostRequestLedger,
     ObservationAcceptance, ProjectionRequest, ProjectionScope, SubscriptionRegistry,
 };
+
+mod chapter_model;
 
 fn command(command_id: u64, expected: Option<u64>) -> CommandEnvelope {
     CommandEnvelope {

@@ -111,6 +111,24 @@ final class ChapterProviderTransportTests: XCTestCase {
         session.invalidateAndCancel()
     }
 
+    func testProviderRetryAfterIsBoundedTypedEvidence() async {
+        ChapterProviderStubProtocol.responseStatus = 429
+        ChapterProviderStubProtocol.responseHeaders["Retry-After"] = "30"
+        let session = makeSession()
+
+        let result = await modelTransport(session: session).execute(
+            ChapterCapabilityFixtures.modelRequest(maximumCompletionBytes: 100)
+        )
+
+        assertFailure(
+            result,
+            code: .transport,
+            status: 429,
+            retryAfterMilliseconds: 30_000
+        )
+        session.invalidateAndCancel()
+    }
+
     private func modelTransport(session: URLSession) -> LiveChapterModelTransport {
         let endpoint = URL(string: "https://provider.example.test/complete")!
         return LiveChapterModelTransport(
@@ -131,6 +149,7 @@ final class ChapterProviderTransportTests: XCTestCase {
         _ result: Result<T, ChapterCapabilityFailure>,
         code: ChapterCapabilityFailureCode,
         status: UInt16? = nil,
+        retryAfterMilliseconds: UInt64? = nil,
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
@@ -139,5 +158,11 @@ final class ChapterProviderTransportTests: XCTestCase {
         }
         XCTAssertEqual(failure.code, code, file: file, line: line)
         XCTAssertEqual(failure.httpStatus, status, file: file, line: line)
+        XCTAssertEqual(
+            failure.retryAfterMilliseconds,
+            retryAfterMilliseconds,
+            file: file,
+            line: line
+        )
     }
 }

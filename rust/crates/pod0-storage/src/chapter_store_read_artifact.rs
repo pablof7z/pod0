@@ -4,11 +4,20 @@ use pod0_domain::{
 };
 use rusqlite::{Connection, OptionalExtension};
 
-use crate::StorageError;
 use crate::chapter_store_codec::{
     ad_kind, artifact_id, digest, episode_id, evaluation, legacy_source, podcast_id, source,
     stored_u32, stored_u64, transcript_version_id,
 };
+use crate::{LibraryStore, StorageError};
+
+impl LibraryStore {
+    pub fn chapter_artifact(
+        &self,
+        artifact_id: ChapterArtifactId,
+    ) -> Result<Option<ChapterArtifact>, StorageError> {
+        self.read(|connection| read_chapter_artifact(connection, artifact_id))
+    }
+}
 
 #[allow(clippy::type_complexity)]
 pub(crate) fn read_chapter_artifact(

@@ -3,7 +3,7 @@ use pod0_domain::{EpisodeId, StateRevision};
 use super::inputs::ModelChapterRecoveryReport;
 use super::model::{ModelChapterWorkflowRecord, ModelChapterWorkflowState};
 use super::persist::persist_workflow;
-use super::read::{read_active_workflows, read_workflow};
+use super::read::{read_recoverable_workflows, read_workflow};
 use crate::{LibraryStore, StorageError};
 
 impl LibraryStore {
@@ -17,7 +17,7 @@ impl LibraryStore {
         }
         self.write(|transaction| {
             let requested = max_items.saturating_add(1);
-            let mut records = read_active_workflows(transaction, requested)?;
+            let mut records = read_recoverable_workflows(transaction, requested)?;
             let has_more = records.len() > usize::from(max_items);
             records.truncate(usize::from(max_items));
             let mut report = ModelChapterRecoveryReport {
@@ -52,8 +52,6 @@ impl LibraryStore {
                     ModelChapterWorkflowState::CompletionObserved => {
                         report.staged_completions.push(request_id);
                     }
-                    ModelChapterWorkflowState::Requested
-                    | ModelChapterWorkflowState::RetryScheduled => {}
                     _ => return Err(StorageError::ChapterWorkflowConflict),
                 }
             }

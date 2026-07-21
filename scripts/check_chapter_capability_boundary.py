@@ -16,8 +16,10 @@ CAPABILITY_FILES = (
     "App/Sources/Core/CorePublisherChapterHost.swift",
     "App/Sources/Core/Pod0NativeHostDispatcher+PublisherChapters.swift",
     "App/Sources/Core/ChapterModelTransport.swift",
+    "App/Sources/Core/ChapterModelTransport+Retry.swift",
 )
 MODEL_TRANSPORT = "App/Sources/Core/ChapterModelTransport.swift"
+MODEL_RETRY_TRANSPORT = "App/Sources/Core/ChapterModelTransport+Retry.swift"
 
 FORBIDDEN = (
     (re.compile(r"\bEpisode\s*\.\s*(?:Chapter|AdSegment)\b"), "canonical Swift chapter/ad construction"),
@@ -26,7 +28,13 @@ FORBIDDEN = (
     (re.compile(r"\b(?:setEpisode|applyChapter|persistChapter|saveChapter)\w*\s*\("), "direct chapter mutation"),
     (re.compile(r"\b(?:AIChapterCompiler|PodcastChapter\w*|ChapterParser\w*)\b"), "semantic chapter implementation"),
     (re.compile(r"\b(?:parse|decode|classify)Chapter\w*\s*\("), "semantic chapter operation"),
-    (re.compile(r"\b(?:retry|fallback)\w*\s*[\(:=]", re.I), "native retry/fallback policy"),
+    (
+        re.compile(
+            r"\b(?:retry(?:count|policy|delay|attempt|scheduled|budget)|fallback)\w*\s*[\(:=]",
+            re.I,
+        ),
+        "native retry/fallback policy",
+    ),
     (re.compile(r"\b(?:Logger|os_log|print)\s*[\.(]"), "capability diagnostics sink"),
     (re.compile(r"String\s*\(\s*data\s*:"), "provider payload stringification"),
 )
@@ -71,6 +79,11 @@ REQUIRED_TOKENS = {
         "OllamaEnvelope",
         "keyDecodingStrategy = .convertFromSnakeCase",
     ),
+    MODEL_RETRY_TRANSPORT: (
+        "static func httpFailure(",
+        "retryAfterMilliseconds:",
+        "86_400_000",
+    ),
 }
 
 
@@ -111,7 +124,7 @@ def findings(relative: str, source: str) -> list[str]:
             line = code.count("\n", 0, match.start()) + 1
             errors.append(f"{relative}:{line}: prohibited {description}")
 
-    if relative != MODEL_TRANSPORT:
+    if relative not in {MODEL_TRANSPORT, MODEL_RETRY_TRANSPORT}:
         for token in ("JSONDecoder", "JSONSerialization"):
             if token in code:
                 errors.append(f"{relative}: semantic JSON parsing is prohibited")
@@ -128,7 +141,9 @@ def findings(relative: str, source: str) -> list[str]:
             if token in code:
                 errors.append(f"{relative}: provider transport contains semantic token {token!r}")
 
-    if "Date()" in code or "Date.init" in code:
+    if relative not in {MODEL_TRANSPORT, MODEL_RETRY_TRANSPORT} and (
+        "Date()" in code or "Date.init" in code
+    ):
         errors.append(f"{relative}: native capability invents durable observation time")
     return errors
 

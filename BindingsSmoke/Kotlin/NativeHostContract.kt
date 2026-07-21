@@ -57,4 +57,71 @@ fun qualifyNativeHostContract() {
     )
     check(observation.observedRequestRevision == request.issuedRevision)
     check((observation.observation as HostObservation.PlaybackObserved).value == playback)
+
+    val fence = ChapterModelSubmissionFenceId(11UL, 12UL)
+    val execution = ChapterModelExecutionRequest(
+        "openrouter",
+        "model-a",
+        "Return a JSON object.",
+        "Transcript evidence",
+        ChapterModelResponseFormat.JsonObject,
+        65_536UL,
+    )
+    val execute = HostRequest.ExecuteChapterModel(episodeId, 2UL, fence, execution)
+    val recover = HostRequest.RecoverChapterModelOperation(
+        episodeId,
+        2UL,
+        fence,
+        "openrouter",
+        "model-a",
+        "provider-operation-1",
+        "running",
+        65_536UL,
+    )
+    check(execute.execution.systemPrompt == "Return a JSON object.")
+    check(recover.providerOperationId == "provider-operation-1")
+    val providerUpdate = HostObservation.ChapterModelProviderAccepted(
+        episodeId,
+        2UL,
+        fence,
+        ChapterModelProviderUpdate("provider-operation-1", "running"),
+    )
+    val completion = HostObservation.ChapterModelCompleted(
+        episodeId,
+        2UL,
+        fence,
+        ChapterModelCompletionObservation(
+            "{\"chapters\":[]}",
+            "openrouter",
+            "model-a:canonical",
+            10UL,
+            4UL,
+            0UL,
+            0UL,
+            2UL,
+            "provider-operation-1",
+            "completed",
+            UnixTimestampMilliseconds(1_721_322_000_001L),
+        ),
+    )
+    check(providerUpdate.update.providerStatus == "running")
+    check(completion.completion.model == "model-a:canonical")
+    val failed = HostObservation.ChapterModelFailed(
+        episodeId,
+        2UL,
+        fence,
+        ChapterModelHostFailureCode.HttpResponse(429u.toUShort()),
+        "rate limited",
+        30_000UL,
+    )
+    check(failed.retryAfterMilliseconds == 30_000UL)
+    val wakeReason = CoreWakeReason.ModelChapterRetry(episodeId, 2UL, fence)
+    val wake = HostRequest.ScheduleCoreWake(
+        UnixTimestampMilliseconds(1_721_322_030_000L),
+        wakeReason,
+    )
+    val reached = HostObservation.CoreWakeReached(wakeReason)
+    check(wake.reason == reached.reason)
+    val durableReceipt = HostObservationReceipt.Persisted(request.requestId, true)
+    check(durableReceipt.terminal)
 }

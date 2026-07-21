@@ -183,7 +183,14 @@ enum SharedLibraryBootstrap {
             }
             stage = .facade
             let facade = try Pod0Facade.open(storePath: target.path)
-            let client = SharedLibraryClient(facade: facade, feedHost: feedHost)
+            let observationOutbox = try NativeHostObservationOutbox(
+                fileURL: persistence.nativeHostObservationOutboxURL
+            )
+            let client = SharedLibraryClient(
+                facade: facade,
+                feedHost: feedHost,
+                observationOutbox: observationOutbox
+            )
             client.start()
             logger.info("Shared Rust library is authoritative at \(target.path, privacy: .public)")
             return .ready(client)

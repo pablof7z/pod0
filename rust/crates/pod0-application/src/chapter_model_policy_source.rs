@@ -1,8 +1,7 @@
 use pod0_domain::{
-    ChapterArtifact, ChapterArtifactSource, ContentDigest, MAX_CHAPTER_MODEL_BYTES,
-    MAX_PROVENANCE_PROVIDER_BYTES,
+    ChapterArtifact, ChapterArtifactId, ChapterArtifactInput, ChapterArtifactSource,
+    MAX_CHAPTER_MODEL_BYTES, MAX_PROVENANCE_PROVIDER_BYTES,
 };
-use sha2::{Digest as _, Sha256};
 
 use crate::{
     CHAPTER_MODEL_FORMAT_VERSION, CHAPTER_MODEL_POLICY_ID, CHAPTER_MODEL_POLICY_VERSION,
@@ -12,6 +11,8 @@ use crate::{
     MAX_CHAPTER_MODEL_TRANSCRIPT_SEGMENTS, MAX_MODEL_CHAPTER_COMPLETION_BYTES,
     MAX_MODEL_CHAPTER_PROMPT_BYTES, PlannedChapterModelRequest,
 };
+
+pub(crate) use crate::chapter_model_policy_version::input_version;
 
 pub(crate) fn desired_state(
     input: ChapterModelDesiredStateInput,
@@ -80,6 +81,13 @@ pub(crate) fn request(input: ChapterModelPlanInput) -> ChapterModelPlan {
     let Some(duration_milliseconds) = duration_milliseconds(input.episode.duration_seconds) else {
         return ChapterModelPlan::InvalidInput;
     };
+    if let Some(artifact_id) = input
+        .selected_chapter_artifact
+        .as_ref()
+        .and_then(|artifact| current_model_artifact(artifact, &source_version, &provider, &input))
+    {
+        return ChapterModelPlan::Current { artifact_id };
+    }
     let (mode, expected_artifact_source, system_prompt, user_prompt) = match mode(&input) {
         Mode::Generate => (
             ChapterModelObservationMode::Generate,
@@ -133,6 +141,35 @@ pub(crate) fn request(input: ChapterModelPlanInput) -> ChapterModelPlan {
     }
 }
 
+fn current_model_artifact(
+    input: &ChapterArtifactInput,
+    source_version: &str,
+    provider: &str,
+    plan: &ChapterModelPlanInput,
+) -> Option<ChapterArtifactId> {
+    let artifact = ChapterArtifact::seal(input.clone()).ok()?;
+    let source_is_model = matches!(
+        artifact.provenance.source,
+        ChapterArtifactSource::Generated | ChapterArtifactSource::PublisherEnriched
+    );
+    (source_is_model
+        && artifact.episode_id == plan.episode.episode_id
+        && artifact.podcast_id == plan.episode.podcast_id
+        && artifact.source_revision == source_version
+        && artifact.provenance.policy_version == CHAPTER_MODEL_POLICY_VERSION
+        && artifact.provenance.provider.as_deref() == Some(provider)
+        && artifact
+            .provenance
+            .model
+            .as_ref()
+            .is_some_and(|value| !value.is_empty())
+        && artifact.provenance.transcript_version_id == Some(plan.requested_transcript_version_id)
+        && artifact.provenance.transcript_content_digest
+            == Some(plan.requested_transcript_content_digest)
+        && artifact.provenance.legacy_import.is_none())
+    .then_some(artifact.artifact_id)
+}
+
 enum Mode {
     Generate,
     Enrich(Box<pod0_domain::ChapterArtifactInput>),
@@ -157,15 +194,29 @@ fn mode(input: &ChapterModelPlanInput) -> Mode {
             _ => Mode::UnsupportedArtifact,
         };
     }
-    let Ok(artifact) = ChapterArtifact::seal(selected) else {
+    let Ok(selected) = ChapterArtifact::seal(selected) else {
         return Mode::UnsupportedArtifact;
     };
-    if artifact.episode_id != input.episode.episode_id
-        || artifact.podcast_id != input.episode.podcast_id
+    if selected.episode_id != input.episode.episode_id
+        || selected.podcast_id != input.episode.podcast_id
     {
         return Mode::UnsupportedArtifact;
     }
-    Mode::Enrich(Box::new(artifact.as_input()))
+    let Some(base) = input.publisher_base_artifact.clone() else {
+        return Mode::UnsupportedArtifact;
+    };
+    let Ok(base) = ChapterArtifact::seal(base) else {
+        return Mode::UnsupportedArtifact;
+    };
+    if base.episode_id != input.episode.episode_id
+        || base.podcast_id != input.episode.podcast_id
+        || base.provenance.source != ChapterArtifactSource::Publisher
+        || (selected.provenance.source == ChapterArtifactSource::Publisher
+            && selected.artifact_id != base.artifact_id)
+    {
+        return Mode::UnsupportedArtifact;
+    }
+    Mode::Enrich(Box::new(base.as_input()))
 }
 
 fn valid_episode(input: &ChapterModelPlanInput) -> bool {
@@ -227,24 +278,4 @@ fn effective_model(stored_id: &str) -> Option<(String, String)> {
         && provider.len() <= MAX_PROVENANCE_PROVIDER_BYTES
         && model.len() <= MAX_CHAPTER_MODEL_BYTES)
         .then(|| (provider.to_owned(), model.to_owned()))
-}
-
-pub(crate) fn input_version(
-    transcript_content_digest: ContentDigest,
-    configured_model: &str,
-    policy_id: &str,
-) -> String {
-    let digest = transcript_content_digest.into_bytes();
-    let mut digest_hex = String::with_capacity(64);
-    for byte in digest {
-        use std::fmt::Write as _;
-        write!(&mut digest_hex, "{byte:02x}").expect("writing to String cannot fail");
-    }
-    let mut hash = Sha256::new();
-    hash.update(digest_hex.as_bytes());
-    hash.update([0x1f]);
-    hash.update(configured_model.as_bytes());
-    hash.update([0x1f]);
-    hash.update(policy_id.as_bytes());
-    format!("{:x}", hash.finalize())
 }

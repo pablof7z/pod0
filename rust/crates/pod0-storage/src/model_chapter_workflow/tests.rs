@@ -56,7 +56,7 @@ impl Fixture {
             expected_selection_revision: StateRevision::INITIAL,
             base_artifact_id: None,
             base_integrity_digest: None,
-            format_version: 1,
+            format_version: 2,
             policy_version: 1,
             provider: "openrouter".to_owned(),
             model: "model-a".to_owned(),

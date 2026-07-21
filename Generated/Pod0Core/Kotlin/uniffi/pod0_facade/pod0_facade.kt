@@ -55,6 +55,7 @@ import uniffi.pod0_application.FfiConverterTypeChapterProjectionScope
 import uniffi.pod0_application.FfiConverterTypeCommandEnvelope
 import uniffi.pod0_application.FfiConverterTypeHostCancellationRequest
 import uniffi.pod0_application.FfiConverterTypeHostObservationEnvelope
+import uniffi.pod0_application.FfiConverterTypeHostObservationReceipt
 import uniffi.pod0_application.FfiConverterTypeHostRequestEnvelope
 import uniffi.pod0_application.FfiConverterTypeModelChapterObservation
 import uniffi.pod0_application.FfiConverterTypeProjectionEnvelope
@@ -65,6 +66,7 @@ import uniffi.pod0_application.FfiConverterTypeTranscriptContractProjection
 import uniffi.pod0_application.FfiConverterTypeTranscriptProjectionScope
 import uniffi.pod0_application.HostCancellationRequest
 import uniffi.pod0_application.HostObservationEnvelope
+import uniffi.pod0_application.HostObservationReceipt
 import uniffi.pod0_application.HostRequestEnvelope
 import uniffi.pod0_application.ModelChapterObservation
 import uniffi.pod0_application.ProjectionEnvelope
@@ -102,6 +104,7 @@ import uniffi.pod0_application.RustBuffer as RustBufferChapterProjectionScope
 import uniffi.pod0_application.RustBuffer as RustBufferCommandEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferHostCancellationRequest
 import uniffi.pod0_application.RustBuffer as RustBufferHostObservationEnvelope
+import uniffi.pod0_application.RustBuffer as RustBufferHostObservationReceipt
 import uniffi.pod0_application.RustBuffer as RustBufferHostRequestEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferModelChapterObservation
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionEnvelope
@@ -926,7 +929,7 @@ internal object UniffiLib {
     external fun uniffi_pod0_facade_fn_method_pod0facade_plan_chapter_model_request(`ptr`: Long,`episodeId`: RustBufferEpisodeId.ByValue,`configuredModel`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBufferChapterModelPlan.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_record_host_observation(`ptr`: Long,`observation`: RustBufferHostObservationEnvelope.ByValue,uniffi_out_err: UniffiRustCallStatus,
-    ): Unit
+    ): RustBufferHostObservationReceipt.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_snapshot(`ptr`: Long,`request`: RustBufferProjectionRequest.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBufferProjectionEnvelope.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_subscribe(`ptr`: Long,`request`: RustBufferProjectionRequest.ByValue,`subscriber`: Long,uniffi_out_err: UniffiRustCallStatus,
@@ -1257,7 +1260,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_plan_chapter_model_request() != 53024) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_host_observation() != 12873) {
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_host_observation() != 26676) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_snapshot() != 17086) {
@@ -1749,7 +1752,7 @@ public interface Pod0FacadeInterface {
      */
     fun `planChapterModelRequest`(`episodeId`: EpisodeId, `configuredModel`: kotlin.String): ChapterModelPlan
 
-    fun `recordHostObservation`(`observation`: HostObservationEnvelope)
+    fun `recordHostObservation`(`observation`: HostObservationEnvelope): HostObservationReceipt
 
     fun `snapshot`(`request`: ProjectionRequest): ProjectionEnvelope
 
@@ -1929,8 +1932,8 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
     }
 
 
-    override fun `recordHostObservation`(`observation`: HostObservationEnvelope)
-        =
+    override fun `recordHostObservation`(`observation`: HostObservationEnvelope): HostObservationReceipt {
+            return FfiConverterTypeHostObservationReceipt.lift(
     callWithHandle {
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_record_host_observation(
@@ -1939,7 +1942,8 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
         FfiConverterTypeHostObservationEnvelope.lower(`observation`),_status)
 }
     }
-
+    )
+    }
 
 
     override fun `snapshot`(`request`: ProjectionRequest): ProjectionEnvelope {
@@ -5090,6 +5094,8 @@ public object FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer<List<No
         }
     }
 }
+
+
 
 
 

@@ -132,9 +132,17 @@ pub struct StoredModelChapterRequest {
 pub enum ModelChapterDesiredPlan {
     AwaitingTranscript,
     AwaitingPublisher,
+    Current {
+        artifact_id: ChapterArtifactId,
+        selection_revision: StateRevision,
+    },
     PreserveAgentComposed {
         artifact_id: ChapterArtifactId,
         selection_revision: StateRevision,
+    },
+    Blocked {
+        failure_code: String,
+        failure_detail: Option<String>,
     },
     Ready(Box<StoredModelChapterRequest>),
 }
@@ -166,6 +174,12 @@ pub struct ModelChapterWorkflowRecord {
     pub may_have_submitted: bool,
     pub created_at_ms: i64,
     pub updated_at_ms: i64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ModelChapterWorkflowPage {
+    pub items: Vec<ModelChapterWorkflowRecord>,
+    pub has_more: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

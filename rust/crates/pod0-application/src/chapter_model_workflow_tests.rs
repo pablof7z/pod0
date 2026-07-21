@@ -113,18 +113,21 @@ fn raw_failure_evidence_classifies_retry_and_submission_risk() {
             C::MissingCredential,
             R::ExplicitOnly,
             false,
+            true,
         ),
         (
             E::HttpResponse { status_code: 429 },
             C::RateLimited,
             R::AutomaticRequest,
+            false,
             true,
         ),
         (
             E::HttpResponse { status_code: 503 },
             C::ProviderUnavailable,
-            R::AutomaticRequest,
+            R::ExplicitOnly,
             true,
+            false,
         ),
         (
             E::Offline {
@@ -133,6 +136,7 @@ fn raw_failure_evidence_classifies_retry_and_submission_risk() {
             C::Offline,
             R::AutomaticRequest,
             false,
+            true,
         ),
         (
             E::TimedOut {
@@ -141,18 +145,21 @@ fn raw_failure_evidence_classifies_retry_and_submission_risk() {
             C::AmbiguousSubmission,
             R::ExplicitOnly,
             true,
+            false,
         ),
         (
             E::ResponseTooLarge,
             C::ResponseTooLarge,
             R::ExplicitOnly,
             true,
+            false,
         ),
         (
             E::StalePublisherBase,
             C::StalePublisherBase,
             R::Replan,
             true,
+            false,
         ),
         (
             E::StorageUnavailable {
@@ -161,6 +168,7 @@ fn raw_failure_evidence_classifies_retry_and_submission_risk() {
             C::StorageUnavailable,
             R::ResumePersisted,
             true,
+            false,
         ),
         (
             E::RetryExhausted {
@@ -169,6 +177,7 @@ fn raw_failure_evidence_classifies_retry_and_submission_risk() {
             C::RetryExhausted,
             R::Never,
             true,
+            false,
         ),
         (
             E::Cancelled {
@@ -177,15 +186,17 @@ fn raw_failure_evidence_classifies_retry_and_submission_risk() {
             C::Cancelled,
             R::Never,
             false,
+            true,
         ),
     ];
-    for (evidence, code, retry, may_have_submitted) in cases {
+    for (evidence, code, retry, may_have_submitted, resubmission_is_safe) in cases {
         assert_eq!(
             classify_chapter_model_failure(evidence),
             ChapterModelFailureClassification {
                 code,
                 retry,
-                may_have_submitted
+                may_have_submitted,
+                resubmission_is_safe,
             }
         );
     }
@@ -197,6 +208,7 @@ fn workflow_actions_are_stage_and_failure_aware() {
         code: ModelChapterWorkflowFailureCode::InvalidRequest,
         retry: ChapterModelRetryDisposition::Never,
         may_have_submitted: false,
+        resubmission_is_safe: true,
     };
     assert_eq!(
         model_chapter_allowed_actions(ModelChapterWorkflowStage::Requested, None),

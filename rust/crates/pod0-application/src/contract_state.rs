@@ -2,7 +2,9 @@ use std::collections::BTreeMap;
 
 use pod0_domain::{CancellationId, CommandId, HostRequestId, StateRevision, SubscriptionId};
 
-use crate::contract_state_validation::{observation_matches_request, recall_payload_is_bounded};
+use crate::contract_state_validation::{
+    chapter_model_payload_is_bounded, observation_matches_request, recall_payload_is_bounded,
+};
 use crate::{
     CommandEnvelope, HostObservation, HostObservationEnvelope, HostRequest, HostRequestEnvelope,
     ProjectionRequest,
@@ -91,6 +93,17 @@ impl HostRequestLedger {
             matches!(
                 request.envelope.request,
                 HostRequest::ObservePlayback { .. }
+            )
+        })
+    }
+
+    #[must_use]
+    pub fn is_chapter_model_request(&self, request_id: HostRequestId) -> bool {
+        self.requests.get(&request_id).is_some_and(|request| {
+            matches!(
+                request.envelope.request,
+                HostRequest::ExecuteChapterModel { .. }
+                    | HostRequest::RecoverChapterModelOperation { .. }
             )
         })
     }
@@ -212,12 +225,21 @@ impl HostRequestLedger {
         if !recall_payload_is_bounded(&request.envelope.request, &observation.observation) {
             return ObservationAcceptance::PayloadTooLarge;
         }
+        if !chapter_model_payload_is_bounded(&request.envelope.request, &observation.observation) {
+            return ObservationAcceptance::PayloadTooLarge;
+        }
         request.last_sequence_number = Some(observation.sequence_number);
         let is_stream_update = matches!(
             (&request.envelope.request, &observation.observation),
             (
                 HostRequest::ObservePlayback { .. },
                 HostObservation::PlaybackObserved { .. }
+            ) | (
+                HostRequest::ExecuteChapterModel { .. },
+                HostObservation::ChapterModelProviderAccepted { .. }
+            ) | (
+                HostRequest::RecoverChapterModelOperation { .. },
+                HostObservation::ChapterModelProviderAccepted { .. }
             )
         );
         if !is_stream_update {

@@ -86,6 +86,19 @@ struct ChapterCapabilityFailure: Error, Equatable, Sendable {
     let code: ChapterCapabilityFailureCode
     let httpStatus: UInt16?
     let safeDetail: String?
+    let retryAfterMilliseconds: UInt64?
+
+    init(
+        code: ChapterCapabilityFailureCode,
+        httpStatus: UInt16?,
+        safeDetail: String?,
+        retryAfterMilliseconds: UInt64? = nil
+    ) {
+        self.code = code
+        self.httpStatus = httpStatus
+        self.safeDetail = safeDetail
+        self.retryAfterMilliseconds = retryAfterMilliseconds
+    }
 
     static let cancelled = Self(
         code: .cancelled,

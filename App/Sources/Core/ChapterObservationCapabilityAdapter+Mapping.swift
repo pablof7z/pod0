@@ -58,6 +58,7 @@ extension ChapterObservationCapabilityAdapter {
             selectedTranscriptVersionId: planned.selectedTranscriptVersionId,
             selectedTranscriptContentDigest: planned.selectedTranscriptContentDigest,
             policyVersion: planned.policyVersion,
+            sourceVersion: planned.sourceVersion,
             provider: response.provider,
             model: response.model,
             completionDigest: digest,

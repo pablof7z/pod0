@@ -10,6 +10,11 @@ extension SharedLibraryClient {
                 Self.publisherChapterWorkflows(facade: facade, query: query)
             }.value
         }
+        workflowClient.attachModelChapterCore { query in
+            await Task.detached(priority: .userInitiated) {
+                Self.modelChapterWorkflows(facade: facade, query: query)
+            }.value
+        }
     }
 
     /// Announces a native execution opportunity only. Rust derives whether a
@@ -112,7 +117,7 @@ extension SharedLibraryClient {
         let envelope = facade.snapshot(request: ProjectionRequest(
             scope: .chapterWorkflows(episodeId: EpisodeId(uuid: episodeID)),
             offset: 0,
-            maxItems: 1
+            maxItems: 2
         ))
         guard case .chapterWorkflows(let projection) = envelope.projection,
               projection.failure == nil else { return nil }

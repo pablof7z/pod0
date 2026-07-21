@@ -14,6 +14,11 @@ final class Pod0NativeHostDispatcher {
         let delivery: Delivery
     }
 
+    struct AcknowledgementTask {
+        let envelope: HostRequestEnvelope
+        let task: Task<Void, Never>
+    }
+
     struct PlaybackStream {
         let envelope: HostRequestEnvelope
         let episodeID: EpisodeId?
@@ -26,29 +31,43 @@ final class Pod0NativeHostDispatcher {
 
     private let feedHost: any CoreFeedHosting
     let publisherChapterHost: any CorePublisherChapterHosting
+    let chapterModelHost: any CoreChapterModelHosting
     private let playbackHost: any CorePlaybackHosting
     private let maximumConcurrentTasks: Int
     let recallHost: any CoreRecallHosting
     let recallObservationRecorder = CoreRecallObservationRecorder()
     let publisherObservationRecorder = CorePublisherChapterObservationRecorder()
+    let durableObservationRecorder: CoreDurableObservationRecorder
+    let observationOutbox: NativeHostObservationOutbox?
     let now: @MainActor () -> Date
     var activeTasks: [HostRequestId: ActiveTask] = [:]
     var playbackStreams: [HostRequestId: PlaybackStream] = [:]
+    var acknowledgementTasks: [HostRequestId: AcknowledgementTask] = [:]
+    var observationRecoveryTask: Task<Void, Never>?
+    var observationRecoveryReady: Bool
     private var completedRequestIDs: Set<HostRequestId> = []
     private var completionOrder: [HostRequestId] = []
 
     init(
         feedHost: any CoreFeedHosting,
         publisherChapterHost: any CorePublisherChapterHosting = CorePublisherChapterHost(),
+        chapterModelHost: any CoreChapterModelHosting = CoreChapterModelHost(),
         playbackHost: any CorePlaybackHosting,
         recallHost: any CoreRecallHosting = UnavailableCoreRecallHost(),
         maximumConcurrentTasks: Int = 8,
-        now: @escaping @MainActor () -> Date = Date.init
+        now: @escaping @MainActor () -> Date = Date.init,
+        observationOutbox: NativeHostObservationOutbox? = nil
     ) {
         self.feedHost = feedHost
         self.publisherChapterHost = publisherChapterHost
+        self.chapterModelHost = chapterModelHost
         self.playbackHost = playbackHost
         self.recallHost = recallHost
+        self.observationOutbox = observationOutbox
+        self.durableObservationRecorder = CoreDurableObservationRecorder(
+            outbox: observationOutbox
+        )
+        self.observationRecoveryReady = observationOutbox == nil
         self.maximumConcurrentTasks = max(1, maximumConcurrentTasks)
         self.now = now
         playbackHost.installObservationSink { [weak self] observation in
@@ -57,19 +76,26 @@ final class Pod0NativeHostDispatcher {
     }
 
     func executePendingRequests(from facade: Pod0Facade, maximumCount: UInt16 = 64) {
+        guard observationRecoveryReady else {
+            startObservationRecovery(from: facade, maximumCount: maximumCount)
+            return
+        }
         for cancellation in facade.nextHostCancellations(maximumCount: maximumCount) {
             cancel(
                 requestID: cancellation.requestId,
                 cancellationID: cancellation.cancellationId
             )
         }
-        let capacity = max(0, maximumConcurrentTasks - activeTasks.count)
+        let capacity = max(
+            0,
+            maximumConcurrentTasks - activeTasks.count - acknowledgementTasks.count
+        )
         let boundedCount = min(Int(maximumCount), capacity)
         guard boundedCount > 0 else { return }
         for envelope in facade.nextHostRequests(maximumCount: UInt16(boundedCount)) {
             execute(envelope) { [weak self] observation in
                 guard let self else { return }
-                record(observation, for: envelope.request, in: facade) { [weak self] in
+                record(observation, for: envelope, in: facade) { [weak self] in
                     self?.executePendingRequests(from: facade, maximumCount: maximumCount)
                 }
             }
@@ -127,6 +153,28 @@ final class Pod0NativeHostDispatcher {
         case .embedRecallQuery, .embedRecallSpans, .rerankRecallCandidates,
              .removeLegacyRecallIndexArtifacts:
             startRecallTask(envelope, delivery: delivery)
+        case .executeChapterModel, .recoverChapterModelOperation:
+            guard observationOutbox != nil else {
+                finish(
+                    envelope,
+                    sequenceNumber: 0,
+                    observation: .failed(
+                        code: .platformFailure,
+                        safeDetail: "Durable model observation staging is unavailable"
+                    ),
+                    delivery: delivery,
+                    remember: false
+                )
+                return
+            }
+            startChapterModelTask(envelope, delivery: delivery)
+        case .scheduleCoreWake(let wakeAt, let reason):
+            startCoreWakeTask(
+                envelope,
+                wakeAt: wakeAt,
+                reason: reason,
+                delivery: delivery
+            )
         default:
             finish(
                 envelope,
@@ -231,45 +279,11 @@ final class Pod0NativeHostDispatcher {
             || previous.ended != current.ended
     }
 
-    func finish(
-        _ envelope: HostRequestEnvelope,
-        sequenceNumber: UInt64,
-        observation: HostObservation,
-        delivery: Delivery
-    ) {
-        rememberCompletion(envelope.requestId)
-        delivery(makeEnvelope(
-            envelope,
-            sequenceNumber: sequenceNumber,
-            observedAt: now(),
-            observation: observation
-        ))
-    }
-
-    private func makeEnvelope(
-        _ request: HostRequestEnvelope,
-        sequenceNumber: UInt64,
-        observedAt: Date,
-        observation: HostObservation
-    ) -> HostObservationEnvelope {
-        HostObservationEnvelope(
-            requestId: request.requestId,
-            cancellationId: request.cancellationId,
-            observedRequestRevision: request.issuedRevision,
-            sequenceNumber: sequenceNumber,
-            observedAt: UnixTimestampMilliseconds(date: observedAt),
-            observation: observation
-        )
-    }
-
     private func isKnown(_ requestID: HostRequestId) -> Bool {
         activeTasks[requestID] != nil
             || playbackStreams[requestID] != nil
+            || acknowledgementTasks[requestID] != nil
             || completedRequestIDs.contains(requestID)
-    }
-
-    func isExpired(_ envelope: HostRequestEnvelope) -> Bool {
-        envelope.deadlineAt.map { $0.date <= now() } ?? false
     }
 
     func rememberCompletion(_ requestID: HostRequestId) {

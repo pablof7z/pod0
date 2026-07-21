@@ -74,6 +74,8 @@ final class CorePlaybackHost: CorePlaybackHosting {
             break
         case .fetchFeed, .fetchPublisherChapters:
             return .failed(code: .invalidResponse, safeDetail: "HTTP request sent to player")
+        case .executeChapterModel, .recoverChapterModelOperation, .scheduleCoreWake:
+            return .failed(code: .invalidResponse, safeDetail: "Core request sent to player")
         case .embedRecallQuery, .embedRecallSpans, .rerankRecallCandidates,
              .removeLegacyRecallIndexArtifacts:
             return .failed(code: .invalidResponse, safeDetail: "Recall request sent to player")

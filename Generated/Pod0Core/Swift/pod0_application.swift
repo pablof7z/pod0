@@ -1177,6 +1177,104 @@ public func FfiConverterTypeChapterItemProjection_lower(_ value: ChapterItemProj
 }
 
 
+public struct ChapterModelCompletionObservation: Equatable, Hashable {
+    public let completion: String
+    public let provider: String
+    public let model: String
+    public let promptTokens: UInt64?
+    public let completionTokens: UInt64?
+    public let cachedTokens: UInt64?
+    public let reasoningTokens: UInt64?
+    public let costMicrousd: UInt64?
+    public let providerOperationId: String?
+    public let providerStatus: String?
+    /**
+     * Provider-supplied generation time when the provider actually exposes
+     * one. Rust assigns kernel time when this evidence is absent.
+     */
+    public let providerGeneratedAt: UnixTimestampMilliseconds?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(completion: String, provider: String, model: String, promptTokens: UInt64?, completionTokens: UInt64?, cachedTokens: UInt64?, reasoningTokens: UInt64?, costMicrousd: UInt64?, providerOperationId: String?, providerStatus: String?,
+        /**
+         * Provider-supplied generation time when the provider actually exposes
+         * one. Rust assigns kernel time when this evidence is absent.
+         */providerGeneratedAt: UnixTimestampMilliseconds?) {
+        self.completion = completion
+        self.provider = provider
+        self.model = model
+        self.promptTokens = promptTokens
+        self.completionTokens = completionTokens
+        self.cachedTokens = cachedTokens
+        self.reasoningTokens = reasoningTokens
+        self.costMicrousd = costMicrousd
+        self.providerOperationId = providerOperationId
+        self.providerStatus = providerStatus
+        self.providerGeneratedAt = providerGeneratedAt
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterModelCompletionObservation: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterModelCompletionObservation: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterModelCompletionObservation {
+        return
+            try ChapterModelCompletionObservation(
+                completion: FfiConverterString.read(from: &buf),
+                provider: FfiConverterString.read(from: &buf),
+                model: FfiConverterString.read(from: &buf),
+                promptTokens: FfiConverterOptionUInt64.read(from: &buf),
+                completionTokens: FfiConverterOptionUInt64.read(from: &buf),
+                cachedTokens: FfiConverterOptionUInt64.read(from: &buf),
+                reasoningTokens: FfiConverterOptionUInt64.read(from: &buf),
+                costMicrousd: FfiConverterOptionUInt64.read(from: &buf),
+                providerOperationId: FfiConverterOptionString.read(from: &buf),
+                providerStatus: FfiConverterOptionString.read(from: &buf),
+                providerGeneratedAt: FfiConverterOptionTypeUnixTimestampMilliseconds.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ChapterModelCompletionObservation, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.completion, into: &buf)
+        FfiConverterString.write(value.provider, into: &buf)
+        FfiConverterString.write(value.model, into: &buf)
+        FfiConverterOptionUInt64.write(value.promptTokens, into: &buf)
+        FfiConverterOptionUInt64.write(value.completionTokens, into: &buf)
+        FfiConverterOptionUInt64.write(value.cachedTokens, into: &buf)
+        FfiConverterOptionUInt64.write(value.reasoningTokens, into: &buf)
+        FfiConverterOptionUInt64.write(value.costMicrousd, into: &buf)
+        FfiConverterOptionString.write(value.providerOperationId, into: &buf)
+        FfiConverterOptionString.write(value.providerStatus, into: &buf)
+        FfiConverterOptionTypeUnixTimestampMilliseconds.write(value.providerGeneratedAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterModelCompletionObservation_lift(_ buf: RustBuffer) throws -> ChapterModelCompletionObservation {
+    return try FfiConverterTypeChapterModelCompletionObservation.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterModelCompletionObservation_lower(_ value: ChapterModelCompletionObservation) -> RustBuffer {
+    return FfiConverterTypeChapterModelCompletionObservation.lower(value)
+}
+
+
 public struct ChapterModelDesiredStateInput: Equatable, Hashable {
     public let transcriptContentDigest: ContentDigest
     public let configuredModel: String
@@ -1301,23 +1399,167 @@ public func FfiConverterTypeChapterModelEpisodeInput_lower(_ value: ChapterModel
 }
 
 
+/**
+ * The minimum provider request a native host needs to execute. Durable
+ * workflow identity, provenance, and qualification inputs stay in Rust.
+ */
+public struct ChapterModelExecutionRequest: Equatable, Hashable {
+    public let provider: String
+    public let model: String
+    public let systemPrompt: String
+    public let userPrompt: String
+    public let responseFormat: ChapterModelResponseFormat
+    public let maximumCompletionBytes: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(provider: String, model: String, systemPrompt: String, userPrompt: String, responseFormat: ChapterModelResponseFormat, maximumCompletionBytes: UInt64) {
+        self.provider = provider
+        self.model = model
+        self.systemPrompt = systemPrompt
+        self.userPrompt = userPrompt
+        self.responseFormat = responseFormat
+        self.maximumCompletionBytes = maximumCompletionBytes
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterModelExecutionRequest: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterModelExecutionRequest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterModelExecutionRequest {
+        return
+            try ChapterModelExecutionRequest(
+                provider: FfiConverterString.read(from: &buf),
+                model: FfiConverterString.read(from: &buf),
+                systemPrompt: FfiConverterString.read(from: &buf),
+                userPrompt: FfiConverterString.read(from: &buf),
+                responseFormat: FfiConverterTypeChapterModelResponseFormat.read(from: &buf),
+                maximumCompletionBytes: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ChapterModelExecutionRequest, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.provider, into: &buf)
+        FfiConverterString.write(value.model, into: &buf)
+        FfiConverterString.write(value.systemPrompt, into: &buf)
+        FfiConverterString.write(value.userPrompt, into: &buf)
+        FfiConverterTypeChapterModelResponseFormat.write(value.responseFormat, into: &buf)
+        FfiConverterUInt64.write(value.maximumCompletionBytes, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterModelExecutionRequest_lift(_ buf: RustBuffer) throws -> ChapterModelExecutionRequest {
+    return try FfiConverterTypeChapterModelExecutionRequest.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterModelExecutionRequest_lower(_ value: ChapterModelExecutionRequest) -> RustBuffer {
+    return FfiConverterTypeChapterModelExecutionRequest.lower(value)
+}
+
+
+public struct ChapterModelFailureClassification: Equatable, Hashable {
+    public let code: ModelChapterWorkflowFailureCode
+    public let retry: ChapterModelRetryDisposition
+    public let mayHaveSubmitted: Bool
+    public let resubmissionIsSafe: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(code: ModelChapterWorkflowFailureCode, retry: ChapterModelRetryDisposition, mayHaveSubmitted: Bool, resubmissionIsSafe: Bool) {
+        self.code = code
+        self.retry = retry
+        self.mayHaveSubmitted = mayHaveSubmitted
+        self.resubmissionIsSafe = resubmissionIsSafe
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterModelFailureClassification: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterModelFailureClassification: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterModelFailureClassification {
+        return
+            try ChapterModelFailureClassification(
+                code: FfiConverterTypeModelChapterWorkflowFailureCode.read(from: &buf),
+                retry: FfiConverterTypeChapterModelRetryDisposition.read(from: &buf),
+                mayHaveSubmitted: FfiConverterBool.read(from: &buf),
+                resubmissionIsSafe: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ChapterModelFailureClassification, into buf: inout [UInt8]) {
+        FfiConverterTypeModelChapterWorkflowFailureCode.write(value.code, into: &buf)
+        FfiConverterTypeChapterModelRetryDisposition.write(value.retry, into: &buf)
+        FfiConverterBool.write(value.mayHaveSubmitted, into: &buf)
+        FfiConverterBool.write(value.resubmissionIsSafe, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterModelFailureClassification_lift(_ buf: RustBuffer) throws -> ChapterModelFailureClassification {
+    return try FfiConverterTypeChapterModelFailureClassification.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterModelFailureClassification_lower(_ value: ChapterModelFailureClassification) -> RustBuffer {
+    return FfiConverterTypeChapterModelFailureClassification.lower(value)
+}
+
+
 public struct ChapterModelPlanInput: Equatable, Hashable {
     public let episode: ChapterModelEpisodeInput
     public let requestedTranscriptVersionId: TranscriptVersionId
     public let requestedTranscriptContentDigest: ContentDigest
     public let selectedTranscript: ChapterModelTranscriptInput?
     public let selectedChapterArtifact: ChapterArtifactInput?
+    /**
+     * Original publisher artifact used when a prior enriched selection must be replanned.
+     */
+    public let publisherBaseArtifact: ChapterArtifactInput?
     public let expectedChapterSelectionRevision: StateRevision
     public let configuredModel: String
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(episode: ChapterModelEpisodeInput, requestedTranscriptVersionId: TranscriptVersionId, requestedTranscriptContentDigest: ContentDigest, selectedTranscript: ChapterModelTranscriptInput?, selectedChapterArtifact: ChapterArtifactInput?, expectedChapterSelectionRevision: StateRevision, configuredModel: String) {
+    public init(episode: ChapterModelEpisodeInput, requestedTranscriptVersionId: TranscriptVersionId, requestedTranscriptContentDigest: ContentDigest, selectedTranscript: ChapterModelTranscriptInput?, selectedChapterArtifact: ChapterArtifactInput?,
+        /**
+         * Original publisher artifact used when a prior enriched selection must be replanned.
+         */publisherBaseArtifact: ChapterArtifactInput?, expectedChapterSelectionRevision: StateRevision, configuredModel: String) {
         self.episode = episode
         self.requestedTranscriptVersionId = requestedTranscriptVersionId
         self.requestedTranscriptContentDigest = requestedTranscriptContentDigest
         self.selectedTranscript = selectedTranscript
         self.selectedChapterArtifact = selectedChapterArtifact
+        self.publisherBaseArtifact = publisherBaseArtifact
         self.expectedChapterSelectionRevision = expectedChapterSelectionRevision
         self.configuredModel = configuredModel
     }
@@ -1343,6 +1585,7 @@ public struct FfiConverterTypeChapterModelPlanInput: FfiConverterRustBuffer {
                 requestedTranscriptContentDigest: FfiConverterTypeContentDigest.read(from: &buf),
                 selectedTranscript: FfiConverterOptionTypeChapterModelTranscriptInput.read(from: &buf),
                 selectedChapterArtifact: FfiConverterOptionTypeChapterArtifactInput.read(from: &buf),
+                publisherBaseArtifact: FfiConverterOptionTypeChapterArtifactInput.read(from: &buf),
                 expectedChapterSelectionRevision: FfiConverterTypeStateRevision.read(from: &buf),
                 configuredModel: FfiConverterString.read(from: &buf)
         )
@@ -1354,6 +1597,7 @@ public struct FfiConverterTypeChapterModelPlanInput: FfiConverterRustBuffer {
         FfiConverterTypeContentDigest.write(value.requestedTranscriptContentDigest, into: &buf)
         FfiConverterOptionTypeChapterModelTranscriptInput.write(value.selectedTranscript, into: &buf)
         FfiConverterOptionTypeChapterArtifactInput.write(value.selectedChapterArtifact, into: &buf)
+        FfiConverterOptionTypeChapterArtifactInput.write(value.publisherBaseArtifact, into: &buf)
         FfiConverterTypeStateRevision.write(value.expectedChapterSelectionRevision, into: &buf)
         FfiConverterString.write(value.configuredModel, into: &buf)
     }
@@ -1372,6 +1616,60 @@ public func FfiConverterTypeChapterModelPlanInput_lift(_ buf: RustBuffer) throws
 #endif
 public func FfiConverterTypeChapterModelPlanInput_lower(_ value: ChapterModelPlanInput) -> RustBuffer {
     return FfiConverterTypeChapterModelPlanInput.lower(value)
+}
+
+
+public struct ChapterModelProviderUpdate: Equatable, Hashable {
+    public let providerOperationId: String
+    public let providerStatus: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(providerOperationId: String, providerStatus: String?) {
+        self.providerOperationId = providerOperationId
+        self.providerStatus = providerStatus
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterModelProviderUpdate: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterModelProviderUpdate: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterModelProviderUpdate {
+        return
+            try ChapterModelProviderUpdate(
+                providerOperationId: FfiConverterString.read(from: &buf),
+                providerStatus: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ChapterModelProviderUpdate, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.providerOperationId, into: &buf)
+        FfiConverterOptionString.write(value.providerStatus, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterModelProviderUpdate_lift(_ buf: RustBuffer) throws -> ChapterModelProviderUpdate {
+    return try FfiConverterTypeChapterModelProviderUpdate.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterModelProviderUpdate_lower(_ value: ChapterModelProviderUpdate) -> RustBuffer {
+    return FfiConverterTypeChapterModelProviderUpdate.lower(value)
 }
 
 
@@ -1731,13 +2029,15 @@ public func FfiConverterTypeChapterSummaryProjection_lower(_ value: ChapterSumma
 
 public struct ChapterWorkflowsProjection: Equatable, Hashable {
     public let publisher: [PublisherChapterWorkflowProjection]
+    public let model: [ModelChapterWorkflowProjection]
     public let hasMore: Bool
     public let failure: CoreFailure?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(publisher: [PublisherChapterWorkflowProjection], hasMore: Bool, failure: CoreFailure?) {
+    public init(publisher: [PublisherChapterWorkflowProjection], model: [ModelChapterWorkflowProjection], hasMore: Bool, failure: CoreFailure?) {
         self.publisher = publisher
+        self.model = model
         self.hasMore = hasMore
         self.failure = failure
     }
@@ -1759,6 +2059,7 @@ public struct FfiConverterTypeChapterWorkflowsProjection: FfiConverterRustBuffer
         return
             try ChapterWorkflowsProjection(
                 publisher: FfiConverterSequenceTypePublisherChapterWorkflowProjection.read(from: &buf),
+                model: FfiConverterSequenceTypeModelChapterWorkflowProjection.read(from: &buf),
                 hasMore: FfiConverterBool.read(from: &buf),
                 failure: FfiConverterOptionTypeCoreFailure.read(from: &buf)
         )
@@ -1766,6 +2067,7 @@ public struct FfiConverterTypeChapterWorkflowsProjection: FfiConverterRustBuffer
 
     public static func write(_ value: ChapterWorkflowsProjection, into buf: inout [UInt8]) {
         FfiConverterSequenceTypePublisherChapterWorkflowProjection.write(value.publisher, into: &buf)
+        FfiConverterSequenceTypeModelChapterWorkflowProjection.write(value.model, into: &buf)
         FfiConverterBool.write(value.hasMore, into: &buf)
         FfiConverterOptionTypeCoreFailure.write(value.failure, into: &buf)
     }
@@ -2674,6 +2976,10 @@ public struct ModelChapterObservation: Equatable, Hashable {
     public let selectedTranscriptVersionId: TranscriptVersionId
     public let selectedTranscriptContentDigest: ContentDigest
     public let policyVersion: UInt32
+    /**
+     * Stable version of the durable inputs that authorized this completion.
+     */
+    public let sourceVersion: String
     public let provider: String
     public let model: String
     public let completionDigest: ContentDigest
@@ -2684,7 +2990,10 @@ public struct ModelChapterObservation: Equatable, Hashable {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(episodeId: EpisodeId, podcastId: PodcastId, formatVersion: UInt32, requestedTranscriptVersionId: TranscriptVersionId, requestedTranscriptContentDigest: ContentDigest, selectedTranscriptVersionId: TranscriptVersionId, selectedTranscriptContentDigest: ContentDigest, policyVersion: UInt32, provider: String, model: String, completionDigest: ContentDigest, completion: String, generatedAt: UnixTimestampMilliseconds, durationMilliseconds: UInt64?, mode: ChapterModelObservationMode) {
+    public init(episodeId: EpisodeId, podcastId: PodcastId, formatVersion: UInt32, requestedTranscriptVersionId: TranscriptVersionId, requestedTranscriptContentDigest: ContentDigest, selectedTranscriptVersionId: TranscriptVersionId, selectedTranscriptContentDigest: ContentDigest, policyVersion: UInt32,
+        /**
+         * Stable version of the durable inputs that authorized this completion.
+         */sourceVersion: String, provider: String, model: String, completionDigest: ContentDigest, completion: String, generatedAt: UnixTimestampMilliseconds, durationMilliseconds: UInt64?, mode: ChapterModelObservationMode) {
         self.episodeId = episodeId
         self.podcastId = podcastId
         self.formatVersion = formatVersion
@@ -2693,6 +3002,7 @@ public struct ModelChapterObservation: Equatable, Hashable {
         self.selectedTranscriptVersionId = selectedTranscriptVersionId
         self.selectedTranscriptContentDigest = selectedTranscriptContentDigest
         self.policyVersion = policyVersion
+        self.sourceVersion = sourceVersion
         self.provider = provider
         self.model = model
         self.completionDigest = completionDigest
@@ -2726,6 +3036,7 @@ public struct FfiConverterTypeModelChapterObservation: FfiConverterRustBuffer {
                 selectedTranscriptVersionId: FfiConverterTypeTranscriptVersionId.read(from: &buf),
                 selectedTranscriptContentDigest: FfiConverterTypeContentDigest.read(from: &buf),
                 policyVersion: FfiConverterUInt32.read(from: &buf),
+                sourceVersion: FfiConverterString.read(from: &buf),
                 provider: FfiConverterString.read(from: &buf),
                 model: FfiConverterString.read(from: &buf),
                 completionDigest: FfiConverterTypeContentDigest.read(from: &buf),
@@ -2745,6 +3056,7 @@ public struct FfiConverterTypeModelChapterObservation: FfiConverterRustBuffer {
         FfiConverterTypeTranscriptVersionId.write(value.selectedTranscriptVersionId, into: &buf)
         FfiConverterTypeContentDigest.write(value.selectedTranscriptContentDigest, into: &buf)
         FfiConverterUInt32.write(value.policyVersion, into: &buf)
+        FfiConverterString.write(value.sourceVersion, into: &buf)
         FfiConverterString.write(value.provider, into: &buf)
         FfiConverterString.write(value.model, into: &buf)
         FfiConverterTypeContentDigest.write(value.completionDigest, into: &buf)
@@ -2768,6 +3080,244 @@ public func FfiConverterTypeModelChapterObservation_lift(_ buf: RustBuffer) thro
 #endif
 public func FfiConverterTypeModelChapterObservation_lower(_ value: ModelChapterObservation) -> RustBuffer {
     return FfiConverterTypeModelChapterObservation.lower(value)
+}
+
+
+public struct ModelChapterWorkflowAllowedActions: Equatable, Hashable {
+    public let canRetry: Bool
+    public let canCancel: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(canRetry: Bool, canCancel: Bool) {
+        self.canRetry = canRetry
+        self.canCancel = canCancel
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ModelChapterWorkflowAllowedActions: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeModelChapterWorkflowAllowedActions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ModelChapterWorkflowAllowedActions {
+        return
+            try ModelChapterWorkflowAllowedActions(
+                canRetry: FfiConverterBool.read(from: &buf),
+                canCancel: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ModelChapterWorkflowAllowedActions, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.canRetry, into: &buf)
+        FfiConverterBool.write(value.canCancel, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModelChapterWorkflowAllowedActions_lift(_ buf: RustBuffer) throws -> ModelChapterWorkflowAllowedActions {
+    return try FfiConverterTypeModelChapterWorkflowAllowedActions.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModelChapterWorkflowAllowedActions_lower(_ value: ModelChapterWorkflowAllowedActions) -> RustBuffer {
+    return FfiConverterTypeModelChapterWorkflowAllowedActions.lower(value)
+}
+
+
+public struct ModelChapterWorkflowFailure: Equatable, Hashable {
+    public let code: ModelChapterWorkflowFailureCode
+    public let safeDetail: String?
+    public let retry: ChapterModelRetryDisposition
+    public let mayHaveSubmitted: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(code: ModelChapterWorkflowFailureCode, safeDetail: String?, retry: ChapterModelRetryDisposition, mayHaveSubmitted: Bool) {
+        self.code = code
+        self.safeDetail = safeDetail
+        self.retry = retry
+        self.mayHaveSubmitted = mayHaveSubmitted
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ModelChapterWorkflowFailure: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeModelChapterWorkflowFailure: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ModelChapterWorkflowFailure {
+        return
+            try ModelChapterWorkflowFailure(
+                code: FfiConverterTypeModelChapterWorkflowFailureCode.read(from: &buf),
+                safeDetail: FfiConverterOptionString.read(from: &buf),
+                retry: FfiConverterTypeChapterModelRetryDisposition.read(from: &buf),
+                mayHaveSubmitted: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ModelChapterWorkflowFailure, into buf: inout [UInt8]) {
+        FfiConverterTypeModelChapterWorkflowFailureCode.write(value.code, into: &buf)
+        FfiConverterOptionString.write(value.safeDetail, into: &buf)
+        FfiConverterTypeChapterModelRetryDisposition.write(value.retry, into: &buf)
+        FfiConverterBool.write(value.mayHaveSubmitted, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModelChapterWorkflowFailure_lift(_ buf: RustBuffer) throws -> ModelChapterWorkflowFailure {
+    return try FfiConverterTypeModelChapterWorkflowFailure.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModelChapterWorkflowFailure_lower(_ value: ModelChapterWorkflowFailure) -> RustBuffer {
+    return FfiConverterTypeModelChapterWorkflowFailure.lower(value)
+}
+
+
+public struct ModelChapterWorkflowProjection: Equatable, Hashable {
+    public let episodeId: EpisodeId
+    public let configuredModel: String
+    public let mode: ModelChapterWorkflowMode?
+    public let sourceVersion: String?
+    public let stage: ModelChapterWorkflowStage
+    public let workflowRevision: StateRevision
+    public let generation: UInt64
+    public let attempt: UInt16
+    public let maxAttempts: UInt16
+    public let requestId: HostRequestId?
+    public let cancellationId: CancellationId
+    public let notBefore: UnixTimestampMilliseconds?
+    public let selectedArtifactId: ChapterArtifactId?
+    public let failure: ModelChapterWorkflowFailure?
+    public let replanPending: Bool
+    public let mayHaveSubmitted: Bool
+    public let createdAt: UnixTimestampMilliseconds
+    public let updatedAt: UnixTimestampMilliseconds
+    public let allowedActions: ModelChapterWorkflowAllowedActions
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(episodeId: EpisodeId, configuredModel: String, mode: ModelChapterWorkflowMode?, sourceVersion: String?, stage: ModelChapterWorkflowStage, workflowRevision: StateRevision, generation: UInt64, attempt: UInt16, maxAttempts: UInt16, requestId: HostRequestId?, cancellationId: CancellationId, notBefore: UnixTimestampMilliseconds?, selectedArtifactId: ChapterArtifactId?, failure: ModelChapterWorkflowFailure?, replanPending: Bool, mayHaveSubmitted: Bool, createdAt: UnixTimestampMilliseconds, updatedAt: UnixTimestampMilliseconds, allowedActions: ModelChapterWorkflowAllowedActions) {
+        self.episodeId = episodeId
+        self.configuredModel = configuredModel
+        self.mode = mode
+        self.sourceVersion = sourceVersion
+        self.stage = stage
+        self.workflowRevision = workflowRevision
+        self.generation = generation
+        self.attempt = attempt
+        self.maxAttempts = maxAttempts
+        self.requestId = requestId
+        self.cancellationId = cancellationId
+        self.notBefore = notBefore
+        self.selectedArtifactId = selectedArtifactId
+        self.failure = failure
+        self.replanPending = replanPending
+        self.mayHaveSubmitted = mayHaveSubmitted
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.allowedActions = allowedActions
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ModelChapterWorkflowProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeModelChapterWorkflowProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ModelChapterWorkflowProjection {
+        return
+            try ModelChapterWorkflowProjection(
+                episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
+                configuredModel: FfiConverterString.read(from: &buf),
+                mode: FfiConverterOptionTypeModelChapterWorkflowMode.read(from: &buf),
+                sourceVersion: FfiConverterOptionString.read(from: &buf),
+                stage: FfiConverterTypeModelChapterWorkflowStage.read(from: &buf),
+                workflowRevision: FfiConverterTypeStateRevision.read(from: &buf),
+                generation: FfiConverterUInt64.read(from: &buf),
+                attempt: FfiConverterUInt16.read(from: &buf),
+                maxAttempts: FfiConverterUInt16.read(from: &buf),
+                requestId: FfiConverterOptionTypeHostRequestId.read(from: &buf),
+                cancellationId: FfiConverterTypeCancellationId.read(from: &buf),
+                notBefore: FfiConverterOptionTypeUnixTimestampMilliseconds.read(from: &buf),
+                selectedArtifactId: FfiConverterOptionTypeChapterArtifactId.read(from: &buf),
+                failure: FfiConverterOptionTypeModelChapterWorkflowFailure.read(from: &buf),
+                replanPending: FfiConverterBool.read(from: &buf),
+                mayHaveSubmitted: FfiConverterBool.read(from: &buf),
+                createdAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                updatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                allowedActions: FfiConverterTypeModelChapterWorkflowAllowedActions.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ModelChapterWorkflowProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
+        FfiConverterString.write(value.configuredModel, into: &buf)
+        FfiConverterOptionTypeModelChapterWorkflowMode.write(value.mode, into: &buf)
+        FfiConverterOptionString.write(value.sourceVersion, into: &buf)
+        FfiConverterTypeModelChapterWorkflowStage.write(value.stage, into: &buf)
+        FfiConverterTypeStateRevision.write(value.workflowRevision, into: &buf)
+        FfiConverterUInt64.write(value.generation, into: &buf)
+        FfiConverterUInt16.write(value.attempt, into: &buf)
+        FfiConverterUInt16.write(value.maxAttempts, into: &buf)
+        FfiConverterOptionTypeHostRequestId.write(value.requestId, into: &buf)
+        FfiConverterTypeCancellationId.write(value.cancellationId, into: &buf)
+        FfiConverterOptionTypeUnixTimestampMilliseconds.write(value.notBefore, into: &buf)
+        FfiConverterOptionTypeChapterArtifactId.write(value.selectedArtifactId, into: &buf)
+        FfiConverterOptionTypeModelChapterWorkflowFailure.write(value.failure, into: &buf)
+        FfiConverterBool.write(value.replanPending, into: &buf)
+        FfiConverterBool.write(value.mayHaveSubmitted, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.createdAt, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.updatedAt, into: &buf)
+        FfiConverterTypeModelChapterWorkflowAllowedActions.write(value.allowedActions, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModelChapterWorkflowProjection_lift(_ buf: RustBuffer) throws -> ModelChapterWorkflowProjection {
+    return try FfiConverterTypeModelChapterWorkflowProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModelChapterWorkflowProjection_lower(_ value: ModelChapterWorkflowProjection) -> RustBuffer {
+    return FfiConverterTypeModelChapterWorkflowProjection.lower(value)
 }
 
 
@@ -5240,6 +5790,12 @@ public enum ApplicationCommand: Equatable, Hashable {
     )
     case cancelPublisherChapters(episodeId: EpisodeId, expectedWorkflowRevision: StateRevision
     )
+    case ensureModelChapters(episodeId: EpisodeId, configuredModel: String
+    )
+    case retryModelChapters(episodeId: EpisodeId, configuredModel: String, expectedWorkflowRevision: StateRevision
+    )
+    case cancelModelChapters(episodeId: EpisodeId, expectedWorkflowRevision: StateRevision
+    )
     case createNote(text: String, kind: NoteKind, author: NoteAuthor, target: NoteTarget?
     )
     case updateNote(noteId: NoteId, expectedNoteRevision: NoteRevision, text: String, kind: NoteKind, target: NoteTarget?
@@ -5342,34 +5898,43 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
         case 21: return .cancelPublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 22: return .createNote(text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), author: try FfiConverterTypeNoteAuthor.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
+        case 22: return .ensureModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), configuredModel: try FfiConverterString.read(from: &buf)
         )
 
-        case 23: return .updateNote(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
+        case 23: return .retryModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), configuredModel: try FfiConverterString.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 24: return .setNoteDeleted(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
+        case 24: return .cancelModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 25: return .clearNotes(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 25: return .createNote(text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), author: try FfiConverterTypeNoteAuthor.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
         )
 
-        case 26: return .createClip(clipId: try FfiConverterTypeClipId.read(from: &buf), episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), podcastId: try FfiConverterTypePodcastId.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf), source: try FfiConverterTypeClipSource.read(from: &buf)
+        case 26: return .updateNote(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
         )
 
-        case 27: return .updateClip(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf)
+        case 27: return .setNoteDeleted(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
         )
 
-        case 28: return .setClipDeleted(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
+        case 28: return .clearNotes(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 29: return .clearClips(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 29: return .createClip(clipId: try FfiConverterTypeClipId.read(from: &buf), episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), podcastId: try FfiConverterTypePodcastId.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf), source: try FfiConverterTypeClipSource.read(from: &buf)
         )
 
-        case 30: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
+        case 30: return .updateClip(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf)
         )
 
-        case 31: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 31: return .setClipDeleted(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 32: return .clearClips(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        )
+
+        case 33: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
+        )
+
+        case 34: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -5491,8 +6056,27 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
-        case let .createNote(text,kind,author,target):
+        case let .ensureModelChapters(episodeId,configuredModel):
             writeInt(&buf, Int32(22))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterString.write(configuredModel, into: &buf)
+
+
+        case let .retryModelChapters(episodeId,configuredModel,expectedWorkflowRevision):
+            writeInt(&buf, Int32(23))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterString.write(configuredModel, into: &buf)
+            FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
+
+
+        case let .cancelModelChapters(episodeId,expectedWorkflowRevision):
+            writeInt(&buf, Int32(24))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
+
+
+        case let .createNote(text,kind,author,target):
+            writeInt(&buf, Int32(25))
             FfiConverterString.write(text, into: &buf)
             FfiConverterTypeNoteKind.write(kind, into: &buf)
             FfiConverterTypeNoteAuthor.write(author, into: &buf)
@@ -5500,7 +6084,7 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .updateNote(noteId,expectedNoteRevision,text,kind,target):
-            writeInt(&buf, Int32(23))
+            writeInt(&buf, Int32(26))
             FfiConverterTypeNoteId.write(noteId, into: &buf)
             FfiConverterTypeNoteRevision.write(expectedNoteRevision, into: &buf)
             FfiConverterString.write(text, into: &buf)
@@ -5509,19 +6093,19 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .setNoteDeleted(noteId,expectedNoteRevision,deleted):
-            writeInt(&buf, Int32(24))
+            writeInt(&buf, Int32(27))
             FfiConverterTypeNoteId.write(noteId, into: &buf)
             FfiConverterTypeNoteRevision.write(expectedNoteRevision, into: &buf)
             FfiConverterBool.write(deleted, into: &buf)
 
 
         case let .clearNotes(expectedCollectionRevision):
-            writeInt(&buf, Int32(25))
+            writeInt(&buf, Int32(28))
             FfiConverterTypeStateRevision.write(expectedCollectionRevision, into: &buf)
 
 
         case let .createClip(clipId,episodeId,podcastId,startMilliseconds,endMilliseconds,caption,speakerId,frozenTranscriptText,source):
-            writeInt(&buf, Int32(26))
+            writeInt(&buf, Int32(29))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypePodcastId.write(podcastId, into: &buf)
@@ -5534,7 +6118,7 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .updateClip(clipId,expectedClipRevision,startMilliseconds,endMilliseconds,caption,speakerId,frozenTranscriptText):
-            writeInt(&buf, Int32(27))
+            writeInt(&buf, Int32(30))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeClipRevision.write(expectedClipRevision, into: &buf)
             FfiConverterUInt64.write(startMilliseconds, into: &buf)
@@ -5545,24 +6129,24 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .setClipDeleted(clipId,expectedClipRevision,deleted):
-            writeInt(&buf, Int32(28))
+            writeInt(&buf, Int32(31))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeClipRevision.write(expectedClipRevision, into: &buf)
             FfiConverterBool.write(deleted, into: &buf)
 
 
         case let .clearClips(expectedCollectionRevision):
-            writeInt(&buf, Int32(29))
+            writeInt(&buf, Int32(32))
             FfiConverterTypeStateRevision.write(expectedCollectionRevision, into: &buf)
 
 
         case let .cancelOperation(cancellationId):
-            writeInt(&buf, Int32(30))
+            writeInt(&buf, Int32(33))
             FfiConverterTypeCancellationId.write(cancellationId, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(31))
+            writeInt(&buf, Int32(34))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -5854,6 +6438,360 @@ public func FfiConverterTypeChapterModelDesiredStatePlan_lower(_ value: ChapterM
 
 
 
+public enum ChapterModelFailureEvidence: Equatable, Hashable {
+
+    case missingCredential
+    case invalidRequest
+    case unsupportedProvider
+    case coreUnavailable
+    case httpResponse(statusCode: UInt16
+    )
+    case offline(submissionAuthorized: Bool
+    )
+    case timedOut(submissionAuthorized: Bool
+    )
+    case transport(submissionAuthorized: Bool
+    )
+    case responseTooLarge
+    case invalidResponse
+    case qualification(reason: ChapterObservationRejection
+    )
+    case staleTranscript
+    case stalePublisherBase
+    case selectionChanged
+    case storageUnavailable(submissionAuthorized: Bool
+    )
+    case providerRecoveryUnavailable
+    case retryExhausted(mayHaveSubmitted: Bool
+    )
+    case cancelled(submissionAuthorized: Bool
+    )
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterModelFailureEvidence: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterModelFailureEvidence: FfiConverterRustBuffer {
+    typealias SwiftType = ChapterModelFailureEvidence
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterModelFailureEvidence {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .missingCredential
+
+        case 2: return .invalidRequest
+
+        case 3: return .unsupportedProvider
+
+        case 4: return .coreUnavailable
+
+        case 5: return .httpResponse(statusCode: try FfiConverterUInt16.read(from: &buf)
+        )
+
+        case 6: return .offline(submissionAuthorized: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 7: return .timedOut(submissionAuthorized: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 8: return .transport(submissionAuthorized: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 9: return .responseTooLarge
+
+        case 10: return .invalidResponse
+
+        case 11: return .qualification(reason: try FfiConverterTypeChapterObservationRejection.read(from: &buf)
+        )
+
+        case 12: return .staleTranscript
+
+        case 13: return .stalePublisherBase
+
+        case 14: return .selectionChanged
+
+        case 15: return .storageUnavailable(submissionAuthorized: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 16: return .providerRecoveryUnavailable
+
+        case 17: return .retryExhausted(mayHaveSubmitted: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 18: return .cancelled(submissionAuthorized: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 19: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ChapterModelFailureEvidence, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .missingCredential:
+            writeInt(&buf, Int32(1))
+
+
+        case .invalidRequest:
+            writeInt(&buf, Int32(2))
+
+
+        case .unsupportedProvider:
+            writeInt(&buf, Int32(3))
+
+
+        case .coreUnavailable:
+            writeInt(&buf, Int32(4))
+
+
+        case let .httpResponse(statusCode):
+            writeInt(&buf, Int32(5))
+            FfiConverterUInt16.write(statusCode, into: &buf)
+
+
+        case let .offline(submissionAuthorized):
+            writeInt(&buf, Int32(6))
+            FfiConverterBool.write(submissionAuthorized, into: &buf)
+
+
+        case let .timedOut(submissionAuthorized):
+            writeInt(&buf, Int32(7))
+            FfiConverterBool.write(submissionAuthorized, into: &buf)
+
+
+        case let .transport(submissionAuthorized):
+            writeInt(&buf, Int32(8))
+            FfiConverterBool.write(submissionAuthorized, into: &buf)
+
+
+        case .responseTooLarge:
+            writeInt(&buf, Int32(9))
+
+
+        case .invalidResponse:
+            writeInt(&buf, Int32(10))
+
+
+        case let .qualification(reason):
+            writeInt(&buf, Int32(11))
+            FfiConverterTypeChapterObservationRejection.write(reason, into: &buf)
+
+
+        case .staleTranscript:
+            writeInt(&buf, Int32(12))
+
+
+        case .stalePublisherBase:
+            writeInt(&buf, Int32(13))
+
+
+        case .selectionChanged:
+            writeInt(&buf, Int32(14))
+
+
+        case let .storageUnavailable(submissionAuthorized):
+            writeInt(&buf, Int32(15))
+            FfiConverterBool.write(submissionAuthorized, into: &buf)
+
+
+        case .providerRecoveryUnavailable:
+            writeInt(&buf, Int32(16))
+
+
+        case let .retryExhausted(mayHaveSubmitted):
+            writeInt(&buf, Int32(17))
+            FfiConverterBool.write(mayHaveSubmitted, into: &buf)
+
+
+        case let .cancelled(submissionAuthorized):
+            writeInt(&buf, Int32(18))
+            FfiConverterBool.write(submissionAuthorized, into: &buf)
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(19))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterModelFailureEvidence_lift(_ buf: RustBuffer) throws -> ChapterModelFailureEvidence {
+    return try FfiConverterTypeChapterModelFailureEvidence.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterModelFailureEvidence_lower(_ value: ChapterModelFailureEvidence) -> RustBuffer {
+    return FfiConverterTypeChapterModelFailureEvidence.lower(value)
+}
+
+
+
+
+public enum ChapterModelHostFailureCode: Equatable, Hashable {
+
+    case missingCredential
+    case invalidRequest
+    case unsupportedProvider
+    case httpResponse(statusCode: UInt16
+    )
+    case offline
+    case timedOut
+    case transport
+    case responseTooLarge
+    case invalidResponse
+    case providerRecoveryUnavailable
+    case cancelled
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterModelHostFailureCode: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterModelHostFailureCode: FfiConverterRustBuffer {
+    typealias SwiftType = ChapterModelHostFailureCode
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterModelHostFailureCode {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .missingCredential
+
+        case 2: return .invalidRequest
+
+        case 3: return .unsupportedProvider
+
+        case 4: return .httpResponse(statusCode: try FfiConverterUInt16.read(from: &buf)
+        )
+
+        case 5: return .offline
+
+        case 6: return .timedOut
+
+        case 7: return .transport
+
+        case 8: return .responseTooLarge
+
+        case 9: return .invalidResponse
+
+        case 10: return .providerRecoveryUnavailable
+
+        case 11: return .cancelled
+
+        case 12: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ChapterModelHostFailureCode, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .missingCredential:
+            writeInt(&buf, Int32(1))
+
+
+        case .invalidRequest:
+            writeInt(&buf, Int32(2))
+
+
+        case .unsupportedProvider:
+            writeInt(&buf, Int32(3))
+
+
+        case let .httpResponse(statusCode):
+            writeInt(&buf, Int32(4))
+            FfiConverterUInt16.write(statusCode, into: &buf)
+
+
+        case .offline:
+            writeInt(&buf, Int32(5))
+
+
+        case .timedOut:
+            writeInt(&buf, Int32(6))
+
+
+        case .transport:
+            writeInt(&buf, Int32(7))
+
+
+        case .responseTooLarge:
+            writeInt(&buf, Int32(8))
+
+
+        case .invalidResponse:
+            writeInt(&buf, Int32(9))
+
+
+        case .providerRecoveryUnavailable:
+            writeInt(&buf, Int32(10))
+
+
+        case .cancelled:
+            writeInt(&buf, Int32(11))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(12))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterModelHostFailureCode_lift(_ buf: RustBuffer) throws -> ChapterModelHostFailureCode {
+    return try FfiConverterTypeChapterModelHostFailureCode.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterModelHostFailureCode_lower(_ value: ChapterModelHostFailureCode) -> RustBuffer {
+    return FfiConverterTypeChapterModelHostFailureCode.lower(value)
+}
+
+
+
+
 public enum ChapterModelObservationMode: Equatable, Hashable {
 
     case generate
@@ -5927,6 +6865,8 @@ public enum ChapterModelPlan: Equatable, Hashable {
 
     case ready(request: PlannedChapterModelRequest
     )
+    case current(artifactId: ChapterArtifactId
+    )
     case episodeUnavailable
     case transcriptUnavailable
     case staleTranscript
@@ -5961,25 +6901,28 @@ public struct FfiConverterTypeChapterModelPlan: FfiConverterRustBuffer {
         case 1: return .ready(request: try FfiConverterTypePlannedChapterModelRequest.read(from: &buf)
         )
 
-        case 2: return .episodeUnavailable
+        case 2: return .current(artifactId: try FfiConverterTypeChapterArtifactId.read(from: &buf)
+        )
 
-        case 3: return .transcriptUnavailable
+        case 3: return .episodeUnavailable
 
-        case 4: return .staleTranscript
+        case 4: return .transcriptUnavailable
 
-        case 5: return .preserveAgentComposed
+        case 5: return .staleTranscript
 
-        case 6: return .invalidConfiguration
+        case 6: return .preserveAgentComposed
 
-        case 7: return .unsupportedArtifact
+        case 7: return .invalidConfiguration
 
-        case 8: return .invalidInput
+        case 8: return .unsupportedArtifact
 
-        case 9: return .emptyTranscript
+        case 9: return .invalidInput
 
-        case 10: return .inputTooLarge
+        case 10: return .emptyTranscript
 
-        case 11: return .coreUnavailable
+        case 11: return .inputTooLarge
+
+        case 12: return .coreUnavailable
 
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -5994,44 +6937,49 @@ public struct FfiConverterTypeChapterModelPlan: FfiConverterRustBuffer {
             FfiConverterTypePlannedChapterModelRequest.write(request, into: &buf)
 
 
-        case .episodeUnavailable:
+        case let .current(artifactId):
             writeInt(&buf, Int32(2))
+            FfiConverterTypeChapterArtifactId.write(artifactId, into: &buf)
 
 
-        case .transcriptUnavailable:
+        case .episodeUnavailable:
             writeInt(&buf, Int32(3))
 
 
-        case .staleTranscript:
+        case .transcriptUnavailable:
             writeInt(&buf, Int32(4))
 
 
-        case .preserveAgentComposed:
+        case .staleTranscript:
             writeInt(&buf, Int32(5))
 
 
-        case .invalidConfiguration:
+        case .preserveAgentComposed:
             writeInt(&buf, Int32(6))
 
 
-        case .unsupportedArtifact:
+        case .invalidConfiguration:
             writeInt(&buf, Int32(7))
 
 
-        case .invalidInput:
+        case .unsupportedArtifact:
             writeInt(&buf, Int32(8))
 
 
-        case .emptyTranscript:
+        case .invalidInput:
             writeInt(&buf, Int32(9))
 
 
-        case .inputTooLarge:
+        case .emptyTranscript:
             writeInt(&buf, Int32(10))
 
 
-        case .coreUnavailable:
+        case .inputTooLarge:
             writeInt(&buf, Int32(11))
+
+
+        case .coreUnavailable:
+            writeInt(&buf, Int32(12))
 
         }
     }
@@ -6119,6 +7067,93 @@ public func FfiConverterTypeChapterModelResponseFormat_lift(_ buf: RustBuffer) t
 #endif
 public func FfiConverterTypeChapterModelResponseFormat_lower(_ value: ChapterModelResponseFormat) -> RustBuffer {
     return FfiConverterTypeChapterModelResponseFormat.lower(value)
+}
+
+
+
+
+public enum ChapterModelRetryDisposition: Equatable, Hashable {
+
+    case automaticRequest
+    case replan
+    case resumePersisted
+    case explicitOnly
+    case never
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChapterModelRetryDisposition: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChapterModelRetryDisposition: FfiConverterRustBuffer {
+    typealias SwiftType = ChapterModelRetryDisposition
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapterModelRetryDisposition {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .automaticRequest
+
+        case 2: return .replan
+
+        case 3: return .resumePersisted
+
+        case 4: return .explicitOnly
+
+        case 5: return .never
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ChapterModelRetryDisposition, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .automaticRequest:
+            writeInt(&buf, Int32(1))
+
+
+        case .replan:
+            writeInt(&buf, Int32(2))
+
+
+        case .resumePersisted:
+            writeInt(&buf, Int32(3))
+
+
+        case .explicitOnly:
+            writeInt(&buf, Int32(4))
+
+
+        case .never:
+            writeInt(&buf, Int32(5))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterModelRetryDisposition_lift(_ buf: RustBuffer) throws -> ChapterModelRetryDisposition {
+    return try FfiConverterTypeChapterModelRetryDisposition.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChapterModelRetryDisposition_lower(_ value: ChapterModelRetryDisposition) -> RustBuffer {
+    return FfiConverterTypeChapterModelRetryDisposition.lower(value)
 }
 
 
@@ -6708,6 +7743,94 @@ public func FfiConverterTypeCoreFailureCode_lower(_ value: CoreFailureCode) -> R
 
 
 
+/**
+ * Durable product work that needs a native wake without exposing native
+ * scheduler concepts to the product kernel.
+ */
+
+public enum CoreWakeReason: Equatable, Hashable {
+
+    case modelChapterRetry(episodeId: EpisodeId, generation: UInt64, submissionFenceId: ChapterModelSubmissionFenceId
+    )
+    case modelChapterFinalization(requestId: HostRequestId
+    )
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CoreWakeReason: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCoreWakeReason: FfiConverterRustBuffer {
+    typealias SwiftType = CoreWakeReason
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CoreWakeReason {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .modelChapterRetry(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), generation: try FfiConverterUInt64.read(from: &buf), submissionFenceId: try FfiConverterTypeChapterModelSubmissionFenceId.read(from: &buf)
+        )
+
+        case 2: return .modelChapterFinalization(requestId: try FfiConverterTypeHostRequestId.read(from: &buf)
+        )
+
+        case 3: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: CoreWakeReason, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case let .modelChapterRetry(episodeId,generation,submissionFenceId):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterUInt64.write(generation, into: &buf)
+            FfiConverterTypeChapterModelSubmissionFenceId.write(submissionFenceId, into: &buf)
+
+
+        case let .modelChapterFinalization(requestId):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeHostRequestId.write(requestId, into: &buf)
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCoreWakeReason_lift(_ buf: RustBuffer) throws -> CoreWakeReason {
+    return try FfiConverterTypeCoreWakeReason.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCoreWakeReason_lower(_ value: CoreWakeReason) -> RustBuffer {
+    return FfiConverterTypeCoreWakeReason.lower(value)
+}
+
+
+
 
 public enum DomainEvent: Equatable, Hashable {
 
@@ -7067,6 +8190,14 @@ public enum HostObservation: Equatable, Hashable {
     )
     case publisherChaptersFetched(episodeId: EpisodeId, bytes: Data, contentType: String, responseUrl: String, entityTag: String?, lastModified: String?, httpStatus: UInt16
     )
+    case chapterModelProviderAccepted(episodeId: EpisodeId, generation: UInt64, submissionFenceId: ChapterModelSubmissionFenceId, update: ChapterModelProviderUpdate
+    )
+    case chapterModelCompleted(episodeId: EpisodeId, generation: UInt64, submissionFenceId: ChapterModelSubmissionFenceId, completion: ChapterModelCompletionObservation
+    )
+    case chapterModelFailed(episodeId: EpisodeId, generation: UInt64, submissionFenceId: ChapterModelSubmissionFenceId, code: ChapterModelHostFailureCode, safeDetail: String?, retryAfterMilliseconds: UInt64?
+    )
+    case coreWakeReached(reason: CoreWakeReason
+    )
     case legacyRecallIndexArtifactsRemoved(removedFileCount: UInt8
     )
     case failed(code: HostFailureCode, safeDetail: String?
@@ -7116,15 +8247,27 @@ public struct FfiConverterTypeHostObservation: FfiConverterRustBuffer {
         case 7: return .publisherChaptersFetched(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), bytes: try FfiConverterData.read(from: &buf), contentType: try FfiConverterString.read(from: &buf), responseUrl: try FfiConverterString.read(from: &buf), entityTag: try FfiConverterOptionString.read(from: &buf), lastModified: try FfiConverterOptionString.read(from: &buf), httpStatus: try FfiConverterUInt16.read(from: &buf)
         )
 
-        case 8: return .legacyRecallIndexArtifactsRemoved(removedFileCount: try FfiConverterUInt8.read(from: &buf)
+        case 8: return .chapterModelProviderAccepted(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), generation: try FfiConverterUInt64.read(from: &buf), submissionFenceId: try FfiConverterTypeChapterModelSubmissionFenceId.read(from: &buf), update: try FfiConverterTypeChapterModelProviderUpdate.read(from: &buf)
         )
 
-        case 9: return .failed(code: try FfiConverterTypeHostFailureCode.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf)
+        case 9: return .chapterModelCompleted(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), generation: try FfiConverterUInt64.read(from: &buf), submissionFenceId: try FfiConverterTypeChapterModelSubmissionFenceId.read(from: &buf), completion: try FfiConverterTypeChapterModelCompletionObservation.read(from: &buf)
         )
 
-        case 10: return .cancelled
+        case 10: return .chapterModelFailed(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), generation: try FfiConverterUInt64.read(from: &buf), submissionFenceId: try FfiConverterTypeChapterModelSubmissionFenceId.read(from: &buf), code: try FfiConverterTypeChapterModelHostFailureCode.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf), retryAfterMilliseconds: try FfiConverterOptionUInt64.read(from: &buf)
+        )
 
-        case 11: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 11: return .coreWakeReached(reason: try FfiConverterTypeCoreWakeReason.read(from: &buf)
+        )
+
+        case 12: return .legacyRecallIndexArtifactsRemoved(removedFileCount: try FfiConverterUInt8.read(from: &buf)
+        )
+
+        case 13: return .failed(code: try FfiConverterTypeHostFailureCode.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf)
+        )
+
+        case 14: return .cancelled
+
+        case 15: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -7186,23 +8329,54 @@ public struct FfiConverterTypeHostObservation: FfiConverterRustBuffer {
             FfiConverterUInt16.write(httpStatus, into: &buf)
 
 
-        case let .legacyRecallIndexArtifactsRemoved(removedFileCount):
+        case let .chapterModelProviderAccepted(episodeId,generation,submissionFenceId,update):
             writeInt(&buf, Int32(8))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterUInt64.write(generation, into: &buf)
+            FfiConverterTypeChapterModelSubmissionFenceId.write(submissionFenceId, into: &buf)
+            FfiConverterTypeChapterModelProviderUpdate.write(update, into: &buf)
+
+
+        case let .chapterModelCompleted(episodeId,generation,submissionFenceId,completion):
+            writeInt(&buf, Int32(9))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterUInt64.write(generation, into: &buf)
+            FfiConverterTypeChapterModelSubmissionFenceId.write(submissionFenceId, into: &buf)
+            FfiConverterTypeChapterModelCompletionObservation.write(completion, into: &buf)
+
+
+        case let .chapterModelFailed(episodeId,generation,submissionFenceId,code,safeDetail,retryAfterMilliseconds):
+            writeInt(&buf, Int32(10))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterUInt64.write(generation, into: &buf)
+            FfiConverterTypeChapterModelSubmissionFenceId.write(submissionFenceId, into: &buf)
+            FfiConverterTypeChapterModelHostFailureCode.write(code, into: &buf)
+            FfiConverterOptionString.write(safeDetail, into: &buf)
+            FfiConverterOptionUInt64.write(retryAfterMilliseconds, into: &buf)
+
+
+        case let .coreWakeReached(reason):
+            writeInt(&buf, Int32(11))
+            FfiConverterTypeCoreWakeReason.write(reason, into: &buf)
+
+
+        case let .legacyRecallIndexArtifactsRemoved(removedFileCount):
+            writeInt(&buf, Int32(12))
             FfiConverterUInt8.write(removedFileCount, into: &buf)
 
 
         case let .failed(code,safeDetail):
-            writeInt(&buf, Int32(9))
+            writeInt(&buf, Int32(13))
             FfiConverterTypeHostFailureCode.write(code, into: &buf)
             FfiConverterOptionString.write(safeDetail, into: &buf)
 
 
         case .cancelled:
-            writeInt(&buf, Int32(10))
+            writeInt(&buf, Int32(14))
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(11))
+            writeInt(&buf, Int32(15))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -7222,6 +8396,219 @@ public func FfiConverterTypeHostObservation_lift(_ buf: RustBuffer) throws -> Ho
 #endif
 public func FfiConverterTypeHostObservation_lower(_ value: HostObservation) -> RustBuffer {
     return FfiConverterTypeHostObservation.lower(value)
+}
+
+
+
+/**
+ * Tells a native capability host whether an observation may be discarded.
+ * Paid evidence is safe to discard only after `Persisted`.
+ */
+
+public enum HostObservationReceipt: Equatable, Hashable {
+
+    case acceptedTransient(requestId: HostRequestId
+    )
+    case persisted(requestId: HostRequestId, terminal: Bool
+    )
+    case retainAndRetry(requestId: HostRequestId
+    )
+    case rejected(requestId: HostRequestId, reason: HostObservationRejection
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension HostObservationReceipt: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeHostObservationReceipt: FfiConverterRustBuffer {
+    typealias SwiftType = HostObservationReceipt
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> HostObservationReceipt {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .acceptedTransient(requestId: try FfiConverterTypeHostRequestId.read(from: &buf)
+        )
+
+        case 2: return .persisted(requestId: try FfiConverterTypeHostRequestId.read(from: &buf), terminal: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 3: return .retainAndRetry(requestId: try FfiConverterTypeHostRequestId.read(from: &buf)
+        )
+
+        case 4: return .rejected(requestId: try FfiConverterTypeHostRequestId.read(from: &buf), reason: try FfiConverterTypeHostObservationRejection.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: HostObservationReceipt, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case let .acceptedTransient(requestId):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeHostRequestId.write(requestId, into: &buf)
+
+
+        case let .persisted(requestId,terminal):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeHostRequestId.write(requestId, into: &buf)
+            FfiConverterBool.write(terminal, into: &buf)
+
+
+        case let .retainAndRetry(requestId):
+            writeInt(&buf, Int32(3))
+            FfiConverterTypeHostRequestId.write(requestId, into: &buf)
+
+
+        case let .rejected(requestId,reason):
+            writeInt(&buf, Int32(4))
+            FfiConverterTypeHostRequestId.write(requestId, into: &buf)
+            FfiConverterTypeHostObservationRejection.write(reason, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeHostObservationReceipt_lift(_ buf: RustBuffer) throws -> HostObservationReceipt {
+    return try FfiConverterTypeHostObservationReceipt.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeHostObservationReceipt_lower(_ value: HostObservationReceipt) -> RustBuffer {
+    return FfiConverterTypeHostObservationReceipt.lower(value)
+}
+
+
+
+
+public enum HostObservationRejection: Equatable, Hashable {
+
+    case unknownRequest
+    case duplicate
+    case cancelled
+    case cancellationMismatch
+    case staleRequestRevision
+    case outOfOrder
+    case mismatchedPayload
+    case payloadTooLarge
+    case staleWorkflow
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension HostObservationRejection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeHostObservationRejection: FfiConverterRustBuffer {
+    typealias SwiftType = HostObservationRejection
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> HostObservationRejection {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .unknownRequest
+
+        case 2: return .duplicate
+
+        case 3: return .cancelled
+
+        case 4: return .cancellationMismatch
+
+        case 5: return .staleRequestRevision
+
+        case 6: return .outOfOrder
+
+        case 7: return .mismatchedPayload
+
+        case 8: return .payloadTooLarge
+
+        case 9: return .staleWorkflow
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: HostObservationRejection, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .unknownRequest:
+            writeInt(&buf, Int32(1))
+
+
+        case .duplicate:
+            writeInt(&buf, Int32(2))
+
+
+        case .cancelled:
+            writeInt(&buf, Int32(3))
+
+
+        case .cancellationMismatch:
+            writeInt(&buf, Int32(4))
+
+
+        case .staleRequestRevision:
+            writeInt(&buf, Int32(5))
+
+
+        case .outOfOrder:
+            writeInt(&buf, Int32(6))
+
+
+        case .mismatchedPayload:
+            writeInt(&buf, Int32(7))
+
+
+        case .payloadTooLarge:
+            writeInt(&buf, Int32(8))
+
+
+        case .staleWorkflow:
+            writeInt(&buf, Int32(9))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeHostObservationRejection_lift(_ buf: RustBuffer) throws -> HostObservationRejection {
+    return try FfiConverterTypeHostObservationRejection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeHostObservationRejection_lower(_ value: HostObservationRejection) -> RustBuffer {
+    return FfiConverterTypeHostObservationRejection.lower(value)
 }
 
 
@@ -7256,6 +8643,12 @@ public enum HostRequest: Equatable, Hashable {
     case rerankRecallCandidates(queryId: RecallQueryId, query: String, candidates: [RecallRerankDocument]
     )
     case fetchPublisherChapters(episodeId: EpisodeId, sourceUrl: String, notBefore: UnixTimestampMilliseconds?, maximumResponseBytes: UInt64
+    )
+    case executeChapterModel(episodeId: EpisodeId, generation: UInt64, submissionFenceId: ChapterModelSubmissionFenceId, execution: ChapterModelExecutionRequest
+    )
+    case recoverChapterModelOperation(episodeId: EpisodeId, generation: UInt64, submissionFenceId: ChapterModelSubmissionFenceId, provider: String, model: String, providerOperationId: String, providerStatus: String?, maximumCompletionBytes: UInt64
+    )
+    case scheduleCoreWake(wakeAt: UnixTimestampMilliseconds, reason: CoreWakeReason
     )
     case removeLegacyRecallIndexArtifacts
     case unsupported(wireCode: UInt32
@@ -7323,9 +8716,18 @@ public struct FfiConverterTypeHostRequest: FfiConverterRustBuffer {
         case 14: return .fetchPublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), sourceUrl: try FfiConverterString.read(from: &buf), notBefore: try FfiConverterOptionTypeUnixTimestampMilliseconds.read(from: &buf), maximumResponseBytes: try FfiConverterUInt64.read(from: &buf)
         )
 
-        case 15: return .removeLegacyRecallIndexArtifacts
+        case 15: return .executeChapterModel(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), generation: try FfiConverterUInt64.read(from: &buf), submissionFenceId: try FfiConverterTypeChapterModelSubmissionFenceId.read(from: &buf), execution: try FfiConverterTypeChapterModelExecutionRequest.read(from: &buf)
+        )
 
-        case 16: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 16: return .recoverChapterModelOperation(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), generation: try FfiConverterUInt64.read(from: &buf), submissionFenceId: try FfiConverterTypeChapterModelSubmissionFenceId.read(from: &buf), provider: try FfiConverterString.read(from: &buf), model: try FfiConverterString.read(from: &buf), providerOperationId: try FfiConverterString.read(from: &buf), providerStatus: try FfiConverterOptionString.read(from: &buf), maximumCompletionBytes: try FfiConverterUInt64.read(from: &buf)
+        )
+
+        case 17: return .scheduleCoreWake(wakeAt: try FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf), reason: try FfiConverterTypeCoreWakeReason.read(from: &buf)
+        )
+
+        case 18: return .removeLegacyRecallIndexArtifacts
+
+        case 19: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -7428,12 +8830,38 @@ public struct FfiConverterTypeHostRequest: FfiConverterRustBuffer {
             FfiConverterUInt64.write(maximumResponseBytes, into: &buf)
 
 
-        case .removeLegacyRecallIndexArtifacts:
+        case let .executeChapterModel(episodeId,generation,submissionFenceId,execution):
             writeInt(&buf, Int32(15))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterUInt64.write(generation, into: &buf)
+            FfiConverterTypeChapterModelSubmissionFenceId.write(submissionFenceId, into: &buf)
+            FfiConverterTypeChapterModelExecutionRequest.write(execution, into: &buf)
+
+
+        case let .recoverChapterModelOperation(episodeId,generation,submissionFenceId,provider,model,providerOperationId,providerStatus,maximumCompletionBytes):
+            writeInt(&buf, Int32(16))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterUInt64.write(generation, into: &buf)
+            FfiConverterTypeChapterModelSubmissionFenceId.write(submissionFenceId, into: &buf)
+            FfiConverterString.write(provider, into: &buf)
+            FfiConverterString.write(model, into: &buf)
+            FfiConverterString.write(providerOperationId, into: &buf)
+            FfiConverterOptionString.write(providerStatus, into: &buf)
+            FfiConverterUInt64.write(maximumCompletionBytes, into: &buf)
+
+
+        case let .scheduleCoreWake(wakeAt,reason):
+            writeInt(&buf, Int32(17))
+            FfiConverterTypeUnixTimestampMilliseconds.write(wakeAt, into: &buf)
+            FfiConverterTypeCoreWakeReason.write(reason, into: &buf)
+
+
+        case .removeLegacyRecallIndexArtifacts:
+            writeInt(&buf, Int32(18))
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(16))
+            writeInt(&buf, Int32(19))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -7453,6 +8881,430 @@ public func FfiConverterTypeHostRequest_lift(_ buf: RustBuffer) throws -> HostRe
 #endif
 public func FfiConverterTypeHostRequest_lower(_ value: HostRequest) -> RustBuffer {
     return FfiConverterTypeHostRequest.lower(value)
+}
+
+
+
+
+public enum ModelChapterWorkflowFailureCode: Equatable, Hashable {
+
+    case missingCredential
+    case invalidRequest
+    case rateLimited
+    case providerRejected
+    case providerUnavailable
+    case offline
+    case timedOut
+    case transport
+    case responseTooLarge
+    case invalidResponse
+    case qualificationRejected
+    case staleTranscript
+    case stalePublisherBase
+    case selectionChanged
+    case storageUnavailable
+    case ambiguousSubmission
+    case providerRecoveryUnavailable
+    case retryExhausted
+    case cancelled
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ModelChapterWorkflowFailureCode: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeModelChapterWorkflowFailureCode: FfiConverterRustBuffer {
+    typealias SwiftType = ModelChapterWorkflowFailureCode
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ModelChapterWorkflowFailureCode {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .missingCredential
+
+        case 2: return .invalidRequest
+
+        case 3: return .rateLimited
+
+        case 4: return .providerRejected
+
+        case 5: return .providerUnavailable
+
+        case 6: return .offline
+
+        case 7: return .timedOut
+
+        case 8: return .transport
+
+        case 9: return .responseTooLarge
+
+        case 10: return .invalidResponse
+
+        case 11: return .qualificationRejected
+
+        case 12: return .staleTranscript
+
+        case 13: return .stalePublisherBase
+
+        case 14: return .selectionChanged
+
+        case 15: return .storageUnavailable
+
+        case 16: return .ambiguousSubmission
+
+        case 17: return .providerRecoveryUnavailable
+
+        case 18: return .retryExhausted
+
+        case 19: return .cancelled
+
+        case 20: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ModelChapterWorkflowFailureCode, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .missingCredential:
+            writeInt(&buf, Int32(1))
+
+
+        case .invalidRequest:
+            writeInt(&buf, Int32(2))
+
+
+        case .rateLimited:
+            writeInt(&buf, Int32(3))
+
+
+        case .providerRejected:
+            writeInt(&buf, Int32(4))
+
+
+        case .providerUnavailable:
+            writeInt(&buf, Int32(5))
+
+
+        case .offline:
+            writeInt(&buf, Int32(6))
+
+
+        case .timedOut:
+            writeInt(&buf, Int32(7))
+
+
+        case .transport:
+            writeInt(&buf, Int32(8))
+
+
+        case .responseTooLarge:
+            writeInt(&buf, Int32(9))
+
+
+        case .invalidResponse:
+            writeInt(&buf, Int32(10))
+
+
+        case .qualificationRejected:
+            writeInt(&buf, Int32(11))
+
+
+        case .staleTranscript:
+            writeInt(&buf, Int32(12))
+
+
+        case .stalePublisherBase:
+            writeInt(&buf, Int32(13))
+
+
+        case .selectionChanged:
+            writeInt(&buf, Int32(14))
+
+
+        case .storageUnavailable:
+            writeInt(&buf, Int32(15))
+
+
+        case .ambiguousSubmission:
+            writeInt(&buf, Int32(16))
+
+
+        case .providerRecoveryUnavailable:
+            writeInt(&buf, Int32(17))
+
+
+        case .retryExhausted:
+            writeInt(&buf, Int32(18))
+
+
+        case .cancelled:
+            writeInt(&buf, Int32(19))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(20))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModelChapterWorkflowFailureCode_lift(_ buf: RustBuffer) throws -> ModelChapterWorkflowFailureCode {
+    return try FfiConverterTypeModelChapterWorkflowFailureCode.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModelChapterWorkflowFailureCode_lower(_ value: ModelChapterWorkflowFailureCode) -> RustBuffer {
+    return FfiConverterTypeModelChapterWorkflowFailureCode.lower(value)
+}
+
+
+
+
+public enum ModelChapterWorkflowMode: Equatable, Hashable {
+
+    case generate
+    case enrich
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ModelChapterWorkflowMode: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeModelChapterWorkflowMode: FfiConverterRustBuffer {
+    typealias SwiftType = ModelChapterWorkflowMode
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ModelChapterWorkflowMode {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .generate
+
+        case 2: return .enrich
+
+        case 3: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ModelChapterWorkflowMode, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .generate:
+            writeInt(&buf, Int32(1))
+
+
+        case .enrich:
+            writeInt(&buf, Int32(2))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModelChapterWorkflowMode_lift(_ buf: RustBuffer) throws -> ModelChapterWorkflowMode {
+    return try FfiConverterTypeModelChapterWorkflowMode.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModelChapterWorkflowMode_lower(_ value: ModelChapterWorkflowMode) -> RustBuffer {
+    return FfiConverterTypeModelChapterWorkflowMode.lower(value)
+}
+
+
+
+
+public enum ModelChapterWorkflowStage: Equatable, Hashable {
+
+    case awaitingTranscript
+    case awaitingPublisher
+    case preserved
+    case requested
+    case submissionAuthorized
+    case providerAccepted
+    case ambiguous
+    case completionObserved
+    case retryScheduled
+    case blocked
+    case failed
+    case cancelled
+    case succeeded
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ModelChapterWorkflowStage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeModelChapterWorkflowStage: FfiConverterRustBuffer {
+    typealias SwiftType = ModelChapterWorkflowStage
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ModelChapterWorkflowStage {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .awaitingTranscript
+
+        case 2: return .awaitingPublisher
+
+        case 3: return .preserved
+
+        case 4: return .requested
+
+        case 5: return .submissionAuthorized
+
+        case 6: return .providerAccepted
+
+        case 7: return .ambiguous
+
+        case 8: return .completionObserved
+
+        case 9: return .retryScheduled
+
+        case 10: return .blocked
+
+        case 11: return .failed
+
+        case 12: return .cancelled
+
+        case 13: return .succeeded
+
+        case 14: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ModelChapterWorkflowStage, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .awaitingTranscript:
+            writeInt(&buf, Int32(1))
+
+
+        case .awaitingPublisher:
+            writeInt(&buf, Int32(2))
+
+
+        case .preserved:
+            writeInt(&buf, Int32(3))
+
+
+        case .requested:
+            writeInt(&buf, Int32(4))
+
+
+        case .submissionAuthorized:
+            writeInt(&buf, Int32(5))
+
+
+        case .providerAccepted:
+            writeInt(&buf, Int32(6))
+
+
+        case .ambiguous:
+            writeInt(&buf, Int32(7))
+
+
+        case .completionObserved:
+            writeInt(&buf, Int32(8))
+
+
+        case .retryScheduled:
+            writeInt(&buf, Int32(9))
+
+
+        case .blocked:
+            writeInt(&buf, Int32(10))
+
+
+        case .failed:
+            writeInt(&buf, Int32(11))
+
+
+        case .cancelled:
+            writeInt(&buf, Int32(12))
+
+
+        case .succeeded:
+            writeInt(&buf, Int32(13))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(14))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModelChapterWorkflowStage_lift(_ buf: RustBuffer) throws -> ModelChapterWorkflowStage {
+    return try FfiConverterTypeModelChapterWorkflowStage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModelChapterWorkflowStage_lower(_ value: ModelChapterWorkflowStage) -> RustBuffer {
+    return FfiConverterTypeModelChapterWorkflowStage.lower(value)
 }
 
 
@@ -10451,6 +12303,30 @@ fileprivate struct FfiConverterOptionTypeCoreFailure: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeModelChapterWorkflowFailure: FfiConverterRustBuffer {
+    typealias SwiftType = ModelChapterWorkflowFailure?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeModelChapterWorkflowFailure.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeModelChapterWorkflowFailure.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeOperationProjection: FfiConverterRustBuffer {
     typealias SwiftType = OperationProjection?
 
@@ -10883,6 +12759,30 @@ fileprivate struct FfiConverterOptionTypeUnixTimestampMilliseconds: FfiConverter
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeModelChapterWorkflowMode: FfiConverterRustBuffer {
+    typealias SwiftType = ModelChapterWorkflowMode?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeModelChapterWorkflowMode.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeModelChapterWorkflowMode.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeOperationResult: FfiConverterRustBuffer {
     typealias SwiftType = OperationResult?
 
@@ -11122,6 +13022,31 @@ fileprivate struct FfiConverterSequenceTypeEvidenceIndexSpanProjection: FfiConve
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeEvidenceIndexSpanProjection.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeModelChapterWorkflowProjection: FfiConverterRustBuffer {
+    typealias SwiftType = [ModelChapterWorkflowProjection]
+
+    public static func write(_ value: [ModelChapterWorkflowProjection], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeModelChapterWorkflowProjection.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ModelChapterWorkflowProjection] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ModelChapterWorkflowProjection]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeModelChapterWorkflowProjection.read(from: &buf))
         }
         return seq
     }

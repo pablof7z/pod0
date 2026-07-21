@@ -69,6 +69,8 @@ pub struct ModelChapterObservation {
     pub selected_transcript_version_id: TranscriptVersionId,
     pub selected_transcript_content_digest: ContentDigest,
     pub policy_version: u32,
+    /// Stable version of the durable inputs that authorized this completion.
+    pub source_version: String,
     pub provider: String,
     pub model: String,
     pub completion_digest: ContentDigest,

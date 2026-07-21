@@ -10,6 +10,8 @@ pub const MODEL_CHAPTER_WORKFLOW_POLICY_VERSION: u32 = 1;
 pub const MODEL_CHAPTER_WORKFLOW_MAX_ATTEMPTS: u16 = 8;
 pub const MODEL_CHAPTER_REQUEST_DEADLINE_MILLISECONDS: i64 = 60_000;
 pub const MAX_ACTIVE_MODEL_CHAPTER_REQUESTS: u16 = 1;
+pub const MODEL_CHAPTER_RETRY_BASE_MILLISECONDS: i64 = 5_000;
+pub const MODEL_CHAPTER_RETRY_MAX_MILLISECONDS: i64 = 3_600_000;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct ModelChapterWorkflowAllowedActions {
@@ -45,6 +47,13 @@ pub enum ModelChapterWorkflowStage {
     Failed,
     Cancelled,
     Succeeded,
+    Unsupported { wire_code: u32 },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum ModelChapterWorkflowMode {
+    Generate,
+    Enrich,
     Unsupported { wire_code: u32 },
 }
 
@@ -109,4 +118,20 @@ pub struct ChapterModelFailureClassification {
     pub code: ModelChapterWorkflowFailureCode,
     pub retry: ChapterModelRetryDisposition,
     pub may_have_submitted: bool,
+    pub resubmission_is_safe: bool,
+}
+
+#[must_use]
+pub fn model_chapter_retry_delay_milliseconds(
+    attempt: u16,
+    provider_retry_after_milliseconds: Option<i64>,
+) -> i64 {
+    let exponent = u32::from(attempt.saturating_sub(1).min(10));
+    let policy = MODEL_CHAPTER_RETRY_BASE_MILLISECONDS
+        .saturating_mul(2_i64.saturating_pow(exponent))
+        .min(MODEL_CHAPTER_RETRY_MAX_MILLISECONDS);
+    provider_retry_after_milliseconds
+        .unwrap_or(0)
+        .clamp(0, MODEL_CHAPTER_RETRY_MAX_MILLISECONDS)
+        .max(policy)
 }

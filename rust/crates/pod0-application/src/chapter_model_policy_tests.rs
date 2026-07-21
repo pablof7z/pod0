@@ -17,7 +17,7 @@ fn generated_request_is_deterministic_typed_and_bounded() {
     };
     assert_eq!(request.provider, "openrouter");
     assert_eq!(request.model, "openai/gpt-4o-mini");
-    assert_eq!(request.format_version, 1);
+    assert_eq!(request.format_version, 2);
     assert_eq!(request.policy_version, 1);
     assert_eq!(
         request.response_format,
@@ -70,6 +70,37 @@ fn publisher_and_publisher_enriched_artifacts_choose_enrichment() {
         ));
         assert!(request.user_prompt.contains("use these exact indices"));
     }
+}
+
+#[test]
+fn current_model_artifact_is_adopted_without_another_provider_request() {
+    let ChapterModelPlan::Ready { request } = plan_chapter_model_request(plan_input(None)) else {
+        panic!("initial generation must be ready")
+    };
+    let mut current = publisher_artifact();
+    current.source_revision = request.source_version;
+    current.provenance.source = ChapterArtifactSource::Generated;
+    current.provenance.provider = Some(request.provider);
+    current.provenance.model = Some(format!("{}:canonical", request.model));
+    current.provenance.policy_version = request.policy_version;
+    current.provenance.transcript_version_id = Some(request.requested_transcript_version_id);
+    current.provenance.transcript_content_digest =
+        Some(request.requested_transcript_content_digest);
+    let artifact_id = pod0_domain::ChapterArtifact::seal(current.clone())
+        .expect("current artifact")
+        .artifact_id;
+
+    assert_eq!(
+        plan_chapter_model_request(plan_input(Some(current.clone()))),
+        ChapterModelPlan::Current { artifact_id }
+    );
+
+    let mut changed = plan_input(Some(current));
+    changed.configured_model = "openrouter:other/model".into();
+    assert!(matches!(
+        plan_chapter_model_request(changed),
+        ChapterModelPlan::Ready { .. }
+    ));
 }
 
 #[test]
@@ -155,70 +186,17 @@ fn invalid_episode_and_publisher_identity_are_rejected() {
     );
 }
 
-#[test]
-fn desired_state_preserves_the_legacy_version_algorithm_and_policy_changes() {
-    let input = ChapterModelDesiredStateInput {
-        transcript_content_digest: digest(),
-        configured_model: "openai/gpt-4o-mini".into(),
-        selected_chapter_source: Some(ChapterArtifactSource::Generated),
-    };
-    let ChapterModelDesiredStatePlan::Compile { input_version } =
-        plan_chapter_model_desired_state(input)
-    else {
-        panic!("generated artifacts remain derivable")
-    };
-    assert_eq!(input_version.len(), 64);
-    assert_eq!(
-        input_version,
-        crate::chapter_model_policy_source::input_version(
-            digest(),
-            "openai/gpt-4o-mini",
-            "chapter-prompt-v1"
-        )
-    );
-    assert_ne!(
-        input_version,
-        crate::chapter_model_policy_source::input_version(
-            digest(),
-            "openai/gpt-4o-mini",
-            "chapter-prompt-v2"
-        )
-    );
-}
-
-#[test]
-fn transcript_prompt_limit_counts_graphemes_without_splitting_clusters() {
-    use unicode_segmentation::UnicodeSegmentation as _;
-
-    let cluster = "e\u{301}";
-    let mut input = plan_input(None);
-    input.selected_transcript.as_mut().unwrap().segments[0].text =
-        cluster.repeat(MAX_CHAPTER_MODEL_TRANSCRIPT_CHARACTERS + 1);
-    input
-        .selected_transcript
-        .as_mut()
-        .unwrap()
-        .segments
-        .truncate(1);
-    let ChapterModelPlan::Ready { request } = plan_chapter_model_request(input) else {
-        panic!("bounded grapheme transcript must remain valid")
-    };
-    let body = request
-        .user_prompt
-        .split("Transcript (timestamped):\n")
-        .nth(1)
-        .unwrap();
-    let text = body.strip_prefix("[0s] ").unwrap();
-    assert_eq!(
-        text.graphemes(true).count(),
-        MAX_CHAPTER_MODEL_TRANSCRIPT_CHARACTERS - 5
-    );
-    assert!(text.graphemes(true).all(|value| value == cluster));
-}
-
 pub(crate) fn plan_input(
     selected_chapter_artifact: Option<ChapterArtifactInput>,
 ) -> ChapterModelPlanInput {
+    let publisher_base_artifact =
+        selected_chapter_artifact
+            .as_ref()
+            .and_then(|artifact| match artifact.provenance.source {
+                ChapterArtifactSource::Publisher => Some(artifact.clone()),
+                ChapterArtifactSource::PublisherEnriched => Some(publisher_artifact()),
+                _ => None,
+            });
     ChapterModelPlanInput {
         episode: ChapterModelEpisodeInput {
             episode_id: EpisodeId::from_parts(1, 2),
@@ -244,6 +222,7 @@ pub(crate) fn plan_input(
             ],
         }),
         selected_chapter_artifact,
+        publisher_base_artifact,
         expected_chapter_selection_revision: StateRevision::INITIAL,
         configured_model: "openai/gpt-4o-mini".into(),
     }

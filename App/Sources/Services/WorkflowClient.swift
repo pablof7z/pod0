@@ -12,17 +12,21 @@ final class WorkflowClient {
     typealias Loader = @Sendable (WorkflowProjectionQuery) async throws -> [WorkflowJobProjection]
     typealias PublisherLoader = @Sendable (WorkflowProjectionQuery) async
         -> [PublisherChapterWorkflowProjection]
+    typealias ModelChapterLoader = @Sendable (WorkflowProjectionQuery) async
+        -> [ModelChapterWorkflowProjection]
 
     nonisolated private static let logger = Logger.app("WorkflowClient")
     private(set) var revision: UInt64 = 0
     private var jobsByID: [UUID: WorkflowJobProjection] = [:]
     private var swiftJobsByID: [UUID: WorkflowJobProjection] = [:]
     private var corePublisherJobsByID: [UUID: WorkflowJobProjection] = [:]
+    private var coreModelChapterJobsByID: [UUID: WorkflowJobProjection] = [:]
     private var latestByKey: [WorkflowJobKey: WorkflowJobProjection] = [:]
 
     @ObservationIgnored private var registrations: [UUID: WorkflowProjectionRequest] = [:]
     @ObservationIgnored private var loader: Loader?
     @ObservationIgnored private var publisherLoader: PublisherLoader?
+    @ObservationIgnored private var modelChapterLoader: ModelChapterLoader?
     @ObservationIgnored private var databaseURL: URL?
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     @ObservationIgnored private var generation: UInt64 = 0
@@ -66,6 +70,16 @@ final class WorkflowClient {
 
     func detachPublisherChapterCore() {
         publisherLoader = nil
+        refresh(immediately: true)
+    }
+
+    func attachModelChapterCore(loader: @escaping ModelChapterLoader) {
+        modelChapterLoader = loader
+        refresh()
+    }
+
+    func detachModelChapterCore() {
+        modelChapterLoader = nil
         refresh(immediately: true)
     }
 
@@ -113,13 +127,24 @@ final class WorkflowClient {
         let requestedGeneration = generation
         loadTask?.cancel()
         guard let query = mergedQuery() else {
-            replaceJobs([], publisherWorkflows: [], generation: requestedGeneration)
+            replaceJobs(
+                [],
+                publisherWorkflows: [],
+                modelChapterWorkflows: [],
+                generation: requestedGeneration
+            )
             return
         }
         let loader = loader
         let publisherLoader = publisherLoader
-        guard loader != nil || publisherLoader != nil else {
-            replaceJobs([], publisherWorkflows: [], generation: requestedGeneration)
+        let modelChapterLoader = modelChapterLoader
+        guard loader != nil || publisherLoader != nil || modelChapterLoader != nil else {
+            replaceJobs(
+                [],
+                publisherWorkflows: [],
+                modelChapterWorkflows: [],
+                generation: requestedGeneration
+            )
             return
         }
         let delay = immediately ? 0 : coalescingDelayNanoseconds
@@ -128,10 +153,12 @@ final class WorkflowClient {
                 if delay > 0 { try await Task.sleep(nanoseconds: delay) }
                 let jobs = try await loader?(query) ?? []
                 let publisherWorkflows = await publisherLoader?(query) ?? []
+                let modelChapterWorkflows = await modelChapterLoader?(query) ?? []
                 guard !Task.isCancelled else { return }
                 self?.replaceJobs(
                     jobs,
                     publisherWorkflows: publisherWorkflows,
+                    modelChapterWorkflows: modelChapterWorkflows,
                     generation: requestedGeneration
                 )
             } catch is CancellationError {
@@ -209,21 +236,27 @@ final class WorkflowClient {
     private func replaceJobs(
         _ jobs: [WorkflowJobProjection],
         publisherWorkflows: [PublisherChapterWorkflowProjection],
+        modelChapterWorkflows: [ModelChapterWorkflowProjection],
         generation: UInt64
     ) {
         guard generation == self.generation else { return }
         swiftJobsByID = Dictionary(uniqueKeysWithValues: jobs
-            .filter { $0.kind != .publisherChapters }
+            .filter { $0.kind != .publisherChapters && $0.kind != .chapterArtifacts }
             .map { ($0.id, $0) })
         corePublisherJobsByID = Dictionary(uniqueKeysWithValues: publisherWorkflows.map {
             let projection = WorkflowJobProjection(publisherChapterWorkflow: $0)
+            return (projection.id, projection)
+        })
+        coreModelChapterJobsByID = Dictionary(uniqueKeysWithValues: modelChapterWorkflows.map {
+            let projection = WorkflowJobProjection(modelChapterWorkflow: $0)
             return (projection.id, projection)
         })
         mergeJobs()
     }
 
     private func mergeJobs() {
-        let replacement = swiftJobsByID.merging(corePublisherJobsByID) { _, core in core }
+        let coreJobs = corePublisherJobsByID.merging(coreModelChapterJobsByID) { _, model in model }
+        let replacement = swiftJobsByID.merging(coreJobs) { _, core in core }
         guard replacement != jobsByID else { return }
         jobsByID = replacement
         var latest: [WorkflowJobKey: WorkflowJobProjection] = [:]

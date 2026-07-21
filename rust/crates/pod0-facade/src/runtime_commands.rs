@@ -2,7 +2,6 @@ use pod0_application::{ApplicationCommand, CommandEnvelope, CoreFailureCode, Ope
 
 use crate::runtime_command_fingerprint::command_fingerprint;
 use crate::runtime_feed_state::FeedIntent;
-use crate::runtime_playback_state::PlaybackRuntime;
 use crate::runtime_state::FacadeState;
 
 impl FacadeState {
@@ -116,43 +115,7 @@ impl FacadeState {
                 );
             }
             ApplicationCommand::ResetListeningData => {
-                let observation_request_id = self.playback.observation_request_id;
-                let active_episode_id = self.listening.playback.active_episode_id;
-                let result = self
-                    .store
-                    .as_ref()
-                    .ok_or(pod0_storage::StorageError::CutoverNotAuthoritative)
-                    .and_then(|store| {
-                        store.reset_listening_data(
-                            envelope.command_id,
-                            &fingerprint,
-                            self.now().value,
-                        )
-                    });
-                let succeeded = result.is_ok();
-                self.finish_storage_command(
-                    envelope.command_id,
-                    result,
-                    OperationResult::ListeningReset,
-                );
-                if succeeded {
-                    if let Some(episode_id) = active_episode_id {
-                        self.issue_playback_request(
-                            &envelope,
-                            "reset-stop",
-                            pod0_application::HostRequest::StopPlayback { episode_id },
-                        );
-                        self.issue_playback_request(
-                            &envelope,
-                            "reset-timer",
-                            pod0_application::HostRequest::CancelNativeTimer { episode_id },
-                        );
-                    }
-                    self.playback = PlaybackRuntime {
-                        observation_request_id,
-                        ..PlaybackRuntime::default()
-                    };
-                }
+                self.reset_listening_data(&envelope, &fingerprint);
             }
             ApplicationCommand::CancelOperation { cancellation_id } => {
                 self.cancel_operation(cancellation_id);
@@ -190,6 +153,24 @@ impl FacadeState {
                 episode_id,
                 expected_workflow_revision,
             } => self.cancel_publisher_chapters(&envelope, episode_id, expected_workflow_revision),
+            ApplicationCommand::EnsureModelChapters {
+                episode_id,
+                configured_model,
+            } => self.ensure_model_chapters(&envelope, episode_id, configured_model),
+            ApplicationCommand::RetryModelChapters {
+                episode_id,
+                configured_model,
+                expected_workflow_revision,
+            } => self.retry_model_chapters(
+                &envelope,
+                episode_id,
+                configured_model,
+                expected_workflow_revision,
+            ),
+            ApplicationCommand::CancelModelChapters {
+                episode_id,
+                expected_workflow_revision,
+            } => self.cancel_model_chapters(&envelope, episode_id, expected_workflow_revision),
             ApplicationCommand::CreateNote {
                 text,
                 kind,

@@ -1,11 +1,12 @@
 use pod0_domain::{
-    ChapterArtifactInput, ChapterArtifactSource, ContentDigest, EpisodeId, PodcastId,
-    StateRevision, TranscriptVersionId,
+    ChapterArtifactId, ChapterArtifactInput, ChapterArtifactSource, ContentDigest, EpisodeId,
+    PodcastId, StateRevision, TranscriptVersionId,
 };
 
 use crate::ChapterModelObservationMode;
 
-pub const CHAPTER_MODEL_FORMAT_VERSION: u32 = 1;
+/// Format 2 binds every completion to its durable model-input source version.
+pub const CHAPTER_MODEL_FORMAT_VERSION: u32 = 2;
 pub const CHAPTER_MODEL_POLICY_VERSION: u32 = 1;
 pub const CHAPTER_MODEL_POLICY_ID: &str = "chapter-prompt-v1";
 pub const MAX_CHAPTER_MODEL_TRANSCRIPT_CHARACTERS: usize = 28_000;
@@ -56,6 +57,8 @@ pub struct ChapterModelPlanInput {
     pub requested_transcript_content_digest: ContentDigest,
     pub selected_transcript: Option<ChapterModelTranscriptInput>,
     pub selected_chapter_artifact: Option<ChapterArtifactInput>,
+    /// Original publisher artifact used when a prior enriched selection must be replanned.
+    pub publisher_base_artifact: Option<ChapterArtifactInput>,
     pub expected_chapter_selection_revision: StateRevision,
     pub configured_model: String,
 }
@@ -93,6 +96,7 @@ pub struct PlannedChapterModelRequest {
 #[allow(clippy::large_enum_variant)]
 pub enum ChapterModelPlan {
     Ready { request: PlannedChapterModelRequest },
+    Current { artifact_id: ChapterArtifactId },
     EpisodeUnavailable,
     TranscriptUnavailable,
     StaleTranscript,

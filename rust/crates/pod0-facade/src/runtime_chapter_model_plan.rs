@@ -2,9 +2,10 @@ use pod0_application::{
     ChapterModelEpisodeInput, ChapterModelPlan, ChapterModelPlanInput, ChapterModelTranscriptInput,
     ChapterModelTranscriptSegmentInput,
 };
-use pod0_domain::{EpisodeId, StateRevision};
+use pod0_domain::{ChapterArtifactInput, ChapterArtifactSource, EpisodeId, StateRevision};
 
 use crate::Pod0Facade;
+use crate::runtime_state::FacadeState;
 
 impl Pod0Facade {
     pub(super) fn chapter_model_plan(
@@ -12,8 +13,18 @@ impl Pod0Facade {
         episode_id: EpisodeId,
         configured_model: String,
     ) -> ChapterModelPlan {
-        let state = self.state();
-        let Some(episode) = state
+        self.state()
+            .chapter_model_plan(episode_id, configured_model)
+    }
+}
+
+impl FacadeState {
+    pub(super) fn chapter_model_plan(
+        &self,
+        episode_id: EpisodeId,
+        configured_model: String,
+    ) -> ChapterModelPlan {
+        let Some(episode) = self
             .listening
             .episodes
             .iter()
@@ -21,7 +32,7 @@ impl Pod0Facade {
         else {
             return ChapterModelPlan::EpisodeUnavailable;
         };
-        let Some(transcript_store) = state.transcript_store.as_ref() else {
+        let Some(transcript_store) = self.transcript_store.as_ref() else {
             return ChapterModelPlan::CoreUnavailable;
         };
         let transcript = match transcript_store.selected_artifact(episode_id) {
@@ -29,12 +40,21 @@ impl Pod0Facade {
             Ok(None) => return ChapterModelPlan::TranscriptUnavailable,
             Err(_) => return ChapterModelPlan::CoreUnavailable,
         };
-        let selected_chapter = match state.store.as_ref() {
+        let selected_chapter = match self.store.as_ref() {
             Some(store) => match store.selected_chapter_artifact(episode_id) {
                 Ok(value) => value,
                 Err(_) => return ChapterModelPlan::CoreUnavailable,
             },
             None => return ChapterModelPlan::CoreUnavailable,
+        };
+        let publisher_base = match self.publisher_base_for_model_plan(
+            episode_id,
+            selected_chapter
+                .as_ref()
+                .map(|selection| &selection.artifact),
+        ) {
+            Ok(value) => value,
+            Err(()) => return ChapterModelPlan::CoreUnavailable,
         };
         let selected_transcript = ChapterModelTranscriptInput {
             transcript_version_id: transcript.transcript_version_id,
@@ -64,6 +84,7 @@ impl Pod0Facade {
             selected_chapter_artifact: selected_chapter
                 .as_ref()
                 .map(|selection| selection.artifact.as_input()),
+            publisher_base_artifact: publisher_base,
             expected_chapter_selection_revision: selected_chapter
                 .as_ref()
                 .map_or(StateRevision::INITIAL, |selection| {
@@ -71,5 +92,36 @@ impl Pod0Facade {
                 }),
             configured_model,
         })
+    }
+
+    fn publisher_base_for_model_plan(
+        &self,
+        episode_id: EpisodeId,
+        selected: Option<&pod0_domain::ChapterArtifact>,
+    ) -> Result<Option<ChapterArtifactInput>, ()> {
+        let Some(selected) = selected else {
+            return Ok(None);
+        };
+        match selected.provenance.source {
+            ChapterArtifactSource::Publisher => Ok(Some(selected.as_input())),
+            ChapterArtifactSource::PublisherEnriched => {
+                let store = self.store.as_ref().ok_or(())?;
+                let artifact_id = store
+                    .publisher_chapter_workflow(episode_id)
+                    .map_err(|_| ())?
+                    .and_then(|record| record.selected_artifact_id)
+                    .ok_or(())?;
+                let artifact = store
+                    .chapter_artifact(artifact_id)
+                    .map_err(|_| ())?
+                    .ok_or(())?;
+                (artifact.provenance.source == ChapterArtifactSource::Publisher
+                    && artifact.episode_id == episode_id)
+                    .then(|| artifact.as_input())
+                    .ok_or(())
+                    .map(Some)
+            }
+            _ => Ok(None),
+        }
     }
 }
