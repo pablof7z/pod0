@@ -172,7 +172,8 @@ final class AppStateStore {
         let feedHost: any CoreFeedHosting = sharedFeedHost ?? CoreFeedHost()
         switch SharedLibraryBootstrap.run(
             persistence: persistence,
-            feedHost: feedHost
+            feedHost: feedHost,
+            chapterCompilationModel: loadedState.settings.chapterCompilationModel
         ) {
         case .ready(let client):
             sharedLibrary = client

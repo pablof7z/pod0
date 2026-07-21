@@ -2,6 +2,36 @@ import Foundation
 import Pod0Core
 
 extension SharedLibraryClient {
+    func ensureModelChapters(
+        transcripts: some Sequence<TranscriptWorkflowSnapshot>,
+        configuredModel: String
+    ) {
+        var announced = false
+        for transcript in transcripts {
+            let opportunityVersion = ArtifactRepository.version(parts: [
+                transcript.contentDigest,
+                configuredModel,
+            ])
+            guard announcedModelChapterVersions[transcript.episodeID] != opportunityVersion else {
+                continue
+            }
+            announcedModelChapterVersions[transcript.episodeID] = opportunityVersion
+            facade.dispatch(command: CommandEnvelope(
+                commandId: CommandId(uuid: UUID()),
+                cancellationId: CancellationId(uuid: UUID()),
+                expectedRevision: nil,
+                command: .ensureModelChapters(
+                    episodeId: EpisodeId(uuid: transcript.episodeID),
+                    configuredModel: configuredModel
+                )
+            ))
+            announced = true
+        }
+        guard announced else { return }
+        workflowClient?.refresh(immediately: true)
+        dispatcher.executePendingRequests(from: facade)
+    }
+
     func performModelChapterAction(
         _ action: WorkflowJobAction,
         on projection: WorkflowJobProjection
@@ -40,12 +70,6 @@ extension SharedLibraryClient {
         workflowClient?.refresh(immediately: true)
         dispatcher.executePendingRequests(from: facade)
         return .accepted(action)
-    }
-
-    nonisolated func modelChapterWorkflowSnapshots(
-        episodeIDs: some Sequence<UUID>
-    ) -> [ModelChapterWorkflowProjection] {
-        episodeIDs.compactMap(modelChapterWorkflow(episodeID:))
     }
 
     nonisolated fileprivate func modelChapterWorkflow(

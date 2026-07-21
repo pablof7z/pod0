@@ -67,7 +67,27 @@
         "App/Sources/Core/ChapterModelTransport.swift",
         "App/Sources/Core/SharedChapterReader.swift",
         "App/Sources/Core/SharedLibraryClient+Chapters.swift",
-        "App/Sources/Core/SharedLibraryClient+ChapterScopes.swift"
+        "App/Sources/Core/SharedLibraryClient+ChapterScopes.swift",
+        "App/Sources/Core/LegacyModelChapterWorkflowBackup.swift",
+        "App/Sources/Core/LegacyModelChapterWorkflowCutover.swift",
+        "App/Sources/Core/LegacyModelChapterWorkflowSnapshot.swift"
+      ]
+    },
+    {
+      "id": "temporary-model-chapter-workflow-cutover",
+      "classification": "temporary_swift",
+      "current_owner": "Swift one-shot legacy workflow reader and rollback-manifest publisher",
+      "target_owner": "Deleted after the issue #111 rollback support window closes",
+      "reason": "The Rust workflow cutover must safely classify and preserve legacy Swift job rows before Rust becomes authoritative, but this compatibility path is not product behavior and must not become a second source of truth.",
+      "boundary": "Read legacy model-chapter jobs once, stage current reconstructable semantic candidates in Rust, durably publish and verify an immutable content-qualified full-row backup, atomically compare-and-delete the exact Swift rows, then commit Rust authority without executing or mutating legacy workflow policy.",
+      "persisted_state": "A versioned integrity-checked rollback manifest containing the exact legacy rows; Rust remains the only authoritative workflow writer after cutover.",
+      "migration_issues": [110, 111],
+      "deletion_target": "Issue #111 removes the importer, snapshot classifier, and retained manifests after rollback/export support is verified and the compatibility window closes.",
+      "priority": "highest",
+      "includes": [
+        "App/Sources/Core/LegacyModelChapterWorkflowBackup.swift",
+        "App/Sources/Core/LegacyModelChapterWorkflowCutover.swift",
+        "App/Sources/Core/LegacyModelChapterWorkflowSnapshot.swift"
       ]
     },
     {
@@ -87,13 +107,13 @@
     {
       "id": "temporary-chapter-observation-orchestration",
       "classification": "temporary_swift",
-      "current_owner": "Swift transient in-flight task shell and raw observation mapping",
-      "target_owner": "Pod0 Rust workflow/application layer issuing typed native host requests",
-      "reason": "Publisher acquisition moved to Rust in issue #109; issue #110 moves the remaining generated/enriched model workflow without activating a second durable writer.",
-      "boundary": "Execute the exact core-planned request, map raw native results into typed observations, call Rust qualification, and retain only bounded in-memory task identities.",
+      "current_owner": "Swift transient agent-composition task shell and raw observation mapping",
+      "target_owner": "Pod0 Rust agent workflow/application layer issuing typed native host requests",
+      "reason": "Issue #110 deleted the model branch after its Rust workflow activated; only agent-composed chapter observations remain temporarily outside a Rust-issued host request.",
+      "boundary": "Map a bounded agent composition into a typed observation, call Rust qualification, and retain only bounded in-memory task identities.",
       "persisted_state": "None; no files, database rows, retry counters, selected artifacts, or canonical mirrors.",
-      "migration_issues": [110],
-      "deletion_target": "Issue #110 deletes the remaining Swift model/agent request orchestration after Rust emits equivalent typed host requests; retain only primitive model capability execution.",
+      "migration_issues": [111],
+      "deletion_target": "Issue #111 replaces the remaining agent composition shell with a Rust-issued agent workflow request; primitive platform capabilities remain native.",
       "priority": "high",
       "includes": [
         "App/Sources/Core/ChapterObservationCapability.swift",
@@ -199,11 +219,11 @@
     {
       "id": "shared-durable-workflows",
       "classification": "shared_rust_now",
-      "current_owner": "Rust owns publisher chapter workflow intent/lifecycle; Swift still owns unmigrated workflow kinds, job rows, and artifact receipts",
+      "current_owner": "Rust owns publisher and model chapter workflow intent/lifecycle; Swift still owns unmigrated workflow kinds, job rows, and artifact receipts",
       "target_owner": "Pod0 Rust workflow/application layer",
       "reason": "Desired state, leases, fencing, retry, recovery, and artifact adoption are durable cross-platform decisions.",
       "boundary": "Native executes BGTask, URLSession, notification, and platform provider capabilities.",
-      "persisted_state": "Rust publisher workflow rows plus versioned Swift workflow/artifact tables and staged files for unmigrated kinds; no publisher row remains in Swift.",
+      "persisted_state": "Rust publisher/model chapter workflow rows plus versioned Swift workflow/artifact tables and staged files for unmigrated kinds; no chapter workflow row remains in Swift.",
       "migration_issues": [48, 51, 52, 60, 100, 107, 109, 110, 111],
       "deletion_target": "Delete each Swift workflow-kind owner after drain/import/cutover and recovery proof.",
       "priority": "high",
@@ -232,7 +252,7 @@
       "boundary": "Provider/native capabilities return raw typed payloads; Rust normalizes and versions artifacts.",
       "persisted_state": "Rust SQLite owns canonical transcript and chapter/ad immutable history, selections, command receipts, and authority state. Legacy Swift values are decode-only migration evidence.",
       "migration_issues": [59, 69, 94, 95, 96, 97, 98, 99, 101, 102, 103, 104, 112],
-      "deletion_target": "Completed by #112: Swift chapter prompt, model-selection, mode-selection, and input-version policy were deleted. Issue #110 deletes the remaining transient Swift workflow orchestration; retain only primitive provider execution and bounded native presentation adapters.",
+      "deletion_target": "Completed by #110/#112: Swift chapter prompt, model-selection, mode-selection, input-version policy, durable workflow writer, and obsolete model adapter path were deleted. Retain only primitive provider execution and bounded native presentation adapters.",
       "priority": "high",
       "includes": ["App/Sources/Transcript/Transcript.swift", "App/Sources/Transcript/Parsing/"]
     },

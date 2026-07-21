@@ -24,9 +24,6 @@ struct Reconciler {
             settings: appStore.state.settings,
             artifacts: try artifacts.all(),
             transcripts: transcriptSnapshots(),
-            chapters: chapterSnapshots(),
-            publisherChapterWorkflows: publisherChapterWorkflowSnapshots(),
-            chapterCompletions: try chapterCompletions(),
             transcriptDesiredEpisodeIDs: try transcriptDesiredIDs(),
             scheduledTasks: appStore.scheduledTasks,
             now: now()
@@ -176,43 +173,6 @@ struct Reconciler {
         ) ?? []
     }
 
-    private func chapterSnapshots() -> [ChapterWorkflowSnapshot] {
-        appStore.sharedLibrary?.chapterWorkflowSnapshots(
-            episodeIDs: appStore.state.episodes.map(\.id)
-        ) ?? []
-    }
-
-    private func publisherChapterWorkflowSnapshots()
-        -> [PublisherChapterWorkflowProjection] {
-        appStore.sharedLibrary?.publisherChapterWorkflowSnapshots(
-            episodeIDs: appStore.state.episodes.map(\.id)
-        ) ?? []
-    }
-
-    private func chapterCompletions() throws -> [ChapterWorkflowCompletion] {
-        guard let sharedLibrary = appStore.sharedLibrary else { return [] }
-        return try jobStore.allJobs().compactMap { job in
-            guard job.state == .succeeded,
-                  job.kind == .chapterArtifacts,
-                  let output = job.outputVersion,
-                  let data = Data(base64Encoded: output),
-                  let receipt = try? Self.decoder.decode(
-                    SharedChapterWorkflowReceipt.self,
-                    from: data
-                  ),
-                  receipt.episodeID == job.subjectID,
-                  receipt.inputVersion == job.inputVersion,
-                  sharedLibrary.verifyChapterWorkflowReceipt(receipt)
-            else { return nil }
-            return ChapterWorkflowCompletion(
-                episodeID: receipt.episodeID,
-                kind: job.kind,
-                inputVersion: receipt.inputVersion,
-                artifactID: receipt.artifactID
-            )
-        }
-    }
-
     private func prerequisitesAreAvailable(for job: WorkJob) -> Bool {
         switch job.kind {
         case .transcriptIngest:
@@ -234,14 +194,7 @@ struct Reconciler {
             let model = LLMModelReference(storedID: appStore.state.settings.embeddingsModel)
             return LLMProviderCredentialResolver.hasAPIKey(for: model.provider)
         case .chapterArtifacts:
-            guard let sharedLibrary = appStore.sharedLibrary,
-                  case .ready(let request) = sharedLibrary.chapterModelPlan(
-                    episodeID: job.subjectID,
-                    configuredModel: appStore.state.settings.chapterCompilationModel
-                  ),
-                  let provider = LLMProvider(rawValue: request.provider)
-            else { return false }
-            return LLMProviderCredentialResolver.hasAPIKey(for: provider)
+            return false
         case .scheduledAgentRun:
             guard let payload = try? Self.decoder.decode(
                 ScheduledRunPayload.self, from: job.payload ?? Data()

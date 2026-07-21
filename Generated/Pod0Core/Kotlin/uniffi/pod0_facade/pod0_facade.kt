@@ -75,10 +75,12 @@ import uniffi.pod0_application.PublisherChapterObservation
 import uniffi.pod0_application.TranscriptCommitRequest
 import uniffi.pod0_application.TranscriptContractProjection
 import uniffi.pod0_application.TranscriptProjectionScope
+import uniffi.pod0_domain.ChapterArtifactId
 import uniffi.pod0_domain.ClipRecord
 import uniffi.pod0_domain.CommandId
 import uniffi.pod0_domain.ContentDigest
 import uniffi.pod0_domain.EpisodeId
+import uniffi.pod0_domain.FfiConverterTypeChapterArtifactId
 import uniffi.pod0_domain.FfiConverterTypeClipRecord
 import uniffi.pod0_domain.FfiConverterTypeCommandId
 import uniffi.pod0_domain.FfiConverterTypeContentDigest
@@ -113,6 +115,7 @@ import uniffi.pod0_application.RustBuffer as RustBufferPublisherChapterObservati
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptCommitRequest
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptContractProjection
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptProjectionScope
+import uniffi.pod0_domain.RustBuffer as RustBufferChapterArtifactId
 import uniffi.pod0_domain.RustBuffer as RustBufferClipRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferCommandId
 import uniffi.pod0_domain.RustBuffer as RustBufferContentDigest
@@ -863,6 +866,14 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_method_projectionsubscriber_receive(
     ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_model_chapter_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_model_chapter_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_model_chapter_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_model_chapter_cutover(
+    ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_dispatch(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_next_host_cancellations(
@@ -920,6 +931,14 @@ internal object UniffiLib {
     ): Long
     external fun uniffi_pod0_facade_fn_constructor_pod0facade_open(`storePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): Long
+    external fun uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_model_chapter_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_model_chapter_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_model_chapter_cutover(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_model_chapter_cutover(`ptr`: Long,`sourceGeneration`: Long,`configuredModel`: RustBuffer.ByValue,`candidates`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_dispatch(`ptr`: Long,`command`: RustBufferCommandEnvelope.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): Unit
     external fun uniffi_pod0_facade_fn_method_pod0facade_next_host_cancellations(`ptr`: Long,`maximumCount`: Short,uniffi_out_err: UniffiRustCallStatus,
@@ -1246,6 +1265,18 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_projectionsubscriber_receive() != 23861) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_model_chapter_cutover() != 7355) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_model_chapter_cutover() != 4141) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_model_chapter_cutover() != 31686) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_model_chapter_cutover() != 14862) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_dispatch() != 36474) {
@@ -1740,6 +1771,14 @@ public object FfiConverterString: FfiConverter<String, RustBuffer.ByValue> {
 
 public interface Pod0FacadeInterface {
 
+    fun `commitLegacyModelChapterCutover`(`sourceGeneration`: kotlin.ULong): LegacyModelChapterCutoverProjection
+
+    fun `discardStagedLegacyModelChapterCutover`(`sourceGeneration`: kotlin.ULong): LegacyModelChapterCutoverProjection
+
+    fun `modelChapterCutover`(): LegacyModelChapterCutoverProjection
+
+    fun `stageLegacyModelChapterCutover`(`sourceGeneration`: kotlin.ULong, `configuredModel`: kotlin.String, `candidates`: List<LegacyModelChapterCutoverCandidate>): LegacyModelChapterCutoverProjection
+
     fun `dispatch`(`command`: CommandEnvelope)
 
     fun `nextHostCancellations`(`maximumCount`: kotlin.UShort): List<HostCancellationRequest>
@@ -1871,6 +1910,63 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
             UniffiLib.uniffi_pod0_facade_fn_clone_pod0facade(handle, status)
         }
     }
+
+    override fun `commitLegacyModelChapterCutover`(`sourceGeneration`: kotlin.ULong): LegacyModelChapterCutoverProjection {
+            return FfiConverterTypeLegacyModelChapterCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_model_chapter_cutover(
+        it,
+
+        FfiConverterULong.lower(`sourceGeneration`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `discardStagedLegacyModelChapterCutover`(`sourceGeneration`: kotlin.ULong): LegacyModelChapterCutoverProjection {
+            return FfiConverterTypeLegacyModelChapterCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_model_chapter_cutover(
+        it,
+
+        FfiConverterULong.lower(`sourceGeneration`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `modelChapterCutover`(): LegacyModelChapterCutoverProjection {
+            return FfiConverterTypeLegacyModelChapterCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_model_chapter_cutover(
+        it,
+        _status)
+}
+    }
+    )
+    }
+
+
+    override fun `stageLegacyModelChapterCutover`(`sourceGeneration`: kotlin.ULong, `configuredModel`: kotlin.String, `candidates`: List<LegacyModelChapterCutoverCandidate>): LegacyModelChapterCutoverProjection {
+            return FfiConverterTypeLegacyModelChapterCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_model_chapter_cutover(
+        it,
+
+        FfiConverterULong.lower(`sourceGeneration`),
+        FfiConverterString.lower(`configuredModel`),
+        FfiConverterSequenceTypeLegacyModelChapterCutoverCandidate.lower(`candidates`),_status)
+}
+    }
+    )
+    }
+
 
     override fun `dispatch`(`command`: CommandEnvelope)
         =
@@ -3183,6 +3279,140 @@ public object FfiConverterTypeLegacyListeningImportVerification: FfiConverterRus
 
 
 
+data class LegacyModelChapterCutoverCandidate (
+    val `episodeId`: EpisodeId
+    ,
+    val `inputVersion`: kotlin.String
+    ,
+    val `disposition`: LegacyModelChapterCutoverDisposition
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyModelChapterCutoverCandidate: FfiConverterRustBuffer<LegacyModelChapterCutoverCandidate> {
+    override fun read(buf: ByteBuffer): LegacyModelChapterCutoverCandidate {
+        return LegacyModelChapterCutoverCandidate(
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeLegacyModelChapterCutoverDisposition.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyModelChapterCutoverCandidate) = (
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterString.allocationSize(value.`inputVersion`) +
+            FfiConverterTypeLegacyModelChapterCutoverDisposition.allocationSize(value.`disposition`)
+    )
+
+    override fun write(value: LegacyModelChapterCutoverCandidate, buf: ByteBuffer) {
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterString.write(value.`inputVersion`, buf)
+            FfiConverterTypeLegacyModelChapterCutoverDisposition.write(value.`disposition`, buf)
+    }
+}
+
+
+
+data class LegacyModelChapterCutoverFailure (
+    val `code`: LegacyModelChapterCutoverFailureCode
+    ,
+    val `diagnosticCode`: kotlin.String
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyModelChapterCutoverFailure: FfiConverterRustBuffer<LegacyModelChapterCutoverFailure> {
+    override fun read(buf: ByteBuffer): LegacyModelChapterCutoverFailure {
+        return LegacyModelChapterCutoverFailure(
+            FfiConverterTypeLegacyModelChapterCutoverFailureCode.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyModelChapterCutoverFailure) = (
+            FfiConverterTypeLegacyModelChapterCutoverFailureCode.allocationSize(value.`code`) +
+            FfiConverterString.allocationSize(value.`diagnosticCode`)
+    )
+
+    override fun write(value: LegacyModelChapterCutoverFailure, buf: ByteBuffer) {
+            FfiConverterTypeLegacyModelChapterCutoverFailureCode.write(value.`code`, buf)
+            FfiConverterString.write(value.`diagnosticCode`, buf)
+    }
+}
+
+
+
+data class LegacyModelChapterCutoverProjection (
+    val `stage`: LegacyModelChapterCutoverStage
+    ,
+    val `sourceGeneration`: kotlin.ULong?
+    ,
+    val `adoptedSucceeded`: kotlin.UInt
+    ,
+    val `adoptedAmbiguous`: kotlin.UInt
+    ,
+    val `failure`: LegacyModelChapterCutoverFailure?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyModelChapterCutoverProjection: FfiConverterRustBuffer<LegacyModelChapterCutoverProjection> {
+    override fun read(buf: ByteBuffer): LegacyModelChapterCutoverProjection {
+        return LegacyModelChapterCutoverProjection(
+            FfiConverterTypeLegacyModelChapterCutoverStage.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterOptionalTypeLegacyModelChapterCutoverFailure.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyModelChapterCutoverProjection) = (
+            FfiConverterTypeLegacyModelChapterCutoverStage.allocationSize(value.`stage`) +
+            FfiConverterOptionalULong.allocationSize(value.`sourceGeneration`) +
+            FfiConverterUInt.allocationSize(value.`adoptedSucceeded`) +
+            FfiConverterUInt.allocationSize(value.`adoptedAmbiguous`) +
+            FfiConverterOptionalTypeLegacyModelChapterCutoverFailure.allocationSize(value.`failure`)
+    )
+
+    override fun write(value: LegacyModelChapterCutoverProjection, buf: ByteBuffer) {
+            FfiConverterTypeLegacyModelChapterCutoverStage.write(value.`stage`, buf)
+            FfiConverterOptionalULong.write(value.`sourceGeneration`, buf)
+            FfiConverterUInt.write(value.`adoptedSucceeded`, buf)
+            FfiConverterUInt.write(value.`adoptedAmbiguous`, buf)
+            FfiConverterOptionalTypeLegacyModelChapterCutoverFailure.write(value.`failure`, buf)
+    }
+}
+
+
+
 data class LegacyNoteBackupEvidence (
     val `sourceKind`: LegacyListeningSourceKind
     ,
@@ -4321,6 +4551,254 @@ public object FfiConverterTypeLegacyListeningSourceKind: FfiConverterRustBuffer<
 
 
 
+sealed class LegacyModelChapterCutoverDisposition {
+
+    data class Succeeded(
+        val `artifactId`: uniffi.pod0_domain.ChapterArtifactId,
+        val `contentDigest`: uniffi.pod0_domain.ContentDigest,
+        val `integrityDigest`: uniffi.pod0_domain.ContentDigest,
+        val `selectionRevision`: uniffi.pod0_domain.StateRevision) : LegacyModelChapterCutoverDisposition()
+
+    {
+
+
+        companion object
+    }
+
+    object Ambiguous : LegacyModelChapterCutoverDisposition()
+
+
+    data class Blocked(
+        val `failureCode`: kotlin.String,
+        val `failureDetail`: kotlin.String?,
+        val `mayHaveSubmitted`: kotlin.Boolean) : LegacyModelChapterCutoverDisposition()
+
+    {
+
+
+        companion object
+    }
+
+    data class Failed(
+        val `failureCode`: kotlin.String,
+        val `failureDetail`: kotlin.String?,
+        val `mayHaveSubmitted`: kotlin.Boolean) : LegacyModelChapterCutoverDisposition()
+
+    {
+
+
+        companion object
+    }
+
+    data class Cancelled(
+        val `mayHaveSubmitted`: kotlin.Boolean) : LegacyModelChapterCutoverDisposition()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyModelChapterCutoverDisposition : FfiConverterRustBuffer<LegacyModelChapterCutoverDisposition>{
+    override fun read(buf: ByteBuffer): LegacyModelChapterCutoverDisposition {
+        return when(buf.getInt()) {
+            1 -> LegacyModelChapterCutoverDisposition.Succeeded(
+                FfiConverterTypeChapterArtifactId.read(buf),
+                FfiConverterTypeContentDigest.read(buf),
+                FfiConverterTypeContentDigest.read(buf),
+                FfiConverterTypeStateRevision.read(buf),
+                )
+            2 -> LegacyModelChapterCutoverDisposition.Ambiguous
+            3 -> LegacyModelChapterCutoverDisposition.Blocked(
+                FfiConverterString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            4 -> LegacyModelChapterCutoverDisposition.Failed(
+                FfiConverterString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            5 -> LegacyModelChapterCutoverDisposition.Cancelled(
+                FfiConverterBoolean.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: LegacyModelChapterCutoverDisposition): ULong = when(value) {
+        is LegacyModelChapterCutoverDisposition.Succeeded -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeChapterArtifactId.allocationSize(value.`artifactId`)
+                + FfiConverterTypeContentDigest.allocationSize(value.`contentDigest`)
+                + FfiConverterTypeContentDigest.allocationSize(value.`integrityDigest`)
+                + FfiConverterTypeStateRevision.allocationSize(value.`selectionRevision`)
+            )
+        }
+        is LegacyModelChapterCutoverDisposition.Ambiguous -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is LegacyModelChapterCutoverDisposition.Blocked -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`failureCode`)
+                + FfiConverterOptionalString.allocationSize(value.`failureDetail`)
+                + FfiConverterBoolean.allocationSize(value.`mayHaveSubmitted`)
+            )
+        }
+        is LegacyModelChapterCutoverDisposition.Failed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`failureCode`)
+                + FfiConverterOptionalString.allocationSize(value.`failureDetail`)
+                + FfiConverterBoolean.allocationSize(value.`mayHaveSubmitted`)
+            )
+        }
+        is LegacyModelChapterCutoverDisposition.Cancelled -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterBoolean.allocationSize(value.`mayHaveSubmitted`)
+            )
+        }
+    }
+
+    override fun write(value: LegacyModelChapterCutoverDisposition, buf: ByteBuffer) {
+        when(value) {
+            is LegacyModelChapterCutoverDisposition.Succeeded -> {
+                buf.putInt(1)
+                FfiConverterTypeChapterArtifactId.write(value.`artifactId`, buf)
+                FfiConverterTypeContentDigest.write(value.`contentDigest`, buf)
+                FfiConverterTypeContentDigest.write(value.`integrityDigest`, buf)
+                FfiConverterTypeStateRevision.write(value.`selectionRevision`, buf)
+                Unit
+            }
+            is LegacyModelChapterCutoverDisposition.Ambiguous -> {
+                buf.putInt(2)
+                Unit
+            }
+            is LegacyModelChapterCutoverDisposition.Blocked -> {
+                buf.putInt(3)
+                FfiConverterString.write(value.`failureCode`, buf)
+                FfiConverterOptionalString.write(value.`failureDetail`, buf)
+                FfiConverterBoolean.write(value.`mayHaveSubmitted`, buf)
+                Unit
+            }
+            is LegacyModelChapterCutoverDisposition.Failed -> {
+                buf.putInt(4)
+                FfiConverterString.write(value.`failureCode`, buf)
+                FfiConverterOptionalString.write(value.`failureDetail`, buf)
+                FfiConverterBoolean.write(value.`mayHaveSubmitted`, buf)
+                Unit
+            }
+            is LegacyModelChapterCutoverDisposition.Cancelled -> {
+                buf.putInt(5)
+                FfiConverterBoolean.write(value.`mayHaveSubmitted`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+
+enum class LegacyModelChapterCutoverFailureCode {
+
+    INVALID_SOURCE,
+    CONFLICTING_CORE_STATE,
+    STORAGE_UNAVAILABLE;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyModelChapterCutoverFailureCode: FfiConverterRustBuffer<LegacyModelChapterCutoverFailureCode> {
+    override fun read(buf: ByteBuffer) = try {
+
+        LegacyModelChapterCutoverFailureCode.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: LegacyModelChapterCutoverFailureCode) = 4UL
+
+    override fun write(value: LegacyModelChapterCutoverFailureCode, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+enum class LegacyModelChapterCutoverStage {
+
+    NOT_STARTED,
+    STAGED,
+    AUTHORITATIVE,
+    BLOCKED;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyModelChapterCutoverStage: FfiConverterRustBuffer<LegacyModelChapterCutoverStage> {
+    override fun read(buf: ByteBuffer) = try {
+
+        LegacyModelChapterCutoverStage.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: LegacyModelChapterCutoverStage) = 4UL
+
+    override fun write(value: LegacyModelChapterCutoverStage, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 
 
 sealed class LegacyNoteMigrationException: kotlin.Exception() {
@@ -4737,6 +5215,38 @@ public object FfiConverterTypeLegacyTranscriptSourceKind: FfiConverterRustBuffer
 /**
  * @suppress
  */
+public object FfiConverterOptionalULong: FfiConverterRustBuffer<kotlin.ULong?> {
+    override fun read(buf: ByteBuffer): kotlin.ULong? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterULong.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.ULong?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterULong.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.ULong?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterULong.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?> {
     override fun read(buf: ByteBuffer): kotlin.String? {
         if (buf.get().toInt() == 0) {
@@ -4929,6 +5439,38 @@ public object FfiConverterOptionalTypeLegacyChapterRollbackExportReport: FfiConv
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeLegacyModelChapterCutoverFailure: FfiConverterRustBuffer<LegacyModelChapterCutoverFailure?> {
+    override fun read(buf: ByteBuffer): LegacyModelChapterCutoverFailure? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeLegacyModelChapterCutoverFailure.read(buf)
+    }
+
+    override fun allocationSize(value: LegacyModelChapterCutoverFailure?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeLegacyModelChapterCutoverFailure.allocationSize(value)
+        }
+    }
+
+    override fun write(value: LegacyModelChapterCutoverFailure?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeLegacyModelChapterCutoverFailure.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeLegacyTranscriptImportReport: FfiConverterRustBuffer<LegacyTranscriptImportReport?> {
     override fun read(buf: ByteBuffer): LegacyTranscriptImportReport? {
         if (buf.get().toInt() == 0) {
@@ -5094,6 +5636,36 @@ public object FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer<List<No
         }
     }
 }
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeLegacyModelChapterCutoverCandidate: FfiConverterRustBuffer<List<LegacyModelChapterCutoverCandidate>> {
+    override fun read(buf: ByteBuffer): List<LegacyModelChapterCutoverCandidate> {
+        val len = buf.getInt()
+        return List<LegacyModelChapterCutoverCandidate>(len) {
+            FfiConverterTypeLegacyModelChapterCutoverCandidate.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<LegacyModelChapterCutoverCandidate>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeLegacyModelChapterCutoverCandidate.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<LegacyModelChapterCutoverCandidate>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeLegacyModelChapterCutoverCandidate.write(it, buf)
+        }
+    }
+}
+
+
 
 
 

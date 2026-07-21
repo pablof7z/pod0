@@ -16,12 +16,6 @@ struct ChapterModelTransportResponse: Equatable, Sendable {
     let usage: ChapterModelUsage?
 }
 
-protocol ChapterModelTransporting: Sendable {
-    func execute(
-        _ request: ModelChapterCapabilityRequest
-    ) async -> Result<ChapterModelTransportResponse, ChapterCapabilityFailure>
-}
-
 protocol CoreChapterModelTransporting: Sendable {
     func execute(
         _ request: ChapterModelExecutionRequest
@@ -30,7 +24,7 @@ protocol CoreChapterModelTransporting: Sendable {
 
 /// Credential-backed provider executor. It decodes only the provider envelope;
 /// chapter JSON remains opaque until Rust qualification.
-struct LiveChapterModelTransport: ChapterModelTransporting, CoreChapterModelTransporting, Sendable {
+struct LiveChapterModelTransport: CoreChapterModelTransporting, Sendable {
     typealias CredentialResolver = @Sendable (LLMProvider) throws -> String?
 
     private let session: URLSession
@@ -53,19 +47,6 @@ struct LiveChapterModelTransport: ChapterModelTransporting, CoreChapterModelTran
         self.ollamaEndpoint = ollamaEndpoint
         self.credentialResolver = credentialResolver
         self.now = now
-    }
-
-    func execute(
-        _ request: ModelChapterCapabilityRequest
-    ) async -> Result<ChapterModelTransportResponse, ChapterCapabilityFailure> {
-        await execute(ChapterModelExecutionRequest(
-            provider: request.planned.provider,
-            model: request.planned.model,
-            systemPrompt: request.planned.systemPrompt,
-            userPrompt: request.planned.userPrompt,
-            responseFormat: request.planned.responseFormat,
-            maximumCompletionBytes: request.planned.maximumCompletionBytes
-        ))
     }
 
     func execute(

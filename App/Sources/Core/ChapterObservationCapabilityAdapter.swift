@@ -1,8 +1,8 @@
 import Foundation
 import Pod0Core
 
-/// Temporary #110 model/agent shell. It owns only in-flight task handles;
-/// Rust qualifies every successful observation and remains the durable owner.
+/// Temporary agent shell. It owns only in-flight task handles; Rust qualifies
+/// every successful observation and remains the durable owner.
 @MainActor
 final class ChapterObservationCapabilityAdapter {
     typealias Delivery = @MainActor (ChapterCapabilityResponse) -> Void
@@ -13,17 +13,14 @@ final class ChapterObservationCapabilityAdapter {
         let delivery: Delivery
     }
 
-    private let modelTransport: any ChapterModelTransporting
     private let qualifier: any ChapterObservationQualifying
     private var activeTasks: [HostRequestId: ActiveTask] = [:]
     private var completedRequestIDs: Set<HostRequestId> = []
     private var completionOrder: [HostRequestId] = []
 
     init(
-        modelTransport: any ChapterModelTransporting = LiveChapterModelTransport(),
         qualifier: any ChapterObservationQualifying = RustChapterObservationQualifier()
     ) {
-        self.modelTransport = modelTransport
         self.qualifier = qualifier
     }
 
@@ -43,7 +40,7 @@ final class ChapterObservationCapabilityAdapter {
 
         let task = Task { @MainActor [weak self] in
             guard let self else { return }
-            let outcome = await perform(envelope.request, limits: limits)
+            let outcome = await perform(envelope.request)
             guard activeTasks.removeValue(forKey: envelope.requestID) != nil else { return }
             finish(envelope, outcome: outcome, delivery: delivery)
         }
@@ -100,32 +97,11 @@ final class ChapterObservationCapabilityAdapter {
         }
     }
 
-    private func perform(
-        _ request: ChapterCapabilityRequest,
-        limits: ChapterObservationLimits
-    ) async -> ChapterCapabilityOutcome {
+    private func perform(_ request: ChapterCapabilityRequest) async -> ChapterCapabilityOutcome {
         if Task.isCancelled { return .failed(.cancelled) }
         switch request {
-        case .model(let value):
-            return await performModel(value, limits: limits)
         case .agent(let value):
             return performAgent(value)
-        }
-    }
-
-    private func performModel(
-        _ request: ModelChapterCapabilityRequest,
-        limits: ChapterObservationLimits
-    ) async -> ChapterCapabilityOutcome {
-        let result = await modelTransport.execute(
-            request
-        )
-        if Task.isCancelled { return .failed(.cancelled) }
-        switch result {
-        case .failure(let failure):
-            return .failed(failure)
-        case .success(let response):
-            return qualifyModel(response, request: request, limits: limits)
         }
     }
 

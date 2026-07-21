@@ -1,5 +1,4 @@
 import Foundation
-import Pod0Core
 
 struct DesiredStatePlanner: Sendable {
     struct Input: Sendable {
@@ -7,9 +6,6 @@ struct DesiredStatePlanner: Sendable {
         let settings: Settings
         let artifacts: [ArtifactRecord]
         let transcripts: [TranscriptWorkflowSnapshot]
-        let chapters: [ChapterWorkflowSnapshot]
-        let publisherChapterWorkflows: [PublisherChapterWorkflowProjection]
-        let chapterCompletions: [ChapterWorkflowCompletion]
         let transcriptDesiredEpisodeIDs: Set<UUID>
         let scheduledTasks: [AgentScheduledTask]
         let now: Date
@@ -19,9 +15,6 @@ struct DesiredStatePlanner: Sendable {
             settings: Settings,
             artifacts: [ArtifactRecord],
             transcripts: [TranscriptWorkflowSnapshot],
-            chapters: [ChapterWorkflowSnapshot] = [],
-            publisherChapterWorkflows: [PublisherChapterWorkflowProjection] = [],
-            chapterCompletions: [ChapterWorkflowCompletion] = [],
             transcriptDesiredEpisodeIDs: Set<UUID>,
             scheduledTasks: [AgentScheduledTask],
             now: Date
@@ -30,9 +23,6 @@ struct DesiredStatePlanner: Sendable {
             self.settings = settings
             self.artifacts = artifacts
             self.transcripts = transcripts
-            self.chapters = chapters
-            self.publisherChapterWorkflows = publisherChapterWorkflows
-            self.chapterCompletions = chapterCompletions
             self.transcriptDesiredEpisodeIDs = transcriptDesiredEpisodeIDs
             self.scheduledTasks = scheduledTasks
             self.now = now
@@ -46,18 +36,6 @@ struct DesiredStatePlanner: Sendable {
         )
         let transcripts = Dictionary(
             uniqueKeysWithValues: input.transcripts.map { ($0.episodeID, $0) }
-        )
-        let chapters = Dictionary(
-            uniqueKeysWithValues: input.chapters.map { ($0.episodeID, $0) }
-        )
-        let publisherChapterWorkflows = Dictionary(uniqueKeysWithValues:
-            input.publisherChapterWorkflows.compactMap { workflow in
-                workflow.episodeId.uuid.map { ($0, workflow) }
-            }
-        )
-        let chapterCompletions = Dictionary(
-            grouping: input.chapterCompletions,
-            by: \.episodeID
         )
         var jobs: [DesiredJob] = []
         for episode in input.episodes {
@@ -85,13 +63,6 @@ struct DesiredStatePlanner: Sendable {
                 ))
             }
 
-            let chapter = chapters[episode.id]
-            let completions = chapterCompletions[episode.id] ?? []
-            let publisherReady = episode.chaptersURL == nil
-                || Self.hasSucceededPublisherWorkflow(
-                    workflow: publisherChapterWorkflows[episode.id]
-                )
-
             guard let transcript, transcript.sourceRevision == audioVersion else { continue }
             let indexVersion = Self.transcriptIndexInputVersion(
                 transcript,
@@ -109,29 +80,6 @@ struct DesiredStatePlanner: Sendable {
                 ))
             }
 
-            guard publisherReady,
-                  let transcriptDigest = ContentDigest(hexadecimal: transcript.contentDigest)
-            else { continue }
-            let modelPlan = planChapterModelDesiredState(input: .init(
-                transcriptContentDigest: transcriptDigest,
-                configuredModel: input.settings.chapterCompilationModel,
-                selectedChapterSource: chapter?.provenance.source
-            ))
-            guard case .compile(let compilerVersion) = modelPlan else { continue }
-            if !Self.hasCurrentCompiledChapters(
-                chapter,
-                completions: completions,
-                inputVersion: compilerVersion
-            ) {
-                jobs.append(DesiredJob(
-                    idempotencyKey: "compile:\(episode.id):\(compilerVersion)",
-                    kind: .chapterArtifacts,
-                    subjectID: episode.id,
-                    inputVersion: compilerVersion,
-                    priority: 30,
-                    resourceClass: .utilityLLM
-                ))
-            }
         }
 
         for task in input.scheduledTasks where task.nextRunAt <= input.now {
@@ -168,26 +116,6 @@ struct DesiredStatePlanner: Sendable {
 
     static func scheduledOccurrenceID(taskID: UUID, scheduledFor: Date) -> String {
         "scheduled:\(taskID.uuidString):\(Int(scheduledFor.timeIntervalSince1970))"
-    }
-
-    private static func hasSucceededPublisherWorkflow(
-        workflow: PublisherChapterWorkflowProjection?
-    ) -> Bool {
-        workflow?.stage == .succeeded
-            && workflow?.selectedArtifactId != nil
-    }
-
-    private static func hasCurrentCompiledChapters(
-        _ chapter: ChapterWorkflowSnapshot?,
-        completions: [ChapterWorkflowCompletion],
-        inputVersion: String
-    ) -> Bool {
-        guard let chapter else { return false }
-        return completions.contains {
-            $0.kind == .chapterArtifacts
-                && $0.inputVersion == inputVersion
-                && $0.artifactID == chapter.artifactID
-        }
     }
 
     private static func transcriptProviderVersion(_ provider: STTProvider, settings: Settings) -> String {

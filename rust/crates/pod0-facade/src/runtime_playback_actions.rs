@@ -21,6 +21,7 @@ impl FacadeState {
                 episode_id: Some(episode_id),
             },
         ) {
+            self.playback.completion_checkpoint_fence_episode_id = None;
             self.playback.desired_playing = true;
             self.playback.timer_fired = false;
             self.playback.policy_state = pod0_application::PlaybackPolicyState::AwaitingHost;
@@ -99,6 +100,7 @@ impl FacadeState {
                 episode_id: Some(episode_id),
             },
         ) {
+            self.playback.completion_checkpoint_fence_episode_id = None;
             self.playback.position_command_fence_at_ms = Some(command_at_ms);
             self.playback.last_position_commit_at_ms = Some(command_at_ms);
             self.issue_playback_request(
@@ -130,6 +132,7 @@ impl FacadeState {
             PlaybackMutation::AdvanceQueue,
             OperationResult::QueueUpdated,
         ) {
+            self.playback.completion_checkpoint_fence_episode_id = None;
             self.playback.desired_playing = self.listening.playback.active_episode_id.is_some();
             self.load_active(
                 envelope,

@@ -16,6 +16,9 @@ impl FacadeState {
         let Some(store) = self.store.clone() else {
             return Ok(());
         };
+        if !store.model_chapter_workflow_authority()?.is_authoritative() {
+            return Ok(());
+        }
         let _ = store.recover_model_chapter_workflows(u16::MAX, self.now().value)?;
         let records = store.active_model_chapter_workflows(u16::MAX)?;
         let staged = records
@@ -48,6 +51,15 @@ impl FacadeState {
 
     pub(super) fn admit_model_chapter_request(&mut self) -> Result<(), StorageError> {
         if self.pending_model_chapters.len() >= usize::from(MAX_ACTIVE_MODEL_CHAPTER_REQUESTS) {
+            return Ok(());
+        }
+        if !self
+            .store
+            .as_ref()
+            .map(|store| store.model_chapter_workflow_authority())
+            .transpose()?
+            .is_some_and(pod0_storage::ModelChapterWorkflowAuthorityState::is_authoritative)
+        {
             return Ok(());
         }
         let records = self

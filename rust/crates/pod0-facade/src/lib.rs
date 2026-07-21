@@ -17,6 +17,14 @@ mod clip_migration;
 #[cfg(test)]
 mod facade_contract_tests;
 mod listening_migration;
+mod model_chapter_cutover;
+#[cfg(test)]
+mod model_chapter_cutover_discard_tests;
+#[cfg(test)]
+mod model_chapter_cutover_success_tests;
+#[cfg(test)]
+mod model_chapter_cutover_tests;
+mod model_chapter_cutover_types;
 mod note_migration;
 mod runtime;
 mod runtime_artifact_command_fingerprint;
@@ -153,6 +161,11 @@ pub use listening_migration::{
     inspect_legacy_listening_source, prepare_shared_listening_store,
     read_staged_legacy_listening_import, shared_store_schema_version,
     stage_legacy_listening_import,
+};
+pub use model_chapter_cutover_types::{
+    LegacyModelChapterCutoverCandidate, LegacyModelChapterCutoverDisposition,
+    LegacyModelChapterCutoverFailure, LegacyModelChapterCutoverFailureCode,
+    LegacyModelChapterCutoverProjection, LegacyModelChapterCutoverStage,
 };
 pub use note_migration::{
     LegacyNoteBackupEvidence, LegacyNoteImportPlan, LegacyNoteImportReport,

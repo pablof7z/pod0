@@ -5,28 +5,8 @@ import XCTest
 
 @MainActor
 final class ChapterObservationCapabilityAdapterTests: XCTestCase {
-    func testRemainingRawKindsMatchDirectRustQualification() async {
-        let modelAdapter = adapter(
-            model: StubChapterModelTransport(result: .success(
-                ChapterCapabilityFixtures.modelResponse()
-            ))
-        )
-        let model = await response(
-            from: modelAdapter,
-            envelope: ChapterCapabilityFixtures.envelope(
-                id: 2,
-                request: .model(ChapterCapabilityFixtures.modelRequest())
-            )
-        )
-        assertDirectQualification(model)
-        guard case let .observed(.model(observation), .model(evidence), _) = model.outcome else {
-            return XCTFail("Expected model observation")
-        }
-        XCTAssertEqual(observation.completion, ChapterCapabilityFixtures.modelCompletion)
-        XCTAssertEqual(observation.model, "resolved-model-v1")
-        XCTAssertEqual(evidence.usage?.cachedTokens, 5)
-
-        let agentAdapter = adapter()
+    func testAgentObservationMatchesDirectRustQualification() async {
+        let agentAdapter = ChapterObservationCapabilityAdapter()
         let agent = await response(
             from: agentAdapter,
             envelope: ChapterCapabilityFixtures.envelope(
@@ -42,109 +22,46 @@ final class ChapterObservationCapabilityAdapterTests: XCTestCase {
         XCTAssertEqual(evidence.orderedItemCount, 2)
     }
 
-    func testUnavailableCoreAndBoundsFailBeforeCapabilityExecution() async {
+    func testUnavailableCoreAndBoundsFailBeforeCapabilityExecution() async throws {
         let unavailable = ChapterObservationCapabilityAdapter(
-            modelTransport: defaultModel,
             qualifier: UnavailableChapterObservationQualifier()
         )
         let missing = await response(
             from: unavailable,
             envelope: ChapterCapabilityFixtures.envelope(
                 id: 4,
-                request: .model(ChapterCapabilityFixtures.modelRequest())
+                request: .agent(ChapterCapabilityFixtures.agentRequest())
             )
         )
         XCTAssertEqual(missing.outcome, .failed(.coreUnavailable))
 
-        let oversizedPrompt = String(repeating: "x", count: 262_145)
+        let itemLimit = Int(try XCTUnwrap(chapterObservationLimits()).agentItems)
         let bounded = await response(
-            from: adapter(),
+            from: ChapterObservationCapabilityAdapter(),
             envelope: ChapterCapabilityFixtures.envelope(
                 id: 5,
-                request: .model(ChapterCapabilityFixtures.modelRequest(
-                    systemPrompt: oversizedPrompt,
-                    userPrompt: ""
-                ))
+                request: .agent(ChapterCapabilityFixtures.agentRequest(itemCount: itemLimit + 1))
             )
         )
         assertFailure(bounded, code: .responseTooLarge)
     }
 
-    func testOversizedModelIdentityFailsWithoutQualification() async {
-        let oversizedIdentity = await response(
-            from: adapter(model: StubChapterModelTransport(result: .success(
-                ChapterCapabilityFixtures.modelResponse(
-                    provider: String(repeating: "p", count: 129)
-                )
-            ))),
-            envelope: ChapterCapabilityFixtures.envelope(
-                id: 10,
-                request: .model(ChapterCapabilityFixtures.modelRequest())
-            )
-        )
-        assertFailure(oversizedIdentity, code: .invalidResponseMetadata)
-    }
-
-    func testCancellationDuplicateAndLateCompletionDeliverExactlyOnce() async {
-        let model = SuspendingChapterModelTransport()
-        let capability = adapter(model: model)
+    func testDuplicateRequestDeliversExactlyOnce() async {
+        let capability = ChapterObservationCapabilityAdapter()
         let envelope = ChapterCapabilityFixtures.envelope(
             id: 8,
-            request: .model(ChapterCapabilityFixtures.modelRequest())
+            request: .agent(ChapterCapabilityFixtures.agentRequest())
         )
         var delivered: [ChapterCapabilityResponse] = []
 
         capability.execute(envelope) { delivered.append($0) }
         capability.execute(envelope) { delivered.append($0) }
-        await model.waitUntilStarted()
-        capability.cancel(cancellationID: envelope.cancellationID)
-        capability.cancel(cancellationID: envelope.cancellationID)
-        await model.finish(.success(ChapterCapabilityFixtures.modelResponse()))
         await Task.yield()
 
         XCTAssertEqual(delivered.count, 1)
-        XCTAssertEqual(delivered[0].outcome, .failed(.cancelled))
-    }
-
-    func testShutdownIsIdempotentAndFreshAdapterCanReuseRequestAfterRelaunch() async {
-        let model = SuspendingChapterModelTransport()
-        let first = adapter(model: model)
-        let envelope = ChapterCapabilityFixtures.envelope(
-            id: 9,
-            request: .model(ChapterCapabilityFixtures.modelRequest())
-        )
-        var firstDelivery: [ChapterCapabilityResponse] = []
-        first.execute(envelope) { firstDelivery.append($0) }
-        await model.waitUntilStarted()
-
-        first.shutdown()
-        first.shutdown()
-        await model.finish(.success(ChapterCapabilityFixtures.modelResponse()))
-        await Task.yield()
-        XCTAssertEqual(firstDelivery.map(\.outcome), [.failed(.cancelled)])
-
-        let relaunched = adapter(model: StubChapterModelTransport(
-            result: .success(ChapterCapabilityFixtures.modelResponse())
-        ))
-        let second = await response(from: relaunched, envelope: envelope)
-        guard case .observed = second.outcome else {
-            return XCTFail("Fresh transient adapter should accept the request")
+        guard case .observed = delivered.first?.outcome else {
+            return XCTFail("Expected the first request to complete")
         }
-    }
-
-    private var defaultModel: StubChapterModelTransport {
-        StubChapterModelTransport(result: .failure(.invalidRequest("unused")))
-    }
-
-    private func adapter(
-        model: any ChapterModelTransporting = StubChapterModelTransport(
-            result: .failure(.invalidRequest("unused"))
-        )
-    ) -> ChapterObservationCapabilityAdapter {
-        ChapterObservationCapabilityAdapter(
-            modelTransport: model,
-            qualifier: RustChapterObservationQualifier()
-        )
     }
 
     private func response(

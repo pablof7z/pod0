@@ -21,6 +21,7 @@ enum SharedLibraryBootstrapStage: String {
     case chapterStaging
     case chapterVerification
     case chapterCommit
+    case modelChapterWorkflowCutover
     case facade
 }
 
@@ -30,17 +31,23 @@ enum SharedLibraryBootstrap {
     @MainActor
     static func run(
         persistence: Persistence,
-        feedHost: any CoreFeedHosting = CoreFeedHost()
+        feedHost: any CoreFeedHosting = CoreFeedHost(),
+        chapterCompilationModel: String = Settings().chapterCompilationModel
     ) -> SharedLibraryBootstrapOutcome {
         persistence.withSharedArtifactMigrationLock {
-            runLocked(persistence: persistence, feedHost: feedHost)
+            runLocked(
+                persistence: persistence,
+                feedHost: feedHost,
+                chapterCompilationModel: chapterCompilationModel
+            )
         }
     }
 
     @MainActor
     private static func runLocked(
         persistence: Persistence,
-        feedHost: any CoreFeedHosting
+        feedHost: any CoreFeedHosting,
+        chapterCompilationModel: String
     ) -> SharedLibraryBootstrapOutcome {
         let target = persistence.sharedCoreStoreURL
         var stage = SharedLibraryBootstrapStage.storePreparation
@@ -183,6 +190,13 @@ enum SharedLibraryBootstrap {
             }
             stage = .facade
             let facade = try Pod0Facade.open(storePath: target.path)
+            stage = .modelChapterWorkflowCutover
+            try LegacyModelChapterWorkflowCutover.run(
+                facade: facade,
+                jobStore: JobStore(fileURL: persistence.episodeStore.fileURL),
+                backupRoot: persistence.legacyModelChapterWorkflowBackupRootURL,
+                configuredModel: chapterCompilationModel
+            )
             let observationOutbox = try NativeHostObservationOutbox(
                 fileURL: persistence.nativeHostObservationOutboxURL
             )

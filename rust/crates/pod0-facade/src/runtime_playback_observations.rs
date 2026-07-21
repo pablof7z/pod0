@@ -45,6 +45,9 @@ impl FacadeState {
         let Some(episode_id) = active.filter(|id| value.episode_id == Some(*id)) else {
             return;
         };
+        if self.playback.completion_checkpoint_fence_episode_id == Some(episode_id) {
+            return;
+        }
         let segment_reached = pod0_domain::segment_reached(
             value.position_milliseconds,
             self.listening.playback.active_segment,

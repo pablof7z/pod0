@@ -19,9 +19,9 @@ Rust store is authoritative for podcasts, subscriptions, episode listening
 facts, active playback, queue, resume, completion, rate, playback preferences,
 session sleep mode, notes, saved clips with immutable transcript provenance,
 and selected canonical transcripts and chapters/ad spans. Publisher chapter
-acquisition is also a Rust-owned durable workflow with persisted request,
-retry, cancellation, recovery, and selected-artifact state.
-The facade contract is now version 24 and includes an additive canonical
+acquisition and model chapter generation are Rust-owned durable workflows with
+persisted request, retry, cancellation, recovery, and selected-artifact state.
+The facade contract is now version 25 and includes an additive canonical
 transcript-artifact contract: exact integer milliseconds, full word and speaker
 records, deterministic semantic/version/artifact identities, unknown-source
 preservation, replay fingerprints, and separately bounded summary, speaker,
@@ -186,9 +186,22 @@ Swift and Kotlin bindings. CI rejects drift from Rust metadata.
   typed durable receipt. A typed core-wake request makes delayed retries and
   staged-completion recovery event-driven without native polling. Swift and
   Kotlin receive only the minimum provider execution/recovery contract; secrets
-  remain native. Production iOS activation is gated on the native host,
-  existing-state migration, restart tests, and atomic deletion of the legacy
-  Swift workflow writer.
+  remain native.
+- Version 25 activates that workflow in production iOS. A typed, restartable
+  cutover adopts exact current successful legacy receipts and reconstructable
+  interrupted, uncertain, or terminal state without reposting paid work. Stale
+  or unplannable rows remain rollback evidence rather than becoming a second
+  Rust workflow format. Before deletion it durably writes a content-qualified,
+  integrity-checked classification manifest containing every legacy job row. The no-clobber
+  manifest is retained beside the episode store under the
+  `model-chapter-workflow-backups` suffix until issue #111 closes the rollback
+  support window. Only after the manifest is re-read and verified may the
+  cutover delete legacy rows and commit the Rust authority marker; staged
+  restarts verify the exact source. A changed, still-present legacy source
+  discards only the generation-fenced Rust stage and restages from the new
+  snapshot; missing rows without the verified backup fail closed.
+  The former Swift planner, executor, verifier, and receipt writer are no longer
+  authoritative or executable.
 - Open views receive bounded, revisioned, screen-shaped projections.
 - Operation failure and cancellation appear in projection state, not thrown
   per-operation FFI results.

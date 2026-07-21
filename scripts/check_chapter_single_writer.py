@@ -17,6 +17,7 @@ DELETED_PATHS = (
     "App/Sources/State/AppStateStore+AdSegments.swift",
     "App/Sources/Features/Player/PlaybackState+AdSkip.swift",
     "App/Sources/Core/ChapterModelPromptBuilder.swift",
+    "App/Sources/Workflows/ChapterWorkflowExecutors.swift",
 )
 
 FORBIDDEN = (
@@ -27,9 +28,18 @@ FORBIDDEN = (
         re.compile(r"\b(?:PublisherChaptersJobExecutor|PublisherChapterRequestPayload)\b"),
         "retired Swift publisher workflow authority",
     ),
+    (re.compile(r"\bChapterArtifactsJobExecutor\b"), "retired Swift model workflow authority"),
+    (
+        re.compile(r"\b(?:ModelChapterCapabilityRequest|ChapterModelTransporting)\b"),
+        "retired parallel Swift model capability path",
+    ),
     (
         re.compile(r"DesiredJob\s*\([^)]*kind\s*:\s*\.publisherChapters\b", re.S),
         "Swift publisher workflow scheduling",
+    ),
+    (
+        re.compile(r"DesiredJob\s*\([^)]*kind\s*:\s*\.chapterArtifacts\b", re.S),
+        "Swift model chapter workflow scheduling",
     ),
     (re.compile(r"\bChapterModelPromptBuilder\b"), "retired Swift chapter prompt policy"),
     (re.compile(r"\bchapterCompilerInputVersion\b"), "retired Swift chapter version policy"),
@@ -53,7 +63,6 @@ REQUIRED_TOKENS = {
         ".commitChapter(",
         "facade.dispatch(",
         "facade.snapshot(",
-        "verifyChapterWorkflowReceipt",
     ),
     "App/Sources/Core/SharedChapterReader.swift": (
         "facade.snapshot(",
@@ -69,19 +78,26 @@ REQUIRED_TOKENS = {
     "App/Sources/Workflows/ArtifactRepository.swift": (
         "kind NOT IN ('transcript','chapters','adSegments')",
     ),
-    "App/Sources/Workflows/ChapterWorkflowExecutors.swift": (
-        "chapterModelPlan(",
-        "PlannedChapterModelRequest",
-        "request.sourceVersion == context.job.inputVersion",
-        "submitChapterObservation(",
-        "SharedChapterWorkflowReceipt(",
-        "ChapterObservationCapabilityAdapter",
-        "expectedSelectionRevision: request.expectedChapterSelectionRevision",
+    "App/Sources/Core/LegacyModelChapterWorkflowCutover.swift": (
+        "facade.modelChapterCutover()",
+        "facade.stageLegacyModelChapterCutover(",
+        "facade.discardStagedLegacyModelChapterCutover(",
+        "LegacyModelChapterWorkflowBackupManifest.load(",
+        "snapshot.backup.publish(to: backupRoot)",
+        "removeJobs(",
+        "matching: jobs",
+        "facade.commitLegacyModelChapterCutover(",
     ),
-    "App/Sources/Workflows/DesiredStatePlanner.swift": (
-        "planChapterModelDesiredState(",
-        "transcriptContentDigest:",
-        "selectedChapterSource:",
+    "App/Sources/Core/LegacyModelChapterWorkflowBackup.swift": (
+        "LegacyModelChapterWorkflowBackupClassification",
+        "integrityDigest: ArtifactRepository.hash(",
+        "try validate()",
+        "backupConflict",
+    ),
+    "App/Sources/Core/LegacyModelChapterWorkflowSnapshot.swift": (
+        "LegacyModelChapterCutoverCandidate(",
+        "SharedChapterWorkflowReceipt.self",
+        ".ambiguous",
     ),
     "App/Sources/Core/SharedLibraryClient.swift": (
         "facade.planChapterModelRequest(",
@@ -90,12 +106,13 @@ REQUIRED_TOKENS = {
     "App/Sources/Core/ChapterModelTransport.swift": (
         "request.systemPrompt",
         "request.userPrompt",
-        "planned.responseFormat",
-        "planned.maximumCompletionBytes",
+        "request.responseFormat",
+        "request.maximumCompletionBytes",
     ),
     "App/Sources/Workflows/WorkflowRuntime.swift": (
         "removeJobs(kind: .publisherChapters)",
         "projection.authority == .sharedRustPublisherChapters",
+        "ensureModelChapters(",
     ),
     "App/Sources/Services/WorkflowClient.swift": (
         "attachPublisherChapterCore(",
@@ -105,6 +122,12 @@ REQUIRED_TOKENS = {
         ".ensurePublisherChapters(",
         ".retryPublisherChapters(",
         ".cancelPublisherChapters(",
+        ".chapterWorkflows(episodeId:",
+    ),
+    "App/Sources/Core/SharedLibraryClient+ModelChapterWorkflows.swift": (
+        ".ensureModelChapters(",
+        ".retryModelChapters(",
+        ".cancelModelChapters(",
         ".chapterWorkflows(episodeId:",
     ),
     "App/Sources/Core/CorePublisherChapterHost.swift": (
@@ -211,8 +234,12 @@ def self_test() -> None:
         "ArtifactRecord(kind: .adSegments, subjectID: id)",
         "applyAutoSkipAdsIfNeeded(at: time)",
         "let executor = PublisherChaptersJobExecutor()",
+        "let executor = ChapterArtifactsJobExecutor()",
+        "let request = ModelChapterCapabilityRequest(planned: plan)",
+        "let transport: any ChapterModelTransporting",
         "PublisherChapterRequestPayload(sourceURL: url)",
         "DesiredJob(idempotencyKey: key, kind: .publisherChapters, subjectID: id)",
+        "DesiredJob(idempotencyKey: key, kind: .chapterArtifacts, subjectID: id)",
         "ChapterModelPromptBuilder.build(input)",
         "Self.chapterCompilerInputVersion(input)",
         'let prompt = "You analyse podcast episode transcripts"',

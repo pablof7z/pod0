@@ -95,6 +95,7 @@ final class Pod0NativeModelWorkflowIntegrationTests: XCTestCase {
             enclosureURL: URL(string: "https://model.example.test/episode.mp3")!
         )
         var state = AppState()
+        state.settings.chapterCompilationModel = "ollama:llama3.2"
         state.podcasts = [podcast]
         state.subscriptions = [PodcastSubscription(podcastID: podcast.id)]
         state.episodes = [episode]
@@ -177,17 +178,23 @@ final class Pod0NativeModelWorkflowIntegrationTests: XCTestCase {
         facade: Pod0Facade,
         episodeID: UUID
     ) async throws {
+        var observed: ModelChapterWorkflowProjection?
         for _ in 0 ..< 200 {
             let envelope = facade.snapshot(request: ProjectionRequest(
                 scope: .chapterWorkflows(episodeId: EpisodeId(uuid: episodeID)),
                 offset: 0,
                 maxItems: 2
             ))
-            if case .chapterWorkflows(let value) = envelope.projection,
-               value.model.first?.stage == expected { return }
+            if case .chapterWorkflows(let value) = envelope.projection {
+                observed = value.model.first
+                if observed?.stage == expected { return }
+            }
             try await Task.sleep(for: .milliseconds(10))
         }
-        XCTFail("Model workflow did not reach \(expected)")
+        XCTFail(
+            "Model workflow did not reach \(expected); stage=\(String(describing: observed?.stage)) "
+                + "failure=\(String(describing: observed?.failure))"
+        )
     }
 }
 

@@ -50,6 +50,9 @@ extension AppStateStore {
     }
 
     func updateSettings(_ settings: Settings) {
+        let chapterModelChanged = settings.chapterCompilationModel
+            != state.settings.chapterCompilationModel
         mutateState { $0.settings = settings }
+        if chapterModelChanged { WorkflowRuntime.shared.wake() }
     }
 }

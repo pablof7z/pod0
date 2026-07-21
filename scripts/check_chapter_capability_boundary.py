@@ -17,6 +17,8 @@ CAPABILITY_FILES = (
     "App/Sources/Core/Pod0NativeHostDispatcher+PublisherChapters.swift",
     "App/Sources/Core/ChapterModelTransport.swift",
     "App/Sources/Core/ChapterModelTransport+Retry.swift",
+    "App/Sources/Core/CoreChapterModelHost.swift",
+    "App/Sources/Core/Pod0NativeHostDispatcher+Model.swift",
 )
 MODEL_TRANSPORT = "App/Sources/Core/ChapterModelTransport.swift"
 MODEL_RETRY_TRANSPORT = "App/Sources/Core/ChapterModelTransport+Retry.swift"
@@ -44,7 +46,6 @@ REQUIRED_TOKENS = {
         "ChapterCapabilityRequestEnvelope",
         "ChapterCapabilityEvidence",
         "chapterObservationLimits()",
-        "qualifyModelChapterObservation",
         "qualifyAgentComposedChapterObservation",
     ),
     "App/Sources/Core/ChapterObservationCapabilityAdapter.swift": (
@@ -56,9 +57,9 @@ REQUIRED_TOKENS = {
         "activeTasks.removeValue",
     ),
     "App/Sources/Core/ChapterObservationCapabilityAdapter+Mapping.swift": (
-        "ModelChapterObservation(",
-        "SHA256.hash(data:",
-        "generatedAt: request.generatedAt",
+        "case .agent(let value):",
+        "value.items.count",
+        "limits.agentItems",
     ),
     "App/Sources/Core/CorePublisherChapterHost.swift": (
         "session.bytes(for:",
@@ -83,6 +84,18 @@ REQUIRED_TOKENS = {
         "static func httpFailure(",
         "retryAfterMilliseconds:",
         "86_400_000",
+    ),
+    "App/Sources/Core/CoreChapterModelHost.swift": (
+        "case .executeChapterModel(",
+        "transport.execute(execution)",
+        ".chapterModelCompleted(",
+        "case .recoverChapterModelOperation(",
+        ".providerRecoveryUnavailable",
+    ),
+    "App/Sources/Core/Pod0NativeHostDispatcher+Model.swift": (
+        "startObservationRecovery(",
+        "chapterModelHost.execute(envelope.request)",
+        "remember: false",
     ),
 }
 

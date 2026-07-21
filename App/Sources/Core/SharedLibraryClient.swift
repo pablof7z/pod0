@@ -32,6 +32,8 @@ final class SharedLibraryClient {
     var chapterScopeCounts: [UUID: Int] = [:]
     var chapterSnapshots: [UUID: SharedChapterSnapshot] = [:]
     var announcedPublisherChapterEpisodeIDs: Set<UUID> = []
+    var announcedModelChapterVersions: [UUID: String] = [:]
+    var cachedPublisherChapterWorkflows: [PublisherChapterWorkflowProjection] = []
     var playbackChapterEpisodeID: UUID?
     private var cachedPlayback: PlaybackProjection?
     private var cachedPlaybackRevision: UInt64 = 0
@@ -83,7 +85,7 @@ final class SharedLibraryClient {
             request: ProjectionRequest(
                 scope: .chapterWorkflows(episodeId: nil),
                 offset: 0,
-                maxItems: 1
+                maxItems: 200
             ),
             subscriber: subscriber
         )
@@ -198,8 +200,11 @@ final class SharedLibraryClient {
             receiveLibrary(envelope)
         case .playback(let projection):
             receivePlayback(projection, revision: envelope.stateRevision.value)
-        case .chapterWorkflows:
-            receivePublisherChapterWorkflows(revision: envelope.stateRevision.value)
+        case .chapterWorkflows(let projection):
+            receiveChapterWorkflows(
+                projection,
+                revision: envelope.stateRevision.value
+            )
         case .notes:
             receiveNotes(revision: envelope.stateRevision.value)
         case .clips:
@@ -258,6 +263,8 @@ final class SharedLibraryClient {
         chapterScopeCounts.removeAll()
         chapterSnapshots.removeAll()
         announcedPublisherChapterEpisodeIDs.removeAll()
+        announcedModelChapterVersions.removeAll()
+        cachedPublisherChapterWorkflows.removeAll()
         workflowClient?.detachPublisherChapterCore()
         workflowClient?.detachModelChapterCore()
         playbackChapterEpisodeID = nil

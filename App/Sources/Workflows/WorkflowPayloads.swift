@@ -71,19 +71,3 @@ struct TranscriptWorkflowSnapshot: Sendable, Equatable {
     let contentDigest: String
     let selectionRevision: UInt64
 }
-
-struct ChapterWorkflowSnapshot: Sendable, Equatable {
-    let episodeID: UUID
-    let artifactID: String
-    let sourceRevision: String
-    let contentDigest: String
-    let selectionRevision: UInt64
-    let provenance: ChapterArtifactProvenance
-}
-
-struct ChapterWorkflowCompletion: Sendable, Equatable {
-    let episodeID: UUID
-    let kind: WorkJobKind
-    let inputVersion: String
-    let artifactID: String
-}

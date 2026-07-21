@@ -3,6 +3,14 @@ import uniffi.pod0_domain.*
 import uniffi.pod0_facade.*
 
 fun qualifyModelChapterRuntime(facade: Pod0Facade, episodeId: EpisodeId) {
+    val staged = facade.stageLegacyModelChapterCutover(
+        1UL,
+        "ollama:llama3.2",
+        emptyList(),
+    )
+    check(staged.stage == LegacyModelChapterCutoverStage.STAGED)
+    val authoritative = facade.commitLegacyModelChapterCutover(1UL)
+    check(authoritative.stage == LegacyModelChapterCutoverStage.AUTHORITATIVE)
     facade.dispatch(CommandEnvelope(
         CommandId(0UL, 45UL),
         CancellationId(0UL, 46UL),

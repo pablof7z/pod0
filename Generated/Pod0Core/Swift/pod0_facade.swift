@@ -607,6 +607,14 @@ fileprivate struct FfiConverterString: FfiConverter {
 
 public protocol Pod0FacadeProtocol: AnyObject, Sendable {
 
+    func commitLegacyModelChapterCutover(sourceGeneration: UInt64)  -> LegacyModelChapterCutoverProjection
+
+    func discardStagedLegacyModelChapterCutover(sourceGeneration: UInt64)  -> LegacyModelChapterCutoverProjection
+
+    func modelChapterCutover()  -> LegacyModelChapterCutoverProjection
+
+    func stageLegacyModelChapterCutover(sourceGeneration: UInt64, configuredModel: String, candidates: [LegacyModelChapterCutoverCandidate])  -> LegacyModelChapterCutoverProjection
+
     func dispatch(command: CommandEnvelope)
 
     func nextHostCancellations(maximumCount: UInt16)  -> [HostCancellationRequest]
@@ -697,6 +705,47 @@ public static func `open`(storePath: String)throws  -> Pod0Facade  {
 }
 
 
+
+open func commitLegacyModelChapterCutover(sourceGeneration: UInt64) -> LegacyModelChapterCutoverProjection  {
+    return try!  FfiConverterTypeLegacyModelChapterCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_model_chapter_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt64.lower(sourceGeneration),uniffiCallStatus
+    )
+})
+}
+
+open func discardStagedLegacyModelChapterCutover(sourceGeneration: UInt64) -> LegacyModelChapterCutoverProjection  {
+    return try!  FfiConverterTypeLegacyModelChapterCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_model_chapter_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt64.lower(sourceGeneration),uniffiCallStatus
+    )
+})
+}
+
+open func modelChapterCutover() -> LegacyModelChapterCutoverProjection  {
+    return try!  FfiConverterTypeLegacyModelChapterCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_model_chapter_cutover(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+
+open func stageLegacyModelChapterCutover(sourceGeneration: UInt64, configuredModel: String, candidates: [LegacyModelChapterCutoverCandidate]) -> LegacyModelChapterCutoverProjection  {
+    return try!  FfiConverterTypeLegacyModelChapterCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_model_chapter_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt64.lower(sourceGeneration),
+        FfiConverterString.lower(configuredModel),
+        FfiConverterSequenceTypeLegacyModelChapterCutoverCandidate.lower(candidates),uniffiCallStatus
+    )
+})
+}
 
 open func dispatch(command: CommandEnvelope)  {try! rustCall() {
         uniffiCallStatus in
@@ -2047,6 +2096,184 @@ public func FfiConverterTypeLegacyListeningImportVerification_lift(_ buf: RustBu
 #endif
 public func FfiConverterTypeLegacyListeningImportVerification_lower(_ value: LegacyListeningImportVerification) -> RustBuffer {
     return FfiConverterTypeLegacyListeningImportVerification.lower(value)
+}
+
+
+public struct LegacyModelChapterCutoverCandidate: Equatable, Hashable {
+    public let episodeId: EpisodeId
+    public let inputVersion: String
+    public let disposition: LegacyModelChapterCutoverDisposition
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(episodeId: EpisodeId, inputVersion: String, disposition: LegacyModelChapterCutoverDisposition) {
+        self.episodeId = episodeId
+        self.inputVersion = inputVersion
+        self.disposition = disposition
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyModelChapterCutoverCandidate: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyModelChapterCutoverCandidate: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyModelChapterCutoverCandidate {
+        return
+            try LegacyModelChapterCutoverCandidate(
+                episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
+                inputVersion: FfiConverterString.read(from: &buf),
+                disposition: FfiConverterTypeLegacyModelChapterCutoverDisposition.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyModelChapterCutoverCandidate, into buf: inout [UInt8]) {
+        FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
+        FfiConverterString.write(value.inputVersion, into: &buf)
+        FfiConverterTypeLegacyModelChapterCutoverDisposition.write(value.disposition, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyModelChapterCutoverCandidate_lift(_ buf: RustBuffer) throws -> LegacyModelChapterCutoverCandidate {
+    return try FfiConverterTypeLegacyModelChapterCutoverCandidate.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyModelChapterCutoverCandidate_lower(_ value: LegacyModelChapterCutoverCandidate) -> RustBuffer {
+    return FfiConverterTypeLegacyModelChapterCutoverCandidate.lower(value)
+}
+
+
+public struct LegacyModelChapterCutoverFailure: Equatable, Hashable {
+    public let code: LegacyModelChapterCutoverFailureCode
+    public let diagnosticCode: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(code: LegacyModelChapterCutoverFailureCode, diagnosticCode: String) {
+        self.code = code
+        self.diagnosticCode = diagnosticCode
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyModelChapterCutoverFailure: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyModelChapterCutoverFailure: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyModelChapterCutoverFailure {
+        return
+            try LegacyModelChapterCutoverFailure(
+                code: FfiConverterTypeLegacyModelChapterCutoverFailureCode.read(from: &buf),
+                diagnosticCode: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyModelChapterCutoverFailure, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyModelChapterCutoverFailureCode.write(value.code, into: &buf)
+        FfiConverterString.write(value.diagnosticCode, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyModelChapterCutoverFailure_lift(_ buf: RustBuffer) throws -> LegacyModelChapterCutoverFailure {
+    return try FfiConverterTypeLegacyModelChapterCutoverFailure.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyModelChapterCutoverFailure_lower(_ value: LegacyModelChapterCutoverFailure) -> RustBuffer {
+    return FfiConverterTypeLegacyModelChapterCutoverFailure.lower(value)
+}
+
+
+public struct LegacyModelChapterCutoverProjection: Equatable, Hashable {
+    public let stage: LegacyModelChapterCutoverStage
+    public let sourceGeneration: UInt64?
+    public let adoptedSucceeded: UInt32
+    public let adoptedAmbiguous: UInt32
+    public let failure: LegacyModelChapterCutoverFailure?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(stage: LegacyModelChapterCutoverStage, sourceGeneration: UInt64?, adoptedSucceeded: UInt32, adoptedAmbiguous: UInt32, failure: LegacyModelChapterCutoverFailure?) {
+        self.stage = stage
+        self.sourceGeneration = sourceGeneration
+        self.adoptedSucceeded = adoptedSucceeded
+        self.adoptedAmbiguous = adoptedAmbiguous
+        self.failure = failure
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyModelChapterCutoverProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyModelChapterCutoverProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyModelChapterCutoverProjection {
+        return
+            try LegacyModelChapterCutoverProjection(
+                stage: FfiConverterTypeLegacyModelChapterCutoverStage.read(from: &buf),
+                sourceGeneration: FfiConverterOptionUInt64.read(from: &buf),
+                adoptedSucceeded: FfiConverterUInt32.read(from: &buf),
+                adoptedAmbiguous: FfiConverterUInt32.read(from: &buf),
+                failure: FfiConverterOptionTypeLegacyModelChapterCutoverFailure.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyModelChapterCutoverProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyModelChapterCutoverStage.write(value.stage, into: &buf)
+        FfiConverterOptionUInt64.write(value.sourceGeneration, into: &buf)
+        FfiConverterUInt32.write(value.adoptedSucceeded, into: &buf)
+        FfiConverterUInt32.write(value.adoptedAmbiguous, into: &buf)
+        FfiConverterOptionTypeLegacyModelChapterCutoverFailure.write(value.failure, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyModelChapterCutoverProjection_lift(_ buf: RustBuffer) throws -> LegacyModelChapterCutoverProjection {
+    return try FfiConverterTypeLegacyModelChapterCutoverProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyModelChapterCutoverProjection_lower(_ value: LegacyModelChapterCutoverProjection) -> RustBuffer {
+    return FfiConverterTypeLegacyModelChapterCutoverProjection.lower(value)
 }
 
 
@@ -3458,6 +3685,265 @@ public func FfiConverterTypeLegacyListeningSourceKind_lower(_ value: LegacyListe
 
 
 
+
+public enum LegacyModelChapterCutoverDisposition: Equatable, Hashable {
+
+    case succeeded(artifactId: ChapterArtifactId, contentDigest: ContentDigest, integrityDigest: ContentDigest, selectionRevision: StateRevision
+    )
+    case ambiguous
+    case blocked(failureCode: String, failureDetail: String?, mayHaveSubmitted: Bool
+    )
+    case failed(failureCode: String, failureDetail: String?, mayHaveSubmitted: Bool
+    )
+    case cancelled(mayHaveSubmitted: Bool
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyModelChapterCutoverDisposition: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyModelChapterCutoverDisposition: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyModelChapterCutoverDisposition
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyModelChapterCutoverDisposition {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .succeeded(artifactId: try FfiConverterTypeChapterArtifactId.read(from: &buf), contentDigest: try FfiConverterTypeContentDigest.read(from: &buf), integrityDigest: try FfiConverterTypeContentDigest.read(from: &buf), selectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        )
+
+        case 2: return .ambiguous
+
+        case 3: return .blocked(failureCode: try FfiConverterString.read(from: &buf), failureDetail: try FfiConverterOptionString.read(from: &buf), mayHaveSubmitted: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 4: return .failed(failureCode: try FfiConverterString.read(from: &buf), failureDetail: try FfiConverterOptionString.read(from: &buf), mayHaveSubmitted: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 5: return .cancelled(mayHaveSubmitted: try FfiConverterBool.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyModelChapterCutoverDisposition, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case let .succeeded(artifactId,contentDigest,integrityDigest,selectionRevision):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeChapterArtifactId.write(artifactId, into: &buf)
+            FfiConverterTypeContentDigest.write(contentDigest, into: &buf)
+            FfiConverterTypeContentDigest.write(integrityDigest, into: &buf)
+            FfiConverterTypeStateRevision.write(selectionRevision, into: &buf)
+
+
+        case .ambiguous:
+            writeInt(&buf, Int32(2))
+
+
+        case let .blocked(failureCode,failureDetail,mayHaveSubmitted):
+            writeInt(&buf, Int32(3))
+            FfiConverterString.write(failureCode, into: &buf)
+            FfiConverterOptionString.write(failureDetail, into: &buf)
+            FfiConverterBool.write(mayHaveSubmitted, into: &buf)
+
+
+        case let .failed(failureCode,failureDetail,mayHaveSubmitted):
+            writeInt(&buf, Int32(4))
+            FfiConverterString.write(failureCode, into: &buf)
+            FfiConverterOptionString.write(failureDetail, into: &buf)
+            FfiConverterBool.write(mayHaveSubmitted, into: &buf)
+
+
+        case let .cancelled(mayHaveSubmitted):
+            writeInt(&buf, Int32(5))
+            FfiConverterBool.write(mayHaveSubmitted, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyModelChapterCutoverDisposition_lift(_ buf: RustBuffer) throws -> LegacyModelChapterCutoverDisposition {
+    return try FfiConverterTypeLegacyModelChapterCutoverDisposition.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyModelChapterCutoverDisposition_lower(_ value: LegacyModelChapterCutoverDisposition) -> RustBuffer {
+    return FfiConverterTypeLegacyModelChapterCutoverDisposition.lower(value)
+}
+
+
+
+
+public enum LegacyModelChapterCutoverFailureCode: Equatable, Hashable {
+
+    case invalidSource
+    case conflictingCoreState
+    case storageUnavailable
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyModelChapterCutoverFailureCode: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyModelChapterCutoverFailureCode: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyModelChapterCutoverFailureCode
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyModelChapterCutoverFailureCode {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .invalidSource
+
+        case 2: return .conflictingCoreState
+
+        case 3: return .storageUnavailable
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyModelChapterCutoverFailureCode, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .invalidSource:
+            writeInt(&buf, Int32(1))
+
+
+        case .conflictingCoreState:
+            writeInt(&buf, Int32(2))
+
+
+        case .storageUnavailable:
+            writeInt(&buf, Int32(3))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyModelChapterCutoverFailureCode_lift(_ buf: RustBuffer) throws -> LegacyModelChapterCutoverFailureCode {
+    return try FfiConverterTypeLegacyModelChapterCutoverFailureCode.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyModelChapterCutoverFailureCode_lower(_ value: LegacyModelChapterCutoverFailureCode) -> RustBuffer {
+    return FfiConverterTypeLegacyModelChapterCutoverFailureCode.lower(value)
+}
+
+
+
+
+public enum LegacyModelChapterCutoverStage: Equatable, Hashable {
+
+    case notStarted
+    case staged
+    case authoritative
+    case blocked
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyModelChapterCutoverStage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyModelChapterCutoverStage: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyModelChapterCutoverStage
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyModelChapterCutoverStage {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .notStarted
+
+        case 2: return .staged
+
+        case 3: return .authoritative
+
+        case 4: return .blocked
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyModelChapterCutoverStage, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .notStarted:
+            writeInt(&buf, Int32(1))
+
+
+        case .staged:
+            writeInt(&buf, Int32(2))
+
+
+        case .authoritative:
+            writeInt(&buf, Int32(3))
+
+
+        case .blocked:
+            writeInt(&buf, Int32(4))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyModelChapterCutoverStage_lift(_ buf: RustBuffer) throws -> LegacyModelChapterCutoverStage {
+    return try FfiConverterTypeLegacyModelChapterCutoverStage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyModelChapterCutoverStage_lower(_ value: LegacyModelChapterCutoverStage) -> RustBuffer {
+    return FfiConverterTypeLegacyModelChapterCutoverStage.lower(value)
+}
+
+
+
 public
 enum LegacyNoteMigrationError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
@@ -3845,6 +4331,30 @@ public func FfiConverterTypeLegacyTranscriptSourceKind_lower(_ value: LegacyTran
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionUInt64: FfiConverterRustBuffer {
+    typealias SwiftType = UInt64?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterUInt64.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterUInt64.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
     typealias SwiftType = String?
 
@@ -3981,6 +4491,30 @@ fileprivate struct FfiConverterOptionTypeLegacyChapterRollbackExportReport: FfiC
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeLegacyChapterRollbackExportReport.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeLegacyModelChapterCutoverFailure: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyModelChapterCutoverFailure?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeLegacyModelChapterCutoverFailure.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeLegacyModelChapterCutoverFailure.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -4130,6 +4664,31 @@ fileprivate struct FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeNoteRecord.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeLegacyModelChapterCutoverCandidate: FfiConverterRustBuffer {
+    typealias SwiftType = [LegacyModelChapterCutoverCandidate]
+
+    public static func write(_ value: [LegacyModelChapterCutoverCandidate], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeLegacyModelChapterCutoverCandidate.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [LegacyModelChapterCutoverCandidate] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [LegacyModelChapterCutoverCandidate]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeLegacyModelChapterCutoverCandidate.read(from: &buf))
         }
         return seq
     }
@@ -4671,6 +5230,18 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_projectionsubscriber_receive() != 23861) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_model_chapter_cutover() != 7355) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_model_chapter_cutover() != 4141) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_model_chapter_cutover() != 31686) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_model_chapter_cutover() != 14862) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_dispatch() != 36474) {

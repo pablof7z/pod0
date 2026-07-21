@@ -16,22 +16,6 @@ struct SharedChapterWorkflowReceipt: Codable, Sendable, Equatable {
     let contentDigest: String
     let integrityDigest: String
     let selectionRevision: UInt64
-
-    init(
-        summary: ChapterSummaryProjection,
-        inputVersion: String
-    ) throws {
-        guard let episodeID = summary.episodeId.uuid else {
-            throw SharedLibraryError.unavailable
-        }
-        self.schemaVersion = Self.currentSchemaVersion
-        self.episodeID = episodeID
-        self.inputVersion = inputVersion
-        self.artifactID = summary.artifactId.stableString
-        self.contentDigest = summary.contentDigest.stableString
-        self.integrityDigest = summary.integrityDigest.stableString
-        self.selectionRevision = summary.selectionRevision.value
-    }
 }
 
 extension SharedLibraryClient {
@@ -107,46 +91,11 @@ extension SharedLibraryClient {
               summary.artifactId == receipt.artifactId,
               let snapshot = try authoritativeChapterReader.load(episodeID: episodeID)
         else { throw SharedLibraryError.unavailable }
-        return SharedChapterCommitResult(receipt: receipt, snapshot: snapshot)
-    }
-
-    nonisolated func verifyChapterWorkflowReceipt(
-        _ receipt: SharedChapterWorkflowReceipt
-    ) -> Bool {
-        guard receipt.schemaVersion == SharedChapterWorkflowReceipt.currentSchemaVersion,
-              let projection = try? chapterProjection(
-                episodeID: receipt.episodeID,
-                scope: .summary,
-                offset: 0,
-                maxItems: 1
-              ),
-              let summary = projection.summary
-        else { return false }
-        return summary.artifactId.stableString == receipt.artifactID
-            && summary.contentDigest.stableString == receipt.contentDigest
-            && summary.integrityDigest.stableString == receipt.integrityDigest
-            && summary.selectionRevision.value == receipt.selectionRevision
-    }
-
-    nonisolated func chapterWorkflowSnapshots(
-        episodeIDs: [UUID]
-    ) -> [ChapterWorkflowSnapshot] {
-        episodeIDs.compactMap { episodeID in
-            guard let projection = try? chapterProjection(
-                episodeID: episodeID,
-                scope: .summary,
-                offset: 0,
-                maxItems: 1
-            ), let summary = projection.summary else { return nil }
-            return ChapterWorkflowSnapshot(
-                episodeID: episodeID,
-                artifactID: summary.artifactId.stableString,
-                sourceRevision: summary.sourceRevision,
-                contentDigest: summary.contentDigest.stableString,
-                selectionRevision: summary.selectionRevision.value,
-                provenance: summary.provenance
-            )
+        Task { @MainActor [weak self] in
+            self?.announcedModelChapterVersions.removeValue(forKey: episodeID)
+            WorkflowRuntime.shared.wake()
         }
+        return SharedChapterCommitResult(receipt: receipt, snapshot: snapshot)
     }
 
     nonisolated private func chapterProjection(

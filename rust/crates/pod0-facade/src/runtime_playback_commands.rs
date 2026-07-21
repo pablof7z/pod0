@@ -47,6 +47,7 @@ impl FacadeState {
                         episode_id: Some(episode_id),
                     },
                 ) {
+                    self.playback.completion_checkpoint_fence_episode_id = None;
                     if selection_is_unchanged && media_is_reusable {
                         self.ensure_playback_stream(envelope);
                     } else {
@@ -189,7 +190,9 @@ impl FacadeState {
                 episode_id,
                 completion,
             } => {
-                self.apply_playback_command(
+                let is_completed =
+                    matches!(completion, pod0_domain::CompletionStatus::Completed { .. });
+                if self.apply_playback_command(
                     envelope,
                     fingerprint,
                     PlaybackMutation::SetCompletion {
@@ -199,7 +202,10 @@ impl FacadeState {
                     OperationResult::PlaybackUpdated {
                         episode_id: Some(episode_id),
                     },
-                );
+                ) {
+                    self.playback.completion_checkpoint_fence_episode_id =
+                        is_completed.then_some(episode_id);
+                }
             }
             PlaybackCommand::ResetProgress { episode_id } => {
                 self.apply_playback_command(

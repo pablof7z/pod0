@@ -120,17 +120,29 @@ subscription, episode listening, active playback, queue, resume, completion,
 rate, playback preferences, and sleep mode are durable Rust-owned state. The
 Swift shell imports the legacy listening snapshot once, renders bounded
 library/playback projections, executes URLSession and AVFoundation requests,
-and cannot commit migrated facts after cutover. Swift still owns unmigrated
-transcript, download, workflow, knowledge, agent, and presentation state until
-their complete vertical slices land. The NMP adapter remains isolated by the
-security hold in issue #85.
+and cannot commit migrated facts after cutover. Selected transcripts, canonical
+chapters, and both publisher and model chapter workflow decisions are also
+durable Rust-owned state. Swift still owns unmigrated download, knowledge,
+agent, and presentation state until their complete vertical slices land. The
+NMP adapter remains isolated by the security hold in issue #85.
 
 Canonical chapter artifacts and selections are Rust-owned after the chapter
 cutover. Contract version 24 adds durable source-version provenance to the
 model-chapter command, projection, host-request, observation, and receipt
-surface. The native iOS
-model executor remains temporarily behind its existing Swift capability
-boundary until the version-24 host is connected and legacy workflow state is
-imported. The cutover must atomically disable the Swift workflow writer and
-delete it after restart and rollback validation; long-lived dual writes are
-forbidden.
+surface. Contract version 25 adds the typed legacy-workflow authority cutover:
+iOS stages current, reconstructable semantic candidates in Rust while a native
+rollback manifest preserves every exact legacy row. It durably verifies that
+manifest, atomically compare-deletes only the matching Swift chapter-model jobs,
+verifies their absence, and only then commits the Rust authority marker. Exact
+current success receipts are adopted; reconstructable interrupted or otherwise
+uncertain submissions remain explicitly ambiguous and dormant until a
+user-authorized retry. Stale and unplannable rows remain only as rollback evidence
+instead of becoming a second Rust workflow format. Startup resumes a staged
+cutover before the native dispatcher can execute any request.
+If the legacy source changes before commit, native may discard only the exact
+staged source generation. Rust atomically verifies and removes only records
+attributed to that stage plus its marker; a missing, mismatched, or authoritative
+stage fails closed. Both staged and not-started states reject model workflow
+commands and host dispatch, so discard never opens a temporary authority window.
+The native iOS model adapter remains native by design, while all durable model
+workflow decisions now have one Rust source of truth.

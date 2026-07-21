@@ -1,9 +1,9 @@
 import Foundation
 import Pod0Core
 
-// Temporary model/agent request orchestration. Issue #110 deletes this Swift
-// workflow shell once Rust owns those durable workflows; the raw provider and
-// credential capabilities remain native by design.
+// Temporary agent-composition orchestration. Rust qualifies and persists the
+// result; this shell owns only the in-flight native task until the agent
+// workflow itself moves behind the shared host-request boundary.
 
 struct ChapterCapabilityRequestEnvelope: Equatable, Sendable {
     let requestID: HostRequestId
@@ -12,13 +12,7 @@ struct ChapterCapabilityRequestEnvelope: Equatable, Sendable {
 }
 
 enum ChapterCapabilityRequest: Equatable, Sendable {
-    case model(ModelChapterCapabilityRequest)
     case agent(AgentChapterCapabilityRequest)
-}
-
-struct ModelChapterCapabilityRequest: Equatable, Sendable {
-    let planned: PlannedChapterModelRequest
-    let generatedAt: UnixTimestampMilliseconds
 }
 
 struct AgentChapterCapabilityRequest: Equatable, Sendable {
@@ -35,7 +29,6 @@ struct AgentChapterCapabilityRequest: Equatable, Sendable {
 }
 
 enum ChapterRawObservation: Equatable, Sendable {
-    case model(ModelChapterObservation)
     case agent(AgentComposedChapterObservation)
 }
 
@@ -49,16 +42,7 @@ enum ChapterCapabilityOutcome: Equatable, Sendable {
 }
 
 enum ChapterCapabilityEvidence: Equatable, Sendable {
-    case model(ChapterModelEvidence)
     case agent(ChapterAgentEvidence)
-}
-
-struct ChapterModelEvidence: Equatable, Sendable {
-    let provider: String
-    let model: String
-    let usage: ChapterModelUsage?
-    let completionDigest: ContentDigest
-    let completionByteCount: UInt64
 }
 
 struct ChapterAgentEvidence: Equatable, Sendable {
@@ -137,8 +121,6 @@ struct RustChapterObservationQualifier: ChapterObservationQualifying {
 
     func qualify(_ observation: ChapterRawObservation) -> ChapterObservationProjection? {
         switch observation {
-        case .model(let value):
-            qualifyModelChapterObservation(observation: value)
         case .agent(let value):
             qualifyAgentComposedChapterObservation(observation: value)
         }

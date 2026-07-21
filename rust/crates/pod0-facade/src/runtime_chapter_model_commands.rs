@@ -5,7 +5,7 @@ use pod0_application::{
 };
 use pod0_domain::{EpisodeId, StateRevision};
 use pod0_storage::{
-    ModelChapterDesiredPlan, ModelChapterEnsureInput, ModelChapterEnsureOutcome,
+    LibraryStore, ModelChapterDesiredPlan, ModelChapterEnsureInput, ModelChapterEnsureOutcome,
     ModelChapterWorkflowState,
 };
 
@@ -30,6 +30,9 @@ impl FacadeState {
         configured_model: String,
         expected_revision: StateRevision,
     ) {
+        if self.authoritative_model_chapter_store(envelope).is_none() {
+            return;
+        }
         let record = self
             .store
             .as_ref()
@@ -68,8 +71,7 @@ impl FacadeState {
         episode_id: EpisodeId,
         expected_revision: StateRevision,
     ) {
-        let Some(store) = self.store.clone() else {
-            self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
+        let Some(store) = self.authoritative_model_chapter_store(envelope) else {
             return;
         };
         let existing = match store.model_chapter_workflow(episode_id) {
@@ -100,6 +102,9 @@ impl FacadeState {
         configured_model: String,
         force_retry_from_revision: Option<StateRevision>,
     ) -> bool {
+        let Some(store) = self.authoritative_model_chapter_store(envelope) else {
+            return false;
+        };
         if let Err(error) = self.reload_listening() {
             self.fail(envelope.command_id, storage_failure(error));
             return false;
@@ -112,10 +117,6 @@ impl FacadeState {
         else {
             self.fail(envelope.command_id, CoreFailureCode::NotFound);
             return true;
-        };
-        let Some(store) = self.store.clone() else {
-            self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
-            return false;
         };
         let desired_plan = if episode.feed_metadata.chapters_url.is_some()
             && store
@@ -178,6 +179,27 @@ impl FacadeState {
             Err(error) => {
                 self.fail(envelope.command_id, storage_failure(error));
                 false
+            }
+        }
+    }
+
+    fn authoritative_model_chapter_store(
+        &mut self,
+        envelope: &CommandEnvelope,
+    ) -> Option<LibraryStore> {
+        let Some(store) = self.store.clone() else {
+            self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
+            return None;
+        };
+        match store.model_chapter_workflow_authority() {
+            Ok(state) if state.is_authoritative() => Some(store),
+            Ok(_) => {
+                self.fail(envelope.command_id, CoreFailureCode::HostUnavailable);
+                None
+            }
+            Err(error) => {
+                self.fail(envelope.command_id, storage_failure(error));
+                None
             }
         }
     }

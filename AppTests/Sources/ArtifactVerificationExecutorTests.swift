@@ -10,8 +10,10 @@ final class ArtifactVerificationExecutorTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: url) }
         let access = FileAccessRecorder()
         let gate = DispatchSemaphore(value: 0)
+        let fileAccessStarted = expectation(description: "file access started")
         let verifier = ArtifactVerificationExecutor(onFileAccess: {
             access.record(isMainThread: Thread.isMainThread)
+            fileAccessStarted.fulfill()
             _ = gate.wait(timeout: .now() + 2)
         })
         let request = makeRequest(
@@ -21,7 +23,7 @@ final class ArtifactVerificationExecutorTests: XCTestCase {
         )
 
         let task = Task { await verifier.verify(request) }
-        for _ in 0..<100 where access.count == 0 { await Task.yield() }
+        await fulfillment(of: [fileAccessStarted], timeout: 2)
         XCTAssertEqual(access.count, 1)
         XCTAssertTrue(Thread.isMainThread)
         gate.signal()
@@ -137,8 +139,10 @@ final class ArtifactVerificationExecutorTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: url) }
         let gate = DispatchSemaphore(value: 0)
         let access = FileAccessRecorder()
+        let fileAccessStarted = expectation(description: "file access started")
         let verifier = ArtifactVerificationExecutor(onFileAccess: {
             access.record(isMainThread: Thread.isMainThread)
+            fileAccessStarted.fulfill()
             _ = gate.wait(timeout: .now() + 2)
         })
         let task = Task {
@@ -148,7 +152,7 @@ final class ArtifactVerificationExecutorTests: XCTestCase {
                 size: Int64(data.count)
             ))
         }
-        for _ in 0..<100 where access.count == 0 { await Task.yield() }
+        await fulfillment(of: [fileAccessStarted], timeout: 2)
         task.cancel()
         gate.signal()
 

@@ -70,7 +70,7 @@ impl Pod0Facade {
         facade
     }
 
-    fn notify_subscribers(&self) {
+    pub(super) fn notify_subscribers(&self) {
         let deliveries = self.state().deliveries();
         for (subscriber, projection) in deliveries {
             subscriber.receive(projection);

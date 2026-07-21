@@ -134,6 +134,94 @@ fn end_callback_captured_before_seek_cannot_overwrite_seek_or_complete_episode()
     assert!(!episode_is_completed(&fixture.facade, fixture.episode_id));
 }
 
+#[test]
+fn late_position_cannot_undo_explicit_completion_until_user_resumes() {
+    let fixture = PlaybackFixture::new();
+    fixture.dispatch(120, PlaybackCommand::Restore);
+    let stream = fixture
+        .facade
+        .next_host_requests(u16::MAX)
+        .into_iter()
+        .find(|request| matches!(request.request, HostRequest::ObservePlayback { .. }))
+        .unwrap();
+    record_observation(
+        &fixture.facade,
+        &stream,
+        1,
+        1_000,
+        PlaybackLifecycleObservation {
+            episode_id: Some(fixture.episode_id),
+            state: PlaybackHostState::Playing,
+            position_milliseconds: 47_000,
+            duration_milliseconds: 120_500,
+            route: PlaybackAudioRoute::BuiltIn,
+            interruption: PlaybackInterruption::None,
+            ended: false,
+        },
+    );
+    fixture.dispatch(
+        121,
+        PlaybackCommand::SetCompletion {
+            episode_id: fixture.episode_id,
+            completion: CompletionStatus::Completed {
+                cause: CompletionCause::ExplicitUserAction,
+            },
+        },
+    );
+
+    record_observation(
+        &fixture.facade,
+        &stream,
+        2,
+        2_000,
+        PlaybackLifecycleObservation {
+            episode_id: Some(fixture.episode_id),
+            state: PlaybackHostState::Playing,
+            position_milliseconds: 48_000,
+            duration_milliseconds: 120_500,
+            route: PlaybackAudioRoute::BuiltIn,
+            interruption: PlaybackInterruption::None,
+            ended: false,
+        },
+    );
+    assert!(episode_is_completed(&fixture.facade, fixture.episode_id));
+    assert_eq!(
+        fixture
+            .playback()
+            .current
+            .unwrap()
+            .durable_resume_position_milliseconds,
+        0
+    );
+
+    fixture.dispatch(122, PlaybackCommand::Play);
+    let _ = fixture.facade.next_host_requests(u16::MAX);
+    record_observation(
+        &fixture.facade,
+        &stream,
+        3,
+        3_000,
+        PlaybackLifecycleObservation {
+            episode_id: Some(fixture.episode_id),
+            state: PlaybackHostState::Playing,
+            position_milliseconds: 49_000,
+            duration_milliseconds: 120_500,
+            route: PlaybackAudioRoute::BuiltIn,
+            interruption: PlaybackInterruption::None,
+            ended: false,
+        },
+    );
+    assert!(!episode_is_completed(&fixture.facade, fixture.episode_id));
+    assert_eq!(
+        fixture
+            .playback()
+            .current
+            .unwrap()
+            .durable_resume_position_milliseconds,
+        49_000
+    );
+}
+
 fn episode_is_completed(facade: &Pod0Facade, episode_id: EpisodeId) -> bool {
     let Projection::Library { value } = facade.snapshot(library_request()).projection else {
         panic!("expected library projection");

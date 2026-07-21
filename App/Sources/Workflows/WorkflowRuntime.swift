@@ -55,7 +55,6 @@ final class WorkflowRuntime {
             .download: DownloadJobExecutor(store: store, jobStore: jobs),
             .transcriptIngest: TranscriptIngestJobExecutor(store: store, jobStore: jobs),
             .transcriptIndex: TranscriptIndexJobExecutor(),
-            .chapterArtifacts: ChapterArtifactsJobExecutor(store: store),
             .metadataIndex: MetadataIndexJobExecutor(store: store),
             .autoDownload: AutoDownloadJobExecutor(store: store),
             .newEpisodeNotification: NewEpisodeNotificationJobExecutor(store: store),
@@ -241,6 +240,13 @@ final class WorkflowRuntime {
         do {
             store.sharedLibrary?.ensurePublisherChapters(
                 episodeIDs: store.state.episodes.map(\.id)
+            )
+            let transcriptSnapshots = store.sharedLibrary?.transcriptWorkflowSnapshots(
+                episodeIDs: store.state.episodes.map(\.id)
+            ) ?? []
+            store.sharedLibrary?.ensureModelChapters(
+                transcripts: transcriptSnapshots,
+                configuredModel: store.state.settings.chapterCompilationModel
             )
             let reconciler = Reconciler(
                 appStore: store,

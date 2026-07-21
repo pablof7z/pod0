@@ -169,6 +169,16 @@ impl PlaybackFixture {
             install_empty_chapter_fixture(&directory, &target);
         }
         let facade = Pod0Facade::open(target.to_string_lossy().into_owned()).unwrap();
+        assert_eq!(
+            facade
+                .stage_legacy_model_chapter_cutover(1, "fixture:model".into(), Vec::new())
+                .stage,
+            LegacyModelChapterCutoverStage::Staged
+        );
+        assert_eq!(
+            facade.commit_legacy_model_chapter_cutover(1).stage,
+            LegacyModelChapterCutoverStage::Authoritative
+        );
         let Projection::Library { value } = facade.snapshot(library_request()).projection else {
             panic!("expected library projection");
         };

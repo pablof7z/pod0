@@ -2,6 +2,13 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-21T01:06:28Z",
+      "lines": [
+        "Transcript-built chapters now recover safely after relaunches without repeating paid AI requests.",
+        "Marking an episode played now sticks even if a delayed playback update arrives."
+      ]
+    },
+    {
       "shipped_at": "2026-07-20T20:05:57Z",
       "lines": [
         "Large podcast libraries now load smoothly without getting stuck checking chapters for episodes that have none."

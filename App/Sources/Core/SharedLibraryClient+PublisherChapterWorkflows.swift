@@ -98,17 +98,18 @@ extension SharedLibraryClient {
         return .accepted(action)
     }
 
-    nonisolated func publisherChapterWorkflowSnapshots(
-        episodeIDs: some Sequence<UUID>
-    ) -> [PublisherChapterWorkflowProjection] {
-        episodeIDs.compactMap(publisherChapterWorkflow(episodeID:))
-    }
-
-    func receivePublisherChapterWorkflows(revision: UInt64) {
+    func receiveChapterWorkflows(
+        _ projection: ChapterWorkflowsProjection,
+        revision: UInt64
+    ) {
         guard revision >= lastChapterWorkflowRevision else { return }
         lastChapterWorkflowRevision = revision
+        let publisherChanged = projection.publisher != cachedPublisherChapterWorkflows
+        cachedPublisherChapterWorkflows = projection.publisher
+        if publisherChanged { announcedModelChapterVersions.removeAll() }
         workflowClient?.refresh(immediately: true)
         dispatcher.executePendingRequests(from: facade)
+        if publisherChanged { WorkflowRuntime.shared.wake() }
     }
 
     nonisolated private func publisherChapterWorkflow(

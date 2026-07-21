@@ -43,7 +43,7 @@ final class SharedChapterWorkflowSafetyTests: XCTestCase {
         )
     }
 
-    func testVerifierKeepsCurrentChapterJobAfterRustSelectionCommit() throws {
+    func testVerifierRejectsEveryLegacySwiftChapterJobAfterRustCutover() throws {
         let fixture = makeStore()
         defer { dispose(fixture) }
         let client = try XCTUnwrap(fixture.store.sharedLibrary)
@@ -95,7 +95,7 @@ final class SharedChapterWorkflowSafetyTests: XCTestCase {
             artifacts: ArtifactRepository(fileURL: jobs.fileURL)
         )
 
-        XCTAssertTrue(verifier.isStillCurrent(job))
+        XCTAssertFalse(verifier.isStillCurrent(job))
         var changed = fixture.store.state.settings
         changed.chapterCompilationModel += "-changed"
         fixture.store.updateSettings(changed)

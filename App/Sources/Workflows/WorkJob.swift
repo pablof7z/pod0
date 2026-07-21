@@ -147,7 +147,7 @@ struct DesiredJob: Sendable, Equatable {
     }
 }
 
-struct WorkJob: Identifiable, Sendable, Equatable {
+struct WorkJob: Identifiable, Codable, Sendable, Equatable {
     let id: UUID
     let idempotencyKey: String
     let kind: WorkJobKind

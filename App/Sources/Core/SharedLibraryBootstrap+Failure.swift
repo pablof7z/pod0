@@ -20,7 +20,8 @@ enum SharedLibraryBootstrapFailureCode: String {
         case LegacyClipMigrationError.SourceChanged,
              LegacyListeningMigrationError.SourceChanged,
              LegacyNoteMigrationError.SourceChanged,
-             LegacyTranscriptMigrationError.SourceChanged:
+             LegacyTranscriptMigrationError.SourceChanged,
+             LegacyModelChapterWorkflowBackupError.sourceChanged:
             .sourceChanged
         case LegacyClipMigrationError.SourceInvalid,
              LegacyListeningMigrationError.SourceInvalid,
@@ -30,7 +31,8 @@ enum SharedLibraryBootstrapFailureCode: String {
         case LegacyClipMigrationError.BackupConflict,
              LegacyListeningMigrationError.BackupConflict,
              LegacyNoteMigrationError.BackupConflict,
-             LegacyTranscriptMigrationError.BackupConflict:
+             LegacyTranscriptMigrationError.BackupConflict,
+             LegacyModelChapterWorkflowBackupError.backupConflict:
             .backupConflict
         case LegacyClipMigrationError.ImportConflict,
              LegacyListeningMigrationError.ImportConflict,
@@ -65,6 +67,10 @@ enum SharedLibraryBootstrapFailureCode: String {
              FacadeOpenError.StorageUnavailable:
             .storageUnavailable
         case SharedLibraryBootstrapError.verificationFailed:
+            .verificationFailed
+        case LegacyModelChapterWorkflowBackupError.backupMissing,
+             LegacyModelChapterWorkflowBackupError.invalidBackup,
+             LegacyModelChapterWorkflowBackupError.durabilityFailed:
             .verificationFailed
         default:
             .unexpected

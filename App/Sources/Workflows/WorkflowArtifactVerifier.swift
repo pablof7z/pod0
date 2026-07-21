@@ -64,17 +64,7 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
         case .publisherChapters:
             return false
         case .chapterArtifacts:
-            guard let receipt = chapterReceipt(outputVersion),
-                  receipt.episodeID == job.subjectID,
-                  receipt.inputVersion == job.inputVersion,
-                  appStore.sharedLibrary?.verifyChapterWorkflowReceipt(receipt) == true
-            else { return false }
-            try artifacts.completeWithoutArtifact(
-                outputVersion: outputVersion,
-                completingJobID: job.id,
-                leaseToken: leaseToken
-            )
-            return true
+            return false
         case .autoDownload:
             records = [record(.autoDownloadDecision, job: job, output: outputVersion, hash: outputVersion)]
         case .newEpisodeNotification:
@@ -142,17 +132,7 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
         case .publisherChapters:
             return false
         case .chapterArtifacts:
-            guard let episode = appStore.episode(id: job.subjectID),
-                  let transcript = transcriptSnapshot(episodeID: episode.id),
-                  transcript.sourceRevision == DesiredStatePlanner.audioVersion(episode)
-            else { return false }
-            guard let sharedLibrary = appStore.sharedLibrary,
-                  case .ready(let request) = sharedLibrary.chapterModelPlan(
-                    episodeID: episode.id,
-                    configuredModel: appStore.state.settings.chapterCompilationModel
-                  )
-            else { return false }
-            return request.sourceVersion == job.inputVersion
+            return false
         case .feedDiscovery, .autoDownload, .newEpisodeNotification, .scheduledAgentRun:
             return true
         }
@@ -180,11 +160,6 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
         default:
             break
         }
-    }
-
-    private func chapterReceipt(_ outputVersion: String) -> SharedChapterWorkflowReceipt? {
-        guard let data = Data(base64Encoded: outputVersion) else { return nil }
-        return try? Self.decoder.decode(SharedChapterWorkflowReceipt.self, from: data)
     }
 
     private func record(
