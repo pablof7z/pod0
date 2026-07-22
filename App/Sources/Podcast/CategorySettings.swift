@@ -21,7 +21,7 @@ struct CategorySettings: Codable, Sendable, Hashable {
     /// back to the per-subscription policy as it stands today).
     var autoDownloadOverride: AutoDownloadPolicy?
 
-    /// Whether `TranscriptIngestService` should run against episodes from
+    /// Whether automatic Rust transcript workflows should run for episodes from
     /// shows in this category.
     var transcriptionEnabled: Bool
 

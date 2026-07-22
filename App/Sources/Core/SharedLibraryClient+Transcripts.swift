@@ -6,33 +6,6 @@ struct SharedTranscriptCommitResult: Sendable, Equatable {
     let summary: TranscriptSummaryProjection
 }
 
-struct SharedTranscriptWorkflowReceipt: Codable, Sendable, Equatable {
-    static let currentSchemaVersion = 1
-
-    let schemaVersion: Int
-    let episodeID: UUID
-    let inputVersion: String
-    let artifactID: String
-    let transcriptVersionID: String
-    let transcriptContentDigest: String
-    let artifactIntegrityDigest: String
-    let selectionRevision: UInt64
-
-    init(summary: TranscriptSummaryProjection, inputVersion: String) throws {
-        guard let episodeID = summary.episodeId.uuid else {
-            throw SharedLibraryError.unavailable
-        }
-        self.schemaVersion = Self.currentSchemaVersion
-        self.episodeID = episodeID
-        self.inputVersion = inputVersion
-        self.artifactID = summary.artifactId.stableString
-        self.transcriptVersionID = summary.transcriptVersionId.stableString
-        self.transcriptContentDigest = summary.transcriptContentDigest.stableString
-        self.artifactIntegrityDigest = summary.artifactIntegrityDigest.stableString
-        self.selectionRevision = summary.selectionRevision.value
-    }
-}
-
 extension SharedLibraryClient {
     nonisolated func submitTranscriptObservation(
         _ transcript: Transcript,
@@ -107,40 +80,6 @@ extension SharedLibraryClient {
               summary.artifactId == receipt.artifactId
         else { throw SharedLibraryError.unavailable }
         return SharedTranscriptCommitResult(receipt: receipt, summary: summary)
-    }
-
-    nonisolated func submitTranscriptObservationOffMain(
-        _ transcript: Transcript,
-        context: TranscriptObservationContext,
-        commandID: CommandId,
-        cancellationID: CancellationId
-    ) async throws -> SharedTranscriptCommitResult {
-        await Task.yield()
-        return try submitTranscriptObservation(
-            transcript,
-            context: context,
-            commandID: commandID,
-            cancellationID: cancellationID
-        )
-    }
-
-    nonisolated func verifyTranscriptWorkflowReceipt(
-        _ receipt: SharedTranscriptWorkflowReceipt
-    ) -> Bool {
-        guard receipt.schemaVersion == SharedTranscriptWorkflowReceipt.currentSchemaVersion,
-              let projection = try? transcriptProjection(
-                episodeID: receipt.episodeID,
-                scope: .summary,
-                offset: 0,
-                maxItems: 1
-              ),
-              let summary = projection.summary
-        else { return false }
-        return summary.artifactId.stableString == receipt.artifactID
-            && summary.transcriptVersionId.stableString == receipt.transcriptVersionID
-            && summary.transcriptContentDigest.stableString == receipt.transcriptContentDigest
-            && summary.artifactIntegrityDigest.stableString == receipt.artifactIntegrityDigest
-            && summary.selectionRevision.value == receipt.selectionRevision
     }
 
     nonisolated func transcriptWorkflowSnapshots(

@@ -45,13 +45,11 @@ final class WorkflowRuntime {
         }
         let executors: [WorkJobKind: any JobExecutor] = [
             .feedDiscovery: FeedDiscoveryJobExecutor(store: store, jobStore: jobs),
-            .transcriptIngest: TranscriptIngestJobExecutor(store: store, jobStore: jobs),
-            .transcriptIndex: TranscriptIndexJobExecutor(),
             .metadataIndex: MetadataIndexJobExecutor(store: store),
             .newEpisodeNotification: NewEpisodeNotificationJobExecutor(store: store),
             .scheduledAgentRun: scheduled,
         ]
-        let verifier = WorkflowArtifactVerifier(appStore: store, artifacts: artifacts)
+        let verifier = WorkflowArtifactVerifier(artifacts: artifacts)
         let verifiers = Dictionary(
             uniqueKeysWithValues: executors.keys.map { ($0, verifier as any JobPostconditionVerifier) }
         )
@@ -82,9 +80,7 @@ final class WorkflowRuntime {
     }
 
     func requestTranscript(episodeID: UUID, provider: STTProvider? = nil) {
-        appStore?.setRequestedTranscriptProvider(episodeID, provider: provider ?? appStore?.state.settings.sttProvider)
-        try? jobStore?.manuallyRetry(kind: .transcriptIngest, subjectID: episodeID)
-        wake()
+        appStore?.sharedLibrary?.requestTranscript(episodeID: episodeID, provider: provider)
     }
 
     func perform(
@@ -105,6 +101,12 @@ final class WorkflowRuntime {
         }
         if projection.authority == .sharedRustDownloads {
             return appStore?.sharedLibrary?.performDownloadAction(
+                action,
+                on: projection
+            ) ?? .failed
+        }
+        if projection.authority == .sharedRustTranscripts {
+            return appStore?.sharedLibrary?.performTranscriptAction(
                 action,
                 on: projection
             ) ?? .failed
@@ -138,20 +140,19 @@ final class WorkflowRuntime {
         }
     }
 
-    func dependencyChanged(for kind: WorkJobKind) {
-        try? jobStore?.makeDependencyRetriesDue(kind: kind)
-        wake()
-    }
-
     func cancelActive() async {
         await coordinator?.cancelActive()
     }
 
     private func reconcile(signalOnly: Bool) async {
-        guard let store = appStore, let jobStore, let artifactRepository, let coordinator else { return }
+        guard let store = appStore, let jobStore, let coordinator else { return }
         do {
             store.sharedLibrary?.ensurePublisherChapters(
                 episodeIDs: store.state.episodes.map(\.id)
+            )
+            store.sharedLibrary?.ensureTranscriptWorkflows(
+                episodes: store.state.episodes,
+                settings: store.state.settings
             )
             let transcriptSnapshots = store.sharedLibrary?.transcriptWorkflowSnapshots(
                 episodeIDs: store.state.episodes.map(\.id)
@@ -160,13 +161,8 @@ final class WorkflowRuntime {
                 transcripts: transcriptSnapshots,
                 configuredModel: store.state.settings.chapterCompilationModel
             )
-            let reconciler = Reconciler(
-                appStore: store,
-                jobStore: jobStore,
-                artifacts: artifactRepository
-            )
+            let reconciler = Reconciler(appStore: store, jobStore: jobStore)
             _ = try reconciler.reconcile()
-            try await reconciler.verifySharedEvidenceSelections()
             if signalOnly { await coordinator.signal() }
             else { await coordinator.drainDueJobs() }
             repairCompletedScheduledOccurrences()

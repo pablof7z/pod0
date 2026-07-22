@@ -243,14 +243,10 @@ extension JobStore {
             let statement = try WorkflowSQLite.prepare(
                 """
                 UPDATE jobs SET state=CASE
-                        WHEN resource_class='remoteSTT' AND external_operation_id IS NULL
-                        THEN 'blocked'
                         WHEN attempt >= max_attempts THEN 'failedPermanent'
                         ELSE 'retryScheduled' END,
                     not_before=?,lease_token=NULL,lease_owner=NULL,lease_expires_at=NULL,
                     last_error_class=CASE
-                        WHEN resource_class='remoteSTT' AND external_operation_id IS NULL
-                        THEN 'unsafeToRetry'
                         WHEN attempt >= max_attempts THEN 'unexpected'
                         ELSE 'transient' END,
                     last_error_message=CASE

@@ -49,7 +49,7 @@ REQUIRED_TOKENS = {
         "stage = .chapterWorkflowRetirement",
         "LegacyPublisherChapterWorkflowRetirement.run(",
     ),
-    "App/Sources/Core/SharedLibraryClient.swift": (
+    "App/Sources/Core/SharedLibraryClient+Commands.swift": (
         "facade.planChapterModelRequest(",
         "episodeId: EpisodeId(uuid: episodeID)",
     ),

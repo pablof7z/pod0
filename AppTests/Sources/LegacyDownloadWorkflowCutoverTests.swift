@@ -82,11 +82,11 @@ final class LegacyDownloadWorkflowCutoverTests: XCTestCase {
             resourceClass: .download
         ), notBefore: .distantPast)
         _ = try jobStore.ensureJob(DesiredJob(
-            idempotencyKey: "unrelated-transcript-job",
-            kind: .transcriptIngest,
+            idempotencyKey: "unrelated-scheduled-job",
+            kind: .scheduledAgentRun,
             subjectID: episodeID,
             inputVersion: "transcript-v1",
-            resourceClass: .remoteSTT
+            resourceClass: .scheduledAgent
         ), notBefore: .distantPast)
         let repository = ArtifactRepository(fileURL: fileURL)
         try repository.adopt(ArtifactRecord(
@@ -140,7 +140,7 @@ final class LegacyDownloadWorkflowCutoverTests: XCTestCase {
         XCTAssertNil(try repository.current(kind: .downloadFile, subjectID: episodeID))
         XCTAssertNotNil(try repository.current(kind: .metadataIndex, subjectID: episodeID))
         XCTAssertTrue(try jobStore.allJobs().contains {
-            $0.idempotencyKey == "unrelated-transcript-job"
+            $0.idempotencyKey == "unrelated-scheduled-job"
         })
     }
 

@@ -9,7 +9,7 @@ import SwiftUI
 /// summarises the event; tapping reveals its captured details.
 ///
 /// Two retry affordances at the top:
-///   - "Retry transcription" pushes a fresh `TranscriptIngestService.ingest`
+///   - "Retry transcription" dispatches a typed retry to the Rust workflow
 ///     so the user can watch new events stream in.
 ///   - "Retry download" kicks the download service for failed / missing files.
 struct EpisodeAuditLogView: View {

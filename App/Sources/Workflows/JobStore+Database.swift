@@ -5,7 +5,10 @@ extension JobStore {
     /// SQL literal assembled only from the closed native enum. Legacy or
     /// unknown raw kinds are never eligible for generic scheduler mutation.
     static let supportedKindSQL = WorkJobKind.allCases
-        .filter { $0 != .download && $0 != .autoDownload }
+        .filter {
+            $0 != .download && $0 != .autoDownload
+                && $0 != .transcriptIngest && $0 != .transcriptIndex
+        }
         .map { "'\($0.rawValue)'" }
         .joined(separator: ",")
 
@@ -46,18 +49,13 @@ extension JobStore {
         let statement = try WorkflowSQLite.prepare(
             """
             UPDATE jobs SET state=CASE
-                    WHEN resource_class='remoteSTT' AND external_operation_id IS NULL
-                    THEN 'blocked'
                     WHEN attempt >= max_attempts THEN 'failedPermanent'
                     ELSE 'retryScheduled' END,
                 not_before=?, lease_token=NULL,
                 lease_owner=NULL, lease_expires_at=NULL,
-                last_error_class=CASE
-                    WHEN resource_class='remoteSTT' AND external_operation_id IS NULL
-                    THEN 'unsafeToRetry' ELSE 'transient' END,
+                last_error_class=CASE WHEN attempt >= max_attempts
+                    THEN 'unexpected' ELSE 'transient' END,
                 last_error_message=CASE
-                    WHEN resource_class='remoteSTT' AND external_operation_id IS NULL
-                    THEN 'Interrupted remote submission has no resumable provider ID; manual retry required'
                     WHEN attempt >= max_attempts
                     THEN 'Attempt limit reached while recovering an interrupted lease'
                     ELSE 'Lease expired after interruption' END,

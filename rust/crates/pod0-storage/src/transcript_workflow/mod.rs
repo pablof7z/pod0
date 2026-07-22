@@ -4,6 +4,7 @@ mod completion_stage;
 mod cutover;
 mod cutover_adoption;
 mod cutover_adoption_state;
+mod cutover_model;
 mod cutover_rows;
 mod cutover_stage;
 mod cutover_validation;

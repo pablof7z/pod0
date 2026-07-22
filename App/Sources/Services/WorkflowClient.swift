@@ -16,6 +16,8 @@ final class WorkflowClient {
         -> [ModelChapterWorkflowProjection]
     typealias DownloadLoader = @Sendable (WorkflowProjectionQuery) async
         -> [DownloadWorkflowProjection]
+    typealias TranscriptLoader = @Sendable (WorkflowProjectionQuery) async
+        -> [TranscriptWorkflowProjection]
 
     nonisolated private static let logger = Logger.app("WorkflowClient")
     private(set) var revision: UInt64 = 0
@@ -24,6 +26,7 @@ final class WorkflowClient {
     private var corePublisherJobsByID: [UUID: WorkflowJobProjection] = [:]
     private var coreModelChapterJobsByID: [UUID: WorkflowJobProjection] = [:]
     private var coreDownloadJobsByID: [UUID: WorkflowJobProjection] = [:]
+    private var coreTranscriptJobsByID: [UUID: WorkflowJobProjection] = [:]
     private var latestByKey: [WorkflowJobKey: WorkflowJobProjection] = [:]
 
     @ObservationIgnored private var registrations: [UUID: WorkflowProjectionRequest] = [:]
@@ -31,6 +34,7 @@ final class WorkflowClient {
     @ObservationIgnored private var publisherLoader: PublisherLoader?
     @ObservationIgnored private var modelChapterLoader: ModelChapterLoader?
     @ObservationIgnored private var downloadLoader: DownloadLoader?
+    @ObservationIgnored private var transcriptLoader: TranscriptLoader?
     @ObservationIgnored private var databaseURL: URL?
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     @ObservationIgnored private var generation: UInt64 = 0
@@ -97,6 +101,16 @@ final class WorkflowClient {
         refresh(immediately: true)
     }
 
+    func attachTranscriptCore(loader: @escaping TranscriptLoader) {
+        transcriptLoader = loader
+        refresh()
+    }
+
+    func detachTranscriptCore() {
+        transcriptLoader = nil
+        refresh(immediately: true)
+    }
+
     func latest(kind: WorkflowProjectionKind, subjectID: UUID) -> WorkflowJobProjection? {
         latestByKey[WorkflowJobKey(kind: kind, subjectID: subjectID)]
     }
@@ -153,8 +167,9 @@ final class WorkflowClient {
         let publisherLoader = publisherLoader
         let modelChapterLoader = modelChapterLoader
         let downloadLoader = downloadLoader
+        let transcriptLoader = transcriptLoader
         guard loader != nil || publisherLoader != nil || modelChapterLoader != nil
-                || downloadLoader != nil else {
+                || downloadLoader != nil || transcriptLoader != nil else {
             replaceJobs(
                 [],
                 publisherWorkflows: [],
@@ -171,12 +186,14 @@ final class WorkflowClient {
                 let publisherWorkflows = await publisherLoader?(query) ?? []
                 let modelChapterWorkflows = await modelChapterLoader?(query) ?? []
                 let downloadWorkflows = await downloadLoader?(query) ?? []
+                let transcriptWorkflows = await transcriptLoader?(query) ?? []
                 guard !Task.isCancelled else { return }
                 self?.replaceJobs(
                     jobs,
                     publisherWorkflows: publisherWorkflows,
                     modelChapterWorkflows: modelChapterWorkflows,
                     downloadWorkflows: downloadWorkflows,
+                    transcriptWorkflows: transcriptWorkflows,
                     generation: requestedGeneration
                 )
             } catch is CancellationError {
@@ -185,38 +202,6 @@ final class WorkflowClient {
                 Self.logger.error("Unable to refresh workflow projection: \(error, privacy: .public)")
             }
         }
-    }
-
-    // MARK: - Typed workflow intents
-
-    func configurePodcastDependencies(
-        _ provider: @escaping @MainActor @Sendable () -> PodcastAgentToolDeps?
-    ) {
-        WorkflowRuntime.shared.podcastDepsProvider = provider
-    }
-
-    func startAndReconcile() async {
-        WorkflowRuntime.shared.attach(client: self)
-        await WorkflowRuntime.shared.startAndReconcile()
-    }
-
-    func reconcileAndDrain() async {
-        await WorkflowRuntime.shared.reconcileAndDrain()
-    }
-
-    func wake() {
-        WorkflowRuntime.shared.wake()
-    }
-
-    func requestTranscript(episodeID: UUID, provider: STTProvider? = nil) {
-        WorkflowRuntime.shared.requestTranscript(episodeID: episodeID, provider: provider)
-    }
-
-    func perform(
-        _ action: WorkflowJobAction,
-        on projection: WorkflowJobProjection
-    ) -> WorkflowJobActionResult {
-        WorkflowRuntime.shared.perform(action, on: projection)
     }
 
     private func receiveChange(at changedPath: String?) {
@@ -252,6 +237,7 @@ final class WorkflowClient {
         publisherWorkflows: [PublisherChapterWorkflowProjection],
         modelChapterWorkflows: [ModelChapterWorkflowProjection],
         downloadWorkflows: [DownloadWorkflowProjection] = [],
+        transcriptWorkflows: [TranscriptWorkflowProjection] = [],
         generation: UInt64
     ) {
         guard generation == self.generation else { return }
@@ -268,12 +254,17 @@ final class WorkflowClient {
             let projection = WorkflowJobProjection(downloadWorkflow: $0)
             return (projection.id, projection)
         })
+        coreTranscriptJobsByID = Dictionary(uniqueKeysWithValues: transcriptWorkflows.map {
+            let projection = WorkflowJobProjection(transcriptWorkflow: $0)
+            return (projection.id, projection)
+        })
         mergeJobs()
     }
 
     private func mergeJobs() {
         let chapterJobs = corePublisherJobsByID.merging(coreModelChapterJobsByID) { _, model in model }
         let coreJobs = chapterJobs.merging(coreDownloadJobsByID) { _, download in download }
+            .merging(coreTranscriptJobsByID) { _, transcript in transcript }
         let replacement = swiftJobsByID.merging(coreJobs) { _, core in core }
         guard replacement != jobsByID else { return }
         jobsByID = replacement

@@ -7,7 +7,6 @@ final class WorkflowReconcilerTests: XCTestCase {
     private var fileURL: URL!
     private var appStore: AppStateStore!
     private var jobs: JobStore!
-    private var artifacts: ArtifactRepository!
 
     override func setUp() async throws {
         try await super.setUp()
@@ -16,13 +15,11 @@ final class WorkflowReconcilerTests: XCTestCase {
         fileURL = made.fileURL
         let database = appStore.persistence.episodeStore.fileURL
         jobs = JobStore(fileURL: database)
-        artifacts = ArtifactRepository(fileURL: database)
         try jobs.removeAll()
     }
 
     override func tearDown() async throws {
         if let fileURL { AppStateTestSupport.disposeIsolatedStore(at: fileURL) }
-        artifacts = nil
         jobs = nil
         appStore = nil
         fileURL = nil
@@ -37,9 +34,7 @@ final class WorkflowReconcilerTests: XCTestCase {
         episode.chaptersURL = URL(string: "https://example.com/owed-chapters.json")
         appStore.installEpisodeFixtures([episode], forPodcast: episode.podcastID)
         try jobs.removeAll()
-        let reconciler = Reconciler(
-            appStore: appStore, jobStore: jobs, artifacts: artifacts
-        )
+        let reconciler = Reconciler(appStore: appStore, jobStore: jobs)
 
         XCTAssertEqual(try reconciler.reconcile().ensured, 0)
         XCTAssertEqual(try reconciler.reconcile().ensured, 0)
@@ -58,9 +53,7 @@ final class WorkflowReconcilerTests: XCTestCase {
         )
         _ = try jobs.ensureJob(occurrence)
 
-        _ = try Reconciler(
-            appStore: appStore, jobStore: jobs, artifacts: artifacts
-        ).reconcile()
+        _ = try Reconciler(appStore: appStore, jobStore: jobs).reconcile()
 
         XCTAssertEqual(
             try jobs.job(idempotencyKey: occurrence.idempotencyKey)?.state,
@@ -83,8 +76,7 @@ final class WorkflowReconcilerTests: XCTestCase {
         _ = try jobs.ensureJob(occurrence)
         let reconciler = Reconciler(
             appStore: appStore,
-            jobStore: jobs,
-            artifacts: artifacts
+            jobStore: jobs
         )
 
         XCTAssertEqual(try reconciler.reconcile().obsoletedJobs, 0)

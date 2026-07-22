@@ -248,9 +248,7 @@ final class JobStoreCoordinatorTests: XCTestCase {
     func testMixedBacklogRespectsEverySupportedResourceLaneIndependently() async throws {
         let lanes: [(WorkJobKind, WorkResourceClass, Int)] = [
             (.feedDiscovery, .planning, 1),
-            (.transcriptIngest, .onDeviceSTT, 1),
-            (.transcriptIngest, .remoteSTT, 2),
-            (.transcriptIndex, .embedding, 4),
+            (.metadataIndex, .embedding, 4),
             (.scheduledAgentRun, .scheduledAgent, 2),
             (.newEpisodeNotification, .notification, 5),
         ]
@@ -354,15 +352,15 @@ final class JobStoreCoordinatorTests: XCTestCase {
     func testExplicitRearmPreservesCanonicalIdentityAfterCancellation() throws {
         let subject = UUID()
         let desired = makeDesired(
-            key: "transcript:\(subject):v1",
+            key: "metadata:\(subject):v1",
             subject: subject,
-            kind: .transcriptIngest,
-            resource: .remoteSTT
+            kind: .metadataIndex,
+            resource: .embedding
         )
         XCTAssertTrue(try store.ensureJob(desired))
         let original = try XCTUnwrap(store.job(idempotencyKey: desired.idempotencyKey))
 
-        try store.cancelActiveJobs(kind: .transcriptIngest, subjectID: subject)
+        try store.cancelActiveJobs(kind: .metadataIndex, subjectID: subject)
         XCTAssertEqual(try store.job(idempotencyKey: desired.idempotencyKey)?.state, .cancelled)
 
         try store.rearmJob(idempotencyKey: desired.idempotencyKey)

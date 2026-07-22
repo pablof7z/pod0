@@ -72,8 +72,8 @@ final class LegacyPublisherChapterWorkflowRetirementTests: XCTestCase {
             externalProvider: "http", externalOperationID: "get-1"
         ))
         _ = try store.ensureJob(DesiredJob(
-            idempotencyKey: "native-transcript", kind: .transcriptIngest,
-            subjectID: UUID(), inputVersion: "audio-v1", resourceClass: .remoteSTT
+            idempotencyKey: "native-scheduled", kind: .scheduledAgentRun,
+            subjectID: UUID(), inputVersion: "schedule-v1", resourceClass: .scheduledAgent
         ))
 
         try LegacyPublisherChapterWorkflowRetirement.run(
@@ -85,7 +85,7 @@ final class LegacyPublisherChapterWorkflowRetirementTests: XCTestCase {
         let marker = try XCTUnwrap(store.legacyChapterWorkflowRetirementMarker())
         XCTAssertEqual(marker.modelSourceGeneration, 42)
         XCTAssertTrue(try store.legacyChapterJobs(kind: .publisherChapters).isEmpty)
-        XCTAssertNotNil(try store.job(idempotencyKey: "native-transcript"))
+        XCTAssertNotNil(try store.job(idempotencyKey: "native-scheduled"))
         let backup = try XCTUnwrap(LegacyPublisherChapterWorkflowBackupManifest.load(
             from: backupRoot,
             sourceGeneration: marker.publisherSourceGeneration

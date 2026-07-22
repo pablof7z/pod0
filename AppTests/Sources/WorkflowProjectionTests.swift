@@ -39,16 +39,16 @@ final class WorkflowProjectionTests: XCTestCase {
         client.attach(jobStore: store)
         let token = client.register(WorkflowProjectionRequest(
             subjectIDs: [blocked, failed, succeeded],
-            kinds: [.transcriptIngest]
+            kinds: [.metadataIndex]
         ))
         await assertEventually {
-            client.latest(kind: .transcriptIngest, subjectID: blocked)?.state == .pending
+            client.latest(kind: .metadataIndex, subjectID: blocked)?.state == .pending
         }
 
         let blockedAttempt = try claim(subject: blocked)
         try store.markRunning(id: blockedAttempt.id, leaseToken: XCTUnwrap(blockedAttempt.leaseToken))
         await assertEventually {
-            client.latest(kind: .transcriptIngest, subjectID: blocked)?.state == .running
+            client.latest(kind: .metadataIndex, subjectID: blocked)?.state == .running
         }
         try store.markBlocked(
             id: blockedAttempt.id,
@@ -56,7 +56,7 @@ final class WorkflowProjectionTests: XCTestCase {
             reason: JobFailure(classification: .missingCredential, message: "Add a key")
         )
         await assertEventually {
-            client.latest(kind: .transcriptIngest, subjectID: blocked)?.state == .blocked
+            client.latest(kind: .metadataIndex, subjectID: blocked)?.state == .blocked
         }
 
         let failedAttempt = try claim(subject: failed)
@@ -67,7 +67,7 @@ final class WorkflowProjectionTests: XCTestCase {
             error: JobFailure(classification: .invalidInput, message: "Bad input")
         )
         await assertEventually {
-            client.latest(kind: .transcriptIngest, subjectID: failed)?.state == .failedPermanent
+            client.latest(kind: .metadataIndex, subjectID: failed)?.state == .failedPermanent
         }
 
         let succeededAttempt = try claim(subject: succeeded)
@@ -81,31 +81,31 @@ final class WorkflowProjectionTests: XCTestCase {
             outputVersion: "v1"
         )
         await assertEventually {
-            client.latest(kind: .transcriptIngest, subjectID: succeeded)?.state == .succeeded
+            client.latest(kind: .metadataIndex, subjectID: succeeded)?.state == .succeeded
         }
 
-        try store.manuallyRetry(kind: .transcriptIngest, subjectID: blocked)
+        try store.manuallyRetry(kind: .metadataIndex, subjectID: blocked)
         let cancelledAttempt = try claim(subject: blocked)
         try store.markCancelled(
             id: cancelledAttempt.id,
             leaseToken: XCTUnwrap(cancelledAttempt.leaseToken)
         )
         await assertEventually {
-            client.latest(kind: .transcriptIngest, subjectID: blocked)?.state == .cancelled
+            client.latest(kind: .metadataIndex, subjectID: blocked)?.state == .cancelled
         }
         client.unregister(token)
         await assertEventually {
-            client.latest(kind: .transcriptIngest, subjectID: blocked) == nil
+            client.latest(kind: .metadataIndex, subjectID: blocked) == nil
         }
 
         let relaunched = WorkflowClient(coalescingDelayNanoseconds: 0)
         relaunched.attach(jobStore: JobStore(fileURL: fileURL))
         _ = relaunched.register(WorkflowProjectionRequest(
             subjectIDs: [blocked],
-            kinds: [.transcriptIngest]
+            kinds: [.metadataIndex]
         ))
         await assertEventually {
-            relaunched.latest(kind: .transcriptIngest, subjectID: blocked)?.state == .cancelled
+            relaunched.latest(kind: .metadataIndex, subjectID: blocked)?.state == .cancelled
         }
     }
 
@@ -157,12 +157,12 @@ final class WorkflowProjectionTests: XCTestCase {
         )
 
         let attention = try store.projections(for: WorkflowProjectionQuery(
-            subjectIDs: [], kinds: [], attentionKinds: [.transcriptIngest], recentKinds: [], limit: 1
+            subjectIDs: [], kinds: [], attentionKinds: [.metadataIndex], recentKinds: [], limit: 1
         ))
         XCTAssertEqual(attention.count, 1)
         XCTAssertEqual(attention.first?.subjectID, activeID)
         let terminal = try store.projections(for: WorkflowProjectionQuery(
-            subjectIDs: [succeededID], kinds: [.transcriptIngest], attentionKinds: [],
+            subjectIDs: [succeededID], kinds: [.metadataIndex], attentionKinds: [],
             recentKinds: [], limit: 10
         ))
         XCTAssertEqual(terminal.first?.state, .succeeded)
@@ -174,12 +174,12 @@ final class WorkflowProjectionTests: XCTestCase {
         try insert(subject: subjectID, key: "history-2")
         let history = try store.projections(for: WorkflowProjectionQuery(
             subjectIDs: [], kinds: [], attentionKinds: [],
-            recentKinds: [.transcriptIngest], limit: 10
+            recentKinds: [.metadataIndex], limit: 10
         ))
         XCTAssertEqual(history.count, 2)
         let bounded = try store.projections(for: WorkflowProjectionQuery(
             subjectIDs: [], kinds: [], attentionKinds: [],
-            recentKinds: [.transcriptIngest], limit: 1
+            recentKinds: [.metadataIndex], limit: 1
         ))
         XCTAssertEqual(bounded.count, 1)
     }
@@ -235,20 +235,20 @@ final class WorkflowProjectionTests: XCTestCase {
     private func insert(
         subject: UUID,
         key: String,
-        kind: WorkJobKind = .transcriptIngest
+        kind: WorkJobKind = .metadataIndex
     ) throws {
         _ = try store.ensureJob(DesiredJob(
             idempotencyKey: key,
             kind: kind,
             subjectID: subject,
             inputVersion: "v1",
-            resourceClass: kind == .download ? .download : .remoteSTT
+            resourceClass: kind == .download ? .download : .embedding
         ), notBefore: .distantPast)
     }
 
     private func claim(
         subject: UUID,
-        resourceClass: WorkResourceClass = .remoteSTT
+        resourceClass: WorkResourceClass = .embedding
     ) throws -> WorkJob {
         try XCTUnwrap(try store.claimDueJobs(
             resourceClass: resourceClass,

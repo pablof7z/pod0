@@ -8,7 +8,7 @@ enum TranscriptCredentialWorkflowSignal {
     static func send() {
         NotificationCenter.default.post(name: notification, object: nil)
         Task { @MainActor in
-            WorkflowRuntime.shared.dependencyChanged(for: .transcriptIngest)
+            WorkflowRuntime.shared.wake()
         }
     }
 }

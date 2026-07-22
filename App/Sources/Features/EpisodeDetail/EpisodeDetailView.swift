@@ -16,7 +16,7 @@ import SwiftUI
 /// Driven by the real `Episode` looked up out of `AppStateStore` via the
 /// passed `episodeID`. On first appearance for an episode that has a
 /// `publisherTranscriptURL` and a `.none` state, we kick off a background
-/// `TranscriptIngestService` warm so RAG / agent paths fill in without
+/// the Rust transcript workflow active so RAG / agent paths fill in without
 /// blocking the user surface.
 struct EpisodeDetailView: View {
 

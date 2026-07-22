@@ -12,19 +12,13 @@ struct ReconciliationReport: Equatable, Sendable {
 struct Reconciler {
     let appStore: AppStateStore
     let jobStore: JobStore
-    let artifacts: ArtifactRepository
     var now: () -> Date = Date.init
 
     @discardableResult
     func reconcile() throws -> ReconciliationReport {
         var report = ReconciliationReport()
         let desired = DesiredStatePlanner().plan(.init(
-            episodes: appStore.state.episodes,
             settings: appStore.state.settings,
-            artifacts: try artifacts.all(),
-            transcripts: transcriptSnapshots(),
-            transcriptDesiredEpisodeIDs: try transcriptDesiredIDs(),
-            embeddingSpaceID: appStore.recallConfiguration?.embeddingSpaceId.stableString,
             scheduledTasks: appStore.scheduledTasks,
             now: now()
         ))
@@ -65,71 +59,11 @@ struct Reconciler {
         return count
     }
 
-    /// Verifies that the workflow's derived receipt still names the exact
-    /// generation selected by the authoritative Rust evidence store.
-    func verifySharedEvidenceSelections() async throws {
-        for artifact in try artifacts.all()
-            where artifact.kind == .semanticIndex {
-            guard artifact.integrity == .available,
-                  let encoded = artifact.origin,
-                  let data = Data(base64Encoded: encoded),
-                  let receipt = try? Self.decoder.decode(
-                    SharedEvidenceReceipt.self, from: data
-                  ),
-                  receipt.generationID == artifact.outputVersion,
-                  receipt.episodeID == artifact.subjectID,
-                  appStore.sharedLibrary?.verifyEvidenceReceipt(receipt) == true else {
-                try artifacts.markIntegrity(
-                    kind: artifact.kind,
-                    subjectID: artifact.subjectID,
-                    integrity: .corrupt
-                )
-                continue
-            }
-        }
-    }
-
-    private func transcriptDesiredIDs() throws -> Set<UUID> {
-        let episodes = appStore.state.episodes
-        var ids = Set(episodes.compactMap { episode -> UUID? in
-            if case .downloaded = episode.downloadState { return episode.id }
-            return episode.requestedTranscriptProvider == nil ? nil : episode.id
-        })
-        ids.formUnion(TranscriptIngestService.autoIngestCandidates(
-            among: episodes,
-            settings: appStore.state.settings,
-            elevenLabsKey: TranscriptIngestService.shared.resolvedElevenLabsKey(),
-            openRouterKey: TranscriptIngestService.shared.resolvedOpenRouterKey(),
-            assemblyAIKey: TranscriptIngestService.shared.resolvedAssemblyAIKey()
-        ).map(\.id))
-        ids.formUnion(transcriptSnapshots().map(\.episodeID))
-        return ids
-    }
-
-    private func transcriptSnapshots() -> [TranscriptWorkflowSnapshot] {
-        appStore.sharedLibrary?.transcriptWorkflowSnapshots(
-            episodeIDs: appStore.state.episodes.map(\.id)
-        ) ?? []
-    }
-
     private func prerequisitesAreAvailable(for job: WorkJob) -> Bool {
         switch job.kind {
-        case .transcriptIngest:
-            guard let payload = try? Self.decoder.decode(
-                TranscriptJobPayload.self, from: job.payload ?? Data()
-            ) else { return false }
-            switch payload.provider {
-            case .elevenLabsScribe:
-                return TranscriptIngestService.shared.resolvedElevenLabsKey() != nil
-            case .openRouterWhisper:
-                return TranscriptIngestService.shared.resolvedOpenRouterKey() != nil
-            case .assemblyAI:
-                return TranscriptIngestService.shared.resolvedAssemblyAIKey() != nil
-            case .appleNative:
-                guard let episode = appStore.episode(id: job.subjectID) else { return false }
-                return episode.downloadState.localFileURL != nil
-            }
-        case .metadataIndex, .transcriptIndex:
+        case .transcriptIngest, .transcriptIndex:
+            return false
+        case .metadataIndex:
             return true
         case .scheduledAgentRun:
             guard let payload = try? Self.decoder.decode(

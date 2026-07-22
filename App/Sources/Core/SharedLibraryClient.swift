@@ -22,6 +22,7 @@ final class SharedLibraryClient {
     private var notesSubscriptionID: SubscriptionId?
     private var clipsSubscriptionID: SubscriptionId?
     private var downloadsSubscriptionID: SubscriptionId?
+    private var transcriptWorkflowSubscriptionID: SubscriptionId?
     var waiters: [CommandId: Waiter] = [:]
     var lastLibraryRevision: UInt64 = 0
     private var lastPlaybackRevision: UInt64 = 0
@@ -43,6 +44,8 @@ final class SharedLibraryClient {
     var cachedClips: SharedClipSnapshot?
     var lastDownloadsRevision: UInt64 = 0
     var cachedDownloadWorkflows: [UUID: DownloadWorkflowProjection] = [:]
+    var lastTranscriptWorkflowRevision: UInt64 = 0
+    var announcedTranscriptWorkflowVersions: [UUID: String] = [:]
     private var playbackHostAttached = false
     var evidenceRebuildTask: Task<Void, Never>?
     var evidenceUpdateTasks: [UUID: Task<Void, Never>] = [:]
@@ -119,6 +122,14 @@ final class SharedLibraryClient {
             ),
             subscriber: subscriber
         )
+        transcriptWorkflowSubscriptionID = facade.subscribe(
+            request: ProjectionRequest(
+                scope: .transcriptWorkflows(episodeId: nil),
+                offset: 0,
+                maxItems: 200
+            ),
+            subscriber: subscriber
+        )
         dispatcher.executePendingRequests(from: facade)
     }
 
@@ -134,16 +145,6 @@ final class SharedLibraryClient {
         cachedClips = clips
         store.applySharedClips(clips)
         publishRecallConfiguration(to: store)
-    }
-
-    nonisolated func chapterModelPlan(
-        episodeID: UUID,
-        configuredModel: String
-    ) -> ChapterModelPlan {
-        facade.planChapterModelRequest(
-            episodeId: EpisodeId(uuid: episodeID),
-            configuredModel: configuredModel
-        )
     }
 
     func attachPlayback(_ playback: PlaybackState, store: AppStateStore) {
@@ -177,46 +178,6 @@ final class SharedLibraryClient {
         dispatcher.executePendingRequests(from: facade)
     }
 
-    func executePendingHostRequests() {
-        dispatcher.executePendingRequests(from: facade)
-    }
-
-    func cancelPendingHostRequests(cancellationID: CancellationId) {
-        dispatcher.cancel(cancellationID: cancellationID)
-    }
-
-    func execute(_ command: ApplicationCommand) async throws -> OperationResult? {
-        let commandID = CommandId(uuid: UUID())
-        let cancellationID = CancellationId(uuid: UUID())
-        return try await withCheckedThrowingContinuation { continuation in
-            waiters[commandID] = Waiter(continuation: continuation)
-            facade.dispatch(command: CommandEnvelope(
-                commandId: commandID,
-                cancellationId: cancellationID,
-                expectedRevision: nil,
-                command: command
-            ))
-            dispatcher.executePendingRequests(from: facade)
-        }
-    }
-
-    func podcast(id: UUID) -> Podcast? {
-        cachedSnapshot?.podcasts.first { $0.podcastId.uuid == id }?.swiftValue
-    }
-
-    func podcast(feedURL: URL) -> Podcast? {
-        let key = feedURL.absoluteString.lowercased()
-        return cachedSnapshot?.podcasts.first {
-            $0.feedIdentity?.comparisonKey == key
-        }?.swiftValue
-    }
-
-    func subscription(podcastID: UUID) -> PodcastSubscription? {
-        cachedSnapshot?.subscriptions.first {
-            $0.podcastId.uuid == podcastID
-        }?.swiftValue
-    }
-
     private func receive(_ envelope: ProjectionEnvelope) {
         switch envelope.projection {
         case .library:
@@ -236,8 +197,10 @@ final class SharedLibraryClient {
             receiveClips(revision: envelope.stateRevision.value)
         case .downloads:
             receiveDownloads(revision: envelope.stateRevision.value)
+        case .transcriptWorkflows:
+            receiveTranscriptWorkflows(revision: envelope.stateRevision.value)
         case .podcastDetail, .episodeDetail, .recall, .evidenceIndex, .transcript,
-             .transcriptWorkflows, .chapter, .unsupported:
+             .chapter, .unsupported:
             break
         }
     }
@@ -286,20 +249,26 @@ final class SharedLibraryClient {
         if let downloadsSubscriptionID {
             facade.unsubscribe(subscriptionId: downloadsSubscriptionID)
         }
+        if let transcriptWorkflowSubscriptionID {
+            facade.unsubscribe(subscriptionId: transcriptWorkflowSubscriptionID)
+        }
         librarySubscriptionID = nil
         playbackSubscriptionID = nil
         chapterWorkflowSubscriptionID = nil
         notesSubscriptionID = nil
         clipsSubscriptionID = nil
         downloadsSubscriptionID = nil
+        transcriptWorkflowSubscriptionID = nil
         chapterScopeCounts.removeAll()
         chapterSnapshots.removeAll()
         announcedPublisherChapterEpisodeIDs.removeAll()
         announcedModelChapterVersions.removeAll()
         cachedPublisherChapterWorkflows.removeAll()
+        announcedTranscriptWorkflowVersions.removeAll()
         workflowClient?.detachPublisherChapterCore()
         workflowClient?.detachModelChapterCore()
         workflowClient?.detachDownloadCore()
+        workflowClient?.detachTranscriptCore()
         playbackChapterEpisodeID = nil
         subscriber = nil
         for waiter in waiters.values {

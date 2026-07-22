@@ -59,7 +59,7 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
     var downloadState: DownloadState
     /// Lifecycle of transcript ingestion.
     var transcriptState: TranscriptState
-    /// Optional user-selected provider for the next durable ingest attempt.
+    /// Decode-only provider evidence used by the one-shot Rust workflow cutover.
     var requestedTranscriptProvider: STTProvider?
     /// Replaceable native projection of Rust-selected ad spans. `nil` means
     /// the selected artifact has not evaluated ads; an empty array means Rust
@@ -203,7 +203,7 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         try c.encode(isStarred, forKey: .isStarred)
         // Rust owns durable download state; the legacy key remains decode-only.
         // Rust owns durable readiness; decode the legacy key but never re-encode it.
-        try c.encodeIfPresent(requestedTranscriptProvider, forKey: .requestedTranscriptProvider)
+        // Rust owns durable transcript provider selection; legacy value is decode-only.
         // Rust owns durable ad spans; the legacy key remains decode-only.
         try c.encodeIfPresent(generationSource, forKey: .generationSource)
     }

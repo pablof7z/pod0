@@ -204,7 +204,6 @@ final class AppStateStore {
         // Attach the native capability executor used by the Rust recall workflow.
         // Rust supplies the exact provider, model, and dimensionality.
         sharedLibrary?.attachRecall(RecallProviderService.shared, store: self)
-        TranscriptIngestService.shared.attach(appStore: self)
         WorkflowRuntime.shared.attach(store: self)
         BackgroundWorkScheduler.shared.attach(store: self)
         // Prune agent-activity entries older than 30 days so the persisted log

@@ -9,7 +9,7 @@ import Foundation
 //   1. `YouTubeAudioService` to resolve the audio stream URL + metadata.
 //   2. `URLSession` to download the audio to the agent-episodes directory.
 //   3. `AgentGeneratedPodcastService.publishEpisode` to register the episode.
-//   4. Optionally `TranscriptIngestService` to kick off transcription.
+//   4. Optionally request the Rust-owned transcript workflow.
 
 protocol YouTubeIngestionProtocol: Sendable {
     func ingestVideo(

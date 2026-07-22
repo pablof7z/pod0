@@ -10,7 +10,7 @@ import os.log
 //      agent-episodes directory (same layout as TTS-generated episodes).
 //   4. Publish the episode to the "Agent Generated" podcast via
 //      `AgentGeneratedPodcastService.publishEpisode`.
-//   5. Optionally enqueue transcription via `TranscriptIngestService`.
+//   5. Optionally request the Rust-owned transcript workflow.
 
 final class LiveYouTubeIngestionAdapter: YouTubeIngestionProtocol, @unchecked Sendable {
 

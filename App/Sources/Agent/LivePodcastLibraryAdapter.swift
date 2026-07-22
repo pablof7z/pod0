@@ -2,18 +2,15 @@ import Foundation
 
 final class LivePodcastLibraryAdapter: PodcastLibraryProtocol, @unchecked Sendable {
     weak var store: AppStateStore?
-    private let transcriptService: TranscriptIngestService
     private let refreshService: SubscriptionRefreshService
     private let transcriptReader: any TranscriptReading
 
     init(
         store: AppStateStore,
-        transcriptService: TranscriptIngestService,
         refreshService: SubscriptionRefreshService,
         transcriptReader: any TranscriptReading
     ) {
         self.store = store
-        self.transcriptService = transcriptService
         self.refreshService = refreshService
         self.transcriptReader = transcriptReader
     }

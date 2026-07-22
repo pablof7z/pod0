@@ -78,7 +78,7 @@ final class WorkflowJobActionTests: XCTestCase {
             .accepted(.retry)
         )
         let attempt = try XCTUnwrap(try store.claimDueJobs(
-            resourceClass: .remoteSTT,
+            resourceClass: .embedding,
             capacity: 1,
             now: Date(),
             owner: "actions",
@@ -102,7 +102,7 @@ final class WorkflowJobActionTests: XCTestCase {
     func testUnsafeInterruptedSubmissionCannotBeRetried() throws {
         _ = try store.ensureJob(desired(subjectID: UUID()), notBefore: .distantPast)
         let attempt = try XCTUnwrap(try store.claimDueJobs(
-            resourceClass: .remoteSTT,
+            resourceClass: .embedding,
             capacity: 1,
             now: Date(),
             owner: "unsafe",
@@ -129,10 +129,10 @@ final class WorkflowJobActionTests: XCTestCase {
     private func desired(subjectID: UUID) -> DesiredJob {
         DesiredJob(
             idempotencyKey: "action",
-            kind: .transcriptIngest,
+            kind: .metadataIndex,
             subjectID: subjectID,
             inputVersion: "v1",
-            resourceClass: .remoteSTT
+            resourceClass: .embedding
         )
     }
 
@@ -142,10 +142,10 @@ final class WorkflowJobActionTests: XCTestCase {
     ) -> WorkflowJobProjection {
         let now = Date()
         return WorkflowJobProjection(job: WorkJob(
-            id: UUID(), idempotencyKey: UUID().uuidString, kind: .transcriptIngest,
+            id: UUID(), idempotencyKey: UUID().uuidString, kind: .metadataIndex,
             subjectID: UUID(), inputVersion: "v1", occurrenceID: nil,
             payloadVersion: 1, payload: nil, state: state, priority: 0,
-            resourceClass: .remoteSTT, attempt: 1, maxAttempts: 8,
+            resourceClass: .embedding, attempt: 1, maxAttempts: 8,
             notBefore: now, leaseToken: nil, leaseOwner: nil,
             leaseExpiresAt: nil, externalProvider: nil, externalOperationID: nil,
             externalOperationState: nil, outputVersion: nil,

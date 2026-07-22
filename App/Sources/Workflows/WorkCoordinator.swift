@@ -32,8 +32,8 @@ actor WorkCoordinator {
         executors: [WorkJobKind: any JobExecutor],
         verifiers: [WorkJobKind: any JobPostconditionVerifier] = [:],
         capacities: [WorkResourceClass: Int] = [
-            .planning: 1, .download: 3, .onDeviceSTT: 1, .remoteSTT: 2,
-            .embedding: 2, .utilityLLM: 1, .scheduledAgent: 1, .notification: 2,
+            .planning: 1, .embedding: 2, .utilityLLM: 1,
+            .scheduledAgent: 1, .notification: 2,
         ],
         ownerID: String = UUID().uuidString,
         leaseDuration: TimeInterval = 15 * 60,

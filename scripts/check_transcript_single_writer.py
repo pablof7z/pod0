@@ -48,10 +48,12 @@ REQUIRED_TOKENS = {
     ),
     "App/Sources/Core/SharedLibraryBootstrap.swift": (
         "sharedTranscriptStoreIsAuthoritative(",
+        "SharedLibraryBootstrapFailureCode.classify(error)",
+    ),
+    "App/Sources/Core/SharedLibraryBootstrap+Transcripts.swift": (
         "stageLegacyTranscriptImport(",
         "verifyStagedLegacyTranscriptImport(",
         "commitStagedLegacyTranscriptImport(",
-        "SharedLibraryBootstrapFailureCode.classify(error)",
     ),
     "App/Sources/Workflows/ArtifactRepository.swift": (
         "kind NOT IN ('transcript','chapters','adSegments')",

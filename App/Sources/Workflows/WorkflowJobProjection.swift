@@ -6,6 +6,7 @@ enum WorkflowProjectionAuthority: Sendable, Equatable {
     case sharedRustPublisherChapters
     case sharedRustModelChapters
     case sharedRustDownloads
+    case sharedRustTranscripts
 }
 
 extension WorkflowJobProjection {
@@ -85,7 +86,13 @@ enum WorkflowProjectionKind: String, CaseIterable, Sendable {
     }
 
     var swiftJobKind: WorkJobKind? {
-        WorkJobKind(rawValue: rawValue)
+        switch self {
+        case .download, .transcriptIngest, .transcriptIndex, .autoDownload,
+             .publisherChapters, .chapterArtifacts:
+            nil
+        default:
+            WorkJobKind(rawValue: rawValue)
+        }
     }
 }
 

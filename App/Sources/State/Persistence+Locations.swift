@@ -119,6 +119,10 @@ extension Persistence {
         episodeStore.fileURL.appendingPathExtension("publisher-chapter-workflow-backups")
     }
 
+    var legacyTranscriptWorkflowBackupRootURL: URL {
+        episodeStore.fileURL.appendingPathExtension("transcript-workflow-backups")
+    }
+
     var legacyDownloadWorkflowBackupURL: URL {
         episodeStore.fileURL.appendingPathExtension("download-workflow-backup-v1.json")
     }
@@ -156,6 +160,7 @@ extension Persistence {
             legacyChapterBackupRootURL,
             legacyModelChapterWorkflowBackupRootURL,
             legacyPublisherChapterWorkflowBackupRootURL,
+            legacyTranscriptWorkflowBackupRootURL,
             legacyDownloadWorkflowBackupURL
         ]
         urls.append(contentsOf: (1...32).map {

@@ -100,7 +100,7 @@ extension EpisodeRecord {
             isStarred: isStarred,
             downloadState: downloadState,
             transcriptState: transcript.swiftValue,
-            requestedTranscriptProvider: adjunct?.requestedTranscriptProvider,
+            requestedTranscriptProvider: nil,
             adSegments: chapterProjection?.adSegments,
             generationSource: adjunct?.generationSource
         )

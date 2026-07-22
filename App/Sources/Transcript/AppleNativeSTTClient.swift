@@ -17,7 +17,7 @@ import Speech
 ///     (`AsyncSequence`-based). No cloud round-trip, no API key required.
 ///
 /// Constraint: requires a local `file://` URL. Episodes must be downloaded
-/// before calling `transcribe`; the caller (`TranscriptIngestService`) is
+/// before calling `transcribe`; the native transcript capability host is
 /// responsible for surfacing a "download first" message when needed.
 actor AppleNativeSTTClient {
 

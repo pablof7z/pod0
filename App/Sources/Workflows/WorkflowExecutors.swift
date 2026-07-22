@@ -54,56 +54,6 @@ final class FeedDiscoveryJobExecutor: JobExecutor {
 }
 
 @MainActor
-final class TranscriptIngestJobExecutor: JobExecutor {
-    private let store: AppStateStore
-    private let jobStore: JobStore
-
-    init(store: AppStateStore, jobStore: JobStore) {
-        self.store = store
-        self.jobStore = jobStore
-    }
-
-    func run(_ context: JobAttemptContext) async throws -> JobOutcome {
-        let job = context.job
-        guard store.episode(id: job.subjectID) != nil else { return .obsolete }
-        let payload = try decode(TranscriptJobPayload.self, from: job)
-        guard hasCredential(payload.provider) else {
-            return .blocked(reason: JobFailure(
-                classification: .missingCredential,
-                message: "No credential is configured for \(payload.provider.displayName)."
-            ))
-        }
-        let output = try await TranscriptIngestService.shared.executeJob(
-            context: context,
-            payload: payload,
-            jobStore: jobStore
-        )
-        return .succeeded(outputVersion: output)
-    }
-
-    private func hasCredential(_ provider: STTProvider) -> Bool {
-        switch provider {
-        case .elevenLabsScribe: TranscriptIngestService.shared.resolvedElevenLabsKey() != nil
-        case .openRouterWhisper: TranscriptIngestService.shared.resolvedOpenRouterKey() != nil
-        case .assemblyAI: TranscriptIngestService.shared.resolvedAssemblyAIKey() != nil
-        case .appleNative: true
-        }
-    }
-}
-
-@MainActor
-final class TranscriptIndexJobExecutor: JobExecutor {
-    func run(_ context: JobAttemptContext) async throws -> JobOutcome {
-        let receipt = try await TranscriptIngestService.shared.indexTranscript(
-            episodeID: context.job.subjectID,
-            generation: context.job.inputVersion
-        )
-        let data = try workflowEncoder.encode(receipt)
-        return .succeeded(outputVersion: data.base64EncodedString())
-    }
-}
-
-@MainActor
 final class MetadataIndexJobExecutor: JobExecutor {
     init(store: AppStateStore) { _ = store }
 

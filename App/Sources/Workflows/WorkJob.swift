@@ -4,7 +4,9 @@ enum WorkJobKind: String, CaseIterable, Codable, Sendable {
     case feedDiscovery
     /// Decode-only legacy cutover value. The Swift runtime cannot execute it.
     case download
+    /// Decode-only legacy cutover value. Rust owns transcript workflows.
     case transcriptIngest
+    /// Decode-only legacy cutover value. Rust owns evidence indexing.
     case transcriptIndex
     case metadataIndex
     /// Decode-only legacy cutover value. Selection now runs in Rust.
@@ -17,7 +19,9 @@ enum WorkResourceClass: String, CaseIterable, Codable, Sendable {
     case planning
     /// Decode-only resource value for retired Swift download rows.
     case download
+    /// Decode-only resource value for retired Swift transcript rows.
     case onDeviceSTT
+    /// Decode-only resource value for retired Swift transcript rows.
     case remoteSTT
     case embedding
     case utilityLLM

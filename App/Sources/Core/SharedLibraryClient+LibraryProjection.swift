@@ -11,6 +11,7 @@ extension SharedLibraryClient {
         announcePublisherSourceChanges(previous: previous, current: snapshot)
         resolveWaiters(snapshot.operations)
         dispatcher.executePendingRequests(from: facade)
+        WorkflowRuntime.shared.wake()
     }
 
     func loadAllPages() -> SharedLibrarySnapshot {
