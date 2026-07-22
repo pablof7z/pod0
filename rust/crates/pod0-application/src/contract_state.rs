@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use pod0_domain::{CancellationId, CommandId, HostRequestId, StateRevision, SubscriptionId};
 
+use crate::contract_state_download_validation::download_payload_is_bounded;
 use crate::contract_state_validation::{
     chapter_model_payload_is_bounded, observation_matches_request, recall_payload_is_bounded,
 };
@@ -228,6 +229,9 @@ impl HostRequestLedger {
         if !chapter_model_payload_is_bounded(&request.envelope.request, &observation.observation) {
             return ObservationAcceptance::PayloadTooLarge;
         }
+        if !download_payload_is_bounded(&request.envelope.request, &observation.observation) {
+            return ObservationAcceptance::PayloadTooLarge;
+        }
         request.last_sequence_number = Some(observation.sequence_number);
         let is_stream_update = matches!(
             (&request.envelope.request, &observation.observation),
@@ -240,6 +244,9 @@ impl HostRequestLedger {
             ) | (
                 HostRequest::RecoverChapterModelOperation { .. },
                 HostObservation::ChapterModelProviderAccepted { .. }
+            ) | (
+                HostRequest::StartEpisodeDownload { .. },
+                HostObservation::DownloadAccepted { .. }
             )
         );
         if !is_stream_update {

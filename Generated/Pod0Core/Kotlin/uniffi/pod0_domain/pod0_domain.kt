@@ -2073,6 +2073,82 @@ public object FfiConverterTypeDomainEventId: FfiConverterRustBuffer<DomainEventI
 
 
 
+data class DownloadAttemptId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDownloadAttemptId: FfiConverterRustBuffer<DownloadAttemptId> {
+    override fun read(buf: ByteBuffer): DownloadAttemptId {
+        return DownloadAttemptId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: DownloadAttemptId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: DownloadAttemptId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class DownloadIntentId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDownloadIntentId: FfiConverterRustBuffer<DownloadIntentId> {
+    override fun read(buf: ByteBuffer): DownloadIntentId {
+        return DownloadIntentId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: DownloadIntentId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: DownloadIntentId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
 data class EpisodeFeedMetadata (
     val `publisherTranscript`: PublisherTranscriptReference?
     ,

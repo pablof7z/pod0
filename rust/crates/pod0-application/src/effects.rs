@@ -1,17 +1,19 @@
 use pod0_domain::{
-    CancellationId, ChapterModelSubmissionFenceId, CommandId, DomainEventId, EpisodeId,
-    EvidenceGenerationId, HostRequestId, PlaybackRatePermille, PlaybackSeekReason, PodcastId,
+    CancellationId, ChapterModelSubmissionFenceId, CommandId, DownloadAttemptId, DownloadIntentId,
+    EpisodeId, EvidenceGenerationId, HostRequestId, PlaybackRatePermille, PlaybackSeekReason,
     RecallEmbeddingProvider, RecallQueryId, RecallRerankProvider, StateRevision,
-    TranscriptArtifactId, TranscriptVersionId, UnixTimestampMilliseconds,
+    UnixTimestampMilliseconds,
 };
 
 use crate::{
-    OperationStage, RecallEmbeddingInput, RecallEmbeddingVector, RecallRerankDocument,
-    RecallRerankObservation, RecallSpanEmbeddingObservation,
+    RecallEmbeddingInput, RecallEmbeddingVector, RecallRerankDocument, RecallRerankObservation,
+    RecallSpanEmbeddingObservation,
 };
 
+mod domain_event;
 mod playback;
 
+pub use domain_event::*;
 pub use playback::*;
 
 pub const MAX_FEED_RESPONSE_BYTES: u64 = 8 * 1_024 * 1_024;
@@ -29,49 +31,6 @@ pub fn bounded_playback_observation_interval(requested_milliseconds: u32) -> u32
         MIN_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS,
         MAX_PLAYBACK_OBSERVATION_INTERVAL_MILLISECONDS,
     )
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
-pub struct DomainEventEnvelope {
-    pub event_id: DomainEventId,
-    pub state_revision: StateRevision,
-    pub caused_by: CommandId,
-    pub committed_at: UnixTimestampMilliseconds,
-    pub event: DomainEvent,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
-pub enum DomainEvent {
-    CommandAccepted,
-    HostRequestIssued {
-        request_id: HostRequestId,
-    },
-    HostObservationAccepted {
-        request_id: HostRequestId,
-    },
-    SubscriptionCommitted {
-        podcast_id: PodcastId,
-    },
-    ResumePositionCommitted {
-        episode_id: EpisodeId,
-        position_milliseconds: u64,
-    },
-    TranscriptArtifactCommitted {
-        episode_id: EpisodeId,
-        artifact_id: TranscriptArtifactId,
-        transcript_version_id: TranscriptVersionId,
-    },
-    TranscriptSelectionChanged {
-        episode_id: EpisodeId,
-        artifact_id: TranscriptArtifactId,
-        selection_revision: StateRevision,
-    },
-    OperationFinished {
-        stage: OperationStage,
-    },
-    Unsupported {
-        wire_code: u32,
-    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
@@ -172,6 +131,24 @@ pub enum HostRequest {
         provider_status: Option<String>,
         maximum_completion_bytes: u64,
     },
+    StartEpisodeDownload {
+        episode_id: EpisodeId,
+        intent_id: DownloadIntentId,
+        attempt_id: DownloadAttemptId,
+        input_version: String,
+        enclosure_url: String,
+        resume_key: Option<String>,
+    },
+    CancelEpisodeDownload {
+        episode_id: EpisodeId,
+        intent_id: DownloadIntentId,
+        attempt_id: DownloadAttemptId,
+        external_task_key: Option<String>,
+    },
+    RemoveEpisodeDownloadArtifact {
+        episode_id: EpisodeId,
+        artifact_key: String,
+    },
     ScheduleCoreWake {
         wake_at: UnixTimestampMilliseconds,
         reason: crate::CoreWakeReason,
@@ -250,6 +227,29 @@ pub enum HostObservation {
         code: crate::ChapterModelHostFailureCode,
         safe_detail: Option<String>,
         retry_after_milliseconds: Option<u64>,
+    },
+    DownloadAccepted {
+        episode_id: EpisodeId,
+        intent_id: DownloadIntentId,
+        attempt_id: DownloadAttemptId,
+        external_task_key: String,
+        resume_key: Option<String>,
+    },
+    DownloadStaged {
+        episode_id: EpisodeId,
+        intent_id: DownloadIntentId,
+        attempt_id: DownloadAttemptId,
+        staged_file_path: String,
+        byte_count: u64,
+    },
+    DownloadCancelled {
+        episode_id: EpisodeId,
+        intent_id: DownloadIntentId,
+        attempt_id: DownloadAttemptId,
+    },
+    DownloadArtifactRemoved {
+        episode_id: EpisodeId,
+        artifact_key: String,
     },
     CoreWakeReached {
         reason: crate::CoreWakeReason,

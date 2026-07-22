@@ -50,6 +50,8 @@ import uniffi.pod0_domain.CommandId
 import uniffi.pod0_domain.CompletionStatus
 import uniffi.pod0_domain.ContentDigest
 import uniffi.pod0_domain.DomainEventId
+import uniffi.pod0_domain.DownloadAttemptId
+import uniffi.pod0_domain.DownloadIntentId
 import uniffi.pod0_domain.EpisodeId
 import uniffi.pod0_domain.EpisodeRecord
 import uniffi.pod0_domain.EvidenceChunkPolicy
@@ -75,6 +77,8 @@ import uniffi.pod0_domain.FfiConverterTypeCommandId
 import uniffi.pod0_domain.FfiConverterTypeCompletionStatus
 import uniffi.pod0_domain.FfiConverterTypeContentDigest
 import uniffi.pod0_domain.FfiConverterTypeDomainEventId
+import uniffi.pod0_domain.FfiConverterTypeDownloadAttemptId
+import uniffi.pod0_domain.FfiConverterTypeDownloadIntentId
 import uniffi.pod0_domain.FfiConverterTypeEpisodeId
 import uniffi.pod0_domain.FfiConverterTypeEpisodeRecord
 import uniffi.pod0_domain.FfiConverterTypeEvidenceChunkPolicy
@@ -160,6 +164,8 @@ import uniffi.pod0_domain.RustBuffer as RustBufferCommandId
 import uniffi.pod0_domain.RustBuffer as RustBufferCompletionStatus
 import uniffi.pod0_domain.RustBuffer as RustBufferContentDigest
 import uniffi.pod0_domain.RustBuffer as RustBufferDomainEventId
+import uniffi.pod0_domain.RustBuffer as RustBufferDownloadAttemptId
+import uniffi.pod0_domain.RustBuffer as RustBufferDownloadIntentId
 import uniffi.pod0_domain.RustBuffer as RustBufferEpisodeId
 import uniffi.pod0_domain.RustBuffer as RustBufferEpisodeRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferEvidenceChunkPolicy
@@ -2708,6 +2714,271 @@ public object FfiConverterTypeDomainEventEnvelope: FfiConverterRustBuffer<Domain
             FfiConverterTypeCommandId.write(value.`causedBy`, buf)
             FfiConverterTypeUnixTimestampMilliseconds.write(value.`committedAt`, buf)
             FfiConverterTypeDomainEvent.write(value.`event`, buf)
+    }
+}
+
+
+
+data class DownloadEnvironmentObservation (
+    val `network`: DownloadNetworkState
+    ,
+    val `availableCapacityBytes`: kotlin.ULong?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDownloadEnvironmentObservation: FfiConverterRustBuffer<DownloadEnvironmentObservation> {
+    override fun read(buf: ByteBuffer): DownloadEnvironmentObservation {
+        return DownloadEnvironmentObservation(
+            FfiConverterTypeDownloadNetworkState.read(buf),
+            FfiConverterOptionalULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: DownloadEnvironmentObservation) = (
+            FfiConverterTypeDownloadNetworkState.allocationSize(value.`network`) +
+            FfiConverterOptionalULong.allocationSize(value.`availableCapacityBytes`)
+    )
+
+    override fun write(value: DownloadEnvironmentObservation, buf: ByteBuffer) {
+            FfiConverterTypeDownloadNetworkState.write(value.`network`, buf)
+            FfiConverterOptionalULong.write(value.`availableCapacityBytes`, buf)
+    }
+}
+
+
+
+data class DownloadWorkflowAllowedActions (
+    val `canRetry`: kotlin.Boolean
+    ,
+    val `canCancel`: kotlin.Boolean
+    ,
+    val `canRemove`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDownloadWorkflowAllowedActions: FfiConverterRustBuffer<DownloadWorkflowAllowedActions> {
+    override fun read(buf: ByteBuffer): DownloadWorkflowAllowedActions {
+        return DownloadWorkflowAllowedActions(
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: DownloadWorkflowAllowedActions) = (
+            FfiConverterBoolean.allocationSize(value.`canRetry`) +
+            FfiConverterBoolean.allocationSize(value.`canCancel`) +
+            FfiConverterBoolean.allocationSize(value.`canRemove`)
+    )
+
+    override fun write(value: DownloadWorkflowAllowedActions, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`canRetry`, buf)
+            FfiConverterBoolean.write(value.`canCancel`, buf)
+            FfiConverterBoolean.write(value.`canRemove`, buf)
+    }
+}
+
+
+
+data class DownloadWorkflowFailure (
+    val `code`: DownloadWorkflowFailureCode
+    ,
+    val `safeDetail`: kotlin.String?
+    ,
+    val `retryable`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDownloadWorkflowFailure: FfiConverterRustBuffer<DownloadWorkflowFailure> {
+    override fun read(buf: ByteBuffer): DownloadWorkflowFailure {
+        return DownloadWorkflowFailure(
+            FfiConverterTypeDownloadWorkflowFailureCode.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: DownloadWorkflowFailure) = (
+            FfiConverterTypeDownloadWorkflowFailureCode.allocationSize(value.`code`) +
+            FfiConverterOptionalString.allocationSize(value.`safeDetail`) +
+            FfiConverterBoolean.allocationSize(value.`retryable`)
+    )
+
+    override fun write(value: DownloadWorkflowFailure, buf: ByteBuffer) {
+            FfiConverterTypeDownloadWorkflowFailureCode.write(value.`code`, buf)
+            FfiConverterOptionalString.write(value.`safeDetail`, buf)
+            FfiConverterBoolean.write(value.`retryable`, buf)
+    }
+}
+
+
+
+data class DownloadWorkflowProjection (
+    val `episodeId`: EpisodeId
+    ,
+    val `intentId`: DownloadIntentId
+    ,
+    val `inputVersion`: kotlin.String
+    ,
+    val `origin`: DownloadIntentOrigin
+    ,
+    val `desiredState`: DownloadDesiredState
+    ,
+    val `stage`: DownloadWorkflowStage
+    ,
+    val `workflowRevision`: StateRevision
+    ,
+    val `attempt`: kotlin.UShort
+    ,
+    val `attemptId`: DownloadAttemptId?
+    ,
+    val `requestId`: HostRequestId?
+    ,
+    val `notBefore`: UnixTimestampMilliseconds?
+    ,
+    val `failure`: DownloadWorkflowFailure?
+    ,
+    val `updatedAt`: UnixTimestampMilliseconds
+    ,
+    val `allowedActions`: DownloadWorkflowAllowedActions
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDownloadWorkflowProjection: FfiConverterRustBuffer<DownloadWorkflowProjection> {
+    override fun read(buf: ByteBuffer): DownloadWorkflowProjection {
+        return DownloadWorkflowProjection(
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterTypeDownloadIntentId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeDownloadIntentOrigin.read(buf),
+            FfiConverterTypeDownloadDesiredState.read(buf),
+            FfiConverterTypeDownloadWorkflowStage.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterUShort.read(buf),
+            FfiConverterOptionalTypeDownloadAttemptId.read(buf),
+            FfiConverterOptionalTypeHostRequestId.read(buf),
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterOptionalTypeDownloadWorkflowFailure.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterTypeDownloadWorkflowAllowedActions.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: DownloadWorkflowProjection) = (
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterTypeDownloadIntentId.allocationSize(value.`intentId`) +
+            FfiConverterString.allocationSize(value.`inputVersion`) +
+            FfiConverterTypeDownloadIntentOrigin.allocationSize(value.`origin`) +
+            FfiConverterTypeDownloadDesiredState.allocationSize(value.`desiredState`) +
+            FfiConverterTypeDownloadWorkflowStage.allocationSize(value.`stage`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`workflowRevision`) +
+            FfiConverterUShort.allocationSize(value.`attempt`) +
+            FfiConverterOptionalTypeDownloadAttemptId.allocationSize(value.`attemptId`) +
+            FfiConverterOptionalTypeHostRequestId.allocationSize(value.`requestId`) +
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.allocationSize(value.`notBefore`) +
+            FfiConverterOptionalTypeDownloadWorkflowFailure.allocationSize(value.`failure`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`updatedAt`) +
+            FfiConverterTypeDownloadWorkflowAllowedActions.allocationSize(value.`allowedActions`)
+    )
+
+    override fun write(value: DownloadWorkflowProjection, buf: ByteBuffer) {
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterTypeDownloadIntentId.write(value.`intentId`, buf)
+            FfiConverterString.write(value.`inputVersion`, buf)
+            FfiConverterTypeDownloadIntentOrigin.write(value.`origin`, buf)
+            FfiConverterTypeDownloadDesiredState.write(value.`desiredState`, buf)
+            FfiConverterTypeDownloadWorkflowStage.write(value.`stage`, buf)
+            FfiConverterTypeStateRevision.write(value.`workflowRevision`, buf)
+            FfiConverterUShort.write(value.`attempt`, buf)
+            FfiConverterOptionalTypeDownloadAttemptId.write(value.`attemptId`, buf)
+            FfiConverterOptionalTypeHostRequestId.write(value.`requestId`, buf)
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.write(value.`notBefore`, buf)
+            FfiConverterOptionalTypeDownloadWorkflowFailure.write(value.`failure`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`updatedAt`, buf)
+            FfiConverterTypeDownloadWorkflowAllowedActions.write(value.`allowedActions`, buf)
+    }
+}
+
+
+
+data class DownloadWorkflowsProjection (
+    val `workflows`: List<DownloadWorkflowProjection>
+    ,
+    val `hasMore`: kotlin.Boolean
+    ,
+    val `failure`: CoreFailure?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDownloadWorkflowsProjection: FfiConverterRustBuffer<DownloadWorkflowsProjection> {
+    override fun read(buf: ByteBuffer): DownloadWorkflowsProjection {
+        return DownloadWorkflowsProjection(
+            FfiConverterSequenceTypeDownloadWorkflowProjection.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalTypeCoreFailure.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: DownloadWorkflowsProjection) = (
+            FfiConverterSequenceTypeDownloadWorkflowProjection.allocationSize(value.`workflows`) +
+            FfiConverterBoolean.allocationSize(value.`hasMore`) +
+            FfiConverterOptionalTypeCoreFailure.allocationSize(value.`failure`)
+    )
+
+    override fun write(value: DownloadWorkflowsProjection, buf: ByteBuffer) {
+            FfiConverterSequenceTypeDownloadWorkflowProjection.write(value.`workflows`, buf)
+            FfiConverterBoolean.write(value.`hasMore`, buf)
+            FfiConverterOptionalTypeCoreFailure.write(value.`failure`, buf)
     }
 }
 
@@ -5652,6 +5923,45 @@ sealed class ApplicationCommand {
         companion object
     }
 
+    data class RequestEpisodeDownload(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `origin`: uniffi.pod0_application.DownloadIntentOrigin) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class CancelEpisodeDownload(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `expectedWorkflowRevision`: uniffi.pod0_domain.StateRevision) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class RemoveEpisodeDownload(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `expectedWorkflowRevision`: uniffi.pod0_domain.StateRevision) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class ObserveDownloadEnvironment(
+        val `observation`: uniffi.pod0_application.DownloadEnvironmentObservation) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
     object ResetListeningData : ApplicationCommand()
 
 
@@ -5959,83 +6269,98 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
-            11 -> ApplicationCommand.ResetListeningData
-            12 -> ApplicationCommand.RequestPlayback(
+            11 -> ApplicationCommand.RequestEpisodeDownload(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeDownloadIntentOrigin.read(buf),
+                )
+            12 -> ApplicationCommand.CancelEpisodeDownload(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeStateRevision.read(buf),
+                )
+            13 -> ApplicationCommand.RemoveEpisodeDownload(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeStateRevision.read(buf),
+                )
+            14 -> ApplicationCommand.ObserveDownloadEnvironment(
+                FfiConverterTypeDownloadEnvironmentObservation.read(buf),
+                )
+            15 -> ApplicationCommand.ResetListeningData
+            16 -> ApplicationCommand.RequestPlayback(
                 FfiConverterTypeEpisodeId.read(buf),
                 )
-            13 -> ApplicationCommand.Playback(
+            17 -> ApplicationCommand.Playback(
                 FfiConverterTypePlaybackCommand.read(buf),
                 )
-            14 -> ApplicationCommand.RecallQuery(
+            18 -> ApplicationCommand.RecallQuery(
                 FfiConverterTypeRecallQuery.read(buf),
                 )
-            15 -> ApplicationCommand.ImportLegacyRecallConfiguration(
+            19 -> ApplicationCommand.ImportLegacyRecallConfiguration(
                 FfiConverterTypeRecallConfigurationInput.read(buf),
                 FfiConverterTypeContentDigest.read(buf),
                 )
-            16 -> ApplicationCommand.SetRecallConfiguration(
+            20 -> ApplicationCommand.SetRecallConfiguration(
                 FfiConverterTypeStateRevision.read(buf),
                 FfiConverterTypeRecallConfigurationInput.read(buf),
                 )
-            17 -> ApplicationCommand.RebuildTranscriptEvidence(
+            21 -> ApplicationCommand.RebuildTranscriptEvidence(
                 FfiConverterTypeTranscriptEvidenceInput.read(buf),
                 FfiConverterTypeEvidenceChunkPolicy.read(buf),
                 )
-            18 -> ApplicationCommand.CommitRecallIndexCutover
-            19 -> ApplicationCommand.CommitTranscript(
+            22 -> ApplicationCommand.CommitRecallIndexCutover
+            23 -> ApplicationCommand.CommitTranscript(
                 FfiConverterTypeStateRevision.read(buf),
                 FfiConverterTypeTranscriptArtifactInput.read(buf),
                 )
-            20 -> ApplicationCommand.CommitChapter(
+            24 -> ApplicationCommand.CommitChapter(
                 FfiConverterTypeStateRevision.read(buf),
                 FfiConverterTypeChapterArtifactInput.read(buf),
                 )
-            21 -> ApplicationCommand.EnsurePublisherChapters(
+            25 -> ApplicationCommand.EnsurePublisherChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 )
-            22 -> ApplicationCommand.RetryPublisherChapters(
-                FfiConverterTypeEpisodeId.read(buf),
-                FfiConverterTypeStateRevision.read(buf),
-                )
-            23 -> ApplicationCommand.CancelPublisherChapters(
+            26 -> ApplicationCommand.RetryPublisherChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            24 -> ApplicationCommand.EnsureModelChapters(
+            27 -> ApplicationCommand.CancelPublisherChapters(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeStateRevision.read(buf),
+                )
+            28 -> ApplicationCommand.EnsureModelChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterString.read(buf),
                 )
-            25 -> ApplicationCommand.RetryModelChapters(
+            29 -> ApplicationCommand.RetryModelChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            26 -> ApplicationCommand.CancelModelChapters(
+            30 -> ApplicationCommand.CancelModelChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            27 -> ApplicationCommand.CreateNote(
+            31 -> ApplicationCommand.CreateNote(
                 FfiConverterString.read(buf),
                 FfiConverterTypeNoteKind.read(buf),
                 FfiConverterTypeNoteAuthor.read(buf),
                 FfiConverterOptionalTypeNoteTarget.read(buf),
                 )
-            28 -> ApplicationCommand.UpdateNote(
+            32 -> ApplicationCommand.UpdateNote(
                 FfiConverterTypeNoteId.read(buf),
                 FfiConverterTypeNoteRevision.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterTypeNoteKind.read(buf),
                 FfiConverterOptionalTypeNoteTarget.read(buf),
                 )
-            29 -> ApplicationCommand.SetNoteDeleted(
+            33 -> ApplicationCommand.SetNoteDeleted(
                 FfiConverterTypeNoteId.read(buf),
                 FfiConverterTypeNoteRevision.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
-            30 -> ApplicationCommand.ClearNotes(
+            34 -> ApplicationCommand.ClearNotes(
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            31 -> ApplicationCommand.CreateClip(
+            35 -> ApplicationCommand.CreateClip(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypePodcastId.read(buf),
@@ -6046,7 +6371,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterString.read(buf),
                 FfiConverterTypeClipSource.read(buf),
                 )
-            32 -> ApplicationCommand.UpdateClip(
+            36 -> ApplicationCommand.UpdateClip(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterULong.read(buf),
@@ -6055,18 +6380,18 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterOptionalTypeSpeakerId.read(buf),
                 FfiConverterString.read(buf),
                 )
-            33 -> ApplicationCommand.SetClipDeleted(
+            37 -> ApplicationCommand.SetClipDeleted(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
-            34 -> ApplicationCommand.ClearClips(
+            38 -> ApplicationCommand.ClearClips(
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            35 -> ApplicationCommand.CancelOperation(
+            39 -> ApplicationCommand.CancelOperation(
                 FfiConverterTypeCancellationId.read(buf),
                 )
-            36 -> ApplicationCommand.Unsupported(
+            40 -> ApplicationCommand.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -6145,6 +6470,37 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 4UL
                 + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
                 + FfiConverterBoolean.allocationSize(value.`starred`)
+            )
+        }
+        is ApplicationCommand.RequestEpisodeDownload -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeDownloadIntentOrigin.allocationSize(value.`origin`)
+            )
+        }
+        is ApplicationCommand.CancelEpisodeDownload -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeStateRevision.allocationSize(value.`expectedWorkflowRevision`)
+            )
+        }
+        is ApplicationCommand.RemoveEpisodeDownload -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeStateRevision.allocationSize(value.`expectedWorkflowRevision`)
+            )
+        }
+        is ApplicationCommand.ObserveDownloadEnvironment -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeDownloadEnvironmentObservation.allocationSize(value.`observation`)
             )
         }
         is ApplicationCommand.ResetListeningData -> {
@@ -6420,97 +6776,120 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterBoolean.write(value.`starred`, buf)
                 Unit
             }
-            is ApplicationCommand.ResetListeningData -> {
+            is ApplicationCommand.RequestEpisodeDownload -> {
                 buf.putInt(11)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeDownloadIntentOrigin.write(value.`origin`, buf)
+                Unit
+            }
+            is ApplicationCommand.CancelEpisodeDownload -> {
+                buf.putInt(12)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
+                Unit
+            }
+            is ApplicationCommand.RemoveEpisodeDownload -> {
+                buf.putInt(13)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
+                Unit
+            }
+            is ApplicationCommand.ObserveDownloadEnvironment -> {
+                buf.putInt(14)
+                FfiConverterTypeDownloadEnvironmentObservation.write(value.`observation`, buf)
+                Unit
+            }
+            is ApplicationCommand.ResetListeningData -> {
+                buf.putInt(15)
                 Unit
             }
             is ApplicationCommand.RequestPlayback -> {
-                buf.putInt(12)
+                buf.putInt(16)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 Unit
             }
             is ApplicationCommand.Playback -> {
-                buf.putInt(13)
+                buf.putInt(17)
                 FfiConverterTypePlaybackCommand.write(value.`command`, buf)
                 Unit
             }
             is ApplicationCommand.RecallQuery -> {
-                buf.putInt(14)
+                buf.putInt(18)
                 FfiConverterTypeRecallQuery.write(value.`query`, buf)
                 Unit
             }
             is ApplicationCommand.ImportLegacyRecallConfiguration -> {
-                buf.putInt(15)
+                buf.putInt(19)
                 FfiConverterTypeRecallConfigurationInput.write(value.`configuration`, buf)
                 FfiConverterTypeContentDigest.write(value.`sourceGeneration`, buf)
                 Unit
             }
             is ApplicationCommand.SetRecallConfiguration -> {
-                buf.putInt(16)
+                buf.putInt(20)
                 FfiConverterTypeStateRevision.write(value.`expectedConfigurationRevision`, buf)
                 FfiConverterTypeRecallConfigurationInput.write(value.`configuration`, buf)
                 Unit
             }
             is ApplicationCommand.RebuildTranscriptEvidence -> {
-                buf.putInt(17)
+                buf.putInt(21)
                 FfiConverterTypeTranscriptEvidenceInput.write(value.`input`, buf)
                 FfiConverterTypeEvidenceChunkPolicy.write(value.`policy`, buf)
                 Unit
             }
             is ApplicationCommand.CommitRecallIndexCutover -> {
-                buf.putInt(18)
+                buf.putInt(22)
                 Unit
             }
             is ApplicationCommand.CommitTranscript -> {
-                buf.putInt(19)
+                buf.putInt(23)
                 FfiConverterTypeStateRevision.write(value.`expectedSelectionRevision`, buf)
                 FfiConverterTypeTranscriptArtifactInput.write(value.`artifact`, buf)
                 Unit
             }
             is ApplicationCommand.CommitChapter -> {
-                buf.putInt(20)
+                buf.putInt(24)
                 FfiConverterTypeStateRevision.write(value.`expectedSelectionRevision`, buf)
                 FfiConverterTypeChapterArtifactInput.write(value.`artifact`, buf)
                 Unit
             }
             is ApplicationCommand.EnsurePublisherChapters -> {
-                buf.putInt(21)
+                buf.putInt(25)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 Unit
             }
             is ApplicationCommand.RetryPublisherChapters -> {
-                buf.putInt(22)
+                buf.putInt(26)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CancelPublisherChapters -> {
-                buf.putInt(23)
+                buf.putInt(27)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
             is ApplicationCommand.EnsureModelChapters -> {
-                buf.putInt(24)
+                buf.putInt(28)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterString.write(value.`configuredModel`, buf)
                 Unit
             }
             is ApplicationCommand.RetryModelChapters -> {
-                buf.putInt(25)
+                buf.putInt(29)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterString.write(value.`configuredModel`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CancelModelChapters -> {
-                buf.putInt(26)
+                buf.putInt(30)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CreateNote -> {
-                buf.putInt(27)
+                buf.putInt(31)
                 FfiConverterString.write(value.`text`, buf)
                 FfiConverterTypeNoteKind.write(value.`kind`, buf)
                 FfiConverterTypeNoteAuthor.write(value.`author`, buf)
@@ -6518,7 +6897,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.UpdateNote -> {
-                buf.putInt(28)
+                buf.putInt(32)
                 FfiConverterTypeNoteId.write(value.`noteId`, buf)
                 FfiConverterTypeNoteRevision.write(value.`expectedNoteRevision`, buf)
                 FfiConverterString.write(value.`text`, buf)
@@ -6527,19 +6906,19 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.SetNoteDeleted -> {
-                buf.putInt(29)
+                buf.putInt(33)
                 FfiConverterTypeNoteId.write(value.`noteId`, buf)
                 FfiConverterTypeNoteRevision.write(value.`expectedNoteRevision`, buf)
                 FfiConverterBoolean.write(value.`deleted`, buf)
                 Unit
             }
             is ApplicationCommand.ClearNotes -> {
-                buf.putInt(30)
+                buf.putInt(34)
                 FfiConverterTypeStateRevision.write(value.`expectedCollectionRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CreateClip -> {
-                buf.putInt(31)
+                buf.putInt(35)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
@@ -6552,7 +6931,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.UpdateClip -> {
-                buf.putInt(32)
+                buf.putInt(36)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`expectedClipRevision`, buf)
                 FfiConverterULong.write(value.`startMilliseconds`, buf)
@@ -6563,24 +6942,24 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.SetClipDeleted -> {
-                buf.putInt(33)
+                buf.putInt(37)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`expectedClipRevision`, buf)
                 FfiConverterBoolean.write(value.`deleted`, buf)
                 Unit
             }
             is ApplicationCommand.ClearClips -> {
-                buf.putInt(34)
+                buf.putInt(38)
                 FfiConverterTypeStateRevision.write(value.`expectedCollectionRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CancelOperation -> {
-                buf.putInt(35)
+                buf.putInt(39)
                 FfiConverterTypeCancellationId.write(value.`cancellationId`, buf)
                 Unit
             }
             is ApplicationCommand.Unsupported -> {
-                buf.putInt(36)
+                buf.putInt(40)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -9220,6 +9599,965 @@ public object FfiConverterTypeDomainEvent : FfiConverterRustBuffer<DomainEvent>{
 
 
 
+sealed class DownloadAdmissionDecision {
+
+    object Admit : DownloadAdmissionDecision()
+
+
+    data class Wait(
+        val `reason`: uniffi.pod0_application.DownloadWaitReason) : DownloadAdmissionDecision()
+
+    {
+
+
+        companion object
+    }
+
+    object Obsolete : DownloadAdmissionDecision()
+
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDownloadAdmissionDecision : FfiConverterRustBuffer<DownloadAdmissionDecision>{
+    override fun read(buf: ByteBuffer): DownloadAdmissionDecision {
+        return when(buf.getInt()) {
+            1 -> DownloadAdmissionDecision.Admit
+            2 -> DownloadAdmissionDecision.Wait(
+                FfiConverterTypeDownloadWaitReason.read(buf),
+                )
+            3 -> DownloadAdmissionDecision.Obsolete
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: DownloadAdmissionDecision): ULong = when(value) {
+        is DownloadAdmissionDecision.Admit -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadAdmissionDecision.Wait -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeDownloadWaitReason.allocationSize(value.`reason`)
+            )
+        }
+        is DownloadAdmissionDecision.Obsolete -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: DownloadAdmissionDecision, buf: ByteBuffer) {
+        when(value) {
+            is DownloadAdmissionDecision.Admit -> {
+                buf.putInt(1)
+                Unit
+            }
+            is DownloadAdmissionDecision.Wait -> {
+                buf.putInt(2)
+                FfiConverterTypeDownloadWaitReason.write(value.`reason`, buf)
+                Unit
+            }
+            is DownloadAdmissionDecision.Obsolete -> {
+                buf.putInt(3)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class DownloadDesiredState {
+
+    object Present : DownloadDesiredState()
+
+
+    object Absent : DownloadDesiredState()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : DownloadDesiredState()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDownloadDesiredState : FfiConverterRustBuffer<DownloadDesiredState>{
+    override fun read(buf: ByteBuffer): DownloadDesiredState {
+        return when(buf.getInt()) {
+            1 -> DownloadDesiredState.Present
+            2 -> DownloadDesiredState.Absent
+            3 -> DownloadDesiredState.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: DownloadDesiredState): ULong = when(value) {
+        is DownloadDesiredState.Present -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadDesiredState.Absent -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadDesiredState.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: DownloadDesiredState, buf: ByteBuffer) {
+        when(value) {
+            is DownloadDesiredState.Present -> {
+                buf.putInt(1)
+                Unit
+            }
+            is DownloadDesiredState.Absent -> {
+                buf.putInt(2)
+                Unit
+            }
+            is DownloadDesiredState.Unsupported -> {
+                buf.putInt(3)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class DownloadIntentOrigin {
+
+    object User : DownloadIntentOrigin()
+
+
+    object Playback : DownloadIntentOrigin()
+
+
+    object Automatic : DownloadIntentOrigin()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : DownloadIntentOrigin()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDownloadIntentOrigin : FfiConverterRustBuffer<DownloadIntentOrigin>{
+    override fun read(buf: ByteBuffer): DownloadIntentOrigin {
+        return when(buf.getInt()) {
+            1 -> DownloadIntentOrigin.User
+            2 -> DownloadIntentOrigin.Playback
+            3 -> DownloadIntentOrigin.Automatic
+            4 -> DownloadIntentOrigin.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: DownloadIntentOrigin): ULong = when(value) {
+        is DownloadIntentOrigin.User -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadIntentOrigin.Playback -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadIntentOrigin.Automatic -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadIntentOrigin.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: DownloadIntentOrigin, buf: ByteBuffer) {
+        when(value) {
+            is DownloadIntentOrigin.User -> {
+                buf.putInt(1)
+                Unit
+            }
+            is DownloadIntentOrigin.Playback -> {
+                buf.putInt(2)
+                Unit
+            }
+            is DownloadIntentOrigin.Automatic -> {
+                buf.putInt(3)
+                Unit
+            }
+            is DownloadIntentOrigin.Unsupported -> {
+                buf.putInt(4)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class DownloadNetworkState {
+
+    object Unknown : DownloadNetworkState()
+
+
+    object Unavailable : DownloadNetworkState()
+
+
+    object Wifi : DownloadNetworkState()
+
+
+    object Other : DownloadNetworkState()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : DownloadNetworkState()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDownloadNetworkState : FfiConverterRustBuffer<DownloadNetworkState>{
+    override fun read(buf: ByteBuffer): DownloadNetworkState {
+        return when(buf.getInt()) {
+            1 -> DownloadNetworkState.Unknown
+            2 -> DownloadNetworkState.Unavailable
+            3 -> DownloadNetworkState.Wifi
+            4 -> DownloadNetworkState.Other
+            5 -> DownloadNetworkState.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: DownloadNetworkState): ULong = when(value) {
+        is DownloadNetworkState.Unknown -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadNetworkState.Unavailable -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadNetworkState.Wifi -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadNetworkState.Other -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadNetworkState.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: DownloadNetworkState, buf: ByteBuffer) {
+        when(value) {
+            is DownloadNetworkState.Unknown -> {
+                buf.putInt(1)
+                Unit
+            }
+            is DownloadNetworkState.Unavailable -> {
+                buf.putInt(2)
+                Unit
+            }
+            is DownloadNetworkState.Wifi -> {
+                buf.putInt(3)
+                Unit
+            }
+            is DownloadNetworkState.Other -> {
+                buf.putInt(4)
+                Unit
+            }
+            is DownloadNetworkState.Unsupported -> {
+                buf.putInt(5)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class DownloadWaitReason {
+
+    object NetworkUnknown : DownloadWaitReason()
+
+
+    object NetworkUnavailable : DownloadWaitReason()
+
+
+    object WifiRequired : DownloadWaitReason()
+
+
+    object InsufficientStorage : DownloadWaitReason()
+
+
+    data class UnsupportedEnvironment(
+        val `wireCode`: kotlin.UInt) : DownloadWaitReason()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDownloadWaitReason : FfiConverterRustBuffer<DownloadWaitReason>{
+    override fun read(buf: ByteBuffer): DownloadWaitReason {
+        return when(buf.getInt()) {
+            1 -> DownloadWaitReason.NetworkUnknown
+            2 -> DownloadWaitReason.NetworkUnavailable
+            3 -> DownloadWaitReason.WifiRequired
+            4 -> DownloadWaitReason.InsufficientStorage
+            5 -> DownloadWaitReason.UnsupportedEnvironment(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: DownloadWaitReason): ULong = when(value) {
+        is DownloadWaitReason.NetworkUnknown -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWaitReason.NetworkUnavailable -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWaitReason.WifiRequired -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWaitReason.InsufficientStorage -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWaitReason.UnsupportedEnvironment -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: DownloadWaitReason, buf: ByteBuffer) {
+        when(value) {
+            is DownloadWaitReason.NetworkUnknown -> {
+                buf.putInt(1)
+                Unit
+            }
+            is DownloadWaitReason.NetworkUnavailable -> {
+                buf.putInt(2)
+                Unit
+            }
+            is DownloadWaitReason.WifiRequired -> {
+                buf.putInt(3)
+                Unit
+            }
+            is DownloadWaitReason.InsufficientStorage -> {
+                buf.putInt(4)
+                Unit
+            }
+            is DownloadWaitReason.UnsupportedEnvironment -> {
+                buf.putInt(5)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class DownloadWorkflowFailureCode {
+
+    object Offline : DownloadWorkflowFailureCode()
+
+
+    object WifiRequired : DownloadWorkflowFailureCode()
+
+
+    object InsufficientStorage : DownloadWorkflowFailureCode()
+
+
+    object MissingEpisode : DownloadWorkflowFailureCode()
+
+
+    object InvalidEnclosure : DownloadWorkflowFailureCode()
+
+
+    object StaleInput : DownloadWorkflowFailureCode()
+
+
+    object HostRejected : DownloadWorkflowFailureCode()
+
+
+    object Transport : DownloadWorkflowFailureCode()
+
+
+    object TimedOut : DownloadWorkflowFailureCode()
+
+
+    object PermissionDenied : DownloadWorkflowFailureCode()
+
+
+    object InvalidArtifact : DownloadWorkflowFailureCode()
+
+
+    object StorageUnavailable : DownloadWorkflowFailureCode()
+
+
+    object Cancelled : DownloadWorkflowFailureCode()
+
+
+    object RetryExhausted : DownloadWorkflowFailureCode()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : DownloadWorkflowFailureCode()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDownloadWorkflowFailureCode : FfiConverterRustBuffer<DownloadWorkflowFailureCode>{
+    override fun read(buf: ByteBuffer): DownloadWorkflowFailureCode {
+        return when(buf.getInt()) {
+            1 -> DownloadWorkflowFailureCode.Offline
+            2 -> DownloadWorkflowFailureCode.WifiRequired
+            3 -> DownloadWorkflowFailureCode.InsufficientStorage
+            4 -> DownloadWorkflowFailureCode.MissingEpisode
+            5 -> DownloadWorkflowFailureCode.InvalidEnclosure
+            6 -> DownloadWorkflowFailureCode.StaleInput
+            7 -> DownloadWorkflowFailureCode.HostRejected
+            8 -> DownloadWorkflowFailureCode.Transport
+            9 -> DownloadWorkflowFailureCode.TimedOut
+            10 -> DownloadWorkflowFailureCode.PermissionDenied
+            11 -> DownloadWorkflowFailureCode.InvalidArtifact
+            12 -> DownloadWorkflowFailureCode.StorageUnavailable
+            13 -> DownloadWorkflowFailureCode.Cancelled
+            14 -> DownloadWorkflowFailureCode.RetryExhausted
+            15 -> DownloadWorkflowFailureCode.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: DownloadWorkflowFailureCode): ULong = when(value) {
+        is DownloadWorkflowFailureCode.Offline -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowFailureCode.WifiRequired -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowFailureCode.InsufficientStorage -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowFailureCode.MissingEpisode -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowFailureCode.InvalidEnclosure -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowFailureCode.StaleInput -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowFailureCode.HostRejected -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowFailureCode.Transport -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowFailureCode.TimedOut -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowFailureCode.PermissionDenied -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowFailureCode.InvalidArtifact -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowFailureCode.StorageUnavailable -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowFailureCode.Cancelled -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowFailureCode.RetryExhausted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowFailureCode.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: DownloadWorkflowFailureCode, buf: ByteBuffer) {
+        when(value) {
+            is DownloadWorkflowFailureCode.Offline -> {
+                buf.putInt(1)
+                Unit
+            }
+            is DownloadWorkflowFailureCode.WifiRequired -> {
+                buf.putInt(2)
+                Unit
+            }
+            is DownloadWorkflowFailureCode.InsufficientStorage -> {
+                buf.putInt(3)
+                Unit
+            }
+            is DownloadWorkflowFailureCode.MissingEpisode -> {
+                buf.putInt(4)
+                Unit
+            }
+            is DownloadWorkflowFailureCode.InvalidEnclosure -> {
+                buf.putInt(5)
+                Unit
+            }
+            is DownloadWorkflowFailureCode.StaleInput -> {
+                buf.putInt(6)
+                Unit
+            }
+            is DownloadWorkflowFailureCode.HostRejected -> {
+                buf.putInt(7)
+                Unit
+            }
+            is DownloadWorkflowFailureCode.Transport -> {
+                buf.putInt(8)
+                Unit
+            }
+            is DownloadWorkflowFailureCode.TimedOut -> {
+                buf.putInt(9)
+                Unit
+            }
+            is DownloadWorkflowFailureCode.PermissionDenied -> {
+                buf.putInt(10)
+                Unit
+            }
+            is DownloadWorkflowFailureCode.InvalidArtifact -> {
+                buf.putInt(11)
+                Unit
+            }
+            is DownloadWorkflowFailureCode.StorageUnavailable -> {
+                buf.putInt(12)
+                Unit
+            }
+            is DownloadWorkflowFailureCode.Cancelled -> {
+                buf.putInt(13)
+                Unit
+            }
+            is DownloadWorkflowFailureCode.RetryExhausted -> {
+                buf.putInt(14)
+                Unit
+            }
+            is DownloadWorkflowFailureCode.Unsupported -> {
+                buf.putInt(15)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class DownloadWorkflowStage {
+
+    object WaitingForEnvironment : DownloadWorkflowStage()
+
+
+    object Requested : DownloadWorkflowStage()
+
+
+    object HostAccepted : DownloadWorkflowStage()
+
+
+    object Transferring : DownloadWorkflowStage()
+
+
+    object Staged : DownloadWorkflowStage()
+
+
+    object RetryScheduled : DownloadWorkflowStage()
+
+
+    object Removing : DownloadWorkflowStage()
+
+
+    object Cancelled : DownloadWorkflowStage()
+
+
+    object Failed : DownloadWorkflowStage()
+
+
+    object Succeeded : DownloadWorkflowStage()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : DownloadWorkflowStage()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDownloadWorkflowStage : FfiConverterRustBuffer<DownloadWorkflowStage>{
+    override fun read(buf: ByteBuffer): DownloadWorkflowStage {
+        return when(buf.getInt()) {
+            1 -> DownloadWorkflowStage.WaitingForEnvironment
+            2 -> DownloadWorkflowStage.Requested
+            3 -> DownloadWorkflowStage.HostAccepted
+            4 -> DownloadWorkflowStage.Transferring
+            5 -> DownloadWorkflowStage.Staged
+            6 -> DownloadWorkflowStage.RetryScheduled
+            7 -> DownloadWorkflowStage.Removing
+            8 -> DownloadWorkflowStage.Cancelled
+            9 -> DownloadWorkflowStage.Failed
+            10 -> DownloadWorkflowStage.Succeeded
+            11 -> DownloadWorkflowStage.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: DownloadWorkflowStage): ULong = when(value) {
+        is DownloadWorkflowStage.WaitingForEnvironment -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowStage.Requested -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowStage.HostAccepted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowStage.Transferring -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowStage.Staged -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowStage.RetryScheduled -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowStage.Removing -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowStage.Cancelled -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowStage.Failed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowStage.Succeeded -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is DownloadWorkflowStage.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: DownloadWorkflowStage, buf: ByteBuffer) {
+        when(value) {
+            is DownloadWorkflowStage.WaitingForEnvironment -> {
+                buf.putInt(1)
+                Unit
+            }
+            is DownloadWorkflowStage.Requested -> {
+                buf.putInt(2)
+                Unit
+            }
+            is DownloadWorkflowStage.HostAccepted -> {
+                buf.putInt(3)
+                Unit
+            }
+            is DownloadWorkflowStage.Transferring -> {
+                buf.putInt(4)
+                Unit
+            }
+            is DownloadWorkflowStage.Staged -> {
+                buf.putInt(5)
+                Unit
+            }
+            is DownloadWorkflowStage.RetryScheduled -> {
+                buf.putInt(6)
+                Unit
+            }
+            is DownloadWorkflowStage.Removing -> {
+                buf.putInt(7)
+                Unit
+            }
+            is DownloadWorkflowStage.Cancelled -> {
+                buf.putInt(8)
+                Unit
+            }
+            is DownloadWorkflowStage.Failed -> {
+                buf.putInt(9)
+                Unit
+            }
+            is DownloadWorkflowStage.Succeeded -> {
+                buf.putInt(10)
+                Unit
+            }
+            is DownloadWorkflowStage.Unsupported -> {
+                buf.putInt(11)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 
 enum class EvidenceIndexStage {
 
@@ -9575,6 +10913,53 @@ sealed class HostObservation {
         companion object
     }
 
+    data class DownloadAccepted(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `intentId`: uniffi.pod0_domain.DownloadIntentId,
+        val `attemptId`: uniffi.pod0_domain.DownloadAttemptId,
+        val `externalTaskKey`: kotlin.String,
+        val `resumeKey`: kotlin.String?) : HostObservation()
+
+    {
+
+
+        companion object
+    }
+
+    data class DownloadStaged(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `intentId`: uniffi.pod0_domain.DownloadIntentId,
+        val `attemptId`: uniffi.pod0_domain.DownloadAttemptId,
+        val `stagedFilePath`: kotlin.String,
+        val `byteCount`: kotlin.ULong) : HostObservation()
+
+    {
+
+
+        companion object
+    }
+
+    data class DownloadCancelled(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `intentId`: uniffi.pod0_domain.DownloadIntentId,
+        val `attemptId`: uniffi.pod0_domain.DownloadAttemptId) : HostObservation()
+
+    {
+
+
+        companion object
+    }
+
+    data class DownloadArtifactRemoved(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `artifactKey`: kotlin.String) : HostObservation()
+
+    {
+
+
+        companion object
+    }
+
     data class CoreWakeReached(
         val `reason`: uniffi.pod0_application.CoreWakeReason) : HostObservation()
 
@@ -9688,18 +11073,41 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 FfiConverterOptionalString.read(buf),
                 FfiConverterOptionalULong.read(buf),
                 )
-            11 -> HostObservation.CoreWakeReached(
+            11 -> HostObservation.DownloadAccepted(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeDownloadIntentId.read(buf),
+                FfiConverterTypeDownloadAttemptId.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                )
+            12 -> HostObservation.DownloadStaged(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeDownloadIntentId.read(buf),
+                FfiConverterTypeDownloadAttemptId.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterULong.read(buf),
+                )
+            13 -> HostObservation.DownloadCancelled(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeDownloadIntentId.read(buf),
+                FfiConverterTypeDownloadAttemptId.read(buf),
+                )
+            14 -> HostObservation.DownloadArtifactRemoved(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterString.read(buf),
+                )
+            15 -> HostObservation.CoreWakeReached(
                 FfiConverterTypeCoreWakeReason.read(buf),
                 )
-            12 -> HostObservation.LegacyRecallIndexArtifactsRemoved(
+            16 -> HostObservation.LegacyRecallIndexArtifactsRemoved(
                 FfiConverterUByte.read(buf),
                 )
-            13 -> HostObservation.Failed(
+            17 -> HostObservation.Failed(
                 FfiConverterTypeHostFailureCode.read(buf),
                 FfiConverterOptionalString.read(buf),
                 )
-            14 -> HostObservation.Cancelled
-            15 -> HostObservation.Unsupported(
+            18 -> HostObservation.Cancelled
+            19 -> HostObservation.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -9802,6 +11210,45 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 + FfiConverterTypeChapterModelHostFailureCode.allocationSize(value.`code`)
                 + FfiConverterOptionalString.allocationSize(value.`safeDetail`)
                 + FfiConverterOptionalULong.allocationSize(value.`retryAfterMilliseconds`)
+            )
+        }
+        is HostObservation.DownloadAccepted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeDownloadIntentId.allocationSize(value.`intentId`)
+                + FfiConverterTypeDownloadAttemptId.allocationSize(value.`attemptId`)
+                + FfiConverterString.allocationSize(value.`externalTaskKey`)
+                + FfiConverterOptionalString.allocationSize(value.`resumeKey`)
+            )
+        }
+        is HostObservation.DownloadStaged -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeDownloadIntentId.allocationSize(value.`intentId`)
+                + FfiConverterTypeDownloadAttemptId.allocationSize(value.`attemptId`)
+                + FfiConverterString.allocationSize(value.`stagedFilePath`)
+                + FfiConverterULong.allocationSize(value.`byteCount`)
+            )
+        }
+        is HostObservation.DownloadCancelled -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeDownloadIntentId.allocationSize(value.`intentId`)
+                + FfiConverterTypeDownloadAttemptId.allocationSize(value.`attemptId`)
+            )
+        }
+        is HostObservation.DownloadArtifactRemoved -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterString.allocationSize(value.`artifactKey`)
             )
         }
         is HostObservation.CoreWakeReached -> {
@@ -9920,28 +11367,59 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 FfiConverterOptionalULong.write(value.`retryAfterMilliseconds`, buf)
                 Unit
             }
-            is HostObservation.CoreWakeReached -> {
+            is HostObservation.DownloadAccepted -> {
                 buf.putInt(11)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeDownloadIntentId.write(value.`intentId`, buf)
+                FfiConverterTypeDownloadAttemptId.write(value.`attemptId`, buf)
+                FfiConverterString.write(value.`externalTaskKey`, buf)
+                FfiConverterOptionalString.write(value.`resumeKey`, buf)
+                Unit
+            }
+            is HostObservation.DownloadStaged -> {
+                buf.putInt(12)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeDownloadIntentId.write(value.`intentId`, buf)
+                FfiConverterTypeDownloadAttemptId.write(value.`attemptId`, buf)
+                FfiConverterString.write(value.`stagedFilePath`, buf)
+                FfiConverterULong.write(value.`byteCount`, buf)
+                Unit
+            }
+            is HostObservation.DownloadCancelled -> {
+                buf.putInt(13)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeDownloadIntentId.write(value.`intentId`, buf)
+                FfiConverterTypeDownloadAttemptId.write(value.`attemptId`, buf)
+                Unit
+            }
+            is HostObservation.DownloadArtifactRemoved -> {
+                buf.putInt(14)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterString.write(value.`artifactKey`, buf)
+                Unit
+            }
+            is HostObservation.CoreWakeReached -> {
+                buf.putInt(15)
                 FfiConverterTypeCoreWakeReason.write(value.`reason`, buf)
                 Unit
             }
             is HostObservation.LegacyRecallIndexArtifactsRemoved -> {
-                buf.putInt(12)
+                buf.putInt(16)
                 FfiConverterUByte.write(value.`removedFileCount`, buf)
                 Unit
             }
             is HostObservation.Failed -> {
-                buf.putInt(13)
+                buf.putInt(17)
                 FfiConverterTypeHostFailureCode.write(value.`code`, buf)
                 FfiConverterOptionalString.write(value.`safeDetail`, buf)
                 Unit
             }
             is HostObservation.Cancelled -> {
-                buf.putInt(14)
+                buf.putInt(18)
                 Unit
             }
             is HostObservation.Unsupported -> {
-                buf.putInt(15)
+                buf.putInt(19)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -10323,6 +11801,42 @@ sealed class HostRequest {
         companion object
     }
 
+    data class StartEpisodeDownload(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `intentId`: uniffi.pod0_domain.DownloadIntentId,
+        val `attemptId`: uniffi.pod0_domain.DownloadAttemptId,
+        val `inputVersion`: kotlin.String,
+        val `enclosureUrl`: kotlin.String,
+        val `resumeKey`: kotlin.String?) : HostRequest()
+
+    {
+
+
+        companion object
+    }
+
+    data class CancelEpisodeDownload(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `intentId`: uniffi.pod0_domain.DownloadIntentId,
+        val `attemptId`: uniffi.pod0_domain.DownloadAttemptId,
+        val `externalTaskKey`: kotlin.String?) : HostRequest()
+
+    {
+
+
+        companion object
+    }
+
+    data class RemoveEpisodeDownloadArtifact(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `artifactKey`: kotlin.String) : HostRequest()
+
+    {
+
+
+        companion object
+    }
+
     data class ScheduleCoreWake(
         val `wakeAt`: uniffi.pod0_domain.UnixTimestampMilliseconds,
         val `reason`: uniffi.pod0_application.CoreWakeReason) : HostRequest()
@@ -10447,12 +11961,30 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 FfiConverterOptionalString.read(buf),
                 FfiConverterULong.read(buf),
                 )
-            17 -> HostRequest.ScheduleCoreWake(
+            17 -> HostRequest.StartEpisodeDownload(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeDownloadIntentId.read(buf),
+                FfiConverterTypeDownloadAttemptId.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                )
+            18 -> HostRequest.CancelEpisodeDownload(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeDownloadIntentId.read(buf),
+                FfiConverterTypeDownloadAttemptId.read(buf),
+                FfiConverterOptionalString.read(buf),
+                )
+            19 -> HostRequest.RemoveEpisodeDownloadArtifact(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterString.read(buf),
+                )
+            20 -> HostRequest.ScheduleCoreWake(
                 FfiConverterTypeUnixTimestampMilliseconds.read(buf),
                 FfiConverterTypeCoreWakeReason.read(buf),
                 )
-            18 -> HostRequest.RemoveLegacyRecallIndexArtifacts
-            19 -> HostRequest.Unsupported(
+            21 -> HostRequest.RemoveLegacyRecallIndexArtifacts
+            22 -> HostRequest.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -10610,6 +12142,36 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 + FfiConverterULong.allocationSize(value.`maximumCompletionBytes`)
             )
         }
+        is HostRequest.StartEpisodeDownload -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeDownloadIntentId.allocationSize(value.`intentId`)
+                + FfiConverterTypeDownloadAttemptId.allocationSize(value.`attemptId`)
+                + FfiConverterString.allocationSize(value.`inputVersion`)
+                + FfiConverterString.allocationSize(value.`enclosureUrl`)
+                + FfiConverterOptionalString.allocationSize(value.`resumeKey`)
+            )
+        }
+        is HostRequest.CancelEpisodeDownload -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeDownloadIntentId.allocationSize(value.`intentId`)
+                + FfiConverterTypeDownloadAttemptId.allocationSize(value.`attemptId`)
+                + FfiConverterOptionalString.allocationSize(value.`externalTaskKey`)
+            )
+        }
+        is HostRequest.RemoveEpisodeDownloadArtifact -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterString.allocationSize(value.`artifactKey`)
+            )
+        }
         is HostRequest.ScheduleCoreWake -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -10753,18 +12315,42 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 FfiConverterULong.write(value.`maximumCompletionBytes`, buf)
                 Unit
             }
-            is HostRequest.ScheduleCoreWake -> {
+            is HostRequest.StartEpisodeDownload -> {
                 buf.putInt(17)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeDownloadIntentId.write(value.`intentId`, buf)
+                FfiConverterTypeDownloadAttemptId.write(value.`attemptId`, buf)
+                FfiConverterString.write(value.`inputVersion`, buf)
+                FfiConverterString.write(value.`enclosureUrl`, buf)
+                FfiConverterOptionalString.write(value.`resumeKey`, buf)
+                Unit
+            }
+            is HostRequest.CancelEpisodeDownload -> {
+                buf.putInt(18)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeDownloadIntentId.write(value.`intentId`, buf)
+                FfiConverterTypeDownloadAttemptId.write(value.`attemptId`, buf)
+                FfiConverterOptionalString.write(value.`externalTaskKey`, buf)
+                Unit
+            }
+            is HostRequest.RemoveEpisodeDownloadArtifact -> {
+                buf.putInt(19)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterString.write(value.`artifactKey`, buf)
+                Unit
+            }
+            is HostRequest.ScheduleCoreWake -> {
+                buf.putInt(20)
                 FfiConverterTypeUnixTimestampMilliseconds.write(value.`wakeAt`, buf)
                 FfiConverterTypeCoreWakeReason.write(value.`reason`, buf)
                 Unit
             }
             is HostRequest.RemoveLegacyRecallIndexArtifacts -> {
-                buf.putInt(18)
+                buf.putInt(21)
                 Unit
             }
             is HostRequest.Unsupported -> {
-                buf.putInt(19)
+                buf.putInt(22)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -13766,6 +15352,15 @@ sealed class Projection {
         companion object
     }
 
+    data class Downloads(
+        val `value`: uniffi.pod0_application.DownloadWorkflowsProjection) : Projection()
+
+    {
+
+
+        companion object
+    }
+
     data class Notes(
         val `value`: uniffi.pod0_application.NotesProjection) : Projection()
 
@@ -13839,13 +15434,16 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
             10 -> Projection.ChapterWorkflows(
                 FfiConverterTypeChapterWorkflowsProjection.read(buf),
                 )
-            11 -> Projection.Notes(
+            11 -> Projection.Downloads(
+                FfiConverterTypeDownloadWorkflowsProjection.read(buf),
+                )
+            12 -> Projection.Notes(
                 FfiConverterTypeNotesProjection.read(buf),
                 )
-            12 -> Projection.Clips(
+            13 -> Projection.Clips(
                 FfiConverterTypeClipsProjection.read(buf),
                 )
-            13 -> Projection.Unsupported(
+            14 -> Projection.Unsupported(
                 FfiConverterTypeUnsupportedProjection.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -13923,6 +15521,13 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
                 + FfiConverterTypeChapterWorkflowsProjection.allocationSize(value.`value`)
             )
         }
+        is Projection.Downloads -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeDownloadWorkflowsProjection.allocationSize(value.`value`)
+            )
+        }
         is Projection.Notes -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -13998,18 +15603,23 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
                 FfiConverterTypeChapterWorkflowsProjection.write(value.`value`, buf)
                 Unit
             }
-            is Projection.Notes -> {
+            is Projection.Downloads -> {
                 buf.putInt(11)
+                FfiConverterTypeDownloadWorkflowsProjection.write(value.`value`, buf)
+                Unit
+            }
+            is Projection.Notes -> {
+                buf.putInt(12)
                 FfiConverterTypeNotesProjection.write(value.`value`, buf)
                 Unit
             }
             is Projection.Clips -> {
-                buf.putInt(12)
+                buf.putInt(13)
                 FfiConverterTypeClipsProjection.write(value.`value`, buf)
                 Unit
             }
             is Projection.Unsupported -> {
-                buf.putInt(13)
+                buf.putInt(14)
                 FfiConverterTypeUnsupportedProjection.write(value.`value`, buf)
                 Unit
             }
@@ -14097,6 +15707,15 @@ sealed class ProjectionScope {
         companion object
     }
 
+    data class Downloads(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId?) : ProjectionScope()
+
+    {
+
+
+        companion object
+    }
+
     data class Notes(
         val `scope`: uniffi.pod0_application.NoteProjectionScope) : ProjectionScope()
 
@@ -14166,13 +15785,16 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
             10 -> ProjectionScope.ChapterWorkflows(
                 FfiConverterOptionalTypeEpisodeId.read(buf),
                 )
-            11 -> ProjectionScope.Notes(
+            11 -> ProjectionScope.Downloads(
+                FfiConverterOptionalTypeEpisodeId.read(buf),
+                )
+            12 -> ProjectionScope.Notes(
                 FfiConverterTypeNoteProjectionScope.read(buf),
                 )
-            12 -> ProjectionScope.Clips(
+            13 -> ProjectionScope.Clips(
                 FfiConverterTypeClipProjectionScope.read(buf),
                 )
-            13 -> ProjectionScope.Unsupported(
+            14 -> ProjectionScope.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -14243,6 +15865,13 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
             )
         }
         is ProjectionScope.ChapterWorkflows -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterOptionalTypeEpisodeId.allocationSize(value.`episodeId`)
+            )
+        }
+        is ProjectionScope.Downloads -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
@@ -14323,18 +15952,23 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
                 FfiConverterOptionalTypeEpisodeId.write(value.`episodeId`, buf)
                 Unit
             }
-            is ProjectionScope.Notes -> {
+            is ProjectionScope.Downloads -> {
                 buf.putInt(11)
+                FfiConverterOptionalTypeEpisodeId.write(value.`episodeId`, buf)
+                Unit
+            }
+            is ProjectionScope.Notes -> {
+                buf.putInt(12)
                 FfiConverterTypeNoteProjectionScope.write(value.`scope`, buf)
                 Unit
             }
             is ProjectionScope.Clips -> {
-                buf.putInt(12)
+                buf.putInt(13)
                 FfiConverterTypeClipProjectionScope.write(value.`scope`, buf)
                 Unit
             }
             is ProjectionScope.Unsupported -> {
-                buf.putInt(13)
+                buf.putInt(14)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -16093,6 +17727,38 @@ public object FfiConverterOptionalTypeCoreFailure: FfiConverterRustBuffer<CoreFa
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeDownloadWorkflowFailure: FfiConverterRustBuffer<DownloadWorkflowFailure?> {
+    override fun read(buf: ByteBuffer): DownloadWorkflowFailure? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeDownloadWorkflowFailure.read(buf)
+    }
+
+    override fun allocationSize(value: DownloadWorkflowFailure?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeDownloadWorkflowFailure.allocationSize(value)
+        }
+    }
+
+    override fun write(value: DownloadWorkflowFailure?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeDownloadWorkflowFailure.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeModelChapterWorkflowFailure: FfiConverterRustBuffer<ModelChapterWorkflowFailure?> {
     override fun read(buf: ByteBuffer): ModelChapterWorkflowFailure? {
         if (buf.get().toInt() == 0) {
@@ -16339,6 +18005,38 @@ public object FfiConverterOptionalTypeContentDigest: FfiConverterRustBuffer<Cont
         } else {
             buf.put(1)
             FfiConverterTypeContentDigest.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeDownloadAttemptId: FfiConverterRustBuffer<DownloadAttemptId?> {
+    override fun read(buf: ByteBuffer): DownloadAttemptId? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeDownloadAttemptId.read(buf)
+    }
+
+    override fun allocationSize(value: DownloadAttemptId?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeDownloadAttemptId.allocationSize(value)
+        }
+    }
+
+    override fun write(value: DownloadAttemptId?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeDownloadAttemptId.write(value, buf)
         }
     }
 }
@@ -16987,6 +18685,34 @@ public object FfiConverterSequenceTypeChapterModelTranscriptSegmentInput: FfiCon
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeChapterModelTranscriptSegmentInput.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeDownloadWorkflowProjection: FfiConverterRustBuffer<List<DownloadWorkflowProjection>> {
+    override fun read(buf: ByteBuffer): List<DownloadWorkflowProjection> {
+        val len = buf.getInt()
+        return List<DownloadWorkflowProjection>(len) {
+            FfiConverterTypeDownloadWorkflowProjection.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<DownloadWorkflowProjection>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeDownloadWorkflowProjection.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<DownloadWorkflowProjection>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeDownloadWorkflowProjection.write(it, buf)
         }
     }
 }

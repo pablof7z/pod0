@@ -194,6 +194,15 @@ impl FacadeState {
             ProjectionScope::ChapterWorkflows { episode_id } => Projection::ChapterWorkflows {
                 value: self.chapter_workflows_projection(episode_id, offset, item_limit),
             },
+            ProjectionScope::Downloads { .. } => Projection::Downloads {
+                value: pod0_application::DownloadWorkflowsProjection {
+                    workflows: Vec::new(),
+                    has_more: false,
+                    failure: Some(failure(
+                        pod0_application::CoreFailureCode::StorageUnavailable,
+                    )),
+                },
+            },
             ProjectionScope::Notes { scope } => {
                 let mut notes = self.notes.notes.clone();
                 match scope {

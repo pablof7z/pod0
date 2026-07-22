@@ -49,6 +49,10 @@ impl FacadeState {
             | HostObservation::ChapterModelProviderAccepted { .. }
             | HostObservation::ChapterModelCompleted { .. }
             | HostObservation::ChapterModelFailed { .. }
+            | HostObservation::DownloadAccepted { .. }
+            | HostObservation::DownloadStaged { .. }
+            | HostObservation::DownloadCancelled { .. }
+            | HostObservation::DownloadArtifactRemoved { .. }
             | HostObservation::CoreWakeReached { .. }
             | HostObservation::LegacyRecallIndexArtifactsRemoved { .. } => {
                 self.fail(pending.command_id, CoreFailureCode::InvalidCommand)

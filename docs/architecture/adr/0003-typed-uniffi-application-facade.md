@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-07-18
 - Decision owners: Pod0 application architecture
-- Related issues: #57, #63, #74, #76
+- Related issues: #57, #63, #74, #76, #115, #116
 
 ## Context
 
@@ -25,6 +25,13 @@ fixture input is represented as rejected projection state, never an exception.
 Issue #97 atomically activates Rust transcript authority after verified legacy
 import and removes the Swift durable writer and shadow path. Swift provider
 adapters now submit typed observations and read bounded Rust projections.
+Contract version 27 adds the download workflow vocabulary before persistence
+and native cutover: deterministic intent/attempt identities, semantic
+admission outcomes, fenced start/cancel/remove host requests, raw correlated
+observations, and a bounded download projection. Until #117 attaches the
+durable store, download commands and projections report
+`StorageUnavailable`; the iOS product continues to use the characterized
+Swift owner and never dual-writes.
 
 ## Decision
 
@@ -53,6 +60,11 @@ observations, which the actor processes as the single writer.
   not cross FFI.
 - High-frequency playhead animation remains native. Rust receives bounded raw
   observations needed for durable resume/completion decisions.
+- High-frequency download byte progress remains transient native presentation
+  state. Rust receives only accepted, staged, failed, cancelled, and removed
+  observations for the current fenced attempt. Download projections contain at
+  most the requested page (hard-capped at 200 items), host drains remain capped
+  at 64 requests, and opaque native keys are capped at 1,024 bytes.
 
 ## Errors and cancellation
 

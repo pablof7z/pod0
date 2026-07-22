@@ -25,6 +25,7 @@ fun main(args: Array<String>) {
     qualifyChapterObservations()
     qualifyChapterMigrationBoundary()
     qualifyNativeHostContract()
+    qualifyDownloadContract()
 
     val facade = Pod0Facade()
     try {
@@ -44,7 +45,7 @@ fun main(args: Array<String>) {
         check(subscriber.revisions == listOf(0UL, 1UL))
 
         val projection = facade.snapshot(request).projection
-        check(facade.snapshot(request).contractVersion == 26u)
+        check(facade.snapshot(request).contractVersion == 27u)
         check(projection is Projection.Library)
         val unsupportedOperation = projection.value.operations.single()
         check(unsupportedOperation.commandId == CommandId(0UL, 1UL))
@@ -288,12 +289,3 @@ private fun qualifyListeningDomain(fixture: Map<String, String>) {
     check(snapshot.playback.queue.map { it.episodeId } == listOf(episodeId, episodeId))
     check(snapshot.playback.queue[0].queueEntryId != snapshot.playback.queue[1].queueEntryId)
 }
-
-private fun decodeProperties(text: String): Map<String, String> =
-    text.lineSequence()
-        .filter { line -> line.isNotEmpty() && !line.startsWith("#") }
-        .associate { line ->
-            val separator = line.indexOf('=')
-            check(separator > 0)
-            line.substring(0, separator) to line.substring(separator + 1)
-        }

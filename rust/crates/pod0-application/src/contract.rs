@@ -8,7 +8,7 @@ use pod0_domain::{
 
 use crate::{EvidenceChunkPolicy, RecallQuery, TranscriptEvidenceInput};
 
-pub const FACADE_CONTRACT_VERSION: u32 = 26;
+pub const FACADE_CONTRACT_VERSION: u32 = 27;
 pub const MAX_PROJECTION_ITEMS: u16 = 200;
 pub const MAX_OPERATION_ITEMS: usize = 32;
 pub const MAX_HOST_REQUEST_BATCH: u16 = 64;
@@ -82,6 +82,21 @@ pub enum ApplicationCommand {
     SetEpisodeStarred {
         episode_id: EpisodeId,
         starred: bool,
+    },
+    RequestEpisodeDownload {
+        episode_id: EpisodeId,
+        origin: crate::DownloadIntentOrigin,
+    },
+    CancelEpisodeDownload {
+        episode_id: EpisodeId,
+        expected_workflow_revision: StateRevision,
+    },
+    RemoveEpisodeDownload {
+        episode_id: EpisodeId,
+        expected_workflow_revision: StateRevision,
+    },
+    ObserveDownloadEnvironment {
+        observation: crate::DownloadEnvironmentObservation,
     },
     ResetListeningData,
     RequestPlayback {

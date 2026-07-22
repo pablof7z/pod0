@@ -1852,6 +1852,114 @@ public func FfiConverterTypeDomainEventId_lower(_ value: DomainEventId) -> RustB
 }
 
 
+public struct DownloadAttemptId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DownloadAttemptId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDownloadAttemptId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DownloadAttemptId {
+        return
+            try DownloadAttemptId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: DownloadAttemptId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadAttemptId_lift(_ buf: RustBuffer) throws -> DownloadAttemptId {
+    return try FfiConverterTypeDownloadAttemptId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadAttemptId_lower(_ value: DownloadAttemptId) -> RustBuffer {
+    return FfiConverterTypeDownloadAttemptId.lower(value)
+}
+
+
+public struct DownloadIntentId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DownloadIntentId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDownloadIntentId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DownloadIntentId {
+        return
+            try DownloadIntentId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: DownloadIntentId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadIntentId_lift(_ buf: RustBuffer) throws -> DownloadIntentId {
+    return try FfiConverterTypeDownloadIntentId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadIntentId_lower(_ value: DownloadIntentId) -> RustBuffer {
+    return FfiConverterTypeDownloadIntentId.lower(value)
+}
+
+
 public struct EpisodeFeedMetadata: Equatable, Hashable {
     public let publisherTranscript: PublisherTranscriptReference?
     public let chaptersUrl: String?

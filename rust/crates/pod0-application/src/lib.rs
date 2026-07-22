@@ -49,10 +49,14 @@ mod contract_projection_bounds;
 #[cfg(test)]
 mod contract_projection_tests;
 mod contract_state;
+mod contract_state_download_validation;
 #[cfg(test)]
 mod contract_state_tests;
 mod contract_state_validation;
 mod core_wake;
+mod download_contract;
+#[cfg(test)]
+mod download_contract_tests;
 mod effects;
 mod evidence_contract;
 mod feed;
@@ -95,6 +99,7 @@ pub use contract_playback_projection::*;
 pub use contract_projection::*;
 pub use contract_state::*;
 pub use core_wake::*;
+pub use download_contract::*;
 pub use effects::*;
 pub use evidence_contract::*;
 pub use feed::*;

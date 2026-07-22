@@ -83,6 +83,9 @@ mod runtime_command_fingerprint;
 mod runtime_command_fingerprint_values;
 mod runtime_commands;
 mod runtime_core_wakes;
+mod runtime_download_command_fingerprint;
+#[cfg(test)]
+mod runtime_download_contract_tests;
 mod runtime_evidence_commands;
 mod runtime_evidence_completion;
 mod runtime_evidence_projection;

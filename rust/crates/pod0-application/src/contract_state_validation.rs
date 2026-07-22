@@ -1,3 +1,4 @@
+use crate::contract_state_download_validation::download_observation_matches_request;
 use crate::{HostObservation, HostRequest};
 
 pub(super) fn observation_matches_request(
@@ -9,6 +10,9 @@ pub(super) fn observation_matches_request(
         HostObservation::Failed { .. } | HostObservation::Cancelled
     ) {
         return true;
+    }
+    if let Some(matches) = download_observation_matches_request(request, observation) {
+        return matches;
     }
     match (request, observation) {
         (
@@ -249,6 +253,9 @@ fn playback_request_episode_id(request: &HostRequest) -> Option<pod0_domain::Epi
         | HostRequest::FetchPublisherChapters { .. }
         | HostRequest::ExecuteChapterModel { .. }
         | HostRequest::RecoverChapterModelOperation { .. }
+        | HostRequest::StartEpisodeDownload { .. }
+        | HostRequest::CancelEpisodeDownload { .. }
+        | HostRequest::RemoveEpisodeDownloadArtifact { .. }
         | HostRequest::ScheduleCoreWake { .. }
         | HostRequest::RemoveLegacyRecallIndexArtifacts
         | HostRequest::Unsupported { .. } => None,

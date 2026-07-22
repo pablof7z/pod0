@@ -231,8 +231,8 @@
       "reason": "Desired state, leases, fencing, retry, recovery, and artifact adoption are durable cross-platform decisions.",
       "boundary": "Native executes BGTask, URLSession, notification, and platform provider capabilities.",
       "persisted_state": "Rust publisher/model chapter workflow rows plus versioned Swift workflow/artifact tables and staged files for unmigrated kinds; no chapter workflow row remains in Swift.",
-      "migration_issues": [48, 51, 52, 60, 100, 107, 109, 110, 111],
-      "deletion_target": "Delete each Swift workflow-kind owner after drain/import/cutover and recovery proof.",
+      "migration_issues": [48, 51, 52, 60, 100, 107, 109, 110, 111, 115, 116, 117, 118, 119],
+      "deletion_target": "Issue #119 deletes Swift download admission, scheduling, reconciliation, and durable artifact ownership immediately after the staged Rust cutover; later workflow kinds follow the same ownership-complete rule.",
       "priority": "high",
       "includes": ["App/Sources/Workflows/"],
       "excludes": [
@@ -248,8 +248,8 @@
       "reason": "Issue #48 removes visible main-actor stalls without delaying product proof; the typed request/result boundary is explicitly temporary until the workflow slice migrates.",
       "boundary": "Native callers submit typed file evidence requests; only verified typed results may reach fenced workflow commits.",
       "persisted_state": "None; exact immutable file identities are cached in memory only.",
-      "migration_issues": [60],
-      "deletion_target": "Delete the Swift executor when #60 moves artifact verification and recovery into the shared Rust workflow owner.",
+      "migration_issues": [60, 115, 117, 119],
+      "deletion_target": "Issue #119 deletes download verification use after Rust adoption; #60 deletes the executor when the final unmigrated artifact workflow no longer calls it.",
       "priority": "high",
       "includes": ["App/Sources/Workflows/ArtifactVerificationExecutor.swift"]
     },
@@ -413,8 +413,8 @@
       "reason": "This mixed service layer currently owns subscription, download, transcript, knowledge, agent, Nostr, and artifact decisions that must migrate by vertical slice.",
       "boundary": "Existing typed service protocols are characterization seams; no second store or new untracked policy.",
       "persisted_state": "AppState, workflow/artifact SQLite, transcript files, chat history, logs, and generated media.",
-      "migration_issues": [58, 59, 60, 69, 79, 80, 81, 82, 83, 94, 95, 96, 97],
-      "deletion_target": "Delete or reduce each service to a platform capability adapter at its domain cutover.",
+      "migration_issues": [58, 59, 60, 69, 79, 80, 81, 82, 83, 94, 95, 96, 97, 115, 116, 117, 118, 119],
+      "deletion_target": "Issue #119 reduces EpisodeDownloadService to the typed URLSession capability and deletes its Swift policy; other services are deleted or reduced at their domain cutover.",
       "priority": "high",
       "includes": ["App/Sources/Services/"],
       "excludes": ["App/Sources/Services/AssemblyAICredentialStore.swift", "App/Sources/Services/BYOK", "App/Sources/Services/ClipExporter.swift", "App/Sources/Services/DataExport.swift", "App/Sources/Services/DeepLinkHandler.swift", "App/Sources/Services/ElevenLabsCredentialStore.swift", "App/Sources/Services/EpisodeDownloadService+Delegate.swift", "App/Sources/Services/HandoffActivityType.swift", "App/Sources/Services/KeychainStore.swift", "App/Sources/Services/NotificationService.swift", "App/Sources/Services/NowPlayingSnapshotStore.swift", "App/Sources/Services/OllamaCredentialStore.swift", "App/Sources/Services/OpenRouterCredentialStore.swift", "App/Sources/Services/PerplexityCredentialStore.swift", "App/Sources/Services/Pod0FeedbackProtocol.swift", "App/Sources/Services/RecallProviderService.swift", "App/Sources/Services/ReviewPrompt.swift", "App/Sources/Services/SpotlightIndexer.swift", "App/Sources/Services/WhatsNew.swift", "App/Sources/Services/iCloudSettingsSync.swift"]

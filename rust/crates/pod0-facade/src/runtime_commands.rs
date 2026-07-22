@@ -114,6 +114,12 @@ impl FacadeState {
                     OperationResult::EpisodeUpdated { episode_id },
                 );
             }
+            ApplicationCommand::RequestEpisodeDownload { .. }
+            | ApplicationCommand::CancelEpisodeDownload { .. }
+            | ApplicationCommand::RemoveEpisodeDownload { .. }
+            | ApplicationCommand::ObserveDownloadEnvironment { .. } => {
+                self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable)
+            }
             ApplicationCommand::ResetListeningData => {
                 self.reset_listening_data(&envelope, &fingerprint);
             }

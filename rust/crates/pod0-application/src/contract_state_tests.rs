@@ -10,6 +10,7 @@ use crate::{
 };
 
 mod chapter_model;
+mod download;
 
 fn command(command_id: u64, expected: Option<u64>) -> CommandEnvelope {
     CommandEnvelope {

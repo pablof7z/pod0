@@ -2345,6 +2345,336 @@ public func FfiConverterTypeDomainEventEnvelope_lower(_ value: DomainEventEnvelo
 }
 
 
+public struct DownloadEnvironmentObservation: Equatable, Hashable {
+    public let network: DownloadNetworkState
+    public let availableCapacityBytes: UInt64?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(network: DownloadNetworkState, availableCapacityBytes: UInt64?) {
+        self.network = network
+        self.availableCapacityBytes = availableCapacityBytes
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DownloadEnvironmentObservation: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDownloadEnvironmentObservation: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DownloadEnvironmentObservation {
+        return
+            try DownloadEnvironmentObservation(
+                network: FfiConverterTypeDownloadNetworkState.read(from: &buf),
+                availableCapacityBytes: FfiConverterOptionUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: DownloadEnvironmentObservation, into buf: inout [UInt8]) {
+        FfiConverterTypeDownloadNetworkState.write(value.network, into: &buf)
+        FfiConverterOptionUInt64.write(value.availableCapacityBytes, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadEnvironmentObservation_lift(_ buf: RustBuffer) throws -> DownloadEnvironmentObservation {
+    return try FfiConverterTypeDownloadEnvironmentObservation.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadEnvironmentObservation_lower(_ value: DownloadEnvironmentObservation) -> RustBuffer {
+    return FfiConverterTypeDownloadEnvironmentObservation.lower(value)
+}
+
+
+public struct DownloadWorkflowAllowedActions: Equatable, Hashable {
+    public let canRetry: Bool
+    public let canCancel: Bool
+    public let canRemove: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(canRetry: Bool, canCancel: Bool, canRemove: Bool) {
+        self.canRetry = canRetry
+        self.canCancel = canCancel
+        self.canRemove = canRemove
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DownloadWorkflowAllowedActions: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDownloadWorkflowAllowedActions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DownloadWorkflowAllowedActions {
+        return
+            try DownloadWorkflowAllowedActions(
+                canRetry: FfiConverterBool.read(from: &buf),
+                canCancel: FfiConverterBool.read(from: &buf),
+                canRemove: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: DownloadWorkflowAllowedActions, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.canRetry, into: &buf)
+        FfiConverterBool.write(value.canCancel, into: &buf)
+        FfiConverterBool.write(value.canRemove, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadWorkflowAllowedActions_lift(_ buf: RustBuffer) throws -> DownloadWorkflowAllowedActions {
+    return try FfiConverterTypeDownloadWorkflowAllowedActions.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadWorkflowAllowedActions_lower(_ value: DownloadWorkflowAllowedActions) -> RustBuffer {
+    return FfiConverterTypeDownloadWorkflowAllowedActions.lower(value)
+}
+
+
+public struct DownloadWorkflowFailure: Equatable, Hashable {
+    public let code: DownloadWorkflowFailureCode
+    public let safeDetail: String?
+    public let retryable: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(code: DownloadWorkflowFailureCode, safeDetail: String?, retryable: Bool) {
+        self.code = code
+        self.safeDetail = safeDetail
+        self.retryable = retryable
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DownloadWorkflowFailure: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDownloadWorkflowFailure: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DownloadWorkflowFailure {
+        return
+            try DownloadWorkflowFailure(
+                code: FfiConverterTypeDownloadWorkflowFailureCode.read(from: &buf),
+                safeDetail: FfiConverterOptionString.read(from: &buf),
+                retryable: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: DownloadWorkflowFailure, into buf: inout [UInt8]) {
+        FfiConverterTypeDownloadWorkflowFailureCode.write(value.code, into: &buf)
+        FfiConverterOptionString.write(value.safeDetail, into: &buf)
+        FfiConverterBool.write(value.retryable, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadWorkflowFailure_lift(_ buf: RustBuffer) throws -> DownloadWorkflowFailure {
+    return try FfiConverterTypeDownloadWorkflowFailure.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadWorkflowFailure_lower(_ value: DownloadWorkflowFailure) -> RustBuffer {
+    return FfiConverterTypeDownloadWorkflowFailure.lower(value)
+}
+
+
+public struct DownloadWorkflowProjection: Equatable, Hashable {
+    public let episodeId: EpisodeId
+    public let intentId: DownloadIntentId
+    public let inputVersion: String
+    public let origin: DownloadIntentOrigin
+    public let desiredState: DownloadDesiredState
+    public let stage: DownloadWorkflowStage
+    public let workflowRevision: StateRevision
+    public let attempt: UInt16
+    public let attemptId: DownloadAttemptId?
+    public let requestId: HostRequestId?
+    public let notBefore: UnixTimestampMilliseconds?
+    public let failure: DownloadWorkflowFailure?
+    public let updatedAt: UnixTimestampMilliseconds
+    public let allowedActions: DownloadWorkflowAllowedActions
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(episodeId: EpisodeId, intentId: DownloadIntentId, inputVersion: String, origin: DownloadIntentOrigin, desiredState: DownloadDesiredState, stage: DownloadWorkflowStage, workflowRevision: StateRevision, attempt: UInt16, attemptId: DownloadAttemptId?, requestId: HostRequestId?, notBefore: UnixTimestampMilliseconds?, failure: DownloadWorkflowFailure?, updatedAt: UnixTimestampMilliseconds, allowedActions: DownloadWorkflowAllowedActions) {
+        self.episodeId = episodeId
+        self.intentId = intentId
+        self.inputVersion = inputVersion
+        self.origin = origin
+        self.desiredState = desiredState
+        self.stage = stage
+        self.workflowRevision = workflowRevision
+        self.attempt = attempt
+        self.attemptId = attemptId
+        self.requestId = requestId
+        self.notBefore = notBefore
+        self.failure = failure
+        self.updatedAt = updatedAt
+        self.allowedActions = allowedActions
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DownloadWorkflowProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDownloadWorkflowProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DownloadWorkflowProjection {
+        return
+            try DownloadWorkflowProjection(
+                episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
+                intentId: FfiConverterTypeDownloadIntentId.read(from: &buf),
+                inputVersion: FfiConverterString.read(from: &buf),
+                origin: FfiConverterTypeDownloadIntentOrigin.read(from: &buf),
+                desiredState: FfiConverterTypeDownloadDesiredState.read(from: &buf),
+                stage: FfiConverterTypeDownloadWorkflowStage.read(from: &buf),
+                workflowRevision: FfiConverterTypeStateRevision.read(from: &buf),
+                attempt: FfiConverterUInt16.read(from: &buf),
+                attemptId: FfiConverterOptionTypeDownloadAttemptId.read(from: &buf),
+                requestId: FfiConverterOptionTypeHostRequestId.read(from: &buf),
+                notBefore: FfiConverterOptionTypeUnixTimestampMilliseconds.read(from: &buf),
+                failure: FfiConverterOptionTypeDownloadWorkflowFailure.read(from: &buf),
+                updatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                allowedActions: FfiConverterTypeDownloadWorkflowAllowedActions.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: DownloadWorkflowProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
+        FfiConverterTypeDownloadIntentId.write(value.intentId, into: &buf)
+        FfiConverterString.write(value.inputVersion, into: &buf)
+        FfiConverterTypeDownloadIntentOrigin.write(value.origin, into: &buf)
+        FfiConverterTypeDownloadDesiredState.write(value.desiredState, into: &buf)
+        FfiConverterTypeDownloadWorkflowStage.write(value.stage, into: &buf)
+        FfiConverterTypeStateRevision.write(value.workflowRevision, into: &buf)
+        FfiConverterUInt16.write(value.attempt, into: &buf)
+        FfiConverterOptionTypeDownloadAttemptId.write(value.attemptId, into: &buf)
+        FfiConverterOptionTypeHostRequestId.write(value.requestId, into: &buf)
+        FfiConverterOptionTypeUnixTimestampMilliseconds.write(value.notBefore, into: &buf)
+        FfiConverterOptionTypeDownloadWorkflowFailure.write(value.failure, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.updatedAt, into: &buf)
+        FfiConverterTypeDownloadWorkflowAllowedActions.write(value.allowedActions, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadWorkflowProjection_lift(_ buf: RustBuffer) throws -> DownloadWorkflowProjection {
+    return try FfiConverterTypeDownloadWorkflowProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadWorkflowProjection_lower(_ value: DownloadWorkflowProjection) -> RustBuffer {
+    return FfiConverterTypeDownloadWorkflowProjection.lower(value)
+}
+
+
+public struct DownloadWorkflowsProjection: Equatable, Hashable {
+    public let workflows: [DownloadWorkflowProjection]
+    public let hasMore: Bool
+    public let failure: CoreFailure?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(workflows: [DownloadWorkflowProjection], hasMore: Bool, failure: CoreFailure?) {
+        self.workflows = workflows
+        self.hasMore = hasMore
+        self.failure = failure
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DownloadWorkflowsProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDownloadWorkflowsProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DownloadWorkflowsProjection {
+        return
+            try DownloadWorkflowsProjection(
+                workflows: FfiConverterSequenceTypeDownloadWorkflowProjection.read(from: &buf),
+                hasMore: FfiConverterBool.read(from: &buf),
+                failure: FfiConverterOptionTypeCoreFailure.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: DownloadWorkflowsProjection, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeDownloadWorkflowProjection.write(value.workflows, into: &buf)
+        FfiConverterBool.write(value.hasMore, into: &buf)
+        FfiConverterOptionTypeCoreFailure.write(value.failure, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadWorkflowsProjection_lift(_ buf: RustBuffer) throws -> DownloadWorkflowsProjection {
+    return try FfiConverterTypeDownloadWorkflowsProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadWorkflowsProjection_lower(_ value: DownloadWorkflowsProjection) -> RustBuffer {
+    return FfiConverterTypeDownloadWorkflowsProjection.lower(value)
+}
+
+
 public struct EpisodeDetailProjection: Equatable, Hashable {
     public let episode: EpisodeRecord?
     public let podcast: PodcastRecord?
@@ -5770,6 +6100,14 @@ public enum ApplicationCommand: Equatable, Hashable {
     )
     case setEpisodeStarred(episodeId: EpisodeId, starred: Bool
     )
+    case requestEpisodeDownload(episodeId: EpisodeId, origin: DownloadIntentOrigin
+    )
+    case cancelEpisodeDownload(episodeId: EpisodeId, expectedWorkflowRevision: StateRevision
+    )
+    case removeEpisodeDownload(episodeId: EpisodeId, expectedWorkflowRevision: StateRevision
+    )
+    case observeDownloadEnvironment(observation: DownloadEnvironmentObservation
+    )
     case resetListeningData
     case requestPlayback(episodeId: EpisodeId
     )
@@ -5871,80 +6209,92 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
         case 10: return .setEpisodeStarred(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), starred: try FfiConverterBool.read(from: &buf)
         )
 
-        case 11: return .resetListeningData
-
-        case 12: return .requestPlayback(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
+        case 11: return .requestEpisodeDownload(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), origin: try FfiConverterTypeDownloadIntentOrigin.read(from: &buf)
         )
 
-        case 13: return .playback(command: try FfiConverterTypePlaybackCommand.read(from: &buf)
+        case 12: return .cancelEpisodeDownload(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 14: return .recallQuery(query: try FfiConverterTypeRecallQuery.read(from: &buf)
+        case 13: return .removeEpisodeDownload(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 15: return .importLegacyRecallConfiguration(configuration: try FfiConverterTypeRecallConfigurationInput.read(from: &buf), sourceGeneration: try FfiConverterTypeContentDigest.read(from: &buf)
+        case 14: return .observeDownloadEnvironment(observation: try FfiConverterTypeDownloadEnvironmentObservation.read(from: &buf)
         )
 
-        case 16: return .setRecallConfiguration(expectedConfigurationRevision: try FfiConverterTypeStateRevision.read(from: &buf), configuration: try FfiConverterTypeRecallConfigurationInput.read(from: &buf)
+        case 15: return .resetListeningData
+
+        case 16: return .requestPlayback(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
         )
 
-        case 17: return .rebuildTranscriptEvidence(input: try FfiConverterTypeTranscriptEvidenceInput.read(from: &buf), policy: try FfiConverterTypeEvidenceChunkPolicy.read(from: &buf)
+        case 17: return .playback(command: try FfiConverterTypePlaybackCommand.read(from: &buf)
         )
 
-        case 18: return .commitRecallIndexCutover
-
-        case 19: return .commitTranscript(expectedSelectionRevision: try FfiConverterTypeStateRevision.read(from: &buf), artifact: try FfiConverterTypeTranscriptArtifactInput.read(from: &buf)
+        case 18: return .recallQuery(query: try FfiConverterTypeRecallQuery.read(from: &buf)
         )
 
-        case 20: return .commitChapter(expectedSelectionRevision: try FfiConverterTypeStateRevision.read(from: &buf), artifact: try FfiConverterTypeChapterArtifactInput.read(from: &buf)
+        case 19: return .importLegacyRecallConfiguration(configuration: try FfiConverterTypeRecallConfigurationInput.read(from: &buf), sourceGeneration: try FfiConverterTypeContentDigest.read(from: &buf)
         )
 
-        case 21: return .ensurePublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
+        case 20: return .setRecallConfiguration(expectedConfigurationRevision: try FfiConverterTypeStateRevision.read(from: &buf), configuration: try FfiConverterTypeRecallConfigurationInput.read(from: &buf)
         )
 
-        case 22: return .retryPublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 21: return .rebuildTranscriptEvidence(input: try FfiConverterTypeTranscriptEvidenceInput.read(from: &buf), policy: try FfiConverterTypeEvidenceChunkPolicy.read(from: &buf)
         )
 
-        case 23: return .cancelPublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 22: return .commitRecallIndexCutover
+
+        case 23: return .commitTranscript(expectedSelectionRevision: try FfiConverterTypeStateRevision.read(from: &buf), artifact: try FfiConverterTypeTranscriptArtifactInput.read(from: &buf)
         )
 
-        case 24: return .ensureModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), configuredModel: try FfiConverterString.read(from: &buf)
+        case 24: return .commitChapter(expectedSelectionRevision: try FfiConverterTypeStateRevision.read(from: &buf), artifact: try FfiConverterTypeChapterArtifactInput.read(from: &buf)
         )
 
-        case 25: return .retryModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), configuredModel: try FfiConverterString.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 25: return .ensurePublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
         )
 
-        case 26: return .cancelModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 26: return .retryPublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 27: return .createNote(text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), author: try FfiConverterTypeNoteAuthor.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
+        case 27: return .cancelPublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 28: return .updateNote(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
+        case 28: return .ensureModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), configuredModel: try FfiConverterString.read(from: &buf)
         )
 
-        case 29: return .setNoteDeleted(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
+        case 29: return .retryModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), configuredModel: try FfiConverterString.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 30: return .clearNotes(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 30: return .cancelModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 31: return .createClip(clipId: try FfiConverterTypeClipId.read(from: &buf), episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), podcastId: try FfiConverterTypePodcastId.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf), source: try FfiConverterTypeClipSource.read(from: &buf)
+        case 31: return .createNote(text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), author: try FfiConverterTypeNoteAuthor.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
         )
 
-        case 32: return .updateClip(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf)
+        case 32: return .updateNote(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
         )
 
-        case 33: return .setClipDeleted(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
+        case 33: return .setNoteDeleted(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
         )
 
-        case 34: return .clearClips(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 34: return .clearNotes(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 35: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
+        case 35: return .createClip(clipId: try FfiConverterTypeClipId.read(from: &buf), episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), podcastId: try FfiConverterTypePodcastId.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf), source: try FfiConverterTypeClipSource.read(from: &buf)
         )
 
-        case 36: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 36: return .updateClip(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf)
+        )
+
+        case 37: return .setClipDeleted(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 38: return .clearClips(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        )
+
+        case 39: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
+        )
+
+        case 40: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -6008,97 +6358,120 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
             FfiConverterBool.write(starred, into: &buf)
 
 
-        case .resetListeningData:
+        case let .requestEpisodeDownload(episodeId,origin):
             writeInt(&buf, Int32(11))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeDownloadIntentOrigin.write(origin, into: &buf)
+
+
+        case let .cancelEpisodeDownload(episodeId,expectedWorkflowRevision):
+            writeInt(&buf, Int32(12))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
+
+
+        case let .removeEpisodeDownload(episodeId,expectedWorkflowRevision):
+            writeInt(&buf, Int32(13))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
+
+
+        case let .observeDownloadEnvironment(observation):
+            writeInt(&buf, Int32(14))
+            FfiConverterTypeDownloadEnvironmentObservation.write(observation, into: &buf)
+
+
+        case .resetListeningData:
+            writeInt(&buf, Int32(15))
 
 
         case let .requestPlayback(episodeId):
-            writeInt(&buf, Int32(12))
+            writeInt(&buf, Int32(16))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
 
 
         case let .playback(command):
-            writeInt(&buf, Int32(13))
+            writeInt(&buf, Int32(17))
             FfiConverterTypePlaybackCommand.write(command, into: &buf)
 
 
         case let .recallQuery(query):
-            writeInt(&buf, Int32(14))
+            writeInt(&buf, Int32(18))
             FfiConverterTypeRecallQuery.write(query, into: &buf)
 
 
         case let .importLegacyRecallConfiguration(configuration,sourceGeneration):
-            writeInt(&buf, Int32(15))
+            writeInt(&buf, Int32(19))
             FfiConverterTypeRecallConfigurationInput.write(configuration, into: &buf)
             FfiConverterTypeContentDigest.write(sourceGeneration, into: &buf)
 
 
         case let .setRecallConfiguration(expectedConfigurationRevision,configuration):
-            writeInt(&buf, Int32(16))
+            writeInt(&buf, Int32(20))
             FfiConverterTypeStateRevision.write(expectedConfigurationRevision, into: &buf)
             FfiConverterTypeRecallConfigurationInput.write(configuration, into: &buf)
 
 
         case let .rebuildTranscriptEvidence(input,policy):
-            writeInt(&buf, Int32(17))
+            writeInt(&buf, Int32(21))
             FfiConverterTypeTranscriptEvidenceInput.write(input, into: &buf)
             FfiConverterTypeEvidenceChunkPolicy.write(policy, into: &buf)
 
 
         case .commitRecallIndexCutover:
-            writeInt(&buf, Int32(18))
+            writeInt(&buf, Int32(22))
 
 
         case let .commitTranscript(expectedSelectionRevision,artifact):
-            writeInt(&buf, Int32(19))
+            writeInt(&buf, Int32(23))
             FfiConverterTypeStateRevision.write(expectedSelectionRevision, into: &buf)
             FfiConverterTypeTranscriptArtifactInput.write(artifact, into: &buf)
 
 
         case let .commitChapter(expectedSelectionRevision,artifact):
-            writeInt(&buf, Int32(20))
+            writeInt(&buf, Int32(24))
             FfiConverterTypeStateRevision.write(expectedSelectionRevision, into: &buf)
             FfiConverterTypeChapterArtifactInput.write(artifact, into: &buf)
 
 
         case let .ensurePublisherChapters(episodeId):
-            writeInt(&buf, Int32(21))
+            writeInt(&buf, Int32(25))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
 
 
         case let .retryPublisherChapters(episodeId,expectedWorkflowRevision):
-            writeInt(&buf, Int32(22))
+            writeInt(&buf, Int32(26))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
         case let .cancelPublisherChapters(episodeId,expectedWorkflowRevision):
-            writeInt(&buf, Int32(23))
+            writeInt(&buf, Int32(27))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
         case let .ensureModelChapters(episodeId,configuredModel):
-            writeInt(&buf, Int32(24))
+            writeInt(&buf, Int32(28))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterString.write(configuredModel, into: &buf)
 
 
         case let .retryModelChapters(episodeId,configuredModel,expectedWorkflowRevision):
-            writeInt(&buf, Int32(25))
+            writeInt(&buf, Int32(29))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterString.write(configuredModel, into: &buf)
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
         case let .cancelModelChapters(episodeId,expectedWorkflowRevision):
-            writeInt(&buf, Int32(26))
+            writeInt(&buf, Int32(30))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
         case let .createNote(text,kind,author,target):
-            writeInt(&buf, Int32(27))
+            writeInt(&buf, Int32(31))
             FfiConverterString.write(text, into: &buf)
             FfiConverterTypeNoteKind.write(kind, into: &buf)
             FfiConverterTypeNoteAuthor.write(author, into: &buf)
@@ -6106,7 +6479,7 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .updateNote(noteId,expectedNoteRevision,text,kind,target):
-            writeInt(&buf, Int32(28))
+            writeInt(&buf, Int32(32))
             FfiConverterTypeNoteId.write(noteId, into: &buf)
             FfiConverterTypeNoteRevision.write(expectedNoteRevision, into: &buf)
             FfiConverterString.write(text, into: &buf)
@@ -6115,19 +6488,19 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .setNoteDeleted(noteId,expectedNoteRevision,deleted):
-            writeInt(&buf, Int32(29))
+            writeInt(&buf, Int32(33))
             FfiConverterTypeNoteId.write(noteId, into: &buf)
             FfiConverterTypeNoteRevision.write(expectedNoteRevision, into: &buf)
             FfiConverterBool.write(deleted, into: &buf)
 
 
         case let .clearNotes(expectedCollectionRevision):
-            writeInt(&buf, Int32(30))
+            writeInt(&buf, Int32(34))
             FfiConverterTypeStateRevision.write(expectedCollectionRevision, into: &buf)
 
 
         case let .createClip(clipId,episodeId,podcastId,startMilliseconds,endMilliseconds,caption,speakerId,frozenTranscriptText,source):
-            writeInt(&buf, Int32(31))
+            writeInt(&buf, Int32(35))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypePodcastId.write(podcastId, into: &buf)
@@ -6140,7 +6513,7 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .updateClip(clipId,expectedClipRevision,startMilliseconds,endMilliseconds,caption,speakerId,frozenTranscriptText):
-            writeInt(&buf, Int32(32))
+            writeInt(&buf, Int32(36))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeClipRevision.write(expectedClipRevision, into: &buf)
             FfiConverterUInt64.write(startMilliseconds, into: &buf)
@@ -6151,24 +6524,24 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .setClipDeleted(clipId,expectedClipRevision,deleted):
-            writeInt(&buf, Int32(33))
+            writeInt(&buf, Int32(37))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeClipRevision.write(expectedClipRevision, into: &buf)
             FfiConverterBool.write(deleted, into: &buf)
 
 
         case let .clearClips(expectedCollectionRevision):
-            writeInt(&buf, Int32(34))
+            writeInt(&buf, Int32(38))
             FfiConverterTypeStateRevision.write(expectedCollectionRevision, into: &buf)
 
 
         case let .cancelOperation(cancellationId):
-            writeInt(&buf, Int32(35))
+            writeInt(&buf, Int32(39))
             FfiConverterTypeCancellationId.write(cancellationId, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(36))
+            writeInt(&buf, Int32(40))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -8005,6 +8378,713 @@ public func FfiConverterTypeDomainEvent_lower(_ value: DomainEvent) -> RustBuffe
 
 
 
+public enum DownloadAdmissionDecision: Equatable, Hashable {
+
+    case admit
+    case wait(reason: DownloadWaitReason
+    )
+    case obsolete
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DownloadAdmissionDecision: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDownloadAdmissionDecision: FfiConverterRustBuffer {
+    typealias SwiftType = DownloadAdmissionDecision
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DownloadAdmissionDecision {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .admit
+
+        case 2: return .wait(reason: try FfiConverterTypeDownloadWaitReason.read(from: &buf)
+        )
+
+        case 3: return .obsolete
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: DownloadAdmissionDecision, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .admit:
+            writeInt(&buf, Int32(1))
+
+
+        case let .wait(reason):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeDownloadWaitReason.write(reason, into: &buf)
+
+
+        case .obsolete:
+            writeInt(&buf, Int32(3))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadAdmissionDecision_lift(_ buf: RustBuffer) throws -> DownloadAdmissionDecision {
+    return try FfiConverterTypeDownloadAdmissionDecision.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadAdmissionDecision_lower(_ value: DownloadAdmissionDecision) -> RustBuffer {
+    return FfiConverterTypeDownloadAdmissionDecision.lower(value)
+}
+
+
+
+
+public enum DownloadDesiredState: Equatable, Hashable {
+
+    case present
+    case absent
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DownloadDesiredState: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDownloadDesiredState: FfiConverterRustBuffer {
+    typealias SwiftType = DownloadDesiredState
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DownloadDesiredState {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .present
+
+        case 2: return .absent
+
+        case 3: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: DownloadDesiredState, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .present:
+            writeInt(&buf, Int32(1))
+
+
+        case .absent:
+            writeInt(&buf, Int32(2))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadDesiredState_lift(_ buf: RustBuffer) throws -> DownloadDesiredState {
+    return try FfiConverterTypeDownloadDesiredState.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadDesiredState_lower(_ value: DownloadDesiredState) -> RustBuffer {
+    return FfiConverterTypeDownloadDesiredState.lower(value)
+}
+
+
+
+
+public enum DownloadIntentOrigin: Equatable, Hashable {
+
+    case user
+    case playback
+    case automatic
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DownloadIntentOrigin: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDownloadIntentOrigin: FfiConverterRustBuffer {
+    typealias SwiftType = DownloadIntentOrigin
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DownloadIntentOrigin {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .user
+
+        case 2: return .playback
+
+        case 3: return .automatic
+
+        case 4: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: DownloadIntentOrigin, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .user:
+            writeInt(&buf, Int32(1))
+
+
+        case .playback:
+            writeInt(&buf, Int32(2))
+
+
+        case .automatic:
+            writeInt(&buf, Int32(3))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(4))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadIntentOrigin_lift(_ buf: RustBuffer) throws -> DownloadIntentOrigin {
+    return try FfiConverterTypeDownloadIntentOrigin.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadIntentOrigin_lower(_ value: DownloadIntentOrigin) -> RustBuffer {
+    return FfiConverterTypeDownloadIntentOrigin.lower(value)
+}
+
+
+
+
+public enum DownloadNetworkState: Equatable, Hashable {
+
+    case unknown
+    case unavailable
+    case wifi
+    case other
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DownloadNetworkState: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDownloadNetworkState: FfiConverterRustBuffer {
+    typealias SwiftType = DownloadNetworkState
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DownloadNetworkState {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .unknown
+
+        case 2: return .unavailable
+
+        case 3: return .wifi
+
+        case 4: return .other
+
+        case 5: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: DownloadNetworkState, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .unknown:
+            writeInt(&buf, Int32(1))
+
+
+        case .unavailable:
+            writeInt(&buf, Int32(2))
+
+
+        case .wifi:
+            writeInt(&buf, Int32(3))
+
+
+        case .other:
+            writeInt(&buf, Int32(4))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(5))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadNetworkState_lift(_ buf: RustBuffer) throws -> DownloadNetworkState {
+    return try FfiConverterTypeDownloadNetworkState.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadNetworkState_lower(_ value: DownloadNetworkState) -> RustBuffer {
+    return FfiConverterTypeDownloadNetworkState.lower(value)
+}
+
+
+
+
+public enum DownloadWaitReason: Equatable, Hashable {
+
+    case networkUnknown
+    case networkUnavailable
+    case wifiRequired
+    case insufficientStorage
+    case unsupportedEnvironment(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DownloadWaitReason: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDownloadWaitReason: FfiConverterRustBuffer {
+    typealias SwiftType = DownloadWaitReason
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DownloadWaitReason {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .networkUnknown
+
+        case 2: return .networkUnavailable
+
+        case 3: return .wifiRequired
+
+        case 4: return .insufficientStorage
+
+        case 5: return .unsupportedEnvironment(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: DownloadWaitReason, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .networkUnknown:
+            writeInt(&buf, Int32(1))
+
+
+        case .networkUnavailable:
+            writeInt(&buf, Int32(2))
+
+
+        case .wifiRequired:
+            writeInt(&buf, Int32(3))
+
+
+        case .insufficientStorage:
+            writeInt(&buf, Int32(4))
+
+
+        case let .unsupportedEnvironment(wireCode):
+            writeInt(&buf, Int32(5))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadWaitReason_lift(_ buf: RustBuffer) throws -> DownloadWaitReason {
+    return try FfiConverterTypeDownloadWaitReason.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadWaitReason_lower(_ value: DownloadWaitReason) -> RustBuffer {
+    return FfiConverterTypeDownloadWaitReason.lower(value)
+}
+
+
+
+
+public enum DownloadWorkflowFailureCode: Equatable, Hashable {
+
+    case offline
+    case wifiRequired
+    case insufficientStorage
+    case missingEpisode
+    case invalidEnclosure
+    case staleInput
+    case hostRejected
+    case transport
+    case timedOut
+    case permissionDenied
+    case invalidArtifact
+    case storageUnavailable
+    case cancelled
+    case retryExhausted
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DownloadWorkflowFailureCode: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDownloadWorkflowFailureCode: FfiConverterRustBuffer {
+    typealias SwiftType = DownloadWorkflowFailureCode
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DownloadWorkflowFailureCode {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .offline
+
+        case 2: return .wifiRequired
+
+        case 3: return .insufficientStorage
+
+        case 4: return .missingEpisode
+
+        case 5: return .invalidEnclosure
+
+        case 6: return .staleInput
+
+        case 7: return .hostRejected
+
+        case 8: return .transport
+
+        case 9: return .timedOut
+
+        case 10: return .permissionDenied
+
+        case 11: return .invalidArtifact
+
+        case 12: return .storageUnavailable
+
+        case 13: return .cancelled
+
+        case 14: return .retryExhausted
+
+        case 15: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: DownloadWorkflowFailureCode, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .offline:
+            writeInt(&buf, Int32(1))
+
+
+        case .wifiRequired:
+            writeInt(&buf, Int32(2))
+
+
+        case .insufficientStorage:
+            writeInt(&buf, Int32(3))
+
+
+        case .missingEpisode:
+            writeInt(&buf, Int32(4))
+
+
+        case .invalidEnclosure:
+            writeInt(&buf, Int32(5))
+
+
+        case .staleInput:
+            writeInt(&buf, Int32(6))
+
+
+        case .hostRejected:
+            writeInt(&buf, Int32(7))
+
+
+        case .transport:
+            writeInt(&buf, Int32(8))
+
+
+        case .timedOut:
+            writeInt(&buf, Int32(9))
+
+
+        case .permissionDenied:
+            writeInt(&buf, Int32(10))
+
+
+        case .invalidArtifact:
+            writeInt(&buf, Int32(11))
+
+
+        case .storageUnavailable:
+            writeInt(&buf, Int32(12))
+
+
+        case .cancelled:
+            writeInt(&buf, Int32(13))
+
+
+        case .retryExhausted:
+            writeInt(&buf, Int32(14))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(15))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadWorkflowFailureCode_lift(_ buf: RustBuffer) throws -> DownloadWorkflowFailureCode {
+    return try FfiConverterTypeDownloadWorkflowFailureCode.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadWorkflowFailureCode_lower(_ value: DownloadWorkflowFailureCode) -> RustBuffer {
+    return FfiConverterTypeDownloadWorkflowFailureCode.lower(value)
+}
+
+
+
+
+public enum DownloadWorkflowStage: Equatable, Hashable {
+
+    case waitingForEnvironment
+    case requested
+    case hostAccepted
+    case transferring
+    case staged
+    case retryScheduled
+    case removing
+    case cancelled
+    case failed
+    case succeeded
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DownloadWorkflowStage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDownloadWorkflowStage: FfiConverterRustBuffer {
+    typealias SwiftType = DownloadWorkflowStage
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DownloadWorkflowStage {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .waitingForEnvironment
+
+        case 2: return .requested
+
+        case 3: return .hostAccepted
+
+        case 4: return .transferring
+
+        case 5: return .staged
+
+        case 6: return .retryScheduled
+
+        case 7: return .removing
+
+        case 8: return .cancelled
+
+        case 9: return .failed
+
+        case 10: return .succeeded
+
+        case 11: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: DownloadWorkflowStage, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .waitingForEnvironment:
+            writeInt(&buf, Int32(1))
+
+
+        case .requested:
+            writeInt(&buf, Int32(2))
+
+
+        case .hostAccepted:
+            writeInt(&buf, Int32(3))
+
+
+        case .transferring:
+            writeInt(&buf, Int32(4))
+
+
+        case .staged:
+            writeInt(&buf, Int32(5))
+
+
+        case .retryScheduled:
+            writeInt(&buf, Int32(6))
+
+
+        case .removing:
+            writeInt(&buf, Int32(7))
+
+
+        case .cancelled:
+            writeInt(&buf, Int32(8))
+
+
+        case .failed:
+            writeInt(&buf, Int32(9))
+
+
+        case .succeeded:
+            writeInt(&buf, Int32(10))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(11))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadWorkflowStage_lift(_ buf: RustBuffer) throws -> DownloadWorkflowStage {
+    return try FfiConverterTypeDownloadWorkflowStage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadWorkflowStage_lower(_ value: DownloadWorkflowStage) -> RustBuffer {
+    return FfiConverterTypeDownloadWorkflowStage.lower(value)
+}
+
+
+
+
 public enum EvidenceIndexStage: Equatable, Hashable {
 
     case ready
@@ -8232,6 +9312,14 @@ public enum HostObservation: Equatable, Hashable {
     )
     case chapterModelFailed(episodeId: EpisodeId, generation: UInt64, submissionFenceId: ChapterModelSubmissionFenceId, code: ChapterModelHostFailureCode, safeDetail: String?, retryAfterMilliseconds: UInt64?
     )
+    case downloadAccepted(episodeId: EpisodeId, intentId: DownloadIntentId, attemptId: DownloadAttemptId, externalTaskKey: String, resumeKey: String?
+    )
+    case downloadStaged(episodeId: EpisodeId, intentId: DownloadIntentId, attemptId: DownloadAttemptId, stagedFilePath: String, byteCount: UInt64
+    )
+    case downloadCancelled(episodeId: EpisodeId, intentId: DownloadIntentId, attemptId: DownloadAttemptId
+    )
+    case downloadArtifactRemoved(episodeId: EpisodeId, artifactKey: String
+    )
     case coreWakeReached(reason: CoreWakeReason
     )
     case legacyRecallIndexArtifactsRemoved(removedFileCount: UInt8
@@ -8292,18 +9380,30 @@ public struct FfiConverterTypeHostObservation: FfiConverterRustBuffer {
         case 10: return .chapterModelFailed(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), generation: try FfiConverterUInt64.read(from: &buf), submissionFenceId: try FfiConverterTypeChapterModelSubmissionFenceId.read(from: &buf), code: try FfiConverterTypeChapterModelHostFailureCode.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf), retryAfterMilliseconds: try FfiConverterOptionUInt64.read(from: &buf)
         )
 
-        case 11: return .coreWakeReached(reason: try FfiConverterTypeCoreWakeReason.read(from: &buf)
+        case 11: return .downloadAccepted(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), intentId: try FfiConverterTypeDownloadIntentId.read(from: &buf), attemptId: try FfiConverterTypeDownloadAttemptId.read(from: &buf), externalTaskKey: try FfiConverterString.read(from: &buf), resumeKey: try FfiConverterOptionString.read(from: &buf)
         )
 
-        case 12: return .legacyRecallIndexArtifactsRemoved(removedFileCount: try FfiConverterUInt8.read(from: &buf)
+        case 12: return .downloadStaged(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), intentId: try FfiConverterTypeDownloadIntentId.read(from: &buf), attemptId: try FfiConverterTypeDownloadAttemptId.read(from: &buf), stagedFilePath: try FfiConverterString.read(from: &buf), byteCount: try FfiConverterUInt64.read(from: &buf)
         )
 
-        case 13: return .failed(code: try FfiConverterTypeHostFailureCode.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf)
+        case 13: return .downloadCancelled(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), intentId: try FfiConverterTypeDownloadIntentId.read(from: &buf), attemptId: try FfiConverterTypeDownloadAttemptId.read(from: &buf)
         )
 
-        case 14: return .cancelled
+        case 14: return .downloadArtifactRemoved(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), artifactKey: try FfiConverterString.read(from: &buf)
+        )
 
-        case 15: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 15: return .coreWakeReached(reason: try FfiConverterTypeCoreWakeReason.read(from: &buf)
+        )
+
+        case 16: return .legacyRecallIndexArtifactsRemoved(removedFileCount: try FfiConverterUInt8.read(from: &buf)
+        )
+
+        case 17: return .failed(code: try FfiConverterTypeHostFailureCode.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf)
+        )
+
+        case 18: return .cancelled
+
+        case 19: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -8391,28 +9491,59 @@ public struct FfiConverterTypeHostObservation: FfiConverterRustBuffer {
             FfiConverterOptionUInt64.write(retryAfterMilliseconds, into: &buf)
 
 
-        case let .coreWakeReached(reason):
+        case let .downloadAccepted(episodeId,intentId,attemptId,externalTaskKey,resumeKey):
             writeInt(&buf, Int32(11))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeDownloadIntentId.write(intentId, into: &buf)
+            FfiConverterTypeDownloadAttemptId.write(attemptId, into: &buf)
+            FfiConverterString.write(externalTaskKey, into: &buf)
+            FfiConverterOptionString.write(resumeKey, into: &buf)
+
+
+        case let .downloadStaged(episodeId,intentId,attemptId,stagedFilePath,byteCount):
+            writeInt(&buf, Int32(12))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeDownloadIntentId.write(intentId, into: &buf)
+            FfiConverterTypeDownloadAttemptId.write(attemptId, into: &buf)
+            FfiConverterString.write(stagedFilePath, into: &buf)
+            FfiConverterUInt64.write(byteCount, into: &buf)
+
+
+        case let .downloadCancelled(episodeId,intentId,attemptId):
+            writeInt(&buf, Int32(13))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeDownloadIntentId.write(intentId, into: &buf)
+            FfiConverterTypeDownloadAttemptId.write(attemptId, into: &buf)
+
+
+        case let .downloadArtifactRemoved(episodeId,artifactKey):
+            writeInt(&buf, Int32(14))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterString.write(artifactKey, into: &buf)
+
+
+        case let .coreWakeReached(reason):
+            writeInt(&buf, Int32(15))
             FfiConverterTypeCoreWakeReason.write(reason, into: &buf)
 
 
         case let .legacyRecallIndexArtifactsRemoved(removedFileCount):
-            writeInt(&buf, Int32(12))
+            writeInt(&buf, Int32(16))
             FfiConverterUInt8.write(removedFileCount, into: &buf)
 
 
         case let .failed(code,safeDetail):
-            writeInt(&buf, Int32(13))
+            writeInt(&buf, Int32(17))
             FfiConverterTypeHostFailureCode.write(code, into: &buf)
             FfiConverterOptionString.write(safeDetail, into: &buf)
 
 
         case .cancelled:
-            writeInt(&buf, Int32(14))
+            writeInt(&buf, Int32(18))
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(15))
+            writeInt(&buf, Int32(19))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -8684,6 +9815,12 @@ public enum HostRequest: Equatable, Hashable {
     )
     case recoverChapterModelOperation(episodeId: EpisodeId, generation: UInt64, submissionFenceId: ChapterModelSubmissionFenceId, provider: String, model: String, providerOperationId: String, providerStatus: String?, maximumCompletionBytes: UInt64
     )
+    case startEpisodeDownload(episodeId: EpisodeId, intentId: DownloadIntentId, attemptId: DownloadAttemptId, inputVersion: String, enclosureUrl: String, resumeKey: String?
+    )
+    case cancelEpisodeDownload(episodeId: EpisodeId, intentId: DownloadIntentId, attemptId: DownloadAttemptId, externalTaskKey: String?
+    )
+    case removeEpisodeDownloadArtifact(episodeId: EpisodeId, artifactKey: String
+    )
     case scheduleCoreWake(wakeAt: UnixTimestampMilliseconds, reason: CoreWakeReason
     )
     case removeLegacyRecallIndexArtifacts
@@ -8758,12 +9895,21 @@ public struct FfiConverterTypeHostRequest: FfiConverterRustBuffer {
         case 16: return .recoverChapterModelOperation(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), generation: try FfiConverterUInt64.read(from: &buf), submissionFenceId: try FfiConverterTypeChapterModelSubmissionFenceId.read(from: &buf), provider: try FfiConverterString.read(from: &buf), model: try FfiConverterString.read(from: &buf), providerOperationId: try FfiConverterString.read(from: &buf), providerStatus: try FfiConverterOptionString.read(from: &buf), maximumCompletionBytes: try FfiConverterUInt64.read(from: &buf)
         )
 
-        case 17: return .scheduleCoreWake(wakeAt: try FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf), reason: try FfiConverterTypeCoreWakeReason.read(from: &buf)
+        case 17: return .startEpisodeDownload(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), intentId: try FfiConverterTypeDownloadIntentId.read(from: &buf), attemptId: try FfiConverterTypeDownloadAttemptId.read(from: &buf), inputVersion: try FfiConverterString.read(from: &buf), enclosureUrl: try FfiConverterString.read(from: &buf), resumeKey: try FfiConverterOptionString.read(from: &buf)
         )
 
-        case 18: return .removeLegacyRecallIndexArtifacts
+        case 18: return .cancelEpisodeDownload(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), intentId: try FfiConverterTypeDownloadIntentId.read(from: &buf), attemptId: try FfiConverterTypeDownloadAttemptId.read(from: &buf), externalTaskKey: try FfiConverterOptionString.read(from: &buf)
+        )
 
-        case 19: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 19: return .removeEpisodeDownloadArtifact(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), artifactKey: try FfiConverterString.read(from: &buf)
+        )
+
+        case 20: return .scheduleCoreWake(wakeAt: try FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf), reason: try FfiConverterTypeCoreWakeReason.read(from: &buf)
+        )
+
+        case 21: return .removeLegacyRecallIndexArtifacts
+
+        case 22: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -8892,18 +10038,42 @@ public struct FfiConverterTypeHostRequest: FfiConverterRustBuffer {
             FfiConverterUInt64.write(maximumCompletionBytes, into: &buf)
 
 
-        case let .scheduleCoreWake(wakeAt,reason):
+        case let .startEpisodeDownload(episodeId,intentId,attemptId,inputVersion,enclosureUrl,resumeKey):
             writeInt(&buf, Int32(17))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeDownloadIntentId.write(intentId, into: &buf)
+            FfiConverterTypeDownloadAttemptId.write(attemptId, into: &buf)
+            FfiConverterString.write(inputVersion, into: &buf)
+            FfiConverterString.write(enclosureUrl, into: &buf)
+            FfiConverterOptionString.write(resumeKey, into: &buf)
+
+
+        case let .cancelEpisodeDownload(episodeId,intentId,attemptId,externalTaskKey):
+            writeInt(&buf, Int32(18))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeDownloadIntentId.write(intentId, into: &buf)
+            FfiConverterTypeDownloadAttemptId.write(attemptId, into: &buf)
+            FfiConverterOptionString.write(externalTaskKey, into: &buf)
+
+
+        case let .removeEpisodeDownloadArtifact(episodeId,artifactKey):
+            writeInt(&buf, Int32(19))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterString.write(artifactKey, into: &buf)
+
+
+        case let .scheduleCoreWake(wakeAt,reason):
+            writeInt(&buf, Int32(20))
             FfiConverterTypeUnixTimestampMilliseconds.write(wakeAt, into: &buf)
             FfiConverterTypeCoreWakeReason.write(reason, into: &buf)
 
 
         case .removeLegacyRecallIndexArtifacts:
-            writeInt(&buf, Int32(18))
+            writeInt(&buf, Int32(21))
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(19))
+            writeInt(&buf, Int32(22))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -10766,6 +11936,8 @@ public enum Projection: Equatable, Hashable {
     )
     case chapterWorkflows(value: ChapterWorkflowsProjection
     )
+    case downloads(value: DownloadWorkflowsProjection
+    )
     case notes(value: NotesProjection
     )
     case clips(value: ClipsProjection
@@ -10823,13 +11995,16 @@ public struct FfiConverterTypeProjection: FfiConverterRustBuffer {
         case 10: return .chapterWorkflows(value: try FfiConverterTypeChapterWorkflowsProjection.read(from: &buf)
         )
 
-        case 11: return .notes(value: try FfiConverterTypeNotesProjection.read(from: &buf)
+        case 11: return .downloads(value: try FfiConverterTypeDownloadWorkflowsProjection.read(from: &buf)
         )
 
-        case 12: return .clips(value: try FfiConverterTypeClipsProjection.read(from: &buf)
+        case 12: return .notes(value: try FfiConverterTypeNotesProjection.read(from: &buf)
         )
 
-        case 13: return .unsupported(value: try FfiConverterTypeUnsupportedProjection.read(from: &buf)
+        case 13: return .clips(value: try FfiConverterTypeClipsProjection.read(from: &buf)
+        )
+
+        case 14: return .unsupported(value: try FfiConverterTypeUnsupportedProjection.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -10890,18 +12065,23 @@ public struct FfiConverterTypeProjection: FfiConverterRustBuffer {
             FfiConverterTypeChapterWorkflowsProjection.write(value, into: &buf)
 
 
-        case let .notes(value):
+        case let .downloads(value):
             writeInt(&buf, Int32(11))
+            FfiConverterTypeDownloadWorkflowsProjection.write(value, into: &buf)
+
+
+        case let .notes(value):
+            writeInt(&buf, Int32(12))
             FfiConverterTypeNotesProjection.write(value, into: &buf)
 
 
         case let .clips(value):
-            writeInt(&buf, Int32(12))
+            writeInt(&buf, Int32(13))
             FfiConverterTypeClipsProjection.write(value, into: &buf)
 
 
         case let .unsupported(value):
-            writeInt(&buf, Int32(13))
+            writeInt(&buf, Int32(14))
             FfiConverterTypeUnsupportedProjection.write(value, into: &buf)
 
         }
@@ -10944,6 +12124,8 @@ public enum ProjectionScope: Equatable, Hashable {
     case chapter(episodeId: EpisodeId, scope: ChapterProjectionScope
     )
     case chapterWorkflows(episodeId: EpisodeId?
+    )
+    case downloads(episodeId: EpisodeId?
     )
     case notes(scope: NoteProjectionScope
     )
@@ -10999,13 +12181,16 @@ public struct FfiConverterTypeProjectionScope: FfiConverterRustBuffer {
         case 10: return .chapterWorkflows(episodeId: try FfiConverterOptionTypeEpisodeId.read(from: &buf)
         )
 
-        case 11: return .notes(scope: try FfiConverterTypeNoteProjectionScope.read(from: &buf)
+        case 11: return .downloads(episodeId: try FfiConverterOptionTypeEpisodeId.read(from: &buf)
         )
 
-        case 12: return .clips(scope: try FfiConverterTypeClipProjectionScope.read(from: &buf)
+        case 12: return .notes(scope: try FfiConverterTypeNoteProjectionScope.read(from: &buf)
         )
 
-        case 13: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 13: return .clips(scope: try FfiConverterTypeClipProjectionScope.read(from: &buf)
+        )
+
+        case 14: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -11065,18 +12250,23 @@ public struct FfiConverterTypeProjectionScope: FfiConverterRustBuffer {
             FfiConverterOptionTypeEpisodeId.write(episodeId, into: &buf)
 
 
-        case let .notes(scope):
+        case let .downloads(episodeId):
             writeInt(&buf, Int32(11))
+            FfiConverterOptionTypeEpisodeId.write(episodeId, into: &buf)
+
+
+        case let .notes(scope):
+            writeInt(&buf, Int32(12))
             FfiConverterTypeNoteProjectionScope.write(scope, into: &buf)
 
 
         case let .clips(scope):
-            writeInt(&buf, Int32(12))
+            writeInt(&buf, Int32(13))
             FfiConverterTypeClipProjectionScope.write(scope, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(13))
+            writeInt(&buf, Int32(14))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -12384,6 +13574,30 @@ fileprivate struct FfiConverterOptionTypeCoreFailure: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeDownloadWorkflowFailure: FfiConverterRustBuffer {
+    typealias SwiftType = DownloadWorkflowFailure?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeDownloadWorkflowFailure.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeDownloadWorkflowFailure.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeModelChapterWorkflowFailure: FfiConverterRustBuffer {
     typealias SwiftType = ModelChapterWorkflowFailure?
 
@@ -12568,6 +13782,30 @@ fileprivate struct FfiConverterOptionTypeContentDigest: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeContentDigest.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeDownloadAttemptId: FfiConverterRustBuffer {
+    typealias SwiftType = DownloadAttemptId?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeDownloadAttemptId.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeDownloadAttemptId.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -13078,6 +14316,31 @@ fileprivate struct FfiConverterSequenceTypeChapterModelTranscriptSegmentInput: F
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeChapterModelTranscriptSegmentInput.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeDownloadWorkflowProjection: FfiConverterRustBuffer {
+    typealias SwiftType = [DownloadWorkflowProjection]
+
+    public static func write(_ value: [DownloadWorkflowProjection], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeDownloadWorkflowProjection.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [DownloadWorkflowProjection] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [DownloadWorkflowProjection]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeDownloadWorkflowProjection.read(from: &buf))
         }
         return seq
     }

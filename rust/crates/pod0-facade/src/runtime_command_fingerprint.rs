@@ -7,6 +7,7 @@ use crate::runtime_command_fingerprint_values::{
     hash_evidence_input, hash_note_author, hash_note_kind, hash_note_target, hash_optional,
     hash_policy,
 };
+use crate::runtime_download_command_fingerprint::hash_download_command;
 use crate::runtime_playback_fingerprint::hash_playback;
 
 pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
@@ -94,6 +95,12 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
             hash.update(b"episode-starred\0");
             hash.update(episode_id.into_bytes());
             hash.update([u8::from(*starred)]);
+        }
+        ApplicationCommand::RequestEpisodeDownload { .. }
+        | ApplicationCommand::CancelEpisodeDownload { .. }
+        | ApplicationCommand::RemoveEpisodeDownload { .. }
+        | ApplicationCommand::ObserveDownloadEnvironment { .. } => {
+            hash_download_command(&mut hash, command)
         }
         ApplicationCommand::ResetListeningData => hash.update(b"reset-listening\0"),
         ApplicationCommand::RequestPlayback { episode_id } => {
