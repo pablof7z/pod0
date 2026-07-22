@@ -109,10 +109,13 @@ import uniffi.pod0_domain.FfiConverterTypeSpeakerId
 import uniffi.pod0_domain.FfiConverterTypeStateRevision
 import uniffi.pod0_domain.FfiConverterTypeTranscriptArtifactId
 import uniffi.pod0_domain.FfiConverterTypeTranscriptArtifactInput
+import uniffi.pod0_domain.FfiConverterTypeTranscriptAttemptId
 import uniffi.pod0_domain.FfiConverterTypeTranscriptProvenance
 import uniffi.pod0_domain.FfiConverterTypeTranscriptSegmentId
 import uniffi.pod0_domain.FfiConverterTypeTranscriptSource
+import uniffi.pod0_domain.FfiConverterTypeTranscriptSubmissionFenceId
 import uniffi.pod0_domain.FfiConverterTypeTranscriptVersionId
+import uniffi.pod0_domain.FfiConverterTypeTranscriptWorkflowId
 import uniffi.pod0_domain.FfiConverterTypeUnixTimestampMilliseconds
 import uniffi.pod0_domain.HostRequestId
 import uniffi.pod0_domain.NoteAuthor
@@ -139,10 +142,13 @@ import uniffi.pod0_domain.SpeakerId
 import uniffi.pod0_domain.StateRevision
 import uniffi.pod0_domain.TranscriptArtifactId
 import uniffi.pod0_domain.TranscriptArtifactInput
+import uniffi.pod0_domain.TranscriptAttemptId
 import uniffi.pod0_domain.TranscriptProvenance
 import uniffi.pod0_domain.TranscriptSegmentId
 import uniffi.pod0_domain.TranscriptSource
+import uniffi.pod0_domain.TranscriptSubmissionFenceId
 import uniffi.pod0_domain.TranscriptVersionId
+import uniffi.pod0_domain.TranscriptWorkflowId
 import uniffi.pod0_domain.UnixTimestampMilliseconds
 import uniffi.pod0_domain.RustBuffer as RustBufferAdSpanEvaluation
 import uniffi.pod0_domain.RustBuffer as RustBufferAdSpanId
@@ -196,10 +202,13 @@ import uniffi.pod0_domain.RustBuffer as RustBufferSpeakerId
 import uniffi.pod0_domain.RustBuffer as RustBufferStateRevision
 import uniffi.pod0_domain.RustBuffer as RustBufferTranscriptArtifactId
 import uniffi.pod0_domain.RustBuffer as RustBufferTranscriptArtifactInput
+import uniffi.pod0_domain.RustBuffer as RustBufferTranscriptAttemptId
 import uniffi.pod0_domain.RustBuffer as RustBufferTranscriptProvenance
 import uniffi.pod0_domain.RustBuffer as RustBufferTranscriptSegmentId
 import uniffi.pod0_domain.RustBuffer as RustBufferTranscriptSource
+import uniffi.pod0_domain.RustBuffer as RustBufferTranscriptSubmissionFenceId
 import uniffi.pod0_domain.RustBuffer as RustBufferTranscriptVersionId
+import uniffi.pod0_domain.RustBuffer as RustBufferTranscriptWorkflowId
 import uniffi.pod0_domain.RustBuffer as RustBufferUnixTimestampMilliseconds
 
 // This is a helper for safely working with byte buffers returned from the Rust code.
@@ -2613,6 +2622,49 @@ public object FfiConverterTypeCommandEnvelope: FfiConverterRustBuffer<CommandEnv
             FfiConverterTypeCancellationId.write(value.`cancellationId`, buf)
             FfiConverterOptionalTypeStateRevision.write(value.`expectedRevision`, buf)
             FfiConverterTypeApplicationCommand.write(value.`command`, buf)
+    }
+}
+
+
+
+data class CommittedTranscriptGeneration (
+    val `sourceRevision`: kotlin.String
+    ,
+    val `transcriptVersionId`: TranscriptVersionId
+    ,
+    val `contentDigest`: ContentDigest
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCommittedTranscriptGeneration: FfiConverterRustBuffer<CommittedTranscriptGeneration> {
+    override fun read(buf: ByteBuffer): CommittedTranscriptGeneration {
+        return CommittedTranscriptGeneration(
+            FfiConverterString.read(buf),
+            FfiConverterTypeTranscriptVersionId.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: CommittedTranscriptGeneration) = (
+            FfiConverterString.allocationSize(value.`sourceRevision`) +
+            FfiConverterTypeTranscriptVersionId.allocationSize(value.`transcriptVersionId`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`contentDigest`)
+    )
+
+    override fun write(value: CommittedTranscriptGeneration, buf: ByteBuffer) {
+            FfiConverterString.write(value.`sourceRevision`, buf)
+            FfiConverterTypeTranscriptVersionId.write(value.`transcriptVersionId`, buf)
+            FfiConverterTypeContentDigest.write(value.`contentDigest`, buf)
     }
 }
 
@@ -5407,6 +5459,54 @@ public object FfiConverterTypeTranscriptEvidenceInput: FfiConverterRustBuffer<Tr
 
 
 
+data class TranscriptFailureClassification (
+    val `code`: TranscriptWorkflowFailureCode
+    ,
+    val `retry`: TranscriptRetryDisposition
+    ,
+    val `mayHaveSubmitted`: kotlin.Boolean
+    ,
+    val `resubmissionIsSafe`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptFailureClassification: FfiConverterRustBuffer<TranscriptFailureClassification> {
+    override fun read(buf: ByteBuffer): TranscriptFailureClassification {
+        return TranscriptFailureClassification(
+            FfiConverterTypeTranscriptWorkflowFailureCode.read(buf),
+            FfiConverterTypeTranscriptRetryDisposition.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptFailureClassification) = (
+            FfiConverterTypeTranscriptWorkflowFailureCode.allocationSize(value.`code`) +
+            FfiConverterTypeTranscriptRetryDisposition.allocationSize(value.`retry`) +
+            FfiConverterBoolean.allocationSize(value.`mayHaveSubmitted`) +
+            FfiConverterBoolean.allocationSize(value.`resubmissionIsSafe`)
+    )
+
+    override fun write(value: TranscriptFailureClassification, buf: ByteBuffer) {
+            FfiConverterTypeTranscriptWorkflowFailureCode.write(value.`code`, buf)
+            FfiConverterTypeTranscriptRetryDisposition.write(value.`retry`, buf)
+            FfiConverterBoolean.write(value.`mayHaveSubmitted`, buf)
+            FfiConverterBoolean.write(value.`resubmissionIsSafe`, buf)
+    }
+}
+
+
+
 data class TranscriptProjection (
     val `scope`: TranscriptProjectionScope
     ,
@@ -5785,6 +5885,477 @@ public object FfiConverterTypeTranscriptWordProjection: FfiConverterRustBuffer<T
             FfiConverterString.write(value.`text`, buf)
             FfiConverterULong.write(value.`startMilliseconds`, buf)
             FfiConverterULong.write(value.`endMilliseconds`, buf)
+    }
+}
+
+
+
+data class TranscriptWorkflowAllowedActions (
+    val `canRetry`: kotlin.Boolean
+    ,
+    val `canCancel`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptWorkflowAllowedActions: FfiConverterRustBuffer<TranscriptWorkflowAllowedActions> {
+    override fun read(buf: ByteBuffer): TranscriptWorkflowAllowedActions {
+        return TranscriptWorkflowAllowedActions(
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptWorkflowAllowedActions) = (
+            FfiConverterBoolean.allocationSize(value.`canRetry`) +
+            FfiConverterBoolean.allocationSize(value.`canCancel`)
+    )
+
+    override fun write(value: TranscriptWorkflowAllowedActions, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`canRetry`, buf)
+            FfiConverterBoolean.write(value.`canCancel`, buf)
+    }
+}
+
+
+
+data class TranscriptWorkflowFailure (
+    val `code`: TranscriptWorkflowFailureCode
+    ,
+    val `safeDetail`: kotlin.String?
+    ,
+    val `retryable`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptWorkflowFailure: FfiConverterRustBuffer<TranscriptWorkflowFailure> {
+    override fun read(buf: ByteBuffer): TranscriptWorkflowFailure {
+        return TranscriptWorkflowFailure(
+            FfiConverterTypeTranscriptWorkflowFailureCode.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptWorkflowFailure) = (
+            FfiConverterTypeTranscriptWorkflowFailureCode.allocationSize(value.`code`) +
+            FfiConverterOptionalString.allocationSize(value.`safeDetail`) +
+            FfiConverterBoolean.allocationSize(value.`retryable`)
+    )
+
+    override fun write(value: TranscriptWorkflowFailure, buf: ByteBuffer) {
+            FfiConverterTypeTranscriptWorkflowFailureCode.write(value.`code`, buf)
+            FfiConverterOptionalString.write(value.`safeDetail`, buf)
+            FfiConverterBoolean.write(value.`retryable`, buf)
+    }
+}
+
+
+
+data class TranscriptWorkflowPlan (
+    val `generation`: TranscriptGenerationDecision
+    ,
+    val `request`: TranscriptWorkflowRequest?
+    ,
+    val `evidence`: TranscriptEvidenceDecision
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptWorkflowPlan: FfiConverterRustBuffer<TranscriptWorkflowPlan> {
+    override fun read(buf: ByteBuffer): TranscriptWorkflowPlan {
+        return TranscriptWorkflowPlan(
+            FfiConverterTypeTranscriptGenerationDecision.read(buf),
+            FfiConverterOptionalTypeTranscriptWorkflowRequest.read(buf),
+            FfiConverterTypeTranscriptEvidenceDecision.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptWorkflowPlan) = (
+            FfiConverterTypeTranscriptGenerationDecision.allocationSize(value.`generation`) +
+            FfiConverterOptionalTypeTranscriptWorkflowRequest.allocationSize(value.`request`) +
+            FfiConverterTypeTranscriptEvidenceDecision.allocationSize(value.`evidence`)
+    )
+
+    override fun write(value: TranscriptWorkflowPlan, buf: ByteBuffer) {
+            FfiConverterTypeTranscriptGenerationDecision.write(value.`generation`, buf)
+            FfiConverterOptionalTypeTranscriptWorkflowRequest.write(value.`request`, buf)
+            FfiConverterTypeTranscriptEvidenceDecision.write(value.`evidence`, buf)
+    }
+}
+
+
+
+data class TranscriptWorkflowPlanInput (
+    val `episodeId`: EpisodeId
+    ,
+    val `sourceRevision`: kotlin.String
+    ,
+    val `committedTranscript`: CommittedTranscriptGeneration?
+    ,
+    val `selectedEvidenceInputVersion`: kotlin.String?
+    ,
+    val `origin`: TranscriptWorkflowOrigin
+    ,
+    val `configuredProvider`: TranscriptProvider
+    ,
+    val `configuredModel`: kotlin.String
+    ,
+    val `remoteAudioUrl`: kotlin.String
+    ,
+    val `localAudioUrl`: kotlin.String?
+    ,
+    val `publisherTranscriptUrl`: kotlin.String?
+    ,
+    val `publisherMimeHint`: kotlin.String?
+    ,
+    val `autoPublisherEnabled`: kotlin.Boolean
+    ,
+    val `autoProviderEnabled`: kotlin.Boolean
+    ,
+    val `credentialAvailable`: kotlin.Boolean
+    ,
+    val `embeddingSpaceId`: kotlin.String
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptWorkflowPlanInput: FfiConverterRustBuffer<TranscriptWorkflowPlanInput> {
+    override fun read(buf: ByteBuffer): TranscriptWorkflowPlanInput {
+        return TranscriptWorkflowPlanInput(
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalTypeCommittedTranscriptGeneration.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeTranscriptWorkflowOrigin.read(buf),
+            FfiConverterTypeTranscriptProvider.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptWorkflowPlanInput) = (
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterString.allocationSize(value.`sourceRevision`) +
+            FfiConverterOptionalTypeCommittedTranscriptGeneration.allocationSize(value.`committedTranscript`) +
+            FfiConverterOptionalString.allocationSize(value.`selectedEvidenceInputVersion`) +
+            FfiConverterTypeTranscriptWorkflowOrigin.allocationSize(value.`origin`) +
+            FfiConverterTypeTranscriptProvider.allocationSize(value.`configuredProvider`) +
+            FfiConverterString.allocationSize(value.`configuredModel`) +
+            FfiConverterString.allocationSize(value.`remoteAudioUrl`) +
+            FfiConverterOptionalString.allocationSize(value.`localAudioUrl`) +
+            FfiConverterOptionalString.allocationSize(value.`publisherTranscriptUrl`) +
+            FfiConverterOptionalString.allocationSize(value.`publisherMimeHint`) +
+            FfiConverterBoolean.allocationSize(value.`autoPublisherEnabled`) +
+            FfiConverterBoolean.allocationSize(value.`autoProviderEnabled`) +
+            FfiConverterBoolean.allocationSize(value.`credentialAvailable`) +
+            FfiConverterString.allocationSize(value.`embeddingSpaceId`)
+    )
+
+    override fun write(value: TranscriptWorkflowPlanInput, buf: ByteBuffer) {
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterString.write(value.`sourceRevision`, buf)
+            FfiConverterOptionalTypeCommittedTranscriptGeneration.write(value.`committedTranscript`, buf)
+            FfiConverterOptionalString.write(value.`selectedEvidenceInputVersion`, buf)
+            FfiConverterTypeTranscriptWorkflowOrigin.write(value.`origin`, buf)
+            FfiConverterTypeTranscriptProvider.write(value.`configuredProvider`, buf)
+            FfiConverterString.write(value.`configuredModel`, buf)
+            FfiConverterString.write(value.`remoteAudioUrl`, buf)
+            FfiConverterOptionalString.write(value.`localAudioUrl`, buf)
+            FfiConverterOptionalString.write(value.`publisherTranscriptUrl`, buf)
+            FfiConverterOptionalString.write(value.`publisherMimeHint`, buf)
+            FfiConverterBoolean.write(value.`autoPublisherEnabled`, buf)
+            FfiConverterBoolean.write(value.`autoProviderEnabled`, buf)
+            FfiConverterBoolean.write(value.`credentialAvailable`, buf)
+            FfiConverterString.write(value.`embeddingSpaceId`, buf)
+    }
+}
+
+
+
+data class TranscriptWorkflowProjection (
+    val `episodeId`: EpisodeId
+    ,
+    val `workflowId`: TranscriptWorkflowId
+    ,
+    val `sourceRevision`: kotlin.String
+    ,
+    val `origin`: TranscriptWorkflowOrigin
+    ,
+    val `provider`: TranscriptProvider
+    ,
+    val `model`: kotlin.String
+    ,
+    val `stage`: TranscriptWorkflowStage
+    ,
+    val `workflowRevision`: StateRevision
+    ,
+    val `attempt`: kotlin.UShort
+    ,
+    val `attemptId`: TranscriptAttemptId?
+    ,
+    val `submissionFenceId`: TranscriptSubmissionFenceId?
+    ,
+    val `requestId`: HostRequestId?
+    ,
+    val `externalOperationPresent`: kotlin.Boolean
+    ,
+    val `notBefore`: UnixTimestampMilliseconds?
+    ,
+    val `failure`: TranscriptWorkflowFailure?
+    ,
+    val `updatedAt`: UnixTimestampMilliseconds
+    ,
+    val `allowedActions`: TranscriptWorkflowAllowedActions
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptWorkflowProjection: FfiConverterRustBuffer<TranscriptWorkflowProjection> {
+    override fun read(buf: ByteBuffer): TranscriptWorkflowProjection {
+        return TranscriptWorkflowProjection(
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterTypeTranscriptWorkflowId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeTranscriptWorkflowOrigin.read(buf),
+            FfiConverterTypeTranscriptProvider.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeTranscriptWorkflowStage.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterUShort.read(buf),
+            FfiConverterOptionalTypeTranscriptAttemptId.read(buf),
+            FfiConverterOptionalTypeTranscriptSubmissionFenceId.read(buf),
+            FfiConverterOptionalTypeHostRequestId.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterOptionalTypeTranscriptWorkflowFailure.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterTypeTranscriptWorkflowAllowedActions.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptWorkflowProjection) = (
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterTypeTranscriptWorkflowId.allocationSize(value.`workflowId`) +
+            FfiConverterString.allocationSize(value.`sourceRevision`) +
+            FfiConverterTypeTranscriptWorkflowOrigin.allocationSize(value.`origin`) +
+            FfiConverterTypeTranscriptProvider.allocationSize(value.`provider`) +
+            FfiConverterString.allocationSize(value.`model`) +
+            FfiConverterTypeTranscriptWorkflowStage.allocationSize(value.`stage`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`workflowRevision`) +
+            FfiConverterUShort.allocationSize(value.`attempt`) +
+            FfiConverterOptionalTypeTranscriptAttemptId.allocationSize(value.`attemptId`) +
+            FfiConverterOptionalTypeTranscriptSubmissionFenceId.allocationSize(value.`submissionFenceId`) +
+            FfiConverterOptionalTypeHostRequestId.allocationSize(value.`requestId`) +
+            FfiConverterBoolean.allocationSize(value.`externalOperationPresent`) +
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.allocationSize(value.`notBefore`) +
+            FfiConverterOptionalTypeTranscriptWorkflowFailure.allocationSize(value.`failure`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`updatedAt`) +
+            FfiConverterTypeTranscriptWorkflowAllowedActions.allocationSize(value.`allowedActions`)
+    )
+
+    override fun write(value: TranscriptWorkflowProjection, buf: ByteBuffer) {
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterTypeTranscriptWorkflowId.write(value.`workflowId`, buf)
+            FfiConverterString.write(value.`sourceRevision`, buf)
+            FfiConverterTypeTranscriptWorkflowOrigin.write(value.`origin`, buf)
+            FfiConverterTypeTranscriptProvider.write(value.`provider`, buf)
+            FfiConverterString.write(value.`model`, buf)
+            FfiConverterTypeTranscriptWorkflowStage.write(value.`stage`, buf)
+            FfiConverterTypeStateRevision.write(value.`workflowRevision`, buf)
+            FfiConverterUShort.write(value.`attempt`, buf)
+            FfiConverterOptionalTypeTranscriptAttemptId.write(value.`attemptId`, buf)
+            FfiConverterOptionalTypeTranscriptSubmissionFenceId.write(value.`submissionFenceId`, buf)
+            FfiConverterOptionalTypeHostRequestId.write(value.`requestId`, buf)
+            FfiConverterBoolean.write(value.`externalOperationPresent`, buf)
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.write(value.`notBefore`, buf)
+            FfiConverterOptionalTypeTranscriptWorkflowFailure.write(value.`failure`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`updatedAt`, buf)
+            FfiConverterTypeTranscriptWorkflowAllowedActions.write(value.`allowedActions`, buf)
+    }
+}
+
+
+
+data class TranscriptWorkflowRequest (
+    val `workflowId`: TranscriptWorkflowId
+    ,
+    val `episodeId`: EpisodeId
+    ,
+    val `sourceRevision`: kotlin.String
+    ,
+    val `origin`: TranscriptWorkflowOrigin
+    ,
+    val `provider`: TranscriptProvider
+    ,
+    val `model`: kotlin.String
+    ,
+    val `remoteAudioUrl`: kotlin.String
+    ,
+    val `localAudioUrl`: kotlin.String?
+    ,
+    val `publisherTranscriptUrl`: kotlin.String?
+    ,
+    val `publisherMimeHint`: kotlin.String?
+    ,
+    val `publisherFirst`: kotlin.Boolean
+    ,
+    val `providerFallbackEnabled`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptWorkflowRequest: FfiConverterRustBuffer<TranscriptWorkflowRequest> {
+    override fun read(buf: ByteBuffer): TranscriptWorkflowRequest {
+        return TranscriptWorkflowRequest(
+            FfiConverterTypeTranscriptWorkflowId.read(buf),
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeTranscriptWorkflowOrigin.read(buf),
+            FfiConverterTypeTranscriptProvider.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptWorkflowRequest) = (
+            FfiConverterTypeTranscriptWorkflowId.allocationSize(value.`workflowId`) +
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterString.allocationSize(value.`sourceRevision`) +
+            FfiConverterTypeTranscriptWorkflowOrigin.allocationSize(value.`origin`) +
+            FfiConverterTypeTranscriptProvider.allocationSize(value.`provider`) +
+            FfiConverterString.allocationSize(value.`model`) +
+            FfiConverterString.allocationSize(value.`remoteAudioUrl`) +
+            FfiConverterOptionalString.allocationSize(value.`localAudioUrl`) +
+            FfiConverterOptionalString.allocationSize(value.`publisherTranscriptUrl`) +
+            FfiConverterOptionalString.allocationSize(value.`publisherMimeHint`) +
+            FfiConverterBoolean.allocationSize(value.`publisherFirst`) +
+            FfiConverterBoolean.allocationSize(value.`providerFallbackEnabled`)
+    )
+
+    override fun write(value: TranscriptWorkflowRequest, buf: ByteBuffer) {
+            FfiConverterTypeTranscriptWorkflowId.write(value.`workflowId`, buf)
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterString.write(value.`sourceRevision`, buf)
+            FfiConverterTypeTranscriptWorkflowOrigin.write(value.`origin`, buf)
+            FfiConverterTypeTranscriptProvider.write(value.`provider`, buf)
+            FfiConverterString.write(value.`model`, buf)
+            FfiConverterString.write(value.`remoteAudioUrl`, buf)
+            FfiConverterOptionalString.write(value.`localAudioUrl`, buf)
+            FfiConverterOptionalString.write(value.`publisherTranscriptUrl`, buf)
+            FfiConverterOptionalString.write(value.`publisherMimeHint`, buf)
+            FfiConverterBoolean.write(value.`publisherFirst`, buf)
+            FfiConverterBoolean.write(value.`providerFallbackEnabled`, buf)
+    }
+}
+
+
+
+data class TranscriptWorkflowsProjection (
+    val `workflows`: List<TranscriptWorkflowProjection>
+    ,
+    val `hasMore`: kotlin.Boolean
+    ,
+    val `failure`: CoreFailure?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptWorkflowsProjection: FfiConverterRustBuffer<TranscriptWorkflowsProjection> {
+    override fun read(buf: ByteBuffer): TranscriptWorkflowsProjection {
+        return TranscriptWorkflowsProjection(
+            FfiConverterSequenceTypeTranscriptWorkflowProjection.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalTypeCoreFailure.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptWorkflowsProjection) = (
+            FfiConverterSequenceTypeTranscriptWorkflowProjection.allocationSize(value.`workflows`) +
+            FfiConverterBoolean.allocationSize(value.`hasMore`) +
+            FfiConverterOptionalTypeCoreFailure.allocationSize(value.`failure`)
+    )
+
+    override fun write(value: TranscriptWorkflowsProjection, buf: ByteBuffer) {
+            FfiConverterSequenceTypeTranscriptWorkflowProjection.write(value.`workflows`, buf)
+            FfiConverterBoolean.write(value.`hasMore`, buf)
+            FfiConverterOptionalTypeCoreFailure.write(value.`failure`, buf)
     }
 }
 
@@ -16969,6 +17540,447 @@ public object FfiConverterTypeRetryability : FfiConverterRustBuffer<Retryability
 
 
 
+sealed class TranscriptCapabilityObservation {
+
+    data class ProviderAccepted(
+        val `externalOperationId`: kotlin.String,
+        val `providerStatus`: kotlin.String?) : TranscriptCapabilityObservation()
+
+    {
+
+
+        companion object
+    }
+
+    data class ProviderPending(
+        val `providerStatus`: kotlin.String?,
+        val `retryAfterMilliseconds`: kotlin.ULong?) : TranscriptCapabilityObservation()
+
+    {
+
+
+        companion object
+    }
+
+    data class Completed(
+        val `artifact`: uniffi.pod0_domain.TranscriptArtifactInput) : TranscriptCapabilityObservation()
+
+    {
+
+
+        companion object
+    }
+
+    data class Failed(
+        val `evidence`: uniffi.pod0_application.TranscriptFailureEvidence,
+        val `safeDetail`: kotlin.String?,
+        val `retryAfterMilliseconds`: kotlin.ULong?) : TranscriptCapabilityObservation()
+
+    {
+
+
+        companion object
+    }
+
+    object Cancelled : TranscriptCapabilityObservation()
+
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptCapabilityObservation : FfiConverterRustBuffer<TranscriptCapabilityObservation>{
+    override fun read(buf: ByteBuffer): TranscriptCapabilityObservation {
+        return when(buf.getInt()) {
+            1 -> TranscriptCapabilityObservation.ProviderAccepted(
+                FfiConverterString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                )
+            2 -> TranscriptCapabilityObservation.ProviderPending(
+                FfiConverterOptionalString.read(buf),
+                FfiConverterOptionalULong.read(buf),
+                )
+            3 -> TranscriptCapabilityObservation.Completed(
+                FfiConverterTypeTranscriptArtifactInput.read(buf),
+                )
+            4 -> TranscriptCapabilityObservation.Failed(
+                FfiConverterTypeTranscriptFailureEvidence.read(buf),
+                FfiConverterOptionalString.read(buf),
+                FfiConverterOptionalULong.read(buf),
+                )
+            5 -> TranscriptCapabilityObservation.Cancelled
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: TranscriptCapabilityObservation): ULong = when(value) {
+        is TranscriptCapabilityObservation.ProviderAccepted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`externalOperationId`)
+                + FfiConverterOptionalString.allocationSize(value.`providerStatus`)
+            )
+        }
+        is TranscriptCapabilityObservation.ProviderPending -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterOptionalString.allocationSize(value.`providerStatus`)
+                + FfiConverterOptionalULong.allocationSize(value.`retryAfterMilliseconds`)
+            )
+        }
+        is TranscriptCapabilityObservation.Completed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeTranscriptArtifactInput.allocationSize(value.`artifact`)
+            )
+        }
+        is TranscriptCapabilityObservation.Failed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeTranscriptFailureEvidence.allocationSize(value.`evidence`)
+                + FfiConverterOptionalString.allocationSize(value.`safeDetail`)
+                + FfiConverterOptionalULong.allocationSize(value.`retryAfterMilliseconds`)
+            )
+        }
+        is TranscriptCapabilityObservation.Cancelled -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: TranscriptCapabilityObservation, buf: ByteBuffer) {
+        when(value) {
+            is TranscriptCapabilityObservation.ProviderAccepted -> {
+                buf.putInt(1)
+                FfiConverterString.write(value.`externalOperationId`, buf)
+                FfiConverterOptionalString.write(value.`providerStatus`, buf)
+                Unit
+            }
+            is TranscriptCapabilityObservation.ProviderPending -> {
+                buf.putInt(2)
+                FfiConverterOptionalString.write(value.`providerStatus`, buf)
+                FfiConverterOptionalULong.write(value.`retryAfterMilliseconds`, buf)
+                Unit
+            }
+            is TranscriptCapabilityObservation.Completed -> {
+                buf.putInt(3)
+                FfiConverterTypeTranscriptArtifactInput.write(value.`artifact`, buf)
+                Unit
+            }
+            is TranscriptCapabilityObservation.Failed -> {
+                buf.putInt(4)
+                FfiConverterTypeTranscriptFailureEvidence.write(value.`evidence`, buf)
+                FfiConverterOptionalString.write(value.`safeDetail`, buf)
+                FfiConverterOptionalULong.write(value.`retryAfterMilliseconds`, buf)
+                Unit
+            }
+            is TranscriptCapabilityObservation.Cancelled -> {
+                buf.putInt(5)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class TranscriptCapabilityRequest {
+
+    data class FetchPublisher(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `sourceUrl`: kotlin.String,
+        val `mimeHint`: kotlin.String?,
+        val `maximumResponseBytes`: kotlin.ULong) : TranscriptCapabilityRequest()
+
+    {
+
+
+        companion object
+    }
+
+    data class SubmitProvider(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `attemptId`: uniffi.pod0_domain.TranscriptAttemptId,
+        val `submissionFenceId`: uniffi.pod0_domain.TranscriptSubmissionFenceId,
+        val `provider`: uniffi.pod0_application.TranscriptProvider,
+        val `model`: kotlin.String,
+        val `audioUrl`: kotlin.String,
+        val `maximumResponseBytes`: kotlin.ULong) : TranscriptCapabilityRequest()
+
+    {
+
+
+        companion object
+    }
+
+    data class RecoverProvider(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `attemptId`: uniffi.pod0_domain.TranscriptAttemptId,
+        val `submissionFenceId`: uniffi.pod0_domain.TranscriptSubmissionFenceId,
+        val `provider`: uniffi.pod0_application.TranscriptProvider,
+        val `model`: kotlin.String,
+        val `externalOperationId`: kotlin.String,
+        val `providerStatus`: kotlin.String?,
+        val `maximumResponseBytes`: kotlin.ULong) : TranscriptCapabilityRequest()
+
+    {
+
+
+        companion object
+    }
+
+    data class TranscribeLocal(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `attemptId`: uniffi.pod0_domain.TranscriptAttemptId,
+        val `audioUrl`: kotlin.String,
+        val `locale`: kotlin.String?) : TranscriptCapabilityRequest()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptCapabilityRequest : FfiConverterRustBuffer<TranscriptCapabilityRequest>{
+    override fun read(buf: ByteBuffer): TranscriptCapabilityRequest {
+        return when(buf.getInt()) {
+            1 -> TranscriptCapabilityRequest.FetchPublisher(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                FfiConverterULong.read(buf),
+                )
+            2 -> TranscriptCapabilityRequest.SubmitProvider(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeTranscriptAttemptId.read(buf),
+                FfiConverterTypeTranscriptSubmissionFenceId.read(buf),
+                FfiConverterTypeTranscriptProvider.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterULong.read(buf),
+                )
+            3 -> TranscriptCapabilityRequest.RecoverProvider(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeTranscriptAttemptId.read(buf),
+                FfiConverterTypeTranscriptSubmissionFenceId.read(buf),
+                FfiConverterTypeTranscriptProvider.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                FfiConverterULong.read(buf),
+                )
+            4 -> TranscriptCapabilityRequest.TranscribeLocal(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeTranscriptAttemptId.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: TranscriptCapabilityRequest): ULong = when(value) {
+        is TranscriptCapabilityRequest.FetchPublisher -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterString.allocationSize(value.`sourceUrl`)
+                + FfiConverterOptionalString.allocationSize(value.`mimeHint`)
+                + FfiConverterULong.allocationSize(value.`maximumResponseBytes`)
+            )
+        }
+        is TranscriptCapabilityRequest.SubmitProvider -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeTranscriptAttemptId.allocationSize(value.`attemptId`)
+                + FfiConverterTypeTranscriptSubmissionFenceId.allocationSize(value.`submissionFenceId`)
+                + FfiConverterTypeTranscriptProvider.allocationSize(value.`provider`)
+                + FfiConverterString.allocationSize(value.`model`)
+                + FfiConverterString.allocationSize(value.`audioUrl`)
+                + FfiConverterULong.allocationSize(value.`maximumResponseBytes`)
+            )
+        }
+        is TranscriptCapabilityRequest.RecoverProvider -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeTranscriptAttemptId.allocationSize(value.`attemptId`)
+                + FfiConverterTypeTranscriptSubmissionFenceId.allocationSize(value.`submissionFenceId`)
+                + FfiConverterTypeTranscriptProvider.allocationSize(value.`provider`)
+                + FfiConverterString.allocationSize(value.`model`)
+                + FfiConverterString.allocationSize(value.`externalOperationId`)
+                + FfiConverterOptionalString.allocationSize(value.`providerStatus`)
+                + FfiConverterULong.allocationSize(value.`maximumResponseBytes`)
+            )
+        }
+        is TranscriptCapabilityRequest.TranscribeLocal -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeTranscriptAttemptId.allocationSize(value.`attemptId`)
+                + FfiConverterString.allocationSize(value.`audioUrl`)
+                + FfiConverterOptionalString.allocationSize(value.`locale`)
+            )
+        }
+    }
+
+    override fun write(value: TranscriptCapabilityRequest, buf: ByteBuffer) {
+        when(value) {
+            is TranscriptCapabilityRequest.FetchPublisher -> {
+                buf.putInt(1)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterString.write(value.`sourceUrl`, buf)
+                FfiConverterOptionalString.write(value.`mimeHint`, buf)
+                FfiConverterULong.write(value.`maximumResponseBytes`, buf)
+                Unit
+            }
+            is TranscriptCapabilityRequest.SubmitProvider -> {
+                buf.putInt(2)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeTranscriptAttemptId.write(value.`attemptId`, buf)
+                FfiConverterTypeTranscriptSubmissionFenceId.write(value.`submissionFenceId`, buf)
+                FfiConverterTypeTranscriptProvider.write(value.`provider`, buf)
+                FfiConverterString.write(value.`model`, buf)
+                FfiConverterString.write(value.`audioUrl`, buf)
+                FfiConverterULong.write(value.`maximumResponseBytes`, buf)
+                Unit
+            }
+            is TranscriptCapabilityRequest.RecoverProvider -> {
+                buf.putInt(3)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeTranscriptAttemptId.write(value.`attemptId`, buf)
+                FfiConverterTypeTranscriptSubmissionFenceId.write(value.`submissionFenceId`, buf)
+                FfiConverterTypeTranscriptProvider.write(value.`provider`, buf)
+                FfiConverterString.write(value.`model`, buf)
+                FfiConverterString.write(value.`externalOperationId`, buf)
+                FfiConverterOptionalString.write(value.`providerStatus`, buf)
+                FfiConverterULong.write(value.`maximumResponseBytes`, buf)
+                Unit
+            }
+            is TranscriptCapabilityRequest.TranscribeLocal -> {
+                buf.putInt(4)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeTranscriptAttemptId.write(value.`attemptId`, buf)
+                FfiConverterString.write(value.`audioUrl`, buf)
+                FfiConverterOptionalString.write(value.`locale`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class TranscriptCapabilityValidation {
+
+    object Accepted : TranscriptCapabilityValidation()
+
+
+    data class Rejected(
+        val `code`: uniffi.pod0_application.TranscriptWorkflowFailureCode) : TranscriptCapabilityValidation()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptCapabilityValidation : FfiConverterRustBuffer<TranscriptCapabilityValidation>{
+    override fun read(buf: ByteBuffer): TranscriptCapabilityValidation {
+        return when(buf.getInt()) {
+            1 -> TranscriptCapabilityValidation.Accepted
+            2 -> TranscriptCapabilityValidation.Rejected(
+                FfiConverterTypeTranscriptWorkflowFailureCode.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: TranscriptCapabilityValidation): ULong = when(value) {
+        is TranscriptCapabilityValidation.Accepted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptCapabilityValidation.Rejected -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeTranscriptWorkflowFailureCode.allocationSize(value.`code`)
+            )
+        }
+    }
+
+    override fun write(value: TranscriptCapabilityValidation, buf: ByteBuffer) {
+        when(value) {
+            is TranscriptCapabilityValidation.Accepted -> {
+                buf.putInt(1)
+                Unit
+            }
+            is TranscriptCapabilityValidation.Rejected -> {
+                buf.putInt(2)
+                FfiConverterTypeTranscriptWorkflowFailureCode.write(value.`code`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 /**
  * Bounded state returned by the pure pre-cutover contract projection.
  * Rejections are data, never an exception crossing UniFFI.
@@ -17231,6 +18243,689 @@ public object FfiConverterTypeTranscriptContractRejection : FfiConverterRustBuff
 
 
 
+sealed class TranscriptEvidenceDecision {
+
+    object AwaitingTranscript : TranscriptEvidenceDecision()
+
+
+    object Current : TranscriptEvidenceDecision()
+
+
+    data class Ensure(
+        val `inputVersion`: kotlin.String) : TranscriptEvidenceDecision()
+
+    {
+
+
+        companion object
+    }
+
+    data class Blocked(
+        val `code`: uniffi.pod0_application.TranscriptWorkflowFailureCode) : TranscriptEvidenceDecision()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptEvidenceDecision : FfiConverterRustBuffer<TranscriptEvidenceDecision>{
+    override fun read(buf: ByteBuffer): TranscriptEvidenceDecision {
+        return when(buf.getInt()) {
+            1 -> TranscriptEvidenceDecision.AwaitingTranscript
+            2 -> TranscriptEvidenceDecision.Current
+            3 -> TranscriptEvidenceDecision.Ensure(
+                FfiConverterString.read(buf),
+                )
+            4 -> TranscriptEvidenceDecision.Blocked(
+                FfiConverterTypeTranscriptWorkflowFailureCode.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: TranscriptEvidenceDecision): ULong = when(value) {
+        is TranscriptEvidenceDecision.AwaitingTranscript -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptEvidenceDecision.Current -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptEvidenceDecision.Ensure -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`inputVersion`)
+            )
+        }
+        is TranscriptEvidenceDecision.Blocked -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeTranscriptWorkflowFailureCode.allocationSize(value.`code`)
+            )
+        }
+    }
+
+    override fun write(value: TranscriptEvidenceDecision, buf: ByteBuffer) {
+        when(value) {
+            is TranscriptEvidenceDecision.AwaitingTranscript -> {
+                buf.putInt(1)
+                Unit
+            }
+            is TranscriptEvidenceDecision.Current -> {
+                buf.putInt(2)
+                Unit
+            }
+            is TranscriptEvidenceDecision.Ensure -> {
+                buf.putInt(3)
+                FfiConverterString.write(value.`inputVersion`, buf)
+                Unit
+            }
+            is TranscriptEvidenceDecision.Blocked -> {
+                buf.putInt(4)
+                FfiConverterTypeTranscriptWorkflowFailureCode.write(value.`code`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class TranscriptFailureEvidence {
+
+    object MissingCredential : TranscriptFailureEvidence()
+
+
+    object MissingLocalAudio : TranscriptFailureEvidence()
+
+
+    object InvalidRequest : TranscriptFailureEvidence()
+
+
+    object UnsupportedProvider : TranscriptFailureEvidence()
+
+
+    object PublisherUnavailable : TranscriptFailureEvidence()
+
+
+    data class Offline(
+        val `submissionAuthorized`: kotlin.Boolean,
+        val `providerAccepted`: kotlin.Boolean) : TranscriptFailureEvidence()
+
+    {
+
+
+        companion object
+    }
+
+    data class RateLimited(
+        val `submissionAuthorized`: kotlin.Boolean,
+        val `providerAccepted`: kotlin.Boolean) : TranscriptFailureEvidence()
+
+    {
+
+
+        companion object
+    }
+
+    data class TimedOut(
+        val `submissionAuthorized`: kotlin.Boolean,
+        val `providerAccepted`: kotlin.Boolean) : TranscriptFailureEvidence()
+
+    {
+
+
+        companion object
+    }
+
+    data class Transport(
+        val `submissionAuthorized`: kotlin.Boolean,
+        val `providerAccepted`: kotlin.Boolean) : TranscriptFailureEvidence()
+
+    {
+
+
+        companion object
+    }
+
+    object PermissionDenied : TranscriptFailureEvidence()
+
+
+    object ProviderRejected : TranscriptFailureEvidence()
+
+
+    data class ProviderUnavailable(
+        val `submissionAuthorized`: kotlin.Boolean,
+        val `providerAccepted`: kotlin.Boolean) : TranscriptFailureEvidence()
+
+    {
+
+
+        companion object
+    }
+
+    object ResponseTooLarge : TranscriptFailureEvidence()
+
+
+    object InvalidResponse : TranscriptFailureEvidence()
+
+
+    object StaleInput : TranscriptFailureEvidence()
+
+
+    data class StorageUnavailable(
+        val `submissionAuthorized`: kotlin.Boolean,
+        val `providerAccepted`: kotlin.Boolean) : TranscriptFailureEvidence()
+
+    {
+
+
+        companion object
+    }
+
+    object ProviderRecoveryUnavailable : TranscriptFailureEvidence()
+
+
+    data class RetryExhausted(
+        val `mayHaveSubmitted`: kotlin.Boolean) : TranscriptFailureEvidence()
+
+    {
+
+
+        companion object
+    }
+
+    data class Cancelled(
+        val `submissionAuthorized`: kotlin.Boolean,
+        val `providerAccepted`: kotlin.Boolean) : TranscriptFailureEvidence()
+
+    {
+
+
+        companion object
+    }
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : TranscriptFailureEvidence()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptFailureEvidence : FfiConverterRustBuffer<TranscriptFailureEvidence>{
+    override fun read(buf: ByteBuffer): TranscriptFailureEvidence {
+        return when(buf.getInt()) {
+            1 -> TranscriptFailureEvidence.MissingCredential
+            2 -> TranscriptFailureEvidence.MissingLocalAudio
+            3 -> TranscriptFailureEvidence.InvalidRequest
+            4 -> TranscriptFailureEvidence.UnsupportedProvider
+            5 -> TranscriptFailureEvidence.PublisherUnavailable
+            6 -> TranscriptFailureEvidence.Offline(
+                FfiConverterBoolean.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            7 -> TranscriptFailureEvidence.RateLimited(
+                FfiConverterBoolean.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            8 -> TranscriptFailureEvidence.TimedOut(
+                FfiConverterBoolean.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            9 -> TranscriptFailureEvidence.Transport(
+                FfiConverterBoolean.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            10 -> TranscriptFailureEvidence.PermissionDenied
+            11 -> TranscriptFailureEvidence.ProviderRejected
+            12 -> TranscriptFailureEvidence.ProviderUnavailable(
+                FfiConverterBoolean.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            13 -> TranscriptFailureEvidence.ResponseTooLarge
+            14 -> TranscriptFailureEvidence.InvalidResponse
+            15 -> TranscriptFailureEvidence.StaleInput
+            16 -> TranscriptFailureEvidence.StorageUnavailable(
+                FfiConverterBoolean.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            17 -> TranscriptFailureEvidence.ProviderRecoveryUnavailable
+            18 -> TranscriptFailureEvidence.RetryExhausted(
+                FfiConverterBoolean.read(buf),
+                )
+            19 -> TranscriptFailureEvidence.Cancelled(
+                FfiConverterBoolean.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            20 -> TranscriptFailureEvidence.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: TranscriptFailureEvidence): ULong = when(value) {
+        is TranscriptFailureEvidence.MissingCredential -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptFailureEvidence.MissingLocalAudio -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptFailureEvidence.InvalidRequest -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptFailureEvidence.UnsupportedProvider -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptFailureEvidence.PublisherUnavailable -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptFailureEvidence.Offline -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterBoolean.allocationSize(value.`submissionAuthorized`)
+                + FfiConverterBoolean.allocationSize(value.`providerAccepted`)
+            )
+        }
+        is TranscriptFailureEvidence.RateLimited -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterBoolean.allocationSize(value.`submissionAuthorized`)
+                + FfiConverterBoolean.allocationSize(value.`providerAccepted`)
+            )
+        }
+        is TranscriptFailureEvidence.TimedOut -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterBoolean.allocationSize(value.`submissionAuthorized`)
+                + FfiConverterBoolean.allocationSize(value.`providerAccepted`)
+            )
+        }
+        is TranscriptFailureEvidence.Transport -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterBoolean.allocationSize(value.`submissionAuthorized`)
+                + FfiConverterBoolean.allocationSize(value.`providerAccepted`)
+            )
+        }
+        is TranscriptFailureEvidence.PermissionDenied -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptFailureEvidence.ProviderRejected -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptFailureEvidence.ProviderUnavailable -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterBoolean.allocationSize(value.`submissionAuthorized`)
+                + FfiConverterBoolean.allocationSize(value.`providerAccepted`)
+            )
+        }
+        is TranscriptFailureEvidence.ResponseTooLarge -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptFailureEvidence.InvalidResponse -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptFailureEvidence.StaleInput -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptFailureEvidence.StorageUnavailable -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterBoolean.allocationSize(value.`submissionAuthorized`)
+                + FfiConverterBoolean.allocationSize(value.`providerAccepted`)
+            )
+        }
+        is TranscriptFailureEvidence.ProviderRecoveryUnavailable -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptFailureEvidence.RetryExhausted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterBoolean.allocationSize(value.`mayHaveSubmitted`)
+            )
+        }
+        is TranscriptFailureEvidence.Cancelled -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterBoolean.allocationSize(value.`submissionAuthorized`)
+                + FfiConverterBoolean.allocationSize(value.`providerAccepted`)
+            )
+        }
+        is TranscriptFailureEvidence.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: TranscriptFailureEvidence, buf: ByteBuffer) {
+        when(value) {
+            is TranscriptFailureEvidence.MissingCredential -> {
+                buf.putInt(1)
+                Unit
+            }
+            is TranscriptFailureEvidence.MissingLocalAudio -> {
+                buf.putInt(2)
+                Unit
+            }
+            is TranscriptFailureEvidence.InvalidRequest -> {
+                buf.putInt(3)
+                Unit
+            }
+            is TranscriptFailureEvidence.UnsupportedProvider -> {
+                buf.putInt(4)
+                Unit
+            }
+            is TranscriptFailureEvidence.PublisherUnavailable -> {
+                buf.putInt(5)
+                Unit
+            }
+            is TranscriptFailureEvidence.Offline -> {
+                buf.putInt(6)
+                FfiConverterBoolean.write(value.`submissionAuthorized`, buf)
+                FfiConverterBoolean.write(value.`providerAccepted`, buf)
+                Unit
+            }
+            is TranscriptFailureEvidence.RateLimited -> {
+                buf.putInt(7)
+                FfiConverterBoolean.write(value.`submissionAuthorized`, buf)
+                FfiConverterBoolean.write(value.`providerAccepted`, buf)
+                Unit
+            }
+            is TranscriptFailureEvidence.TimedOut -> {
+                buf.putInt(8)
+                FfiConverterBoolean.write(value.`submissionAuthorized`, buf)
+                FfiConverterBoolean.write(value.`providerAccepted`, buf)
+                Unit
+            }
+            is TranscriptFailureEvidence.Transport -> {
+                buf.putInt(9)
+                FfiConverterBoolean.write(value.`submissionAuthorized`, buf)
+                FfiConverterBoolean.write(value.`providerAccepted`, buf)
+                Unit
+            }
+            is TranscriptFailureEvidence.PermissionDenied -> {
+                buf.putInt(10)
+                Unit
+            }
+            is TranscriptFailureEvidence.ProviderRejected -> {
+                buf.putInt(11)
+                Unit
+            }
+            is TranscriptFailureEvidence.ProviderUnavailable -> {
+                buf.putInt(12)
+                FfiConverterBoolean.write(value.`submissionAuthorized`, buf)
+                FfiConverterBoolean.write(value.`providerAccepted`, buf)
+                Unit
+            }
+            is TranscriptFailureEvidence.ResponseTooLarge -> {
+                buf.putInt(13)
+                Unit
+            }
+            is TranscriptFailureEvidence.InvalidResponse -> {
+                buf.putInt(14)
+                Unit
+            }
+            is TranscriptFailureEvidence.StaleInput -> {
+                buf.putInt(15)
+                Unit
+            }
+            is TranscriptFailureEvidence.StorageUnavailable -> {
+                buf.putInt(16)
+                FfiConverterBoolean.write(value.`submissionAuthorized`, buf)
+                FfiConverterBoolean.write(value.`providerAccepted`, buf)
+                Unit
+            }
+            is TranscriptFailureEvidence.ProviderRecoveryUnavailable -> {
+                buf.putInt(17)
+                Unit
+            }
+            is TranscriptFailureEvidence.RetryExhausted -> {
+                buf.putInt(18)
+                FfiConverterBoolean.write(value.`mayHaveSubmitted`, buf)
+                Unit
+            }
+            is TranscriptFailureEvidence.Cancelled -> {
+                buf.putInt(19)
+                FfiConverterBoolean.write(value.`submissionAuthorized`, buf)
+                FfiConverterBoolean.write(value.`providerAccepted`, buf)
+                Unit
+            }
+            is TranscriptFailureEvidence.Unsupported -> {
+                buf.putInt(20)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class TranscriptGenerationDecision {
+
+    object NotRequested : TranscriptGenerationDecision()
+
+
+    object Current : TranscriptGenerationDecision()
+
+
+    data class AwaitingCredential(
+        val `provider`: uniffi.pod0_application.TranscriptProvider) : TranscriptGenerationDecision()
+
+    {
+
+
+        companion object
+    }
+
+    object AwaitingLocalAudio : TranscriptGenerationDecision()
+
+
+    object Ensure : TranscriptGenerationDecision()
+
+
+    data class Blocked(
+        val `code`: uniffi.pod0_application.TranscriptWorkflowFailureCode) : TranscriptGenerationDecision()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptGenerationDecision : FfiConverterRustBuffer<TranscriptGenerationDecision>{
+    override fun read(buf: ByteBuffer): TranscriptGenerationDecision {
+        return when(buf.getInt()) {
+            1 -> TranscriptGenerationDecision.NotRequested
+            2 -> TranscriptGenerationDecision.Current
+            3 -> TranscriptGenerationDecision.AwaitingCredential(
+                FfiConverterTypeTranscriptProvider.read(buf),
+                )
+            4 -> TranscriptGenerationDecision.AwaitingLocalAudio
+            5 -> TranscriptGenerationDecision.Ensure
+            6 -> TranscriptGenerationDecision.Blocked(
+                FfiConverterTypeTranscriptWorkflowFailureCode.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: TranscriptGenerationDecision): ULong = when(value) {
+        is TranscriptGenerationDecision.NotRequested -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptGenerationDecision.Current -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptGenerationDecision.AwaitingCredential -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeTranscriptProvider.allocationSize(value.`provider`)
+            )
+        }
+        is TranscriptGenerationDecision.AwaitingLocalAudio -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptGenerationDecision.Ensure -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptGenerationDecision.Blocked -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeTranscriptWorkflowFailureCode.allocationSize(value.`code`)
+            )
+        }
+    }
+
+    override fun write(value: TranscriptGenerationDecision, buf: ByteBuffer) {
+        when(value) {
+            is TranscriptGenerationDecision.NotRequested -> {
+                buf.putInt(1)
+                Unit
+            }
+            is TranscriptGenerationDecision.Current -> {
+                buf.putInt(2)
+                Unit
+            }
+            is TranscriptGenerationDecision.AwaitingCredential -> {
+                buf.putInt(3)
+                FfiConverterTypeTranscriptProvider.write(value.`provider`, buf)
+                Unit
+            }
+            is TranscriptGenerationDecision.AwaitingLocalAudio -> {
+                buf.putInt(4)
+                Unit
+            }
+            is TranscriptGenerationDecision.Ensure -> {
+                buf.putInt(5)
+                Unit
+            }
+            is TranscriptGenerationDecision.Blocked -> {
+                buf.putInt(6)
+                FfiConverterTypeTranscriptWorkflowFailureCode.write(value.`code`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 sealed class TranscriptProjectionScope {
 
     object Summary : TranscriptProjectionScope()
@@ -17369,6 +19064,827 @@ public object FfiConverterTypeTranscriptProjectionScope : FfiConverterRustBuffer
             }
             is TranscriptProjectionScope.Unsupported -> {
                 buf.putInt(6)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class TranscriptProvider {
+
+    object AssemblyAi : TranscriptProvider()
+
+
+    object ElevenLabsScribe : TranscriptProvider()
+
+
+    object OpenRouterWhisper : TranscriptProvider()
+
+
+    object AppleSpeech : TranscriptProvider()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : TranscriptProvider()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptProvider : FfiConverterRustBuffer<TranscriptProvider>{
+    override fun read(buf: ByteBuffer): TranscriptProvider {
+        return when(buf.getInt()) {
+            1 -> TranscriptProvider.AssemblyAi
+            2 -> TranscriptProvider.ElevenLabsScribe
+            3 -> TranscriptProvider.OpenRouterWhisper
+            4 -> TranscriptProvider.AppleSpeech
+            5 -> TranscriptProvider.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: TranscriptProvider): ULong = when(value) {
+        is TranscriptProvider.AssemblyAi -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptProvider.ElevenLabsScribe -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptProvider.OpenRouterWhisper -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptProvider.AppleSpeech -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptProvider.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: TranscriptProvider, buf: ByteBuffer) {
+        when(value) {
+            is TranscriptProvider.AssemblyAi -> {
+                buf.putInt(1)
+                Unit
+            }
+            is TranscriptProvider.ElevenLabsScribe -> {
+                buf.putInt(2)
+                Unit
+            }
+            is TranscriptProvider.OpenRouterWhisper -> {
+                buf.putInt(3)
+                Unit
+            }
+            is TranscriptProvider.AppleSpeech -> {
+                buf.putInt(4)
+                Unit
+            }
+            is TranscriptProvider.Unsupported -> {
+                buf.putInt(5)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+
+enum class TranscriptRetryDisposition {
+
+    AUTOMATIC_REQUEST,
+    REPLAN,
+    RECOVER_PERSISTED,
+    EXPLICIT_ONLY,
+    NEVER;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptRetryDisposition: FfiConverterRustBuffer<TranscriptRetryDisposition> {
+    override fun read(buf: ByteBuffer) = try {
+
+        TranscriptRetryDisposition.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: TranscriptRetryDisposition) = 4UL
+
+    override fun write(value: TranscriptRetryDisposition, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+sealed class TranscriptWorkflowFailureCode {
+
+    object MissingCredential : TranscriptWorkflowFailureCode()
+
+
+    object MissingLocalAudio : TranscriptWorkflowFailureCode()
+
+
+    object InvalidRequest : TranscriptWorkflowFailureCode()
+
+
+    object UnsupportedProvider : TranscriptWorkflowFailureCode()
+
+
+    object PublisherUnavailable : TranscriptWorkflowFailureCode()
+
+
+    object Offline : TranscriptWorkflowFailureCode()
+
+
+    object RateLimited : TranscriptWorkflowFailureCode()
+
+
+    object TimedOut : TranscriptWorkflowFailureCode()
+
+
+    object Transport : TranscriptWorkflowFailureCode()
+
+
+    object PermissionDenied : TranscriptWorkflowFailureCode()
+
+
+    object ProviderRejected : TranscriptWorkflowFailureCode()
+
+
+    object ProviderUnavailable : TranscriptWorkflowFailureCode()
+
+
+    object ResponseTooLarge : TranscriptWorkflowFailureCode()
+
+
+    object InvalidResponse : TranscriptWorkflowFailureCode()
+
+
+    object StaleInput : TranscriptWorkflowFailureCode()
+
+
+    object StorageUnavailable : TranscriptWorkflowFailureCode()
+
+
+    object AmbiguousSubmission : TranscriptWorkflowFailureCode()
+
+
+    object ProviderRecoveryUnavailable : TranscriptWorkflowFailureCode()
+
+
+    object RetryExhausted : TranscriptWorkflowFailureCode()
+
+
+    object Cancelled : TranscriptWorkflowFailureCode()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : TranscriptWorkflowFailureCode()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptWorkflowFailureCode : FfiConverterRustBuffer<TranscriptWorkflowFailureCode>{
+    override fun read(buf: ByteBuffer): TranscriptWorkflowFailureCode {
+        return when(buf.getInt()) {
+            1 -> TranscriptWorkflowFailureCode.MissingCredential
+            2 -> TranscriptWorkflowFailureCode.MissingLocalAudio
+            3 -> TranscriptWorkflowFailureCode.InvalidRequest
+            4 -> TranscriptWorkflowFailureCode.UnsupportedProvider
+            5 -> TranscriptWorkflowFailureCode.PublisherUnavailable
+            6 -> TranscriptWorkflowFailureCode.Offline
+            7 -> TranscriptWorkflowFailureCode.RateLimited
+            8 -> TranscriptWorkflowFailureCode.TimedOut
+            9 -> TranscriptWorkflowFailureCode.Transport
+            10 -> TranscriptWorkflowFailureCode.PermissionDenied
+            11 -> TranscriptWorkflowFailureCode.ProviderRejected
+            12 -> TranscriptWorkflowFailureCode.ProviderUnavailable
+            13 -> TranscriptWorkflowFailureCode.ResponseTooLarge
+            14 -> TranscriptWorkflowFailureCode.InvalidResponse
+            15 -> TranscriptWorkflowFailureCode.StaleInput
+            16 -> TranscriptWorkflowFailureCode.StorageUnavailable
+            17 -> TranscriptWorkflowFailureCode.AmbiguousSubmission
+            18 -> TranscriptWorkflowFailureCode.ProviderRecoveryUnavailable
+            19 -> TranscriptWorkflowFailureCode.RetryExhausted
+            20 -> TranscriptWorkflowFailureCode.Cancelled
+            21 -> TranscriptWorkflowFailureCode.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: TranscriptWorkflowFailureCode): ULong = when(value) {
+        is TranscriptWorkflowFailureCode.MissingCredential -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowFailureCode.MissingLocalAudio -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowFailureCode.InvalidRequest -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowFailureCode.UnsupportedProvider -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowFailureCode.PublisherUnavailable -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowFailureCode.Offline -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowFailureCode.RateLimited -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowFailureCode.TimedOut -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowFailureCode.Transport -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowFailureCode.PermissionDenied -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowFailureCode.ProviderRejected -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowFailureCode.ProviderUnavailable -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowFailureCode.ResponseTooLarge -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowFailureCode.InvalidResponse -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowFailureCode.StaleInput -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowFailureCode.StorageUnavailable -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowFailureCode.AmbiguousSubmission -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowFailureCode.ProviderRecoveryUnavailable -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowFailureCode.RetryExhausted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowFailureCode.Cancelled -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowFailureCode.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: TranscriptWorkflowFailureCode, buf: ByteBuffer) {
+        when(value) {
+            is TranscriptWorkflowFailureCode.MissingCredential -> {
+                buf.putInt(1)
+                Unit
+            }
+            is TranscriptWorkflowFailureCode.MissingLocalAudio -> {
+                buf.putInt(2)
+                Unit
+            }
+            is TranscriptWorkflowFailureCode.InvalidRequest -> {
+                buf.putInt(3)
+                Unit
+            }
+            is TranscriptWorkflowFailureCode.UnsupportedProvider -> {
+                buf.putInt(4)
+                Unit
+            }
+            is TranscriptWorkflowFailureCode.PublisherUnavailable -> {
+                buf.putInt(5)
+                Unit
+            }
+            is TranscriptWorkflowFailureCode.Offline -> {
+                buf.putInt(6)
+                Unit
+            }
+            is TranscriptWorkflowFailureCode.RateLimited -> {
+                buf.putInt(7)
+                Unit
+            }
+            is TranscriptWorkflowFailureCode.TimedOut -> {
+                buf.putInt(8)
+                Unit
+            }
+            is TranscriptWorkflowFailureCode.Transport -> {
+                buf.putInt(9)
+                Unit
+            }
+            is TranscriptWorkflowFailureCode.PermissionDenied -> {
+                buf.putInt(10)
+                Unit
+            }
+            is TranscriptWorkflowFailureCode.ProviderRejected -> {
+                buf.putInt(11)
+                Unit
+            }
+            is TranscriptWorkflowFailureCode.ProviderUnavailable -> {
+                buf.putInt(12)
+                Unit
+            }
+            is TranscriptWorkflowFailureCode.ResponseTooLarge -> {
+                buf.putInt(13)
+                Unit
+            }
+            is TranscriptWorkflowFailureCode.InvalidResponse -> {
+                buf.putInt(14)
+                Unit
+            }
+            is TranscriptWorkflowFailureCode.StaleInput -> {
+                buf.putInt(15)
+                Unit
+            }
+            is TranscriptWorkflowFailureCode.StorageUnavailable -> {
+                buf.putInt(16)
+                Unit
+            }
+            is TranscriptWorkflowFailureCode.AmbiguousSubmission -> {
+                buf.putInt(17)
+                Unit
+            }
+            is TranscriptWorkflowFailureCode.ProviderRecoveryUnavailable -> {
+                buf.putInt(18)
+                Unit
+            }
+            is TranscriptWorkflowFailureCode.RetryExhausted -> {
+                buf.putInt(19)
+                Unit
+            }
+            is TranscriptWorkflowFailureCode.Cancelled -> {
+                buf.putInt(20)
+                Unit
+            }
+            is TranscriptWorkflowFailureCode.Unsupported -> {
+                buf.putInt(21)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class TranscriptWorkflowOrigin {
+
+    object User : TranscriptWorkflowOrigin()
+
+
+    object Automatic : TranscriptWorkflowOrigin()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : TranscriptWorkflowOrigin()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptWorkflowOrigin : FfiConverterRustBuffer<TranscriptWorkflowOrigin>{
+    override fun read(buf: ByteBuffer): TranscriptWorkflowOrigin {
+        return when(buf.getInt()) {
+            1 -> TranscriptWorkflowOrigin.User
+            2 -> TranscriptWorkflowOrigin.Automatic
+            3 -> TranscriptWorkflowOrigin.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: TranscriptWorkflowOrigin): ULong = when(value) {
+        is TranscriptWorkflowOrigin.User -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowOrigin.Automatic -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowOrigin.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: TranscriptWorkflowOrigin, buf: ByteBuffer) {
+        when(value) {
+            is TranscriptWorkflowOrigin.User -> {
+                buf.putInt(1)
+                Unit
+            }
+            is TranscriptWorkflowOrigin.Automatic -> {
+                buf.putInt(2)
+                Unit
+            }
+            is TranscriptWorkflowOrigin.Unsupported -> {
+                buf.putInt(3)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class TranscriptWorkflowStage {
+
+    object AwaitingPrerequisite : TranscriptWorkflowStage()
+
+
+    object Requested : TranscriptWorkflowStage()
+
+
+    object PublisherRequested : TranscriptWorkflowStage()
+
+
+    object SubmissionAuthorized : TranscriptWorkflowStage()
+
+
+    object ProviderAccepted : TranscriptWorkflowStage()
+
+
+    object CompletionObserved : TranscriptWorkflowStage()
+
+
+    object TranscriptCommitted : TranscriptWorkflowStage()
+
+
+    object EvidenceRequested : TranscriptWorkflowStage()
+
+
+    object RetryScheduled : TranscriptWorkflowStage()
+
+
+    object Blocked : TranscriptWorkflowStage()
+
+
+    object Failed : TranscriptWorkflowStage()
+
+
+    object Cancelled : TranscriptWorkflowStage()
+
+
+    object Succeeded : TranscriptWorkflowStage()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : TranscriptWorkflowStage()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptWorkflowStage : FfiConverterRustBuffer<TranscriptWorkflowStage>{
+    override fun read(buf: ByteBuffer): TranscriptWorkflowStage {
+        return when(buf.getInt()) {
+            1 -> TranscriptWorkflowStage.AwaitingPrerequisite
+            2 -> TranscriptWorkflowStage.Requested
+            3 -> TranscriptWorkflowStage.PublisherRequested
+            4 -> TranscriptWorkflowStage.SubmissionAuthorized
+            5 -> TranscriptWorkflowStage.ProviderAccepted
+            6 -> TranscriptWorkflowStage.CompletionObserved
+            7 -> TranscriptWorkflowStage.TranscriptCommitted
+            8 -> TranscriptWorkflowStage.EvidenceRequested
+            9 -> TranscriptWorkflowStage.RetryScheduled
+            10 -> TranscriptWorkflowStage.Blocked
+            11 -> TranscriptWorkflowStage.Failed
+            12 -> TranscriptWorkflowStage.Cancelled
+            13 -> TranscriptWorkflowStage.Succeeded
+            14 -> TranscriptWorkflowStage.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: TranscriptWorkflowStage): ULong = when(value) {
+        is TranscriptWorkflowStage.AwaitingPrerequisite -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowStage.Requested -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowStage.PublisherRequested -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowStage.SubmissionAuthorized -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowStage.ProviderAccepted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowStage.CompletionObserved -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowStage.TranscriptCommitted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowStage.EvidenceRequested -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowStage.RetryScheduled -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowStage.Blocked -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowStage.Failed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowStage.Cancelled -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowStage.Succeeded -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptWorkflowStage.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: TranscriptWorkflowStage, buf: ByteBuffer) {
+        when(value) {
+            is TranscriptWorkflowStage.AwaitingPrerequisite -> {
+                buf.putInt(1)
+                Unit
+            }
+            is TranscriptWorkflowStage.Requested -> {
+                buf.putInt(2)
+                Unit
+            }
+            is TranscriptWorkflowStage.PublisherRequested -> {
+                buf.putInt(3)
+                Unit
+            }
+            is TranscriptWorkflowStage.SubmissionAuthorized -> {
+                buf.putInt(4)
+                Unit
+            }
+            is TranscriptWorkflowStage.ProviderAccepted -> {
+                buf.putInt(5)
+                Unit
+            }
+            is TranscriptWorkflowStage.CompletionObserved -> {
+                buf.putInt(6)
+                Unit
+            }
+            is TranscriptWorkflowStage.TranscriptCommitted -> {
+                buf.putInt(7)
+                Unit
+            }
+            is TranscriptWorkflowStage.EvidenceRequested -> {
+                buf.putInt(8)
+                Unit
+            }
+            is TranscriptWorkflowStage.RetryScheduled -> {
+                buf.putInt(9)
+                Unit
+            }
+            is TranscriptWorkflowStage.Blocked -> {
+                buf.putInt(10)
+                Unit
+            }
+            is TranscriptWorkflowStage.Failed -> {
+                buf.putInt(11)
+                Unit
+            }
+            is TranscriptWorkflowStage.Cancelled -> {
+                buf.putInt(12)
+                Unit
+            }
+            is TranscriptWorkflowStage.Succeeded -> {
+                buf.putInt(13)
+                Unit
+            }
+            is TranscriptWorkflowStage.Unsupported -> {
+                buf.putInt(14)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -17723,6 +20239,38 @@ public object FfiConverterOptionalTypeChapterSummaryProjection: FfiConverterRust
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeCommittedTranscriptGeneration: FfiConverterRustBuffer<CommittedTranscriptGeneration?> {
+    override fun read(buf: ByteBuffer): CommittedTranscriptGeneration? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeCommittedTranscriptGeneration.read(buf)
+    }
+
+    override fun allocationSize(value: CommittedTranscriptGeneration?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeCommittedTranscriptGeneration.allocationSize(value)
+        }
+    }
+
+    override fun write(value: CommittedTranscriptGeneration?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeCommittedTranscriptGeneration.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeCoreFailure: FfiConverterRustBuffer<CoreFailure?> {
     override fun read(buf: ByteBuffer): CoreFailure? {
         if (buf.get().toInt() == 0) {
@@ -17937,6 +20485,70 @@ public object FfiConverterOptionalTypeTranscriptSummaryProjection: FfiConverterR
         } else {
             buf.put(1)
             FfiConverterTypeTranscriptSummaryProjection.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeTranscriptWorkflowFailure: FfiConverterRustBuffer<TranscriptWorkflowFailure?> {
+    override fun read(buf: ByteBuffer): TranscriptWorkflowFailure? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeTranscriptWorkflowFailure.read(buf)
+    }
+
+    override fun allocationSize(value: TranscriptWorkflowFailure?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeTranscriptWorkflowFailure.allocationSize(value)
+        }
+    }
+
+    override fun write(value: TranscriptWorkflowFailure?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeTranscriptWorkflowFailure.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeTranscriptWorkflowRequest: FfiConverterRustBuffer<TranscriptWorkflowRequest?> {
+    override fun read(buf: ByteBuffer): TranscriptWorkflowRequest? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeTranscriptWorkflowRequest.read(buf)
+    }
+
+    override fun allocationSize(value: TranscriptWorkflowRequest?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeTranscriptWorkflowRequest.allocationSize(value)
+        }
+    }
+
+    override fun write(value: TranscriptWorkflowRequest?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeTranscriptWorkflowRequest.write(value, buf)
         }
     }
 }
@@ -18385,6 +20997,70 @@ public object FfiConverterOptionalTypeStateRevision: FfiConverterRustBuffer<Stat
         } else {
             buf.put(1)
             FfiConverterTypeStateRevision.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeTranscriptAttemptId: FfiConverterRustBuffer<TranscriptAttemptId?> {
+    override fun read(buf: ByteBuffer): TranscriptAttemptId? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeTranscriptAttemptId.read(buf)
+    }
+
+    override fun allocationSize(value: TranscriptAttemptId?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeTranscriptAttemptId.allocationSize(value)
+        }
+    }
+
+    override fun write(value: TranscriptAttemptId?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeTranscriptAttemptId.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeTranscriptSubmissionFenceId: FfiConverterRustBuffer<TranscriptSubmissionFenceId?> {
+    override fun read(buf: ByteBuffer): TranscriptSubmissionFenceId? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeTranscriptSubmissionFenceId.read(buf)
+    }
+
+    override fun allocationSize(value: TranscriptSubmissionFenceId?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeTranscriptSubmissionFenceId.allocationSize(value)
+        }
+    }
+
+    override fun write(value: TranscriptSubmissionFenceId?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeTranscriptSubmissionFenceId.write(value, buf)
         }
     }
 }
@@ -19105,6 +21781,34 @@ public object FfiConverterSequenceTypeTranscriptWordProjection: FfiConverterRust
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeTranscriptWordProjection.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeTranscriptWorkflowProjection: FfiConverterRustBuffer<List<TranscriptWorkflowProjection>> {
+    override fun read(buf: ByteBuffer): List<TranscriptWorkflowProjection> {
+        val len = buf.getInt()
+        return List<TranscriptWorkflowProjection>(len) {
+            FfiConverterTypeTranscriptWorkflowProjection.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<TranscriptWorkflowProjection>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeTranscriptWorkflowProjection.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<TranscriptWorkflowProjection>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeTranscriptWorkflowProjection.write(it, buf)
         }
     }
 }

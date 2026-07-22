@@ -63,9 +63,14 @@ import uniffi.pod0_application.FfiConverterTypeModelChapterObservation
 import uniffi.pod0_application.FfiConverterTypeProjectionEnvelope
 import uniffi.pod0_application.FfiConverterTypeProjectionRequest
 import uniffi.pod0_application.FfiConverterTypePublisherChapterObservation
+import uniffi.pod0_application.FfiConverterTypeTranscriptCapabilityObservation
+import uniffi.pod0_application.FfiConverterTypeTranscriptCapabilityRequest
+import uniffi.pod0_application.FfiConverterTypeTranscriptCapabilityValidation
 import uniffi.pod0_application.FfiConverterTypeTranscriptCommitRequest
 import uniffi.pod0_application.FfiConverterTypeTranscriptContractProjection
 import uniffi.pod0_application.FfiConverterTypeTranscriptProjectionScope
+import uniffi.pod0_application.FfiConverterTypeTranscriptWorkflowPlan
+import uniffi.pod0_application.FfiConverterTypeTranscriptWorkflowPlanInput
 import uniffi.pod0_application.HostCancellationRequest
 import uniffi.pod0_application.HostObservationEnvelope
 import uniffi.pod0_application.HostObservationReceipt
@@ -74,9 +79,14 @@ import uniffi.pod0_application.ModelChapterObservation
 import uniffi.pod0_application.ProjectionEnvelope
 import uniffi.pod0_application.ProjectionRequest
 import uniffi.pod0_application.PublisherChapterObservation
+import uniffi.pod0_application.TranscriptCapabilityObservation
+import uniffi.pod0_application.TranscriptCapabilityRequest
+import uniffi.pod0_application.TranscriptCapabilityValidation
 import uniffi.pod0_application.TranscriptCommitRequest
 import uniffi.pod0_application.TranscriptContractProjection
 import uniffi.pod0_application.TranscriptProjectionScope
+import uniffi.pod0_application.TranscriptWorkflowPlan
+import uniffi.pod0_application.TranscriptWorkflowPlanInput
 import uniffi.pod0_domain.ChapterArtifactId
 import uniffi.pod0_domain.ClipRecord
 import uniffi.pod0_domain.CommandId
@@ -115,9 +125,14 @@ import uniffi.pod0_application.RustBuffer as RustBufferModelChapterObservation
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionRequest
 import uniffi.pod0_application.RustBuffer as RustBufferPublisherChapterObservation
+import uniffi.pod0_application.RustBuffer as RustBufferTranscriptCapabilityObservation
+import uniffi.pod0_application.RustBuffer as RustBufferTranscriptCapabilityRequest
+import uniffi.pod0_application.RustBuffer as RustBufferTranscriptCapabilityValidation
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptCommitRequest
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptContractProjection
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptProjectionScope
+import uniffi.pod0_application.RustBuffer as RustBufferTranscriptWorkflowPlan
+import uniffi.pod0_application.RustBuffer as RustBufferTranscriptWorkflowPlanInput
 import uniffi.pod0_domain.RustBuffer as RustBufferChapterArtifactId
 import uniffi.pod0_domain.RustBuffer as RustBufferClipRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferCommandId
@@ -791,14 +806,6 @@ internal object IntegrityCheckingUniffiLib {
         uniffiCheckContractApiVersion(this)
         uniffiCheckApiChecksums(this)
     }
-    external fun uniffi_pod0_facade_checksum_func_plan_chapter_model_desired_state(
-    ): Int
-    external fun uniffi_pod0_facade_checksum_func_plan_chapter_model_request(
-    ): Int
-    external fun uniffi_pod0_facade_checksum_func_project_chapter_contract(
-    ): Int
-    external fun uniffi_pod0_facade_checksum_func_project_transcript_contract(
-    ): Int
     external fun uniffi_pod0_facade_checksum_func_commit_staged_legacy_chapter_import(
     ): Int
     external fun uniffi_pod0_facade_checksum_func_discard_staged_legacy_chapter_import(
@@ -830,6 +837,20 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_pod0_facade_checksum_func_read_staged_legacy_clip_import(
     ): Int
     external fun uniffi_pod0_facade_checksum_func_stage_legacy_clip_import(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_plan_chapter_model_desired_state(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_plan_chapter_model_request(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_plan_transcript_workflow(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_project_chapter_contract(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_project_transcript_contract(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_validate_transcript_capability_observation(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_validate_transcript_capability_request(
     ): Int
     external fun uniffi_pod0_facade_checksum_func_commit_staged_legacy_listening_import(
     ): Int
@@ -974,14 +995,6 @@ internal object UniffiLib {
     ): RustBufferSubscriptionId.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_unsubscribe(`ptr`: Long,`subscriptionId`: RustBufferSubscriptionId.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): Unit
-    external fun uniffi_pod0_facade_fn_func_plan_chapter_model_desired_state(`input`: RustBufferChapterModelDesiredStateInput.ByValue,uniffi_out_err: UniffiRustCallStatus,
-    ): RustBufferChapterModelDesiredStatePlan.ByValue
-    external fun uniffi_pod0_facade_fn_func_plan_chapter_model_request(`input`: RustBufferChapterModelPlanInput.ByValue,uniffi_out_err: UniffiRustCallStatus,
-    ): RustBufferChapterModelPlan.ByValue
-    external fun uniffi_pod0_facade_fn_func_project_chapter_contract(`request`: RustBufferChapterContractRequest.ByValue,`scope`: RustBufferChapterProjectionScope.ByValue,`offset`: Int,`maxItems`: Short,uniffi_out_err: UniffiRustCallStatus,
-    ): RustBufferChapterContractProjection.ByValue
-    external fun uniffi_pod0_facade_fn_func_project_transcript_contract(`request`: RustBufferTranscriptCommitRequest.ByValue,`scope`: RustBufferTranscriptProjectionScope.ByValue,`offset`: Int,`maxItems`: Short,uniffi_out_err: UniffiRustCallStatus,
-    ): RustBufferTranscriptContractProjection.ByValue
     external fun uniffi_pod0_facade_fn_func_commit_staged_legacy_chapter_import(`sourceDatabasePath`: RustBuffer.ByValue,`artifactRootPath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_func_discard_staged_legacy_chapter_import(`targetPath`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1014,6 +1027,20 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_func_stage_legacy_clip_import(`sourcePath`: RustBuffer.ByValue,`sourceBackupPath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`targetSchemaBackupPath`: RustBuffer.ByValue,`expectedPlan`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,`targetStoreId`: RustBufferCommandId.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_plan_chapter_model_desired_state(`input`: RustBufferChapterModelDesiredStateInput.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBufferChapterModelDesiredStatePlan.ByValue
+    external fun uniffi_pod0_facade_fn_func_plan_chapter_model_request(`input`: RustBufferChapterModelPlanInput.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBufferChapterModelPlan.ByValue
+    external fun uniffi_pod0_facade_fn_func_plan_transcript_workflow(`input`: RustBufferTranscriptWorkflowPlanInput.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBufferTranscriptWorkflowPlan.ByValue
+    external fun uniffi_pod0_facade_fn_func_project_chapter_contract(`request`: RustBufferChapterContractRequest.ByValue,`scope`: RustBufferChapterProjectionScope.ByValue,`offset`: Int,`maxItems`: Short,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBufferChapterContractProjection.ByValue
+    external fun uniffi_pod0_facade_fn_func_project_transcript_contract(`request`: RustBufferTranscriptCommitRequest.ByValue,`scope`: RustBufferTranscriptProjectionScope.ByValue,`offset`: Int,`maxItems`: Short,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBufferTranscriptContractProjection.ByValue
+    external fun uniffi_pod0_facade_fn_func_validate_transcript_capability_observation(`observation`: RustBufferTranscriptCapabilityObservation.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBufferTranscriptCapabilityValidation.ByValue
+    external fun uniffi_pod0_facade_fn_func_validate_transcript_capability_request(`request`: RustBufferTranscriptCapabilityRequest.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBufferTranscriptCapabilityValidation.ByValue
     external fun uniffi_pod0_facade_fn_func_commit_staged_legacy_listening_import(`targetPath`: RustBuffer.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): Byte
     external fun uniffi_pod0_facade_fn_func_inspect_legacy_listening_source(`sourcePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1169,18 +1196,6 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
-    if (lib.uniffi_pod0_facade_checksum_func_plan_chapter_model_desired_state() != 8953) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_pod0_facade_checksum_func_plan_chapter_model_request() != 29990) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_pod0_facade_checksum_func_project_chapter_contract() != 22970) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_pod0_facade_checksum_func_project_transcript_contract() != 30792) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_pod0_facade_checksum_func_commit_staged_legacy_chapter_import() != 44295) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1227,6 +1242,27 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_func_stage_legacy_clip_import() != 13972) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_plan_chapter_model_desired_state() != 64724) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_plan_chapter_model_request() != 61101) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_plan_transcript_workflow() != 23453) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_project_chapter_contract() != 304) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_project_transcript_contract() != 58859) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_validate_transcript_capability_observation() != 27832) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_validate_transcript_capability_request() != 15425) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_func_commit_staged_legacy_listening_import() != 20149) {
@@ -6185,72 +6221,14 @@ public object FfiConverterSequenceTypeLegacyModelChapterCutoverCandidate: FfiCon
 
 
 
-        /**
-         * Classifies whether the temporary native workflow owes model work and
-         * returns the exact legacy-compatible input version owned by Rust.
-         */ fun `planChapterModelDesiredState`(`input`: ChapterModelDesiredStateInput): ChapterModelDesiredStatePlan {
-            return FfiConverterTypeChapterModelDesiredStatePlan.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_pod0_facade_fn_func_plan_chapter_model_desired_state(
 
 
-        FfiConverterTypeChapterModelDesiredStateInput.lower(`input`),_status)
-}
-    )
-    }
 
 
-        /**
-         * Pure cross-language planner used by binding fixtures. Production native
-         * shells call the facade method so authoritative artifacts do not round-trip.
-         */ fun `planChapterModelRequest`(`input`: ChapterModelPlanInput): ChapterModelPlan {
-            return FfiConverterTypeChapterModelPlan.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_pod0_facade_fn_func_plan_chapter_model_request(
 
 
-        FfiConverterTypeChapterModelPlanInput.lower(`input`),_status)
-}
-    )
-    }
 
 
-        /**
-         * Produces bounded, state-shaped evidence for the typed chapter contract.
-         * The storage slice will add durable commit and selection after this pure
-         * cross-language contract is proven.
-         */ fun `projectChapterContract`(`request`: ChapterContractRequest, `scope`: ChapterProjectionScope, `offset`: kotlin.UInt, `maxItems`: kotlin.UShort): ChapterContractProjection {
-            return FfiConverterTypeChapterContractProjection.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_pod0_facade_fn_func_project_chapter_contract(
-
-
-        FfiConverterTypeChapterContractRequest.lower(`request`),
-        FfiConverterTypeChapterProjectionScope.lower(`scope`),
-        FfiConverterUInt.lower(`offset`),
-        FfiConverterUShort.lower(`maxItems`),_status)
-}
-    )
-    }
-
-
-        /**
-         * Produces bounded, state-shaped evidence for the typed transcript contract.
-         * Invalid input becomes a rejected projection rather than an exception.
-         * Durable commit and selection are added by the storage slice.
-         */ fun `projectTranscriptContract`(`request`: TranscriptCommitRequest, `scope`: TranscriptProjectionScope, `offset`: kotlin.UInt, `maxItems`: kotlin.UShort): TranscriptContractProjection {
-            return FfiConverterTypeTranscriptContractProjection.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_pod0_facade_fn_func_project_transcript_contract(
-
-
-        FfiConverterTypeTranscriptCommitRequest.lower(`request`),
-        FfiConverterTypeTranscriptProjectionScope.lower(`scope`),
-        FfiConverterUInt.lower(`offset`),
-        FfiConverterUShort.lower(`maxItems`),_status)
-}
-    )
-    }
 
  fun `commitStagedLegacyChapterImport`(`sourceDatabasePath`: kotlin.String, `artifactRootPath`: kotlin.String, `targetPath`: kotlin.String, `importId`: CommandId): LegacyChapterMigrationProjection {
             return FfiConverterTypeLegacyChapterMigrationProjection.lift(
@@ -6467,6 +6445,110 @@ public object FfiConverterSequenceTypeLegacyModelChapterCutoverCandidate: FfiCon
         FfiConverterTypeCommandId.lower(`importId`),
         FfiConverterTypeCommandId.lower(`targetStoreId`),
         FfiConverterLong.lower(`observedAtMilliseconds`),_status)
+}
+    )
+    }
+
+
+        /**
+         * Classifies whether the temporary native workflow owes model work.
+         */ fun `planChapterModelDesiredState`(`input`: ChapterModelDesiredStateInput): ChapterModelDesiredStatePlan {
+            return FfiConverterTypeChapterModelDesiredStatePlan.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_plan_chapter_model_desired_state(
+
+
+        FfiConverterTypeChapterModelDesiredStateInput.lower(`input`),_status)
+}
+    )
+    }
+
+
+        /**
+         * Pure cross-language planner used by binding fixtures.
+         */ fun `planChapterModelRequest`(`input`: ChapterModelPlanInput): ChapterModelPlan {
+            return FfiConverterTypeChapterModelPlan.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_plan_chapter_model_request(
+
+
+        FfiConverterTypeChapterModelPlanInput.lower(`input`),_status)
+}
+    )
+    }
+
+
+        /**
+         * Computes deterministic transcript generation and evidence-index intent.
+         */ fun `planTranscriptWorkflow`(`input`: TranscriptWorkflowPlanInput): TranscriptWorkflowPlan {
+            return FfiConverterTypeTranscriptWorkflowPlan.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_plan_transcript_workflow(
+
+
+        FfiConverterTypeTranscriptWorkflowPlanInput.lower(`input`),_status)
+}
+    )
+    }
+
+
+        /**
+         * Produces bounded, state-shaped evidence for the typed chapter contract.
+         */ fun `projectChapterContract`(`request`: ChapterContractRequest, `scope`: ChapterProjectionScope, `offset`: kotlin.UInt, `maxItems`: kotlin.UShort): ChapterContractProjection {
+            return FfiConverterTypeChapterContractProjection.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_project_chapter_contract(
+
+
+        FfiConverterTypeChapterContractRequest.lower(`request`),
+        FfiConverterTypeChapterProjectionScope.lower(`scope`),
+        FfiConverterUInt.lower(`offset`),
+        FfiConverterUShort.lower(`maxItems`),_status)
+}
+    )
+    }
+
+
+        /**
+         * Produces bounded, state-shaped evidence for the typed transcript contract.
+         */ fun `projectTranscriptContract`(`request`: TranscriptCommitRequest, `scope`: TranscriptProjectionScope, `offset`: kotlin.UInt, `maxItems`: kotlin.UShort): TranscriptContractProjection {
+            return FfiConverterTypeTranscriptContractProjection.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_project_transcript_contract(
+
+
+        FfiConverterTypeTranscriptCommitRequest.lower(`request`),
+        FfiConverterTypeTranscriptProjectionScope.lower(`scope`),
+        FfiConverterUInt.lower(`offset`),
+        FfiConverterUShort.lower(`maxItems`),_status)
+}
+    )
+    }
+
+
+        /**
+         * Validates raw native evidence before a durable state transition.
+         */ fun `validateTranscriptCapabilityObservation`(`observation`: TranscriptCapabilityObservation): TranscriptCapabilityValidation {
+            return FfiConverterTypeTranscriptCapabilityValidation.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_validate_transcript_capability_observation(
+
+
+        FfiConverterTypeTranscriptCapabilityObservation.lower(`observation`),_status)
+}
+    )
+    }
+
+
+        /**
+         * Validates a bounded native capability request before durable issuance.
+         */ fun `validateTranscriptCapabilityRequest`(`request`: TranscriptCapabilityRequest): TranscriptCapabilityValidation {
+            return FfiConverterTypeTranscriptCapabilityValidation.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_validate_transcript_capability_request(
+
+
+        FfiConverterTypeTranscriptCapabilityRequest.lower(`request`),_status)
 }
     )
     }

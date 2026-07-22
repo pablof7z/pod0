@@ -5199,62 +5199,6 @@ fileprivate struct FfiConverterSequenceTypeLegacyModelChapterCutoverCandidate: F
         return seq
     }
 }
-/**
- * Classifies whether the temporary native workflow owes model work and
- * returns the exact legacy-compatible input version owned by Rust.
- */
-public func planChapterModelDesiredState(input: ChapterModelDesiredStateInput) -> ChapterModelDesiredStatePlan  {
-    return try!  FfiConverterTypeChapterModelDesiredStatePlan_lift(try! rustCall() {
-        uniffiCallStatus in
-    uniffi_pod0_facade_fn_func_plan_chapter_model_desired_state(
-        FfiConverterTypeChapterModelDesiredStateInput_lower(input),uniffiCallStatus
-    )
-})
-}
-/**
- * Pure cross-language planner used by binding fixtures. Production native
- * shells call the facade method so authoritative artifacts do not round-trip.
- */
-public func planChapterModelRequest(input: ChapterModelPlanInput) -> ChapterModelPlan  {
-    return try!  FfiConverterTypeChapterModelPlan_lift(try! rustCall() {
-        uniffiCallStatus in
-    uniffi_pod0_facade_fn_func_plan_chapter_model_request(
-        FfiConverterTypeChapterModelPlanInput_lower(input),uniffiCallStatus
-    )
-})
-}
-/**
- * Produces bounded, state-shaped evidence for the typed chapter contract.
- * The storage slice will add durable commit and selection after this pure
- * cross-language contract is proven.
- */
-public func projectChapterContract(request: ChapterContractRequest, scope: ChapterProjectionScope, offset: UInt32, maxItems: UInt16) -> ChapterContractProjection  {
-    return try!  FfiConverterTypeChapterContractProjection_lift(try! rustCall() {
-        uniffiCallStatus in
-    uniffi_pod0_facade_fn_func_project_chapter_contract(
-        FfiConverterTypeChapterContractRequest_lower(request),
-        FfiConverterTypeChapterProjectionScope_lower(scope),
-        FfiConverterUInt32.lower(offset),
-        FfiConverterUInt16.lower(maxItems),uniffiCallStatus
-    )
-})
-}
-/**
- * Produces bounded, state-shaped evidence for the typed transcript contract.
- * Invalid input becomes a rejected projection rather than an exception.
- * Durable commit and selection are added by the storage slice.
- */
-public func projectTranscriptContract(request: TranscriptCommitRequest, scope: TranscriptProjectionScope, offset: UInt32, maxItems: UInt16) -> TranscriptContractProjection  {
-    return try!  FfiConverterTypeTranscriptContractProjection_lift(try! rustCall() {
-        uniffiCallStatus in
-    uniffi_pod0_facade_fn_func_project_transcript_contract(
-        FfiConverterTypeTranscriptCommitRequest_lower(request),
-        FfiConverterTypeTranscriptProjectionScope_lower(scope),
-        FfiConverterUInt32.lower(offset),
-        FfiConverterUInt16.lower(maxItems),uniffiCallStatus
-    )
-})
-}
 public func commitStagedLegacyChapterImport(sourceDatabasePath: String, artifactRootPath: String, targetPath: String, importId: CommandId) -> LegacyChapterMigrationProjection  {
     return try!  FfiConverterTypeLegacyChapterMigrationProjection_lift(try! rustCall() {
         uniffiCallStatus in
@@ -5419,6 +5363,89 @@ public func stageLegacyClipImport(sourcePath: String, sourceBackupPath: String, 
         FfiConverterTypeCommandId_lower(importId),
         FfiConverterTypeCommandId_lower(targetStoreId),
         FfiConverterInt64.lower(observedAtMilliseconds),uniffiCallStatus
+    )
+})
+}
+/**
+ * Classifies whether the temporary native workflow owes model work.
+ */
+public func planChapterModelDesiredState(input: ChapterModelDesiredStateInput) -> ChapterModelDesiredStatePlan  {
+    return try!  FfiConverterTypeChapterModelDesiredStatePlan_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_plan_chapter_model_desired_state(
+        FfiConverterTypeChapterModelDesiredStateInput_lower(input),uniffiCallStatus
+    )
+})
+}
+/**
+ * Pure cross-language planner used by binding fixtures.
+ */
+public func planChapterModelRequest(input: ChapterModelPlanInput) -> ChapterModelPlan  {
+    return try!  FfiConverterTypeChapterModelPlan_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_plan_chapter_model_request(
+        FfiConverterTypeChapterModelPlanInput_lower(input),uniffiCallStatus
+    )
+})
+}
+/**
+ * Computes deterministic transcript generation and evidence-index intent.
+ */
+public func planTranscriptWorkflow(input: TranscriptWorkflowPlanInput) -> TranscriptWorkflowPlan  {
+    return try!  FfiConverterTypeTranscriptWorkflowPlan_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_plan_transcript_workflow(
+        FfiConverterTypeTranscriptWorkflowPlanInput_lower(input),uniffiCallStatus
+    )
+})
+}
+/**
+ * Produces bounded, state-shaped evidence for the typed chapter contract.
+ */
+public func projectChapterContract(request: ChapterContractRequest, scope: ChapterProjectionScope, offset: UInt32, maxItems: UInt16) -> ChapterContractProjection  {
+    return try!  FfiConverterTypeChapterContractProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_project_chapter_contract(
+        FfiConverterTypeChapterContractRequest_lower(request),
+        FfiConverterTypeChapterProjectionScope_lower(scope),
+        FfiConverterUInt32.lower(offset),
+        FfiConverterUInt16.lower(maxItems),uniffiCallStatus
+    )
+})
+}
+/**
+ * Produces bounded, state-shaped evidence for the typed transcript contract.
+ */
+public func projectTranscriptContract(request: TranscriptCommitRequest, scope: TranscriptProjectionScope, offset: UInt32, maxItems: UInt16) -> TranscriptContractProjection  {
+    return try!  FfiConverterTypeTranscriptContractProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_project_transcript_contract(
+        FfiConverterTypeTranscriptCommitRequest_lower(request),
+        FfiConverterTypeTranscriptProjectionScope_lower(scope),
+        FfiConverterUInt32.lower(offset),
+        FfiConverterUInt16.lower(maxItems),uniffiCallStatus
+    )
+})
+}
+/**
+ * Validates raw native evidence before a durable state transition.
+ */
+public func validateTranscriptCapabilityObservation(observation: TranscriptCapabilityObservation) -> TranscriptCapabilityValidation  {
+    return try!  FfiConverterTypeTranscriptCapabilityValidation_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_validate_transcript_capability_observation(
+        FfiConverterTypeTranscriptCapabilityObservation_lower(observation),uniffiCallStatus
+    )
+})
+}
+/**
+ * Validates a bounded native capability request before durable issuance.
+ */
+public func validateTranscriptCapabilityRequest(request: TranscriptCapabilityRequest) -> TranscriptCapabilityValidation  {
+    return try!  FfiConverterTypeTranscriptCapabilityValidation_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_validate_transcript_capability_request(
+        FfiConverterTypeTranscriptCapabilityRequest_lower(request),uniffiCallStatus
     )
 })
 }
@@ -5621,18 +5648,6 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
-    if (uniffi_pod0_facade_checksum_func_plan_chapter_model_desired_state() != 8953) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_pod0_facade_checksum_func_plan_chapter_model_request() != 29990) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_pod0_facade_checksum_func_project_chapter_contract() != 22970) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_pod0_facade_checksum_func_project_transcript_contract() != 30792) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_pod0_facade_checksum_func_commit_staged_legacy_chapter_import() != 44295) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -5679,6 +5694,27 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_func_stage_legacy_clip_import() != 13972) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_plan_chapter_model_desired_state() != 64724) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_plan_chapter_model_request() != 61101) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_plan_transcript_workflow() != 23453) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_project_chapter_contract() != 304) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_project_transcript_contract() != 58859) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_validate_transcript_capability_observation() != 27832) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_validate_transcript_capability_request() != 15425) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_func_commit_staged_legacy_listening_import() != 20149) {

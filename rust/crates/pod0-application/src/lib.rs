@@ -84,6 +84,13 @@ mod transcript_contract_fixture_tests;
 #[cfg(test)]
 mod transcript_contract_tests;
 mod transcript_projection;
+mod transcript_workflow;
+mod transcript_workflow_capability;
+mod transcript_workflow_failure;
+mod transcript_workflow_identity;
+mod transcript_workflow_policy;
+#[cfg(test)]
+mod transcript_workflow_tests;
 
 pub use chapter_contract::*;
 pub use chapter_model_host::*;
@@ -111,6 +118,11 @@ pub use note_contract::*;
 pub use recall_contract::*;
 pub use transcript_contract::*;
 pub use transcript_projection::*;
+pub use transcript_workflow::*;
+pub use transcript_workflow_capability::*;
+pub use transcript_workflow_failure::*;
+pub use transcript_workflow_identity::*;
+pub use transcript_workflow_policy::*;
 
 pub const CORE_SCHEMA_VERSION: u32 = 1;
 

@@ -14,6 +14,7 @@ mod chapter_migration_mapping;
 mod chapter_migration_tests;
 mod chapter_observation_facade;
 mod clip_migration;
+mod contract_facade;
 mod download_cutover;
 mod download_cutover_types;
 #[cfg(test)]
@@ -183,6 +184,7 @@ pub use clip_migration::{
     LegacyClipImportVerification, LegacyClipMigrationError, commit_staged_legacy_clip_import,
     inspect_legacy_clip_source, read_staged_legacy_clip_import, stage_legacy_clip_import,
 };
+pub use contract_facade::*;
 pub use download_cutover_types::{
     LegacyDownloadCutoverCandidate, LegacyDownloadCutoverDisposition, LegacyDownloadCutoverFailure,
     LegacyDownloadCutoverFailureCode, LegacyDownloadCutoverProjection, LegacyDownloadCutoverStage,
@@ -242,48 +244,6 @@ pub trait Pod0ApplicationApi: Send + Sync {
         &self,
         observation: HostObservationEnvelope,
     ) -> HostObservationReceipt;
-}
-
-/// Produces bounded, state-shaped evidence for the typed transcript contract.
-/// Invalid input becomes a rejected projection rather than an exception.
-/// Durable commit and selection are added by the storage slice.
-#[uniffi::export]
-pub fn project_transcript_contract(
-    request: TranscriptCommitRequest,
-    scope: TranscriptProjectionScope,
-    offset: u32,
-    max_items: u16,
-) -> TranscriptContractProjection {
-    pod0_application::project_transcript_contract(request, scope, offset, max_items)
-}
-
-/// Produces bounded, state-shaped evidence for the typed chapter contract.
-/// The storage slice will add durable commit and selection after this pure
-/// cross-language contract is proven.
-#[uniffi::export]
-pub fn project_chapter_contract(
-    request: ChapterContractRequest,
-    scope: ChapterProjectionScope,
-    offset: u32,
-    max_items: u16,
-) -> ChapterContractProjection {
-    pod0_application::project_chapter_contract(request, scope, offset, max_items)
-}
-
-/// Classifies whether the temporary native workflow owes model work and
-/// returns the exact legacy-compatible input version owned by Rust.
-#[uniffi::export]
-pub fn plan_chapter_model_desired_state(
-    input: ChapterModelDesiredStateInput,
-) -> ChapterModelDesiredStatePlan {
-    pod0_application::plan_chapter_model_desired_state(input)
-}
-
-/// Pure cross-language planner used by binding fixtures. Production native
-/// shells call the facade method so authoritative artifacts do not round-trip.
-#[uniffi::export]
-pub fn plan_chapter_model_request(input: ChapterModelPlanInput) -> ChapterModelPlan {
-    pod0_application::plan_chapter_model_request(input)
 }
 
 /// An internal deterministic probe retained for injected-time characterization.

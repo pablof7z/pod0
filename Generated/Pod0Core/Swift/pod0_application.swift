@@ -2217,6 +2217,64 @@ public func FfiConverterTypeCommandEnvelope_lower(_ value: CommandEnvelope) -> R
 }
 
 
+public struct CommittedTranscriptGeneration: Equatable, Hashable {
+    public let sourceRevision: String
+    public let transcriptVersionId: TranscriptVersionId
+    public let contentDigest: ContentDigest
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sourceRevision: String, transcriptVersionId: TranscriptVersionId, contentDigest: ContentDigest) {
+        self.sourceRevision = sourceRevision
+        self.transcriptVersionId = transcriptVersionId
+        self.contentDigest = contentDigest
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CommittedTranscriptGeneration: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCommittedTranscriptGeneration: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CommittedTranscriptGeneration {
+        return
+            try CommittedTranscriptGeneration(
+                sourceRevision: FfiConverterString.read(from: &buf),
+                transcriptVersionId: FfiConverterTypeTranscriptVersionId.read(from: &buf),
+                contentDigest: FfiConverterTypeContentDigest.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CommittedTranscriptGeneration, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.sourceRevision, into: &buf)
+        FfiConverterTypeTranscriptVersionId.write(value.transcriptVersionId, into: &buf)
+        FfiConverterTypeContentDigest.write(value.contentDigest, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCommittedTranscriptGeneration_lift(_ buf: RustBuffer) throws -> CommittedTranscriptGeneration {
+    return try FfiConverterTypeCommittedTranscriptGeneration.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCommittedTranscriptGeneration_lower(_ value: CommittedTranscriptGeneration) -> RustBuffer {
+    return FfiConverterTypeCommittedTranscriptGeneration.lower(value)
+}
+
+
 public struct CoreFailure: Equatable, Hashable {
     public let code: CoreFailureCode
     public let safeDetail: String?
@@ -5575,6 +5633,68 @@ public func FfiConverterTypeTranscriptEvidenceInput_lower(_ value: TranscriptEvi
 }
 
 
+public struct TranscriptFailureClassification: Equatable, Hashable {
+    public let code: TranscriptWorkflowFailureCode
+    public let retry: TranscriptRetryDisposition
+    public let mayHaveSubmitted: Bool
+    public let resubmissionIsSafe: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(code: TranscriptWorkflowFailureCode, retry: TranscriptRetryDisposition, mayHaveSubmitted: Bool, resubmissionIsSafe: Bool) {
+        self.code = code
+        self.retry = retry
+        self.mayHaveSubmitted = mayHaveSubmitted
+        self.resubmissionIsSafe = resubmissionIsSafe
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptFailureClassification: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptFailureClassification: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptFailureClassification {
+        return
+            try TranscriptFailureClassification(
+                code: FfiConverterTypeTranscriptWorkflowFailureCode.read(from: &buf),
+                retry: FfiConverterTypeTranscriptRetryDisposition.read(from: &buf),
+                mayHaveSubmitted: FfiConverterBool.read(from: &buf),
+                resubmissionIsSafe: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TranscriptFailureClassification, into buf: inout [UInt8]) {
+        FfiConverterTypeTranscriptWorkflowFailureCode.write(value.code, into: &buf)
+        FfiConverterTypeTranscriptRetryDisposition.write(value.retry, into: &buf)
+        FfiConverterBool.write(value.mayHaveSubmitted, into: &buf)
+        FfiConverterBool.write(value.resubmissionIsSafe, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptFailureClassification_lift(_ buf: RustBuffer) throws -> TranscriptFailureClassification {
+    return try FfiConverterTypeTranscriptFailureClassification.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptFailureClassification_lower(_ value: TranscriptFailureClassification) -> RustBuffer {
+    return FfiConverterTypeTranscriptFailureClassification.lower(value)
+}
+
+
 public struct TranscriptProjection: Equatable, Hashable {
     public let scope: TranscriptProjectionScope
     public let summary: TranscriptSummaryProjection?
@@ -6020,6 +6140,548 @@ public func FfiConverterTypeTranscriptWordProjection_lift(_ buf: RustBuffer) thr
 #endif
 public func FfiConverterTypeTranscriptWordProjection_lower(_ value: TranscriptWordProjection) -> RustBuffer {
     return FfiConverterTypeTranscriptWordProjection.lower(value)
+}
+
+
+public struct TranscriptWorkflowAllowedActions: Equatable, Hashable {
+    public let canRetry: Bool
+    public let canCancel: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(canRetry: Bool, canCancel: Bool) {
+        self.canRetry = canRetry
+        self.canCancel = canCancel
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptWorkflowAllowedActions: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptWorkflowAllowedActions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptWorkflowAllowedActions {
+        return
+            try TranscriptWorkflowAllowedActions(
+                canRetry: FfiConverterBool.read(from: &buf),
+                canCancel: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TranscriptWorkflowAllowedActions, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.canRetry, into: &buf)
+        FfiConverterBool.write(value.canCancel, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowAllowedActions_lift(_ buf: RustBuffer) throws -> TranscriptWorkflowAllowedActions {
+    return try FfiConverterTypeTranscriptWorkflowAllowedActions.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowAllowedActions_lower(_ value: TranscriptWorkflowAllowedActions) -> RustBuffer {
+    return FfiConverterTypeTranscriptWorkflowAllowedActions.lower(value)
+}
+
+
+public struct TranscriptWorkflowFailure: Equatable, Hashable {
+    public let code: TranscriptWorkflowFailureCode
+    public let safeDetail: String?
+    public let retryable: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(code: TranscriptWorkflowFailureCode, safeDetail: String?, retryable: Bool) {
+        self.code = code
+        self.safeDetail = safeDetail
+        self.retryable = retryable
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptWorkflowFailure: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptWorkflowFailure: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptWorkflowFailure {
+        return
+            try TranscriptWorkflowFailure(
+                code: FfiConverterTypeTranscriptWorkflowFailureCode.read(from: &buf),
+                safeDetail: FfiConverterOptionString.read(from: &buf),
+                retryable: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TranscriptWorkflowFailure, into buf: inout [UInt8]) {
+        FfiConverterTypeTranscriptWorkflowFailureCode.write(value.code, into: &buf)
+        FfiConverterOptionString.write(value.safeDetail, into: &buf)
+        FfiConverterBool.write(value.retryable, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowFailure_lift(_ buf: RustBuffer) throws -> TranscriptWorkflowFailure {
+    return try FfiConverterTypeTranscriptWorkflowFailure.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowFailure_lower(_ value: TranscriptWorkflowFailure) -> RustBuffer {
+    return FfiConverterTypeTranscriptWorkflowFailure.lower(value)
+}
+
+
+public struct TranscriptWorkflowPlan: Equatable, Hashable {
+    public let generation: TranscriptGenerationDecision
+    public let request: TranscriptWorkflowRequest?
+    public let evidence: TranscriptEvidenceDecision
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(generation: TranscriptGenerationDecision, request: TranscriptWorkflowRequest?, evidence: TranscriptEvidenceDecision) {
+        self.generation = generation
+        self.request = request
+        self.evidence = evidence
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptWorkflowPlan: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptWorkflowPlan: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptWorkflowPlan {
+        return
+            try TranscriptWorkflowPlan(
+                generation: FfiConverterTypeTranscriptGenerationDecision.read(from: &buf),
+                request: FfiConverterOptionTypeTranscriptWorkflowRequest.read(from: &buf),
+                evidence: FfiConverterTypeTranscriptEvidenceDecision.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TranscriptWorkflowPlan, into buf: inout [UInt8]) {
+        FfiConverterTypeTranscriptGenerationDecision.write(value.generation, into: &buf)
+        FfiConverterOptionTypeTranscriptWorkflowRequest.write(value.request, into: &buf)
+        FfiConverterTypeTranscriptEvidenceDecision.write(value.evidence, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowPlan_lift(_ buf: RustBuffer) throws -> TranscriptWorkflowPlan {
+    return try FfiConverterTypeTranscriptWorkflowPlan.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowPlan_lower(_ value: TranscriptWorkflowPlan) -> RustBuffer {
+    return FfiConverterTypeTranscriptWorkflowPlan.lower(value)
+}
+
+
+public struct TranscriptWorkflowPlanInput: Equatable, Hashable {
+    public let episodeId: EpisodeId
+    public let sourceRevision: String
+    public let committedTranscript: CommittedTranscriptGeneration?
+    public let selectedEvidenceInputVersion: String?
+    public let origin: TranscriptWorkflowOrigin
+    public let configuredProvider: TranscriptProvider
+    public let configuredModel: String
+    public let remoteAudioUrl: String
+    public let localAudioUrl: String?
+    public let publisherTranscriptUrl: String?
+    public let publisherMimeHint: String?
+    public let autoPublisherEnabled: Bool
+    public let autoProviderEnabled: Bool
+    public let credentialAvailable: Bool
+    public let embeddingSpaceId: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(episodeId: EpisodeId, sourceRevision: String, committedTranscript: CommittedTranscriptGeneration?, selectedEvidenceInputVersion: String?, origin: TranscriptWorkflowOrigin, configuredProvider: TranscriptProvider, configuredModel: String, remoteAudioUrl: String, localAudioUrl: String?, publisherTranscriptUrl: String?, publisherMimeHint: String?, autoPublisherEnabled: Bool, autoProviderEnabled: Bool, credentialAvailable: Bool, embeddingSpaceId: String) {
+        self.episodeId = episodeId
+        self.sourceRevision = sourceRevision
+        self.committedTranscript = committedTranscript
+        self.selectedEvidenceInputVersion = selectedEvidenceInputVersion
+        self.origin = origin
+        self.configuredProvider = configuredProvider
+        self.configuredModel = configuredModel
+        self.remoteAudioUrl = remoteAudioUrl
+        self.localAudioUrl = localAudioUrl
+        self.publisherTranscriptUrl = publisherTranscriptUrl
+        self.publisherMimeHint = publisherMimeHint
+        self.autoPublisherEnabled = autoPublisherEnabled
+        self.autoProviderEnabled = autoProviderEnabled
+        self.credentialAvailable = credentialAvailable
+        self.embeddingSpaceId = embeddingSpaceId
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptWorkflowPlanInput: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptWorkflowPlanInput: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptWorkflowPlanInput {
+        return
+            try TranscriptWorkflowPlanInput(
+                episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
+                sourceRevision: FfiConverterString.read(from: &buf),
+                committedTranscript: FfiConverterOptionTypeCommittedTranscriptGeneration.read(from: &buf),
+                selectedEvidenceInputVersion: FfiConverterOptionString.read(from: &buf),
+                origin: FfiConverterTypeTranscriptWorkflowOrigin.read(from: &buf),
+                configuredProvider: FfiConverterTypeTranscriptProvider.read(from: &buf),
+                configuredModel: FfiConverterString.read(from: &buf),
+                remoteAudioUrl: FfiConverterString.read(from: &buf),
+                localAudioUrl: FfiConverterOptionString.read(from: &buf),
+                publisherTranscriptUrl: FfiConverterOptionString.read(from: &buf),
+                publisherMimeHint: FfiConverterOptionString.read(from: &buf),
+                autoPublisherEnabled: FfiConverterBool.read(from: &buf),
+                autoProviderEnabled: FfiConverterBool.read(from: &buf),
+                credentialAvailable: FfiConverterBool.read(from: &buf),
+                embeddingSpaceId: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TranscriptWorkflowPlanInput, into buf: inout [UInt8]) {
+        FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
+        FfiConverterString.write(value.sourceRevision, into: &buf)
+        FfiConverterOptionTypeCommittedTranscriptGeneration.write(value.committedTranscript, into: &buf)
+        FfiConverterOptionString.write(value.selectedEvidenceInputVersion, into: &buf)
+        FfiConverterTypeTranscriptWorkflowOrigin.write(value.origin, into: &buf)
+        FfiConverterTypeTranscriptProvider.write(value.configuredProvider, into: &buf)
+        FfiConverterString.write(value.configuredModel, into: &buf)
+        FfiConverterString.write(value.remoteAudioUrl, into: &buf)
+        FfiConverterOptionString.write(value.localAudioUrl, into: &buf)
+        FfiConverterOptionString.write(value.publisherTranscriptUrl, into: &buf)
+        FfiConverterOptionString.write(value.publisherMimeHint, into: &buf)
+        FfiConverterBool.write(value.autoPublisherEnabled, into: &buf)
+        FfiConverterBool.write(value.autoProviderEnabled, into: &buf)
+        FfiConverterBool.write(value.credentialAvailable, into: &buf)
+        FfiConverterString.write(value.embeddingSpaceId, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowPlanInput_lift(_ buf: RustBuffer) throws -> TranscriptWorkflowPlanInput {
+    return try FfiConverterTypeTranscriptWorkflowPlanInput.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowPlanInput_lower(_ value: TranscriptWorkflowPlanInput) -> RustBuffer {
+    return FfiConverterTypeTranscriptWorkflowPlanInput.lower(value)
+}
+
+
+public struct TranscriptWorkflowProjection: Equatable, Hashable {
+    public let episodeId: EpisodeId
+    public let workflowId: TranscriptWorkflowId
+    public let sourceRevision: String
+    public let origin: TranscriptWorkflowOrigin
+    public let provider: TranscriptProvider
+    public let model: String
+    public let stage: TranscriptWorkflowStage
+    public let workflowRevision: StateRevision
+    public let attempt: UInt16
+    public let attemptId: TranscriptAttemptId?
+    public let submissionFenceId: TranscriptSubmissionFenceId?
+    public let requestId: HostRequestId?
+    public let externalOperationPresent: Bool
+    public let notBefore: UnixTimestampMilliseconds?
+    public let failure: TranscriptWorkflowFailure?
+    public let updatedAt: UnixTimestampMilliseconds
+    public let allowedActions: TranscriptWorkflowAllowedActions
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(episodeId: EpisodeId, workflowId: TranscriptWorkflowId, sourceRevision: String, origin: TranscriptWorkflowOrigin, provider: TranscriptProvider, model: String, stage: TranscriptWorkflowStage, workflowRevision: StateRevision, attempt: UInt16, attemptId: TranscriptAttemptId?, submissionFenceId: TranscriptSubmissionFenceId?, requestId: HostRequestId?, externalOperationPresent: Bool, notBefore: UnixTimestampMilliseconds?, failure: TranscriptWorkflowFailure?, updatedAt: UnixTimestampMilliseconds, allowedActions: TranscriptWorkflowAllowedActions) {
+        self.episodeId = episodeId
+        self.workflowId = workflowId
+        self.sourceRevision = sourceRevision
+        self.origin = origin
+        self.provider = provider
+        self.model = model
+        self.stage = stage
+        self.workflowRevision = workflowRevision
+        self.attempt = attempt
+        self.attemptId = attemptId
+        self.submissionFenceId = submissionFenceId
+        self.requestId = requestId
+        self.externalOperationPresent = externalOperationPresent
+        self.notBefore = notBefore
+        self.failure = failure
+        self.updatedAt = updatedAt
+        self.allowedActions = allowedActions
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptWorkflowProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptWorkflowProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptWorkflowProjection {
+        return
+            try TranscriptWorkflowProjection(
+                episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
+                workflowId: FfiConverterTypeTranscriptWorkflowId.read(from: &buf),
+                sourceRevision: FfiConverterString.read(from: &buf),
+                origin: FfiConverterTypeTranscriptWorkflowOrigin.read(from: &buf),
+                provider: FfiConverterTypeTranscriptProvider.read(from: &buf),
+                model: FfiConverterString.read(from: &buf),
+                stage: FfiConverterTypeTranscriptWorkflowStage.read(from: &buf),
+                workflowRevision: FfiConverterTypeStateRevision.read(from: &buf),
+                attempt: FfiConverterUInt16.read(from: &buf),
+                attemptId: FfiConverterOptionTypeTranscriptAttemptId.read(from: &buf),
+                submissionFenceId: FfiConverterOptionTypeTranscriptSubmissionFenceId.read(from: &buf),
+                requestId: FfiConverterOptionTypeHostRequestId.read(from: &buf),
+                externalOperationPresent: FfiConverterBool.read(from: &buf),
+                notBefore: FfiConverterOptionTypeUnixTimestampMilliseconds.read(from: &buf),
+                failure: FfiConverterOptionTypeTranscriptWorkflowFailure.read(from: &buf),
+                updatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                allowedActions: FfiConverterTypeTranscriptWorkflowAllowedActions.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TranscriptWorkflowProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
+        FfiConverterTypeTranscriptWorkflowId.write(value.workflowId, into: &buf)
+        FfiConverterString.write(value.sourceRevision, into: &buf)
+        FfiConverterTypeTranscriptWorkflowOrigin.write(value.origin, into: &buf)
+        FfiConverterTypeTranscriptProvider.write(value.provider, into: &buf)
+        FfiConverterString.write(value.model, into: &buf)
+        FfiConverterTypeTranscriptWorkflowStage.write(value.stage, into: &buf)
+        FfiConverterTypeStateRevision.write(value.workflowRevision, into: &buf)
+        FfiConverterUInt16.write(value.attempt, into: &buf)
+        FfiConverterOptionTypeTranscriptAttemptId.write(value.attemptId, into: &buf)
+        FfiConverterOptionTypeTranscriptSubmissionFenceId.write(value.submissionFenceId, into: &buf)
+        FfiConverterOptionTypeHostRequestId.write(value.requestId, into: &buf)
+        FfiConverterBool.write(value.externalOperationPresent, into: &buf)
+        FfiConverterOptionTypeUnixTimestampMilliseconds.write(value.notBefore, into: &buf)
+        FfiConverterOptionTypeTranscriptWorkflowFailure.write(value.failure, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.updatedAt, into: &buf)
+        FfiConverterTypeTranscriptWorkflowAllowedActions.write(value.allowedActions, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowProjection_lift(_ buf: RustBuffer) throws -> TranscriptWorkflowProjection {
+    return try FfiConverterTypeTranscriptWorkflowProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowProjection_lower(_ value: TranscriptWorkflowProjection) -> RustBuffer {
+    return FfiConverterTypeTranscriptWorkflowProjection.lower(value)
+}
+
+
+public struct TranscriptWorkflowRequest: Equatable, Hashable {
+    public let workflowId: TranscriptWorkflowId
+    public let episodeId: EpisodeId
+    public let sourceRevision: String
+    public let origin: TranscriptWorkflowOrigin
+    public let provider: TranscriptProvider
+    public let model: String
+    public let remoteAudioUrl: String
+    public let localAudioUrl: String?
+    public let publisherTranscriptUrl: String?
+    public let publisherMimeHint: String?
+    public let publisherFirst: Bool
+    public let providerFallbackEnabled: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(workflowId: TranscriptWorkflowId, episodeId: EpisodeId, sourceRevision: String, origin: TranscriptWorkflowOrigin, provider: TranscriptProvider, model: String, remoteAudioUrl: String, localAudioUrl: String?, publisherTranscriptUrl: String?, publisherMimeHint: String?, publisherFirst: Bool, providerFallbackEnabled: Bool) {
+        self.workflowId = workflowId
+        self.episodeId = episodeId
+        self.sourceRevision = sourceRevision
+        self.origin = origin
+        self.provider = provider
+        self.model = model
+        self.remoteAudioUrl = remoteAudioUrl
+        self.localAudioUrl = localAudioUrl
+        self.publisherTranscriptUrl = publisherTranscriptUrl
+        self.publisherMimeHint = publisherMimeHint
+        self.publisherFirst = publisherFirst
+        self.providerFallbackEnabled = providerFallbackEnabled
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptWorkflowRequest: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptWorkflowRequest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptWorkflowRequest {
+        return
+            try TranscriptWorkflowRequest(
+                workflowId: FfiConverterTypeTranscriptWorkflowId.read(from: &buf),
+                episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
+                sourceRevision: FfiConverterString.read(from: &buf),
+                origin: FfiConverterTypeTranscriptWorkflowOrigin.read(from: &buf),
+                provider: FfiConverterTypeTranscriptProvider.read(from: &buf),
+                model: FfiConverterString.read(from: &buf),
+                remoteAudioUrl: FfiConverterString.read(from: &buf),
+                localAudioUrl: FfiConverterOptionString.read(from: &buf),
+                publisherTranscriptUrl: FfiConverterOptionString.read(from: &buf),
+                publisherMimeHint: FfiConverterOptionString.read(from: &buf),
+                publisherFirst: FfiConverterBool.read(from: &buf),
+                providerFallbackEnabled: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TranscriptWorkflowRequest, into buf: inout [UInt8]) {
+        FfiConverterTypeTranscriptWorkflowId.write(value.workflowId, into: &buf)
+        FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
+        FfiConverterString.write(value.sourceRevision, into: &buf)
+        FfiConverterTypeTranscriptWorkflowOrigin.write(value.origin, into: &buf)
+        FfiConverterTypeTranscriptProvider.write(value.provider, into: &buf)
+        FfiConverterString.write(value.model, into: &buf)
+        FfiConverterString.write(value.remoteAudioUrl, into: &buf)
+        FfiConverterOptionString.write(value.localAudioUrl, into: &buf)
+        FfiConverterOptionString.write(value.publisherTranscriptUrl, into: &buf)
+        FfiConverterOptionString.write(value.publisherMimeHint, into: &buf)
+        FfiConverterBool.write(value.publisherFirst, into: &buf)
+        FfiConverterBool.write(value.providerFallbackEnabled, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowRequest_lift(_ buf: RustBuffer) throws -> TranscriptWorkflowRequest {
+    return try FfiConverterTypeTranscriptWorkflowRequest.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowRequest_lower(_ value: TranscriptWorkflowRequest) -> RustBuffer {
+    return FfiConverterTypeTranscriptWorkflowRequest.lower(value)
+}
+
+
+public struct TranscriptWorkflowsProjection: Equatable, Hashable {
+    public let workflows: [TranscriptWorkflowProjection]
+    public let hasMore: Bool
+    public let failure: CoreFailure?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(workflows: [TranscriptWorkflowProjection], hasMore: Bool, failure: CoreFailure?) {
+        self.workflows = workflows
+        self.hasMore = hasMore
+        self.failure = failure
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptWorkflowsProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptWorkflowsProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptWorkflowsProjection {
+        return
+            try TranscriptWorkflowsProjection(
+                workflows: FfiConverterSequenceTypeTranscriptWorkflowProjection.read(from: &buf),
+                hasMore: FfiConverterBool.read(from: &buf),
+                failure: FfiConverterOptionTypeCoreFailure.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TranscriptWorkflowsProjection, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeTranscriptWorkflowProjection.write(value.workflows, into: &buf)
+        FfiConverterBool.write(value.hasMore, into: &buf)
+        FfiConverterOptionTypeCoreFailure.write(value.failure, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowsProjection_lift(_ buf: RustBuffer) throws -> TranscriptWorkflowsProjection {
+    return try FfiConverterTypeTranscriptWorkflowsProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowsProjection_lower(_ value: TranscriptWorkflowsProjection) -> RustBuffer {
+    return FfiConverterTypeTranscriptWorkflowsProjection.lower(value)
 }
 
 
@@ -13003,6 +13665,289 @@ public func FfiConverterTypeRetryability_lower(_ value: Retryability) -> RustBuf
 
 
 
+
+public enum TranscriptCapabilityObservation: Equatable, Hashable {
+
+    case providerAccepted(externalOperationId: String, providerStatus: String?
+    )
+    case providerPending(providerStatus: String?, retryAfterMilliseconds: UInt64?
+    )
+    case completed(artifact: TranscriptArtifactInput
+    )
+    case failed(evidence: TranscriptFailureEvidence, safeDetail: String?, retryAfterMilliseconds: UInt64?
+    )
+    case cancelled
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptCapabilityObservation: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptCapabilityObservation: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptCapabilityObservation
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptCapabilityObservation {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .providerAccepted(externalOperationId: try FfiConverterString.read(from: &buf), providerStatus: try FfiConverterOptionString.read(from: &buf)
+        )
+
+        case 2: return .providerPending(providerStatus: try FfiConverterOptionString.read(from: &buf), retryAfterMilliseconds: try FfiConverterOptionUInt64.read(from: &buf)
+        )
+
+        case 3: return .completed(artifact: try FfiConverterTypeTranscriptArtifactInput.read(from: &buf)
+        )
+
+        case 4: return .failed(evidence: try FfiConverterTypeTranscriptFailureEvidence.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf), retryAfterMilliseconds: try FfiConverterOptionUInt64.read(from: &buf)
+        )
+
+        case 5: return .cancelled
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: TranscriptCapabilityObservation, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case let .providerAccepted(externalOperationId,providerStatus):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(externalOperationId, into: &buf)
+            FfiConverterOptionString.write(providerStatus, into: &buf)
+
+
+        case let .providerPending(providerStatus,retryAfterMilliseconds):
+            writeInt(&buf, Int32(2))
+            FfiConverterOptionString.write(providerStatus, into: &buf)
+            FfiConverterOptionUInt64.write(retryAfterMilliseconds, into: &buf)
+
+
+        case let .completed(artifact):
+            writeInt(&buf, Int32(3))
+            FfiConverterTypeTranscriptArtifactInput.write(artifact, into: &buf)
+
+
+        case let .failed(evidence,safeDetail,retryAfterMilliseconds):
+            writeInt(&buf, Int32(4))
+            FfiConverterTypeTranscriptFailureEvidence.write(evidence, into: &buf)
+            FfiConverterOptionString.write(safeDetail, into: &buf)
+            FfiConverterOptionUInt64.write(retryAfterMilliseconds, into: &buf)
+
+
+        case .cancelled:
+            writeInt(&buf, Int32(5))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptCapabilityObservation_lift(_ buf: RustBuffer) throws -> TranscriptCapabilityObservation {
+    return try FfiConverterTypeTranscriptCapabilityObservation.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptCapabilityObservation_lower(_ value: TranscriptCapabilityObservation) -> RustBuffer {
+    return FfiConverterTypeTranscriptCapabilityObservation.lower(value)
+}
+
+
+
+
+public enum TranscriptCapabilityRequest: Equatable, Hashable {
+
+    case fetchPublisher(episodeId: EpisodeId, sourceUrl: String, mimeHint: String?, maximumResponseBytes: UInt64
+    )
+    case submitProvider(episodeId: EpisodeId, attemptId: TranscriptAttemptId, submissionFenceId: TranscriptSubmissionFenceId, provider: TranscriptProvider, model: String, audioUrl: String, maximumResponseBytes: UInt64
+    )
+    case recoverProvider(episodeId: EpisodeId, attemptId: TranscriptAttemptId, submissionFenceId: TranscriptSubmissionFenceId, provider: TranscriptProvider, model: String, externalOperationId: String, providerStatus: String?, maximumResponseBytes: UInt64
+    )
+    case transcribeLocal(episodeId: EpisodeId, attemptId: TranscriptAttemptId, audioUrl: String, locale: String?
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptCapabilityRequest: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptCapabilityRequest: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptCapabilityRequest
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptCapabilityRequest {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .fetchPublisher(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), sourceUrl: try FfiConverterString.read(from: &buf), mimeHint: try FfiConverterOptionString.read(from: &buf), maximumResponseBytes: try FfiConverterUInt64.read(from: &buf)
+        )
+
+        case 2: return .submitProvider(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), attemptId: try FfiConverterTypeTranscriptAttemptId.read(from: &buf), submissionFenceId: try FfiConverterTypeTranscriptSubmissionFenceId.read(from: &buf), provider: try FfiConverterTypeTranscriptProvider.read(from: &buf), model: try FfiConverterString.read(from: &buf), audioUrl: try FfiConverterString.read(from: &buf), maximumResponseBytes: try FfiConverterUInt64.read(from: &buf)
+        )
+
+        case 3: return .recoverProvider(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), attemptId: try FfiConverterTypeTranscriptAttemptId.read(from: &buf), submissionFenceId: try FfiConverterTypeTranscriptSubmissionFenceId.read(from: &buf), provider: try FfiConverterTypeTranscriptProvider.read(from: &buf), model: try FfiConverterString.read(from: &buf), externalOperationId: try FfiConverterString.read(from: &buf), providerStatus: try FfiConverterOptionString.read(from: &buf), maximumResponseBytes: try FfiConverterUInt64.read(from: &buf)
+        )
+
+        case 4: return .transcribeLocal(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), attemptId: try FfiConverterTypeTranscriptAttemptId.read(from: &buf), audioUrl: try FfiConverterString.read(from: &buf), locale: try FfiConverterOptionString.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: TranscriptCapabilityRequest, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case let .fetchPublisher(episodeId,sourceUrl,mimeHint,maximumResponseBytes):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterString.write(sourceUrl, into: &buf)
+            FfiConverterOptionString.write(mimeHint, into: &buf)
+            FfiConverterUInt64.write(maximumResponseBytes, into: &buf)
+
+
+        case let .submitProvider(episodeId,attemptId,submissionFenceId,provider,model,audioUrl,maximumResponseBytes):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeTranscriptAttemptId.write(attemptId, into: &buf)
+            FfiConverterTypeTranscriptSubmissionFenceId.write(submissionFenceId, into: &buf)
+            FfiConverterTypeTranscriptProvider.write(provider, into: &buf)
+            FfiConverterString.write(model, into: &buf)
+            FfiConverterString.write(audioUrl, into: &buf)
+            FfiConverterUInt64.write(maximumResponseBytes, into: &buf)
+
+
+        case let .recoverProvider(episodeId,attemptId,submissionFenceId,provider,model,externalOperationId,providerStatus,maximumResponseBytes):
+            writeInt(&buf, Int32(3))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeTranscriptAttemptId.write(attemptId, into: &buf)
+            FfiConverterTypeTranscriptSubmissionFenceId.write(submissionFenceId, into: &buf)
+            FfiConverterTypeTranscriptProvider.write(provider, into: &buf)
+            FfiConverterString.write(model, into: &buf)
+            FfiConverterString.write(externalOperationId, into: &buf)
+            FfiConverterOptionString.write(providerStatus, into: &buf)
+            FfiConverterUInt64.write(maximumResponseBytes, into: &buf)
+
+
+        case let .transcribeLocal(episodeId,attemptId,audioUrl,locale):
+            writeInt(&buf, Int32(4))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeTranscriptAttemptId.write(attemptId, into: &buf)
+            FfiConverterString.write(audioUrl, into: &buf)
+            FfiConverterOptionString.write(locale, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptCapabilityRequest_lift(_ buf: RustBuffer) throws -> TranscriptCapabilityRequest {
+    return try FfiConverterTypeTranscriptCapabilityRequest.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptCapabilityRequest_lower(_ value: TranscriptCapabilityRequest) -> RustBuffer {
+    return FfiConverterTypeTranscriptCapabilityRequest.lower(value)
+}
+
+
+
+
+public enum TranscriptCapabilityValidation: Equatable, Hashable {
+
+    case accepted
+    case rejected(code: TranscriptWorkflowFailureCode
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptCapabilityValidation: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptCapabilityValidation: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptCapabilityValidation
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptCapabilityValidation {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .accepted
+
+        case 2: return .rejected(code: try FfiConverterTypeTranscriptWorkflowFailureCode.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: TranscriptCapabilityValidation, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .accepted:
+            writeInt(&buf, Int32(1))
+
+
+        case let .rejected(code):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeTranscriptWorkflowFailureCode.write(code, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptCapabilityValidation_lift(_ buf: RustBuffer) throws -> TranscriptCapabilityValidation {
+    return try FfiConverterTypeTranscriptCapabilityValidation.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptCapabilityValidation_lower(_ value: TranscriptCapabilityValidation) -> RustBuffer {
+    return FfiConverterTypeTranscriptCapabilityValidation.lower(value)
+}
+
+
+
 /**
  * Bounded state returned by the pure pre-cutover contract projection.
  * Rejections are data, never an exception crossing UniFFI.
@@ -13199,6 +14144,418 @@ public func FfiConverterTypeTranscriptContractRejection_lower(_ value: Transcrip
 
 
 
+public enum TranscriptEvidenceDecision: Equatable, Hashable {
+
+    case awaitingTranscript
+    case current
+    case ensure(inputVersion: String
+    )
+    case blocked(code: TranscriptWorkflowFailureCode
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptEvidenceDecision: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptEvidenceDecision: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptEvidenceDecision
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptEvidenceDecision {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .awaitingTranscript
+
+        case 2: return .current
+
+        case 3: return .ensure(inputVersion: try FfiConverterString.read(from: &buf)
+        )
+
+        case 4: return .blocked(code: try FfiConverterTypeTranscriptWorkflowFailureCode.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: TranscriptEvidenceDecision, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .awaitingTranscript:
+            writeInt(&buf, Int32(1))
+
+
+        case .current:
+            writeInt(&buf, Int32(2))
+
+
+        case let .ensure(inputVersion):
+            writeInt(&buf, Int32(3))
+            FfiConverterString.write(inputVersion, into: &buf)
+
+
+        case let .blocked(code):
+            writeInt(&buf, Int32(4))
+            FfiConverterTypeTranscriptWorkflowFailureCode.write(code, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptEvidenceDecision_lift(_ buf: RustBuffer) throws -> TranscriptEvidenceDecision {
+    return try FfiConverterTypeTranscriptEvidenceDecision.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptEvidenceDecision_lower(_ value: TranscriptEvidenceDecision) -> RustBuffer {
+    return FfiConverterTypeTranscriptEvidenceDecision.lower(value)
+}
+
+
+
+
+public enum TranscriptFailureEvidence: Equatable, Hashable {
+
+    case missingCredential
+    case missingLocalAudio
+    case invalidRequest
+    case unsupportedProvider
+    case publisherUnavailable
+    case offline(submissionAuthorized: Bool, providerAccepted: Bool
+    )
+    case rateLimited(submissionAuthorized: Bool, providerAccepted: Bool
+    )
+    case timedOut(submissionAuthorized: Bool, providerAccepted: Bool
+    )
+    case transport(submissionAuthorized: Bool, providerAccepted: Bool
+    )
+    case permissionDenied
+    case providerRejected
+    case providerUnavailable(submissionAuthorized: Bool, providerAccepted: Bool
+    )
+    case responseTooLarge
+    case invalidResponse
+    case staleInput
+    case storageUnavailable(submissionAuthorized: Bool, providerAccepted: Bool
+    )
+    case providerRecoveryUnavailable
+    case retryExhausted(mayHaveSubmitted: Bool
+    )
+    case cancelled(submissionAuthorized: Bool, providerAccepted: Bool
+    )
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptFailureEvidence: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptFailureEvidence: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptFailureEvidence
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptFailureEvidence {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .missingCredential
+
+        case 2: return .missingLocalAudio
+
+        case 3: return .invalidRequest
+
+        case 4: return .unsupportedProvider
+
+        case 5: return .publisherUnavailable
+
+        case 6: return .offline(submissionAuthorized: try FfiConverterBool.read(from: &buf), providerAccepted: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 7: return .rateLimited(submissionAuthorized: try FfiConverterBool.read(from: &buf), providerAccepted: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 8: return .timedOut(submissionAuthorized: try FfiConverterBool.read(from: &buf), providerAccepted: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 9: return .transport(submissionAuthorized: try FfiConverterBool.read(from: &buf), providerAccepted: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 10: return .permissionDenied
+
+        case 11: return .providerRejected
+
+        case 12: return .providerUnavailable(submissionAuthorized: try FfiConverterBool.read(from: &buf), providerAccepted: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 13: return .responseTooLarge
+
+        case 14: return .invalidResponse
+
+        case 15: return .staleInput
+
+        case 16: return .storageUnavailable(submissionAuthorized: try FfiConverterBool.read(from: &buf), providerAccepted: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 17: return .providerRecoveryUnavailable
+
+        case 18: return .retryExhausted(mayHaveSubmitted: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 19: return .cancelled(submissionAuthorized: try FfiConverterBool.read(from: &buf), providerAccepted: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 20: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: TranscriptFailureEvidence, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .missingCredential:
+            writeInt(&buf, Int32(1))
+
+
+        case .missingLocalAudio:
+            writeInt(&buf, Int32(2))
+
+
+        case .invalidRequest:
+            writeInt(&buf, Int32(3))
+
+
+        case .unsupportedProvider:
+            writeInt(&buf, Int32(4))
+
+
+        case .publisherUnavailable:
+            writeInt(&buf, Int32(5))
+
+
+        case let .offline(submissionAuthorized,providerAccepted):
+            writeInt(&buf, Int32(6))
+            FfiConverterBool.write(submissionAuthorized, into: &buf)
+            FfiConverterBool.write(providerAccepted, into: &buf)
+
+
+        case let .rateLimited(submissionAuthorized,providerAccepted):
+            writeInt(&buf, Int32(7))
+            FfiConverterBool.write(submissionAuthorized, into: &buf)
+            FfiConverterBool.write(providerAccepted, into: &buf)
+
+
+        case let .timedOut(submissionAuthorized,providerAccepted):
+            writeInt(&buf, Int32(8))
+            FfiConverterBool.write(submissionAuthorized, into: &buf)
+            FfiConverterBool.write(providerAccepted, into: &buf)
+
+
+        case let .transport(submissionAuthorized,providerAccepted):
+            writeInt(&buf, Int32(9))
+            FfiConverterBool.write(submissionAuthorized, into: &buf)
+            FfiConverterBool.write(providerAccepted, into: &buf)
+
+
+        case .permissionDenied:
+            writeInt(&buf, Int32(10))
+
+
+        case .providerRejected:
+            writeInt(&buf, Int32(11))
+
+
+        case let .providerUnavailable(submissionAuthorized,providerAccepted):
+            writeInt(&buf, Int32(12))
+            FfiConverterBool.write(submissionAuthorized, into: &buf)
+            FfiConverterBool.write(providerAccepted, into: &buf)
+
+
+        case .responseTooLarge:
+            writeInt(&buf, Int32(13))
+
+
+        case .invalidResponse:
+            writeInt(&buf, Int32(14))
+
+
+        case .staleInput:
+            writeInt(&buf, Int32(15))
+
+
+        case let .storageUnavailable(submissionAuthorized,providerAccepted):
+            writeInt(&buf, Int32(16))
+            FfiConverterBool.write(submissionAuthorized, into: &buf)
+            FfiConverterBool.write(providerAccepted, into: &buf)
+
+
+        case .providerRecoveryUnavailable:
+            writeInt(&buf, Int32(17))
+
+
+        case let .retryExhausted(mayHaveSubmitted):
+            writeInt(&buf, Int32(18))
+            FfiConverterBool.write(mayHaveSubmitted, into: &buf)
+
+
+        case let .cancelled(submissionAuthorized,providerAccepted):
+            writeInt(&buf, Int32(19))
+            FfiConverterBool.write(submissionAuthorized, into: &buf)
+            FfiConverterBool.write(providerAccepted, into: &buf)
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(20))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptFailureEvidence_lift(_ buf: RustBuffer) throws -> TranscriptFailureEvidence {
+    return try FfiConverterTypeTranscriptFailureEvidence.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptFailureEvidence_lower(_ value: TranscriptFailureEvidence) -> RustBuffer {
+    return FfiConverterTypeTranscriptFailureEvidence.lower(value)
+}
+
+
+
+
+public enum TranscriptGenerationDecision: Equatable, Hashable {
+
+    case notRequested
+    case current
+    case awaitingCredential(provider: TranscriptProvider
+    )
+    case awaitingLocalAudio
+    case ensure
+    case blocked(code: TranscriptWorkflowFailureCode
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptGenerationDecision: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptGenerationDecision: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptGenerationDecision
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptGenerationDecision {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .notRequested
+
+        case 2: return .current
+
+        case 3: return .awaitingCredential(provider: try FfiConverterTypeTranscriptProvider.read(from: &buf)
+        )
+
+        case 4: return .awaitingLocalAudio
+
+        case 5: return .ensure
+
+        case 6: return .blocked(code: try FfiConverterTypeTranscriptWorkflowFailureCode.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: TranscriptGenerationDecision, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .notRequested:
+            writeInt(&buf, Int32(1))
+
+
+        case .current:
+            writeInt(&buf, Int32(2))
+
+
+        case let .awaitingCredential(provider):
+            writeInt(&buf, Int32(3))
+            FfiConverterTypeTranscriptProvider.write(provider, into: &buf)
+
+
+        case .awaitingLocalAudio:
+            writeInt(&buf, Int32(4))
+
+
+        case .ensure:
+            writeInt(&buf, Int32(5))
+
+
+        case let .blocked(code):
+            writeInt(&buf, Int32(6))
+            FfiConverterTypeTranscriptWorkflowFailureCode.write(code, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptGenerationDecision_lift(_ buf: RustBuffer) throws -> TranscriptGenerationDecision {
+    return try FfiConverterTypeTranscriptGenerationDecision.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptGenerationDecision_lower(_ value: TranscriptGenerationDecision) -> RustBuffer {
+    return FfiConverterTypeTranscriptGenerationDecision.lower(value)
+}
+
+
+
+
 public enum TranscriptProjectionScope: Equatable, Hashable {
 
     case summary
@@ -13297,6 +14654,614 @@ public func FfiConverterTypeTranscriptProjectionScope_lift(_ buf: RustBuffer) th
 #endif
 public func FfiConverterTypeTranscriptProjectionScope_lower(_ value: TranscriptProjectionScope) -> RustBuffer {
     return FfiConverterTypeTranscriptProjectionScope.lower(value)
+}
+
+
+
+
+public enum TranscriptProvider: Equatable, Hashable {
+
+    case assemblyAi
+    case elevenLabsScribe
+    case openRouterWhisper
+    case appleSpeech
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptProvider: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptProvider: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptProvider
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptProvider {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .assemblyAi
+
+        case 2: return .elevenLabsScribe
+
+        case 3: return .openRouterWhisper
+
+        case 4: return .appleSpeech
+
+        case 5: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: TranscriptProvider, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .assemblyAi:
+            writeInt(&buf, Int32(1))
+
+
+        case .elevenLabsScribe:
+            writeInt(&buf, Int32(2))
+
+
+        case .openRouterWhisper:
+            writeInt(&buf, Int32(3))
+
+
+        case .appleSpeech:
+            writeInt(&buf, Int32(4))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(5))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptProvider_lift(_ buf: RustBuffer) throws -> TranscriptProvider {
+    return try FfiConverterTypeTranscriptProvider.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptProvider_lower(_ value: TranscriptProvider) -> RustBuffer {
+    return FfiConverterTypeTranscriptProvider.lower(value)
+}
+
+
+
+
+public enum TranscriptRetryDisposition: Equatable, Hashable {
+
+    case automaticRequest
+    case replan
+    case recoverPersisted
+    case explicitOnly
+    case never
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptRetryDisposition: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptRetryDisposition: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptRetryDisposition
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptRetryDisposition {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .automaticRequest
+
+        case 2: return .replan
+
+        case 3: return .recoverPersisted
+
+        case 4: return .explicitOnly
+
+        case 5: return .never
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: TranscriptRetryDisposition, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .automaticRequest:
+            writeInt(&buf, Int32(1))
+
+
+        case .replan:
+            writeInt(&buf, Int32(2))
+
+
+        case .recoverPersisted:
+            writeInt(&buf, Int32(3))
+
+
+        case .explicitOnly:
+            writeInt(&buf, Int32(4))
+
+
+        case .never:
+            writeInt(&buf, Int32(5))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptRetryDisposition_lift(_ buf: RustBuffer) throws -> TranscriptRetryDisposition {
+    return try FfiConverterTypeTranscriptRetryDisposition.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptRetryDisposition_lower(_ value: TranscriptRetryDisposition) -> RustBuffer {
+    return FfiConverterTypeTranscriptRetryDisposition.lower(value)
+}
+
+
+
+
+public enum TranscriptWorkflowFailureCode: Equatable, Hashable {
+
+    case missingCredential
+    case missingLocalAudio
+    case invalidRequest
+    case unsupportedProvider
+    case publisherUnavailable
+    case offline
+    case rateLimited
+    case timedOut
+    case transport
+    case permissionDenied
+    case providerRejected
+    case providerUnavailable
+    case responseTooLarge
+    case invalidResponse
+    case staleInput
+    case storageUnavailable
+    case ambiguousSubmission
+    case providerRecoveryUnavailable
+    case retryExhausted
+    case cancelled
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptWorkflowFailureCode: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptWorkflowFailureCode: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptWorkflowFailureCode
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptWorkflowFailureCode {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .missingCredential
+
+        case 2: return .missingLocalAudio
+
+        case 3: return .invalidRequest
+
+        case 4: return .unsupportedProvider
+
+        case 5: return .publisherUnavailable
+
+        case 6: return .offline
+
+        case 7: return .rateLimited
+
+        case 8: return .timedOut
+
+        case 9: return .transport
+
+        case 10: return .permissionDenied
+
+        case 11: return .providerRejected
+
+        case 12: return .providerUnavailable
+
+        case 13: return .responseTooLarge
+
+        case 14: return .invalidResponse
+
+        case 15: return .staleInput
+
+        case 16: return .storageUnavailable
+
+        case 17: return .ambiguousSubmission
+
+        case 18: return .providerRecoveryUnavailable
+
+        case 19: return .retryExhausted
+
+        case 20: return .cancelled
+
+        case 21: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: TranscriptWorkflowFailureCode, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .missingCredential:
+            writeInt(&buf, Int32(1))
+
+
+        case .missingLocalAudio:
+            writeInt(&buf, Int32(2))
+
+
+        case .invalidRequest:
+            writeInt(&buf, Int32(3))
+
+
+        case .unsupportedProvider:
+            writeInt(&buf, Int32(4))
+
+
+        case .publisherUnavailable:
+            writeInt(&buf, Int32(5))
+
+
+        case .offline:
+            writeInt(&buf, Int32(6))
+
+
+        case .rateLimited:
+            writeInt(&buf, Int32(7))
+
+
+        case .timedOut:
+            writeInt(&buf, Int32(8))
+
+
+        case .transport:
+            writeInt(&buf, Int32(9))
+
+
+        case .permissionDenied:
+            writeInt(&buf, Int32(10))
+
+
+        case .providerRejected:
+            writeInt(&buf, Int32(11))
+
+
+        case .providerUnavailable:
+            writeInt(&buf, Int32(12))
+
+
+        case .responseTooLarge:
+            writeInt(&buf, Int32(13))
+
+
+        case .invalidResponse:
+            writeInt(&buf, Int32(14))
+
+
+        case .staleInput:
+            writeInt(&buf, Int32(15))
+
+
+        case .storageUnavailable:
+            writeInt(&buf, Int32(16))
+
+
+        case .ambiguousSubmission:
+            writeInt(&buf, Int32(17))
+
+
+        case .providerRecoveryUnavailable:
+            writeInt(&buf, Int32(18))
+
+
+        case .retryExhausted:
+            writeInt(&buf, Int32(19))
+
+
+        case .cancelled:
+            writeInt(&buf, Int32(20))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(21))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowFailureCode_lift(_ buf: RustBuffer) throws -> TranscriptWorkflowFailureCode {
+    return try FfiConverterTypeTranscriptWorkflowFailureCode.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowFailureCode_lower(_ value: TranscriptWorkflowFailureCode) -> RustBuffer {
+    return FfiConverterTypeTranscriptWorkflowFailureCode.lower(value)
+}
+
+
+
+
+public enum TranscriptWorkflowOrigin: Equatable, Hashable {
+
+    case user
+    case automatic
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptWorkflowOrigin: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptWorkflowOrigin: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptWorkflowOrigin
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptWorkflowOrigin {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .user
+
+        case 2: return .automatic
+
+        case 3: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: TranscriptWorkflowOrigin, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .user:
+            writeInt(&buf, Int32(1))
+
+
+        case .automatic:
+            writeInt(&buf, Int32(2))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowOrigin_lift(_ buf: RustBuffer) throws -> TranscriptWorkflowOrigin {
+    return try FfiConverterTypeTranscriptWorkflowOrigin.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowOrigin_lower(_ value: TranscriptWorkflowOrigin) -> RustBuffer {
+    return FfiConverterTypeTranscriptWorkflowOrigin.lower(value)
+}
+
+
+
+
+public enum TranscriptWorkflowStage: Equatable, Hashable {
+
+    case awaitingPrerequisite
+    case requested
+    case publisherRequested
+    case submissionAuthorized
+    case providerAccepted
+    case completionObserved
+    case transcriptCommitted
+    case evidenceRequested
+    case retryScheduled
+    case blocked
+    case failed
+    case cancelled
+    case succeeded
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptWorkflowStage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptWorkflowStage: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptWorkflowStage
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptWorkflowStage {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .awaitingPrerequisite
+
+        case 2: return .requested
+
+        case 3: return .publisherRequested
+
+        case 4: return .submissionAuthorized
+
+        case 5: return .providerAccepted
+
+        case 6: return .completionObserved
+
+        case 7: return .transcriptCommitted
+
+        case 8: return .evidenceRequested
+
+        case 9: return .retryScheduled
+
+        case 10: return .blocked
+
+        case 11: return .failed
+
+        case 12: return .cancelled
+
+        case 13: return .succeeded
+
+        case 14: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: TranscriptWorkflowStage, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .awaitingPrerequisite:
+            writeInt(&buf, Int32(1))
+
+
+        case .requested:
+            writeInt(&buf, Int32(2))
+
+
+        case .publisherRequested:
+            writeInt(&buf, Int32(3))
+
+
+        case .submissionAuthorized:
+            writeInt(&buf, Int32(4))
+
+
+        case .providerAccepted:
+            writeInt(&buf, Int32(5))
+
+
+        case .completionObserved:
+            writeInt(&buf, Int32(6))
+
+
+        case .transcriptCommitted:
+            writeInt(&buf, Int32(7))
+
+
+        case .evidenceRequested:
+            writeInt(&buf, Int32(8))
+
+
+        case .retryScheduled:
+            writeInt(&buf, Int32(9))
+
+
+        case .blocked:
+            writeInt(&buf, Int32(10))
+
+
+        case .failed:
+            writeInt(&buf, Int32(11))
+
+
+        case .cancelled:
+            writeInt(&buf, Int32(12))
+
+
+        case .succeeded:
+            writeInt(&buf, Int32(13))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(14))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowStage_lift(_ buf: RustBuffer) throws -> TranscriptWorkflowStage {
+    return try FfiConverterTypeTranscriptWorkflowStage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowStage_lower(_ value: TranscriptWorkflowStage) -> RustBuffer {
+    return FfiConverterTypeTranscriptWorkflowStage.lower(value)
 }
 
 
@@ -13561,6 +15526,30 @@ fileprivate struct FfiConverterOptionTypeChapterSummaryProjection: FfiConverterR
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeCommittedTranscriptGeneration: FfiConverterRustBuffer {
+    typealias SwiftType = CommittedTranscriptGeneration?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeCommittedTranscriptGeneration.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeCommittedTranscriptGeneration.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeCoreFailure: FfiConverterRustBuffer {
     typealias SwiftType = CoreFailure?
 
@@ -13721,6 +15710,54 @@ fileprivate struct FfiConverterOptionTypeTranscriptSummaryProjection: FfiConvert
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeTranscriptSummaryProjection.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeTranscriptWorkflowFailure: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptWorkflowFailure?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeTranscriptWorkflowFailure.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeTranscriptWorkflowFailure.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeTranscriptWorkflowRequest: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptWorkflowRequest?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeTranscriptWorkflowRequest.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeTranscriptWorkflowRequest.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -14057,6 +16094,54 @@ fileprivate struct FfiConverterOptionTypeStateRevision: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeStateRevision.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeTranscriptAttemptId: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptAttemptId?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeTranscriptAttemptId.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeTranscriptAttemptId.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeTranscriptSubmissionFenceId: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptSubmissionFenceId?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeTranscriptSubmissionFenceId.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeTranscriptSubmissionFenceId.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -14677,6 +16762,31 @@ fileprivate struct FfiConverterSequenceTypeTranscriptWordProjection: FfiConverte
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeTranscriptWordProjection.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeTranscriptWorkflowProjection: FfiConverterRustBuffer {
+    typealias SwiftType = [TranscriptWorkflowProjection]
+
+    public static func write(_ value: [TranscriptWorkflowProjection], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTranscriptWorkflowProjection.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TranscriptWorkflowProjection] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TranscriptWorkflowProjection]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTranscriptWorkflowProjection.read(from: &buf))
         }
         return seq
     }

@@ -122,9 +122,13 @@ Swift shell imports the legacy listening snapshot once, renders bounded
 library/playback projections, executes URLSession and AVFoundation requests,
 and cannot commit migrated facts after cutover. Selected transcripts, canonical
 chapters, and both publisher and model chapter workflow decisions are also
-durable Rust-owned state. Swift still owns unmigrated download, knowledge,
-agent, and presentation state until their complete vertical slices land. The
-NMP adapter remains isolated by the security hold in issue #85.
+durable Rust-owned state. Download intent, attempts, recovery, and artifact
+selection are also Rust-owned; Swift executes background URLSession transfers.
+Swift still owns transcript-generation/index workflow scheduling, remaining
+agent workflow state, and presentation state until their complete vertical
+slices land. The audited NMP pin is available only through the isolated
+`pod0-nmp` adapter until a Pod0-specific Nostr vertical slice composes it into
+this facade.
 
 Canonical chapter artifacts and selections are Rust-owned after the chapter
 cutover. Contract version 24 adds durable source-version provenance to the
@@ -146,3 +150,13 @@ stage fails closed. Both staged and not-started states reject model workflow
 commands and host dispatch, so discard never opens a temporary authority window.
 The native iOS model adapter remains native by design, while all durable model
 workflow decisions now have one Rust source of truth.
+
+Contract version 30 defines the next transcript-workflow boundary before its
+durable cutover. Stable workflow, attempt, and submission-fence identities;
+generation and evidence-index desired-state planning; retry classification;
+bounded workflow projections; and publisher/remote/Apple capability payloads
+are Pod0-owned Rust types. Ambiguous paid submissions are never classified as
+safe to resubmit: an accepted provider identity can only be recovered, while an
+authorized request with no provider evidence requires explicit resolution.
+Native code will retain credentials and provider/Apple execution, but it cannot
+own fallback, retry timing, identity, or artifact-selection policy.

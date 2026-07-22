@@ -4352,6 +4352,60 @@ public func FfiConverterTypeTranscriptArtifactWordInput_lower(_ value: Transcrip
 }
 
 
+public struct TranscriptAttemptId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptAttemptId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptAttemptId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptAttemptId {
+        return
+            try TranscriptAttemptId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TranscriptAttemptId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptAttemptId_lift(_ buf: RustBuffer) throws -> TranscriptAttemptId {
+    return try FfiConverterTypeTranscriptAttemptId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptAttemptId_lower(_ value: TranscriptAttemptId) -> RustBuffer {
+    return FfiConverterTypeTranscriptAttemptId.lower(value)
+}
+
+
 /**
  * Provenance facts copied from the selected transcript artifact. The source
  * payload digest protects identity without leaking a URL or provider body.
@@ -4468,6 +4522,60 @@ public func FfiConverterTypeTranscriptSegmentId_lower(_ value: TranscriptSegment
 }
 
 
+public struct TranscriptSubmissionFenceId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptSubmissionFenceId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptSubmissionFenceId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptSubmissionFenceId {
+        return
+            try TranscriptSubmissionFenceId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TranscriptSubmissionFenceId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptSubmissionFenceId_lift(_ buf: RustBuffer) throws -> TranscriptSubmissionFenceId {
+    return try FfiConverterTypeTranscriptSubmissionFenceId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptSubmissionFenceId_lower(_ value: TranscriptSubmissionFenceId) -> RustBuffer {
+    return FfiConverterTypeTranscriptSubmissionFenceId.lower(value)
+}
+
+
 public struct TranscriptVersionId: Equatable, Hashable {
     public let high: UInt64
     public let low: UInt64
@@ -4519,6 +4627,60 @@ public func FfiConverterTypeTranscriptVersionId_lift(_ buf: RustBuffer) throws -
 #endif
 public func FfiConverterTypeTranscriptVersionId_lower(_ value: TranscriptVersionId) -> RustBuffer {
     return FfiConverterTypeTranscriptVersionId.lower(value)
+}
+
+
+public struct TranscriptWorkflowId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptWorkflowId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptWorkflowId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptWorkflowId {
+        return
+            try TranscriptWorkflowId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TranscriptWorkflowId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowId_lift(_ buf: RustBuffer) throws -> TranscriptWorkflowId {
+    return try FfiConverterTypeTranscriptWorkflowId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowId_lower(_ value: TranscriptWorkflowId) -> RustBuffer {
+    return FfiConverterTypeTranscriptWorkflowId.lower(value)
 }
 
 
