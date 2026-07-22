@@ -75,7 +75,8 @@ final class CorePlaybackHost: CorePlaybackHosting {
         case .fetchFeed, .fetchPublisherChapters:
             return .failed(code: .invalidResponse, safeDetail: "HTTP request sent to player")
         case .executeChapterModel, .recoverChapterModelOperation,
-             .executeTranscriptCapability, .scheduleCoreWake:
+             .executeTranscriptCapability, .executeScheduledAgentTurn,
+             .scheduleCoreWake:
             return .failed(code: .invalidResponse, safeDetail: "Core request sent to player")
         case .startEpisodeDownload, .cancelEpisodeDownload,
              .removeEpisodeDownloadArtifact:

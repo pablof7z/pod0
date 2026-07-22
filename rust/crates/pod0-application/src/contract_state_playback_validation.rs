@@ -24,6 +24,7 @@ pub(super) fn playback_request_episode_id(
         | Request::CancelEpisodeDownload { .. }
         | Request::RemoveEpisodeDownloadArtifact { .. }
         | Request::ExecuteTranscriptCapability { .. }
+        | Request::ExecuteScheduledAgentTurn { .. }
         | Request::ScheduleCoreWake { .. }
         | Request::RemoveLegacyRecallIndexArtifacts
         | Request::Unsupported { .. } => None,

@@ -86,6 +86,7 @@ mod runtime_command_fingerprint;
 mod runtime_command_fingerprint_values;
 mod runtime_commands;
 mod runtime_core_wakes;
+mod runtime_deliveries;
 mod runtime_download_admission;
 #[cfg(test)]
 mod runtime_download_admission_tests;
@@ -154,6 +155,9 @@ mod runtime_recall_state;
 mod runtime_recall_test_support;
 #[cfg(test)]
 mod runtime_recall_tests;
+mod runtime_scheduled_agent_command_fingerprint;
+#[cfg(test)]
+mod runtime_scheduled_agent_contract_tests;
 mod runtime_state;
 mod runtime_state_defaults;
 mod runtime_storage_commands;

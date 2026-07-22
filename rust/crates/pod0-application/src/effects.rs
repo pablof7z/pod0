@@ -152,6 +152,9 @@ pub enum HostRequest {
     ExecuteTranscriptCapability {
         capability: crate::TranscriptCapabilityRequest,
     },
+    ExecuteScheduledAgentTurn {
+        execution: crate::ScheduledAgentExecutionRequest,
+    },
     ScheduleCoreWake {
         wake_at: UnixTimestampMilliseconds,
         reason: crate::CoreWakeReason,
@@ -256,6 +259,9 @@ pub enum HostObservation {
     },
     TranscriptCapabilityObserved {
         observation: crate::TranscriptCapabilityObservation,
+    },
+    ScheduledAgentExecutionObserved {
+        observation: crate::ScheduledAgentExecutionObservation,
     },
     CoreWakeReached {
         reason: crate::CoreWakeReason,

@@ -154,6 +154,13 @@ impl FacadeState {
                 episode_id,
                 expected_workflow_revision,
             } => self.cancel_transcript_workflow(&envelope, episode_id, expected_workflow_revision),
+            ApplicationCommand::EnsureScheduledTask { .. }
+            | ApplicationCommand::UpdateScheduledTask { .. }
+            | ApplicationCommand::RemoveScheduledTask { .. }
+            | ApplicationCommand::ReconcileScheduledRuns
+            | ApplicationCommand::CancelScheduledRun { .. } => {
+                self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable)
+            }
             ApplicationCommand::CommitChapter {
                 expected_selection_revision,
                 artifact,

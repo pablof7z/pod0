@@ -52,6 +52,8 @@ mod contract_projection_tests;
 mod contract_state;
 mod contract_state_download_validation;
 mod contract_state_playback_validation;
+mod contract_state_scheduled_agent_validation;
+mod contract_state_subscription;
 #[cfg(test)]
 mod contract_state_tests;
 mod contract_state_transcript_validation;
@@ -81,6 +83,13 @@ mod knowledge_ranking_tests;
 mod knowledge_test_fixture;
 mod note_contract;
 mod recall_contract;
+mod scheduled_agent;
+#[cfg(test)]
+mod scheduled_agent_host_ledger_tests;
+mod scheduled_agent_observation;
+mod scheduled_agent_policy;
+#[cfg(test)]
+mod scheduled_agent_tests;
 mod transcript_contract;
 #[cfg(test)]
 mod transcript_contract_fixture_tests;
@@ -111,6 +120,7 @@ pub use contract_playback_command::*;
 pub use contract_playback_projection::*;
 pub use contract_projection::*;
 pub use contract_state::*;
+pub use contract_state_subscription::*;
 pub use core_wake::*;
 pub use download_contract::*;
 pub use effects::*;
@@ -122,6 +132,9 @@ pub use knowledge_chunking::*;
 pub use knowledge_ranking::*;
 pub use note_contract::*;
 pub use recall_contract::*;
+pub use scheduled_agent::*;
+pub use scheduled_agent_observation::*;
+pub use scheduled_agent_policy::*;
 pub use transcript_contract::*;
 pub use transcript_projection::*;
 pub use transcript_workflow::*;

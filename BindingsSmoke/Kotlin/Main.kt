@@ -27,6 +27,7 @@ fun main(args: Array<String>) {
     qualifyNativeHostContract()
     qualifyDownloadContract()
     qualifyTranscriptWorkflowContract()
+    qualifyScheduledAgentContract()
 
     val facade = Pod0Facade()
     try {
@@ -46,7 +47,7 @@ fun main(args: Array<String>) {
         check(subscriber.revisions == listOf(0UL, 1UL))
 
         val projection = facade.snapshot(request).projection
-        check(facade.snapshot(request).contractVersion == 34u)
+        check(facade.snapshot(request).contractVersion == 35u)
         check(projection is Projection.Library)
         val unsupportedOperation = projection.value.operations.single()
         check(unsupportedOperation.commandId == CommandId(0UL, 1UL))

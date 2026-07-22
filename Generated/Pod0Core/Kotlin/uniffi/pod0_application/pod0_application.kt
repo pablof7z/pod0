@@ -84,6 +84,7 @@ import uniffi.pod0_domain.FfiConverterTypeEpisodeRecord
 import uniffi.pod0_domain.FfiConverterTypeEvidenceChunkPolicy
 import uniffi.pod0_domain.FfiConverterTypeEvidenceGenerationId
 import uniffi.pod0_domain.FfiConverterTypeEvidenceSpanId
+import uniffi.pod0_domain.FfiConverterTypeGeneratedArtifactId
 import uniffi.pod0_domain.FfiConverterTypeHostRequestId
 import uniffi.pod0_domain.FfiConverterTypeNoteAuthor
 import uniffi.pod0_domain.FfiConverterTypeNoteId
@@ -105,6 +106,9 @@ import uniffi.pod0_domain.FfiConverterTypeRecallConfigurationInput
 import uniffi.pod0_domain.FfiConverterTypeRecallEmbeddingProvider
 import uniffi.pod0_domain.FfiConverterTypeRecallQueryId
 import uniffi.pod0_domain.FfiConverterTypeRecallRerankProvider
+import uniffi.pod0_domain.FfiConverterTypeScheduledAttemptId
+import uniffi.pod0_domain.FfiConverterTypeScheduledOccurrenceId
+import uniffi.pod0_domain.FfiConverterTypeScheduledTaskId
 import uniffi.pod0_domain.FfiConverterTypeSpeakerId
 import uniffi.pod0_domain.FfiConverterTypeStateRevision
 import uniffi.pod0_domain.FfiConverterTypeTranscriptArtifactId
@@ -117,6 +121,7 @@ import uniffi.pod0_domain.FfiConverterTypeTranscriptSubmissionFenceId
 import uniffi.pod0_domain.FfiConverterTypeTranscriptVersionId
 import uniffi.pod0_domain.FfiConverterTypeTranscriptWorkflowId
 import uniffi.pod0_domain.FfiConverterTypeUnixTimestampMilliseconds
+import uniffi.pod0_domain.GeneratedArtifactId
 import uniffi.pod0_domain.HostRequestId
 import uniffi.pod0_domain.NoteAuthor
 import uniffi.pod0_domain.NoteId
@@ -138,6 +143,9 @@ import uniffi.pod0_domain.RecallConfigurationInput
 import uniffi.pod0_domain.RecallEmbeddingProvider
 import uniffi.pod0_domain.RecallQueryId
 import uniffi.pod0_domain.RecallRerankProvider
+import uniffi.pod0_domain.ScheduledAttemptId
+import uniffi.pod0_domain.ScheduledOccurrenceId
+import uniffi.pod0_domain.ScheduledTaskId
 import uniffi.pod0_domain.SpeakerId
 import uniffi.pod0_domain.StateRevision
 import uniffi.pod0_domain.TranscriptArtifactId
@@ -177,6 +185,7 @@ import uniffi.pod0_domain.RustBuffer as RustBufferEpisodeRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferEvidenceChunkPolicy
 import uniffi.pod0_domain.RustBuffer as RustBufferEvidenceGenerationId
 import uniffi.pod0_domain.RustBuffer as RustBufferEvidenceSpanId
+import uniffi.pod0_domain.RustBuffer as RustBufferGeneratedArtifactId
 import uniffi.pod0_domain.RustBuffer as RustBufferHostRequestId
 import uniffi.pod0_domain.RustBuffer as RustBufferNoteAuthor
 import uniffi.pod0_domain.RustBuffer as RustBufferNoteId
@@ -198,6 +207,9 @@ import uniffi.pod0_domain.RustBuffer as RustBufferRecallConfigurationInput
 import uniffi.pod0_domain.RustBuffer as RustBufferRecallEmbeddingProvider
 import uniffi.pod0_domain.RustBuffer as RustBufferRecallQueryId
 import uniffi.pod0_domain.RustBuffer as RustBufferRecallRerankProvider
+import uniffi.pod0_domain.RustBuffer as RustBufferScheduledAttemptId
+import uniffi.pod0_domain.RustBuffer as RustBufferScheduledOccurrenceId
+import uniffi.pod0_domain.RustBuffer as RustBufferScheduledTaskId
 import uniffi.pod0_domain.RustBuffer as RustBufferSpeakerId
 import uniffi.pod0_domain.RustBuffer as RustBufferStateRevision
 import uniffi.pod0_domain.RustBuffer as RustBufferTranscriptArtifactId
@@ -5208,6 +5220,460 @@ public object FfiConverterTypeRecallSpanEmbeddingObservation: FfiConverterRustBu
 
 
 
+data class ScheduledAgentAllowedActions (
+    val `canRetry`: kotlin.Boolean
+    ,
+    val `canCancel`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeScheduledAgentAllowedActions: FfiConverterRustBuffer<ScheduledAgentAllowedActions> {
+    override fun read(buf: ByteBuffer): ScheduledAgentAllowedActions {
+        return ScheduledAgentAllowedActions(
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ScheduledAgentAllowedActions) = (
+            FfiConverterBoolean.allocationSize(value.`canRetry`) +
+            FfiConverterBoolean.allocationSize(value.`canCancel`)
+    )
+
+    override fun write(value: ScheduledAgentAllowedActions, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`canRetry`, buf)
+            FfiConverterBoolean.write(value.`canCancel`, buf)
+    }
+}
+
+
+
+data class ScheduledAgentContextMessage (
+    val `role`: ScheduledAgentContextRole
+    ,
+    val `content`: kotlin.String
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeScheduledAgentContextMessage: FfiConverterRustBuffer<ScheduledAgentContextMessage> {
+    override fun read(buf: ByteBuffer): ScheduledAgentContextMessage {
+        return ScheduledAgentContextMessage(
+            FfiConverterTypeScheduledAgentContextRole.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ScheduledAgentContextMessage) = (
+            FfiConverterTypeScheduledAgentContextRole.allocationSize(value.`role`) +
+            FfiConverterString.allocationSize(value.`content`)
+    )
+
+    override fun write(value: ScheduledAgentContextMessage, buf: ByteBuffer) {
+            FfiConverterTypeScheduledAgentContextRole.write(value.`role`, buf)
+            FfiConverterString.write(value.`content`, buf)
+    }
+}
+
+
+
+data class ScheduledAgentExecutionRequest (
+    val `occurrenceId`: ScheduledOccurrenceId
+    ,
+    val `attemptId`: ScheduledAttemptId
+    ,
+    val `promptRevision`: ContentDigest
+    ,
+    val `prompt`: kotlin.String
+    ,
+    val `modelReference`: kotlin.String
+    ,
+    val `context`: List<ScheduledAgentContextMessage>
+    ,
+    val `maximumOutputBytes`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeScheduledAgentExecutionRequest: FfiConverterRustBuffer<ScheduledAgentExecutionRequest> {
+    override fun read(buf: ByteBuffer): ScheduledAgentExecutionRequest {
+        return ScheduledAgentExecutionRequest(
+            FfiConverterTypeScheduledOccurrenceId.read(buf),
+            FfiConverterTypeScheduledAttemptId.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterSequenceTypeScheduledAgentContextMessage.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ScheduledAgentExecutionRequest) = (
+            FfiConverterTypeScheduledOccurrenceId.allocationSize(value.`occurrenceId`) +
+            FfiConverterTypeScheduledAttemptId.allocationSize(value.`attemptId`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`promptRevision`) +
+            FfiConverterString.allocationSize(value.`prompt`) +
+            FfiConverterString.allocationSize(value.`modelReference`) +
+            FfiConverterSequenceTypeScheduledAgentContextMessage.allocationSize(value.`context`) +
+            FfiConverterULong.allocationSize(value.`maximumOutputBytes`)
+    )
+
+    override fun write(value: ScheduledAgentExecutionRequest, buf: ByteBuffer) {
+            FfiConverterTypeScheduledOccurrenceId.write(value.`occurrenceId`, buf)
+            FfiConverterTypeScheduledAttemptId.write(value.`attemptId`, buf)
+            FfiConverterTypeContentDigest.write(value.`promptRevision`, buf)
+            FfiConverterString.write(value.`prompt`, buf)
+            FfiConverterString.write(value.`modelReference`, buf)
+            FfiConverterSequenceTypeScheduledAgentContextMessage.write(value.`context`, buf)
+            FfiConverterULong.write(value.`maximumOutputBytes`, buf)
+    }
+}
+
+
+
+data class ScheduledAgentFailure (
+    val `code`: ScheduledAgentFailureCode
+    ,
+    val `safeDetail`: kotlin.String?
+    ,
+    val `retryable`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeScheduledAgentFailure: FfiConverterRustBuffer<ScheduledAgentFailure> {
+    override fun read(buf: ByteBuffer): ScheduledAgentFailure {
+        return ScheduledAgentFailure(
+            FfiConverterTypeScheduledAgentFailureCode.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ScheduledAgentFailure) = (
+            FfiConverterTypeScheduledAgentFailureCode.allocationSize(value.`code`) +
+            FfiConverterOptionalString.allocationSize(value.`safeDetail`) +
+            FfiConverterBoolean.allocationSize(value.`retryable`)
+    )
+
+    override fun write(value: ScheduledAgentFailure, buf: ByteBuffer) {
+            FfiConverterTypeScheduledAgentFailureCode.write(value.`code`, buf)
+            FfiConverterOptionalString.write(value.`safeDetail`, buf)
+            FfiConverterBoolean.write(value.`retryable`, buf)
+    }
+}
+
+
+
+data class ScheduledAgentProjection (
+    val `tasks`: List<ScheduledTaskProjection>
+    ,
+    val `workflows`: List<ScheduledAgentWorkflowProjection>
+    ,
+    val `hasMore`: kotlin.Boolean
+    ,
+    val `failure`: CoreFailure?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeScheduledAgentProjection: FfiConverterRustBuffer<ScheduledAgentProjection> {
+    override fun read(buf: ByteBuffer): ScheduledAgentProjection {
+        return ScheduledAgentProjection(
+            FfiConverterSequenceTypeScheduledTaskProjection.read(buf),
+            FfiConverterSequenceTypeScheduledAgentWorkflowProjection.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalTypeCoreFailure.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ScheduledAgentProjection) = (
+            FfiConverterSequenceTypeScheduledTaskProjection.allocationSize(value.`tasks`) +
+            FfiConverterSequenceTypeScheduledAgentWorkflowProjection.allocationSize(value.`workflows`) +
+            FfiConverterBoolean.allocationSize(value.`hasMore`) +
+            FfiConverterOptionalTypeCoreFailure.allocationSize(value.`failure`)
+    )
+
+    override fun write(value: ScheduledAgentProjection, buf: ByteBuffer) {
+            FfiConverterSequenceTypeScheduledTaskProjection.write(value.`tasks`, buf)
+            FfiConverterSequenceTypeScheduledAgentWorkflowProjection.write(value.`workflows`, buf)
+            FfiConverterBoolean.write(value.`hasMore`, buf)
+            FfiConverterOptionalTypeCoreFailure.write(value.`failure`, buf)
+    }
+}
+
+
+
+data class ScheduledAgentWorkflowProjection (
+    val `taskId`: ScheduledTaskId
+    ,
+    val `occurrenceId`: ScheduledOccurrenceId
+    ,
+    val `promptRevision`: ContentDigest
+    ,
+    val `stage`: ScheduledAgentStage
+    ,
+    val `workflowRevision`: StateRevision
+    ,
+    val `attempt`: kotlin.UShort
+    ,
+    val `attemptId`: ScheduledAttemptId?
+    ,
+    val `requestId`: HostRequestId?
+    ,
+    val `notBefore`: UnixTimestampMilliseconds?
+    ,
+    val `artifactId`: GeneratedArtifactId?
+    ,
+    val `outputDigest`: ContentDigest?
+    ,
+    val `failure`: ScheduledAgentFailure?
+    ,
+    val `updatedAt`: UnixTimestampMilliseconds
+    ,
+    val `allowedActions`: ScheduledAgentAllowedActions
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeScheduledAgentWorkflowProjection: FfiConverterRustBuffer<ScheduledAgentWorkflowProjection> {
+    override fun read(buf: ByteBuffer): ScheduledAgentWorkflowProjection {
+        return ScheduledAgentWorkflowProjection(
+            FfiConverterTypeScheduledTaskId.read(buf),
+            FfiConverterTypeScheduledOccurrenceId.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterTypeScheduledAgentStage.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterUShort.read(buf),
+            FfiConverterOptionalTypeScheduledAttemptId.read(buf),
+            FfiConverterOptionalTypeHostRequestId.read(buf),
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterOptionalTypeGeneratedArtifactId.read(buf),
+            FfiConverterOptionalTypeContentDigest.read(buf),
+            FfiConverterOptionalTypeScheduledAgentFailure.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterTypeScheduledAgentAllowedActions.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ScheduledAgentWorkflowProjection) = (
+            FfiConverterTypeScheduledTaskId.allocationSize(value.`taskId`) +
+            FfiConverterTypeScheduledOccurrenceId.allocationSize(value.`occurrenceId`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`promptRevision`) +
+            FfiConverterTypeScheduledAgentStage.allocationSize(value.`stage`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`workflowRevision`) +
+            FfiConverterUShort.allocationSize(value.`attempt`) +
+            FfiConverterOptionalTypeScheduledAttemptId.allocationSize(value.`attemptId`) +
+            FfiConverterOptionalTypeHostRequestId.allocationSize(value.`requestId`) +
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.allocationSize(value.`notBefore`) +
+            FfiConverterOptionalTypeGeneratedArtifactId.allocationSize(value.`artifactId`) +
+            FfiConverterOptionalTypeContentDigest.allocationSize(value.`outputDigest`) +
+            FfiConverterOptionalTypeScheduledAgentFailure.allocationSize(value.`failure`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`updatedAt`) +
+            FfiConverterTypeScheduledAgentAllowedActions.allocationSize(value.`allowedActions`)
+    )
+
+    override fun write(value: ScheduledAgentWorkflowProjection, buf: ByteBuffer) {
+            FfiConverterTypeScheduledTaskId.write(value.`taskId`, buf)
+            FfiConverterTypeScheduledOccurrenceId.write(value.`occurrenceId`, buf)
+            FfiConverterTypeContentDigest.write(value.`promptRevision`, buf)
+            FfiConverterTypeScheduledAgentStage.write(value.`stage`, buf)
+            FfiConverterTypeStateRevision.write(value.`workflowRevision`, buf)
+            FfiConverterUShort.write(value.`attempt`, buf)
+            FfiConverterOptionalTypeScheduledAttemptId.write(value.`attemptId`, buf)
+            FfiConverterOptionalTypeHostRequestId.write(value.`requestId`, buf)
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.write(value.`notBefore`, buf)
+            FfiConverterOptionalTypeGeneratedArtifactId.write(value.`artifactId`, buf)
+            FfiConverterOptionalTypeContentDigest.write(value.`outputDigest`, buf)
+            FfiConverterOptionalTypeScheduledAgentFailure.write(value.`failure`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`updatedAt`, buf)
+            FfiConverterTypeScheduledAgentAllowedActions.write(value.`allowedActions`, buf)
+    }
+}
+
+
+
+data class ScheduledTaskInput (
+    val `taskId`: ScheduledTaskId?
+    ,
+    val `label`: kotlin.String
+    ,
+    val `prompt`: kotlin.String
+    ,
+    val `modelReference`: kotlin.String
+    ,
+    val `intervalMilliseconds`: kotlin.ULong
+    ,
+    val `nextRunAt`: UnixTimestampMilliseconds
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeScheduledTaskInput: FfiConverterRustBuffer<ScheduledTaskInput> {
+    override fun read(buf: ByteBuffer): ScheduledTaskInput {
+        return ScheduledTaskInput(
+            FfiConverterOptionalTypeScheduledTaskId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ScheduledTaskInput) = (
+            FfiConverterOptionalTypeScheduledTaskId.allocationSize(value.`taskId`) +
+            FfiConverterString.allocationSize(value.`label`) +
+            FfiConverterString.allocationSize(value.`prompt`) +
+            FfiConverterString.allocationSize(value.`modelReference`) +
+            FfiConverterULong.allocationSize(value.`intervalMilliseconds`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`nextRunAt`)
+    )
+
+    override fun write(value: ScheduledTaskInput, buf: ByteBuffer) {
+            FfiConverterOptionalTypeScheduledTaskId.write(value.`taskId`, buf)
+            FfiConverterString.write(value.`label`, buf)
+            FfiConverterString.write(value.`prompt`, buf)
+            FfiConverterString.write(value.`modelReference`, buf)
+            FfiConverterULong.write(value.`intervalMilliseconds`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`nextRunAt`, buf)
+    }
+}
+
+
+
+data class ScheduledTaskProjection (
+    val `taskId`: ScheduledTaskId
+    ,
+    val `label`: kotlin.String
+    ,
+    val `promptRevision`: ContentDigest
+    ,
+    val `modelReference`: kotlin.String
+    ,
+    val `intervalMilliseconds`: kotlin.ULong
+    ,
+    val `lastRunAt`: UnixTimestampMilliseconds?
+    ,
+    val `nextRunAt`: UnixTimestampMilliseconds
+    ,
+    val `taskRevision`: StateRevision
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeScheduledTaskProjection: FfiConverterRustBuffer<ScheduledTaskProjection> {
+    override fun read(buf: ByteBuffer): ScheduledTaskProjection {
+        return ScheduledTaskProjection(
+            FfiConverterTypeScheduledTaskId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ScheduledTaskProjection) = (
+            FfiConverterTypeScheduledTaskId.allocationSize(value.`taskId`) +
+            FfiConverterString.allocationSize(value.`label`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`promptRevision`) +
+            FfiConverterString.allocationSize(value.`modelReference`) +
+            FfiConverterULong.allocationSize(value.`intervalMilliseconds`) +
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.allocationSize(value.`lastRunAt`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`nextRunAt`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`taskRevision`)
+    )
+
+    override fun write(value: ScheduledTaskProjection, buf: ByteBuffer) {
+            FfiConverterTypeScheduledTaskId.write(value.`taskId`, buf)
+            FfiConverterString.write(value.`label`, buf)
+            FfiConverterTypeContentDigest.write(value.`promptRevision`, buf)
+            FfiConverterString.write(value.`modelReference`, buf)
+            FfiConverterULong.write(value.`intervalMilliseconds`, buf)
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.write(value.`lastRunAt`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`nextRunAt`, buf)
+            FfiConverterTypeStateRevision.write(value.`taskRevision`, buf)
+    }
+}
+
+
+
 data class SyntheticPodcastInput (
     /**
      * `None` creates a new stable ID derived from the command identity.
@@ -6755,6 +7221,49 @@ sealed class ApplicationCommand {
         companion object
     }
 
+    data class EnsureScheduledTask(
+        val `task`: uniffi.pod0_application.ScheduledTaskInput) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class UpdateScheduledTask(
+        val `taskId`: uniffi.pod0_domain.ScheduledTaskId,
+        val `expectedTaskRevision`: uniffi.pod0_domain.StateRevision,
+        val `task`: uniffi.pod0_application.ScheduledTaskInput) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class RemoveScheduledTask(
+        val `taskId`: uniffi.pod0_domain.ScheduledTaskId,
+        val `expectedTaskRevision`: uniffi.pod0_domain.StateRevision) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
+    object ReconcileScheduledRuns : ApplicationCommand()
+
+
+    data class CancelScheduledRun(
+        val `occurrenceId`: uniffi.pod0_domain.ScheduledOccurrenceId,
+        val `expectedWorkflowRevision`: uniffi.pod0_domain.StateRevision) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
     data class CommitChapter(
         val `expectedSelectionRevision`: uniffi.pod0_domain.StateRevision,
         val `artifact`: uniffi.pod0_domain.ChapterArtifactInput) : ApplicationCommand()
@@ -7049,56 +7558,73 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            28 -> ApplicationCommand.CommitChapter(
+            28 -> ApplicationCommand.EnsureScheduledTask(
+                FfiConverterTypeScheduledTaskInput.read(buf),
+                )
+            29 -> ApplicationCommand.UpdateScheduledTask(
+                FfiConverterTypeScheduledTaskId.read(buf),
+                FfiConverterTypeStateRevision.read(buf),
+                FfiConverterTypeScheduledTaskInput.read(buf),
+                )
+            30 -> ApplicationCommand.RemoveScheduledTask(
+                FfiConverterTypeScheduledTaskId.read(buf),
+                FfiConverterTypeStateRevision.read(buf),
+                )
+            31 -> ApplicationCommand.ReconcileScheduledRuns
+            32 -> ApplicationCommand.CancelScheduledRun(
+                FfiConverterTypeScheduledOccurrenceId.read(buf),
+                FfiConverterTypeStateRevision.read(buf),
+                )
+            33 -> ApplicationCommand.CommitChapter(
                 FfiConverterTypeStateRevision.read(buf),
                 FfiConverterTypeChapterArtifactInput.read(buf),
                 )
-            29 -> ApplicationCommand.EnsurePublisherChapters(
+            34 -> ApplicationCommand.EnsurePublisherChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 )
-            30 -> ApplicationCommand.RetryPublisherChapters(
-                FfiConverterTypeEpisodeId.read(buf),
-                FfiConverterTypeStateRevision.read(buf),
-                )
-            31 -> ApplicationCommand.CancelPublisherChapters(
+            35 -> ApplicationCommand.RetryPublisherChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            32 -> ApplicationCommand.EnsureModelChapters(
+            36 -> ApplicationCommand.CancelPublisherChapters(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeStateRevision.read(buf),
+                )
+            37 -> ApplicationCommand.EnsureModelChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterString.read(buf),
                 )
-            33 -> ApplicationCommand.RetryModelChapters(
+            38 -> ApplicationCommand.RetryModelChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            34 -> ApplicationCommand.CancelModelChapters(
+            39 -> ApplicationCommand.CancelModelChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            35 -> ApplicationCommand.CreateNote(
+            40 -> ApplicationCommand.CreateNote(
                 FfiConverterString.read(buf),
                 FfiConverterTypeNoteKind.read(buf),
                 FfiConverterTypeNoteAuthor.read(buf),
                 FfiConverterOptionalTypeNoteTarget.read(buf),
                 )
-            36 -> ApplicationCommand.UpdateNote(
+            41 -> ApplicationCommand.UpdateNote(
                 FfiConverterTypeNoteId.read(buf),
                 FfiConverterTypeNoteRevision.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterTypeNoteKind.read(buf),
                 FfiConverterOptionalTypeNoteTarget.read(buf),
                 )
-            37 -> ApplicationCommand.SetNoteDeleted(
+            42 -> ApplicationCommand.SetNoteDeleted(
                 FfiConverterTypeNoteId.read(buf),
                 FfiConverterTypeNoteRevision.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
-            38 -> ApplicationCommand.ClearNotes(
+            43 -> ApplicationCommand.ClearNotes(
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            39 -> ApplicationCommand.CreateClip(
+            44 -> ApplicationCommand.CreateClip(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypePodcastId.read(buf),
@@ -7109,7 +7635,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterString.read(buf),
                 FfiConverterTypeClipSource.read(buf),
                 )
-            40 -> ApplicationCommand.UpdateClip(
+            45 -> ApplicationCommand.UpdateClip(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterULong.read(buf),
@@ -7118,18 +7644,18 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterOptionalTypeSpeakerId.read(buf),
                 FfiConverterString.read(buf),
                 )
-            41 -> ApplicationCommand.SetClipDeleted(
+            46 -> ApplicationCommand.SetClipDeleted(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
-            42 -> ApplicationCommand.ClearClips(
+            47 -> ApplicationCommand.ClearClips(
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            43 -> ApplicationCommand.CancelOperation(
+            48 -> ApplicationCommand.CancelOperation(
                 FfiConverterTypeCancellationId.read(buf),
                 )
-            44 -> ApplicationCommand.Unsupported(
+            49 -> ApplicationCommand.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -7337,6 +7863,44 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
             (
                 4UL
                 + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeStateRevision.allocationSize(value.`expectedWorkflowRevision`)
+            )
+        }
+        is ApplicationCommand.EnsureScheduledTask -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeScheduledTaskInput.allocationSize(value.`task`)
+            )
+        }
+        is ApplicationCommand.UpdateScheduledTask -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeScheduledTaskId.allocationSize(value.`taskId`)
+                + FfiConverterTypeStateRevision.allocationSize(value.`expectedTaskRevision`)
+                + FfiConverterTypeScheduledTaskInput.allocationSize(value.`task`)
+            )
+        }
+        is ApplicationCommand.RemoveScheduledTask -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeScheduledTaskId.allocationSize(value.`taskId`)
+                + FfiConverterTypeStateRevision.allocationSize(value.`expectedTaskRevision`)
+            )
+        }
+        is ApplicationCommand.ReconcileScheduledRuns -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ApplicationCommand.CancelScheduledRun -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeScheduledOccurrenceId.allocationSize(value.`occurrenceId`)
                 + FfiConverterTypeStateRevision.allocationSize(value.`expectedWorkflowRevision`)
             )
         }
@@ -7644,50 +8208,78 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
-            is ApplicationCommand.CommitChapter -> {
+            is ApplicationCommand.EnsureScheduledTask -> {
                 buf.putInt(28)
+                FfiConverterTypeScheduledTaskInput.write(value.`task`, buf)
+                Unit
+            }
+            is ApplicationCommand.UpdateScheduledTask -> {
+                buf.putInt(29)
+                FfiConverterTypeScheduledTaskId.write(value.`taskId`, buf)
+                FfiConverterTypeStateRevision.write(value.`expectedTaskRevision`, buf)
+                FfiConverterTypeScheduledTaskInput.write(value.`task`, buf)
+                Unit
+            }
+            is ApplicationCommand.RemoveScheduledTask -> {
+                buf.putInt(30)
+                FfiConverterTypeScheduledTaskId.write(value.`taskId`, buf)
+                FfiConverterTypeStateRevision.write(value.`expectedTaskRevision`, buf)
+                Unit
+            }
+            is ApplicationCommand.ReconcileScheduledRuns -> {
+                buf.putInt(31)
+                Unit
+            }
+            is ApplicationCommand.CancelScheduledRun -> {
+                buf.putInt(32)
+                FfiConverterTypeScheduledOccurrenceId.write(value.`occurrenceId`, buf)
+                FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
+                Unit
+            }
+            is ApplicationCommand.CommitChapter -> {
+                buf.putInt(33)
                 FfiConverterTypeStateRevision.write(value.`expectedSelectionRevision`, buf)
                 FfiConverterTypeChapterArtifactInput.write(value.`artifact`, buf)
                 Unit
             }
             is ApplicationCommand.EnsurePublisherChapters -> {
-                buf.putInt(29)
+                buf.putInt(34)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 Unit
             }
             is ApplicationCommand.RetryPublisherChapters -> {
-                buf.putInt(30)
+                buf.putInt(35)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CancelPublisherChapters -> {
-                buf.putInt(31)
+                buf.putInt(36)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
             is ApplicationCommand.EnsureModelChapters -> {
-                buf.putInt(32)
+                buf.putInt(37)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterString.write(value.`configuredModel`, buf)
                 Unit
             }
             is ApplicationCommand.RetryModelChapters -> {
-                buf.putInt(33)
+                buf.putInt(38)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterString.write(value.`configuredModel`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CancelModelChapters -> {
-                buf.putInt(34)
+                buf.putInt(39)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CreateNote -> {
-                buf.putInt(35)
+                buf.putInt(40)
                 FfiConverterString.write(value.`text`, buf)
                 FfiConverterTypeNoteKind.write(value.`kind`, buf)
                 FfiConverterTypeNoteAuthor.write(value.`author`, buf)
@@ -7695,7 +8287,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.UpdateNote -> {
-                buf.putInt(36)
+                buf.putInt(41)
                 FfiConverterTypeNoteId.write(value.`noteId`, buf)
                 FfiConverterTypeNoteRevision.write(value.`expectedNoteRevision`, buf)
                 FfiConverterString.write(value.`text`, buf)
@@ -7704,19 +8296,19 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.SetNoteDeleted -> {
-                buf.putInt(37)
+                buf.putInt(42)
                 FfiConverterTypeNoteId.write(value.`noteId`, buf)
                 FfiConverterTypeNoteRevision.write(value.`expectedNoteRevision`, buf)
                 FfiConverterBoolean.write(value.`deleted`, buf)
                 Unit
             }
             is ApplicationCommand.ClearNotes -> {
-                buf.putInt(38)
+                buf.putInt(43)
                 FfiConverterTypeStateRevision.write(value.`expectedCollectionRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CreateClip -> {
-                buf.putInt(39)
+                buf.putInt(44)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
@@ -7729,7 +8321,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.UpdateClip -> {
-                buf.putInt(40)
+                buf.putInt(45)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`expectedClipRevision`, buf)
                 FfiConverterULong.write(value.`startMilliseconds`, buf)
@@ -7740,24 +8332,24 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.SetClipDeleted -> {
-                buf.putInt(41)
+                buf.putInt(46)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`expectedClipRevision`, buf)
                 FfiConverterBoolean.write(value.`deleted`, buf)
                 Unit
             }
             is ApplicationCommand.ClearClips -> {
-                buf.putInt(42)
+                buf.putInt(47)
                 FfiConverterTypeStateRevision.write(value.`expectedCollectionRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CancelOperation -> {
-                buf.putInt(43)
+                buf.putInt(48)
                 FfiConverterTypeCancellationId.write(value.`cancellationId`, buf)
                 Unit
             }
             is ApplicationCommand.Unsupported -> {
-                buf.putInt(44)
+                buf.putInt(49)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -11855,6 +12447,15 @@ sealed class HostObservation {
         companion object
     }
 
+    data class ScheduledAgentExecutionObserved(
+        val `observation`: uniffi.pod0_application.ScheduledAgentExecutionObservation) : HostObservation()
+
+    {
+
+
+        companion object
+    }
+
     data class CoreWakeReached(
         val `reason`: uniffi.pod0_application.CoreWakeReason) : HostObservation()
 
@@ -11994,18 +12595,21 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
             15 -> HostObservation.TranscriptCapabilityObserved(
                 FfiConverterTypeTranscriptCapabilityObservation.read(buf),
                 )
-            16 -> HostObservation.CoreWakeReached(
+            16 -> HostObservation.ScheduledAgentExecutionObserved(
+                FfiConverterTypeScheduledAgentExecutionObservation.read(buf),
+                )
+            17 -> HostObservation.CoreWakeReached(
                 FfiConverterTypeCoreWakeReason.read(buf),
                 )
-            17 -> HostObservation.LegacyRecallIndexArtifactsRemoved(
+            18 -> HostObservation.LegacyRecallIndexArtifactsRemoved(
                 FfiConverterUByte.read(buf),
                 )
-            18 -> HostObservation.Failed(
+            19 -> HostObservation.Failed(
                 FfiConverterTypeHostFailureCode.read(buf),
                 FfiConverterOptionalString.read(buf),
                 )
-            19 -> HostObservation.Cancelled
-            20 -> HostObservation.Unsupported(
+            20 -> HostObservation.Cancelled
+            21 -> HostObservation.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -12154,6 +12758,13 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
             (
                 4UL
                 + FfiConverterTypeTranscriptCapabilityObservation.allocationSize(value.`observation`)
+            )
+        }
+        is HostObservation.ScheduledAgentExecutionObserved -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeScheduledAgentExecutionObservation.allocationSize(value.`observation`)
             )
         }
         is HostObservation.CoreWakeReached -> {
@@ -12308,28 +12919,33 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 FfiConverterTypeTranscriptCapabilityObservation.write(value.`observation`, buf)
                 Unit
             }
-            is HostObservation.CoreWakeReached -> {
+            is HostObservation.ScheduledAgentExecutionObserved -> {
                 buf.putInt(16)
+                FfiConverterTypeScheduledAgentExecutionObservation.write(value.`observation`, buf)
+                Unit
+            }
+            is HostObservation.CoreWakeReached -> {
+                buf.putInt(17)
                 FfiConverterTypeCoreWakeReason.write(value.`reason`, buf)
                 Unit
             }
             is HostObservation.LegacyRecallIndexArtifactsRemoved -> {
-                buf.putInt(17)
+                buf.putInt(18)
                 FfiConverterUByte.write(value.`removedFileCount`, buf)
                 Unit
             }
             is HostObservation.Failed -> {
-                buf.putInt(18)
+                buf.putInt(19)
                 FfiConverterTypeHostFailureCode.write(value.`code`, buf)
                 FfiConverterOptionalString.write(value.`safeDetail`, buf)
                 Unit
             }
             is HostObservation.Cancelled -> {
-                buf.putInt(19)
+                buf.putInt(20)
                 Unit
             }
             is HostObservation.Unsupported -> {
-                buf.putInt(20)
+                buf.putInt(21)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -12756,6 +13372,15 @@ sealed class HostRequest {
         companion object
     }
 
+    data class ExecuteScheduledAgentTurn(
+        val `execution`: uniffi.pod0_application.ScheduledAgentExecutionRequest) : HostRequest()
+
+    {
+
+
+        companion object
+    }
+
     data class ScheduleCoreWake(
         val `wakeAt`: uniffi.pod0_domain.UnixTimestampMilliseconds,
         val `reason`: uniffi.pod0_application.CoreWakeReason) : HostRequest()
@@ -12901,12 +13526,15 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
             20 -> HostRequest.ExecuteTranscriptCapability(
                 FfiConverterTypeTranscriptCapabilityRequest.read(buf),
                 )
-            21 -> HostRequest.ScheduleCoreWake(
+            21 -> HostRequest.ExecuteScheduledAgentTurn(
+                FfiConverterTypeScheduledAgentExecutionRequest.read(buf),
+                )
+            22 -> HostRequest.ScheduleCoreWake(
                 FfiConverterTypeUnixTimestampMilliseconds.read(buf),
                 FfiConverterTypeCoreWakeReason.read(buf),
                 )
-            22 -> HostRequest.RemoveLegacyRecallIndexArtifacts
-            23 -> HostRequest.Unsupported(
+            23 -> HostRequest.RemoveLegacyRecallIndexArtifacts
+            24 -> HostRequest.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -13101,6 +13729,13 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 + FfiConverterTypeTranscriptCapabilityRequest.allocationSize(value.`capability`)
             )
         }
+        is HostRequest.ExecuteScheduledAgentTurn -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeScheduledAgentExecutionRequest.allocationSize(value.`execution`)
+            )
+        }
         is HostRequest.ScheduleCoreWake -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -13273,18 +13908,23 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 FfiConverterTypeTranscriptCapabilityRequest.write(value.`capability`, buf)
                 Unit
             }
-            is HostRequest.ScheduleCoreWake -> {
+            is HostRequest.ExecuteScheduledAgentTurn -> {
                 buf.putInt(21)
+                FfiConverterTypeScheduledAgentExecutionRequest.write(value.`execution`, buf)
+                Unit
+            }
+            is HostRequest.ScheduleCoreWake -> {
+                buf.putInt(22)
                 FfiConverterTypeUnixTimestampMilliseconds.write(value.`wakeAt`, buf)
                 FfiConverterTypeCoreWakeReason.write(value.`reason`, buf)
                 Unit
             }
             is HostRequest.RemoveLegacyRecallIndexArtifacts -> {
-                buf.putInt(22)
+                buf.putInt(23)
                 Unit
             }
             is HostRequest.Unsupported -> {
-                buf.putInt(23)
+                buf.putInt(24)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -16304,6 +16944,15 @@ sealed class Projection {
         companion object
     }
 
+    data class ScheduledAgent(
+        val `value`: uniffi.pod0_application.ScheduledAgentProjection) : Projection()
+
+    {
+
+
+        companion object
+    }
+
     data class Notes(
         val `value`: uniffi.pod0_application.NotesProjection) : Projection()
 
@@ -16383,13 +17032,16 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
             12 -> Projection.Downloads(
                 FfiConverterTypeDownloadWorkflowsProjection.read(buf),
                 )
-            13 -> Projection.Notes(
+            13 -> Projection.ScheduledAgent(
+                FfiConverterTypeScheduledAgentProjection.read(buf),
+                )
+            14 -> Projection.Notes(
                 FfiConverterTypeNotesProjection.read(buf),
                 )
-            14 -> Projection.Clips(
+            15 -> Projection.Clips(
                 FfiConverterTypeClipsProjection.read(buf),
                 )
-            15 -> Projection.Unsupported(
+            16 -> Projection.Unsupported(
                 FfiConverterTypeUnsupportedProjection.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -16481,6 +17133,13 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
                 + FfiConverterTypeDownloadWorkflowsProjection.allocationSize(value.`value`)
             )
         }
+        is Projection.ScheduledAgent -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeScheduledAgentProjection.allocationSize(value.`value`)
+            )
+        }
         is Projection.Notes -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -16566,18 +17225,23 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
                 FfiConverterTypeDownloadWorkflowsProjection.write(value.`value`, buf)
                 Unit
             }
-            is Projection.Notes -> {
+            is Projection.ScheduledAgent -> {
                 buf.putInt(13)
+                FfiConverterTypeScheduledAgentProjection.write(value.`value`, buf)
+                Unit
+            }
+            is Projection.Notes -> {
+                buf.putInt(14)
                 FfiConverterTypeNotesProjection.write(value.`value`, buf)
                 Unit
             }
             is Projection.Clips -> {
-                buf.putInt(14)
+                buf.putInt(15)
                 FfiConverterTypeClipsProjection.write(value.`value`, buf)
                 Unit
             }
             is Projection.Unsupported -> {
-                buf.putInt(15)
+                buf.putInt(16)
                 FfiConverterTypeUnsupportedProjection.write(value.`value`, buf)
                 Unit
             }
@@ -16683,6 +17347,15 @@ sealed class ProjectionScope {
         companion object
     }
 
+    data class ScheduledAgent(
+        val `taskId`: uniffi.pod0_domain.ScheduledTaskId?) : ProjectionScope()
+
+    {
+
+
+        companion object
+    }
+
     data class Notes(
         val `scope`: uniffi.pod0_application.NoteProjectionScope) : ProjectionScope()
 
@@ -16758,13 +17431,16 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
             12 -> ProjectionScope.Downloads(
                 FfiConverterOptionalTypeEpisodeId.read(buf),
                 )
-            13 -> ProjectionScope.Notes(
+            13 -> ProjectionScope.ScheduledAgent(
+                FfiConverterOptionalTypeScheduledTaskId.read(buf),
+                )
+            14 -> ProjectionScope.Notes(
                 FfiConverterTypeNoteProjectionScope.read(buf),
                 )
-            14 -> ProjectionScope.Clips(
+            15 -> ProjectionScope.Clips(
                 FfiConverterTypeClipProjectionScope.read(buf),
                 )
-            15 -> ProjectionScope.Unsupported(
+            16 -> ProjectionScope.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -16855,6 +17531,13 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
                 + FfiConverterOptionalTypeEpisodeId.allocationSize(value.`episodeId`)
             )
         }
+        is ProjectionScope.ScheduledAgent -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterOptionalTypeScheduledTaskId.allocationSize(value.`taskId`)
+            )
+        }
         is ProjectionScope.Notes -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -16939,18 +17622,23 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
                 FfiConverterOptionalTypeEpisodeId.write(value.`episodeId`, buf)
                 Unit
             }
-            is ProjectionScope.Notes -> {
+            is ProjectionScope.ScheduledAgent -> {
                 buf.putInt(13)
+                FfiConverterOptionalTypeScheduledTaskId.write(value.`taskId`, buf)
+                Unit
+            }
+            is ProjectionScope.Notes -> {
+                buf.putInt(14)
                 FfiConverterTypeNoteProjectionScope.write(value.`scope`, buf)
                 Unit
             }
             is ProjectionScope.Clips -> {
-                buf.putInt(14)
+                buf.putInt(15)
                 FfiConverterTypeClipProjectionScope.write(value.`scope`, buf)
                 Unit
             }
             is ProjectionScope.Unsupported -> {
-                buf.putInt(15)
+                buf.putInt(16)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -17912,6 +18600,746 @@ public object FfiConverterTypeRetryability : FfiConverterRustBuffer<Retryability
             }
             is Retryability.Unsupported -> {
                 buf.putInt(4)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class ScheduledAgentContextRole {
+
+    object System : ScheduledAgentContextRole()
+
+
+    object User : ScheduledAgentContextRole()
+
+
+    object Assistant : ScheduledAgentContextRole()
+
+
+    object Tool : ScheduledAgentContextRole()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : ScheduledAgentContextRole()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeScheduledAgentContextRole : FfiConverterRustBuffer<ScheduledAgentContextRole>{
+    override fun read(buf: ByteBuffer): ScheduledAgentContextRole {
+        return when(buf.getInt()) {
+            1 -> ScheduledAgentContextRole.System
+            2 -> ScheduledAgentContextRole.User
+            3 -> ScheduledAgentContextRole.Assistant
+            4 -> ScheduledAgentContextRole.Tool
+            5 -> ScheduledAgentContextRole.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: ScheduledAgentContextRole): ULong = when(value) {
+        is ScheduledAgentContextRole.System -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentContextRole.User -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentContextRole.Assistant -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentContextRole.Tool -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentContextRole.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: ScheduledAgentContextRole, buf: ByteBuffer) {
+        when(value) {
+            is ScheduledAgentContextRole.System -> {
+                buf.putInt(1)
+                Unit
+            }
+            is ScheduledAgentContextRole.User -> {
+                buf.putInt(2)
+                Unit
+            }
+            is ScheduledAgentContextRole.Assistant -> {
+                buf.putInt(3)
+                Unit
+            }
+            is ScheduledAgentContextRole.Tool -> {
+                buf.putInt(4)
+                Unit
+            }
+            is ScheduledAgentContextRole.Unsupported -> {
+                buf.putInt(5)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class ScheduledAgentExecutionObservation {
+
+    data class Accepted(
+        val `occurrenceId`: uniffi.pod0_domain.ScheduledOccurrenceId,
+        val `attemptId`: uniffi.pod0_domain.ScheduledAttemptId,
+        val `providerOperationId`: kotlin.String?) : ScheduledAgentExecutionObservation()
+
+    {
+
+
+        companion object
+    }
+
+    data class Completed(
+        val `occurrenceId`: uniffi.pod0_domain.ScheduledOccurrenceId,
+        val `attemptId`: uniffi.pod0_domain.ScheduledAttemptId,
+        val `artifactId`: uniffi.pod0_domain.GeneratedArtifactId,
+        val `outputDigest`: uniffi.pod0_domain.ContentDigest,
+        val `outputExcerpt`: kotlin.String) : ScheduledAgentExecutionObservation()
+
+    {
+
+
+        companion object
+    }
+
+    data class Failed(
+        val `occurrenceId`: uniffi.pod0_domain.ScheduledOccurrenceId,
+        val `attemptId`: uniffi.pod0_domain.ScheduledAttemptId,
+        val `code`: uniffi.pod0_application.ScheduledAgentFailureCode,
+        val `safeDetail`: kotlin.String?,
+        val `retryAfterMilliseconds`: kotlin.ULong?) : ScheduledAgentExecutionObservation()
+
+    {
+
+
+        companion object
+    }
+
+    data class Cancelled(
+        val `occurrenceId`: uniffi.pod0_domain.ScheduledOccurrenceId,
+        val `attemptId`: uniffi.pod0_domain.ScheduledAttemptId) : ScheduledAgentExecutionObservation()
+
+    {
+
+
+        companion object
+    }
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : ScheduledAgentExecutionObservation()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeScheduledAgentExecutionObservation : FfiConverterRustBuffer<ScheduledAgentExecutionObservation>{
+    override fun read(buf: ByteBuffer): ScheduledAgentExecutionObservation {
+        return when(buf.getInt()) {
+            1 -> ScheduledAgentExecutionObservation.Accepted(
+                FfiConverterTypeScheduledOccurrenceId.read(buf),
+                FfiConverterTypeScheduledAttemptId.read(buf),
+                FfiConverterOptionalString.read(buf),
+                )
+            2 -> ScheduledAgentExecutionObservation.Completed(
+                FfiConverterTypeScheduledOccurrenceId.read(buf),
+                FfiConverterTypeScheduledAttemptId.read(buf),
+                FfiConverterTypeGeneratedArtifactId.read(buf),
+                FfiConverterTypeContentDigest.read(buf),
+                FfiConverterString.read(buf),
+                )
+            3 -> ScheduledAgentExecutionObservation.Failed(
+                FfiConverterTypeScheduledOccurrenceId.read(buf),
+                FfiConverterTypeScheduledAttemptId.read(buf),
+                FfiConverterTypeScheduledAgentFailureCode.read(buf),
+                FfiConverterOptionalString.read(buf),
+                FfiConverterOptionalULong.read(buf),
+                )
+            4 -> ScheduledAgentExecutionObservation.Cancelled(
+                FfiConverterTypeScheduledOccurrenceId.read(buf),
+                FfiConverterTypeScheduledAttemptId.read(buf),
+                )
+            5 -> ScheduledAgentExecutionObservation.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: ScheduledAgentExecutionObservation): ULong = when(value) {
+        is ScheduledAgentExecutionObservation.Accepted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeScheduledOccurrenceId.allocationSize(value.`occurrenceId`)
+                + FfiConverterTypeScheduledAttemptId.allocationSize(value.`attemptId`)
+                + FfiConverterOptionalString.allocationSize(value.`providerOperationId`)
+            )
+        }
+        is ScheduledAgentExecutionObservation.Completed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeScheduledOccurrenceId.allocationSize(value.`occurrenceId`)
+                + FfiConverterTypeScheduledAttemptId.allocationSize(value.`attemptId`)
+                + FfiConverterTypeGeneratedArtifactId.allocationSize(value.`artifactId`)
+                + FfiConverterTypeContentDigest.allocationSize(value.`outputDigest`)
+                + FfiConverterString.allocationSize(value.`outputExcerpt`)
+            )
+        }
+        is ScheduledAgentExecutionObservation.Failed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeScheduledOccurrenceId.allocationSize(value.`occurrenceId`)
+                + FfiConverterTypeScheduledAttemptId.allocationSize(value.`attemptId`)
+                + FfiConverterTypeScheduledAgentFailureCode.allocationSize(value.`code`)
+                + FfiConverterOptionalString.allocationSize(value.`safeDetail`)
+                + FfiConverterOptionalULong.allocationSize(value.`retryAfterMilliseconds`)
+            )
+        }
+        is ScheduledAgentExecutionObservation.Cancelled -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeScheduledOccurrenceId.allocationSize(value.`occurrenceId`)
+                + FfiConverterTypeScheduledAttemptId.allocationSize(value.`attemptId`)
+            )
+        }
+        is ScheduledAgentExecutionObservation.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: ScheduledAgentExecutionObservation, buf: ByteBuffer) {
+        when(value) {
+            is ScheduledAgentExecutionObservation.Accepted -> {
+                buf.putInt(1)
+                FfiConverterTypeScheduledOccurrenceId.write(value.`occurrenceId`, buf)
+                FfiConverterTypeScheduledAttemptId.write(value.`attemptId`, buf)
+                FfiConverterOptionalString.write(value.`providerOperationId`, buf)
+                Unit
+            }
+            is ScheduledAgentExecutionObservation.Completed -> {
+                buf.putInt(2)
+                FfiConverterTypeScheduledOccurrenceId.write(value.`occurrenceId`, buf)
+                FfiConverterTypeScheduledAttemptId.write(value.`attemptId`, buf)
+                FfiConverterTypeGeneratedArtifactId.write(value.`artifactId`, buf)
+                FfiConverterTypeContentDigest.write(value.`outputDigest`, buf)
+                FfiConverterString.write(value.`outputExcerpt`, buf)
+                Unit
+            }
+            is ScheduledAgentExecutionObservation.Failed -> {
+                buf.putInt(3)
+                FfiConverterTypeScheduledOccurrenceId.write(value.`occurrenceId`, buf)
+                FfiConverterTypeScheduledAttemptId.write(value.`attemptId`, buf)
+                FfiConverterTypeScheduledAgentFailureCode.write(value.`code`, buf)
+                FfiConverterOptionalString.write(value.`safeDetail`, buf)
+                FfiConverterOptionalULong.write(value.`retryAfterMilliseconds`, buf)
+                Unit
+            }
+            is ScheduledAgentExecutionObservation.Cancelled -> {
+                buf.putInt(4)
+                FfiConverterTypeScheduledOccurrenceId.write(value.`occurrenceId`, buf)
+                FfiConverterTypeScheduledAttemptId.write(value.`attemptId`, buf)
+                Unit
+            }
+            is ScheduledAgentExecutionObservation.Unsupported -> {
+                buf.putInt(5)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class ScheduledAgentFailureCode {
+
+    object MissingCredential : ScheduledAgentFailureCode()
+
+
+    object Offline : ScheduledAgentFailureCode()
+
+
+    object Network : ScheduledAgentFailureCode()
+
+
+    object RateLimited : ScheduledAgentFailureCode()
+
+
+    object ProviderUnavailable : ScheduledAgentFailureCode()
+
+
+    object PermissionDenied : ScheduledAgentFailureCode()
+
+
+    object InvalidOutput : ScheduledAgentFailureCode()
+
+
+    object UnsafeToRetry : ScheduledAgentFailureCode()
+
+
+    object Cancelled : ScheduledAgentFailureCode()
+
+
+    object Unexpected : ScheduledAgentFailureCode()
+
+
+    object RetryExhausted : ScheduledAgentFailureCode()
+
+
+    object StorageUnavailable : ScheduledAgentFailureCode()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : ScheduledAgentFailureCode()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeScheduledAgentFailureCode : FfiConverterRustBuffer<ScheduledAgentFailureCode>{
+    override fun read(buf: ByteBuffer): ScheduledAgentFailureCode {
+        return when(buf.getInt()) {
+            1 -> ScheduledAgentFailureCode.MissingCredential
+            2 -> ScheduledAgentFailureCode.Offline
+            3 -> ScheduledAgentFailureCode.Network
+            4 -> ScheduledAgentFailureCode.RateLimited
+            5 -> ScheduledAgentFailureCode.ProviderUnavailable
+            6 -> ScheduledAgentFailureCode.PermissionDenied
+            7 -> ScheduledAgentFailureCode.InvalidOutput
+            8 -> ScheduledAgentFailureCode.UnsafeToRetry
+            9 -> ScheduledAgentFailureCode.Cancelled
+            10 -> ScheduledAgentFailureCode.Unexpected
+            11 -> ScheduledAgentFailureCode.RetryExhausted
+            12 -> ScheduledAgentFailureCode.StorageUnavailable
+            13 -> ScheduledAgentFailureCode.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: ScheduledAgentFailureCode): ULong = when(value) {
+        is ScheduledAgentFailureCode.MissingCredential -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentFailureCode.Offline -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentFailureCode.Network -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentFailureCode.RateLimited -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentFailureCode.ProviderUnavailable -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentFailureCode.PermissionDenied -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentFailureCode.InvalidOutput -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentFailureCode.UnsafeToRetry -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentFailureCode.Cancelled -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentFailureCode.Unexpected -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentFailureCode.RetryExhausted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentFailureCode.StorageUnavailable -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentFailureCode.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: ScheduledAgentFailureCode, buf: ByteBuffer) {
+        when(value) {
+            is ScheduledAgentFailureCode.MissingCredential -> {
+                buf.putInt(1)
+                Unit
+            }
+            is ScheduledAgentFailureCode.Offline -> {
+                buf.putInt(2)
+                Unit
+            }
+            is ScheduledAgentFailureCode.Network -> {
+                buf.putInt(3)
+                Unit
+            }
+            is ScheduledAgentFailureCode.RateLimited -> {
+                buf.putInt(4)
+                Unit
+            }
+            is ScheduledAgentFailureCode.ProviderUnavailable -> {
+                buf.putInt(5)
+                Unit
+            }
+            is ScheduledAgentFailureCode.PermissionDenied -> {
+                buf.putInt(6)
+                Unit
+            }
+            is ScheduledAgentFailureCode.InvalidOutput -> {
+                buf.putInt(7)
+                Unit
+            }
+            is ScheduledAgentFailureCode.UnsafeToRetry -> {
+                buf.putInt(8)
+                Unit
+            }
+            is ScheduledAgentFailureCode.Cancelled -> {
+                buf.putInt(9)
+                Unit
+            }
+            is ScheduledAgentFailureCode.Unexpected -> {
+                buf.putInt(10)
+                Unit
+            }
+            is ScheduledAgentFailureCode.RetryExhausted -> {
+                buf.putInt(11)
+                Unit
+            }
+            is ScheduledAgentFailureCode.StorageUnavailable -> {
+                buf.putInt(12)
+                Unit
+            }
+            is ScheduledAgentFailureCode.Unsupported -> {
+                buf.putInt(13)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class ScheduledAgentStage {
+
+    object Pending : ScheduledAgentStage()
+
+
+    object Requested : ScheduledAgentStage()
+
+
+    object HostAccepted : ScheduledAgentStage()
+
+
+    object RetryScheduled : ScheduledAgentStage()
+
+
+    object Blocked : ScheduledAgentStage()
+
+
+    object Cancelled : ScheduledAgentStage()
+
+
+    object Obsolete : ScheduledAgentStage()
+
+
+    object FailedPermanent : ScheduledAgentStage()
+
+
+    object Succeeded : ScheduledAgentStage()
+
+
+    object Ambiguous : ScheduledAgentStage()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : ScheduledAgentStage()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeScheduledAgentStage : FfiConverterRustBuffer<ScheduledAgentStage>{
+    override fun read(buf: ByteBuffer): ScheduledAgentStage {
+        return when(buf.getInt()) {
+            1 -> ScheduledAgentStage.Pending
+            2 -> ScheduledAgentStage.Requested
+            3 -> ScheduledAgentStage.HostAccepted
+            4 -> ScheduledAgentStage.RetryScheduled
+            5 -> ScheduledAgentStage.Blocked
+            6 -> ScheduledAgentStage.Cancelled
+            7 -> ScheduledAgentStage.Obsolete
+            8 -> ScheduledAgentStage.FailedPermanent
+            9 -> ScheduledAgentStage.Succeeded
+            10 -> ScheduledAgentStage.Ambiguous
+            11 -> ScheduledAgentStage.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: ScheduledAgentStage): ULong = when(value) {
+        is ScheduledAgentStage.Pending -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentStage.Requested -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentStage.HostAccepted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentStage.RetryScheduled -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentStage.Blocked -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentStage.Cancelled -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentStage.Obsolete -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentStage.FailedPermanent -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentStage.Succeeded -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentStage.Ambiguous -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is ScheduledAgentStage.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: ScheduledAgentStage, buf: ByteBuffer) {
+        when(value) {
+            is ScheduledAgentStage.Pending -> {
+                buf.putInt(1)
+                Unit
+            }
+            is ScheduledAgentStage.Requested -> {
+                buf.putInt(2)
+                Unit
+            }
+            is ScheduledAgentStage.HostAccepted -> {
+                buf.putInt(3)
+                Unit
+            }
+            is ScheduledAgentStage.RetryScheduled -> {
+                buf.putInt(4)
+                Unit
+            }
+            is ScheduledAgentStage.Blocked -> {
+                buf.putInt(5)
+                Unit
+            }
+            is ScheduledAgentStage.Cancelled -> {
+                buf.putInt(6)
+                Unit
+            }
+            is ScheduledAgentStage.Obsolete -> {
+                buf.putInt(7)
+                Unit
+            }
+            is ScheduledAgentStage.FailedPermanent -> {
+                buf.putInt(8)
+                Unit
+            }
+            is ScheduledAgentStage.Succeeded -> {
+                buf.putInt(9)
+                Unit
+            }
+            is ScheduledAgentStage.Ambiguous -> {
+                buf.putInt(10)
+                Unit
+            }
+            is ScheduledAgentStage.Unsupported -> {
+                buf.putInt(11)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -20854,6 +22282,38 @@ public object FfiConverterOptionalTypePublisherChapterWorkflowFailure: FfiConver
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeScheduledAgentFailure: FfiConverterRustBuffer<ScheduledAgentFailure?> {
+    override fun read(buf: ByteBuffer): ScheduledAgentFailure? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeScheduledAgentFailure.read(buf)
+    }
+
+    override fun allocationSize(value: ScheduledAgentFailure?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeScheduledAgentFailure.allocationSize(value)
+        }
+    }
+
+    override fun write(value: ScheduledAgentFailure?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeScheduledAgentFailure.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeTranscriptSummaryProjection: FfiConverterRustBuffer<TranscriptSummaryProjection?> {
     override fun read(buf: ByteBuffer): TranscriptSummaryProjection? {
         if (buf.get().toInt() == 0) {
@@ -21174,6 +22634,38 @@ public object FfiConverterOptionalTypeEvidenceGenerationId: FfiConverterRustBuff
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeGeneratedArtifactId: FfiConverterRustBuffer<GeneratedArtifactId?> {
+    override fun read(buf: ByteBuffer): GeneratedArtifactId? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeGeneratedArtifactId.read(buf)
+    }
+
+    override fun allocationSize(value: GeneratedArtifactId?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeGeneratedArtifactId.allocationSize(value)
+        }
+    }
+
+    override fun write(value: GeneratedArtifactId?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeGeneratedArtifactId.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeHostRequestId: FfiConverterRustBuffer<HostRequestId?> {
     override fun read(buf: ByteBuffer): HostRequestId? {
         if (buf.get().toInt() == 0) {
@@ -21324,6 +22816,70 @@ public object FfiConverterOptionalTypePodcastSubscriptionRecord: FfiConverterRus
         } else {
             buf.put(1)
             FfiConverterTypePodcastSubscriptionRecord.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeScheduledAttemptId: FfiConverterRustBuffer<ScheduledAttemptId?> {
+    override fun read(buf: ByteBuffer): ScheduledAttemptId? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeScheduledAttemptId.read(buf)
+    }
+
+    override fun allocationSize(value: ScheduledAttemptId?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeScheduledAttemptId.allocationSize(value)
+        }
+    }
+
+    override fun write(value: ScheduledAttemptId?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeScheduledAttemptId.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeScheduledTaskId: FfiConverterRustBuffer<ScheduledTaskId?> {
+    override fun read(buf: ByteBuffer): ScheduledTaskId? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeScheduledTaskId.read(buf)
+    }
+
+    override fun allocationSize(value: ScheduledTaskId?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeScheduledTaskId.allocationSize(value)
+        }
+    }
+
+    override fun write(value: ScheduledTaskId?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeScheduledTaskId.write(value, buf)
         }
     }
 }
@@ -22060,6 +23616,90 @@ public object FfiConverterSequenceTypeRecallSpanEmbeddingObservation: FfiConvert
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeRecallSpanEmbeddingObservation.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeScheduledAgentContextMessage: FfiConverterRustBuffer<List<ScheduledAgentContextMessage>> {
+    override fun read(buf: ByteBuffer): List<ScheduledAgentContextMessage> {
+        val len = buf.getInt()
+        return List<ScheduledAgentContextMessage>(len) {
+            FfiConverterTypeScheduledAgentContextMessage.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<ScheduledAgentContextMessage>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeScheduledAgentContextMessage.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<ScheduledAgentContextMessage>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeScheduledAgentContextMessage.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeScheduledAgentWorkflowProjection: FfiConverterRustBuffer<List<ScheduledAgentWorkflowProjection>> {
+    override fun read(buf: ByteBuffer): List<ScheduledAgentWorkflowProjection> {
+        val len = buf.getInt()
+        return List<ScheduledAgentWorkflowProjection>(len) {
+            FfiConverterTypeScheduledAgentWorkflowProjection.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<ScheduledAgentWorkflowProjection>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeScheduledAgentWorkflowProjection.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<ScheduledAgentWorkflowProjection>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeScheduledAgentWorkflowProjection.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeScheduledTaskProjection: FfiConverterRustBuffer<List<ScheduledTaskProjection>> {
+    override fun read(buf: ByteBuffer): List<ScheduledTaskProjection> {
+        val len = buf.getInt()
+        return List<ScheduledTaskProjection>(len) {
+            FfiConverterTypeScheduledTaskProjection.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<ScheduledTaskProjection>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeScheduledTaskProjection.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<ScheduledTaskProjection>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeScheduledTaskProjection.write(it, buf)
         }
     }
 }

@@ -2530,6 +2530,60 @@ public func FfiConverterTypeFeedIdentityV1_lower(_ value: FeedIdentityV1) -> Rus
 }
 
 
+public struct GeneratedArtifactId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension GeneratedArtifactId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeGeneratedArtifactId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> GeneratedArtifactId {
+        return
+            try GeneratedArtifactId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: GeneratedArtifactId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeGeneratedArtifactId_lift(_ buf: RustBuffer) throws -> GeneratedArtifactId {
+    return try FfiConverterTypeGeneratedArtifactId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeGeneratedArtifactId_lower(_ value: GeneratedArtifactId) -> RustBuffer {
+    return FfiConverterTypeGeneratedArtifactId.lower(value)
+}
+
+
 public struct HostRequestId: Equatable, Hashable {
     public let high: UInt64
     public let low: UInt64
@@ -3869,6 +3923,168 @@ public func FfiConverterTypeRecallQueryId_lift(_ buf: RustBuffer) throws -> Reca
 #endif
 public func FfiConverterTypeRecallQueryId_lower(_ value: RecallQueryId) -> RustBuffer {
     return FfiConverterTypeRecallQueryId.lower(value)
+}
+
+
+public struct ScheduledAttemptId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ScheduledAttemptId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeScheduledAttemptId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ScheduledAttemptId {
+        return
+            try ScheduledAttemptId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ScheduledAttemptId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledAttemptId_lift(_ buf: RustBuffer) throws -> ScheduledAttemptId {
+    return try FfiConverterTypeScheduledAttemptId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledAttemptId_lower(_ value: ScheduledAttemptId) -> RustBuffer {
+    return FfiConverterTypeScheduledAttemptId.lower(value)
+}
+
+
+public struct ScheduledOccurrenceId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ScheduledOccurrenceId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeScheduledOccurrenceId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ScheduledOccurrenceId {
+        return
+            try ScheduledOccurrenceId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ScheduledOccurrenceId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledOccurrenceId_lift(_ buf: RustBuffer) throws -> ScheduledOccurrenceId {
+    return try FfiConverterTypeScheduledOccurrenceId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledOccurrenceId_lower(_ value: ScheduledOccurrenceId) -> RustBuffer {
+    return FfiConverterTypeScheduledOccurrenceId.lower(value)
+}
+
+
+public struct ScheduledTaskId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ScheduledTaskId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeScheduledTaskId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ScheduledTaskId {
+        return
+            try ScheduledTaskId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ScheduledTaskId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledTaskId_lift(_ buf: RustBuffer) throws -> ScheduledTaskId {
+    return try FfiConverterTypeScheduledTaskId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledTaskId_lower(_ value: ScheduledTaskId) -> RustBuffer {
+    return FfiConverterTypeScheduledTaskId.lower(value)
 }
 
 

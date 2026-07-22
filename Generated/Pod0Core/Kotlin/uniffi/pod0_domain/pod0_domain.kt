@@ -2589,6 +2589,44 @@ public object FfiConverterTypeFeedIdentityV1: FfiConverterRustBuffer<FeedIdentit
 
 
 
+data class GeneratedArtifactId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeGeneratedArtifactId: FfiConverterRustBuffer<GeneratedArtifactId> {
+    override fun read(buf: ByteBuffer): GeneratedArtifactId {
+        return GeneratedArtifactId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: GeneratedArtifactId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: GeneratedArtifactId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
 data class HostRequestId (
     val `high`: kotlin.ULong
     ,
@@ -3631,6 +3669,120 @@ public object FfiConverterTypeRecallQueryId: FfiConverterRustBuffer<RecallQueryI
     )
 
     override fun write(value: RecallQueryId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class ScheduledAttemptId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeScheduledAttemptId: FfiConverterRustBuffer<ScheduledAttemptId> {
+    override fun read(buf: ByteBuffer): ScheduledAttemptId {
+        return ScheduledAttemptId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ScheduledAttemptId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: ScheduledAttemptId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class ScheduledOccurrenceId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeScheduledOccurrenceId: FfiConverterRustBuffer<ScheduledOccurrenceId> {
+    override fun read(buf: ByteBuffer): ScheduledOccurrenceId {
+        return ScheduledOccurrenceId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ScheduledOccurrenceId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: ScheduledOccurrenceId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class ScheduledTaskId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeScheduledTaskId: FfiConverterRustBuffer<ScheduledTaskId> {
+    override fun read(buf: ByteBuffer): ScheduledTaskId {
+        return ScheduledTaskId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ScheduledTaskId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: ScheduledTaskId, buf: ByteBuffer) {
             FfiConverterULong.write(value.`high`, buf)
             FfiConverterULong.write(value.`low`, buf)
     }

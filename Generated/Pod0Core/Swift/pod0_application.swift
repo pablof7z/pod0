@@ -5333,6 +5333,558 @@ public func FfiConverterTypeRecallSpanEmbeddingObservation_lower(_ value: Recall
 }
 
 
+public struct ScheduledAgentAllowedActions: Equatable, Hashable {
+    public let canRetry: Bool
+    public let canCancel: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(canRetry: Bool, canCancel: Bool) {
+        self.canRetry = canRetry
+        self.canCancel = canCancel
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ScheduledAgentAllowedActions: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeScheduledAgentAllowedActions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ScheduledAgentAllowedActions {
+        return
+            try ScheduledAgentAllowedActions(
+                canRetry: FfiConverterBool.read(from: &buf),
+                canCancel: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ScheduledAgentAllowedActions, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.canRetry, into: &buf)
+        FfiConverterBool.write(value.canCancel, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledAgentAllowedActions_lift(_ buf: RustBuffer) throws -> ScheduledAgentAllowedActions {
+    return try FfiConverterTypeScheduledAgentAllowedActions.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledAgentAllowedActions_lower(_ value: ScheduledAgentAllowedActions) -> RustBuffer {
+    return FfiConverterTypeScheduledAgentAllowedActions.lower(value)
+}
+
+
+public struct ScheduledAgentContextMessage: Equatable, Hashable {
+    public let role: ScheduledAgentContextRole
+    public let content: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(role: ScheduledAgentContextRole, content: String) {
+        self.role = role
+        self.content = content
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ScheduledAgentContextMessage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeScheduledAgentContextMessage: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ScheduledAgentContextMessage {
+        return
+            try ScheduledAgentContextMessage(
+                role: FfiConverterTypeScheduledAgentContextRole.read(from: &buf),
+                content: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ScheduledAgentContextMessage, into buf: inout [UInt8]) {
+        FfiConverterTypeScheduledAgentContextRole.write(value.role, into: &buf)
+        FfiConverterString.write(value.content, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledAgentContextMessage_lift(_ buf: RustBuffer) throws -> ScheduledAgentContextMessage {
+    return try FfiConverterTypeScheduledAgentContextMessage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledAgentContextMessage_lower(_ value: ScheduledAgentContextMessage) -> RustBuffer {
+    return FfiConverterTypeScheduledAgentContextMessage.lower(value)
+}
+
+
+public struct ScheduledAgentExecutionRequest: Equatable, Hashable {
+    public let occurrenceId: ScheduledOccurrenceId
+    public let attemptId: ScheduledAttemptId
+    public let promptRevision: ContentDigest
+    public let prompt: String
+    public let modelReference: String
+    public let context: [ScheduledAgentContextMessage]
+    public let maximumOutputBytes: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(occurrenceId: ScheduledOccurrenceId, attemptId: ScheduledAttemptId, promptRevision: ContentDigest, prompt: String, modelReference: String, context: [ScheduledAgentContextMessage], maximumOutputBytes: UInt64) {
+        self.occurrenceId = occurrenceId
+        self.attemptId = attemptId
+        self.promptRevision = promptRevision
+        self.prompt = prompt
+        self.modelReference = modelReference
+        self.context = context
+        self.maximumOutputBytes = maximumOutputBytes
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ScheduledAgentExecutionRequest: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeScheduledAgentExecutionRequest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ScheduledAgentExecutionRequest {
+        return
+            try ScheduledAgentExecutionRequest(
+                occurrenceId: FfiConverterTypeScheduledOccurrenceId.read(from: &buf),
+                attemptId: FfiConverterTypeScheduledAttemptId.read(from: &buf),
+                promptRevision: FfiConverterTypeContentDigest.read(from: &buf),
+                prompt: FfiConverterString.read(from: &buf),
+                modelReference: FfiConverterString.read(from: &buf),
+                context: FfiConverterSequenceTypeScheduledAgentContextMessage.read(from: &buf),
+                maximumOutputBytes: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ScheduledAgentExecutionRequest, into buf: inout [UInt8]) {
+        FfiConverterTypeScheduledOccurrenceId.write(value.occurrenceId, into: &buf)
+        FfiConverterTypeScheduledAttemptId.write(value.attemptId, into: &buf)
+        FfiConverterTypeContentDigest.write(value.promptRevision, into: &buf)
+        FfiConverterString.write(value.prompt, into: &buf)
+        FfiConverterString.write(value.modelReference, into: &buf)
+        FfiConverterSequenceTypeScheduledAgentContextMessage.write(value.context, into: &buf)
+        FfiConverterUInt64.write(value.maximumOutputBytes, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledAgentExecutionRequest_lift(_ buf: RustBuffer) throws -> ScheduledAgentExecutionRequest {
+    return try FfiConverterTypeScheduledAgentExecutionRequest.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledAgentExecutionRequest_lower(_ value: ScheduledAgentExecutionRequest) -> RustBuffer {
+    return FfiConverterTypeScheduledAgentExecutionRequest.lower(value)
+}
+
+
+public struct ScheduledAgentFailure: Equatable, Hashable {
+    public let code: ScheduledAgentFailureCode
+    public let safeDetail: String?
+    public let retryable: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(code: ScheduledAgentFailureCode, safeDetail: String?, retryable: Bool) {
+        self.code = code
+        self.safeDetail = safeDetail
+        self.retryable = retryable
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ScheduledAgentFailure: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeScheduledAgentFailure: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ScheduledAgentFailure {
+        return
+            try ScheduledAgentFailure(
+                code: FfiConverterTypeScheduledAgentFailureCode.read(from: &buf),
+                safeDetail: FfiConverterOptionString.read(from: &buf),
+                retryable: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ScheduledAgentFailure, into buf: inout [UInt8]) {
+        FfiConverterTypeScheduledAgentFailureCode.write(value.code, into: &buf)
+        FfiConverterOptionString.write(value.safeDetail, into: &buf)
+        FfiConverterBool.write(value.retryable, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledAgentFailure_lift(_ buf: RustBuffer) throws -> ScheduledAgentFailure {
+    return try FfiConverterTypeScheduledAgentFailure.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledAgentFailure_lower(_ value: ScheduledAgentFailure) -> RustBuffer {
+    return FfiConverterTypeScheduledAgentFailure.lower(value)
+}
+
+
+public struct ScheduledAgentProjection: Equatable, Hashable {
+    public let tasks: [ScheduledTaskProjection]
+    public let workflows: [ScheduledAgentWorkflowProjection]
+    public let hasMore: Bool
+    public let failure: CoreFailure?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(tasks: [ScheduledTaskProjection], workflows: [ScheduledAgentWorkflowProjection], hasMore: Bool, failure: CoreFailure?) {
+        self.tasks = tasks
+        self.workflows = workflows
+        self.hasMore = hasMore
+        self.failure = failure
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ScheduledAgentProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeScheduledAgentProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ScheduledAgentProjection {
+        return
+            try ScheduledAgentProjection(
+                tasks: FfiConverterSequenceTypeScheduledTaskProjection.read(from: &buf),
+                workflows: FfiConverterSequenceTypeScheduledAgentWorkflowProjection.read(from: &buf),
+                hasMore: FfiConverterBool.read(from: &buf),
+                failure: FfiConverterOptionTypeCoreFailure.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ScheduledAgentProjection, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeScheduledTaskProjection.write(value.tasks, into: &buf)
+        FfiConverterSequenceTypeScheduledAgentWorkflowProjection.write(value.workflows, into: &buf)
+        FfiConverterBool.write(value.hasMore, into: &buf)
+        FfiConverterOptionTypeCoreFailure.write(value.failure, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledAgentProjection_lift(_ buf: RustBuffer) throws -> ScheduledAgentProjection {
+    return try FfiConverterTypeScheduledAgentProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledAgentProjection_lower(_ value: ScheduledAgentProjection) -> RustBuffer {
+    return FfiConverterTypeScheduledAgentProjection.lower(value)
+}
+
+
+public struct ScheduledAgentWorkflowProjection: Equatable, Hashable {
+    public let taskId: ScheduledTaskId
+    public let occurrenceId: ScheduledOccurrenceId
+    public let promptRevision: ContentDigest
+    public let stage: ScheduledAgentStage
+    public let workflowRevision: StateRevision
+    public let attempt: UInt16
+    public let attemptId: ScheduledAttemptId?
+    public let requestId: HostRequestId?
+    public let notBefore: UnixTimestampMilliseconds?
+    public let artifactId: GeneratedArtifactId?
+    public let outputDigest: ContentDigest?
+    public let failure: ScheduledAgentFailure?
+    public let updatedAt: UnixTimestampMilliseconds
+    public let allowedActions: ScheduledAgentAllowedActions
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(taskId: ScheduledTaskId, occurrenceId: ScheduledOccurrenceId, promptRevision: ContentDigest, stage: ScheduledAgentStage, workflowRevision: StateRevision, attempt: UInt16, attemptId: ScheduledAttemptId?, requestId: HostRequestId?, notBefore: UnixTimestampMilliseconds?, artifactId: GeneratedArtifactId?, outputDigest: ContentDigest?, failure: ScheduledAgentFailure?, updatedAt: UnixTimestampMilliseconds, allowedActions: ScheduledAgentAllowedActions) {
+        self.taskId = taskId
+        self.occurrenceId = occurrenceId
+        self.promptRevision = promptRevision
+        self.stage = stage
+        self.workflowRevision = workflowRevision
+        self.attempt = attempt
+        self.attemptId = attemptId
+        self.requestId = requestId
+        self.notBefore = notBefore
+        self.artifactId = artifactId
+        self.outputDigest = outputDigest
+        self.failure = failure
+        self.updatedAt = updatedAt
+        self.allowedActions = allowedActions
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ScheduledAgentWorkflowProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeScheduledAgentWorkflowProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ScheduledAgentWorkflowProjection {
+        return
+            try ScheduledAgentWorkflowProjection(
+                taskId: FfiConverterTypeScheduledTaskId.read(from: &buf),
+                occurrenceId: FfiConverterTypeScheduledOccurrenceId.read(from: &buf),
+                promptRevision: FfiConverterTypeContentDigest.read(from: &buf),
+                stage: FfiConverterTypeScheduledAgentStage.read(from: &buf),
+                workflowRevision: FfiConverterTypeStateRevision.read(from: &buf),
+                attempt: FfiConverterUInt16.read(from: &buf),
+                attemptId: FfiConverterOptionTypeScheduledAttemptId.read(from: &buf),
+                requestId: FfiConverterOptionTypeHostRequestId.read(from: &buf),
+                notBefore: FfiConverterOptionTypeUnixTimestampMilliseconds.read(from: &buf),
+                artifactId: FfiConverterOptionTypeGeneratedArtifactId.read(from: &buf),
+                outputDigest: FfiConverterOptionTypeContentDigest.read(from: &buf),
+                failure: FfiConverterOptionTypeScheduledAgentFailure.read(from: &buf),
+                updatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                allowedActions: FfiConverterTypeScheduledAgentAllowedActions.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ScheduledAgentWorkflowProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeScheduledTaskId.write(value.taskId, into: &buf)
+        FfiConverterTypeScheduledOccurrenceId.write(value.occurrenceId, into: &buf)
+        FfiConverterTypeContentDigest.write(value.promptRevision, into: &buf)
+        FfiConverterTypeScheduledAgentStage.write(value.stage, into: &buf)
+        FfiConverterTypeStateRevision.write(value.workflowRevision, into: &buf)
+        FfiConverterUInt16.write(value.attempt, into: &buf)
+        FfiConverterOptionTypeScheduledAttemptId.write(value.attemptId, into: &buf)
+        FfiConverterOptionTypeHostRequestId.write(value.requestId, into: &buf)
+        FfiConverterOptionTypeUnixTimestampMilliseconds.write(value.notBefore, into: &buf)
+        FfiConverterOptionTypeGeneratedArtifactId.write(value.artifactId, into: &buf)
+        FfiConverterOptionTypeContentDigest.write(value.outputDigest, into: &buf)
+        FfiConverterOptionTypeScheduledAgentFailure.write(value.failure, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.updatedAt, into: &buf)
+        FfiConverterTypeScheduledAgentAllowedActions.write(value.allowedActions, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledAgentWorkflowProjection_lift(_ buf: RustBuffer) throws -> ScheduledAgentWorkflowProjection {
+    return try FfiConverterTypeScheduledAgentWorkflowProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledAgentWorkflowProjection_lower(_ value: ScheduledAgentWorkflowProjection) -> RustBuffer {
+    return FfiConverterTypeScheduledAgentWorkflowProjection.lower(value)
+}
+
+
+public struct ScheduledTaskInput: Equatable, Hashable {
+    public let taskId: ScheduledTaskId?
+    public let label: String
+    public let prompt: String
+    public let modelReference: String
+    public let intervalMilliseconds: UInt64
+    public let nextRunAt: UnixTimestampMilliseconds
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(taskId: ScheduledTaskId?, label: String, prompt: String, modelReference: String, intervalMilliseconds: UInt64, nextRunAt: UnixTimestampMilliseconds) {
+        self.taskId = taskId
+        self.label = label
+        self.prompt = prompt
+        self.modelReference = modelReference
+        self.intervalMilliseconds = intervalMilliseconds
+        self.nextRunAt = nextRunAt
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ScheduledTaskInput: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeScheduledTaskInput: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ScheduledTaskInput {
+        return
+            try ScheduledTaskInput(
+                taskId: FfiConverterOptionTypeScheduledTaskId.read(from: &buf),
+                label: FfiConverterString.read(from: &buf),
+                prompt: FfiConverterString.read(from: &buf),
+                modelReference: FfiConverterString.read(from: &buf),
+                intervalMilliseconds: FfiConverterUInt64.read(from: &buf),
+                nextRunAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ScheduledTaskInput, into buf: inout [UInt8]) {
+        FfiConverterOptionTypeScheduledTaskId.write(value.taskId, into: &buf)
+        FfiConverterString.write(value.label, into: &buf)
+        FfiConverterString.write(value.prompt, into: &buf)
+        FfiConverterString.write(value.modelReference, into: &buf)
+        FfiConverterUInt64.write(value.intervalMilliseconds, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.nextRunAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledTaskInput_lift(_ buf: RustBuffer) throws -> ScheduledTaskInput {
+    return try FfiConverterTypeScheduledTaskInput.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledTaskInput_lower(_ value: ScheduledTaskInput) -> RustBuffer {
+    return FfiConverterTypeScheduledTaskInput.lower(value)
+}
+
+
+public struct ScheduledTaskProjection: Equatable, Hashable {
+    public let taskId: ScheduledTaskId
+    public let label: String
+    public let promptRevision: ContentDigest
+    public let modelReference: String
+    public let intervalMilliseconds: UInt64
+    public let lastRunAt: UnixTimestampMilliseconds?
+    public let nextRunAt: UnixTimestampMilliseconds
+    public let taskRevision: StateRevision
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(taskId: ScheduledTaskId, label: String, promptRevision: ContentDigest, modelReference: String, intervalMilliseconds: UInt64, lastRunAt: UnixTimestampMilliseconds?, nextRunAt: UnixTimestampMilliseconds, taskRevision: StateRevision) {
+        self.taskId = taskId
+        self.label = label
+        self.promptRevision = promptRevision
+        self.modelReference = modelReference
+        self.intervalMilliseconds = intervalMilliseconds
+        self.lastRunAt = lastRunAt
+        self.nextRunAt = nextRunAt
+        self.taskRevision = taskRevision
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ScheduledTaskProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeScheduledTaskProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ScheduledTaskProjection {
+        return
+            try ScheduledTaskProjection(
+                taskId: FfiConverterTypeScheduledTaskId.read(from: &buf),
+                label: FfiConverterString.read(from: &buf),
+                promptRevision: FfiConverterTypeContentDigest.read(from: &buf),
+                modelReference: FfiConverterString.read(from: &buf),
+                intervalMilliseconds: FfiConverterUInt64.read(from: &buf),
+                lastRunAt: FfiConverterOptionTypeUnixTimestampMilliseconds.read(from: &buf),
+                nextRunAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                taskRevision: FfiConverterTypeStateRevision.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ScheduledTaskProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeScheduledTaskId.write(value.taskId, into: &buf)
+        FfiConverterString.write(value.label, into: &buf)
+        FfiConverterTypeContentDigest.write(value.promptRevision, into: &buf)
+        FfiConverterString.write(value.modelReference, into: &buf)
+        FfiConverterUInt64.write(value.intervalMilliseconds, into: &buf)
+        FfiConverterOptionTypeUnixTimestampMilliseconds.write(value.lastRunAt, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.nextRunAt, into: &buf)
+        FfiConverterTypeStateRevision.write(value.taskRevision, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledTaskProjection_lift(_ buf: RustBuffer) throws -> ScheduledTaskProjection {
+    return try FfiConverterTypeScheduledTaskProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledTaskProjection_lower(_ value: ScheduledTaskProjection) -> RustBuffer {
+    return FfiConverterTypeScheduledTaskProjection.lower(value)
+}
+
+
 public struct SyntheticPodcastInput: Equatable, Hashable {
     /**
      * `None` creates a new stable ID derived from the command identity.
@@ -6928,6 +7480,15 @@ public enum ApplicationCommand: Equatable, Hashable {
     )
     case cancelTranscriptWorkflow(episodeId: EpisodeId, expectedWorkflowRevision: StateRevision
     )
+    case ensureScheduledTask(task: ScheduledTaskInput
+    )
+    case updateScheduledTask(taskId: ScheduledTaskId, expectedTaskRevision: StateRevision, task: ScheduledTaskInput
+    )
+    case removeScheduledTask(taskId: ScheduledTaskId, expectedTaskRevision: StateRevision
+    )
+    case reconcileScheduledRuns
+    case cancelScheduledRun(occurrenceId: ScheduledOccurrenceId, expectedWorkflowRevision: StateRevision
+    )
     case commitChapter(expectedSelectionRevision: StateRevision, artifact: ChapterArtifactInput
     )
     case ensurePublisherChapters(episodeId: EpisodeId
@@ -7062,55 +7623,69 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
         case 27: return .cancelTranscriptWorkflow(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 28: return .commitChapter(expectedSelectionRevision: try FfiConverterTypeStateRevision.read(from: &buf), artifact: try FfiConverterTypeChapterArtifactInput.read(from: &buf)
+        case 28: return .ensureScheduledTask(task: try FfiConverterTypeScheduledTaskInput.read(from: &buf)
         )
 
-        case 29: return .ensurePublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
+        case 29: return .updateScheduledTask(taskId: try FfiConverterTypeScheduledTaskId.read(from: &buf), expectedTaskRevision: try FfiConverterTypeStateRevision.read(from: &buf), task: try FfiConverterTypeScheduledTaskInput.read(from: &buf)
         )
 
-        case 30: return .retryPublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 30: return .removeScheduledTask(taskId: try FfiConverterTypeScheduledTaskId.read(from: &buf), expectedTaskRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 31: return .cancelPublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 31: return .reconcileScheduledRuns
+
+        case 32: return .cancelScheduledRun(occurrenceId: try FfiConverterTypeScheduledOccurrenceId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 32: return .ensureModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), configuredModel: try FfiConverterString.read(from: &buf)
+        case 33: return .commitChapter(expectedSelectionRevision: try FfiConverterTypeStateRevision.read(from: &buf), artifact: try FfiConverterTypeChapterArtifactInput.read(from: &buf)
         )
 
-        case 33: return .retryModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), configuredModel: try FfiConverterString.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 34: return .ensurePublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
         )
 
-        case 34: return .cancelModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 35: return .retryPublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 35: return .createNote(text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), author: try FfiConverterTypeNoteAuthor.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
+        case 36: return .cancelPublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 36: return .updateNote(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
+        case 37: return .ensureModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), configuredModel: try FfiConverterString.read(from: &buf)
         )
 
-        case 37: return .setNoteDeleted(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
+        case 38: return .retryModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), configuredModel: try FfiConverterString.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 38: return .clearNotes(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 39: return .cancelModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 39: return .createClip(clipId: try FfiConverterTypeClipId.read(from: &buf), episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), podcastId: try FfiConverterTypePodcastId.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf), source: try FfiConverterTypeClipSource.read(from: &buf)
+        case 40: return .createNote(text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), author: try FfiConverterTypeNoteAuthor.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
         )
 
-        case 40: return .updateClip(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf)
+        case 41: return .updateNote(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
         )
 
-        case 41: return .setClipDeleted(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
+        case 42: return .setNoteDeleted(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
         )
 
-        case 42: return .clearClips(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 43: return .clearNotes(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 43: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
+        case 44: return .createClip(clipId: try FfiConverterTypeClipId.read(from: &buf), episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), podcastId: try FfiConverterTypePodcastId.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf), source: try FfiConverterTypeClipSource.read(from: &buf)
         )
 
-        case 44: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 45: return .updateClip(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf)
+        )
+
+        case 46: return .setClipDeleted(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 47: return .clearClips(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        )
+
+        case 48: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
+        )
+
+        case 49: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -7270,50 +7845,78 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
-        case let .commitChapter(expectedSelectionRevision,artifact):
+        case let .ensureScheduledTask(task):
             writeInt(&buf, Int32(28))
+            FfiConverterTypeScheduledTaskInput.write(task, into: &buf)
+
+
+        case let .updateScheduledTask(taskId,expectedTaskRevision,task):
+            writeInt(&buf, Int32(29))
+            FfiConverterTypeScheduledTaskId.write(taskId, into: &buf)
+            FfiConverterTypeStateRevision.write(expectedTaskRevision, into: &buf)
+            FfiConverterTypeScheduledTaskInput.write(task, into: &buf)
+
+
+        case let .removeScheduledTask(taskId,expectedTaskRevision):
+            writeInt(&buf, Int32(30))
+            FfiConverterTypeScheduledTaskId.write(taskId, into: &buf)
+            FfiConverterTypeStateRevision.write(expectedTaskRevision, into: &buf)
+
+
+        case .reconcileScheduledRuns:
+            writeInt(&buf, Int32(31))
+
+
+        case let .cancelScheduledRun(occurrenceId,expectedWorkflowRevision):
+            writeInt(&buf, Int32(32))
+            FfiConverterTypeScheduledOccurrenceId.write(occurrenceId, into: &buf)
+            FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
+
+
+        case let .commitChapter(expectedSelectionRevision,artifact):
+            writeInt(&buf, Int32(33))
             FfiConverterTypeStateRevision.write(expectedSelectionRevision, into: &buf)
             FfiConverterTypeChapterArtifactInput.write(artifact, into: &buf)
 
 
         case let .ensurePublisherChapters(episodeId):
-            writeInt(&buf, Int32(29))
+            writeInt(&buf, Int32(34))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
 
 
         case let .retryPublisherChapters(episodeId,expectedWorkflowRevision):
-            writeInt(&buf, Int32(30))
+            writeInt(&buf, Int32(35))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
         case let .cancelPublisherChapters(episodeId,expectedWorkflowRevision):
-            writeInt(&buf, Int32(31))
+            writeInt(&buf, Int32(36))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
         case let .ensureModelChapters(episodeId,configuredModel):
-            writeInt(&buf, Int32(32))
+            writeInt(&buf, Int32(37))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterString.write(configuredModel, into: &buf)
 
 
         case let .retryModelChapters(episodeId,configuredModel,expectedWorkflowRevision):
-            writeInt(&buf, Int32(33))
+            writeInt(&buf, Int32(38))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterString.write(configuredModel, into: &buf)
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
         case let .cancelModelChapters(episodeId,expectedWorkflowRevision):
-            writeInt(&buf, Int32(34))
+            writeInt(&buf, Int32(39))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
         case let .createNote(text,kind,author,target):
-            writeInt(&buf, Int32(35))
+            writeInt(&buf, Int32(40))
             FfiConverterString.write(text, into: &buf)
             FfiConverterTypeNoteKind.write(kind, into: &buf)
             FfiConverterTypeNoteAuthor.write(author, into: &buf)
@@ -7321,7 +7924,7 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .updateNote(noteId,expectedNoteRevision,text,kind,target):
-            writeInt(&buf, Int32(36))
+            writeInt(&buf, Int32(41))
             FfiConverterTypeNoteId.write(noteId, into: &buf)
             FfiConverterTypeNoteRevision.write(expectedNoteRevision, into: &buf)
             FfiConverterString.write(text, into: &buf)
@@ -7330,19 +7933,19 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .setNoteDeleted(noteId,expectedNoteRevision,deleted):
-            writeInt(&buf, Int32(37))
+            writeInt(&buf, Int32(42))
             FfiConverterTypeNoteId.write(noteId, into: &buf)
             FfiConverterTypeNoteRevision.write(expectedNoteRevision, into: &buf)
             FfiConverterBool.write(deleted, into: &buf)
 
 
         case let .clearNotes(expectedCollectionRevision):
-            writeInt(&buf, Int32(38))
+            writeInt(&buf, Int32(43))
             FfiConverterTypeStateRevision.write(expectedCollectionRevision, into: &buf)
 
 
         case let .createClip(clipId,episodeId,podcastId,startMilliseconds,endMilliseconds,caption,speakerId,frozenTranscriptText,source):
-            writeInt(&buf, Int32(39))
+            writeInt(&buf, Int32(44))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypePodcastId.write(podcastId, into: &buf)
@@ -7355,7 +7958,7 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .updateClip(clipId,expectedClipRevision,startMilliseconds,endMilliseconds,caption,speakerId,frozenTranscriptText):
-            writeInt(&buf, Int32(40))
+            writeInt(&buf, Int32(45))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeClipRevision.write(expectedClipRevision, into: &buf)
             FfiConverterUInt64.write(startMilliseconds, into: &buf)
@@ -7366,24 +7969,24 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .setClipDeleted(clipId,expectedClipRevision,deleted):
-            writeInt(&buf, Int32(41))
+            writeInt(&buf, Int32(46))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeClipRevision.write(expectedClipRevision, into: &buf)
             FfiConverterBool.write(deleted, into: &buf)
 
 
         case let .clearClips(expectedCollectionRevision):
-            writeInt(&buf, Int32(42))
+            writeInt(&buf, Int32(47))
             FfiConverterTypeStateRevision.write(expectedCollectionRevision, into: &buf)
 
 
         case let .cancelOperation(cancellationId):
-            writeInt(&buf, Int32(43))
+            writeInt(&buf, Int32(48))
             FfiConverterTypeCancellationId.write(cancellationId, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(44))
+            writeInt(&buf, Int32(49))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -10198,6 +10801,8 @@ public enum HostObservation: Equatable, Hashable {
     )
     case transcriptCapabilityObserved(observation: TranscriptCapabilityObservation
     )
+    case scheduledAgentExecutionObserved(observation: ScheduledAgentExecutionObservation
+    )
     case coreWakeReached(reason: CoreWakeReason
     )
     case legacyRecallIndexArtifactsRemoved(removedFileCount: UInt8
@@ -10273,18 +10878,21 @@ public struct FfiConverterTypeHostObservation: FfiConverterRustBuffer {
         case 15: return .transcriptCapabilityObserved(observation: try FfiConverterTypeTranscriptCapabilityObservation.read(from: &buf)
         )
 
-        case 16: return .coreWakeReached(reason: try FfiConverterTypeCoreWakeReason.read(from: &buf)
+        case 16: return .scheduledAgentExecutionObserved(observation: try FfiConverterTypeScheduledAgentExecutionObservation.read(from: &buf)
         )
 
-        case 17: return .legacyRecallIndexArtifactsRemoved(removedFileCount: try FfiConverterUInt8.read(from: &buf)
+        case 17: return .coreWakeReached(reason: try FfiConverterTypeCoreWakeReason.read(from: &buf)
         )
 
-        case 18: return .failed(code: try FfiConverterTypeHostFailureCode.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf)
+        case 18: return .legacyRecallIndexArtifactsRemoved(removedFileCount: try FfiConverterUInt8.read(from: &buf)
         )
 
-        case 19: return .cancelled
+        case 19: return .failed(code: try FfiConverterTypeHostFailureCode.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf)
+        )
 
-        case 20: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 20: return .cancelled
+
+        case 21: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -10408,28 +11016,33 @@ public struct FfiConverterTypeHostObservation: FfiConverterRustBuffer {
             FfiConverterTypeTranscriptCapabilityObservation.write(observation, into: &buf)
 
 
-        case let .coreWakeReached(reason):
+        case let .scheduledAgentExecutionObserved(observation):
             writeInt(&buf, Int32(16))
+            FfiConverterTypeScheduledAgentExecutionObservation.write(observation, into: &buf)
+
+
+        case let .coreWakeReached(reason):
+            writeInt(&buf, Int32(17))
             FfiConverterTypeCoreWakeReason.write(reason, into: &buf)
 
 
         case let .legacyRecallIndexArtifactsRemoved(removedFileCount):
-            writeInt(&buf, Int32(17))
+            writeInt(&buf, Int32(18))
             FfiConverterUInt8.write(removedFileCount, into: &buf)
 
 
         case let .failed(code,safeDetail):
-            writeInt(&buf, Int32(18))
+            writeInt(&buf, Int32(19))
             FfiConverterTypeHostFailureCode.write(code, into: &buf)
             FfiConverterOptionString.write(safeDetail, into: &buf)
 
 
         case .cancelled:
-            writeInt(&buf, Int32(19))
+            writeInt(&buf, Int32(20))
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(20))
+            writeInt(&buf, Int32(21))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -10709,6 +11322,8 @@ public enum HostRequest: Equatable, Hashable {
     )
     case executeTranscriptCapability(capability: TranscriptCapabilityRequest
     )
+    case executeScheduledAgentTurn(execution: ScheduledAgentExecutionRequest
+    )
     case scheduleCoreWake(wakeAt: UnixTimestampMilliseconds, reason: CoreWakeReason
     )
     case removeLegacyRecallIndexArtifacts
@@ -10795,12 +11410,15 @@ public struct FfiConverterTypeHostRequest: FfiConverterRustBuffer {
         case 20: return .executeTranscriptCapability(capability: try FfiConverterTypeTranscriptCapabilityRequest.read(from: &buf)
         )
 
-        case 21: return .scheduleCoreWake(wakeAt: try FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf), reason: try FfiConverterTypeCoreWakeReason.read(from: &buf)
+        case 21: return .executeScheduledAgentTurn(execution: try FfiConverterTypeScheduledAgentExecutionRequest.read(from: &buf)
         )
 
-        case 22: return .removeLegacyRecallIndexArtifacts
+        case 22: return .scheduleCoreWake(wakeAt: try FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf), reason: try FfiConverterTypeCoreWakeReason.read(from: &buf)
+        )
 
-        case 23: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 23: return .removeLegacyRecallIndexArtifacts
+
+        case 24: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -10958,18 +11576,23 @@ public struct FfiConverterTypeHostRequest: FfiConverterRustBuffer {
             FfiConverterTypeTranscriptCapabilityRequest.write(capability, into: &buf)
 
 
-        case let .scheduleCoreWake(wakeAt,reason):
+        case let .executeScheduledAgentTurn(execution):
             writeInt(&buf, Int32(21))
+            FfiConverterTypeScheduledAgentExecutionRequest.write(execution, into: &buf)
+
+
+        case let .scheduleCoreWake(wakeAt,reason):
+            writeInt(&buf, Int32(22))
             FfiConverterTypeUnixTimestampMilliseconds.write(wakeAt, into: &buf)
             FfiConverterTypeCoreWakeReason.write(reason, into: &buf)
 
 
         case .removeLegacyRecallIndexArtifacts:
-            writeInt(&buf, Int32(22))
+            writeInt(&buf, Int32(23))
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(23))
+            writeInt(&buf, Int32(24))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -12836,6 +13459,8 @@ public enum Projection: Equatable, Hashable {
     )
     case downloads(value: DownloadWorkflowsProjection
     )
+    case scheduledAgent(value: ScheduledAgentProjection
+    )
     case notes(value: NotesProjection
     )
     case clips(value: ClipsProjection
@@ -12899,13 +13524,16 @@ public struct FfiConverterTypeProjection: FfiConverterRustBuffer {
         case 12: return .downloads(value: try FfiConverterTypeDownloadWorkflowsProjection.read(from: &buf)
         )
 
-        case 13: return .notes(value: try FfiConverterTypeNotesProjection.read(from: &buf)
+        case 13: return .scheduledAgent(value: try FfiConverterTypeScheduledAgentProjection.read(from: &buf)
         )
 
-        case 14: return .clips(value: try FfiConverterTypeClipsProjection.read(from: &buf)
+        case 14: return .notes(value: try FfiConverterTypeNotesProjection.read(from: &buf)
         )
 
-        case 15: return .unsupported(value: try FfiConverterTypeUnsupportedProjection.read(from: &buf)
+        case 15: return .clips(value: try FfiConverterTypeClipsProjection.read(from: &buf)
+        )
+
+        case 16: return .unsupported(value: try FfiConverterTypeUnsupportedProjection.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -12976,18 +13604,23 @@ public struct FfiConverterTypeProjection: FfiConverterRustBuffer {
             FfiConverterTypeDownloadWorkflowsProjection.write(value, into: &buf)
 
 
-        case let .notes(value):
+        case let .scheduledAgent(value):
             writeInt(&buf, Int32(13))
+            FfiConverterTypeScheduledAgentProjection.write(value, into: &buf)
+
+
+        case let .notes(value):
+            writeInt(&buf, Int32(14))
             FfiConverterTypeNotesProjection.write(value, into: &buf)
 
 
         case let .clips(value):
-            writeInt(&buf, Int32(14))
+            writeInt(&buf, Int32(15))
             FfiConverterTypeClipsProjection.write(value, into: &buf)
 
 
         case let .unsupported(value):
-            writeInt(&buf, Int32(15))
+            writeInt(&buf, Int32(16))
             FfiConverterTypeUnsupportedProjection.write(value, into: &buf)
 
         }
@@ -13034,6 +13667,8 @@ public enum ProjectionScope: Equatable, Hashable {
     case chapterWorkflows(episodeId: EpisodeId?
     )
     case downloads(episodeId: EpisodeId?
+    )
+    case scheduledAgent(taskId: ScheduledTaskId?
     )
     case notes(scope: NoteProjectionScope
     )
@@ -13095,13 +13730,16 @@ public struct FfiConverterTypeProjectionScope: FfiConverterRustBuffer {
         case 12: return .downloads(episodeId: try FfiConverterOptionTypeEpisodeId.read(from: &buf)
         )
 
-        case 13: return .notes(scope: try FfiConverterTypeNoteProjectionScope.read(from: &buf)
+        case 13: return .scheduledAgent(taskId: try FfiConverterOptionTypeScheduledTaskId.read(from: &buf)
         )
 
-        case 14: return .clips(scope: try FfiConverterTypeClipProjectionScope.read(from: &buf)
+        case 14: return .notes(scope: try FfiConverterTypeNoteProjectionScope.read(from: &buf)
         )
 
-        case 15: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 15: return .clips(scope: try FfiConverterTypeClipProjectionScope.read(from: &buf)
+        )
+
+        case 16: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -13171,18 +13809,23 @@ public struct FfiConverterTypeProjectionScope: FfiConverterRustBuffer {
             FfiConverterOptionTypeEpisodeId.write(episodeId, into: &buf)
 
 
-        case let .notes(scope):
+        case let .scheduledAgent(taskId):
             writeInt(&buf, Int32(13))
+            FfiConverterOptionTypeScheduledTaskId.write(taskId, into: &buf)
+
+
+        case let .notes(scope):
+            writeInt(&buf, Int32(14))
             FfiConverterTypeNoteProjectionScope.write(scope, into: &buf)
 
 
         case let .clips(scope):
-            writeInt(&buf, Int32(14))
+            writeInt(&buf, Int32(15))
             FfiConverterTypeClipProjectionScope.write(scope, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(15))
+            writeInt(&buf, Int32(16))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -13904,6 +14547,487 @@ public func FfiConverterTypeRetryability_lift(_ buf: RustBuffer) throws -> Retry
 #endif
 public func FfiConverterTypeRetryability_lower(_ value: Retryability) -> RustBuffer {
     return FfiConverterTypeRetryability.lower(value)
+}
+
+
+
+
+public enum ScheduledAgentContextRole: Equatable, Hashable {
+
+    case system
+    case user
+    case assistant
+    case tool
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ScheduledAgentContextRole: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeScheduledAgentContextRole: FfiConverterRustBuffer {
+    typealias SwiftType = ScheduledAgentContextRole
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ScheduledAgentContextRole {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .system
+
+        case 2: return .user
+
+        case 3: return .assistant
+
+        case 4: return .tool
+
+        case 5: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ScheduledAgentContextRole, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .system:
+            writeInt(&buf, Int32(1))
+
+
+        case .user:
+            writeInt(&buf, Int32(2))
+
+
+        case .assistant:
+            writeInt(&buf, Int32(3))
+
+
+        case .tool:
+            writeInt(&buf, Int32(4))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(5))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledAgentContextRole_lift(_ buf: RustBuffer) throws -> ScheduledAgentContextRole {
+    return try FfiConverterTypeScheduledAgentContextRole.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledAgentContextRole_lower(_ value: ScheduledAgentContextRole) -> RustBuffer {
+    return FfiConverterTypeScheduledAgentContextRole.lower(value)
+}
+
+
+
+
+public enum ScheduledAgentExecutionObservation: Equatable, Hashable {
+
+    case accepted(occurrenceId: ScheduledOccurrenceId, attemptId: ScheduledAttemptId, providerOperationId: String?
+    )
+    case completed(occurrenceId: ScheduledOccurrenceId, attemptId: ScheduledAttemptId, artifactId: GeneratedArtifactId, outputDigest: ContentDigest, outputExcerpt: String
+    )
+    case failed(occurrenceId: ScheduledOccurrenceId, attemptId: ScheduledAttemptId, code: ScheduledAgentFailureCode, safeDetail: String?, retryAfterMilliseconds: UInt64?
+    )
+    case cancelled(occurrenceId: ScheduledOccurrenceId, attemptId: ScheduledAttemptId
+    )
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ScheduledAgentExecutionObservation: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeScheduledAgentExecutionObservation: FfiConverterRustBuffer {
+    typealias SwiftType = ScheduledAgentExecutionObservation
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ScheduledAgentExecutionObservation {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .accepted(occurrenceId: try FfiConverterTypeScheduledOccurrenceId.read(from: &buf), attemptId: try FfiConverterTypeScheduledAttemptId.read(from: &buf), providerOperationId: try FfiConverterOptionString.read(from: &buf)
+        )
+
+        case 2: return .completed(occurrenceId: try FfiConverterTypeScheduledOccurrenceId.read(from: &buf), attemptId: try FfiConverterTypeScheduledAttemptId.read(from: &buf), artifactId: try FfiConverterTypeGeneratedArtifactId.read(from: &buf), outputDigest: try FfiConverterTypeContentDigest.read(from: &buf), outputExcerpt: try FfiConverterString.read(from: &buf)
+        )
+
+        case 3: return .failed(occurrenceId: try FfiConverterTypeScheduledOccurrenceId.read(from: &buf), attemptId: try FfiConverterTypeScheduledAttemptId.read(from: &buf), code: try FfiConverterTypeScheduledAgentFailureCode.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf), retryAfterMilliseconds: try FfiConverterOptionUInt64.read(from: &buf)
+        )
+
+        case 4: return .cancelled(occurrenceId: try FfiConverterTypeScheduledOccurrenceId.read(from: &buf), attemptId: try FfiConverterTypeScheduledAttemptId.read(from: &buf)
+        )
+
+        case 5: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ScheduledAgentExecutionObservation, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case let .accepted(occurrenceId,attemptId,providerOperationId):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeScheduledOccurrenceId.write(occurrenceId, into: &buf)
+            FfiConverterTypeScheduledAttemptId.write(attemptId, into: &buf)
+            FfiConverterOptionString.write(providerOperationId, into: &buf)
+
+
+        case let .completed(occurrenceId,attemptId,artifactId,outputDigest,outputExcerpt):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeScheduledOccurrenceId.write(occurrenceId, into: &buf)
+            FfiConverterTypeScheduledAttemptId.write(attemptId, into: &buf)
+            FfiConverterTypeGeneratedArtifactId.write(artifactId, into: &buf)
+            FfiConverterTypeContentDigest.write(outputDigest, into: &buf)
+            FfiConverterString.write(outputExcerpt, into: &buf)
+
+
+        case let .failed(occurrenceId,attemptId,code,safeDetail,retryAfterMilliseconds):
+            writeInt(&buf, Int32(3))
+            FfiConverterTypeScheduledOccurrenceId.write(occurrenceId, into: &buf)
+            FfiConverterTypeScheduledAttemptId.write(attemptId, into: &buf)
+            FfiConverterTypeScheduledAgentFailureCode.write(code, into: &buf)
+            FfiConverterOptionString.write(safeDetail, into: &buf)
+            FfiConverterOptionUInt64.write(retryAfterMilliseconds, into: &buf)
+
+
+        case let .cancelled(occurrenceId,attemptId):
+            writeInt(&buf, Int32(4))
+            FfiConverterTypeScheduledOccurrenceId.write(occurrenceId, into: &buf)
+            FfiConverterTypeScheduledAttemptId.write(attemptId, into: &buf)
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(5))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledAgentExecutionObservation_lift(_ buf: RustBuffer) throws -> ScheduledAgentExecutionObservation {
+    return try FfiConverterTypeScheduledAgentExecutionObservation.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledAgentExecutionObservation_lower(_ value: ScheduledAgentExecutionObservation) -> RustBuffer {
+    return FfiConverterTypeScheduledAgentExecutionObservation.lower(value)
+}
+
+
+
+
+public enum ScheduledAgentFailureCode: Equatable, Hashable {
+
+    case missingCredential
+    case offline
+    case network
+    case rateLimited
+    case providerUnavailable
+    case permissionDenied
+    case invalidOutput
+    case unsafeToRetry
+    case cancelled
+    case unexpected
+    case retryExhausted
+    case storageUnavailable
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ScheduledAgentFailureCode: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeScheduledAgentFailureCode: FfiConverterRustBuffer {
+    typealias SwiftType = ScheduledAgentFailureCode
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ScheduledAgentFailureCode {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .missingCredential
+
+        case 2: return .offline
+
+        case 3: return .network
+
+        case 4: return .rateLimited
+
+        case 5: return .providerUnavailable
+
+        case 6: return .permissionDenied
+
+        case 7: return .invalidOutput
+
+        case 8: return .unsafeToRetry
+
+        case 9: return .cancelled
+
+        case 10: return .unexpected
+
+        case 11: return .retryExhausted
+
+        case 12: return .storageUnavailable
+
+        case 13: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ScheduledAgentFailureCode, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .missingCredential:
+            writeInt(&buf, Int32(1))
+
+
+        case .offline:
+            writeInt(&buf, Int32(2))
+
+
+        case .network:
+            writeInt(&buf, Int32(3))
+
+
+        case .rateLimited:
+            writeInt(&buf, Int32(4))
+
+
+        case .providerUnavailable:
+            writeInt(&buf, Int32(5))
+
+
+        case .permissionDenied:
+            writeInt(&buf, Int32(6))
+
+
+        case .invalidOutput:
+            writeInt(&buf, Int32(7))
+
+
+        case .unsafeToRetry:
+            writeInt(&buf, Int32(8))
+
+
+        case .cancelled:
+            writeInt(&buf, Int32(9))
+
+
+        case .unexpected:
+            writeInt(&buf, Int32(10))
+
+
+        case .retryExhausted:
+            writeInt(&buf, Int32(11))
+
+
+        case .storageUnavailable:
+            writeInt(&buf, Int32(12))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(13))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledAgentFailureCode_lift(_ buf: RustBuffer) throws -> ScheduledAgentFailureCode {
+    return try FfiConverterTypeScheduledAgentFailureCode.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledAgentFailureCode_lower(_ value: ScheduledAgentFailureCode) -> RustBuffer {
+    return FfiConverterTypeScheduledAgentFailureCode.lower(value)
+}
+
+
+
+
+public enum ScheduledAgentStage: Equatable, Hashable {
+
+    case pending
+    case requested
+    case hostAccepted
+    case retryScheduled
+    case blocked
+    case cancelled
+    case obsolete
+    case failedPermanent
+    case succeeded
+    case ambiguous
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ScheduledAgentStage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeScheduledAgentStage: FfiConverterRustBuffer {
+    typealias SwiftType = ScheduledAgentStage
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ScheduledAgentStage {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .pending
+
+        case 2: return .requested
+
+        case 3: return .hostAccepted
+
+        case 4: return .retryScheduled
+
+        case 5: return .blocked
+
+        case 6: return .cancelled
+
+        case 7: return .obsolete
+
+        case 8: return .failedPermanent
+
+        case 9: return .succeeded
+
+        case 10: return .ambiguous
+
+        case 11: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ScheduledAgentStage, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .pending:
+            writeInt(&buf, Int32(1))
+
+
+        case .requested:
+            writeInt(&buf, Int32(2))
+
+
+        case .hostAccepted:
+            writeInt(&buf, Int32(3))
+
+
+        case .retryScheduled:
+            writeInt(&buf, Int32(4))
+
+
+        case .blocked:
+            writeInt(&buf, Int32(5))
+
+
+        case .cancelled:
+            writeInt(&buf, Int32(6))
+
+
+        case .obsolete:
+            writeInt(&buf, Int32(7))
+
+
+        case .failedPermanent:
+            writeInt(&buf, Int32(8))
+
+
+        case .succeeded:
+            writeInt(&buf, Int32(9))
+
+
+        case .ambiguous:
+            writeInt(&buf, Int32(10))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(11))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledAgentStage_lift(_ buf: RustBuffer) throws -> ScheduledAgentStage {
+    return try FfiConverterTypeScheduledAgentStage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScheduledAgentStage_lower(_ value: ScheduledAgentStage) -> RustBuffer {
+    return FfiConverterTypeScheduledAgentStage.lower(value)
 }
 
 
@@ -15939,6 +17063,30 @@ fileprivate struct FfiConverterOptionTypePublisherChapterWorkflowFailure: FfiCon
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeScheduledAgentFailure: FfiConverterRustBuffer {
+    typealias SwiftType = ScheduledAgentFailure?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeScheduledAgentFailure.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeScheduledAgentFailure.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeTranscriptSummaryProjection: FfiConverterRustBuffer {
     typealias SwiftType = TranscriptSummaryProjection?
 
@@ -16179,6 +17327,30 @@ fileprivate struct FfiConverterOptionTypeEvidenceGenerationId: FfiConverterRustB
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeGeneratedArtifactId: FfiConverterRustBuffer {
+    typealias SwiftType = GeneratedArtifactId?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeGeneratedArtifactId.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeGeneratedArtifactId.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeHostRequestId: FfiConverterRustBuffer {
     typealias SwiftType = HostRequestId?
 
@@ -16291,6 +17463,54 @@ fileprivate struct FfiConverterOptionTypePodcastSubscriptionRecord: FfiConverter
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypePodcastSubscriptionRecord.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeScheduledAttemptId: FfiConverterRustBuffer {
+    typealias SwiftType = ScheduledAttemptId?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeScheduledAttemptId.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeScheduledAttemptId.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeScheduledTaskId: FfiConverterRustBuffer {
+    typealias SwiftType = ScheduledTaskId?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeScheduledTaskId.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeScheduledTaskId.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -16907,6 +18127,81 @@ fileprivate struct FfiConverterSequenceTypeRecallSpanEmbeddingObservation: FfiCo
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeRecallSpanEmbeddingObservation.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeScheduledAgentContextMessage: FfiConverterRustBuffer {
+    typealias SwiftType = [ScheduledAgentContextMessage]
+
+    public static func write(_ value: [ScheduledAgentContextMessage], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeScheduledAgentContextMessage.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ScheduledAgentContextMessage] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ScheduledAgentContextMessage]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeScheduledAgentContextMessage.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeScheduledAgentWorkflowProjection: FfiConverterRustBuffer {
+    typealias SwiftType = [ScheduledAgentWorkflowProjection]
+
+    public static func write(_ value: [ScheduledAgentWorkflowProjection], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeScheduledAgentWorkflowProjection.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ScheduledAgentWorkflowProjection] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ScheduledAgentWorkflowProjection]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeScheduledAgentWorkflowProjection.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeScheduledTaskProjection: FfiConverterRustBuffer {
+    typealias SwiftType = [ScheduledTaskProjection]
+
+    public static func write(_ value: [ScheduledTaskProjection], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeScheduledTaskProjection.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ScheduledTaskProjection] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ScheduledTaskProjection]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeScheduledTaskProjection.read(from: &buf))
         }
         return seq
     }

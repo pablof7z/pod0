@@ -4,11 +4,12 @@ use sha2::{Digest, Sha256};
 use crate::runtime_artifact_command_fingerprint::{hash_chapter_commit, hash_transcript_commit};
 use crate::runtime_clip_command_fingerprint::hash_clip_command;
 use crate::runtime_command_fingerprint_values::{
-    hash_evidence_input, hash_note_author, hash_note_kind, hash_note_target, hash_optional,
-    hash_policy,
+    finish_command_hash, hash_command_tail, hash_evidence_input, hash_note_author, hash_note_kind,
+    hash_note_target, hash_optional, hash_policy,
 };
 use crate::runtime_download_command_fingerprint::hash_download_command;
 use crate::runtime_playback_fingerprint::hash_playback;
+use crate::runtime_scheduled_agent_command_fingerprint::hash_scheduled_agent_command;
 use crate::runtime_transcript_workflow_fingerprint::hash_transcript_workflow_command;
 
 pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
@@ -177,6 +178,13 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
         | ApplicationCommand::CancelTranscriptWorkflow { .. } => {
             hash_transcript_workflow_command(&mut hash, command)
         }
+        ApplicationCommand::EnsureScheduledTask { .. }
+        | ApplicationCommand::UpdateScheduledTask { .. }
+        | ApplicationCommand::RemoveScheduledTask { .. }
+        | ApplicationCommand::ReconcileScheduledRuns
+        | ApplicationCommand::CancelScheduledRun { .. } => {
+            hash_scheduled_agent_command(&mut hash, command)
+        }
         ApplicationCommand::CommitChapter {
             expected_selection_revision,
             artifact,
@@ -279,17 +287,9 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
         | ApplicationCommand::UpdateClip { .. }
         | ApplicationCommand::SetClipDeleted { .. }
         | ApplicationCommand::ClearClips { .. } => hash_clip_command(&mut hash, command),
-        ApplicationCommand::CancelOperation { cancellation_id } => {
-            hash.update(b"cancel\0");
-            hash.update(cancellation_id.into_bytes());
-        }
-        ApplicationCommand::Unsupported { wire_code } => {
-            hash.update(b"unsupported\0");
-            hash.update(wire_code.to_be_bytes());
+        ApplicationCommand::CancelOperation { .. } | ApplicationCommand::Unsupported { .. } => {
+            hash_command_tail(&mut hash, command)
         }
     }
-    hash.finalize()
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
+    finish_command_hash(hash)
 }

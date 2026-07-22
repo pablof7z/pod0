@@ -200,7 +200,7 @@ final class SharedLibraryClient {
         case .transcriptWorkflows:
             receiveTranscriptWorkflows(revision: envelope.stateRevision.value)
         case .podcastDetail, .episodeDetail, .recall, .evidenceIndex, .transcript,
-             .chapter, .unsupported:
+             .chapter, .scheduledAgent, .unsupported:
             break
         }
     }

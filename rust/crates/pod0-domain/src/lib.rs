@@ -82,6 +82,10 @@ opaque_id!(EvidenceSpanId, uniffi::Record);
 opaque_id!(EvidenceGenerationId, uniffi::Record);
 opaque_id!(NoteId, uniffi::Record);
 opaque_id!(ClipId, uniffi::Record);
+opaque_id!(ScheduledTaskId, uniffi::Record);
+opaque_id!(ScheduledOccurrenceId, uniffi::Record);
+opaque_id!(ScheduledAttemptId, uniffi::Record);
+opaque_id!(GeneratedArtifactId, uniffi::Record);
 
 mod chapter_artifact;
 mod chapter_artifact_hash;

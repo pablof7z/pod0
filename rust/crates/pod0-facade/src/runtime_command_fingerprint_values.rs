@@ -2,6 +2,29 @@ use pod0_application::TranscriptEvidenceInput;
 use pod0_domain::{AutoDownloadMode, AutoDownloadPolicy, TranscriptSource};
 use sha2::{Digest, Sha256};
 
+use pod0_application::ApplicationCommand;
+
+pub(super) fn finish_command_hash(hash: Sha256) -> String {
+    hash.finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
+}
+
+pub(super) fn hash_command_tail(hash: &mut Sha256, command: &ApplicationCommand) {
+    match command {
+        ApplicationCommand::CancelOperation { cancellation_id } => {
+            hash.update(b"cancel\0");
+            hash.update(cancellation_id.into_bytes());
+        }
+        ApplicationCommand::Unsupported { wire_code } => {
+            hash.update(b"unsupported\0");
+            hash.update(wire_code.to_be_bytes());
+        }
+        _ => unreachable!("tail fingerprint called for another command"),
+    }
+}
+
 pub(super) fn hash_note_kind(hash: &mut Sha256, value: pod0_domain::NoteKind) {
     match value {
         pod0_domain::NoteKind::Free => hash.update([1]),

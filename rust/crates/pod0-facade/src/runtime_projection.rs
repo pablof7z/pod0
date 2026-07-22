@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use pod0_application::{
     EpisodeDetailProjection, LibraryProjection, NoteProjectionScope, NotesProjection,
     PlaybackAllowedActions, PlaybackItem, PlaybackProjection, PodcastDetailProjection, Projection,
@@ -8,7 +6,6 @@ use pod0_application::{
 };
 use pod0_domain::CompletionStatus;
 
-use crate::ProjectionSubscriber;
 use crate::runtime_state::{FacadeState, failure};
 
 impl FacadeState {
@@ -206,6 +203,16 @@ impl FacadeState {
                     request.max_items,
                 ),
             },
+            ProjectionScope::ScheduledAgent { task_id: _ } => Projection::ScheduledAgent {
+                value: pod0_application::ScheduledAgentProjection {
+                    tasks: Vec::new(),
+                    workflows: Vec::new(),
+                    has_more: false,
+                    failure: Some(failure(
+                        pod0_application::CoreFailureCode::StorageUnavailable,
+                    )),
+                },
+            },
             ProjectionScope::Notes { scope } => {
                 let mut notes = self.notes.notes.clone();
                 match scope {
@@ -282,16 +289,5 @@ impl FacadeState {
             state_revision: self.revision,
             projection,
         }
-    }
-
-    pub(super) fn deliveries(&self) -> Vec<(Arc<dyn ProjectionSubscriber>, ProjectionEnvelope)> {
-        self.subscribers
-            .iter()
-            .filter_map(|(id, subscriber)| {
-                self.subscriptions
-                    .request(*id)
-                    .map(|request| (Arc::clone(subscriber), self.snapshot(request)))
-            })
-            .collect()
     }
 }

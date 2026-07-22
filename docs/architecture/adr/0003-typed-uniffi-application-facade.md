@@ -32,6 +32,11 @@ observations, and a bounded download projection. Until #117 attaches the
 durable store, download commands and projections report
 `StorageUnavailable`; the iOS product continues to use the characterized
 Swift owner and never dual-writes.
+Contract version 35 adds scheduled-task, occurrence, attempt, generated
+artifact, command, projection, host-request, and observation vocabulary. Its
+deterministic Rust policy is qualified before #128 attaches persistence;
+production commands truthfully project `StorageUnavailable`, so the Swift
+owner remains singular until #130 commits the authority cutover.
 
 ## Decision
 

@@ -46,6 +46,9 @@ pub enum ProjectionScope {
     Downloads {
         episode_id: Option<EpisodeId>,
     },
+    ScheduledAgent {
+        task_id: Option<pod0_domain::ScheduledTaskId>,
+    },
     Notes {
         scope: NoteProjectionScope,
     },
@@ -124,6 +127,9 @@ pub enum Projection {
     },
     Downloads {
         value: DownloadWorkflowsProjection,
+    },
+    ScheduledAgent {
+        value: crate::ScheduledAgentProjection,
     },
     Notes {
         value: NotesProjection,
