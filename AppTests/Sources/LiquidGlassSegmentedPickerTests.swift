@@ -10,6 +10,7 @@ import XCTest
 /// and the convenience-init's lookup behaviour. Those failures are silent
 /// in a UI test and loud in a unit test, so unit-testing them earns its
 /// keep.
+@MainActor
 final class LiquidGlassSegmentedPickerTests: XCTestCase {
 
     // MARK: - Test fixture

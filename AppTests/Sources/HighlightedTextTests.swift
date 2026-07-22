@@ -8,6 +8,7 @@ import SwiftUI
 /// silently drifted for inputs where lowercasing changed grapheme
 /// counts and missed Unicode-folded matches. These tests lock the
 /// fix in.
+@MainActor
 final class HighlightedTextTests: XCTestCase {
 
     // MARK: - Helpers

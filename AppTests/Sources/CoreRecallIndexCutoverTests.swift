@@ -35,7 +35,7 @@ final class CoreRecallIndexCutoverTests: XCTestCase {
             observation,
             .legacyRecallIndexArtifactsRemoved(removedFileCount: 3)
         )
-        facade.recordHostObservation(observation: HostObservationEnvelope(
+        _ = facade.recordHostObservation(observation: HostObservationEnvelope(
             requestId: request.requestId,
             cancellationId: request.cancellationId,
             observedRequestRevision: request.issuedRevision,

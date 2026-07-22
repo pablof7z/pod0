@@ -5,7 +5,7 @@ import XCTest
 final class DesiredStatePlannerTests: XCTestCase {
     func testPlanIsPureIdempotentAndVersionDriven() throws {
         let episode = makeEpisode()
-        var settings = Settings()
+        let settings = Settings()
         let planner = DesiredStatePlanner()
         let input = DesiredStatePlanner.Input(
             episodes: [episode], settings: settings, artifacts: [], transcripts: [],
