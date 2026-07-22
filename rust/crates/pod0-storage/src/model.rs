@@ -5,7 +5,7 @@ use pod0_domain::CommandId;
 
 pub const APPLICATION_ID: i64 = 0x504F_4430;
 pub const MIN_SUPPORTED_SCHEMA_VERSION: u32 = 0;
-pub const CURRENT_SCHEMA_VERSION: u32 = 22;
+pub const CURRENT_SCHEMA_VERSION: u32 = 23;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AccessMode {
@@ -169,6 +169,10 @@ pub enum StorageError {
     ScheduledAgentTaskNotFound,
     ScheduledAgentWorkflowNotFound,
     StaleScheduledAgentAttempt,
+    AgentCommandConflict,
+    AgentTurnNotFound,
+    AgentTurnConflict,
+    InvalidAgentState,
     NewerEvidenceSchema {
         stored: u32,
         supported: u32,
@@ -238,6 +242,10 @@ impl StorageError {
             Self::ScheduledAgentTaskNotFound => "scheduled_agent_task_not_found",
             Self::ScheduledAgentWorkflowNotFound => "scheduled_agent_workflow_not_found",
             Self::StaleScheduledAgentAttempt => "stale_scheduled_agent_attempt",
+            Self::AgentCommandConflict => "agent_command_conflict",
+            Self::AgentTurnNotFound => "agent_turn_not_found",
+            Self::AgentTurnConflict => "agent_turn_conflict",
+            Self::InvalidAgentState => "invalid_agent_state",
             Self::NewerEvidenceSchema { .. } => "newer_evidence_schema",
             Self::Interrupted => "migration_interrupted",
         }

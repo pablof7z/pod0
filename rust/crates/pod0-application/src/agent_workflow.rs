@@ -40,12 +40,37 @@ impl AgentTurnState {
             model_fence_id: input.model_fence_id,
             authorization_id: None,
             action_observation: None,
+            model_reference: input.model_reference,
         })
     }
 
     #[must_use]
     pub fn projection(&self) -> AgentTurnProjection {
         self.projection.clone()
+    }
+
+    #[must_use]
+    pub fn model_reference(&self) -> &str {
+        &self.model_reference
+    }
+
+    #[must_use]
+    pub fn is_valid_for_recovery(&self) -> bool {
+        validate_agent_model_reference(&self.model_reference).is_ok()
+            && !self.projection.messages.is_empty()
+            && self.projection.messages.iter().all(|message| {
+                !message.content.is_empty() && message.content.len() <= MAX_AGENT_MESSAGE_BYTES
+            })
+            && self.projection.proposal.as_ref().is_none_or(|proposal| {
+                validate_agent_action(&proposal.action).is_ok()
+                    && agent_proposal_identity(
+                        self.projection.turn_id,
+                        proposal.revision,
+                        &proposal.action,
+                    ) == (proposal.proposal_id, proposal.proposal_digest)
+                    && agent_tool_policy(proposal.action.tool()).authority
+                        == proposal.required_authority
+            })
     }
 
     pub fn observe_model(&mut self, observation: AgentModelObservation) -> AgentWorkflowAcceptance {

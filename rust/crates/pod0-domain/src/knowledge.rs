@@ -14,7 +14,20 @@ pub const MAX_SOURCE_REVISION_BYTES: usize = 256;
 pub const MAX_PROVENANCE_PROVIDER_BYTES: usize = 128;
 
 /// Exact SHA-256 value represented without a stringly typed hex boundary.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, uniffi::Record)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    uniffi::Record,
+)]
 pub struct ContentDigest {
     pub word_0: u64,
     pub word_1: u64,

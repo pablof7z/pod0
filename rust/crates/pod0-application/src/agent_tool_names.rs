@@ -1,4 +1,15 @@
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, uniffi::Enum)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    serde::Serialize,
+    serde::Deserialize,
+    uniffi::Enum,
+)]
 pub enum AgentToolName {
     CreateNote,
     RecordMemory,

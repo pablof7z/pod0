@@ -14,7 +14,7 @@ pub const MAX_AGENT_ACTION_TEXT_BYTES: usize = 64 * 1_024;
 pub const MAX_AGENT_PROJECTION_MESSAGES: usize = 64;
 pub const MAX_AGENT_SAFE_DETAIL_BYTES: usize = 1_024;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum AgentAuthority {
     None,
     DurableTurnGrant,
@@ -22,7 +22,7 @@ pub enum AgentAuthority {
     OneShotApproval,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum AgentToolClass {
     ReadOnly,
     ReversibleWrite,
@@ -33,14 +33,14 @@ pub enum AgentToolClass {
     SessionLocal,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct AgentToolPolicy {
     pub tool: AgentToolName,
     pub classes: Vec<AgentToolClass>,
     pub authority: AgentAuthority,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum AgentToolAction {
     NoArguments {
         tool: AgentToolName,
@@ -164,7 +164,7 @@ impl AgentToolAction {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum AgentTurnStage {
     AwaitingModel,
     ApprovalRequired,
@@ -180,20 +180,20 @@ pub enum AgentTurnStage {
     Failed,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum AgentMessageRole {
     User,
     Assistant,
     Tool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct AgentMessageProjection {
     pub role: AgentMessageRole,
     pub content: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct AgentProposalProjection {
     pub proposal_id: AgentProposalId,
     pub proposal_digest: ContentDigest,
@@ -202,7 +202,7 @@ pub struct AgentProposalProjection {
     pub required_authority: AgentAuthority,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct AgentCommitReceipt {
     pub commit_id: AgentCommitId,
     pub proposal_id: AgentProposalId,
@@ -210,7 +210,7 @@ pub struct AgentCommitReceipt {
     pub committed_at: UnixTimestampMilliseconds,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct AgentTurnProjection {
     pub conversation_id: ConversationId,
     pub turn_id: AgentTurnId,

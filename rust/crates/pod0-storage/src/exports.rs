@@ -1,3 +1,5 @@
+pub use crate::agent_store::AgentStore;
+pub use crate::agent_store_model::*;
 pub use crate::backup::{restore_backup_to_new_store, verify_backup};
 pub use crate::chapter_authority::chapter_store_is_authoritative;
 pub use crate::chapter_import::{ChapterImportClock, ChapterImporter};

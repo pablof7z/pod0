@@ -1,4 +1,9 @@
 #![forbid(unsafe_code)]
+mod agent_store;
+mod agent_store_codec;
+mod agent_store_model;
+#[cfg(test)]
+mod agent_store_tests;
 mod backup;
 mod chapter_authority;
 mod chapter_import;
@@ -137,6 +142,7 @@ mod scheduled_agent_store_reconcile;
 mod scheduled_agent_store_recovery;
 mod scheduled_agent_store_tasks;
 mod schema;
+mod schema_agent;
 mod schema_chapter_workflows;
 mod schema_chapters;
 mod schema_clips;

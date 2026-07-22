@@ -18,7 +18,7 @@ pub const MAX_SCHEDULED_AGENT_ATTEMPTS: u16 = 12;
 pub const SCHEDULED_AGENT_RETRY_DELAY_MILLISECONDS: i64 = 5 * 60 * 1_000;
 pub const SCHEDULED_AGENT_HOST_DEADLINE_MILLISECONDS: i64 = 15 * 60 * 1_000;
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct ScheduledTaskInput {
     pub task_id: Option<ScheduledTaskId>,
     pub label: String,

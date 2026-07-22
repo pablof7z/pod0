@@ -4,7 +4,7 @@ uniffi::setup_scaffolding!();
 
 macro_rules! opaque_id {
     ($name:ident $(, $extra:path)*) => {
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash $(, $extra)*)]
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize $(, $extra)*)]
         pub struct $name {
             pub high: u64,
             pub low: u64,
@@ -142,7 +142,20 @@ mod playback_policy_tests;
 #[cfg(test)]
 mod transcript_artifact_tests;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, uniffi::Record)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    uniffi::Record,
+)]
 pub struct StateRevision {
     pub value: u64,
 }
@@ -163,7 +176,18 @@ impl StateRevision {
 
 /// Kernel-owned time representation with an explicit unit and no platform
 /// date type at the shared boundary.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, uniffi::Record)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    serde::Serialize,
+    serde::Deserialize,
+    uniffi::Record,
+)]
 pub struct UnixTimestampMilliseconds {
     pub value: i64,
 }

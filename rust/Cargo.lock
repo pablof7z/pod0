@@ -1539,6 +1539,7 @@ dependencies = [
 name = "pod0-domain"
 version = "0.1.0"
 dependencies = [
+ "serde",
  "sha2",
  "uniffi",
 ]
