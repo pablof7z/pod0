@@ -30,9 +30,10 @@ final class Pod0NativeHostDispatcher {
     }
 
     private let feedHost: any CoreFeedHosting
+    let downloadHost: any CoreDownloadHosting
     let publisherChapterHost: any CorePublisherChapterHosting
     let chapterModelHost: any CoreChapterModelHosting
-    private let playbackHost: any CorePlaybackHosting
+    let playbackHost: any CorePlaybackHosting
     private let maximumConcurrentTasks: Int
     let recallHost: any CoreRecallHosting
     let recallObservationRecorder = CoreRecallObservationRecorder()
@@ -43,6 +44,9 @@ final class Pod0NativeHostDispatcher {
     var activeTasks: [HostRequestId: ActiveTask] = [:]
     var playbackStreams: [HostRequestId: PlaybackStream] = [:]
     var acknowledgementTasks: [HostRequestId: AcknowledgementTask] = [:]
+    var downloadAcknowledgementTasks: [HostRequestId: Task<Void, Never>] = [:]
+    var downloadRequests: [HostRequestId: ActiveDownloadRequest] = [:]
+    var pendingDownloadObservations: [HostRequestId: [HostObservationEnvelope]] = [:]
     var observationRecoveryTask: Task<Void, Never>?
     var observationRecoveryReady: Bool
     private var completedRequestIDs: Set<HostRequestId> = []
@@ -50,6 +54,7 @@ final class Pod0NativeHostDispatcher {
 
     init(
         feedHost: any CoreFeedHosting,
+        downloadHost: any CoreDownloadHosting = UnavailableCoreDownloadHost(),
         publisherChapterHost: any CorePublisherChapterHosting = CorePublisherChapterHost(),
         chapterModelHost: any CoreChapterModelHosting = CoreChapterModelHost(),
         playbackHost: any CorePlaybackHosting,
@@ -59,6 +64,7 @@ final class Pod0NativeHostDispatcher {
         observationOutbox: NativeHostObservationOutbox? = nil
     ) {
         self.feedHost = feedHost
+        self.downloadHost = downloadHost
         self.publisherChapterHost = publisherChapterHost
         self.chapterModelHost = chapterModelHost
         self.playbackHost = playbackHost
@@ -89,6 +95,7 @@ final class Pod0NativeHostDispatcher {
         let capacity = max(
             0,
             maximumConcurrentTasks - activeTasks.count - acknowledgementTasks.count
+                - downloadRequests.count
         )
         let boundedCount = min(Int(maximumCount), capacity)
         guard boundedCount > 0 else { return }
@@ -175,6 +182,9 @@ final class Pod0NativeHostDispatcher {
                 reason: reason,
                 delivery: delivery
             )
+        case .startEpisodeDownload, .cancelEpisodeDownload,
+             .removeEpisodeDownloadArtifact:
+            startDownloadRequest(envelope, delivery: delivery)
         default:
             finish(
                 envelope,
@@ -220,67 +230,9 @@ final class Pod0NativeHostDispatcher {
         )
     }
 
-    private func startPlaybackStream(
-        _ envelope: HostRequestEnvelope,
-        episodeID: EpisodeId?,
-        minimumIntervalMilliseconds: UInt32,
-        delivery: @escaping Delivery
-    ) {
-        let boundedMilliseconds = max(500, min(minimumIntervalMilliseconds, 5_000))
-        playbackStreams[envelope.requestId] = PlaybackStream(
-            envelope: envelope,
-            episodeID: episodeID,
-            minimumInterval: Double(boundedMilliseconds) / 1_000,
-            delivery: delivery
-        )
-        if case .playbackObserved(let value) = playbackHost.execute(envelope.request) {
-            receivePlaybackObservation(value)
-        }
-    }
-
-    private func receivePlaybackObservation(_ observation: PlaybackLifecycleObservation) {
-        let timestamp = now()
-        for requestID in Array(playbackStreams.keys) {
-            guard var stream = playbackStreams[requestID],
-                  stream.episodeID == nil || stream.episodeID == observation.episodeId
-            else { continue }
-            let isBoundary = Self.isBoundary(
-                previous: stream.lastObservation,
-                current: observation
-            )
-            let intervalElapsed = stream.lastDeliveryAt.map {
-                timestamp.timeIntervalSince($0) >= stream.minimumInterval
-            } ?? true
-            guard isBoundary || intervalElapsed else { continue }
-
-            stream.sequenceNumber += 1
-            stream.lastDeliveryAt = timestamp
-            stream.lastObservation = observation
-            playbackStreams[requestID] = stream
-            stream.delivery(makeEnvelope(
-                stream.envelope,
-                sequenceNumber: stream.sequenceNumber,
-                observedAt: timestamp,
-                observation: .playbackObserved(value: observation)
-            ))
-        }
-    }
-
-    private static func isBoundary(
-        previous: PlaybackLifecycleObservation?,
-        current: PlaybackLifecycleObservation
-    ) -> Bool {
-        guard let previous else { return true }
-        return previous.episodeId != current.episodeId
-            || previous.state != current.state
-            || previous.durationMilliseconds != current.durationMilliseconds
-            || previous.route != current.route
-            || previous.interruption != current.interruption
-            || previous.ended != current.ended
-    }
-
     private func isKnown(_ requestID: HostRequestId) -> Bool {
         activeTasks[requestID] != nil
+            || downloadRequests[requestID] != nil
             || playbackStreams[requestID] != nil
             || acknowledgementTasks[requestID] != nil
             || completedRequestIDs.contains(requestID)

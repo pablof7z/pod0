@@ -22,7 +22,7 @@
     "App/Sources/Transcript/AssemblyAITranscriptClient.swift": 470,
     "App/Sources/Features/Settings/AI/LLMSettingsView.swift": 467,
     "App/Sources/Transcript/ElevenLabsScribeClient.swift": 441,
-    "App/Sources/Services/EpisodeDownloadService.swift": 396,
+    "App/Sources/Services/EpisodeDownloadService.swift": 390,
     "App/Sources/Podcast/Episode.swift": 409,
     "App/Sources/Features/Agent/AgentChatSession+Turns.swift": 429,
     "App/Sources/Features/Player/PlayerView.swift": 425,

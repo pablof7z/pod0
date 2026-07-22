@@ -198,9 +198,11 @@ enum SharedLibraryBootstrap {
             let observationOutbox = try NativeHostObservationOutbox(
                 fileURL: persistence.nativeHostObservationOutboxURL
             )
+            CoreDownloadHost.shared.configure(coreStoreURL: target)
             let client = SharedLibraryClient(
                 facade: facade,
                 feedHost: feedHost,
+                downloadHost: CoreDownloadHost.shared,
                 observationOutbox: observationOutbox
             )
             client.start()

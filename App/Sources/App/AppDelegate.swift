@@ -56,6 +56,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         completionHandler: @escaping () -> Void
     ) {
         Task { @MainActor in
+            if identifier == CoreDownloadHost.backgroundSessionIdentifier {
+                CoreDownloadHost.shared.handleEventsForBackgroundURLSession(
+                    identifier: identifier,
+                    completionHandler: completionHandler
+                )
+                return
+            }
             EpisodeDownloadService.shared.handleEventsForBackgroundURLSession(
                 identifier: identifier,
                 completionHandler: completionHandler

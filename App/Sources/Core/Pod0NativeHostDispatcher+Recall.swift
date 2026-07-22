@@ -45,6 +45,14 @@ extension Pod0NativeHostDispatcher {
                 envelope: envelope,
                 task: task
             )
+        case .startEpisodeDownload, .cancelEpisodeDownload,
+             .removeEpisodeDownloadArtifact:
+            enqueueDownloadObservation(
+                observation,
+                for: envelope,
+                in: facade,
+                completion: completion
+            )
         default:
             _ = facade.recordHostObservation(observation: observation)
             completion()
@@ -87,10 +95,17 @@ extension Pod0NativeHostDispatcher {
             acknowledgement.task.cancel()
         }
         acknowledgementTasks.removeAll()
+        for acknowledgement in downloadAcknowledgementTasks.values {
+            acknowledgement.cancel()
+        }
+        downloadAcknowledgementTasks.removeAll()
         playbackStreams.removeAll()
+        downloadHost.shutdown()
+        downloadRequests.removeAll()
+        pendingDownloadObservations.removeAll()
     }
 
-    private static func receiptAllowsRetirement(
+    static func receiptAllowsRetirement(
         _ receipt: HostObservationReceipt,
         for request: HostRequest
     ) -> Bool {
@@ -147,14 +162,19 @@ actor CoreDurableObservationRecorder {
         return receipt
     }
 
-    func replayPending(in facade: Pod0Facade) async {
-        guard let outbox else { return }
+    func replayPending(
+        in facade: Pod0Facade
+    ) async -> [(HostObservationEnvelope, HostObservationReceipt)] {
+        guard let outbox else { return [] }
+        var replayed: [(HostObservationEnvelope, HostObservationReceipt)] = []
         for observation in await outbox.pendingObservations() {
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else { return replayed }
             let receipt = await deliverRetaining(observation, in: facade)
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else { return replayed }
             _ = try? await outbox.acknowledge(receipt)
+            replayed.append((observation, receipt))
         }
+        return replayed
     }
 
     private func persist(_ observation: HostObservationEnvelope) async -> Bool {

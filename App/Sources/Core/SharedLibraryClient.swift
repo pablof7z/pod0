@@ -51,6 +51,7 @@ final class SharedLibraryClient {
     init(
         facade: Pod0Facade,
         feedHost: any CoreFeedHosting,
+        downloadHost: any CoreDownloadHosting = UnavailableCoreDownloadHost(),
         observationOutbox: NativeHostObservationOutbox? = nil
     ) {
         self.facade = facade
@@ -62,10 +63,12 @@ final class SharedLibraryClient {
         self.deferredRecallHost = recallHost
         self.dispatcher = Pod0NativeHostDispatcher(
             feedHost: feedHost,
+            downloadHost: downloadHost,
             playbackHost: playbackHost,
             recallHost: recallHost,
             observationOutbox: observationOutbox
         )
+        self.dispatcher.bindDownloadOrphanObservations(to: facade)
     }
 
     func start() {

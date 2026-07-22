@@ -2,6 +2,13 @@ import Foundation
 
 @MainActor
 extension EpisodeDownloadService {
+    func clearProgress(for episodeID: UUID) {
+        progress[episodeID] = nil
+        expectedBytes[episodeID] = nil
+        lastPublishedProgress[episodeID] = nil
+        lastPublishedAt[episodeID] = nil
+    }
+
     /// Event-driven observation for native consumers that need the raw local
     /// capability result. Durable admission and retry policy remain in the
     /// workflow; this only awaits the terminal URLSession observation.

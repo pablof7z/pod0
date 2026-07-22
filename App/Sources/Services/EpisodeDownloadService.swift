@@ -112,12 +112,13 @@ final class EpisodeDownloadService {
                 .other
             }
             pathState.set(status)
-            if path.status == .satisfied {
-                Task { @MainActor in
-                    EpisodeDownloadService.shared.resumeQueuedDownloadsIfPossible()
-                    WorkflowRuntime.shared.dependencyChanged(for: .autoDownload)
-                    WorkflowRuntime.shared.dependencyChanged(for: .download)
-                }
+            let isSatisfied = path.status == .satisfied
+            Task { @MainActor in
+                EpisodeDownloadService.shared.publishCoreDownloadEnvironment()
+                guard isSatisfied else { return }
+                EpisodeDownloadService.shared.resumeQueuedDownloadsIfPossible()
+                WorkflowRuntime.shared.dependencyChanged(for: .autoDownload)
+                WorkflowRuntime.shared.dependencyChanged(for: .download)
             }
         }
         pathMonitor.start(queue: pathQueue)
@@ -129,6 +130,7 @@ final class EpisodeDownloadService {
     /// stores mutate the right state.
     func attach(appStore: AppStateStore) {
         self.appStore = appStore
+        publishCoreDownloadEnvironment()
         resumeQueuedDownloadsIfPossible()
     }
 
@@ -385,12 +387,4 @@ final class EpisodeDownloadService {
         )
     }
 
-    // MARK: - Internal helpers (also called from the delegate extension)
-
-    func clearProgress(for episodeID: UUID) {
-        progress[episodeID] = nil
-        expectedBytes[episodeID] = nil
-        lastPublishedProgress[episodeID] = nil
-        lastPublishedAt[episodeID] = nil
-    }
 }
