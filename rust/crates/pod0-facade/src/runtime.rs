@@ -11,6 +11,7 @@ use pod0_recall_index::{
 use pod0_storage::{EvidenceStore, LibraryStore, TranscriptStore};
 use std::path::Path;
 
+use crate::runtime_clock::SystemClock;
 use crate::runtime_recall_interrupts::RecallInterruptRegistry;
 use crate::runtime_state::FacadeState;
 use crate::{Pod0ApplicationApi, ProjectionSubscriber};
@@ -65,9 +66,44 @@ impl Pod0Facade {
         store_path: String,
         clock: Arc<dyn pod0_application::Clock>,
     ) -> Arc<Self> {
-        let facade = Self::open(store_path).expect("test store must open");
-        facade.state().set_clock(clock);
-        facade
+        Self::open_with_clock_value(store_path, clock).expect("test store must open")
+    }
+
+    fn open_with_clock_value(
+        store_path: String,
+        clock: Arc<dyn pod0_application::Clock>,
+    ) -> Result<Arc<Self>, FacadeOpenError> {
+        let path = Path::new(&store_path);
+        let store = LibraryStore::open_authoritative(path).map_err(FacadeOpenError::from)?;
+        if !pod0_storage::chapter_store_is_authoritative(path).map_err(FacadeOpenError::from)? {
+            return Err(FacadeOpenError::NotAuthoritative);
+        }
+        store
+            .require_notes_authoritative()
+            .map_err(FacadeOpenError::from)?;
+        let evidence_store = EvidenceStore::open(path).map_err(FacadeOpenError::from)?;
+        let transcript_store =
+            TranscriptStore::open_authoritative(path).map_err(FacadeOpenError::from)?;
+        let scheduled_agent_store = pod0_storage::scheduled_agent_store_is_authoritative(path)
+            .map_err(FacadeOpenError::from)?
+            .then(|| pod0_storage::ScheduledAgentStore::open_authoritative(path))
+            .transpose()
+            .map_err(FacadeOpenError::from)?;
+        let recall_index = RecallIndex::open(
+            &recall_index_path_for_core_store(path),
+            RECALL_INDEX_DIMENSIONS,
+        )
+        .map_err(FacadeOpenError::from)?;
+        let state = FacadeState::open(
+            store,
+            evidence_store,
+            transcript_store,
+            scheduled_agent_store,
+            recall_index,
+            clock,
+        )
+        .map_err(FacadeOpenError::from)?;
+        Ok(Self::from_state(state))
     }
 
     pub(super) fn notify_subscribers(&self) {
@@ -87,25 +123,7 @@ impl Pod0Facade {
 
     #[uniffi::constructor]
     pub fn open(store_path: String) -> Result<Arc<Self>, FacadeOpenError> {
-        let path = Path::new(&store_path);
-        let store = LibraryStore::open_authoritative(path).map_err(FacadeOpenError::from)?;
-        if !pod0_storage::chapter_store_is_authoritative(path).map_err(FacadeOpenError::from)? {
-            return Err(FacadeOpenError::NotAuthoritative);
-        }
-        store
-            .require_notes_authoritative()
-            .map_err(FacadeOpenError::from)?;
-        let evidence_store = EvidenceStore::open(path).map_err(FacadeOpenError::from)?;
-        let transcript_store =
-            TranscriptStore::open_authoritative(path).map_err(FacadeOpenError::from)?;
-        let recall_index = RecallIndex::open(
-            &recall_index_path_for_core_store(path),
-            RECALL_INDEX_DIMENSIONS,
-        )
-        .map_err(FacadeOpenError::from)?;
-        let state = FacadeState::open(store, evidence_store, transcript_store, recall_index)
-            .map_err(FacadeOpenError::from)?;
-        Ok(Self::from_state(state))
+        Self::open_with_clock_value(store_path, Arc::new(SystemClock))
     }
 
     pub fn dispatch(&self, command: CommandEnvelope) {
@@ -164,6 +182,7 @@ impl Pod0Facade {
             changed |= state.reconcile_download_deadlines();
             let _ = state.admit_publisher_chapter_requests();
             let _ = state.admit_download_requests();
+            let _ = state.admit_scheduled_agent_requests();
             let maximum = bounded_host_request_count(maximum_count);
             let first_count = maximum.min(state.host_queue.len());
             let mut requests = state.host_queue.drain(..first_count).collect::<Vec<_>>();

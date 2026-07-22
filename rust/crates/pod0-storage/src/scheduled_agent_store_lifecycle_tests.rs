@@ -149,6 +149,60 @@ fn stale_and_conflicting_observations_never_mutate_authority() {
     );
 }
 
+#[test]
+fn removing_a_task_fences_an_already_accepted_provider_attempt() {
+    let fixture = ScheduledFixture::new();
+    let request = start(&fixture, 1, 2_000);
+    let accepted = observation(
+        &request,
+        0,
+        2_100,
+        ScheduledAgentExecutionObservation::Accepted {
+            occurrence_id: request.execution.occurrence_id,
+            attempt_id: request.execution.attempt_id,
+            provider_operation_id: None,
+        },
+    );
+    fixture.store.apply_observation(accepted).unwrap();
+    let occurrence = fixture
+        .store
+        .occurrence(request.execution.occurrence_id)
+        .unwrap()
+        .unwrap();
+    let task = fixture.store.task(occurrence.task_id).unwrap().unwrap();
+    fixture
+        .store
+        .remove_task(fixture.context(20, 2_200), task.task_id, task.revision)
+        .unwrap();
+    assert_eq!(
+        fixture
+            .store
+            .occurrence(request.execution.occurrence_id)
+            .unwrap()
+            .unwrap()
+            .stage,
+        ScheduledAgentStage::Obsolete
+    );
+    let late = observation(
+        &request,
+        1,
+        2_300,
+        ScheduledAgentExecutionObservation::Completed {
+            occurrence_id: request.execution.occurrence_id,
+            attempt_id: request.execution.attempt_id,
+            artifact_id: pod0_application::scheduled_generated_artifact_id(
+                request.execution.attempt_id,
+            ),
+            output_digest: pod0_domain::ContentDigest::from_bytes([7; 32]),
+            output_excerpt: "Late output".to_owned(),
+        },
+    );
+    assert!(matches!(
+        fixture.store.apply_observation(late).unwrap(),
+        ScheduledAgentObservationOutcome::Stale
+    ));
+}
+
 fn start(
     fixture: &ScheduledFixture,
     value: u64,

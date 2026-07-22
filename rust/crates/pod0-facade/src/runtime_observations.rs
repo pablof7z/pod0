@@ -23,6 +23,11 @@ impl FacadeState {
             }
             return (changed, receipt);
         }
+        if let Some(result) =
+            self.retry_pending_scheduled_agent_observation(request_id, &observation)
+        {
+            return result;
+        }
         if let Some(receipt) = self.replayed_model_completion_receipt(&observation) {
             return (false, receipt);
         }
@@ -92,6 +97,7 @@ impl FacadeState {
         let pending_transcript = self.pending_transcript_record(request_id);
         let pending_wake = self.pending_core_wakes.contains_key(&request_id);
         let pending_download = self.pending_downloads.contains_key(&request_id);
+        let pending_scheduled_agent = self.pending_scheduled_agents.contains_key(&request_id);
         let acceptance = self.host_requests.accept_observation(&observation);
         if acceptance == ObservationAcceptance::PayloadTooLarge
             && let Some(record) = pending_model
@@ -125,6 +131,16 @@ impl FacadeState {
                 },
             );
         };
+        if pending_scheduled_agent {
+            let retained = observation.clone();
+            let receipt = self.persist_scheduled_agent_observation(observation);
+            if matches!(receipt, HostObservationReceipt::RetainAndRetry { .. }) {
+                self.pending_scheduled_agent_observations
+                    .insert(request_id, retained);
+            }
+            let changed = matches!(receipt, HostObservationReceipt::Persisted { .. });
+            return (changed, receipt);
+        }
         if let Some(record) = pending_model {
             let retained = observation.clone();
             let receipt = self.persist_model_observation(record, observation);
@@ -262,28 +278,5 @@ impl FacadeState {
             self.trim_operations();
         }
         changed
-    }
-
-    fn late_ambiguous_model_record(
-        &self,
-        observation: &HostObservationEnvelope,
-    ) -> Option<pod0_storage::ModelChapterWorkflowRecord> {
-        let episode_id = match observation.observation {
-            HostObservation::ChapterModelProviderAccepted { episode_id, .. }
-            | HostObservation::ChapterModelCompleted { episode_id, .. }
-            | HostObservation::ChapterModelFailed { episode_id, .. } => episode_id,
-            HostObservation::TranscriptCapabilityObserved { .. } => return None,
-            _ => return None,
-        };
-        let record = self
-            .store
-            .as_ref()?
-            .model_chapter_workflow(episode_id)
-            .ok()??;
-        (record.state == pod0_storage::ModelChapterWorkflowState::Ambiguous
-            && record.request_id == Some(observation.request_id)
-            && record.cancellation_id == observation.cancellation_id
-            && record.issued_revision == observation.observed_request_revision)
-            .then_some(record)
     }
 }

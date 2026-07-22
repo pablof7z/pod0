@@ -8,6 +8,7 @@ extension Pod0NativeHostDispatcher {
             || acknowledgementTasks[requestID] != nil
             || scheduledAgentAcknowledgementTasks[requestID] != nil
             || pendingScheduledAgentObservations[requestID]?.isEmpty == false
+            || pendingScheduledAgentExecutions[requestID] != nil
             || completedRequestIDs.contains(requestID)
     }
 

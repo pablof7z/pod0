@@ -14,6 +14,12 @@ final class Pod0NativeHostDispatcher {
         let delivery: Delivery
     }
 
+    struct PendingScheduledAgentExecution {
+        let envelope: HostRequestEnvelope
+        let execution: ScheduledAgentExecutionRequest
+        let delivery: Delivery
+    }
+
     struct AcknowledgementTask {
         let envelope: HostRequestEnvelope
         let observation: HostObservationEnvelope
@@ -50,6 +56,7 @@ final class Pod0NativeHostDispatcher {
     var acknowledgementTasks: [HostRequestId: AcknowledgementTask] = [:]
     var scheduledAgentAcknowledgementTasks: [HostRequestId: Task<Void, Never>] = [:]
     var pendingScheduledAgentObservations: [HostRequestId: [HostObservationEnvelope]] = [:]
+    var pendingScheduledAgentExecutions: [HostRequestId: PendingScheduledAgentExecution] = [:]
     var scheduledAgentObservationCompletions: [HostRequestId: @MainActor () -> Void] = [:]
     var retainedScheduledAgentObservationIDs: Set<HostRequestId> = []
     var retainedObservationIDs: Set<HostRequestId> = []
@@ -114,6 +121,7 @@ final class Pod0NativeHostDispatcher {
             0,
             maximumConcurrentTasks - activeTasks.count - acknowledgementTasks.count
                 - downloadRequests.count - scheduledAgentAcknowledgementTasks.count
+                - pendingScheduledAgentExecutions.count
         )
         let boundedCount = min(Int(maximumCount), capacity)
         guard boundedCount > 0 else { return }

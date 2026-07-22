@@ -155,9 +155,7 @@ mod runtime_recall_state;
 mod runtime_recall_test_support;
 #[cfg(test)]
 mod runtime_recall_tests;
-mod runtime_scheduled_agent_command_fingerprint;
-#[cfg(test)]
-mod runtime_scheduled_agent_contract_tests;
+mod runtime_scheduled_agent;
 mod runtime_state;
 mod runtime_state_defaults;
 mod runtime_storage_commands;

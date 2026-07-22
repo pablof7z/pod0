@@ -117,6 +117,7 @@ extension Pod0NativeHostDispatcher {
         }
         scheduledAgentAcknowledgementTasks.removeAll()
         pendingScheduledAgentObservations.removeAll()
+        pendingScheduledAgentExecutions.removeAll()
         scheduledAgentObservationCompletions.removeAll()
         retainedScheduledAgentObservationIDs.removeAll()
         retainedObservationIDs.removeAll()

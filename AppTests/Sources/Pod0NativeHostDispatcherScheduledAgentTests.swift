@@ -18,6 +18,8 @@ final class Pod0NativeHostDispatcherScheduledAgentTests: XCTestCase {
 
         made.dispatcher.execute(request) { observations.append($0) }
         made.dispatcher.execute(request) { observations.append($0) }
+        XCTAssertEqual(host.executionCount, 0, "Provider must wait for Rust persistence")
+        made.dispatcher.beginPersistedScheduledAgentExecution(for: request.requestId)
         let task = try XCTUnwrap(made.dispatcher.activeTasks[request.requestId]?.task)
         await task.value
 
@@ -36,6 +38,7 @@ final class Pod0NativeHostDispatcherScheduledAgentTests: XCTestCase {
         var observations: [HostObservationEnvelope] = []
 
         made.dispatcher.execute(request) { observations.append($0) }
+        made.dispatcher.beginPersistedScheduledAgentExecution(for: request.requestId)
         await Task.yield()
         made.dispatcher.cancel(
             requestID: request.requestId,

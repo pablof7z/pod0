@@ -12,7 +12,7 @@ use pod0_domain::{
     SubscriptionId,
 };
 use pod0_recall_index::RecallIndex;
-use pod0_storage::{EvidenceStore, LibraryStore, TranscriptStore};
+use pod0_storage::{EvidenceStore, LibraryStore, ScheduledAgentStore, TranscriptStore};
 
 use crate::ProjectionSubscriber;
 use crate::runtime_clock::SystemClock;
@@ -34,6 +34,7 @@ pub(super) struct FacadeState {
     pub(super) store: Option<LibraryStore>,
     pub(super) evidence_store: Option<EvidenceStore>,
     pub(super) transcript_store: Option<TranscriptStore>,
+    pub(super) scheduled_agent_store: Option<ScheduledAgentStore>,
     pub(super) recall_index: RecallIndex,
     pub(super) recall_configuration: pod0_domain::RecallConfiguration,
     pub(super) recall_interrupts: Arc<RecallInterruptRegistry>,
@@ -53,6 +54,10 @@ pub(super) struct FacadeState {
         BTreeMap<HostRequestId, pod0_application::HostObservationEnvelope>,
     pub(super) pending_transcripts: BTreeMap<HostRequestId, EpisodeId>,
     pub(super) pending_transcript_observations:
+        BTreeMap<HostRequestId, pod0_application::HostObservationEnvelope>,
+    pub(super) pending_scheduled_agents:
+        BTreeMap<HostRequestId, pod0_storage::ScheduledAgentHostRequestRecord>,
+    pub(super) pending_scheduled_agent_observations:
         BTreeMap<HostRequestId, pod0_application::HostObservationEnvelope>,
     pub(super) pending_core_wakes: BTreeMap<HostRequestId, CoreWakeReason>,
     pub(super) pending_evidence_indexes: BTreeMap<HostRequestId, PendingEvidenceIndex>,
@@ -82,6 +87,7 @@ impl Default for FacadeState {
             store: None,
             evidence_store: None,
             transcript_store: None,
+            scheduled_agent_store: None,
             recall_index: default_recall_index(),
             recall_configuration: pod0_domain::RecallConfiguration::default(),
             recall_interrupts: Arc::default(),
@@ -98,6 +104,8 @@ impl Default for FacadeState {
             pending_model_observations: BTreeMap::new(),
             pending_transcripts: BTreeMap::new(),
             pending_transcript_observations: BTreeMap::new(),
+            pending_scheduled_agents: BTreeMap::new(),
+            pending_scheduled_agent_observations: BTreeMap::new(),
             pending_core_wakes: BTreeMap::new(),
             pending_evidence_indexes: BTreeMap::new(),
             pending_recall_cutovers: BTreeMap::new(),
@@ -141,7 +149,9 @@ impl FacadeState {
         store: LibraryStore,
         evidence_store: EvidenceStore,
         transcript_store: TranscriptStore,
+        scheduled_agent_store: Option<ScheduledAgentStore>,
         mut recall_index: RecallIndex,
+        clock: Arc<dyn Clock>,
     ) -> Result<Self, pod0_storage::StorageError> {
         let _ = store.clear_session_sleep_timer()?;
         let _ = store.recover_download_artifacts()?;
@@ -161,6 +171,7 @@ impl FacadeState {
             ..PlaybackRuntime::default()
         };
         let mut state = Self {
+            clock,
             revision: StateRevision::new(
                 listening
                     .playback
@@ -175,6 +186,7 @@ impl FacadeState {
             store: Some(store),
             evidence_store: Some(evidence_store),
             transcript_store: Some(transcript_store),
+            scheduled_agent_store,
             recall_index,
             recall_configuration,
             playback,
@@ -184,6 +196,7 @@ impl FacadeState {
         state.rehydrate_download_workflows()?;
         state.rehydrate_model_chapter_workflows()?;
         state.rehydrate_transcript_workflows()?;
+        state.rehydrate_scheduled_agent_workflows()?;
         Ok(state)
     }
 

@@ -1,8 +1,8 @@
 use pod0_application::{
     ChapterModelFailureClassification, ChapterModelHostFailureCode, ChapterModelRetryDisposition,
-    HostFailureCode, HostObservationEnvelope, HostObservationReceipt, HostObservationRejection,
-    MODEL_CHAPTER_REQUEST_DEADLINE_MILLISECONDS, ModelChapterWorkflowFailureCode,
-    model_chapter_retry_delay_milliseconds,
+    HostFailureCode, HostObservation, HostObservationEnvelope, HostObservationReceipt,
+    HostObservationRejection, MODEL_CHAPTER_REQUEST_DEADLINE_MILLISECONDS,
+    ModelChapterWorkflowFailureCode, model_chapter_retry_delay_milliseconds,
 };
 use pod0_domain::{ContentDigest, HostRequestId, StateRevision};
 use pod0_storage::{
@@ -10,6 +10,32 @@ use pod0_storage::{
     StorageError,
 };
 use sha2::{Digest as _, Sha256};
+
+use crate::runtime_state::FacadeState;
+
+impl FacadeState {
+    pub(super) fn late_ambiguous_model_record(
+        &self,
+        observation: &HostObservationEnvelope,
+    ) -> Option<ModelChapterWorkflowRecord> {
+        let episode_id = match observation.observation {
+            HostObservation::ChapterModelProviderAccepted { episode_id, .. }
+            | HostObservation::ChapterModelCompleted { episode_id, .. }
+            | HostObservation::ChapterModelFailed { episode_id, .. } => episode_id,
+            _ => return None,
+        };
+        let record = self
+            .store
+            .as_ref()?
+            .model_chapter_workflow(episode_id)
+            .ok()??;
+        (record.state == pod0_storage::ModelChapterWorkflowState::Ambiguous
+            && record.request_id == Some(observation.request_id)
+            && record.cancellation_id == observation.cancellation_id
+            && record.issued_revision == observation.observed_request_revision)
+            .then_some(record)
+    }
+}
 
 pub(super) fn failure_disposition(
     record: &ModelChapterWorkflowRecord,

@@ -88,6 +88,7 @@ mod scheduled_agent_completion;
 #[cfg(test)]
 mod scheduled_agent_host_ledger_tests;
 mod scheduled_agent_observation;
+mod scheduled_agent_observation_validation;
 mod scheduled_agent_policy;
 #[cfg(test)]
 mod scheduled_agent_tests;

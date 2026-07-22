@@ -91,6 +91,7 @@ pub struct ScheduledAgentAllowedActions {
 pub struct ScheduledTaskProjection {
     pub task_id: ScheduledTaskId,
     pub label: String,
+    pub prompt: String,
     pub prompt_revision: ContentDigest,
     pub model_reference: String,
     pub interval_milliseconds: u64,

@@ -5611,6 +5611,8 @@ data class ScheduledTaskProjection (
     ,
     val `label`: kotlin.String
     ,
+    val `prompt`: kotlin.String
+    ,
     val `promptRevision`: ContentDigest
     ,
     val `modelReference`: kotlin.String
@@ -5640,6 +5642,7 @@ public object FfiConverterTypeScheduledTaskProjection: FfiConverterRustBuffer<Sc
         return ScheduledTaskProjection(
             FfiConverterTypeScheduledTaskId.read(buf),
             FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
             FfiConverterTypeContentDigest.read(buf),
             FfiConverterString.read(buf),
             FfiConverterULong.read(buf),
@@ -5652,6 +5655,7 @@ public object FfiConverterTypeScheduledTaskProjection: FfiConverterRustBuffer<Sc
     override fun allocationSize(value: ScheduledTaskProjection) = (
             FfiConverterTypeScheduledTaskId.allocationSize(value.`taskId`) +
             FfiConverterString.allocationSize(value.`label`) +
+            FfiConverterString.allocationSize(value.`prompt`) +
             FfiConverterTypeContentDigest.allocationSize(value.`promptRevision`) +
             FfiConverterString.allocationSize(value.`modelReference`) +
             FfiConverterULong.allocationSize(value.`intervalMilliseconds`) +
@@ -5663,6 +5667,7 @@ public object FfiConverterTypeScheduledTaskProjection: FfiConverterRustBuffer<Sc
     override fun write(value: ScheduledTaskProjection, buf: ByteBuffer) {
             FfiConverterTypeScheduledTaskId.write(value.`taskId`, buf)
             FfiConverterString.write(value.`label`, buf)
+            FfiConverterString.write(value.`prompt`, buf)
             FfiConverterTypeContentDigest.write(value.`promptRevision`, buf)
             FfiConverterString.write(value.`modelReference`, buf)
             FfiConverterULong.write(value.`intervalMilliseconds`, buf)

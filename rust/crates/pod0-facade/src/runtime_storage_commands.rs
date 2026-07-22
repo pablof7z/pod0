@@ -46,6 +46,15 @@ pub(super) fn storage_failure(error: pod0_storage::StorageError) -> CoreFailureC
         pod0_storage::StorageError::DownloadWorkflowNotFound
         | pod0_storage::StorageError::DownloadRequestNotFound => CoreFailureCode::NotFound,
         pod0_storage::StorageError::InvalidDownloadArtifact => CoreFailureCode::HostRejected,
+        pod0_storage::StorageError::ScheduledAgentCommandConflict => {
+            CoreFailureCode::InvalidCommand
+        }
+        pod0_storage::StorageError::ScheduledAgentWorkflowConflict
+        | pod0_storage::StorageError::StaleScheduledAgentAttempt => {
+            CoreFailureCode::RevisionConflict
+        }
+        pod0_storage::StorageError::ScheduledAgentTaskNotFound
+        | pod0_storage::StorageError::ScheduledAgentWorkflowNotFound => CoreFailureCode::NotFound,
         _ => CoreFailureCode::StorageUnavailable,
     }
 }

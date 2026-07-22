@@ -9,7 +9,7 @@ use crate::runtime_command_fingerprint_values::{
 };
 use crate::runtime_download_command_fingerprint::hash_download_command;
 use crate::runtime_playback_fingerprint::hash_playback;
-use crate::runtime_scheduled_agent_command_fingerprint::hash_scheduled_agent_command;
+use crate::runtime_scheduled_agent::command_fingerprint::hash_scheduled_agent_command;
 use crate::runtime_transcript_workflow_fingerprint::hash_transcript_workflow_command;
 
 pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {

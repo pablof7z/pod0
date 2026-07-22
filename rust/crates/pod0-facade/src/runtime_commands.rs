@@ -154,12 +154,12 @@ impl FacadeState {
                 episode_id,
                 expected_workflow_revision,
             } => self.cancel_transcript_workflow(&envelope, episode_id, expected_workflow_revision),
-            ApplicationCommand::EnsureScheduledTask { .. }
+            command @ (ApplicationCommand::EnsureScheduledTask { .. }
             | ApplicationCommand::UpdateScheduledTask { .. }
             | ApplicationCommand::RemoveScheduledTask { .. }
             | ApplicationCommand::ReconcileScheduledRuns
-            | ApplicationCommand::CancelScheduledRun { .. } => {
-                self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable)
+            | ApplicationCommand::CancelScheduledRun { .. }) => {
+                self.accept_scheduled_agent_command(&envelope, command)
             }
             ApplicationCommand::CommitChapter {
                 expected_selection_revision,

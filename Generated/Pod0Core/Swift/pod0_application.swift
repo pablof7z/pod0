@@ -5810,6 +5810,7 @@ public func FfiConverterTypeScheduledTaskInput_lower(_ value: ScheduledTaskInput
 public struct ScheduledTaskProjection: Equatable, Hashable {
     public let taskId: ScheduledTaskId
     public let label: String
+    public let prompt: String
     public let promptRevision: ContentDigest
     public let modelReference: String
     public let intervalMilliseconds: UInt64
@@ -5819,9 +5820,10 @@ public struct ScheduledTaskProjection: Equatable, Hashable {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(taskId: ScheduledTaskId, label: String, promptRevision: ContentDigest, modelReference: String, intervalMilliseconds: UInt64, lastRunAt: UnixTimestampMilliseconds?, nextRunAt: UnixTimestampMilliseconds, taskRevision: StateRevision) {
+    public init(taskId: ScheduledTaskId, label: String, prompt: String, promptRevision: ContentDigest, modelReference: String, intervalMilliseconds: UInt64, lastRunAt: UnixTimestampMilliseconds?, nextRunAt: UnixTimestampMilliseconds, taskRevision: StateRevision) {
         self.taskId = taskId
         self.label = label
+        self.prompt = prompt
         self.promptRevision = promptRevision
         self.modelReference = modelReference
         self.intervalMilliseconds = intervalMilliseconds
@@ -5848,6 +5850,7 @@ public struct FfiConverterTypeScheduledTaskProjection: FfiConverterRustBuffer {
             try ScheduledTaskProjection(
                 taskId: FfiConverterTypeScheduledTaskId.read(from: &buf),
                 label: FfiConverterString.read(from: &buf),
+                prompt: FfiConverterString.read(from: &buf),
                 promptRevision: FfiConverterTypeContentDigest.read(from: &buf),
                 modelReference: FfiConverterString.read(from: &buf),
                 intervalMilliseconds: FfiConverterUInt64.read(from: &buf),
@@ -5860,6 +5863,7 @@ public struct FfiConverterTypeScheduledTaskProjection: FfiConverterRustBuffer {
     public static func write(_ value: ScheduledTaskProjection, into buf: inout [UInt8]) {
         FfiConverterTypeScheduledTaskId.write(value.taskId, into: &buf)
         FfiConverterString.write(value.label, into: &buf)
+        FfiConverterString.write(value.prompt, into: &buf)
         FfiConverterTypeContentDigest.write(value.promptRevision, into: &buf)
         FfiConverterString.write(value.modelReference, into: &buf)
         FfiConverterUInt64.write(value.intervalMilliseconds, into: &buf)

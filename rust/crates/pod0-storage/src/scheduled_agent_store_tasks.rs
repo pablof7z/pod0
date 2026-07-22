@@ -112,7 +112,9 @@ impl ScheduledAgentStore {
         validate_context(&context)?;
         self.write(|transaction| {
             if let Some(receipt) = command_receipt(transaction, &context)? {
-                let stored = receipt.task_id.ok_or(StorageError::ScheduledAgentCommandConflict)?;
+                let stored = receipt
+                    .task_id
+                    .ok_or(StorageError::ScheduledAgentCommandConflict)?;
                 return Ok(ScheduledTaskRemovalOutcome::Duplicate {
                     task_id: stored,
                     revision: receipt.applied_revision,
@@ -124,30 +126,41 @@ impl ScheduledAgentStore {
                 return Err(StorageError::ScheduledAgentWorkflowConflict);
             }
             let revision = StateRevision::new(expected_revision.value.saturating_add(1));
-            transaction.execute(
-                "UPDATE pod0_scheduled_tasks SET active=0,task_revision=?1,removed_at_ms=?2,\
+            transaction
+                .execute(
+                    "UPDATE pod0_scheduled_tasks SET active=0,task_revision=?1,removed_at_ms=?2,\
                  updated_at_ms=?2 WHERE task_id=?3 AND active=1 AND task_revision=?4",
-                params![
-                    to_i64(revision.value)?, context.observed_at.value(),
-                    task_id.into_bytes().as_slice(), to_i64(expected_revision.value)?,
-                ],
-            ).map_err(|error| StorageError::sqlite("remove scheduled task", error))?;
+                    params![
+                        to_i64(revision.value)?,
+                        context.observed_at.value(),
+                        task_id.into_bytes().as_slice(),
+                        to_i64(expected_revision.value)?,
+                    ],
+                )
+                .map_err(|error| StorageError::sqlite("remove scheduled task", error))?;
             if transaction.changes() != 1 {
                 return Err(StorageError::ScheduledAgentWorkflowConflict);
             }
-            transaction.execute(
-                "UPDATE pod0_scheduled_occurrences SET stage='obsolete',\
+            transaction
+                .execute(
+                    "UPDATE pod0_scheduled_occurrences SET stage='obsolete',\
                  workflow_revision=workflow_revision+1,failure_code=NULL,failure_wire_code=NULL,\
                  failure_detail=NULL,failure_retryable=0,updated_at_ms=?1 WHERE task_id=?2 \
-                 AND stage IN('pending','requested','retry_scheduled','blocked')",
-                params![context.observed_at.value(), task_id.into_bytes().as_slice()],
-            ).map_err(|error| StorageError::sqlite("obsolete removed scheduled runs", error))?;
-            transaction.execute(
-                "UPDATE pod0_scheduled_attempts SET state='cancelled',updated_at_ms=?1 \
+                 AND stage IN('pending','requested','host_accepted','retry_scheduled','blocked')",
+                    params![context.observed_at.value(), task_id.into_bytes().as_slice()],
+                )
+                .map_err(|error| StorageError::sqlite("obsolete removed scheduled runs", error))?;
+            transaction
+                .execute(
+                    "UPDATE pod0_scheduled_attempts SET state='cancelled',updated_at_ms=?1 \
                  WHERE occurrence_id IN(SELECT occurrence_id FROM pod0_scheduled_occurrences \
-                 WHERE task_id=?2 AND stage='obsolete') AND state IN('requested','retry_scheduled','blocked')",
-                params![context.observed_at.value(), task_id.into_bytes().as_slice()],
-            ).map_err(|error| StorageError::sqlite("retire removed scheduled attempts", error))?;
+                 WHERE task_id=?2 AND stage='obsolete') \
+                 AND state IN('requested','host_accepted','retry_scheduled','blocked')",
+                    params![context.observed_at.value(), task_id.into_bytes().as_slice()],
+                )
+                .map_err(|error| {
+                    StorageError::sqlite("retire removed scheduled attempts", error)
+                })?;
             finish_command(transaction, &context, Some(task_id), None)?;
             Ok(ScheduledTaskRemovalOutcome::Applied { task_id, revision })
         })

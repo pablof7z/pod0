@@ -1,12 +1,13 @@
-use crate::{
-    MAX_SCHEDULED_AGENT_ATTEMPTS, MAX_SCHEDULED_AGENT_OUTPUT_EXCERPT_BYTES,
-    MAX_SCHEDULED_AGENT_PROVIDER_OPERATION_BYTES, MAX_SCHEDULED_AGENT_SAFE_DETAIL_BYTES,
-    SCHEDULED_AGENT_RETRY_DELAY_MILLISECONDS, ScheduledAgentExecutionObservation,
-    ScheduledAgentFailure, ScheduledAgentFailureCode, ScheduledAgentOccurrenceState,
-    ScheduledAgentStage, ScheduledAgentTransition, add_milliseconds, is_terminal, next_revision,
-    scheduled_generated_artifact_id,
+use crate::scheduled_agent_observation_validation::{
+    observation_identity, observation_is_bounded, terminal_transition,
 };
-use pod0_domain::{ScheduledAttemptId, ScheduledOccurrenceId, UnixTimestampMilliseconds};
+use crate::{
+    MAX_SCHEDULED_AGENT_ATTEMPTS, SCHEDULED_AGENT_RETRY_DELAY_MILLISECONDS,
+    ScheduledAgentExecutionObservation, ScheduledAgentFailure, ScheduledAgentFailureCode,
+    ScheduledAgentOccurrenceState, ScheduledAgentStage, ScheduledAgentTransition, add_milliseconds,
+    is_terminal, next_revision, scheduled_generated_artifact_id,
+};
+use pod0_domain::UnixTimestampMilliseconds;
 pub fn apply_scheduled_agent_observation(
     state: &mut ScheduledAgentOccurrenceState,
     observation: &ScheduledAgentExecutionObservation,
@@ -109,39 +110,6 @@ pub fn apply_scheduled_agent_observation(
     ScheduledAgentTransition::Applied
 }
 
-fn terminal_transition(
-    state: &ScheduledAgentOccurrenceState,
-    observation: &ScheduledAgentExecutionObservation,
-) -> ScheduledAgentTransition {
-    let exact_replay = match observation {
-        ScheduledAgentExecutionObservation::Completed {
-            artifact_id,
-            output_digest,
-            ..
-        } => {
-            state.stage == ScheduledAgentStage::Succeeded
-                && state.artifact_id == Some(*artifact_id)
-                && state.output_digest == Some(*output_digest)
-        }
-        ScheduledAgentExecutionObservation::Cancelled { .. } => {
-            state.stage == ScheduledAgentStage::Cancelled
-        }
-        ScheduledAgentExecutionObservation::Failed {
-            code, safe_detail, ..
-        } => state
-            .failure
-            .as_ref()
-            .is_some_and(|failure| failure.code == *code && failure.safe_detail == *safe_detail),
-        ScheduledAgentExecutionObservation::Accepted { .. }
-        | ScheduledAgentExecutionObservation::Unsupported { .. } => false,
-    };
-    if exact_replay {
-        ScheduledAgentTransition::IgnoredDuplicate
-    } else {
-        ScheduledAgentTransition::RejectedInvalid
-    }
-}
-
 pub fn cancel_scheduled_agent(
     state: &mut ScheduledAgentOccurrenceState,
     observed_at: UnixTimestampMilliseconds,
@@ -175,60 +143,6 @@ pub fn mark_scheduled_agent_ambiguous_after_restart(
     state.revision = next_revision(state.revision);
     state.updated_at = observed_at;
     ScheduledAgentTransition::Applied
-}
-
-fn observation_identity(
-    observation: &ScheduledAgentExecutionObservation,
-) -> Option<(ScheduledOccurrenceId, ScheduledAttemptId)> {
-    match observation {
-        ScheduledAgentExecutionObservation::Accepted {
-            occurrence_id,
-            attempt_id,
-            ..
-        }
-        | ScheduledAgentExecutionObservation::Completed {
-            occurrence_id,
-            attempt_id,
-            ..
-        }
-        | ScheduledAgentExecutionObservation::Failed {
-            occurrence_id,
-            attempt_id,
-            ..
-        }
-        | ScheduledAgentExecutionObservation::Cancelled {
-            occurrence_id,
-            attempt_id,
-        } => Some((*occurrence_id, *attempt_id)),
-        ScheduledAgentExecutionObservation::Unsupported { .. } => None,
-    }
-}
-
-fn observation_is_bounded(observation: &ScheduledAgentExecutionObservation) -> bool {
-    match observation {
-        ScheduledAgentExecutionObservation::Accepted {
-            provider_operation_id,
-            ..
-        } => provider_operation_id.as_ref().is_none_or(|value| {
-            !value.is_empty() && value.len() <= MAX_SCHEDULED_AGENT_PROVIDER_OPERATION_BYTES
-        }),
-        ScheduledAgentExecutionObservation::Completed { output_excerpt, .. } => {
-            !output_excerpt.is_empty()
-                && output_excerpt.len() <= MAX_SCHEDULED_AGENT_OUTPUT_EXCERPT_BYTES
-        }
-        ScheduledAgentExecutionObservation::Failed {
-            safe_detail,
-            retry_after_milliseconds,
-            ..
-        } => {
-            safe_detail
-                .as_ref()
-                .is_none_or(|value| value.len() <= MAX_SCHEDULED_AGENT_SAFE_DETAIL_BYTES)
-                && retry_after_milliseconds.is_none_or(|value| value <= 86_400_000)
-        }
-        ScheduledAgentExecutionObservation::Cancelled { .. } => true,
-        ScheduledAgentExecutionObservation::Unsupported { .. } => false,
-    }
 }
 
 fn apply_failure(

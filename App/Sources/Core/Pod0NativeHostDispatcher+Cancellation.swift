@@ -15,6 +15,16 @@ extension Pod0NativeHostDispatcher {
             downloadAcknowledgementTasks.removeValue(forKey: requestID)?.cancel()
             rememberCompletion(requestID)
         }
+        let pendingScheduledIDs = pendingScheduledAgentExecutions.compactMap {
+            requestID, pending in
+            pending.envelope.cancellationId == cancellationID ? requestID : nil
+        }
+        for requestID in pendingScheduledIDs {
+            _ = cancelPendingScheduledAgentExecution(
+                requestID: requestID,
+                cancellationID: cancellationID
+            )
+        }
         let taskIDs = activeTasks.compactMap { requestID, active in
             active.envelope.cancellationId == cancellationID ? requestID : nil
         }
@@ -46,6 +56,12 @@ extension Pod0NativeHostDispatcher {
     }
 
     func cancel(requestID: HostRequestId, cancellationID: CancellationId) {
+        if cancelPendingScheduledAgentExecution(
+            requestID: requestID,
+            cancellationID: cancellationID
+        ) {
+            return
+        }
         if let active = downloadRequests[requestID],
            active.envelope.cancellationId == cancellationID {
             downloadRequests[requestID] = nil

@@ -1,7 +1,13 @@
 use pod0_application::{ApplicationCommand, ScheduledTaskInput};
 use sha2::{Digest as _, Sha256};
 
-pub(super) fn hash_scheduled_agent_command(hash: &mut Sha256, command: &ApplicationCommand) {
+pub(super) fn scheduled_agent_command_fingerprint(command: &ApplicationCommand) -> [u8; 32] {
+    let mut hash = Sha256::new();
+    hash_scheduled_agent_command(&mut hash, command);
+    hash.finalize().into()
+}
+
+pub(crate) fn hash_scheduled_agent_command(hash: &mut Sha256, command: &ApplicationCommand) {
     match command {
         ApplicationCommand::EnsureScheduledTask { task } => {
             hash.update(b"ensure-scheduled-task\0");

@@ -203,15 +203,8 @@ impl FacadeState {
                     request.max_items,
                 ),
             },
-            ProjectionScope::ScheduledAgent { task_id: _ } => Projection::ScheduledAgent {
-                value: pod0_application::ScheduledAgentProjection {
-                    tasks: Vec::new(),
-                    workflows: Vec::new(),
-                    has_more: false,
-                    failure: Some(failure(
-                        pod0_application::CoreFailureCode::StorageUnavailable,
-                    )),
-                },
+            ProjectionScope::ScheduledAgent { task_id } => Projection::ScheduledAgent {
+                value: self.scheduled_agent_projection(task_id, request.offset, request.max_items),
             },
             ProjectionScope::Notes { scope } => {
                 let mut notes = self.notes.notes.clone();

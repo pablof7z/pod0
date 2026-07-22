@@ -6,35 +6,46 @@ extension Pod0NativeHostDispatcher {
         execution: ScheduledAgentExecutionRequest,
         delivery: @escaping Delivery
     ) {
+        pendingScheduledAgentExecutions[envelope.requestId] = PendingScheduledAgentExecution(
+            envelope: envelope,
+            execution: execution,
+            delivery: delivery
+        )
+        delivery(makeEnvelope(
+            envelope,
+            sequenceNumber: 0,
+            observedAt: now(),
+            observation: .scheduledAgentExecutionObserved(observation: .accepted(
+                occurrenceId: execution.occurrenceId,
+                attemptId: execution.attemptId,
+                providerOperationId: nil
+            ))
+        ))
+    }
+
+    func beginPersistedScheduledAgentExecution(for requestID: HostRequestId) {
+        guard let pending = pendingScheduledAgentExecutions.removeValue(forKey: requestID),
+              activeTasks[requestID] == nil
+        else { return }
         let task = Task { @MainActor [weak self] in
             guard let self else { return }
-            delivery(makeEnvelope(
-                envelope,
-                sequenceNumber: 0,
-                observedAt: now(),
-                observation: .scheduledAgentExecutionObserved(observation: .accepted(
-                    occurrenceId: execution.occurrenceId,
-                    attemptId: execution.attemptId,
-                    providerOperationId: nil
-                ))
-            ))
-            let result = await scheduledAgentHost.execute(execution)
-            guard activeTasks.removeValue(forKey: envelope.requestId) != nil else { return }
-            let final = isExpired(envelope)
-                ? expiredScheduledAgentObservation(execution)
+            let result = await scheduledAgentHost.execute(pending.execution)
+            guard activeTasks.removeValue(forKey: pending.envelope.requestId) != nil else { return }
+            let final = isExpired(pending.envelope)
+                ? expiredScheduledAgentObservation(pending.execution)
                 : result
             finish(
-                envelope,
+                pending.envelope,
                 sequenceNumber: 1,
                 observation: .scheduledAgentExecutionObserved(observation: final),
-                delivery: delivery,
+                delivery: pending.delivery,
                 remember: false
             )
         }
-        activeTasks[envelope.requestId] = ActiveTask(
-            envelope: envelope,
+        activeTasks[pending.envelope.requestId] = ActiveTask(
+            envelope: pending.envelope,
             task: task,
-            delivery: delivery
+            delivery: pending.delivery
         )
     }
 
@@ -81,10 +92,17 @@ extension Pod0NativeHostDispatcher {
                 return
             }
             retainedScheduledAgentObservationIDs.remove(requestID)
+            let recorded = pendingScheduledAgentObservations[requestID]?.first
             pendingScheduledAgentObservations[requestID]?.removeFirst()
             if Self.scheduledAgentReceiptAllowsRetirement(receipt) {
                 retireScheduledAgentObservationQueue(requestID)
                 return
+            }
+            if case .persisted(_, let terminal) = receipt,
+               !terminal,
+               let recorded,
+               case .scheduledAgentExecutionObserved(.accepted) = recorded.observation {
+                beginPersistedScheduledAgentExecution(for: requestID)
             }
             if pendingScheduledAgentObservations[requestID]?.isEmpty == false {
                 recordNextScheduledAgentObservation(for: requestID, in: facade)
@@ -96,6 +114,7 @@ extension Pod0NativeHostDispatcher {
 
     private func retireScheduledAgentObservationQueue(_ requestID: HostRequestId) {
         pendingScheduledAgentObservations[requestID] = nil
+        pendingScheduledAgentExecutions[requestID] = nil
         retainedScheduledAgentObservationIDs.remove(requestID)
         rememberCompletion(requestID)
         finishScheduledAgentObservationQueue(requestID)
@@ -120,6 +139,27 @@ extension Pod0NativeHostDispatcher {
                 attemptId: execution.attemptId
             )),
             delivery: active.delivery,
+            remember: false
+        )
+        return true
+    }
+
+    func cancelPendingScheduledAgentExecution(
+        requestID: HostRequestId,
+        cancellationID: CancellationId
+    ) -> Bool {
+        guard let pending = pendingScheduledAgentExecutions[requestID],
+              pending.envelope.cancellationId == cancellationID
+        else { return false }
+        pendingScheduledAgentExecutions[requestID] = nil
+        finish(
+            pending.envelope,
+            sequenceNumber: 1,
+            observation: .scheduledAgentExecutionObserved(observation: .cancelled(
+                occurrenceId: pending.execution.occurrenceId,
+                attemptId: pending.execution.attemptId
+            )),
+            delivery: pending.delivery,
             remember: false
         )
         return true
