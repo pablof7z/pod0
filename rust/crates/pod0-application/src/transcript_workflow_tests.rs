@@ -87,6 +87,29 @@ fn explicit_remote_and_apple_requests_surface_missing_prerequisites() {
 }
 
 #[test]
+fn migration_request_preserves_identity_without_transient_prerequisites() {
+    let available = input(TranscriptWorkflowOrigin::User);
+    let planned = plan_transcript_workflow(available.clone())
+        .request
+        .expect("ordinary plan request");
+    assert_eq!(
+        transcript_workflow_request(&available).unwrap(),
+        Some(planned.clone())
+    );
+
+    let mut unavailable = available;
+    unavailable.credential_available = false;
+    assert!(matches!(
+        plan_transcript_workflow(unavailable.clone()).generation,
+        TranscriptGenerationDecision::AwaitingCredential { .. }
+    ));
+    assert_eq!(
+        transcript_workflow_request(&unavailable).unwrap(),
+        Some(planned)
+    );
+}
+
+#[test]
 fn committed_generation_drives_a_deterministic_evidence_version() {
     let mut value = input(TranscriptWorkflowOrigin::Automatic);
     let version = TranscriptVersionId::from_bytes([2; 16]);

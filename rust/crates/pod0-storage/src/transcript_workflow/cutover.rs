@@ -129,6 +129,7 @@ pub struct LegacyTranscriptWorkflowCandidate {
     pub request: StoredTranscriptWorkflowRequest,
     pub request_id: Option<HostRequestId>,
     pub prepared_attempt: Option<PreparedTranscriptAttempt>,
+    pub deadline_at_ms: Option<i64>,
     pub expected_selection_revision: StateRevision,
     pub disposition: LegacyTranscriptWorkflowDisposition,
 }
@@ -166,6 +167,22 @@ pub struct TranscriptWorkflowRollbackExport {
 }
 
 impl LibraryStore {
+    pub fn transcript_workflow_cutover_report(
+        &self,
+    ) -> Result<Option<LegacyTranscriptWorkflowCutoverReport>, StorageError> {
+        self.read(|connection| {
+            let source_generation = match read_authority(connection)? {
+                TranscriptWorkflowAuthorityState::NotStarted => return Ok(None),
+                TranscriptWorkflowAuthorityState::Staged { source_generation }
+                | TranscriptWorkflowAuthorityState::Verified { source_generation }
+                | TranscriptWorkflowAuthorityState::Authoritative { source_generation } => {
+                    source_generation
+                }
+            };
+            super::cutover_stage::cutover_report(connection, source_generation).map(Some)
+        })
+    }
+
     pub fn transcript_workflow_authority(
         &self,
     ) -> Result<TranscriptWorkflowAuthorityState, StorageError> {

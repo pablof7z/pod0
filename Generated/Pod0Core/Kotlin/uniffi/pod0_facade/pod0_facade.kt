@@ -69,6 +69,8 @@ import uniffi.pod0_application.FfiConverterTypeTranscriptCapabilityValidation
 import uniffi.pod0_application.FfiConverterTypeTranscriptCommitRequest
 import uniffi.pod0_application.FfiConverterTypeTranscriptContractProjection
 import uniffi.pod0_application.FfiConverterTypeTranscriptProjectionScope
+import uniffi.pod0_application.FfiConverterTypeTranscriptWorkflowConfiguration
+import uniffi.pod0_application.FfiConverterTypeTranscriptWorkflowOrigin
 import uniffi.pod0_application.FfiConverterTypeTranscriptWorkflowPlan
 import uniffi.pod0_application.FfiConverterTypeTranscriptWorkflowPlanInput
 import uniffi.pod0_application.HostCancellationRequest
@@ -85,6 +87,8 @@ import uniffi.pod0_application.TranscriptCapabilityValidation
 import uniffi.pod0_application.TranscriptCommitRequest
 import uniffi.pod0_application.TranscriptContractProjection
 import uniffi.pod0_application.TranscriptProjectionScope
+import uniffi.pod0_application.TranscriptWorkflowConfiguration
+import uniffi.pod0_application.TranscriptWorkflowOrigin
 import uniffi.pod0_application.TranscriptWorkflowPlan
 import uniffi.pod0_application.TranscriptWorkflowPlanInput
 import uniffi.pod0_domain.ChapterArtifactId
@@ -133,6 +137,8 @@ import uniffi.pod0_application.RustBuffer as RustBufferTranscriptCapabilityValid
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptCommitRequest
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptContractProjection
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptProjectionScope
+import uniffi.pod0_application.RustBuffer as RustBufferTranscriptWorkflowConfiguration
+import uniffi.pod0_application.RustBuffer as RustBufferTranscriptWorkflowOrigin
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptWorkflowPlan
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptWorkflowPlanInput
 import uniffi.pod0_domain.RustBuffer as RustBufferChapterArtifactId
@@ -927,6 +933,16 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_unsubscribe(
     ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_transcript_workflow_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_transcript_workflow_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_transcript_workflow_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_transcript_workflow_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_transcript_workflow_cutover(
+    ): Int
     external fun uniffi_pod0_facade_checksum_constructor_pod0facade_new(
     ): Int
     external fun uniffi_pod0_facade_checksum_constructor_pod0facade_open(
@@ -1000,6 +1016,16 @@ internal object UniffiLib {
     ): RustBufferSubscriptionId.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_unsubscribe(`ptr`: Long,`subscriptionId`: RustBufferSubscriptionId.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): Unit
+    external fun uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_transcript_workflow_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_transcript_workflow_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_transcript_workflow_cutover(`ptr`: Long,`backupDigest`: RustBufferContentDigest.ByValue,`backupByteCount`: Long,`rows`: RustBuffer.ByValue,`candidates`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_transcript_workflow_cutover(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_verify_legacy_transcript_workflow_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_func_commit_staged_legacy_chapter_import(`sourceDatabasePath`: RustBuffer.ByValue,`artifactRootPath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_func_discard_staged_legacy_chapter_import(`targetPath`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1380,6 +1406,21 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_unsubscribe() != 29741) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_transcript_workflow_cutover() != 1245) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_transcript_workflow_cutover() != 19065) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_transcript_workflow_cutover() != 37360) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_transcript_workflow_cutover() != 37901) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_transcript_workflow_cutover() != 20379) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_pod0_facade_checksum_constructor_pod0facade_new() != 63792) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1750,6 +1791,25 @@ public object FfiConverterString: FfiConverter<String, RustBuffer.ByValue> {
     }
 }
 
+/**
+ * @suppress
+ */
+public object FfiConverterByteArray: FfiConverterRustBuffer<ByteArray> {
+    override fun read(buf: ByteBuffer): ByteArray {
+        val len = buf.getInt()
+        val byteArr = ByteArray(len)
+        buf.get(byteArr)
+        return byteArr
+    }
+    override fun allocationSize(value: ByteArray): ULong {
+        return 4UL + value.size.toULong()
+    }
+    override fun write(value: ByteArray, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        buf.put(value)
+    }
+}
+
 
 // This template implements a class for working with a Rust struct via a handle
 // to the live Rust struct on the other side of the FFI.
@@ -1883,6 +1943,16 @@ public interface Pod0FacadeInterface {
     fun `subscribe`(`request`: ProjectionRequest, `subscriber`: ProjectionSubscriber): SubscriptionId
 
     fun `unsubscribe`(`subscriptionId`: SubscriptionId)
+
+    fun `commitLegacyTranscriptWorkflowCutover`(`sourceGeneration`: kotlin.ULong): LegacyTranscriptWorkflowCutoverProjection
+
+    fun `discardStagedLegacyTranscriptWorkflowCutover`(`sourceGeneration`: kotlin.ULong): LegacyTranscriptWorkflowCutoverProjection
+
+    fun `stageLegacyTranscriptWorkflowCutover`(`backupDigest`: ContentDigest, `backupByteCount`: kotlin.ULong, `rows`: List<LegacyTranscriptWorkflowBackupRow>, `candidates`: List<LegacyTranscriptWorkflowCutoverCandidate>): LegacyTranscriptWorkflowCutoverProjection
+
+    fun `transcriptWorkflowCutover`(): LegacyTranscriptWorkflowCutoverProjection
+
+    fun `verifyLegacyTranscriptWorkflowCutover`(`sourceGeneration`: kotlin.ULong): LegacyTranscriptWorkflowCutoverProjection
 
     companion object
 }
@@ -2224,6 +2294,78 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
 }
     }
 
+
+
+    override fun `commitLegacyTranscriptWorkflowCutover`(`sourceGeneration`: kotlin.ULong): LegacyTranscriptWorkflowCutoverProjection {
+            return FfiConverterTypeLegacyTranscriptWorkflowCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_transcript_workflow_cutover(
+        it,
+
+        FfiConverterULong.lower(`sourceGeneration`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `discardStagedLegacyTranscriptWorkflowCutover`(`sourceGeneration`: kotlin.ULong): LegacyTranscriptWorkflowCutoverProjection {
+            return FfiConverterTypeLegacyTranscriptWorkflowCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_transcript_workflow_cutover(
+        it,
+
+        FfiConverterULong.lower(`sourceGeneration`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `stageLegacyTranscriptWorkflowCutover`(`backupDigest`: ContentDigest, `backupByteCount`: kotlin.ULong, `rows`: List<LegacyTranscriptWorkflowBackupRow>, `candidates`: List<LegacyTranscriptWorkflowCutoverCandidate>): LegacyTranscriptWorkflowCutoverProjection {
+            return FfiConverterTypeLegacyTranscriptWorkflowCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_transcript_workflow_cutover(
+        it,
+
+        FfiConverterTypeContentDigest.lower(`backupDigest`),
+        FfiConverterULong.lower(`backupByteCount`),
+        FfiConverterSequenceTypeLegacyTranscriptWorkflowBackupRow.lower(`rows`),
+        FfiConverterSequenceTypeLegacyTranscriptWorkflowCutoverCandidate.lower(`candidates`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `transcriptWorkflowCutover`(): LegacyTranscriptWorkflowCutoverProjection {
+            return FfiConverterTypeLegacyTranscriptWorkflowCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_transcript_workflow_cutover(
+        it,
+        _status)
+}
+    }
+    )
+    }
+
+
+    override fun `verifyLegacyTranscriptWorkflowCutover`(`sourceGeneration`: kotlin.ULong): LegacyTranscriptWorkflowCutoverProjection {
+            return FfiConverterTypeLegacyTranscriptWorkflowCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_verify_legacy_transcript_workflow_cutover(
+        it,
+
+        FfiConverterULong.lower(`sourceGeneration`),_status)
+}
+    }
+    )
+    }
 
 
 
@@ -4181,6 +4323,203 @@ public object FfiConverterTypeLegacyTranscriptRollbackExportReport: FfiConverter
 
 
 
+data class LegacyTranscriptWorkflowBackupRow (
+    val `episodeId`: EpisodeId
+    ,
+    val `rowBytes`: kotlin.ByteArray
+    ,
+    val `rowFingerprint`: ContentDigest
+    ,
+    val `classification`: LegacyTranscriptWorkflowRowClassification
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyTranscriptWorkflowBackupRow: FfiConverterRustBuffer<LegacyTranscriptWorkflowBackupRow> {
+    override fun read(buf: ByteBuffer): LegacyTranscriptWorkflowBackupRow {
+        return LegacyTranscriptWorkflowBackupRow(
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterByteArray.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterTypeLegacyTranscriptWorkflowRowClassification.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyTranscriptWorkflowBackupRow) = (
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterByteArray.allocationSize(value.`rowBytes`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`rowFingerprint`) +
+            FfiConverterTypeLegacyTranscriptWorkflowRowClassification.allocationSize(value.`classification`)
+    )
+
+    override fun write(value: LegacyTranscriptWorkflowBackupRow, buf: ByteBuffer) {
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterByteArray.write(value.`rowBytes`, buf)
+            FfiConverterTypeContentDigest.write(value.`rowFingerprint`, buf)
+            FfiConverterTypeLegacyTranscriptWorkflowRowClassification.write(value.`classification`, buf)
+    }
+}
+
+
+
+data class LegacyTranscriptWorkflowCutoverCandidate (
+    val `episodeId`: EpisodeId
+    ,
+    val `sourceRevision`: kotlin.String
+    ,
+    val `origin`: TranscriptWorkflowOrigin
+    ,
+    val `configuration`: TranscriptWorkflowConfiguration
+    ,
+    val `disposition`: LegacyTranscriptWorkflowCutoverDisposition
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyTranscriptWorkflowCutoverCandidate: FfiConverterRustBuffer<LegacyTranscriptWorkflowCutoverCandidate> {
+    override fun read(buf: ByteBuffer): LegacyTranscriptWorkflowCutoverCandidate {
+        return LegacyTranscriptWorkflowCutoverCandidate(
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeTranscriptWorkflowOrigin.read(buf),
+            FfiConverterTypeTranscriptWorkflowConfiguration.read(buf),
+            FfiConverterTypeLegacyTranscriptWorkflowCutoverDisposition.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyTranscriptWorkflowCutoverCandidate) = (
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterString.allocationSize(value.`sourceRevision`) +
+            FfiConverterTypeTranscriptWorkflowOrigin.allocationSize(value.`origin`) +
+            FfiConverterTypeTranscriptWorkflowConfiguration.allocationSize(value.`configuration`) +
+            FfiConverterTypeLegacyTranscriptWorkflowCutoverDisposition.allocationSize(value.`disposition`)
+    )
+
+    override fun write(value: LegacyTranscriptWorkflowCutoverCandidate, buf: ByteBuffer) {
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterString.write(value.`sourceRevision`, buf)
+            FfiConverterTypeTranscriptWorkflowOrigin.write(value.`origin`, buf)
+            FfiConverterTypeTranscriptWorkflowConfiguration.write(value.`configuration`, buf)
+            FfiConverterTypeLegacyTranscriptWorkflowCutoverDisposition.write(value.`disposition`, buf)
+    }
+}
+
+
+
+data class LegacyTranscriptWorkflowCutoverFailure (
+    val `code`: LegacyTranscriptWorkflowCutoverFailureCode
+    ,
+    val `diagnosticCode`: kotlin.String
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyTranscriptWorkflowCutoverFailure: FfiConverterRustBuffer<LegacyTranscriptWorkflowCutoverFailure> {
+    override fun read(buf: ByteBuffer): LegacyTranscriptWorkflowCutoverFailure {
+        return LegacyTranscriptWorkflowCutoverFailure(
+            FfiConverterTypeLegacyTranscriptWorkflowCutoverFailureCode.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyTranscriptWorkflowCutoverFailure) = (
+            FfiConverterTypeLegacyTranscriptWorkflowCutoverFailureCode.allocationSize(value.`code`) +
+            FfiConverterString.allocationSize(value.`diagnosticCode`)
+    )
+
+    override fun write(value: LegacyTranscriptWorkflowCutoverFailure, buf: ByteBuffer) {
+            FfiConverterTypeLegacyTranscriptWorkflowCutoverFailureCode.write(value.`code`, buf)
+            FfiConverterString.write(value.`diagnosticCode`, buf)
+    }
+}
+
+
+
+data class LegacyTranscriptWorkflowCutoverProjection (
+    val `stage`: LegacyTranscriptWorkflowCutoverStage
+    ,
+    val `sourceGeneration`: kotlin.ULong?
+    ,
+    val `sourceFingerprint`: ContentDigest?
+    ,
+    val `rowCount`: kotlin.UInt
+    ,
+    val `adoptedWorkflowCount`: kotlin.UInt
+    ,
+    val `failure`: LegacyTranscriptWorkflowCutoverFailure?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyTranscriptWorkflowCutoverProjection: FfiConverterRustBuffer<LegacyTranscriptWorkflowCutoverProjection> {
+    override fun read(buf: ByteBuffer): LegacyTranscriptWorkflowCutoverProjection {
+        return LegacyTranscriptWorkflowCutoverProjection(
+            FfiConverterTypeLegacyTranscriptWorkflowCutoverStage.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterOptionalTypeContentDigest.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterOptionalTypeLegacyTranscriptWorkflowCutoverFailure.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyTranscriptWorkflowCutoverProjection) = (
+            FfiConverterTypeLegacyTranscriptWorkflowCutoverStage.allocationSize(value.`stage`) +
+            FfiConverterOptionalULong.allocationSize(value.`sourceGeneration`) +
+            FfiConverterOptionalTypeContentDigest.allocationSize(value.`sourceFingerprint`) +
+            FfiConverterUInt.allocationSize(value.`rowCount`) +
+            FfiConverterUInt.allocationSize(value.`adoptedWorkflowCount`) +
+            FfiConverterOptionalTypeLegacyTranscriptWorkflowCutoverFailure.allocationSize(value.`failure`)
+    )
+
+    override fun write(value: LegacyTranscriptWorkflowCutoverProjection, buf: ByteBuffer) {
+            FfiConverterTypeLegacyTranscriptWorkflowCutoverStage.write(value.`stage`, buf)
+            FfiConverterOptionalULong.write(value.`sourceGeneration`, buf)
+            FfiConverterOptionalTypeContentDigest.write(value.`sourceFingerprint`, buf)
+            FfiConverterUInt.write(value.`rowCount`, buf)
+            FfiConverterUInt.write(value.`adoptedWorkflowCount`, buf)
+            FfiConverterOptionalTypeLegacyTranscriptWorkflowCutoverFailure.write(value.`failure`, buf)
+    }
+}
+
+
+
 data class SharedListeningStorePreparation (
     val `fromVersion`: kotlin.UInt
     ,
@@ -5654,6 +5993,445 @@ public object FfiConverterTypeLegacyTranscriptSourceKind: FfiConverterRustBuffer
 
 
 
+sealed class LegacyTranscriptWorkflowCutoverDisposition {
+
+    data class Restart(
+        val `attempt`: kotlin.UShort) : LegacyTranscriptWorkflowCutoverDisposition()
+
+    {
+
+
+        companion object
+    }
+
+    data class RecoverProvider(
+        val `attempt`: kotlin.UShort,
+        val `externalOperationId`: kotlin.String,
+        val `providerStatus`: kotlin.String?) : LegacyTranscriptWorkflowCutoverDisposition()
+
+    {
+
+
+        companion object
+    }
+
+    data class Ambiguous(
+        val `attempt`: kotlin.UShort) : LegacyTranscriptWorkflowCutoverDisposition()
+
+    {
+
+
+        companion object
+    }
+
+    data class Blocked(
+        val `attempt`: kotlin.UShort?,
+        val `failureCode`: kotlin.String,
+        val `failureDetail`: kotlin.String?,
+        val `mayHaveSubmitted`: kotlin.Boolean) : LegacyTranscriptWorkflowCutoverDisposition()
+
+    {
+
+
+        companion object
+    }
+
+    data class Failed(
+        val `attempt`: kotlin.UShort?,
+        val `failureCode`: kotlin.String,
+        val `failureDetail`: kotlin.String?,
+        val `mayHaveSubmitted`: kotlin.Boolean) : LegacyTranscriptWorkflowCutoverDisposition()
+
+    {
+
+
+        companion object
+    }
+
+    data class Cancelled(
+        val `attempt`: kotlin.UShort?,
+        val `mayHaveSubmitted`: kotlin.Boolean) : LegacyTranscriptWorkflowCutoverDisposition()
+
+    {
+
+
+        companion object
+    }
+
+    data class Succeeded(
+        val `attempt`: kotlin.UShort?) : LegacyTranscriptWorkflowCutoverDisposition()
+
+    {
+
+
+        companion object
+    }
+
+    data class IndexPending(
+        val `evidenceInputVersion`: kotlin.String) : LegacyTranscriptWorkflowCutoverDisposition()
+
+    {
+
+
+        companion object
+    }
+
+    data class IndexSucceeded(
+        val `evidenceInputVersion`: kotlin.String) : LegacyTranscriptWorkflowCutoverDisposition()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyTranscriptWorkflowCutoverDisposition : FfiConverterRustBuffer<LegacyTranscriptWorkflowCutoverDisposition>{
+    override fun read(buf: ByteBuffer): LegacyTranscriptWorkflowCutoverDisposition {
+        return when(buf.getInt()) {
+            1 -> LegacyTranscriptWorkflowCutoverDisposition.Restart(
+                FfiConverterUShort.read(buf),
+                )
+            2 -> LegacyTranscriptWorkflowCutoverDisposition.RecoverProvider(
+                FfiConverterUShort.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                )
+            3 -> LegacyTranscriptWorkflowCutoverDisposition.Ambiguous(
+                FfiConverterUShort.read(buf),
+                )
+            4 -> LegacyTranscriptWorkflowCutoverDisposition.Blocked(
+                FfiConverterOptionalUShort.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            5 -> LegacyTranscriptWorkflowCutoverDisposition.Failed(
+                FfiConverterOptionalUShort.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            6 -> LegacyTranscriptWorkflowCutoverDisposition.Cancelled(
+                FfiConverterOptionalUShort.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            7 -> LegacyTranscriptWorkflowCutoverDisposition.Succeeded(
+                FfiConverterOptionalUShort.read(buf),
+                )
+            8 -> LegacyTranscriptWorkflowCutoverDisposition.IndexPending(
+                FfiConverterString.read(buf),
+                )
+            9 -> LegacyTranscriptWorkflowCutoverDisposition.IndexSucceeded(
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: LegacyTranscriptWorkflowCutoverDisposition): ULong = when(value) {
+        is LegacyTranscriptWorkflowCutoverDisposition.Restart -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUShort.allocationSize(value.`attempt`)
+            )
+        }
+        is LegacyTranscriptWorkflowCutoverDisposition.RecoverProvider -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUShort.allocationSize(value.`attempt`)
+                + FfiConverterString.allocationSize(value.`externalOperationId`)
+                + FfiConverterOptionalString.allocationSize(value.`providerStatus`)
+            )
+        }
+        is LegacyTranscriptWorkflowCutoverDisposition.Ambiguous -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUShort.allocationSize(value.`attempt`)
+            )
+        }
+        is LegacyTranscriptWorkflowCutoverDisposition.Blocked -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterOptionalUShort.allocationSize(value.`attempt`)
+                + FfiConverterString.allocationSize(value.`failureCode`)
+                + FfiConverterOptionalString.allocationSize(value.`failureDetail`)
+                + FfiConverterBoolean.allocationSize(value.`mayHaveSubmitted`)
+            )
+        }
+        is LegacyTranscriptWorkflowCutoverDisposition.Failed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterOptionalUShort.allocationSize(value.`attempt`)
+                + FfiConverterString.allocationSize(value.`failureCode`)
+                + FfiConverterOptionalString.allocationSize(value.`failureDetail`)
+                + FfiConverterBoolean.allocationSize(value.`mayHaveSubmitted`)
+            )
+        }
+        is LegacyTranscriptWorkflowCutoverDisposition.Cancelled -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterOptionalUShort.allocationSize(value.`attempt`)
+                + FfiConverterBoolean.allocationSize(value.`mayHaveSubmitted`)
+            )
+        }
+        is LegacyTranscriptWorkflowCutoverDisposition.Succeeded -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterOptionalUShort.allocationSize(value.`attempt`)
+            )
+        }
+        is LegacyTranscriptWorkflowCutoverDisposition.IndexPending -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`evidenceInputVersion`)
+            )
+        }
+        is LegacyTranscriptWorkflowCutoverDisposition.IndexSucceeded -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`evidenceInputVersion`)
+            )
+        }
+    }
+
+    override fun write(value: LegacyTranscriptWorkflowCutoverDisposition, buf: ByteBuffer) {
+        when(value) {
+            is LegacyTranscriptWorkflowCutoverDisposition.Restart -> {
+                buf.putInt(1)
+                FfiConverterUShort.write(value.`attempt`, buf)
+                Unit
+            }
+            is LegacyTranscriptWorkflowCutoverDisposition.RecoverProvider -> {
+                buf.putInt(2)
+                FfiConverterUShort.write(value.`attempt`, buf)
+                FfiConverterString.write(value.`externalOperationId`, buf)
+                FfiConverterOptionalString.write(value.`providerStatus`, buf)
+                Unit
+            }
+            is LegacyTranscriptWorkflowCutoverDisposition.Ambiguous -> {
+                buf.putInt(3)
+                FfiConverterUShort.write(value.`attempt`, buf)
+                Unit
+            }
+            is LegacyTranscriptWorkflowCutoverDisposition.Blocked -> {
+                buf.putInt(4)
+                FfiConverterOptionalUShort.write(value.`attempt`, buf)
+                FfiConverterString.write(value.`failureCode`, buf)
+                FfiConverterOptionalString.write(value.`failureDetail`, buf)
+                FfiConverterBoolean.write(value.`mayHaveSubmitted`, buf)
+                Unit
+            }
+            is LegacyTranscriptWorkflowCutoverDisposition.Failed -> {
+                buf.putInt(5)
+                FfiConverterOptionalUShort.write(value.`attempt`, buf)
+                FfiConverterString.write(value.`failureCode`, buf)
+                FfiConverterOptionalString.write(value.`failureDetail`, buf)
+                FfiConverterBoolean.write(value.`mayHaveSubmitted`, buf)
+                Unit
+            }
+            is LegacyTranscriptWorkflowCutoverDisposition.Cancelled -> {
+                buf.putInt(6)
+                FfiConverterOptionalUShort.write(value.`attempt`, buf)
+                FfiConverterBoolean.write(value.`mayHaveSubmitted`, buf)
+                Unit
+            }
+            is LegacyTranscriptWorkflowCutoverDisposition.Succeeded -> {
+                buf.putInt(7)
+                FfiConverterOptionalUShort.write(value.`attempt`, buf)
+                Unit
+            }
+            is LegacyTranscriptWorkflowCutoverDisposition.IndexPending -> {
+                buf.putInt(8)
+                FfiConverterString.write(value.`evidenceInputVersion`, buf)
+                Unit
+            }
+            is LegacyTranscriptWorkflowCutoverDisposition.IndexSucceeded -> {
+                buf.putInt(9)
+                FfiConverterString.write(value.`evidenceInputVersion`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+
+enum class LegacyTranscriptWorkflowCutoverFailureCode {
+
+    INVALID_SOURCE,
+    CONFLICTING_CORE_STATE,
+    STORAGE_UNAVAILABLE;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyTranscriptWorkflowCutoverFailureCode: FfiConverterRustBuffer<LegacyTranscriptWorkflowCutoverFailureCode> {
+    override fun read(buf: ByteBuffer) = try {
+
+        LegacyTranscriptWorkflowCutoverFailureCode.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: LegacyTranscriptWorkflowCutoverFailureCode) = 4UL
+
+    override fun write(value: LegacyTranscriptWorkflowCutoverFailureCode, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+enum class LegacyTranscriptWorkflowCutoverStage {
+
+    NOT_STARTED,
+    STAGED,
+    VERIFIED,
+    AUTHORITATIVE,
+    BLOCKED;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyTranscriptWorkflowCutoverStage: FfiConverterRustBuffer<LegacyTranscriptWorkflowCutoverStage> {
+    override fun read(buf: ByteBuffer) = try {
+
+        LegacyTranscriptWorkflowCutoverStage.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: LegacyTranscriptWorkflowCutoverStage) = 4UL
+
+    override fun write(value: LegacyTranscriptWorkflowCutoverStage, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+enum class LegacyTranscriptWorkflowRowClassification {
+
+    RESTART,
+    RECOVER_PROVIDER,
+    AMBIGUOUS,
+    BLOCKED,
+    FAILED,
+    CANCELLED,
+    SUCCEEDED,
+    INDEX_PENDING,
+    INDEX_SUCCEEDED,
+    OBSOLETE;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyTranscriptWorkflowRowClassification: FfiConverterRustBuffer<LegacyTranscriptWorkflowRowClassification> {
+    override fun read(buf: ByteBuffer) = try {
+
+        LegacyTranscriptWorkflowRowClassification.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: LegacyTranscriptWorkflowRowClassification) = 4UL
+
+    override fun write(value: LegacyTranscriptWorkflowRowClassification, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalUShort: FfiConverterRustBuffer<kotlin.UShort?> {
+    override fun read(buf: ByteBuffer): kotlin.UShort? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterUShort.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.UShort?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterUShort.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.UShort?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterUShort.write(value, buf)
+        }
+    }
+}
+
+
+
 
 /**
  * @suppress
@@ -5712,6 +6490,38 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
         } else {
             buf.put(1)
             FfiConverterString.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeContentDigest: FfiConverterRustBuffer<ContentDigest?> {
+    override fun read(buf: ByteBuffer): ContentDigest? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeContentDigest.read(buf)
+    }
+
+    override fun allocationSize(value: ContentDigest?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeContentDigest.allocationSize(value)
+        }
+    }
+
+    override fun write(value: ContentDigest?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeContentDigest.write(value, buf)
         }
     }
 }
@@ -6010,6 +6820,38 @@ public object FfiConverterOptionalTypeLegacyTranscriptImportReport: FfiConverter
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeLegacyTranscriptWorkflowCutoverFailure: FfiConverterRustBuffer<LegacyTranscriptWorkflowCutoverFailure?> {
+    override fun read(buf: ByteBuffer): LegacyTranscriptWorkflowCutoverFailure? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeLegacyTranscriptWorkflowCutoverFailure.read(buf)
+    }
+
+    override fun allocationSize(value: LegacyTranscriptWorkflowCutoverFailure?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeLegacyTranscriptWorkflowCutoverFailure.allocationSize(value)
+        }
+    }
+
+    override fun write(value: LegacyTranscriptWorkflowCutoverFailure?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeLegacyTranscriptWorkflowCutoverFailure.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceUInt: FfiConverterRustBuffer<List<kotlin.UInt>> {
     override fun read(buf: ByteBuffer): List<kotlin.UInt> {
         val len = buf.getInt()
@@ -6199,6 +7041,66 @@ public object FfiConverterSequenceTypeLegacyModelChapterCutoverCandidate: FfiCon
         }
     }
 }
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeLegacyTranscriptWorkflowBackupRow: FfiConverterRustBuffer<List<LegacyTranscriptWorkflowBackupRow>> {
+    override fun read(buf: ByteBuffer): List<LegacyTranscriptWorkflowBackupRow> {
+        val len = buf.getInt()
+        return List<LegacyTranscriptWorkflowBackupRow>(len) {
+            FfiConverterTypeLegacyTranscriptWorkflowBackupRow.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<LegacyTranscriptWorkflowBackupRow>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeLegacyTranscriptWorkflowBackupRow.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<LegacyTranscriptWorkflowBackupRow>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeLegacyTranscriptWorkflowBackupRow.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeLegacyTranscriptWorkflowCutoverCandidate: FfiConverterRustBuffer<List<LegacyTranscriptWorkflowCutoverCandidate>> {
+    override fun read(buf: ByteBuffer): List<LegacyTranscriptWorkflowCutoverCandidate> {
+        val len = buf.getInt()
+        return List<LegacyTranscriptWorkflowCutoverCandidate>(len) {
+            FfiConverterTypeLegacyTranscriptWorkflowCutoverCandidate.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<LegacyTranscriptWorkflowCutoverCandidate>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeLegacyTranscriptWorkflowCutoverCandidate.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<LegacyTranscriptWorkflowCutoverCandidate>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeLegacyTranscriptWorkflowCutoverCandidate.write(it, buf)
+        }
+    }
+}
+
+
+
+
 
 
 

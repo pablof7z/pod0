@@ -109,6 +109,7 @@ fn transcript_committed_stage_recovers_evidence_admission_after_restart() {
                 request: request.clone(),
                 request_id: None,
                 prepared_attempt: None,
+                deadline_at_ms: None,
                 expected_selection_revision: StateRevision::INITIAL,
                 disposition: LegacyTranscriptWorkflowDisposition::Succeeded {
                     artifact_id: committed.artifact_id,

@@ -602,6 +602,24 @@ fileprivate struct FfiConverterString: FfiConverter {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterData: FfiConverterRustBuffer {
+    typealias SwiftType = Data
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Data {
+        let len: Int32 = try readInt(&buf)
+        return Data(try readBytes(&buf, count: Int(len)))
+    }
+
+    public static func write(_ value: Data, into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        writeBytes(&buf, value)
+    }
+}
+
 
 
 
@@ -642,6 +660,16 @@ public protocol Pod0FacadeProtocol: AnyObject, Sendable {
     func subscribe(request: ProjectionRequest, subscriber: ProjectionSubscriber)  -> SubscriptionId
 
     func unsubscribe(subscriptionId: SubscriptionId)
+
+    func commitLegacyTranscriptWorkflowCutover(sourceGeneration: UInt64)  -> LegacyTranscriptWorkflowCutoverProjection
+
+    func discardStagedLegacyTranscriptWorkflowCutover(sourceGeneration: UInt64)  -> LegacyTranscriptWorkflowCutoverProjection
+
+    func stageLegacyTranscriptWorkflowCutover(backupDigest: ContentDigest, backupByteCount: UInt64, rows: [LegacyTranscriptWorkflowBackupRow], candidates: [LegacyTranscriptWorkflowCutoverCandidate])  -> LegacyTranscriptWorkflowCutoverProjection
+
+    func transcriptWorkflowCutover()  -> LegacyTranscriptWorkflowCutoverProjection
+
+    func verifyLegacyTranscriptWorkflowCutover(sourceGeneration: UInt64)  -> LegacyTranscriptWorkflowCutoverProjection
 
 }
 open class Pod0Facade: Pod0FacadeProtocol, @unchecked Sendable {
@@ -878,6 +906,58 @@ open func unsubscribe(subscriptionId: SubscriptionId)  {try! rustCall() {
         FfiConverterTypeSubscriptionId_lower(subscriptionId),uniffiCallStatus
     )
 }
+}
+
+open func commitLegacyTranscriptWorkflowCutover(sourceGeneration: UInt64) -> LegacyTranscriptWorkflowCutoverProjection  {
+    return try!  FfiConverterTypeLegacyTranscriptWorkflowCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_transcript_workflow_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt64.lower(sourceGeneration),uniffiCallStatus
+    )
+})
+}
+
+open func discardStagedLegacyTranscriptWorkflowCutover(sourceGeneration: UInt64) -> LegacyTranscriptWorkflowCutoverProjection  {
+    return try!  FfiConverterTypeLegacyTranscriptWorkflowCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_transcript_workflow_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt64.lower(sourceGeneration),uniffiCallStatus
+    )
+})
+}
+
+open func stageLegacyTranscriptWorkflowCutover(backupDigest: ContentDigest, backupByteCount: UInt64, rows: [LegacyTranscriptWorkflowBackupRow], candidates: [LegacyTranscriptWorkflowCutoverCandidate]) -> LegacyTranscriptWorkflowCutoverProjection  {
+    return try!  FfiConverterTypeLegacyTranscriptWorkflowCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_transcript_workflow_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeContentDigest_lower(backupDigest),
+        FfiConverterUInt64.lower(backupByteCount),
+        FfiConverterSequenceTypeLegacyTranscriptWorkflowBackupRow.lower(rows),
+        FfiConverterSequenceTypeLegacyTranscriptWorkflowCutoverCandidate.lower(candidates),uniffiCallStatus
+    )
+})
+}
+
+open func transcriptWorkflowCutover() -> LegacyTranscriptWorkflowCutoverProjection  {
+    return try!  FfiConverterTypeLegacyTranscriptWorkflowCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_transcript_workflow_cutover(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+
+open func verifyLegacyTranscriptWorkflowCutover(sourceGeneration: UInt64) -> LegacyTranscriptWorkflowCutoverProjection  {
+    return try!  FfiConverterTypeLegacyTranscriptWorkflowCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_verify_legacy_transcript_workflow_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt64.lower(sourceGeneration),uniffiCallStatus
+    )
+})
 }
 
 
@@ -3110,6 +3190,258 @@ public func FfiConverterTypeLegacyTranscriptRollbackExportReport_lower(_ value: 
 }
 
 
+public struct LegacyTranscriptWorkflowBackupRow: Equatable, Hashable {
+    public let episodeId: EpisodeId
+    public let rowBytes: Data
+    public let rowFingerprint: ContentDigest
+    public let classification: LegacyTranscriptWorkflowRowClassification
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(episodeId: EpisodeId, rowBytes: Data, rowFingerprint: ContentDigest, classification: LegacyTranscriptWorkflowRowClassification) {
+        self.episodeId = episodeId
+        self.rowBytes = rowBytes
+        self.rowFingerprint = rowFingerprint
+        self.classification = classification
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyTranscriptWorkflowBackupRow: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyTranscriptWorkflowBackupRow: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyTranscriptWorkflowBackupRow {
+        return
+            try LegacyTranscriptWorkflowBackupRow(
+                episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
+                rowBytes: FfiConverterData.read(from: &buf),
+                rowFingerprint: FfiConverterTypeContentDigest.read(from: &buf),
+                classification: FfiConverterTypeLegacyTranscriptWorkflowRowClassification.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyTranscriptWorkflowBackupRow, into buf: inout [UInt8]) {
+        FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
+        FfiConverterData.write(value.rowBytes, into: &buf)
+        FfiConverterTypeContentDigest.write(value.rowFingerprint, into: &buf)
+        FfiConverterTypeLegacyTranscriptWorkflowRowClassification.write(value.classification, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyTranscriptWorkflowBackupRow_lift(_ buf: RustBuffer) throws -> LegacyTranscriptWorkflowBackupRow {
+    return try FfiConverterTypeLegacyTranscriptWorkflowBackupRow.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyTranscriptWorkflowBackupRow_lower(_ value: LegacyTranscriptWorkflowBackupRow) -> RustBuffer {
+    return FfiConverterTypeLegacyTranscriptWorkflowBackupRow.lower(value)
+}
+
+
+public struct LegacyTranscriptWorkflowCutoverCandidate: Equatable, Hashable {
+    public let episodeId: EpisodeId
+    public let sourceRevision: String
+    public let origin: TranscriptWorkflowOrigin
+    public let configuration: TranscriptWorkflowConfiguration
+    public let disposition: LegacyTranscriptWorkflowCutoverDisposition
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(episodeId: EpisodeId, sourceRevision: String, origin: TranscriptWorkflowOrigin, configuration: TranscriptWorkflowConfiguration, disposition: LegacyTranscriptWorkflowCutoverDisposition) {
+        self.episodeId = episodeId
+        self.sourceRevision = sourceRevision
+        self.origin = origin
+        self.configuration = configuration
+        self.disposition = disposition
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyTranscriptWorkflowCutoverCandidate: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyTranscriptWorkflowCutoverCandidate: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyTranscriptWorkflowCutoverCandidate {
+        return
+            try LegacyTranscriptWorkflowCutoverCandidate(
+                episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
+                sourceRevision: FfiConverterString.read(from: &buf),
+                origin: FfiConverterTypeTranscriptWorkflowOrigin.read(from: &buf),
+                configuration: FfiConverterTypeTranscriptWorkflowConfiguration.read(from: &buf),
+                disposition: FfiConverterTypeLegacyTranscriptWorkflowCutoverDisposition.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyTranscriptWorkflowCutoverCandidate, into buf: inout [UInt8]) {
+        FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
+        FfiConverterString.write(value.sourceRevision, into: &buf)
+        FfiConverterTypeTranscriptWorkflowOrigin.write(value.origin, into: &buf)
+        FfiConverterTypeTranscriptWorkflowConfiguration.write(value.configuration, into: &buf)
+        FfiConverterTypeLegacyTranscriptWorkflowCutoverDisposition.write(value.disposition, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyTranscriptWorkflowCutoverCandidate_lift(_ buf: RustBuffer) throws -> LegacyTranscriptWorkflowCutoverCandidate {
+    return try FfiConverterTypeLegacyTranscriptWorkflowCutoverCandidate.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyTranscriptWorkflowCutoverCandidate_lower(_ value: LegacyTranscriptWorkflowCutoverCandidate) -> RustBuffer {
+    return FfiConverterTypeLegacyTranscriptWorkflowCutoverCandidate.lower(value)
+}
+
+
+public struct LegacyTranscriptWorkflowCutoverFailure: Equatable, Hashable {
+    public let code: LegacyTranscriptWorkflowCutoverFailureCode
+    public let diagnosticCode: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(code: LegacyTranscriptWorkflowCutoverFailureCode, diagnosticCode: String) {
+        self.code = code
+        self.diagnosticCode = diagnosticCode
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyTranscriptWorkflowCutoverFailure: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyTranscriptWorkflowCutoverFailure: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyTranscriptWorkflowCutoverFailure {
+        return
+            try LegacyTranscriptWorkflowCutoverFailure(
+                code: FfiConverterTypeLegacyTranscriptWorkflowCutoverFailureCode.read(from: &buf),
+                diagnosticCode: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyTranscriptWorkflowCutoverFailure, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyTranscriptWorkflowCutoverFailureCode.write(value.code, into: &buf)
+        FfiConverterString.write(value.diagnosticCode, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyTranscriptWorkflowCutoverFailure_lift(_ buf: RustBuffer) throws -> LegacyTranscriptWorkflowCutoverFailure {
+    return try FfiConverterTypeLegacyTranscriptWorkflowCutoverFailure.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyTranscriptWorkflowCutoverFailure_lower(_ value: LegacyTranscriptWorkflowCutoverFailure) -> RustBuffer {
+    return FfiConverterTypeLegacyTranscriptWorkflowCutoverFailure.lower(value)
+}
+
+
+public struct LegacyTranscriptWorkflowCutoverProjection: Equatable, Hashable {
+    public let stage: LegacyTranscriptWorkflowCutoverStage
+    public let sourceGeneration: UInt64?
+    public let sourceFingerprint: ContentDigest?
+    public let rowCount: UInt32
+    public let adoptedWorkflowCount: UInt32
+    public let failure: LegacyTranscriptWorkflowCutoverFailure?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(stage: LegacyTranscriptWorkflowCutoverStage, sourceGeneration: UInt64?, sourceFingerprint: ContentDigest?, rowCount: UInt32, adoptedWorkflowCount: UInt32, failure: LegacyTranscriptWorkflowCutoverFailure?) {
+        self.stage = stage
+        self.sourceGeneration = sourceGeneration
+        self.sourceFingerprint = sourceFingerprint
+        self.rowCount = rowCount
+        self.adoptedWorkflowCount = adoptedWorkflowCount
+        self.failure = failure
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyTranscriptWorkflowCutoverProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyTranscriptWorkflowCutoverProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyTranscriptWorkflowCutoverProjection {
+        return
+            try LegacyTranscriptWorkflowCutoverProjection(
+                stage: FfiConverterTypeLegacyTranscriptWorkflowCutoverStage.read(from: &buf),
+                sourceGeneration: FfiConverterOptionUInt64.read(from: &buf),
+                sourceFingerprint: FfiConverterOptionTypeContentDigest.read(from: &buf),
+                rowCount: FfiConverterUInt32.read(from: &buf),
+                adoptedWorkflowCount: FfiConverterUInt32.read(from: &buf),
+                failure: FfiConverterOptionTypeLegacyTranscriptWorkflowCutoverFailure.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyTranscriptWorkflowCutoverProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyTranscriptWorkflowCutoverStage.write(value.stage, into: &buf)
+        FfiConverterOptionUInt64.write(value.sourceGeneration, into: &buf)
+        FfiConverterOptionTypeContentDigest.write(value.sourceFingerprint, into: &buf)
+        FfiConverterUInt32.write(value.rowCount, into: &buf)
+        FfiConverterUInt32.write(value.adoptedWorkflowCount, into: &buf)
+        FfiConverterOptionTypeLegacyTranscriptWorkflowCutoverFailure.write(value.failure, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyTranscriptWorkflowCutoverProjection_lift(_ buf: RustBuffer) throws -> LegacyTranscriptWorkflowCutoverProjection {
+    return try FfiConverterTypeLegacyTranscriptWorkflowCutoverProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyTranscriptWorkflowCutoverProjection_lower(_ value: LegacyTranscriptWorkflowCutoverProjection) -> RustBuffer {
+    return FfiConverterTypeLegacyTranscriptWorkflowCutoverProjection.lower(value)
+}
+
+
 public struct SharedListeningStorePreparation: Equatable, Hashable {
     public let fromVersion: UInt32
     public let toVersion: UInt32
@@ -4785,6 +5117,463 @@ public func FfiConverterTypeLegacyTranscriptSourceKind_lower(_ value: LegacyTran
 }
 
 
+
+
+public enum LegacyTranscriptWorkflowCutoverDisposition: Equatable, Hashable {
+
+    case restart(attempt: UInt16
+    )
+    case recoverProvider(attempt: UInt16, externalOperationId: String, providerStatus: String?
+    )
+    case ambiguous(attempt: UInt16
+    )
+    case blocked(attempt: UInt16?, failureCode: String, failureDetail: String?, mayHaveSubmitted: Bool
+    )
+    case failed(attempt: UInt16?, failureCode: String, failureDetail: String?, mayHaveSubmitted: Bool
+    )
+    case cancelled(attempt: UInt16?, mayHaveSubmitted: Bool
+    )
+    case succeeded(attempt: UInt16?
+    )
+    case indexPending(evidenceInputVersion: String
+    )
+    case indexSucceeded(evidenceInputVersion: String
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyTranscriptWorkflowCutoverDisposition: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyTranscriptWorkflowCutoverDisposition: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyTranscriptWorkflowCutoverDisposition
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyTranscriptWorkflowCutoverDisposition {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .restart(attempt: try FfiConverterUInt16.read(from: &buf)
+        )
+
+        case 2: return .recoverProvider(attempt: try FfiConverterUInt16.read(from: &buf), externalOperationId: try FfiConverterString.read(from: &buf), providerStatus: try FfiConverterOptionString.read(from: &buf)
+        )
+
+        case 3: return .ambiguous(attempt: try FfiConverterUInt16.read(from: &buf)
+        )
+
+        case 4: return .blocked(attempt: try FfiConverterOptionUInt16.read(from: &buf), failureCode: try FfiConverterString.read(from: &buf), failureDetail: try FfiConverterOptionString.read(from: &buf), mayHaveSubmitted: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 5: return .failed(attempt: try FfiConverterOptionUInt16.read(from: &buf), failureCode: try FfiConverterString.read(from: &buf), failureDetail: try FfiConverterOptionString.read(from: &buf), mayHaveSubmitted: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 6: return .cancelled(attempt: try FfiConverterOptionUInt16.read(from: &buf), mayHaveSubmitted: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 7: return .succeeded(attempt: try FfiConverterOptionUInt16.read(from: &buf)
+        )
+
+        case 8: return .indexPending(evidenceInputVersion: try FfiConverterString.read(from: &buf)
+        )
+
+        case 9: return .indexSucceeded(evidenceInputVersion: try FfiConverterString.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyTranscriptWorkflowCutoverDisposition, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case let .restart(attempt):
+            writeInt(&buf, Int32(1))
+            FfiConverterUInt16.write(attempt, into: &buf)
+
+
+        case let .recoverProvider(attempt,externalOperationId,providerStatus):
+            writeInt(&buf, Int32(2))
+            FfiConverterUInt16.write(attempt, into: &buf)
+            FfiConverterString.write(externalOperationId, into: &buf)
+            FfiConverterOptionString.write(providerStatus, into: &buf)
+
+
+        case let .ambiguous(attempt):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt16.write(attempt, into: &buf)
+
+
+        case let .blocked(attempt,failureCode,failureDetail,mayHaveSubmitted):
+            writeInt(&buf, Int32(4))
+            FfiConverterOptionUInt16.write(attempt, into: &buf)
+            FfiConverterString.write(failureCode, into: &buf)
+            FfiConverterOptionString.write(failureDetail, into: &buf)
+            FfiConverterBool.write(mayHaveSubmitted, into: &buf)
+
+
+        case let .failed(attempt,failureCode,failureDetail,mayHaveSubmitted):
+            writeInt(&buf, Int32(5))
+            FfiConverterOptionUInt16.write(attempt, into: &buf)
+            FfiConverterString.write(failureCode, into: &buf)
+            FfiConverterOptionString.write(failureDetail, into: &buf)
+            FfiConverterBool.write(mayHaveSubmitted, into: &buf)
+
+
+        case let .cancelled(attempt,mayHaveSubmitted):
+            writeInt(&buf, Int32(6))
+            FfiConverterOptionUInt16.write(attempt, into: &buf)
+            FfiConverterBool.write(mayHaveSubmitted, into: &buf)
+
+
+        case let .succeeded(attempt):
+            writeInt(&buf, Int32(7))
+            FfiConverterOptionUInt16.write(attempt, into: &buf)
+
+
+        case let .indexPending(evidenceInputVersion):
+            writeInt(&buf, Int32(8))
+            FfiConverterString.write(evidenceInputVersion, into: &buf)
+
+
+        case let .indexSucceeded(evidenceInputVersion):
+            writeInt(&buf, Int32(9))
+            FfiConverterString.write(evidenceInputVersion, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyTranscriptWorkflowCutoverDisposition_lift(_ buf: RustBuffer) throws -> LegacyTranscriptWorkflowCutoverDisposition {
+    return try FfiConverterTypeLegacyTranscriptWorkflowCutoverDisposition.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyTranscriptWorkflowCutoverDisposition_lower(_ value: LegacyTranscriptWorkflowCutoverDisposition) -> RustBuffer {
+    return FfiConverterTypeLegacyTranscriptWorkflowCutoverDisposition.lower(value)
+}
+
+
+
+
+public enum LegacyTranscriptWorkflowCutoverFailureCode: Equatable, Hashable {
+
+    case invalidSource
+    case conflictingCoreState
+    case storageUnavailable
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyTranscriptWorkflowCutoverFailureCode: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyTranscriptWorkflowCutoverFailureCode: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyTranscriptWorkflowCutoverFailureCode
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyTranscriptWorkflowCutoverFailureCode {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .invalidSource
+
+        case 2: return .conflictingCoreState
+
+        case 3: return .storageUnavailable
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyTranscriptWorkflowCutoverFailureCode, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .invalidSource:
+            writeInt(&buf, Int32(1))
+
+
+        case .conflictingCoreState:
+            writeInt(&buf, Int32(2))
+
+
+        case .storageUnavailable:
+            writeInt(&buf, Int32(3))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyTranscriptWorkflowCutoverFailureCode_lift(_ buf: RustBuffer) throws -> LegacyTranscriptWorkflowCutoverFailureCode {
+    return try FfiConverterTypeLegacyTranscriptWorkflowCutoverFailureCode.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyTranscriptWorkflowCutoverFailureCode_lower(_ value: LegacyTranscriptWorkflowCutoverFailureCode) -> RustBuffer {
+    return FfiConverterTypeLegacyTranscriptWorkflowCutoverFailureCode.lower(value)
+}
+
+
+
+
+public enum LegacyTranscriptWorkflowCutoverStage: Equatable, Hashable {
+
+    case notStarted
+    case staged
+    case verified
+    case authoritative
+    case blocked
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyTranscriptWorkflowCutoverStage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyTranscriptWorkflowCutoverStage: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyTranscriptWorkflowCutoverStage
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyTranscriptWorkflowCutoverStage {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .notStarted
+
+        case 2: return .staged
+
+        case 3: return .verified
+
+        case 4: return .authoritative
+
+        case 5: return .blocked
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyTranscriptWorkflowCutoverStage, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .notStarted:
+            writeInt(&buf, Int32(1))
+
+
+        case .staged:
+            writeInt(&buf, Int32(2))
+
+
+        case .verified:
+            writeInt(&buf, Int32(3))
+
+
+        case .authoritative:
+            writeInt(&buf, Int32(4))
+
+
+        case .blocked:
+            writeInt(&buf, Int32(5))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyTranscriptWorkflowCutoverStage_lift(_ buf: RustBuffer) throws -> LegacyTranscriptWorkflowCutoverStage {
+    return try FfiConverterTypeLegacyTranscriptWorkflowCutoverStage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyTranscriptWorkflowCutoverStage_lower(_ value: LegacyTranscriptWorkflowCutoverStage) -> RustBuffer {
+    return FfiConverterTypeLegacyTranscriptWorkflowCutoverStage.lower(value)
+}
+
+
+
+
+public enum LegacyTranscriptWorkflowRowClassification: Equatable, Hashable {
+
+    case restart
+    case recoverProvider
+    case ambiguous
+    case blocked
+    case failed
+    case cancelled
+    case succeeded
+    case indexPending
+    case indexSucceeded
+    case obsolete
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyTranscriptWorkflowRowClassification: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyTranscriptWorkflowRowClassification: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyTranscriptWorkflowRowClassification
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyTranscriptWorkflowRowClassification {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .restart
+
+        case 2: return .recoverProvider
+
+        case 3: return .ambiguous
+
+        case 4: return .blocked
+
+        case 5: return .failed
+
+        case 6: return .cancelled
+
+        case 7: return .succeeded
+
+        case 8: return .indexPending
+
+        case 9: return .indexSucceeded
+
+        case 10: return .obsolete
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyTranscriptWorkflowRowClassification, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .restart:
+            writeInt(&buf, Int32(1))
+
+
+        case .recoverProvider:
+            writeInt(&buf, Int32(2))
+
+
+        case .ambiguous:
+            writeInt(&buf, Int32(3))
+
+
+        case .blocked:
+            writeInt(&buf, Int32(4))
+
+
+        case .failed:
+            writeInt(&buf, Int32(5))
+
+
+        case .cancelled:
+            writeInt(&buf, Int32(6))
+
+
+        case .succeeded:
+            writeInt(&buf, Int32(7))
+
+
+        case .indexPending:
+            writeInt(&buf, Int32(8))
+
+
+        case .indexSucceeded:
+            writeInt(&buf, Int32(9))
+
+
+        case .obsolete:
+            writeInt(&buf, Int32(10))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyTranscriptWorkflowRowClassification_lift(_ buf: RustBuffer) throws -> LegacyTranscriptWorkflowRowClassification {
+    return try FfiConverterTypeLegacyTranscriptWorkflowRowClassification.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyTranscriptWorkflowRowClassification_lower(_ value: LegacyTranscriptWorkflowRowClassification) -> RustBuffer {
+    return FfiConverterTypeLegacyTranscriptWorkflowRowClassification.lower(value)
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionUInt16: FfiConverterRustBuffer {
+    typealias SwiftType = UInt16?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterUInt16.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterUInt16.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -4828,6 +5617,30 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterString.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeContentDigest: FfiConverterRustBuffer {
+    typealias SwiftType = ContentDigest?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeContentDigest.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeContentDigest.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -5052,6 +5865,30 @@ fileprivate struct FfiConverterOptionTypeLegacyTranscriptImportReport: FfiConver
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeLegacyTranscriptWorkflowCutoverFailure: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyTranscriptWorkflowCutoverFailure?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeLegacyTranscriptWorkflowCutoverFailure.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeLegacyTranscriptWorkflowCutoverFailure.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceUInt32: FfiConverterRustBuffer {
     typealias SwiftType = [UInt32]
 
@@ -5219,6 +6056,56 @@ fileprivate struct FfiConverterSequenceTypeLegacyModelChapterCutoverCandidate: F
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeLegacyModelChapterCutoverCandidate.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeLegacyTranscriptWorkflowBackupRow: FfiConverterRustBuffer {
+    typealias SwiftType = [LegacyTranscriptWorkflowBackupRow]
+
+    public static func write(_ value: [LegacyTranscriptWorkflowBackupRow], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeLegacyTranscriptWorkflowBackupRow.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [LegacyTranscriptWorkflowBackupRow] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [LegacyTranscriptWorkflowBackupRow]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeLegacyTranscriptWorkflowBackupRow.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeLegacyTranscriptWorkflowCutoverCandidate: FfiConverterRustBuffer {
+    typealias SwiftType = [LegacyTranscriptWorkflowCutoverCandidate]
+
+    public static func write(_ value: [LegacyTranscriptWorkflowCutoverCandidate], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeLegacyTranscriptWorkflowCutoverCandidate.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [LegacyTranscriptWorkflowCutoverCandidate] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [LegacyTranscriptWorkflowCutoverCandidate]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeLegacyTranscriptWorkflowCutoverCandidate.read(from: &buf))
         }
         return seq
     }
@@ -5860,6 +6747,21 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_unsubscribe() != 29741) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_transcript_workflow_cutover() != 1245) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_transcript_workflow_cutover() != 19065) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_transcript_workflow_cutover() != 37360) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_transcript_workflow_cutover() != 37901) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_transcript_workflow_cutover() != 20379) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_constructor_pod0facade_new() != 63792) {

@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use pod0_domain::ContentDigest;
 use rusqlite::{Transaction, params};
@@ -23,6 +23,7 @@ pub(super) fn validate_input(
     }
     let mut fingerprints = BTreeSet::new();
     let mut episodes = BTreeSet::new();
+    let mut required_candidates = BTreeMap::new();
     let mut total_bytes = 0_u64;
     for row in &input.rows {
         if row.row_bytes.len() > 1_048_576
@@ -35,6 +36,13 @@ pub(super) fn validate_input(
             .checked_add(row.row_bytes.len() as u64)
             .ok_or(StorageError::TranscriptWorkflowConflict)?;
         episodes.insert(row.episode_id);
+        if row.classification != LegacyTranscriptWorkflowRowClassification::Obsolete
+            && required_candidates
+                .insert(row.episode_id, row.classification)
+                .is_some()
+        {
+            return Err(StorageError::TranscriptWorkflowConflict);
+        }
     }
     if input.backup_byte_count < total_bytes {
         return Err(StorageError::TranscriptWorkflowConflict);
@@ -46,8 +54,50 @@ pub(super) fn validate_input(
             return Err(StorageError::TranscriptWorkflowConflict);
         }
         validate_candidate(candidate)?;
+        if required_candidates.get(&candidate.episode_id)
+            != Some(&disposition_classification(&candidate.disposition))
+        {
+            return Err(StorageError::TranscriptWorkflowConflict);
+        }
+    }
+    if candidates.len() != required_candidates.len() {
+        return Err(StorageError::TranscriptWorkflowConflict);
     }
     Ok(())
+}
+
+const fn disposition_classification(
+    value: &LegacyTranscriptWorkflowDisposition,
+) -> LegacyTranscriptWorkflowRowClassification {
+    match value {
+        LegacyTranscriptWorkflowDisposition::Restart => {
+            LegacyTranscriptWorkflowRowClassification::Restart
+        }
+        LegacyTranscriptWorkflowDisposition::RecoverProvider { .. } => {
+            LegacyTranscriptWorkflowRowClassification::RecoverProvider
+        }
+        LegacyTranscriptWorkflowDisposition::Ambiguous => {
+            LegacyTranscriptWorkflowRowClassification::Ambiguous
+        }
+        LegacyTranscriptWorkflowDisposition::Blocked { .. } => {
+            LegacyTranscriptWorkflowRowClassification::Blocked
+        }
+        LegacyTranscriptWorkflowDisposition::Failed { .. } => {
+            LegacyTranscriptWorkflowRowClassification::Failed
+        }
+        LegacyTranscriptWorkflowDisposition::Cancelled { .. } => {
+            LegacyTranscriptWorkflowRowClassification::Cancelled
+        }
+        LegacyTranscriptWorkflowDisposition::Succeeded { .. } => {
+            LegacyTranscriptWorkflowRowClassification::Succeeded
+        }
+        LegacyTranscriptWorkflowDisposition::IndexPending { .. } => {
+            LegacyTranscriptWorkflowRowClassification::IndexPending
+        }
+        LegacyTranscriptWorkflowDisposition::IndexSucceeded { .. } => {
+            LegacyTranscriptWorkflowRowClassification::IndexSucceeded
+        }
+    }
 }
 
 fn validate_candidate(candidate: &LegacyTranscriptWorkflowCandidate) -> Result<(), StorageError> {
@@ -57,7 +107,11 @@ fn validate_candidate(candidate: &LegacyTranscriptWorkflowCandidate) -> Result<(
     }
     match &candidate.disposition {
         LegacyTranscriptWorkflowDisposition::Restart
-        | LegacyTranscriptWorkflowDisposition::RecoverProvider { .. }
+            if !has_attempt || candidate.deadline_at_ms.is_none_or(|deadline| deadline < 0) =>
+        {
+            Err(StorageError::TranscriptWorkflowConflict)
+        }
+        LegacyTranscriptWorkflowDisposition::RecoverProvider { .. }
         | LegacyTranscriptWorkflowDisposition::Ambiguous
             if !has_attempt =>
         {

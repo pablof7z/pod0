@@ -11,6 +11,7 @@ pub(super) use observations::*;
 #[path = "runtime_chapter_playback_test_support.rs"]
 mod chapters;
 use crate::runtime_transcript_workflow_test_support::install_empty_transcript_workflow_cutover;
+pub(super) use crate::runtime_transcript_workflow_test_support::transcript_input;
 use chapters::{install_chapter_fixture, install_empty_chapter_fixture};
 
 pub(super) struct PlaybackFixture {
@@ -38,7 +39,19 @@ impl PlaybackFixture {
         Self::new_with_options(true, true)
     }
 
+    pub(super) fn new_before_transcript_workflow_cutover() -> Self {
+        Self::new_with_authority(false, false, false)
+    }
+
     fn new_with_options(transcript_available: bool, chapters_available: bool) -> Self {
+        Self::new_with_authority(transcript_available, chapters_available, true)
+    }
+
+    fn new_with_authority(
+        transcript_available: bool,
+        chapters_available: bool,
+        transcript_workflow_authoritative: bool,
+    ) -> Self {
         let directory = tempfile::tempdir().unwrap();
         let canonical_source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../../Fixtures/CoreImport/legacy-listening-v1.json");
@@ -182,7 +195,9 @@ impl PlaybackFixture {
         download_store
             .commit_legacy_download_cutover(1, 1_800_000_000_009)
             .unwrap();
-        install_empty_transcript_workflow_cutover(&target);
+        if transcript_workflow_authoritative {
+            install_empty_transcript_workflow_cutover(&target);
+        }
         let facade = Pod0Facade::open(target.to_string_lossy().into_owned()).unwrap();
         assert_eq!(
             facade
@@ -224,27 +239,6 @@ impl PlaybackFixture {
 
     pub(super) fn playback(&self) -> PlaybackProjection {
         playback(&self.facade)
-    }
-}
-
-pub(super) fn transcript_input(fixture: &PlaybackFixture) -> TranscriptArtifactInput {
-    TranscriptArtifactInput {
-        episode_id: fixture.episode_id,
-        podcast_id: fixture.podcast_id,
-        source_revision: "fixture-transcript-v1".to_owned(),
-        source: TranscriptSource::Publisher,
-        provider: Some("fixture".to_owned()),
-        source_payload_digest: ContentDigest::from_bytes([0x45; 32]),
-        language: "en-US".to_owned(),
-        generated_at: UnixTimestampMilliseconds::new(1_800_000_000_009),
-        speakers: Vec::new(),
-        segments: vec![TranscriptArtifactSegmentInput {
-            text: "Fixture transcript evidence".to_owned(),
-            start_milliseconds: 0,
-            end_milliseconds: 1_000,
-            speaker_id: None,
-            words: Vec::new(),
-        }],
     }
 }
 

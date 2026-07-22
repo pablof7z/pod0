@@ -182,6 +182,12 @@ mod runtime_transcript_workflow_tests;
 mod runtime_transcript_workflow_wakes;
 mod transcript_migration;
 mod transcript_migration_mapping;
+mod transcript_workflow_cutover;
+mod transcript_workflow_cutover_mapping;
+mod transcript_workflow_cutover_rows;
+#[cfg(test)]
+mod transcript_workflow_cutover_tests;
+mod transcript_workflow_cutover_types;
 pub use chapter_migration::{
     LegacyChapterBackupEvidence, LegacyChapterImportPlan, LegacyChapterImportReport,
     LegacyChapterImportState, LegacyChapterImportVerification, LegacyChapterMigrationFailure,
@@ -235,6 +241,7 @@ pub use transcript_migration::{
     shared_transcript_store_is_authoritative, stage_legacy_transcript_import,
     verify_staged_legacy_transcript_import,
 };
+pub use transcript_workflow_cutover_types::*;
 
 /// Event-driven projection delivery. The generated Swift and Kotlin callback
 /// interfaces derive from this single app-owned surface.

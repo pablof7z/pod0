@@ -1,8 +1,8 @@
 use pod0_application::{
     CommittedTranscriptGeneration, TranscriptEvidenceDecision, TranscriptGenerationDecision,
     TranscriptWorkflowConfiguration, TranscriptWorkflowOrigin, TranscriptWorkflowPlan,
-    TranscriptWorkflowPlanInput, plan_transcript_workflow, transcript_evidence_input_version,
-    transcript_source_revision,
+    TranscriptWorkflowPlanInput, TranscriptWorkflowRequest, plan_transcript_workflow,
+    transcript_evidence_input_version, transcript_source_revision, transcript_workflow_request,
 };
 use pod0_domain::{EpisodeId, StateRevision};
 
@@ -13,6 +13,11 @@ pub(super) struct RuntimeTranscriptPlan {
     pub(super) expected_selection_revision: StateRevision,
 }
 
+struct RuntimeTranscriptPlanInput {
+    input: TranscriptWorkflowPlanInput,
+    expected_selection_revision: StateRevision,
+}
+
 impl FacadeState {
     pub(super) fn transcript_workflow_plan(
         &self,
@@ -20,6 +25,30 @@ impl FacadeState {
         origin: TranscriptWorkflowOrigin,
         configuration: TranscriptWorkflowConfiguration,
     ) -> Option<RuntimeTranscriptPlan> {
+        let prepared = self.transcript_workflow_plan_input(episode_id, origin, configuration)?;
+        Some(RuntimeTranscriptPlan {
+            plan: plan_transcript_workflow(prepared.input),
+            expected_selection_revision: prepared.expected_selection_revision,
+        })
+    }
+
+    pub(super) fn legacy_transcript_workflow_request(
+        &self,
+        episode_id: EpisodeId,
+        origin: TranscriptWorkflowOrigin,
+        configuration: TranscriptWorkflowConfiguration,
+    ) -> Option<(TranscriptWorkflowRequest, StateRevision)> {
+        let prepared = self.transcript_workflow_plan_input(episode_id, origin, configuration)?;
+        let request = transcript_workflow_request(&prepared.input).ok()??;
+        Some((request, prepared.expected_selection_revision))
+    }
+
+    fn transcript_workflow_plan_input(
+        &self,
+        episode_id: EpisodeId,
+        origin: TranscriptWorkflowOrigin,
+        configuration: TranscriptWorkflowConfiguration,
+    ) -> Option<RuntimeTranscriptPlanInput> {
         let episode = self
             .listening
             .episodes
@@ -34,15 +63,15 @@ impl FacadeState {
             .transcript_store
             .as_ref()?
             .selected_summary(episode_id)
-            .ok()?
-            .filter(|value| value.source_revision == source_revision);
-        let committed_transcript = selected
+            .ok()?;
+        let current = selected
             .as_ref()
-            .map(|value| CommittedTranscriptGeneration {
-                source_revision: value.source_revision.clone(),
-                transcript_version_id: value.transcript_version_id,
-                content_digest: value.transcript_content_digest,
-            });
+            .filter(|value| value.source_revision == source_revision);
+        let committed_transcript = current.as_ref().map(|value| CommittedTranscriptGeneration {
+            source_revision: value.source_revision.clone(),
+            transcript_version_id: value.transcript_version_id,
+            content_digest: value.transcript_content_digest,
+        });
         let embedding_space_id = self
             .recall_configuration
             .embedding_space_id
@@ -50,7 +79,7 @@ impl FacadeState {
             .iter()
             .map(|byte| format!("{byte:02x}"))
             .collect::<String>();
-        let selected_evidence_input_version = selected.as_ref().and_then(|transcript| {
+        let selected_evidence_input_version = current.as_ref().and_then(|transcript| {
             let evidence = self
                 .evidence_store
                 .as_ref()?
@@ -67,11 +96,11 @@ impl FacadeState {
                 .flatten()
         });
         let publisher = episode.feed_metadata.publisher_transcript.as_ref();
-        Some(RuntimeTranscriptPlan {
+        Some(RuntimeTranscriptPlanInput {
             expected_selection_revision: selected
                 .as_ref()
                 .map_or(StateRevision::INITIAL, |value| value.selection_revision),
-            plan: plan_transcript_workflow(TranscriptWorkflowPlanInput {
+            input: TranscriptWorkflowPlanInput {
                 episode_id,
                 source_revision,
                 committed_transcript,
@@ -87,7 +116,7 @@ impl FacadeState {
                 auto_provider_enabled: configuration.auto_provider_enabled,
                 credential_available: configuration.credential_available,
                 embedding_space_id,
-            }),
+            },
         })
     }
 }

@@ -52,7 +52,7 @@ fn base_record(
         cancellation_id: cutover.cancellation_id,
         request_id: candidate.request_id,
         issued_revision: cutover.issued_revision,
-        deadline_at_ms: None,
+        deadline_at_ms: candidate.deadline_at_ms,
         not_before_ms: None,
         submission_authorized_at_ms: None,
         external_operation_id: None,
@@ -82,7 +82,6 @@ fn apply_disposition(
     match disposition {
         LegacyTranscriptWorkflowDisposition::Restart => {
             record.stage = StoredTranscriptWorkflowStage::Requested;
-            record.deadline_at_ms = Some(record.updated_at_ms);
         }
         LegacyTranscriptWorkflowDisposition::RecoverProvider {
             external_operation_id,

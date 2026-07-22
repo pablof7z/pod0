@@ -40,6 +40,7 @@ fn staged_import_preserves_exact_rows_and_recovery_identity() {
                 attempt_id,
                 submission_fence_id: transcript_submission_fence_id(attempt_id),
             }),
+            deadline_at_ms: None,
             expected_selection_revision: StateRevision::INITIAL,
             disposition: LegacyTranscriptWorkflowDisposition::RecoverProvider {
                 external_operation_id: "legacy-provider-operation".to_owned(),
@@ -186,6 +187,7 @@ fn selected_transcript_and_pending_index_are_adopted_without_dual_write() {
                 request: request(episode_id),
                 request_id: None,
                 prepared_attempt: None,
+                deadline_at_ms: None,
                 expected_selection_revision: StateRevision::INITIAL,
                 disposition: LegacyTranscriptWorkflowDisposition::IndexPending {
                     artifact_id: committed.artifact_id,

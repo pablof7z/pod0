@@ -10,7 +10,7 @@ use crate::{
     TranscriptWorkflowConfiguration, TranscriptWorkflowOrigin,
 };
 
-pub const FACADE_CONTRACT_VERSION: u32 = 33;
+pub const FACADE_CONTRACT_VERSION: u32 = 34;
 pub const MAX_PROJECTION_ITEMS: u16 = 200;
 pub const MAX_OPERATION_ITEMS: usize = 32;
 pub const MAX_HOST_REQUEST_BATCH: u16 = 64;

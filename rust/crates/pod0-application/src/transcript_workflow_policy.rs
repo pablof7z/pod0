@@ -21,32 +21,12 @@ pub fn plan_transcript_workflow(input: TranscriptWorkflowPlanInput) -> Transcrip
             evidence,
         };
     }
-    let (publisher_first, provider_fallback_enabled) = requested_paths(&input);
-    if !publisher_first && !provider_fallback_enabled {
-        return no_generation(evidence);
-    }
-    if !valid_source_revision(&input.source_revision)
-        || !valid_model(&input.configured_model)
-        || crate::normalize_media_url(&input.remote_audio_url).is_none()
-        || invalid_optional_url(input.local_audio_url.as_deref())
-        || (publisher_first && invalid_publisher(input.publisher_transcript_url.as_deref()))
-        || (publisher_first
-            && input
-                .publisher_mime_hint
-                .as_ref()
-                .is_some_and(|value| value.len() > MAX_PUBLISHER_MIME_HINT_BYTES))
-    {
-        return blocked(TranscriptWorkflowFailureCode::InvalidRequest, evidence);
-    }
-    if provider_fallback_enabled
-        && matches!(
-            input.configured_provider,
-            TranscriptProvider::Unsupported { .. }
-        )
-    {
-        return blocked(TranscriptWorkflowFailureCode::UnsupportedProvider, evidence);
-    }
-    if !publisher_first
+    let request = match transcript_workflow_request(&input) {
+        Ok(Some(request)) => request,
+        Ok(None) => return no_generation(evidence),
+        Err(code) => return blocked(code, evidence),
+    };
+    if !request.publisher_first
         && input.configured_provider.requires_credential()
         && !input.credential_available
     {
@@ -63,7 +43,7 @@ pub fn plan_transcript_workflow(input: TranscriptWorkflowPlanInput) -> Transcrip
             }
         };
     }
-    if !publisher_first
+    if !request.publisher_first
         && input.configured_provider.requires_local_audio()
         && input.local_audio_url.is_none()
     {
@@ -73,30 +53,64 @@ pub fn plan_transcript_workflow(input: TranscriptWorkflowPlanInput) -> Transcrip
             evidence,
         };
     }
-    let workflow_id = transcript_workflow_id(
-        input.episode_id,
-        &input.source_revision,
-        input.configured_provider,
-        &input.configured_model,
-    );
     TranscriptWorkflowPlan {
         generation: TranscriptGenerationDecision::Ensure,
-        request: Some(TranscriptWorkflowRequest {
-            workflow_id,
-            episode_id: input.episode_id,
-            source_revision: input.source_revision,
-            origin: input.origin,
-            provider: input.configured_provider,
-            model: input.configured_model,
-            remote_audio_url: input.remote_audio_url,
-            local_audio_url: input.local_audio_url,
-            publisher_transcript_url: input.publisher_transcript_url,
-            publisher_mime_hint: input.publisher_mime_hint,
-            publisher_first,
-            provider_fallback_enabled,
-        }),
+        request: Some(request),
         evidence,
     }
+}
+
+/// Builds the stable request identity and capability facts without consulting
+/// transient credential or local-file availability. Migration uses this to
+/// preserve terminal and recoverable legacy work while Rust remains the only
+/// owner of request policy and identity.
+pub fn transcript_workflow_request(
+    input: &TranscriptWorkflowPlanInput,
+) -> Result<Option<TranscriptWorkflowRequest>, TranscriptWorkflowFailureCode> {
+    let (publisher_first, provider_fallback_enabled) = requested_paths(input);
+    if !publisher_first && !provider_fallback_enabled {
+        return Ok(None);
+    }
+    if !valid_source_revision(&input.source_revision)
+        || !valid_model(&input.configured_model)
+        || crate::normalize_media_url(&input.remote_audio_url).is_none()
+        || invalid_optional_url(input.local_audio_url.as_deref())
+        || (publisher_first && invalid_publisher(input.publisher_transcript_url.as_deref()))
+        || (publisher_first
+            && input
+                .publisher_mime_hint
+                .as_ref()
+                .is_some_and(|value| value.len() > MAX_PUBLISHER_MIME_HINT_BYTES))
+    {
+        return Err(TranscriptWorkflowFailureCode::InvalidRequest);
+    }
+    if provider_fallback_enabled
+        && matches!(
+            input.configured_provider,
+            TranscriptProvider::Unsupported { .. }
+        )
+    {
+        return Err(TranscriptWorkflowFailureCode::UnsupportedProvider);
+    }
+    Ok(Some(TranscriptWorkflowRequest {
+        workflow_id: transcript_workflow_id(
+            input.episode_id,
+            &input.source_revision,
+            input.configured_provider,
+            &input.configured_model,
+        ),
+        episode_id: input.episode_id,
+        source_revision: input.source_revision.clone(),
+        origin: input.origin,
+        provider: input.configured_provider,
+        model: input.configured_model.clone(),
+        remote_audio_url: input.remote_audio_url.clone(),
+        local_audio_url: input.local_audio_url.clone(),
+        publisher_transcript_url: input.publisher_transcript_url.clone(),
+        publisher_mime_hint: input.publisher_mime_hint.clone(),
+        publisher_first,
+        provider_fallback_enabled,
+    }))
 }
 
 fn requested_paths(input: &TranscriptWorkflowPlanInput) -> (bool, bool) {
