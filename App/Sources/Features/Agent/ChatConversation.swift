@@ -81,21 +81,28 @@ struct ChatConversation: Identifiable, Codable, Equatable, Sendable {
     /// error. Persisting the prompt alone is an interruption checkpoint, not
     /// proof that the scheduled work produced an output.
     var hasCompletedScheduledOutput: Bool {
+        completedScheduledOutputText != nil
+    }
+
+    /// Bounded migration and host adapters need the actual qualified output,
+    /// not just a Boolean completion marker. The same terminal-message rule
+    /// remains the single definition of a completed scheduled conversation.
+    var completedScheduledOutputText: String? {
         guard isScheduledTask, occurrenceID != nil,
               let userIndex = messages.lastIndex(where: {
                   if case .user = $0.role { return true }
                   return false
-              }) else { return false }
+              }) else { return nil }
         for message in messages.suffix(from: messages.index(after: userIndex)).reversed() {
             switch message.role {
             case .assistant:
-                return !message.text.isBlank
+                return message.text.isBlank ? nil : message.text
             case .error:
-                return false
+                return nil
             case .user, .toolBatch, .skillActivated:
                 continue
             }
         }
-        return false
+        return nil
     }
 }

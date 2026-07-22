@@ -33,6 +33,10 @@ impl FacadeState {
             pod0_application::ApplicationCommand::ReconcileScheduledRuns => {
                 self.reconcile_scheduled_runs(envelope)
             }
+            pod0_application::ApplicationCommand::RetryScheduledRun {
+                occurrence_id,
+                expected_workflow_revision,
+            } => self.retry_scheduled_run(envelope, occurrence_id, expected_workflow_revision),
             pod0_application::ApplicationCommand::CancelScheduledRun {
                 occurrence_id,
                 expected_workflow_revision,
@@ -182,6 +186,26 @@ impl FacadeState {
         {
             self.withdraw_scheduled_agent_request(request_id);
         }
+        self.finish_scheduled_agent_command(envelope.command_id, result);
+    }
+
+    pub(super) fn retry_scheduled_run(
+        &mut self,
+        envelope: &CommandEnvelope,
+        occurrence_id: ScheduledOccurrenceId,
+        expected_revision: StateRevision,
+    ) {
+        let Some(store) = self.scheduled_agent_store.clone() else {
+            self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
+            return;
+        };
+        let result = store
+            .retry_occurrence(
+                self.scheduled_context(envelope),
+                occurrence_id,
+                expected_revision,
+            )
+            .map(|_| ());
         self.finish_scheduled_agent_command(envelope.command_id, result);
     }
 

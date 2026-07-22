@@ -28,12 +28,7 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
         case .newEpisodeNotification:
             records = [record(.notificationDelivery, job: job, output: outputVersion, hash: outputVersion)]
         case .scheduledAgentRun:
-            guard let occurrenceID = job.occurrenceID,
-                  occurrenceID == outputVersion,
-                  ChatHistoryStore.shared.conversation(
-                    occurrenceID: occurrenceID
-                  )?.hasCompletedScheduledOutput == true else { return false }
-            records = [record(.scheduledOutput, job: job, output: outputVersion, hash: outputVersion)]
+            return false
         }
         try artifacts.commit(records, completingJobID: job.id, leaseToken: leaseToken)
         return true
@@ -41,12 +36,11 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
 
     func isStillCurrent(_ job: WorkJob) -> Bool {
         switch job.kind {
-        case .transcriptIngest, .transcriptIndex:
+        case .transcriptIngest, .transcriptIndex, .scheduledAgentRun:
             return false
         case .metadataIndex:
             return false
-        case .feedDiscovery, .download, .autoDownload,
-             .newEpisodeNotification, .scheduledAgentRun:
+        case .feedDiscovery, .download, .autoDownload, .newEpisodeNotification:
             return true
         }
     }

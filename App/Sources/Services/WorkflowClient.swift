@@ -27,6 +27,7 @@ final class WorkflowClient {
     private var coreModelChapterJobsByID: [UUID: WorkflowJobProjection] = [:]
     private var coreDownloadJobsByID: [UUID: WorkflowJobProjection] = [:]
     private var coreTranscriptJobsByID: [UUID: WorkflowJobProjection] = [:]
+    var coreScheduledAgentJobsByID: [UUID: WorkflowJobProjection] = [:]
     private var latestByKey: [WorkflowJobKey: WorkflowJobProjection] = [:]
 
     @ObservationIgnored private var registrations: [UUID: WorkflowProjectionRequest] = [:]
@@ -261,10 +262,11 @@ final class WorkflowClient {
         mergeJobs()
     }
 
-    private func mergeJobs() {
+    func mergeJobs() {
         let chapterJobs = corePublisherJobsByID.merging(coreModelChapterJobsByID) { _, model in model }
         let coreJobs = chapterJobs.merging(coreDownloadJobsByID) { _, download in download }
             .merging(coreTranscriptJobsByID) { _, transcript in transcript }
+            .merging(coreScheduledAgentJobsByID) { _, scheduled in scheduled }
         let replacement = swiftJobsByID.merging(coreJobs) { _, core in core }
         guard replacement != jobsByID else { return }
         jobsByID = replacement

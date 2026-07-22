@@ -32,6 +32,14 @@ pub(crate) fn hash_scheduled_agent_command(hash: &mut Sha256, command: &Applicat
             hash.update(expected_task_revision.value.to_be_bytes());
         }
         ApplicationCommand::ReconcileScheduledRuns => hash.update(b"reconcile-scheduled-runs\0"),
+        ApplicationCommand::RetryScheduledRun {
+            occurrence_id,
+            expected_workflow_revision,
+        } => {
+            hash.update(b"retry-scheduled-run\0");
+            hash.update(occurrence_id.into_bytes());
+            hash.update(expected_workflow_revision.value.to_be_bytes());
+        }
         ApplicationCommand::CancelScheduledRun {
             occurrence_id,
             expected_workflow_revision,

@@ -48,7 +48,7 @@ final class Persistence: Sendable {
     let lastWrittenRevision = OSAllocatedUnfairLock<UInt64>(initialState: 0)
     let episodeSnapshot = OSAllocatedUnfairLock<EpisodeSQLiteSnapshot?>(initialState: nil)
     private let lastEpisodeWriteSummaryLock = OSAllocatedUnfairLock<EpisodeWriteSummary>(initialState: .none)
-    let sharedArtifactAuthority = OSAllocatedUnfairLock<(notes: Bool, clips: Bool)>(initialState: (false, false))
+    let sharedArtifactAuthority = OSAllocatedUnfairLock<(notes: Bool, clips: Bool, scheduledAgents: Bool)>(initialState: (false, false, false))
 
     /// Successful disk-write count used by persistence regression tests.
     private let saveCounter = OSAllocatedUnfairLock<Int>(initialState: 0)
@@ -238,7 +238,7 @@ final class Persistence: Sendable {
         episodeSnapshot.withLock { $0 = nil }
         revision.withLock { $0 = 0 }
         lastWrittenRevision.withLock { $0 = 0 }
-        sharedArtifactAuthority.withLock { $0 = (false, false) }
+        sharedArtifactAuthority.withLock { $0 = (false, false, false) }
         resetEpisodeWriteSummary()
     }
 

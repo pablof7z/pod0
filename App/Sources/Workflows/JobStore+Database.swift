@@ -8,6 +8,7 @@ extension JobStore {
         .filter {
             $0 != .download && $0 != .autoDownload
                 && $0 != .transcriptIngest && $0 != .transcriptIndex
+                && $0 != .scheduledAgentRun
         }
         .map { "'\($0.rawValue)'" }
         .joined(separator: ",")

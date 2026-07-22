@@ -126,6 +126,7 @@ mod scheduled_agent_cutover_read;
 mod scheduled_agent_cutover_stage;
 mod scheduled_agent_cutover_validation;
 mod scheduled_agent_store;
+mod scheduled_agent_store_actions;
 mod scheduled_agent_store_codec;
 mod scheduled_agent_store_completion;
 mod scheduled_agent_store_model;

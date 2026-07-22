@@ -132,6 +132,27 @@ pub fn begin_scheduled_agent_attempt(
     })
 }
 
+pub fn retry_scheduled_agent(
+    state: &mut ScheduledAgentOccurrenceState,
+    observed_at: UnixTimestampMilliseconds,
+) -> ScheduledAgentTransition {
+    if !matches!(
+        state.stage,
+        ScheduledAgentStage::RetryScheduled | ScheduledAgentStage::Blocked
+    ) || state
+        .failure
+        .as_ref()
+        .is_none_or(|failure| !failure.retryable)
+    {
+        return ScheduledAgentTransition::RejectedInvalid;
+    }
+    state.stage = ScheduledAgentStage::RetryScheduled;
+    state.not_before = Some(observed_at);
+    state.revision = next_revision(state.revision);
+    state.updated_at = observed_at;
+    ScheduledAgentTransition::Applied
+}
+
 pub fn advance_scheduled_task_after_completion(
     definition: &ScheduledTaskDefinition,
     occurrence: &ScheduledAgentOccurrenceState,

@@ -73,7 +73,11 @@
         "App/Sources/Core/LegacyModelChapterWorkflowCutover.swift",
         "App/Sources/Core/LegacyModelChapterWorkflowSnapshot.swift",
         "App/Sources/Core/LegacyPublisherChapterWorkflowRetirement.swift",
-        "App/Sources/Core/LegacyWorkflowBackupStorage.swift"
+        "App/Sources/Core/LegacyWorkflowBackupStorage.swift",
+        "App/Sources/Core/LegacyScheduledAgentWorkflowBackup.swift",
+        "App/Sources/Core/LegacyScheduledAgentWorkflowCutover.swift",
+        "App/Sources/Core/LegacyScheduledAgentWorkflowMapper.swift",
+        "App/Sources/Core/LegacyScheduledAgentWorkflowSnapshot.swift"
       ]
     },
     {
@@ -95,6 +99,26 @@
         "App/Sources/Core/LegacyPublisherChapterWorkflowRetirement.swift",
         "App/Sources/Core/LegacyWorkflowBackupStorage.swift",
         "App/Sources/Workflows/JobStore+LegacyChapterRetirement.swift"
+      ]
+    },
+    {
+      "id": "temporary-scheduled-agent-workflow-cutover",
+      "classification": "temporary_swift",
+      "current_owner": "Swift one-shot scheduled-agent source reader, immutable rollback manifest, and exact retirement transaction",
+      "target_owner": "Deleted after the issue #130 rollback support window closes",
+      "reason": "Existing Swift definitions, jobs, artifacts, and completed conversation output must be preserved and classified before Rust becomes the only scheduled-agent writer.",
+      "boundary": "Read and back up the exact legacy source, map it to typed cutover inputs, retire exact matching Swift rows before Rust authority commits, and never expose a restore writer.",
+      "persisted_state": "Versioned integrity-checked rollback manifests only; Rust owns all active scheduled definitions, occurrences, attempts, recurrence, and generated artifacts after cutover.",
+      "migration_issues": [130],
+      "deletion_target": "Remove the compatibility mapper, source readers, and retirement command after supported installations are proven across the scheduled-agent cutover marker; immutable export evidence may remain read-only.",
+      "priority": "highest",
+      "includes": [
+        "App/Sources/Core/LegacyScheduledAgentWorkflowBackup.swift",
+        "App/Sources/Core/LegacyScheduledAgentWorkflowCutover.swift",
+        "App/Sources/Core/LegacyScheduledAgentWorkflowMapper.swift",
+        "App/Sources/Core/LegacyScheduledAgentWorkflowSnapshot.swift",
+        "App/Sources/State/Persistence+SharedScheduledAgents.swift",
+        "App/Sources/Workflows/JobStore+LegacyScheduledAgentCutover.swift"
       ]
     },
     {
@@ -221,7 +245,8 @@
       "migration_issues": [64, 75, 79, 81, 82, 83, 92, 93, 94, 95, 96, 97, 107],
       "deletion_target": "Delete migrated AppState fields/mutation methods; retain only supported read-only import and native projection adapters.",
       "priority": "highest",
-      "includes": ["App/Sources/State/"]
+      "includes": ["App/Sources/State/"],
+      "excludes": ["App/Sources/State/Persistence+SharedScheduledAgents.swift"]
     },
     {
       "id": "shared-durable-workflows",
@@ -237,7 +262,8 @@
       "includes": ["App/Sources/Workflows/"],
       "excludes": [
         "App/Sources/Workflows/ArtifactVerificationExecutor.swift",
-        "App/Sources/Workflows/JobStore+LegacyChapterRetirement.swift"
+        "App/Sources/Workflows/JobStore+LegacyChapterRetirement.swift",
+        "App/Sources/Workflows/JobStore+LegacyScheduledAgentCutover.swift"
       ]
     },
     {

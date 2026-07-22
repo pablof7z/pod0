@@ -17,4 +17,5 @@ enum SharedLibraryBootstrapStage: String {
     case recallConfiguration
     case downloadWorkflowCutover
     case transcriptWorkflowCutover
+    case scheduledAgentWorkflowCutover
 }

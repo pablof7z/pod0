@@ -215,6 +215,14 @@ enum SharedLibraryBootstrap {
                 backupRoot: persistence.legacyPublisherChapterWorkflowBackupRootURL,
                 modelSourceGeneration: modelSourceGeneration
             )
+            stage = .scheduledAgentWorkflowCutover
+            try LegacyScheduledAgentWorkflowCutover.run(
+                facade: facade,
+                persistence: persistence,
+                state: legacyState,
+                jobStore: legacyJobStore,
+                backupRoot: persistence.legacyScheduledAgentWorkflowBackupRootURL
+            )
             let observationOutbox = try NativeHostObservationOutbox(
                 fileURL: persistence.nativeHostObservationOutboxURL
             )

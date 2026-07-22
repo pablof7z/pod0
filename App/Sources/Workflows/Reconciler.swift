@@ -17,30 +17,7 @@ struct Reconciler {
     @discardableResult
     func reconcile() throws -> ReconciliationReport {
         var report = ReconciliationReport()
-        let desired = DesiredStatePlanner().plan(.init(
-            settings: appStore.state.settings,
-            scheduledTasks: appStore.scheduledTasks,
-            now: now()
-        ))
-        report.ensured = try jobStore.ensureJobs(desired)
-        report.ensured += try jobStore.rearmSucceededRepairs(desired, now: now())
-        let jobsByKey = Dictionary(
-            uniqueKeysWithValues: try jobStore.allJobs().map { ($0.idempotencyKey, $0) }
-        )
-        for desiredJob in desired {
-            guard let existing = jobsByKey[desiredJob.idempotencyKey],
-                  existing.state == .blocked,
-                  prerequisitesAreAvailable(for: existing) else { continue }
-            try jobStore.unblock(idempotencyKey: desiredJob.idempotencyKey, now: now())
-        }
-
         report.obsoletedJobs += try obsoleteDisabledNotifications()
-
-        let desiredKeys = Set(desired.map(\.idempotencyKey))
-        let before = try jobStore.allJobs().filter { $0.state.isActive && $0.occurrenceID == nil }.count
-        try jobStore.obsoleteActiveJobs(notIn: desiredKeys)
-        let after = try jobStore.allJobs().filter { $0.state.isActive && $0.occurrenceID == nil }.count
-        report.obsoletedJobs += max(0, before - after)
         return report
     }
 
@@ -59,27 +36,4 @@ struct Reconciler {
         return count
     }
 
-    private func prerequisitesAreAvailable(for job: WorkJob) -> Bool {
-        switch job.kind {
-        case .transcriptIngest, .transcriptIndex:
-            return false
-        case .metadataIndex:
-            return true
-        case .scheduledAgentRun:
-            guard let payload = try? Self.decoder.decode(
-                ScheduledRunPayload.self, from: job.payload ?? Data()
-            ) else { return false }
-            return LLMProviderCredentialResolver.hasAPIKey(
-                for: LLMModelReference(storedID: payload.modelID).provider
-            )
-        case .feedDiscovery, .download, .autoDownload, .newEpisodeNotification:
-            return true
-        }
-    }
-
-    static let decoder: JSONDecoder = {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return decoder
-    }()
 }

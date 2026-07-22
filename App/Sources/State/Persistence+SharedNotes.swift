@@ -16,6 +16,9 @@ extension Persistence {
         if sharedArtifactAuthority.withLock({ $0.clips }) {
             metadata.clips = []
         }
+        if sharedArtifactAuthority.withLock({ $0.scheduledAgents }) {
+            metadata.agentScheduledTasks = []
+        }
         return metadata
     }
 }

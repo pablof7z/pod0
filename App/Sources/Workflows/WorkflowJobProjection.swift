@@ -7,6 +7,7 @@ enum WorkflowProjectionAuthority: Sendable, Equatable {
     case sharedRustModelChapters
     case sharedRustDownloads
     case sharedRustTranscripts
+    case sharedRustScheduledAgents
 }
 
 extension WorkflowJobProjection {

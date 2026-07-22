@@ -55,6 +55,7 @@ fn task_projection(task: ScheduledTaskDefinition) -> ScheduledTaskProjection {
         prompt_revision: task.prompt_revision,
         model_reference: task.model_reference,
         interval_milliseconds: task.interval_milliseconds,
+        created_at: task.created_at,
         last_run_at: task.last_run_at,
         next_run_at: task.next_run_at,
         task_revision: task.revision,

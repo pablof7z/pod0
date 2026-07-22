@@ -59,6 +59,15 @@ extension QueueEntryId {
     var uuid: UUID? { UUID(coreHigh: high, low: low) }
 }
 
+extension ScheduledTaskId {
+    init(uuid: UUID) {
+        let parts = uuid.coreIdentifierParts
+        self.init(high: parts.high, low: parts.low)
+    }
+
+    var uuid: UUID? { UUID(coreHigh: high, low: low) }
+}
+
 extension SpeakerId {
     init(uuid: UUID) {
         let hexadecimal = uuid.uuidString.replacingOccurrences(of: "-", with: "")

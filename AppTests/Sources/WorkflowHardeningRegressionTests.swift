@@ -3,15 +3,9 @@ import XCTest
 @testable import Podcastr
 
 final class WorkflowRepairRegressionTests: XCTestCase {
-    func testSwiftPlannerCannotCreateTranscriptWork() {
-        let jobs = DesiredStatePlanner().plan(.init(
-            settings: Settings(),
-            scheduledTasks: [],
-            now: Date()
-        ))
-
-        XCTAssertTrue(jobs.isEmpty)
+    func testSwiftCoordinatorCannotCreateMigratedWorkflowWork() {
         XCTAssertFalse(JobStore.supportedKindSQL.contains("transcriptIngest"))
         XCTAssertFalse(JobStore.supportedKindSQL.contains("transcriptIndex"))
+        XCTAssertFalse(JobStore.supportedKindSQL.contains("scheduledAgentRun"))
     }
 }

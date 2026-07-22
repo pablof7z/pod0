@@ -158,6 +158,7 @@ impl FacadeState {
             | ApplicationCommand::UpdateScheduledTask { .. }
             | ApplicationCommand::RemoveScheduledTask { .. }
             | ApplicationCommand::ReconcileScheduledRuns
+            | ApplicationCommand::RetryScheduledRun { .. }
             | ApplicationCommand::CancelScheduledRun { .. }) => {
                 self.accept_scheduled_agent_command(&envelope, command)
             }

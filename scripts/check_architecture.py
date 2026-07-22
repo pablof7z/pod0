@@ -41,6 +41,7 @@ def main() -> int:
         (scripts / "check_chapter_capability_boundary.py", True),
         (scripts / "check_chapter_playback_staging.py", True),
         (scripts / "check_chapter_single_writer.py", True),
+        (scripts / "check_scheduled_agent_single_writer.py", True),
     ]
     failed = False
     for script, has_self_test in checks:

@@ -1,77 +1,60 @@
 import Foundation
 
-// MARK: - Scheduled Tasks
+// MARK: - Rust-owned scheduled tasks
 
 extension AppStateStore {
-
     var scheduledTasks: [AgentScheduledTask] { state.agentScheduledTasks }
 
+    /// Replaces the native read model from the typed Rust projection.
+    /// Persistence strips this cache once shared scheduled authority is active.
+    func applySharedScheduledTasks(_ tasks: [AgentScheduledTask]) {
+        mutateState { $0.agentScheduledTasks = tasks }
+    }
+
     @discardableResult
-    func addScheduledTask(label: String, prompt: String, intervalSeconds: TimeInterval) -> AgentScheduledTask {
+    func addScheduledTask(
+        label: String,
+        prompt: String,
+        intervalSeconds: TimeInterval
+    ) -> AgentScheduledTask {
+        let now = Date()
         let task = AgentScheduledTask(
             id: UUID(),
             label: label,
             prompt: prompt,
             intervalSeconds: intervalSeconds,
-            createdAt: Date(),
+            createdAt: now,
             lastRunAt: nil,
-            nextRunAt: Date().addingTimeInterval(intervalSeconds)
+            nextRunAt: now.addingTimeInterval(intervalSeconds)
         )
-        mutateState { $0.agentScheduledTasks.append(task) }
-        return task
+        _ = sharedLibrary?.ensureScheduledTask(
+            id: task.id,
+            label: label,
+            prompt: prompt,
+            intervalSeconds: intervalSeconds,
+            modelReference: state.settings.agentInitialModel,
+            nextRunAt: task.nextRunAt
+        )
+        return scheduledTasks.first(where: { $0.id == task.id }) ?? task
     }
 
     func removeScheduledTask(id: UUID) {
-        mutateState { $0.agentScheduledTasks.removeAll { $0.id == id } }
+        _ = sharedLibrary?.removeScheduledTask(id: id)
     }
 
-    func updateScheduledTask(id: UUID, label: String, prompt: String, intervalSeconds: TimeInterval) {
-        guard let idx = state.agentScheduledTasks.firstIndex(where: { $0.id == id }) else { return }
-        mutateState {
-            $0.agentScheduledTasks[idx].label = label
-            $0.agentScheduledTasks[idx].prompt = prompt
-            $0.agentScheduledTasks[idx].intervalSeconds = intervalSeconds
-            $0.agentScheduledTasks[idx].nextRunAt = Date().addingTimeInterval(intervalSeconds)
-        }
-    }
-
-    /// Advances `nextRunAt` to `now + interval` — NOT `previousNextRunAt + interval`.
-    /// This gives miss-once semantics: if the app was offline for N periods only
-    /// one catch-up run fires; subsequent runs start fresh from the moment of resumption.
-    func markTaskRun(id: UUID, now: Date = Date()) {
-        guard let idx = state.agentScheduledTasks.firstIndex(where: { $0.id == id }) else { return }
-        let interval = state.agentScheduledTasks[idx].intervalSeconds
-        mutateState {
-            $0.agentScheduledTasks[idx].lastRunAt = now
-            $0.agentScheduledTasks[idx].nextRunAt = now.addingTimeInterval(interval)
-        }
-    }
-
-    /// Repairs the small success-marker/schedule-projection gap. Only the
-    /// exact due occurrence may advance a recurring definition, and a second
-    /// pass is a no-op because `nextRunAt` has moved to a new identity.
-    @discardableResult
-    func advanceCompletedScheduledOccurrences(
-        from jobs: [WorkJob],
-        now: Date = Date()
-    ) -> Int {
-        let succeeded = Set(
-            jobs.lazy.filter { $0.kind == .scheduledAgentRun && $0.state == .succeeded }
-                .map(\.idempotencyKey)
+    func updateScheduledTask(
+        id: UUID,
+        label: String,
+        prompt: String,
+        intervalSeconds: TimeInterval
+    ) {
+        _ = sharedLibrary?.updateScheduledTask(
+            id: id,
+            label: label,
+            prompt: prompt,
+            intervalSeconds: intervalSeconds,
+            modelReference: state.settings.agentInitialModel,
+            nextRunAt: Date().addingTimeInterval(intervalSeconds)
         )
-        var tasks = state.agentScheduledTasks
-        var advanced = 0
-        for index in tasks.indices where tasks[index].nextRunAt <= now {
-            let key = DesiredStatePlanner.scheduledOccurrenceID(
-                taskID: tasks[index].id,
-                scheduledFor: tasks[index].nextRunAt
-            )
-            guard succeeded.contains(key) else { continue }
-            tasks[index].lastRunAt = now
-            tasks[index].nextRunAt = now.addingTimeInterval(tasks[index].intervalSeconds)
-            advanced += 1
-        }
-        if advanced > 0 { mutateState { $0.agentScheduledTasks = tasks } }
-        return advanced
     }
 }

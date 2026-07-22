@@ -37,17 +37,10 @@ final class WorkflowRuntime {
         client?.attach(jobStore: jobs)
         if let client { store.sharedLibrary?.attach(workflowClient: client) }
 
-        let scheduled = ScheduledAgentRunJobExecutor(
-            store: store,
-            artifacts: artifacts
-        ) { [weak self] in
-            self?.podcastDepsProvider()
-        }
         let executors: [WorkJobKind: any JobExecutor] = [
             .feedDiscovery: FeedDiscoveryJobExecutor(store: store, jobStore: jobs),
             .metadataIndex: MetadataIndexJobExecutor(store: store),
             .newEpisodeNotification: NewEpisodeNotificationJobExecutor(store: store),
-            .scheduledAgentRun: scheduled,
         ]
         let verifier = WorkflowArtifactVerifier(artifacts: artifacts)
         let verifiers = Dictionary(
@@ -111,6 +104,12 @@ final class WorkflowRuntime {
                 on: projection
             ) ?? .failed
         }
+        if projection.authority == .sharedRustScheduledAgents {
+            return appStore?.sharedLibrary?.performScheduledAgentAction(
+                action,
+                on: projection
+            ) ?? .failed
+        }
         guard let jobStore else { return .failed }
         do {
             let result = try jobStore.perform(
@@ -161,19 +160,14 @@ final class WorkflowRuntime {
                 transcripts: transcriptSnapshots,
                 configuredModel: store.state.settings.chapterCompilationModel
             )
+            store.sharedLibrary?.reconcileScheduledAgents()
             let reconciler = Reconciler(appStore: store, jobStore: jobStore)
             _ = try reconciler.reconcile()
             if signalOnly { await coordinator.signal() }
             else { await coordinator.drainDueJobs() }
-            repairCompletedScheduledOccurrences()
         } catch {
             Self.logger.error("Reconciliation failed: \(error, privacy: .public)")
         }
     }
 
-    private func repairCompletedScheduledOccurrences() {
-        guard let store = appStore, let jobStore,
-              let jobs = try? jobStore.allJobs() else { return }
-        store.advanceCompletedScheduledOccurrences(from: jobs)
-    }
 }

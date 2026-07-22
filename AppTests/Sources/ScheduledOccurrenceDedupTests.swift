@@ -53,55 +53,17 @@ final class ScheduledOccurrenceDedupTests: XCTestCase {
         XCTAssertFalse(conversation.hasCompletedScheduledOutput)
     }
 
-    func testOnlySucceededExactOccurrenceAdvancesScheduleOnce() {
-        let made = AppStateTestSupport.makeIsolatedStore()
-        defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
-        let due = Date(timeIntervalSince1970: 10_000)
-        let task = AgentScheduledTask(
-            id: UUID(), label: "Brief", prompt: "Run", intervalSeconds: 3_600,
-            createdAt: due.addingTimeInterval(-100), lastRunAt: nil, nextRunAt: due
+    func testQualifiedOutputAccessorReturnsTheSameCompletionEvidence() {
+        let occurrence = "scheduled:task:complete"
+        let conversation = ChatConversation(
+            messages: [
+                .init(role: .user, text: "Run"),
+                .init(role: .assistant, text: "Finished output"),
+            ],
+            isScheduledTask: true,
+            occurrenceID: occurrence
         )
-        made.store.mutateState { $0.agentScheduledTasks = [task] }
-        let key = DesiredStatePlanner.scheduledOccurrenceID(
-            taskID: task.id, scheduledFor: due
-        )
-        let pending = workJob(key: key, taskID: task.id, state: .failedPermanent)
-
-        XCTAssertEqual(
-            made.store.advanceCompletedScheduledOccurrences(from: [pending], now: due),
-            0
-        )
-        XCTAssertEqual(made.store.scheduledTasks[0].nextRunAt, due)
-
-        let succeeded = workJob(key: key, taskID: task.id, state: .succeeded)
-        XCTAssertEqual(
-            made.store.advanceCompletedScheduledOccurrences(from: [succeeded], now: due),
-            1
-        )
-        XCTAssertEqual(made.store.scheduledTasks[0].lastRunAt, due)
-        XCTAssertEqual(made.store.scheduledTasks[0].nextRunAt, due.addingTimeInterval(3_600))
-        XCTAssertEqual(
-            made.store.advanceCompletedScheduledOccurrences(from: [succeeded], now: due),
-            0
-        )
-    }
-
-    private func workJob(
-        key: String,
-        taskID: UUID,
-        state: WorkJobState
-    ) -> WorkJob {
-        WorkJob(
-            id: UUID(), idempotencyKey: key, kind: .scheduledAgentRun,
-            subjectID: taskID, inputVersion: key, occurrenceID: key,
-            payloadVersion: 1, payload: nil, state: state, priority: 0,
-            resourceClass: .scheduledAgent, attempt: 1, maxAttempts: 8,
-            notBefore: Date(), leaseToken: nil, leaseOwner: nil,
-            leaseExpiresAt: nil, externalProvider: nil,
-            externalOperationID: nil, externalOperationState: nil,
-            outputVersion: state == .succeeded ? key : nil,
-            lastErrorClass: nil, lastErrorMessage: nil,
-            createdAt: Date(), updatedAt: Date()
-        )
+        XCTAssertEqual(conversation.completedScheduledOutputText, "Finished output")
+        XCTAssertTrue(conversation.hasCompletedScheduledOutput)
     }
 }

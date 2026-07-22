@@ -25,6 +25,7 @@ extension SharedLibraryClient {
                 Self.transcriptWorkflows(facade: facade, query: query)
             }.value
         }
+        workflowClient.attachScheduledAgentCore(cachedScheduledAgent?.workflows ?? [])
     }
 
     /// Announces a native execution opportunity only. Rust derives whether a

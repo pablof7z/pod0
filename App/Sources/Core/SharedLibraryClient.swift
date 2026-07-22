@@ -23,6 +23,7 @@ final class SharedLibraryClient {
     private var clipsSubscriptionID: SubscriptionId?
     private var downloadsSubscriptionID: SubscriptionId?
     private var transcriptWorkflowSubscriptionID: SubscriptionId?
+    var scheduledAgentSubscriptionID: SubscriptionId?
     var waiters: [CommandId: Waiter] = [:]
     var lastLibraryRevision: UInt64 = 0
     private var lastPlaybackRevision: UInt64 = 0
@@ -45,6 +46,8 @@ final class SharedLibraryClient {
     var lastDownloadsRevision: UInt64 = 0
     var cachedDownloadWorkflows: [UUID: DownloadWorkflowProjection] = [:]
     var lastTranscriptWorkflowRevision: UInt64 = 0
+    var lastScheduledAgentRevision: UInt64 = 0
+    var cachedScheduledAgent: ScheduledAgentProjection?
     var announcedTranscriptWorkflowVersions: [UUID: String] = [:]
     private var playbackHostAttached = false
     var evidenceRebuildTask: Task<Void, Never>?
@@ -130,6 +133,7 @@ final class SharedLibraryClient {
             ),
             subscriber: subscriber
         )
+        subscribeToScheduledAgents(subscriber)
         dispatcher.executePendingRequests(from: facade)
     }
 
@@ -144,6 +148,7 @@ final class SharedLibraryClient {
         let clips = loadClipPages(scope: .active)
         cachedClips = clips
         store.applySharedClips(clips)
+        publishScheduledAgents(to: store)
         publishRecallConfiguration(to: store)
     }
 
@@ -199,8 +204,10 @@ final class SharedLibraryClient {
             receiveDownloads(revision: envelope.stateRevision.value)
         case .transcriptWorkflows:
             receiveTranscriptWorkflows(revision: envelope.stateRevision.value)
+        case .scheduledAgent(let projection):
+            receiveScheduledAgents(projection, revision: envelope.stateRevision.value)
         case .podcastDetail, .episodeDetail, .recall, .evidenceIndex, .transcript,
-             .chapter, .scheduledAgent, .unsupported:
+             .chapter, .unsupported:
             break
         }
     }
@@ -252,6 +259,7 @@ final class SharedLibraryClient {
         if let transcriptWorkflowSubscriptionID {
             facade.unsubscribe(subscriptionId: transcriptWorkflowSubscriptionID)
         }
+        unsubscribeFromScheduledAgents()
         librarySubscriptionID = nil
         playbackSubscriptionID = nil
         chapterWorkflowSubscriptionID = nil
@@ -278,7 +286,6 @@ final class SharedLibraryClient {
     }
 
 }
-
 final class SharedLibrarySubscriber: ProjectionSubscriber, @unchecked Sendable {
     private let delivery: @Sendable (ProjectionEnvelope) -> Void
 

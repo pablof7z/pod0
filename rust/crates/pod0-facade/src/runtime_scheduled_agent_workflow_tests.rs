@@ -194,3 +194,62 @@ fn cancellation_withdraws_exact_work_and_late_completion_cannot_commit() {
         ScheduledAgentStage::Cancelled
     );
 }
+
+#[test]
+fn explicit_retry_rearms_blocked_occurrence_and_issues_next_attempt() {
+    let fixture = authoritative_fixture(4_000);
+    let first = open_scheduled(&fixture, 4_000);
+    dispatch_scheduled(
+        &first,
+        1,
+        ApplicationCommand::EnsureScheduledTask {
+            task: task_input(4_000),
+        },
+    );
+    dispatch_scheduled(&first, 2, ApplicationCommand::ReconcileScheduledRuns);
+    let request = first.next_host_requests(20).pop().unwrap();
+    let HostRequest::ExecuteScheduledAgentTurn { execution } = &request.request else {
+        panic!("expected scheduled-agent host request")
+    };
+    let blocked = ScheduledAgentExecutionObservation::Failed {
+        occurrence_id: execution.occurrence_id,
+        attempt_id: execution.attempt_id,
+        code: ScheduledAgentFailureCode::MissingCredential,
+        safe_detail: Some("Credential unavailable".to_owned()),
+        retry_after_milliseconds: None,
+    };
+    assert!(matches!(
+        first.record_host_observation(scheduled_observation(&request, 0, 4_001, blocked)),
+        HostObservationReceipt::Persisted { terminal: true, .. }
+    ));
+    drop(first);
+
+    let second = open_scheduled(&fixture, 4_002);
+    let workflow = scheduled_projection(&second).workflows.remove(0);
+    assert_eq!(workflow.stage, ScheduledAgentStage::Blocked);
+    assert!(workflow.allowed_actions.can_retry);
+    dispatch_scheduled(
+        &second,
+        3,
+        ApplicationCommand::RetryScheduledRun {
+            occurrence_id: workflow.occurrence_id,
+            expected_workflow_revision: workflow.workflow_revision,
+        },
+    );
+    assert_eq!(
+        scheduled_projection(&second).workflows[0].stage,
+        ScheduledAgentStage::RetryScheduled
+    );
+    dispatch_scheduled(&second, 4, ApplicationCommand::ReconcileScheduledRuns);
+    let retried = second.next_host_requests(20).pop().unwrap();
+    let HostRequest::ExecuteScheduledAgentTurn { execution } = retried.request else {
+        panic!("expected retried scheduled-agent request")
+    };
+    assert_eq!(
+        execution.attempt_id,
+        scheduled_projection(&second).workflows[0]
+            .attempt_id
+            .unwrap()
+    );
+    assert_eq!(scheduled_projection(&second).workflows[0].attempt, 2);
+}

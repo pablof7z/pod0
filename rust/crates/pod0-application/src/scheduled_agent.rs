@@ -95,6 +95,7 @@ pub struct ScheduledTaskProjection {
     pub prompt_revision: ContentDigest,
     pub model_reference: String,
     pub interval_milliseconds: u64,
+    pub created_at: UnixTimestampMilliseconds,
     pub last_run_at: Option<UnixTimestampMilliseconds>,
     pub next_run_at: UnixTimestampMilliseconds,
     pub task_revision: StateRevision,

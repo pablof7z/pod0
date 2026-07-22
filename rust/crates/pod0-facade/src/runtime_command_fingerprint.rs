@@ -182,6 +182,7 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
         | ApplicationCommand::UpdateScheduledTask { .. }
         | ApplicationCommand::RemoveScheduledTask { .. }
         | ApplicationCommand::ReconcileScheduledRuns
+        | ApplicationCommand::RetryScheduledRun { .. }
         | ApplicationCommand::CancelScheduledRun { .. } => {
             hash_scheduled_agent_command(&mut hash, command)
         }

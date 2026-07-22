@@ -10,7 +10,7 @@ use crate::{
     TranscriptWorkflowConfiguration, TranscriptWorkflowOrigin,
 };
 
-pub const FACADE_CONTRACT_VERSION: u32 = 37;
+pub const FACADE_CONTRACT_VERSION: u32 = 38;
 pub const MAX_PROJECTION_ITEMS: u16 = 200;
 pub const MAX_OPERATION_ITEMS: usize = 32;
 pub const MAX_HOST_REQUEST_BATCH: u16 = 64;
@@ -158,6 +158,10 @@ pub enum ApplicationCommand {
         expected_task_revision: StateRevision,
     },
     ReconcileScheduledRuns,
+    RetryScheduledRun {
+        occurrence_id: pod0_domain::ScheduledOccurrenceId,
+        expected_workflow_revision: StateRevision,
+    },
     CancelScheduledRun {
         occurrence_id: pod0_domain::ScheduledOccurrenceId,
         expected_workflow_revision: StateRevision,

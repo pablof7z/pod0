@@ -5619,6 +5619,8 @@ data class ScheduledTaskProjection (
     ,
     val `intervalMilliseconds`: kotlin.ULong
     ,
+    val `createdAt`: UnixTimestampMilliseconds
+    ,
     val `lastRunAt`: UnixTimestampMilliseconds?
     ,
     val `nextRunAt`: UnixTimestampMilliseconds
@@ -5646,6 +5648,7 @@ public object FfiConverterTypeScheduledTaskProjection: FfiConverterRustBuffer<Sc
             FfiConverterTypeContentDigest.read(buf),
             FfiConverterString.read(buf),
             FfiConverterULong.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
             FfiConverterOptionalTypeUnixTimestampMilliseconds.read(buf),
             FfiConverterTypeUnixTimestampMilliseconds.read(buf),
             FfiConverterTypeStateRevision.read(buf),
@@ -5659,6 +5662,7 @@ public object FfiConverterTypeScheduledTaskProjection: FfiConverterRustBuffer<Sc
             FfiConverterTypeContentDigest.allocationSize(value.`promptRevision`) +
             FfiConverterString.allocationSize(value.`modelReference`) +
             FfiConverterULong.allocationSize(value.`intervalMilliseconds`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`createdAt`) +
             FfiConverterOptionalTypeUnixTimestampMilliseconds.allocationSize(value.`lastRunAt`) +
             FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`nextRunAt`) +
             FfiConverterTypeStateRevision.allocationSize(value.`taskRevision`)
@@ -5671,6 +5675,7 @@ public object FfiConverterTypeScheduledTaskProjection: FfiConverterRustBuffer<Sc
             FfiConverterTypeContentDigest.write(value.`promptRevision`, buf)
             FfiConverterString.write(value.`modelReference`, buf)
             FfiConverterULong.write(value.`intervalMilliseconds`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`createdAt`, buf)
             FfiConverterOptionalTypeUnixTimestampMilliseconds.write(value.`lastRunAt`, buf)
             FfiConverterTypeUnixTimestampMilliseconds.write(value.`nextRunAt`, buf)
             FfiConverterTypeStateRevision.write(value.`taskRevision`, buf)
@@ -7259,6 +7264,16 @@ sealed class ApplicationCommand {
     object ReconcileScheduledRuns : ApplicationCommand()
 
 
+    data class RetryScheduledRun(
+        val `occurrenceId`: uniffi.pod0_domain.ScheduledOccurrenceId,
+        val `expectedWorkflowRevision`: uniffi.pod0_domain.StateRevision) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
     data class CancelScheduledRun(
         val `occurrenceId`: uniffi.pod0_domain.ScheduledOccurrenceId,
         val `expectedWorkflowRevision`: uniffi.pod0_domain.StateRevision) : ApplicationCommand()
@@ -7576,60 +7591,64 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterTypeStateRevision.read(buf),
                 )
             31 -> ApplicationCommand.ReconcileScheduledRuns
-            32 -> ApplicationCommand.CancelScheduledRun(
+            32 -> ApplicationCommand.RetryScheduledRun(
                 FfiConverterTypeScheduledOccurrenceId.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            33 -> ApplicationCommand.CommitChapter(
+            33 -> ApplicationCommand.CancelScheduledRun(
+                FfiConverterTypeScheduledOccurrenceId.read(buf),
+                FfiConverterTypeStateRevision.read(buf),
+                )
+            34 -> ApplicationCommand.CommitChapter(
                 FfiConverterTypeStateRevision.read(buf),
                 FfiConverterTypeChapterArtifactInput.read(buf),
                 )
-            34 -> ApplicationCommand.EnsurePublisherChapters(
+            35 -> ApplicationCommand.EnsurePublisherChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 )
-            35 -> ApplicationCommand.RetryPublisherChapters(
-                FfiConverterTypeEpisodeId.read(buf),
-                FfiConverterTypeStateRevision.read(buf),
-                )
-            36 -> ApplicationCommand.CancelPublisherChapters(
+            36 -> ApplicationCommand.RetryPublisherChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            37 -> ApplicationCommand.EnsureModelChapters(
+            37 -> ApplicationCommand.CancelPublisherChapters(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeStateRevision.read(buf),
+                )
+            38 -> ApplicationCommand.EnsureModelChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterString.read(buf),
                 )
-            38 -> ApplicationCommand.RetryModelChapters(
+            39 -> ApplicationCommand.RetryModelChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            39 -> ApplicationCommand.CancelModelChapters(
+            40 -> ApplicationCommand.CancelModelChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            40 -> ApplicationCommand.CreateNote(
+            41 -> ApplicationCommand.CreateNote(
                 FfiConverterString.read(buf),
                 FfiConverterTypeNoteKind.read(buf),
                 FfiConverterTypeNoteAuthor.read(buf),
                 FfiConverterOptionalTypeNoteTarget.read(buf),
                 )
-            41 -> ApplicationCommand.UpdateNote(
+            42 -> ApplicationCommand.UpdateNote(
                 FfiConverterTypeNoteId.read(buf),
                 FfiConverterTypeNoteRevision.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterTypeNoteKind.read(buf),
                 FfiConverterOptionalTypeNoteTarget.read(buf),
                 )
-            42 -> ApplicationCommand.SetNoteDeleted(
+            43 -> ApplicationCommand.SetNoteDeleted(
                 FfiConverterTypeNoteId.read(buf),
                 FfiConverterTypeNoteRevision.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
-            43 -> ApplicationCommand.ClearNotes(
+            44 -> ApplicationCommand.ClearNotes(
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            44 -> ApplicationCommand.CreateClip(
+            45 -> ApplicationCommand.CreateClip(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypePodcastId.read(buf),
@@ -7640,7 +7659,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterString.read(buf),
                 FfiConverterTypeClipSource.read(buf),
                 )
-            45 -> ApplicationCommand.UpdateClip(
+            46 -> ApplicationCommand.UpdateClip(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterULong.read(buf),
@@ -7649,18 +7668,18 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterOptionalTypeSpeakerId.read(buf),
                 FfiConverterString.read(buf),
                 )
-            46 -> ApplicationCommand.SetClipDeleted(
+            47 -> ApplicationCommand.SetClipDeleted(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
-            47 -> ApplicationCommand.ClearClips(
+            48 -> ApplicationCommand.ClearClips(
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            48 -> ApplicationCommand.CancelOperation(
+            49 -> ApplicationCommand.CancelOperation(
                 FfiConverterTypeCancellationId.read(buf),
                 )
-            49 -> ApplicationCommand.Unsupported(
+            50 -> ApplicationCommand.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -7899,6 +7918,14 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
+            )
+        }
+        is ApplicationCommand.RetryScheduledRun -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeScheduledOccurrenceId.allocationSize(value.`occurrenceId`)
+                + FfiConverterTypeStateRevision.allocationSize(value.`expectedWorkflowRevision`)
             )
         }
         is ApplicationCommand.CancelScheduledRun -> {
@@ -8235,56 +8262,62 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 buf.putInt(31)
                 Unit
             }
-            is ApplicationCommand.CancelScheduledRun -> {
+            is ApplicationCommand.RetryScheduledRun -> {
                 buf.putInt(32)
                 FfiConverterTypeScheduledOccurrenceId.write(value.`occurrenceId`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
-            is ApplicationCommand.CommitChapter -> {
+            is ApplicationCommand.CancelScheduledRun -> {
                 buf.putInt(33)
+                FfiConverterTypeScheduledOccurrenceId.write(value.`occurrenceId`, buf)
+                FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
+                Unit
+            }
+            is ApplicationCommand.CommitChapter -> {
+                buf.putInt(34)
                 FfiConverterTypeStateRevision.write(value.`expectedSelectionRevision`, buf)
                 FfiConverterTypeChapterArtifactInput.write(value.`artifact`, buf)
                 Unit
             }
             is ApplicationCommand.EnsurePublisherChapters -> {
-                buf.putInt(34)
+                buf.putInt(35)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 Unit
             }
             is ApplicationCommand.RetryPublisherChapters -> {
-                buf.putInt(35)
-                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
-                FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
-                Unit
-            }
-            is ApplicationCommand.CancelPublisherChapters -> {
                 buf.putInt(36)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
-            is ApplicationCommand.EnsureModelChapters -> {
+            is ApplicationCommand.CancelPublisherChapters -> {
                 buf.putInt(37)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
+                Unit
+            }
+            is ApplicationCommand.EnsureModelChapters -> {
+                buf.putInt(38)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterString.write(value.`configuredModel`, buf)
                 Unit
             }
             is ApplicationCommand.RetryModelChapters -> {
-                buf.putInt(38)
+                buf.putInt(39)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterString.write(value.`configuredModel`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CancelModelChapters -> {
-                buf.putInt(39)
+                buf.putInt(40)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CreateNote -> {
-                buf.putInt(40)
+                buf.putInt(41)
                 FfiConverterString.write(value.`text`, buf)
                 FfiConverterTypeNoteKind.write(value.`kind`, buf)
                 FfiConverterTypeNoteAuthor.write(value.`author`, buf)
@@ -8292,7 +8325,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.UpdateNote -> {
-                buf.putInt(41)
+                buf.putInt(42)
                 FfiConverterTypeNoteId.write(value.`noteId`, buf)
                 FfiConverterTypeNoteRevision.write(value.`expectedNoteRevision`, buf)
                 FfiConverterString.write(value.`text`, buf)
@@ -8301,19 +8334,19 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.SetNoteDeleted -> {
-                buf.putInt(42)
+                buf.putInt(43)
                 FfiConverterTypeNoteId.write(value.`noteId`, buf)
                 FfiConverterTypeNoteRevision.write(value.`expectedNoteRevision`, buf)
                 FfiConverterBoolean.write(value.`deleted`, buf)
                 Unit
             }
             is ApplicationCommand.ClearNotes -> {
-                buf.putInt(43)
+                buf.putInt(44)
                 FfiConverterTypeStateRevision.write(value.`expectedCollectionRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CreateClip -> {
-                buf.putInt(44)
+                buf.putInt(45)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
@@ -8326,7 +8359,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.UpdateClip -> {
-                buf.putInt(45)
+                buf.putInt(46)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`expectedClipRevision`, buf)
                 FfiConverterULong.write(value.`startMilliseconds`, buf)
@@ -8337,24 +8370,24 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.SetClipDeleted -> {
-                buf.putInt(46)
+                buf.putInt(47)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`expectedClipRevision`, buf)
                 FfiConverterBoolean.write(value.`deleted`, buf)
                 Unit
             }
             is ApplicationCommand.ClearClips -> {
-                buf.putInt(47)
+                buf.putInt(48)
                 FfiConverterTypeStateRevision.write(value.`expectedCollectionRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CancelOperation -> {
-                buf.putInt(48)
+                buf.putInt(49)
                 FfiConverterTypeCancellationId.write(value.`cancellationId`, buf)
                 Unit
             }
             is ApplicationCommand.Unsupported -> {
-                buf.putInt(49)
+                buf.putInt(50)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
