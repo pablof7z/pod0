@@ -50,8 +50,10 @@ mod contract_projection_bounds;
 mod contract_projection_tests;
 mod contract_state;
 mod contract_state_download_validation;
+mod contract_state_playback_validation;
 #[cfg(test)]
 mod contract_state_tests;
+mod contract_state_transcript_validation;
 mod contract_state_validation;
 mod core_wake;
 mod download_contract;

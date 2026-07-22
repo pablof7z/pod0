@@ -1,5 +1,5 @@
 use pod0_domain::{
-    EpisodeId, TranscriptArtifactInput, TranscriptAttemptId, TranscriptSubmissionFenceId,
+    EpisodeId, PodcastId, TranscriptArtifactInput, TranscriptAttemptId, TranscriptSubmissionFenceId,
 };
 
 use crate::{
@@ -9,16 +9,23 @@ use crate::{
     TranscriptWorkflowFailureCode,
 };
 
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TranscriptCapabilityContext {
+    pub episode_id: EpisodeId,
+    pub podcast_id: PodcastId,
+    pub source_revision: String,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum TranscriptCapabilityRequest {
     FetchPublisher {
-        episode_id: EpisodeId,
+        context: TranscriptCapabilityContext,
         source_url: String,
         mime_hint: Option<String>,
         maximum_response_bytes: u64,
     },
     SubmitProvider {
-        episode_id: EpisodeId,
+        context: TranscriptCapabilityContext,
         attempt_id: TranscriptAttemptId,
         submission_fence_id: TranscriptSubmissionFenceId,
         provider: TranscriptProvider,
@@ -27,7 +34,7 @@ pub enum TranscriptCapabilityRequest {
         maximum_response_bytes: u64,
     },
     RecoverProvider {
-        episode_id: EpisodeId,
+        context: TranscriptCapabilityContext,
         attempt_id: TranscriptAttemptId,
         submission_fence_id: TranscriptSubmissionFenceId,
         provider: TranscriptProvider,
@@ -37,7 +44,7 @@ pub enum TranscriptCapabilityRequest {
         maximum_response_bytes: u64,
     },
     TranscribeLocal {
-        episode_id: EpisodeId,
+        context: TranscriptCapabilityContext,
         attempt_id: TranscriptAttemptId,
         audio_url: String,
         locale: Option<String>,
@@ -55,6 +62,8 @@ pub enum TranscriptCapabilityObservation {
         retry_after_milliseconds: Option<u64>,
     },
     Completed {
+        external_operation_id: Option<String>,
+        provider_status: Option<String>,
         artifact: TranscriptArtifactInput,
     },
     Failed {
@@ -75,6 +84,9 @@ pub enum TranscriptCapabilityValidation {
 pub fn validate_transcript_capability_request(
     request: TranscriptCapabilityRequest,
 ) -> TranscriptCapabilityValidation {
+    if !valid_context(request.context()) {
+        return rejected(TranscriptWorkflowFailureCode::InvalidRequest);
+    }
     use TranscriptCapabilityRequest as Request;
     match request {
         Request::FetchPublisher {
@@ -173,11 +185,22 @@ pub fn validate_transcript_capability_observation(
                 TranscriptCapabilityValidation::Accepted
             }
         }
-        Observation::Completed { artifact } => {
-            if pod0_domain::TranscriptArtifact::seal(artifact).is_ok() {
-                TranscriptCapabilityValidation::Accepted
-            } else {
+        Observation::Completed {
+            external_operation_id,
+            provider_status,
+            artifact,
+        } => {
+            if invalid_text(
+                external_operation_id.as_deref(),
+                MAX_TRANSCRIPT_EXTERNAL_ID_BYTES,
+            ) || invalid_text(
+                provider_status.as_deref(),
+                MAX_TRANSCRIPT_PROVIDER_STATUS_BYTES,
+            ) || pod0_domain::TranscriptArtifact::seal(artifact).is_err()
+            {
                 rejected(TranscriptWorkflowFailureCode::InvalidResponse)
+            } else {
+                TranscriptCapabilityValidation::Accepted
             }
         }
         Observation::Failed { safe_detail, .. } => {
@@ -189,6 +212,24 @@ pub fn validate_transcript_capability_observation(
         }
         Observation::Cancelled => TranscriptCapabilityValidation::Accepted,
     }
+}
+
+impl TranscriptCapabilityRequest {
+    #[must_use]
+    pub const fn context(&self) -> &TranscriptCapabilityContext {
+        match self {
+            Self::FetchPublisher { context, .. }
+            | Self::SubmitProvider { context, .. }
+            | Self::RecoverProvider { context, .. }
+            | Self::TranscribeLocal { context, .. } => context,
+        }
+    }
+}
+
+fn valid_context(context: &TranscriptCapabilityContext) -> bool {
+    !context.source_revision.trim().is_empty()
+        && context.source_revision.trim() == context.source_revision
+        && context.source_revision.len() <= 256
 }
 
 fn validate_provider_identity(

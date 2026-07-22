@@ -149,6 +149,9 @@ pub enum HostRequest {
         episode_id: EpisodeId,
         artifact_key: String,
     },
+    ExecuteTranscriptCapability {
+        capability: crate::TranscriptCapabilityRequest,
+    },
     ScheduleCoreWake {
         wake_at: UnixTimestampMilliseconds,
         reason: crate::CoreWakeReason,
@@ -250,6 +253,9 @@ pub enum HostObservation {
     DownloadArtifactRemoved {
         episode_id: EpisodeId,
         artifact_key: String,
+    },
+    TranscriptCapabilityObserved {
+        observation: crate::TranscriptCapabilityObservation,
     },
     CoreWakeReached {
         reason: crate::CoreWakeReason,

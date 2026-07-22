@@ -1,6 +1,7 @@
 use pod0_domain::{
-    ContentDigest, EpisodeId, StateRevision, TranscriptAttemptId, TranscriptSubmissionFenceId,
-    TranscriptVersionId, TranscriptWorkflowId, UnixTimestampMilliseconds,
+    ContentDigest, EpisodeId, PodcastId, StateRevision, TranscriptAttemptId,
+    TranscriptSubmissionFenceId, TranscriptVersionId, TranscriptWorkflowId,
+    UnixTimestampMilliseconds,
 };
 
 use super::*;
@@ -185,8 +186,13 @@ fn retry_and_deadline_time_are_kernel_owned_and_bounded() {
 
 #[test]
 fn capability_validation_rejects_unbounded_or_unsupported_requests() {
-    let request = TranscriptCapabilityRequest::FetchPublisher {
+    let context = TranscriptCapabilityContext {
         episode_id: EpisodeId::from_bytes([1; 16]),
+        podcast_id: PodcastId::from_bytes([2; 16]),
+        source_revision: "audio-v1".to_owned(),
+    };
+    let request = TranscriptCapabilityRequest::FetchPublisher {
+        context: context.clone(),
         source_url: "https://example.test/transcript.vtt".to_owned(),
         mime_hint: Some("text/vtt".to_owned()),
         maximum_response_bytes: MAX_TRANSCRIPT_CAPABILITY_RESPONSE_BYTES,
@@ -196,7 +202,7 @@ fn capability_validation_rejects_unbounded_or_unsupported_requests() {
         TranscriptCapabilityValidation::Accepted
     );
     let unsupported = TranscriptCapabilityRequest::SubmitProvider {
-        episode_id: EpisodeId::from_bytes([1; 16]),
+        context: context.clone(),
         attempt_id: TranscriptAttemptId::from_bytes([5; 16]),
         submission_fence_id: TranscriptSubmissionFenceId::from_bytes([6; 16]),
         provider: TranscriptProvider::AppleSpeech,
@@ -212,7 +218,7 @@ fn capability_validation_rejects_unbounded_or_unsupported_requests() {
     );
 
     let remote_local_audio = TranscriptCapabilityRequest::TranscribeLocal {
-        episode_id: EpisodeId::from_bytes([1; 16]),
+        context: context.clone(),
         attempt_id: TranscriptAttemptId::from_bytes([5; 16]),
         audio_url: "https://example.test/audio.m4a".to_owned(),
         locale: None,
@@ -225,7 +231,7 @@ fn capability_validation_rejects_unbounded_or_unsupported_requests() {
     );
 
     let recovery = TranscriptCapabilityRequest::RecoverProvider {
-        episode_id: EpisodeId::from_bytes([1; 16]),
+        context,
         attempt_id: TranscriptAttemptId::from_bytes([5; 16]),
         submission_fence_id: TranscriptSubmissionFenceId::from_bytes([6; 16]),
         provider: TranscriptProvider::AssemblyAi,

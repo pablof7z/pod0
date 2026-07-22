@@ -160,3 +160,11 @@ safe to resubmit: an accepted provider identity can only be recovered, while an
 authorized request with no provider evidence requires explicit resolution.
 Native code will retain credentials and provider/Apple execution, but it cannot
 own fallback, retry timing, identity, or artifact-selection policy.
+
+Contract version 31 integrates that capability boundary with the shared host
+ledger. Every transcript capability carries the exact episode, podcast, source
+revision, attempt, and submission fence selected by Rust. Native returns one
+bounded typed observation; completed artifacts must match the requested
+context, provider recovery cannot change the external operation identity, and
+the ledger rejects stale, cancelled, malformed, oversized, or mismatched
+observations before durable workflow state can advance.

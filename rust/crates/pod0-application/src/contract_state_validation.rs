@@ -1,4 +1,6 @@
 use crate::contract_state_download_validation::download_observation_matches_request;
+use crate::contract_state_playback_validation::playback_request_episode_id;
+use crate::contract_state_transcript_validation::transcript_observation_matches;
 use crate::{HostObservation, HostRequest};
 
 pub(super) fn observation_matches_request(
@@ -128,6 +130,10 @@ pub(super) fn observation_matches_request(
             HostObservation::CoreWakeReached { reason },
         ) => expected == reason,
         (
+            HostRequest::ExecuteTranscriptCapability { capability },
+            HostObservation::TranscriptCapabilityObserved { observation },
+        ) => transcript_observation_matches(capability, observation),
+        (
             HostRequest::RemoveLegacyRecallIndexArtifacts,
             HostObservation::LegacyRecallIndexArtifactsRemoved { removed_file_count },
         ) => *removed_file_count <= 3,
@@ -183,6 +189,10 @@ pub(super) fn recall_payload_is_bounded(
             HostObservation::ChapterModelCompleted { completion, .. },
         ) => u64::try_from(completion.completion.len())
             .is_ok_and(|size| size <= *maximum_completion_bytes),
+        (
+            HostRequest::ExecuteTranscriptCapability { capability },
+            HostObservation::TranscriptCapabilityObserved { observation },
+        ) => transcript_observation_matches(capability, observation),
         _ => true,
     }
 }
@@ -232,33 +242,6 @@ pub(super) fn chapter_model_payload_is_bounded(
                 && retry_after_milliseconds.is_none_or(|value| value <= 86_400_000)
         }
         _ => true,
-    }
-}
-
-fn playback_request_episode_id(request: &HostRequest) -> Option<pod0_domain::EpisodeId> {
-    match request {
-        HostRequest::LoadMedia { episode_id, .. }
-        | HostRequest::Play { episode_id, .. }
-        | HostRequest::Pause { episode_id }
-        | HostRequest::Seek { episode_id, .. }
-        | HostRequest::SetRate { episode_id, .. }
-        | HostRequest::ArmNativeTimer { episode_id, .. }
-        | HostRequest::CancelNativeTimer { episode_id }
-        | HostRequest::StopPlayback { episode_id } => Some(*episode_id),
-        HostRequest::FetchFeed { .. }
-        | HostRequest::ObservePlayback { .. }
-        | HostRequest::EmbedRecallQuery { .. }
-        | HostRequest::EmbedRecallSpans { .. }
-        | HostRequest::RerankRecallCandidates { .. }
-        | HostRequest::FetchPublisherChapters { .. }
-        | HostRequest::ExecuteChapterModel { .. }
-        | HostRequest::RecoverChapterModelOperation { .. }
-        | HostRequest::StartEpisodeDownload { .. }
-        | HostRequest::CancelEpisodeDownload { .. }
-        | HostRequest::RemoveEpisodeDownloadArtifact { .. }
-        | HostRequest::ScheduleCoreWake { .. }
-        | HostRequest::RemoveLegacyRecallIndexArtifacts
-        | HostRequest::Unsupported { .. } => None,
     }
 }
 

@@ -11,6 +11,7 @@ use crate::{
 
 mod chapter_model;
 mod download;
+mod transcript;
 
 fn command(command_id: u64, expected: Option<u64>) -> CommandEnvelope {
     CommandEnvelope {

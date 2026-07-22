@@ -4,6 +4,11 @@ import uniffi.pod0_facade.*
 
 fun qualifyTranscriptWorkflowContract() {
     val episodeId = EpisodeId(0UL, 501UL)
+    val context = TranscriptCapabilityContext(
+        episodeId = episodeId,
+        podcastId = PodcastId(0UL, 502UL),
+        sourceRevision = "audio-v1",
+    )
     val plan = planTranscriptWorkflow(
         TranscriptWorkflowPlanInput(
             episodeId = episodeId,
@@ -29,7 +34,7 @@ fun qualifyTranscriptWorkflowContract() {
 
     val accepted = validateTranscriptCapabilityRequest(
         TranscriptCapabilityRequest.FetchPublisher(
-            episodeId = episodeId,
+            context = context,
             sourceUrl = "https://example.test/transcript.vtt",
             mimeHint = "text/vtt",
             maximumResponseBytes = 1_024UL,
@@ -39,7 +44,7 @@ fun qualifyTranscriptWorkflowContract() {
 
     val rejected = validateTranscriptCapabilityRequest(
         TranscriptCapabilityRequest.SubmitProvider(
-            episodeId = episodeId,
+            context = context,
             attemptId = TranscriptAttemptId(0UL, 1UL),
             submissionFenceId = TranscriptSubmissionFenceId(0UL, 2UL),
             provider = TranscriptProvider.AppleSpeech,

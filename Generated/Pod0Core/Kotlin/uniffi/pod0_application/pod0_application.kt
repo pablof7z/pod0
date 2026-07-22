@@ -5275,6 +5275,49 @@ public object FfiConverterTypeSyntheticPodcastInput: FfiConverterRustBuffer<Synt
 
 
 
+data class TranscriptCapabilityContext (
+    val `episodeId`: EpisodeId
+    ,
+    val `podcastId`: PodcastId
+    ,
+    val `sourceRevision`: kotlin.String
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptCapabilityContext: FfiConverterRustBuffer<TranscriptCapabilityContext> {
+    override fun read(buf: ByteBuffer): TranscriptCapabilityContext {
+        return TranscriptCapabilityContext(
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterTypePodcastId.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptCapabilityContext) = (
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterString.allocationSize(value.`sourceRevision`)
+    )
+
+    override fun write(value: TranscriptCapabilityContext, buf: ByteBuffer) {
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterString.write(value.`sourceRevision`, buf)
+    }
+}
+
+
+
 data class TranscriptCommitReceipt (
     val `commandId`: CommandId
     ,
@@ -11559,6 +11602,15 @@ sealed class HostObservation {
         companion object
     }
 
+    data class TranscriptCapabilityObserved(
+        val `observation`: uniffi.pod0_application.TranscriptCapabilityObservation) : HostObservation()
+
+    {
+
+
+        companion object
+    }
+
     data class CoreWakeReached(
         val `reason`: uniffi.pod0_application.CoreWakeReason) : HostObservation()
 
@@ -11695,18 +11747,21 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterString.read(buf),
                 )
-            15 -> HostObservation.CoreWakeReached(
+            15 -> HostObservation.TranscriptCapabilityObserved(
+                FfiConverterTypeTranscriptCapabilityObservation.read(buf),
+                )
+            16 -> HostObservation.CoreWakeReached(
                 FfiConverterTypeCoreWakeReason.read(buf),
                 )
-            16 -> HostObservation.LegacyRecallIndexArtifactsRemoved(
+            17 -> HostObservation.LegacyRecallIndexArtifactsRemoved(
                 FfiConverterUByte.read(buf),
                 )
-            17 -> HostObservation.Failed(
+            18 -> HostObservation.Failed(
                 FfiConverterTypeHostFailureCode.read(buf),
                 FfiConverterOptionalString.read(buf),
                 )
-            18 -> HostObservation.Cancelled
-            19 -> HostObservation.Unsupported(
+            19 -> HostObservation.Cancelled
+            20 -> HostObservation.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -11848,6 +11903,13 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 4UL
                 + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
                 + FfiConverterString.allocationSize(value.`artifactKey`)
+            )
+        }
+        is HostObservation.TranscriptCapabilityObserved -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeTranscriptCapabilityObservation.allocationSize(value.`observation`)
             )
         }
         is HostObservation.CoreWakeReached -> {
@@ -11997,28 +12059,33 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 FfiConverterString.write(value.`artifactKey`, buf)
                 Unit
             }
-            is HostObservation.CoreWakeReached -> {
+            is HostObservation.TranscriptCapabilityObserved -> {
                 buf.putInt(15)
+                FfiConverterTypeTranscriptCapabilityObservation.write(value.`observation`, buf)
+                Unit
+            }
+            is HostObservation.CoreWakeReached -> {
+                buf.putInt(16)
                 FfiConverterTypeCoreWakeReason.write(value.`reason`, buf)
                 Unit
             }
             is HostObservation.LegacyRecallIndexArtifactsRemoved -> {
-                buf.putInt(16)
+                buf.putInt(17)
                 FfiConverterUByte.write(value.`removedFileCount`, buf)
                 Unit
             }
             is HostObservation.Failed -> {
-                buf.putInt(17)
+                buf.putInt(18)
                 FfiConverterTypeHostFailureCode.write(value.`code`, buf)
                 FfiConverterOptionalString.write(value.`safeDetail`, buf)
                 Unit
             }
             is HostObservation.Cancelled -> {
-                buf.putInt(18)
+                buf.putInt(19)
                 Unit
             }
             is HostObservation.Unsupported -> {
-                buf.putInt(19)
+                buf.putInt(20)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -12436,6 +12503,15 @@ sealed class HostRequest {
         companion object
     }
 
+    data class ExecuteTranscriptCapability(
+        val `capability`: uniffi.pod0_application.TranscriptCapabilityRequest) : HostRequest()
+
+    {
+
+
+        companion object
+    }
+
     data class ScheduleCoreWake(
         val `wakeAt`: uniffi.pod0_domain.UnixTimestampMilliseconds,
         val `reason`: uniffi.pod0_application.CoreWakeReason) : HostRequest()
@@ -12578,12 +12654,15 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterString.read(buf),
                 )
-            20 -> HostRequest.ScheduleCoreWake(
+            20 -> HostRequest.ExecuteTranscriptCapability(
+                FfiConverterTypeTranscriptCapabilityRequest.read(buf),
+                )
+            21 -> HostRequest.ScheduleCoreWake(
                 FfiConverterTypeUnixTimestampMilliseconds.read(buf),
                 FfiConverterTypeCoreWakeReason.read(buf),
                 )
-            21 -> HostRequest.RemoveLegacyRecallIndexArtifacts
-            22 -> HostRequest.Unsupported(
+            22 -> HostRequest.RemoveLegacyRecallIndexArtifacts
+            23 -> HostRequest.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -12771,6 +12850,13 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 + FfiConverterString.allocationSize(value.`artifactKey`)
             )
         }
+        is HostRequest.ExecuteTranscriptCapability -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeTranscriptCapabilityRequest.allocationSize(value.`capability`)
+            )
+        }
         is HostRequest.ScheduleCoreWake -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -12938,18 +13024,23 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 FfiConverterString.write(value.`artifactKey`, buf)
                 Unit
             }
-            is HostRequest.ScheduleCoreWake -> {
+            is HostRequest.ExecuteTranscriptCapability -> {
                 buf.putInt(20)
+                FfiConverterTypeTranscriptCapabilityRequest.write(value.`capability`, buf)
+                Unit
+            }
+            is HostRequest.ScheduleCoreWake -> {
+                buf.putInt(21)
                 FfiConverterTypeUnixTimestampMilliseconds.write(value.`wakeAt`, buf)
                 FfiConverterTypeCoreWakeReason.write(value.`reason`, buf)
                 Unit
             }
             is HostRequest.RemoveLegacyRecallIndexArtifacts -> {
-                buf.putInt(21)
+                buf.putInt(22)
                 Unit
             }
             is HostRequest.Unsupported -> {
-                buf.putInt(22)
+                buf.putInt(23)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -17563,6 +17654,8 @@ sealed class TranscriptCapabilityObservation {
     }
 
     data class Completed(
+        val `externalOperationId`: kotlin.String?,
+        val `providerStatus`: kotlin.String?,
         val `artifact`: uniffi.pod0_domain.TranscriptArtifactInput) : TranscriptCapabilityObservation()
 
     {
@@ -17610,6 +17703,8 @@ public object FfiConverterTypeTranscriptCapabilityObservation : FfiConverterRust
                 FfiConverterOptionalULong.read(buf),
                 )
             3 -> TranscriptCapabilityObservation.Completed(
+                FfiConverterOptionalString.read(buf),
+                FfiConverterOptionalString.read(buf),
                 FfiConverterTypeTranscriptArtifactInput.read(buf),
                 )
             4 -> TranscriptCapabilityObservation.Failed(
@@ -17643,6 +17738,8 @@ public object FfiConverterTypeTranscriptCapabilityObservation : FfiConverterRust
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
+                + FfiConverterOptionalString.allocationSize(value.`externalOperationId`)
+                + FfiConverterOptionalString.allocationSize(value.`providerStatus`)
                 + FfiConverterTypeTranscriptArtifactInput.allocationSize(value.`artifact`)
             )
         }
@@ -17679,6 +17776,8 @@ public object FfiConverterTypeTranscriptCapabilityObservation : FfiConverterRust
             }
             is TranscriptCapabilityObservation.Completed -> {
                 buf.putInt(3)
+                FfiConverterOptionalString.write(value.`externalOperationId`, buf)
+                FfiConverterOptionalString.write(value.`providerStatus`, buf)
                 FfiConverterTypeTranscriptArtifactInput.write(value.`artifact`, buf)
                 Unit
             }
@@ -17704,7 +17803,7 @@ public object FfiConverterTypeTranscriptCapabilityObservation : FfiConverterRust
 sealed class TranscriptCapabilityRequest {
 
     data class FetchPublisher(
-        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `context`: uniffi.pod0_application.TranscriptCapabilityContext,
         val `sourceUrl`: kotlin.String,
         val `mimeHint`: kotlin.String?,
         val `maximumResponseBytes`: kotlin.ULong) : TranscriptCapabilityRequest()
@@ -17716,7 +17815,7 @@ sealed class TranscriptCapabilityRequest {
     }
 
     data class SubmitProvider(
-        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `context`: uniffi.pod0_application.TranscriptCapabilityContext,
         val `attemptId`: uniffi.pod0_domain.TranscriptAttemptId,
         val `submissionFenceId`: uniffi.pod0_domain.TranscriptSubmissionFenceId,
         val `provider`: uniffi.pod0_application.TranscriptProvider,
@@ -17731,7 +17830,7 @@ sealed class TranscriptCapabilityRequest {
     }
 
     data class RecoverProvider(
-        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `context`: uniffi.pod0_application.TranscriptCapabilityContext,
         val `attemptId`: uniffi.pod0_domain.TranscriptAttemptId,
         val `submissionFenceId`: uniffi.pod0_domain.TranscriptSubmissionFenceId,
         val `provider`: uniffi.pod0_application.TranscriptProvider,
@@ -17747,7 +17846,7 @@ sealed class TranscriptCapabilityRequest {
     }
 
     data class TranscribeLocal(
-        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `context`: uniffi.pod0_application.TranscriptCapabilityContext,
         val `attemptId`: uniffi.pod0_domain.TranscriptAttemptId,
         val `audioUrl`: kotlin.String,
         val `locale`: kotlin.String?) : TranscriptCapabilityRequest()
@@ -17775,13 +17874,13 @@ public object FfiConverterTypeTranscriptCapabilityRequest : FfiConverterRustBuff
     override fun read(buf: ByteBuffer): TranscriptCapabilityRequest {
         return when(buf.getInt()) {
             1 -> TranscriptCapabilityRequest.FetchPublisher(
-                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeTranscriptCapabilityContext.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterOptionalString.read(buf),
                 FfiConverterULong.read(buf),
                 )
             2 -> TranscriptCapabilityRequest.SubmitProvider(
-                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeTranscriptCapabilityContext.read(buf),
                 FfiConverterTypeTranscriptAttemptId.read(buf),
                 FfiConverterTypeTranscriptSubmissionFenceId.read(buf),
                 FfiConverterTypeTranscriptProvider.read(buf),
@@ -17790,7 +17889,7 @@ public object FfiConverterTypeTranscriptCapabilityRequest : FfiConverterRustBuff
                 FfiConverterULong.read(buf),
                 )
             3 -> TranscriptCapabilityRequest.RecoverProvider(
-                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeTranscriptCapabilityContext.read(buf),
                 FfiConverterTypeTranscriptAttemptId.read(buf),
                 FfiConverterTypeTranscriptSubmissionFenceId.read(buf),
                 FfiConverterTypeTranscriptProvider.read(buf),
@@ -17800,7 +17899,7 @@ public object FfiConverterTypeTranscriptCapabilityRequest : FfiConverterRustBuff
                 FfiConverterULong.read(buf),
                 )
             4 -> TranscriptCapabilityRequest.TranscribeLocal(
-                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeTranscriptCapabilityContext.read(buf),
                 FfiConverterTypeTranscriptAttemptId.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterOptionalString.read(buf),
@@ -17814,7 +17913,7 @@ public object FfiConverterTypeTranscriptCapabilityRequest : FfiConverterRustBuff
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeTranscriptCapabilityContext.allocationSize(value.`context`)
                 + FfiConverterString.allocationSize(value.`sourceUrl`)
                 + FfiConverterOptionalString.allocationSize(value.`mimeHint`)
                 + FfiConverterULong.allocationSize(value.`maximumResponseBytes`)
@@ -17824,7 +17923,7 @@ public object FfiConverterTypeTranscriptCapabilityRequest : FfiConverterRustBuff
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeTranscriptCapabilityContext.allocationSize(value.`context`)
                 + FfiConverterTypeTranscriptAttemptId.allocationSize(value.`attemptId`)
                 + FfiConverterTypeTranscriptSubmissionFenceId.allocationSize(value.`submissionFenceId`)
                 + FfiConverterTypeTranscriptProvider.allocationSize(value.`provider`)
@@ -17837,7 +17936,7 @@ public object FfiConverterTypeTranscriptCapabilityRequest : FfiConverterRustBuff
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeTranscriptCapabilityContext.allocationSize(value.`context`)
                 + FfiConverterTypeTranscriptAttemptId.allocationSize(value.`attemptId`)
                 + FfiConverterTypeTranscriptSubmissionFenceId.allocationSize(value.`submissionFenceId`)
                 + FfiConverterTypeTranscriptProvider.allocationSize(value.`provider`)
@@ -17851,7 +17950,7 @@ public object FfiConverterTypeTranscriptCapabilityRequest : FfiConverterRustBuff
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeTranscriptCapabilityContext.allocationSize(value.`context`)
                 + FfiConverterTypeTranscriptAttemptId.allocationSize(value.`attemptId`)
                 + FfiConverterString.allocationSize(value.`audioUrl`)
                 + FfiConverterOptionalString.allocationSize(value.`locale`)
@@ -17863,7 +17962,7 @@ public object FfiConverterTypeTranscriptCapabilityRequest : FfiConverterRustBuff
         when(value) {
             is TranscriptCapabilityRequest.FetchPublisher -> {
                 buf.putInt(1)
-                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeTranscriptCapabilityContext.write(value.`context`, buf)
                 FfiConverterString.write(value.`sourceUrl`, buf)
                 FfiConverterOptionalString.write(value.`mimeHint`, buf)
                 FfiConverterULong.write(value.`maximumResponseBytes`, buf)
@@ -17871,7 +17970,7 @@ public object FfiConverterTypeTranscriptCapabilityRequest : FfiConverterRustBuff
             }
             is TranscriptCapabilityRequest.SubmitProvider -> {
                 buf.putInt(2)
-                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeTranscriptCapabilityContext.write(value.`context`, buf)
                 FfiConverterTypeTranscriptAttemptId.write(value.`attemptId`, buf)
                 FfiConverterTypeTranscriptSubmissionFenceId.write(value.`submissionFenceId`, buf)
                 FfiConverterTypeTranscriptProvider.write(value.`provider`, buf)
@@ -17882,7 +17981,7 @@ public object FfiConverterTypeTranscriptCapabilityRequest : FfiConverterRustBuff
             }
             is TranscriptCapabilityRequest.RecoverProvider -> {
                 buf.putInt(3)
-                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeTranscriptCapabilityContext.write(value.`context`, buf)
                 FfiConverterTypeTranscriptAttemptId.write(value.`attemptId`, buf)
                 FfiConverterTypeTranscriptSubmissionFenceId.write(value.`submissionFenceId`, buf)
                 FfiConverterTypeTranscriptProvider.write(value.`provider`, buf)
@@ -17894,7 +17993,7 @@ public object FfiConverterTypeTranscriptCapabilityRequest : FfiConverterRustBuff
             }
             is TranscriptCapabilityRequest.TranscribeLocal -> {
                 buf.putInt(4)
-                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeTranscriptCapabilityContext.write(value.`context`, buf)
                 FfiConverterTypeTranscriptAttemptId.write(value.`attemptId`, buf)
                 FfiConverterString.write(value.`audioUrl`, buf)
                 FfiConverterOptionalString.write(value.`locale`, buf)

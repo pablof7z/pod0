@@ -28,7 +28,11 @@ final class TranscriptWorkflowContractBindingTests: XCTestCase {
 
         XCTAssertEqual(
             validateTranscriptCapabilityRequest(request: .fetchPublisher(
-                episodeId: episodeID,
+                context: TranscriptCapabilityContext(
+                    episodeId: episodeID,
+                    podcastId: PodcastId(high: 0, low: 502),
+                    sourceRevision: "audio-v1"
+                ),
                 sourceUrl: "https://example.test/transcript.vtt",
                 mimeHint: "text/vtt",
                 maximumResponseBytes: 1_024
@@ -37,7 +41,11 @@ final class TranscriptWorkflowContractBindingTests: XCTestCase {
         )
         XCTAssertEqual(
             validateTranscriptCapabilityRequest(request: .submitProvider(
-                episodeId: episodeID,
+                context: TranscriptCapabilityContext(
+                    episodeId: episodeID,
+                    podcastId: PodcastId(high: 0, low: 502),
+                    sourceRevision: "audio-v1"
+                ),
                 attemptId: TranscriptAttemptId(high: 0, low: 1),
                 submissionFenceId: TranscriptSubmissionFenceId(high: 0, low: 2),
                 provider: .appleSpeech,

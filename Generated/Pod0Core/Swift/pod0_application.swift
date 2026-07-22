@@ -5415,6 +5415,64 @@ public func FfiConverterTypeSyntheticPodcastInput_lower(_ value: SyntheticPodcas
 }
 
 
+public struct TranscriptCapabilityContext: Equatable, Hashable {
+    public let episodeId: EpisodeId
+    public let podcastId: PodcastId
+    public let sourceRevision: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(episodeId: EpisodeId, podcastId: PodcastId, sourceRevision: String) {
+        self.episodeId = episodeId
+        self.podcastId = podcastId
+        self.sourceRevision = sourceRevision
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptCapabilityContext: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptCapabilityContext: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptCapabilityContext {
+        return
+            try TranscriptCapabilityContext(
+                episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
+                podcastId: FfiConverterTypePodcastId.read(from: &buf),
+                sourceRevision: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TranscriptCapabilityContext, into buf: inout [UInt8]) {
+        FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
+        FfiConverterTypePodcastId.write(value.podcastId, into: &buf)
+        FfiConverterString.write(value.sourceRevision, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptCapabilityContext_lift(_ buf: RustBuffer) throws -> TranscriptCapabilityContext {
+    return try FfiConverterTypeTranscriptCapabilityContext.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptCapabilityContext_lower(_ value: TranscriptCapabilityContext) -> RustBuffer {
+    return FfiConverterTypeTranscriptCapabilityContext.lower(value)
+}
+
+
 public struct TranscriptCommitReceipt: Equatable, Hashable {
     public let commandId: CommandId
     public let artifactId: TranscriptArtifactId
@@ -9993,6 +10051,8 @@ public enum HostObservation: Equatable, Hashable {
     )
     case downloadArtifactRemoved(episodeId: EpisodeId, artifactKey: String
     )
+    case transcriptCapabilityObserved(observation: TranscriptCapabilityObservation
+    )
     case coreWakeReached(reason: CoreWakeReason
     )
     case legacyRecallIndexArtifactsRemoved(removedFileCount: UInt8
@@ -10065,18 +10125,21 @@ public struct FfiConverterTypeHostObservation: FfiConverterRustBuffer {
         case 14: return .downloadArtifactRemoved(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), artifactKey: try FfiConverterString.read(from: &buf)
         )
 
-        case 15: return .coreWakeReached(reason: try FfiConverterTypeCoreWakeReason.read(from: &buf)
+        case 15: return .transcriptCapabilityObserved(observation: try FfiConverterTypeTranscriptCapabilityObservation.read(from: &buf)
         )
 
-        case 16: return .legacyRecallIndexArtifactsRemoved(removedFileCount: try FfiConverterUInt8.read(from: &buf)
+        case 16: return .coreWakeReached(reason: try FfiConverterTypeCoreWakeReason.read(from: &buf)
         )
 
-        case 17: return .failed(code: try FfiConverterTypeHostFailureCode.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf)
+        case 17: return .legacyRecallIndexArtifactsRemoved(removedFileCount: try FfiConverterUInt8.read(from: &buf)
         )
 
-        case 18: return .cancelled
+        case 18: return .failed(code: try FfiConverterTypeHostFailureCode.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf)
+        )
 
-        case 19: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 19: return .cancelled
+
+        case 20: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -10195,28 +10258,33 @@ public struct FfiConverterTypeHostObservation: FfiConverterRustBuffer {
             FfiConverterString.write(artifactKey, into: &buf)
 
 
-        case let .coreWakeReached(reason):
+        case let .transcriptCapabilityObserved(observation):
             writeInt(&buf, Int32(15))
+            FfiConverterTypeTranscriptCapabilityObservation.write(observation, into: &buf)
+
+
+        case let .coreWakeReached(reason):
+            writeInt(&buf, Int32(16))
             FfiConverterTypeCoreWakeReason.write(reason, into: &buf)
 
 
         case let .legacyRecallIndexArtifactsRemoved(removedFileCount):
-            writeInt(&buf, Int32(16))
+            writeInt(&buf, Int32(17))
             FfiConverterUInt8.write(removedFileCount, into: &buf)
 
 
         case let .failed(code,safeDetail):
-            writeInt(&buf, Int32(17))
+            writeInt(&buf, Int32(18))
             FfiConverterTypeHostFailureCode.write(code, into: &buf)
             FfiConverterOptionString.write(safeDetail, into: &buf)
 
 
         case .cancelled:
-            writeInt(&buf, Int32(18))
+            writeInt(&buf, Int32(19))
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(19))
+            writeInt(&buf, Int32(20))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -10494,6 +10562,8 @@ public enum HostRequest: Equatable, Hashable {
     )
     case removeEpisodeDownloadArtifact(episodeId: EpisodeId, artifactKey: String
     )
+    case executeTranscriptCapability(capability: TranscriptCapabilityRequest
+    )
     case scheduleCoreWake(wakeAt: UnixTimestampMilliseconds, reason: CoreWakeReason
     )
     case removeLegacyRecallIndexArtifacts
@@ -10577,12 +10647,15 @@ public struct FfiConverterTypeHostRequest: FfiConverterRustBuffer {
         case 19: return .removeEpisodeDownloadArtifact(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), artifactKey: try FfiConverterString.read(from: &buf)
         )
 
-        case 20: return .scheduleCoreWake(wakeAt: try FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf), reason: try FfiConverterTypeCoreWakeReason.read(from: &buf)
+        case 20: return .executeTranscriptCapability(capability: try FfiConverterTypeTranscriptCapabilityRequest.read(from: &buf)
         )
 
-        case 21: return .removeLegacyRecallIndexArtifacts
+        case 21: return .scheduleCoreWake(wakeAt: try FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf), reason: try FfiConverterTypeCoreWakeReason.read(from: &buf)
+        )
 
-        case 22: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 22: return .removeLegacyRecallIndexArtifacts
+
+        case 23: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -10735,18 +10808,23 @@ public struct FfiConverterTypeHostRequest: FfiConverterRustBuffer {
             FfiConverterString.write(artifactKey, into: &buf)
 
 
-        case let .scheduleCoreWake(wakeAt,reason):
+        case let .executeTranscriptCapability(capability):
             writeInt(&buf, Int32(20))
+            FfiConverterTypeTranscriptCapabilityRequest.write(capability, into: &buf)
+
+
+        case let .scheduleCoreWake(wakeAt,reason):
+            writeInt(&buf, Int32(21))
             FfiConverterTypeUnixTimestampMilliseconds.write(wakeAt, into: &buf)
             FfiConverterTypeCoreWakeReason.write(reason, into: &buf)
 
 
         case .removeLegacyRecallIndexArtifacts:
-            writeInt(&buf, Int32(21))
+            writeInt(&buf, Int32(22))
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(22))
+            writeInt(&buf, Int32(23))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -13672,7 +13750,7 @@ public enum TranscriptCapabilityObservation: Equatable, Hashable {
     )
     case providerPending(providerStatus: String?, retryAfterMilliseconds: UInt64?
     )
-    case completed(artifact: TranscriptArtifactInput
+    case completed(externalOperationId: String?, providerStatus: String?, artifact: TranscriptArtifactInput
     )
     case failed(evidence: TranscriptFailureEvidence, safeDetail: String?, retryAfterMilliseconds: UInt64?
     )
@@ -13704,7 +13782,7 @@ public struct FfiConverterTypeTranscriptCapabilityObservation: FfiConverterRustB
         case 2: return .providerPending(providerStatus: try FfiConverterOptionString.read(from: &buf), retryAfterMilliseconds: try FfiConverterOptionUInt64.read(from: &buf)
         )
 
-        case 3: return .completed(artifact: try FfiConverterTypeTranscriptArtifactInput.read(from: &buf)
+        case 3: return .completed(externalOperationId: try FfiConverterOptionString.read(from: &buf), providerStatus: try FfiConverterOptionString.read(from: &buf), artifact: try FfiConverterTypeTranscriptArtifactInput.read(from: &buf)
         )
 
         case 4: return .failed(evidence: try FfiConverterTypeTranscriptFailureEvidence.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf), retryAfterMilliseconds: try FfiConverterOptionUInt64.read(from: &buf)
@@ -13732,8 +13810,10 @@ public struct FfiConverterTypeTranscriptCapabilityObservation: FfiConverterRustB
             FfiConverterOptionUInt64.write(retryAfterMilliseconds, into: &buf)
 
 
-        case let .completed(artifact):
+        case let .completed(externalOperationId,providerStatus,artifact):
             writeInt(&buf, Int32(3))
+            FfiConverterOptionString.write(externalOperationId, into: &buf)
+            FfiConverterOptionString.write(providerStatus, into: &buf)
             FfiConverterTypeTranscriptArtifactInput.write(artifact, into: &buf)
 
 
@@ -13771,13 +13851,13 @@ public func FfiConverterTypeTranscriptCapabilityObservation_lower(_ value: Trans
 
 public enum TranscriptCapabilityRequest: Equatable, Hashable {
 
-    case fetchPublisher(episodeId: EpisodeId, sourceUrl: String, mimeHint: String?, maximumResponseBytes: UInt64
+    case fetchPublisher(context: TranscriptCapabilityContext, sourceUrl: String, mimeHint: String?, maximumResponseBytes: UInt64
     )
-    case submitProvider(episodeId: EpisodeId, attemptId: TranscriptAttemptId, submissionFenceId: TranscriptSubmissionFenceId, provider: TranscriptProvider, model: String, audioUrl: String, maximumResponseBytes: UInt64
+    case submitProvider(context: TranscriptCapabilityContext, attemptId: TranscriptAttemptId, submissionFenceId: TranscriptSubmissionFenceId, provider: TranscriptProvider, model: String, audioUrl: String, maximumResponseBytes: UInt64
     )
-    case recoverProvider(episodeId: EpisodeId, attemptId: TranscriptAttemptId, submissionFenceId: TranscriptSubmissionFenceId, provider: TranscriptProvider, model: String, externalOperationId: String, providerStatus: String?, maximumResponseBytes: UInt64
+    case recoverProvider(context: TranscriptCapabilityContext, attemptId: TranscriptAttemptId, submissionFenceId: TranscriptSubmissionFenceId, provider: TranscriptProvider, model: String, externalOperationId: String, providerStatus: String?, maximumResponseBytes: UInt64
     )
-    case transcribeLocal(episodeId: EpisodeId, attemptId: TranscriptAttemptId, audioUrl: String, locale: String?
+    case transcribeLocal(context: TranscriptCapabilityContext, attemptId: TranscriptAttemptId, audioUrl: String, locale: String?
     )
 
 
@@ -13800,16 +13880,16 @@ public struct FfiConverterTypeTranscriptCapabilityRequest: FfiConverterRustBuffe
         let variant: Int32 = try readInt(&buf)
         switch variant {
 
-        case 1: return .fetchPublisher(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), sourceUrl: try FfiConverterString.read(from: &buf), mimeHint: try FfiConverterOptionString.read(from: &buf), maximumResponseBytes: try FfiConverterUInt64.read(from: &buf)
+        case 1: return .fetchPublisher(context: try FfiConverterTypeTranscriptCapabilityContext.read(from: &buf), sourceUrl: try FfiConverterString.read(from: &buf), mimeHint: try FfiConverterOptionString.read(from: &buf), maximumResponseBytes: try FfiConverterUInt64.read(from: &buf)
         )
 
-        case 2: return .submitProvider(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), attemptId: try FfiConverterTypeTranscriptAttemptId.read(from: &buf), submissionFenceId: try FfiConverterTypeTranscriptSubmissionFenceId.read(from: &buf), provider: try FfiConverterTypeTranscriptProvider.read(from: &buf), model: try FfiConverterString.read(from: &buf), audioUrl: try FfiConverterString.read(from: &buf), maximumResponseBytes: try FfiConverterUInt64.read(from: &buf)
+        case 2: return .submitProvider(context: try FfiConverterTypeTranscriptCapabilityContext.read(from: &buf), attemptId: try FfiConverterTypeTranscriptAttemptId.read(from: &buf), submissionFenceId: try FfiConverterTypeTranscriptSubmissionFenceId.read(from: &buf), provider: try FfiConverterTypeTranscriptProvider.read(from: &buf), model: try FfiConverterString.read(from: &buf), audioUrl: try FfiConverterString.read(from: &buf), maximumResponseBytes: try FfiConverterUInt64.read(from: &buf)
         )
 
-        case 3: return .recoverProvider(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), attemptId: try FfiConverterTypeTranscriptAttemptId.read(from: &buf), submissionFenceId: try FfiConverterTypeTranscriptSubmissionFenceId.read(from: &buf), provider: try FfiConverterTypeTranscriptProvider.read(from: &buf), model: try FfiConverterString.read(from: &buf), externalOperationId: try FfiConverterString.read(from: &buf), providerStatus: try FfiConverterOptionString.read(from: &buf), maximumResponseBytes: try FfiConverterUInt64.read(from: &buf)
+        case 3: return .recoverProvider(context: try FfiConverterTypeTranscriptCapabilityContext.read(from: &buf), attemptId: try FfiConverterTypeTranscriptAttemptId.read(from: &buf), submissionFenceId: try FfiConverterTypeTranscriptSubmissionFenceId.read(from: &buf), provider: try FfiConverterTypeTranscriptProvider.read(from: &buf), model: try FfiConverterString.read(from: &buf), externalOperationId: try FfiConverterString.read(from: &buf), providerStatus: try FfiConverterOptionString.read(from: &buf), maximumResponseBytes: try FfiConverterUInt64.read(from: &buf)
         )
 
-        case 4: return .transcribeLocal(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), attemptId: try FfiConverterTypeTranscriptAttemptId.read(from: &buf), audioUrl: try FfiConverterString.read(from: &buf), locale: try FfiConverterOptionString.read(from: &buf)
+        case 4: return .transcribeLocal(context: try FfiConverterTypeTranscriptCapabilityContext.read(from: &buf), attemptId: try FfiConverterTypeTranscriptAttemptId.read(from: &buf), audioUrl: try FfiConverterString.read(from: &buf), locale: try FfiConverterOptionString.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -13820,17 +13900,17 @@ public struct FfiConverterTypeTranscriptCapabilityRequest: FfiConverterRustBuffe
         switch value {
 
 
-        case let .fetchPublisher(episodeId,sourceUrl,mimeHint,maximumResponseBytes):
+        case let .fetchPublisher(context,sourceUrl,mimeHint,maximumResponseBytes):
             writeInt(&buf, Int32(1))
-            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeTranscriptCapabilityContext.write(context, into: &buf)
             FfiConverterString.write(sourceUrl, into: &buf)
             FfiConverterOptionString.write(mimeHint, into: &buf)
             FfiConverterUInt64.write(maximumResponseBytes, into: &buf)
 
 
-        case let .submitProvider(episodeId,attemptId,submissionFenceId,provider,model,audioUrl,maximumResponseBytes):
+        case let .submitProvider(context,attemptId,submissionFenceId,provider,model,audioUrl,maximumResponseBytes):
             writeInt(&buf, Int32(2))
-            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeTranscriptCapabilityContext.write(context, into: &buf)
             FfiConverterTypeTranscriptAttemptId.write(attemptId, into: &buf)
             FfiConverterTypeTranscriptSubmissionFenceId.write(submissionFenceId, into: &buf)
             FfiConverterTypeTranscriptProvider.write(provider, into: &buf)
@@ -13839,9 +13919,9 @@ public struct FfiConverterTypeTranscriptCapabilityRequest: FfiConverterRustBuffe
             FfiConverterUInt64.write(maximumResponseBytes, into: &buf)
 
 
-        case let .recoverProvider(episodeId,attemptId,submissionFenceId,provider,model,externalOperationId,providerStatus,maximumResponseBytes):
+        case let .recoverProvider(context,attemptId,submissionFenceId,provider,model,externalOperationId,providerStatus,maximumResponseBytes):
             writeInt(&buf, Int32(3))
-            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeTranscriptCapabilityContext.write(context, into: &buf)
             FfiConverterTypeTranscriptAttemptId.write(attemptId, into: &buf)
             FfiConverterTypeTranscriptSubmissionFenceId.write(submissionFenceId, into: &buf)
             FfiConverterTypeTranscriptProvider.write(provider, into: &buf)
@@ -13851,9 +13931,9 @@ public struct FfiConverterTypeTranscriptCapabilityRequest: FfiConverterRustBuffe
             FfiConverterUInt64.write(maximumResponseBytes, into: &buf)
 
 
-        case let .transcribeLocal(episodeId,attemptId,audioUrl,locale):
+        case let .transcribeLocal(context,attemptId,audioUrl,locale):
             writeInt(&buf, Int32(4))
-            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeTranscriptCapabilityContext.write(context, into: &buf)
             FfiConverterTypeTranscriptAttemptId.write(attemptId, into: &buf)
             FfiConverterString.write(audioUrl, into: &buf)
             FfiConverterOptionString.write(locale, into: &buf)

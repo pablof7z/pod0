@@ -110,6 +110,16 @@ impl HostRequestLedger {
     }
 
     #[must_use]
+    pub fn is_transcript_request(&self, request_id: HostRequestId) -> bool {
+        self.requests.get(&request_id).is_some_and(|request| {
+            matches!(
+                request.envelope.request,
+                HostRequest::ExecuteTranscriptCapability { .. }
+            )
+        })
+    }
+
+    #[must_use]
     pub fn is_playback_request(&self, request_id: HostRequestId) -> bool {
         self.requests.get(&request_id).is_some_and(|request| {
             matches!(

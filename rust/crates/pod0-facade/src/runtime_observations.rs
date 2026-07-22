@@ -205,6 +205,7 @@ impl FacadeState {
                 | HostObservation::DownloadStaged { .. }
                 | HostObservation::DownloadCancelled { .. }
                 | HostObservation::DownloadArtifactRemoved { .. }
+                | HostObservation::TranscriptCapabilityObserved { .. }
                 | HostObservation::CoreWakeReached { .. }
                 | HostObservation::LegacyRecallIndexArtifactsRemoved { .. } => {
                     self.fail(command_id, CoreFailureCode::InvalidCommand)
@@ -256,6 +257,7 @@ impl FacadeState {
             HostObservation::ChapterModelProviderAccepted { episode_id, .. }
             | HostObservation::ChapterModelCompleted { episode_id, .. }
             | HostObservation::ChapterModelFailed { episode_id, .. } => episode_id,
+            HostObservation::TranscriptCapabilityObserved { .. } => return None,
             _ => return None,
         };
         let record = self
