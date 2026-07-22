@@ -123,6 +123,24 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
                 }
             }
         }
+        ApplicationCommand::ImportLegacyRecallConfiguration {
+            configuration,
+            source_generation,
+        } => {
+            hash.update(b"import-legacy-recall-configuration\0");
+            hash.update(configuration.stored_embedding_model_id.as_bytes());
+            hash.update([0, u8::from(configuration.reranker_enabled)]);
+            hash.update(source_generation.into_bytes());
+        }
+        ApplicationCommand::SetRecallConfiguration {
+            expected_configuration_revision,
+            configuration,
+        } => {
+            hash.update(b"set-recall-configuration\0");
+            hash.update(expected_configuration_revision.value.to_be_bytes());
+            hash.update(configuration.stored_embedding_model_id.as_bytes());
+            hash.update([0, u8::from(configuration.reranker_enabled)]);
+        }
         ApplicationCommand::RebuildTranscriptEvidence { input, policy } => {
             hash_evidence_input(&mut hash, input, *policy);
         }

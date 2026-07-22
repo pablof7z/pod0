@@ -25,8 +25,8 @@ final class LLMProviderTests: XCTestCase {
             keyLabel: "Podcast Ollama",
             connectedAt: Date(timeIntervalSince1970: 1_700_000_000)
         )
-        settings.embeddingsModel = "ollama:qwen3-embedding"
-        settings.embeddingsModelName = "qwen3-embedding"
+        settings.legacyRecallEmbeddingsModel = "ollama:qwen3-embedding"
+        settings.legacyRecallEmbeddingsModelName = "qwen3-embedding"
 
         let data = try JSONEncoder().encode(settings)
         let decoded = try JSONDecoder().decode(Settings.self, from: data)
@@ -34,7 +34,7 @@ final class LLMProviderTests: XCTestCase {
         XCTAssertEqual(decoded.ollamaCredentialSource, .byok)
         XCTAssertEqual(decoded.ollamaBYOKKeyID, "key_ollama")
         XCTAssertEqual(decoded.ollamaBYOKKeyLabel, "Podcast Ollama")
-        XCTAssertEqual(decoded.embeddingsModel, "ollama:qwen3-embedding")
-        XCTAssertEqual(decoded.embeddingsModelName, "qwen3-embedding")
+        XCTAssertEqual(decoded.legacyRecallEmbeddingsModel, "ollama:qwen3-embedding")
+        XCTAssertEqual(decoded.legacyRecallEmbeddingsModelName, "qwen3-embedding")
     }
 }

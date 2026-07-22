@@ -1,7 +1,6 @@
 use pod0_application::{
     CoreFailureCode, EvidenceChunkPolicy, HostObservation, HostRequest, HostRequestEnvelope,
-    OperationResult, OperationStage, RecallEmbeddingInput, TranscriptEvidenceInput,
-    build_evidence_artifact,
+    OperationStage, RecallEmbeddingInput, TranscriptEvidenceInput, build_evidence_artifact,
 };
 use pod0_domain::{
     CommandId, EvidenceGenerationId, EvidenceSpanId, HostRequestId, TranscriptEvidenceArtifact,
@@ -13,7 +12,7 @@ use pod0_recall_index::{
 };
 use sha2::{Digest, Sha256};
 
-use crate::runtime_evidence_state::PendingEvidenceIndex;
+use crate::runtime_evidence_state::{EvidenceIndexCompletion, PendingEvidenceIndex};
 use crate::runtime_state::{FacadeState, failure};
 
 impl FacadeState {
@@ -67,6 +66,7 @@ impl FacadeState {
             generation_id,
             expected_span_count: span_count,
             requested_span_ids: Vec::new(),
+            completion: EvidenceIndexCompletion::EvidenceRebuild,
         });
     }
 
@@ -132,7 +132,7 @@ impl FacadeState {
         }
     }
 
-    fn advance_evidence_index(&mut self, mut pending: PendingEvidenceIndex) {
+    pub(super) fn advance_evidence_index(&mut self, mut pending: PendingEvidenceIndex) {
         let Some(artifact) = self.selected_artifact(&pending) else {
             self.fail(pending.command_id, CoreFailureCode::StorageUnavailable);
             return;
@@ -146,14 +146,7 @@ impl FacadeState {
             Ok(RecallIndexPlan::Ready { indexed_span_count })
                 if indexed_span_count == pending.expected_span_count =>
             {
-                self.succeed(
-                    pending.command_id,
-                    Some(OperationResult::EvidenceRebuilt {
-                        episode_id: pending.episode_id,
-                        generation_id: pending.generation_id,
-                        span_count: indexed_span_count,
-                    }),
-                );
+                self.finish_evidence_index(pending, indexed_span_count);
             }
             Ok(RecallIndexPlan::NeedsEmbeddings { spans }) => {
                 pending.requested_span_ids = spans.iter().map(|span| span.span_id).collect();
@@ -173,6 +166,8 @@ impl FacadeState {
                     request: HostRequest::EmbedRecallSpans {
                         episode_id: pending.episode_id,
                         generation_id: pending.generation_id,
+                        provider: self.recall_configuration.embedding_provider,
+                        model: self.recall_configuration.embedding_model.clone(),
                         spans: spans
                             .into_iter()
                             .map(|span| RecallEmbeddingInput {

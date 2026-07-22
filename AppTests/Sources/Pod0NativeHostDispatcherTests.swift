@@ -60,6 +60,8 @@ final class Pod0NativeHostDispatcherTests: XCTestCase {
             deadline: nil,
             request: .embedRecallQuery(
                 queryId: RecallQueryId(high: 1, low: 2),
+                provider: .openRouter,
+                model: "embedding-model",
                 text: "Where was the memory model discussed?",
                 maximumDimensions: 1_536
             )

@@ -18,6 +18,7 @@ final class SharedLibraryClient {
     private var librarySubscriptionID: SubscriptionId?
     private var playbackSubscriptionID: SubscriptionId?
     private var chapterWorkflowSubscriptionID: SubscriptionId?
+    var recallConfigurationSubscriptionID: SubscriptionId?
     private var notesSubscriptionID: SubscriptionId?
     private var clipsSubscriptionID: SubscriptionId?
     var waiters: [CommandId: Waiter] = [:]
@@ -81,6 +82,7 @@ final class SharedLibraryClient {
             request: ProjectionRequest(scope: .playback, offset: 0, maxItems: 200),
             subscriber: subscriber
         )
+        subscribeToRecallConfiguration(subscriber)
         chapterWorkflowSubscriptionID = facade.subscribe(
             request: ProjectionRequest(
                 scope: .chapterWorkflows(episodeId: nil),
@@ -111,6 +113,7 @@ final class SharedLibraryClient {
         let clips = loadClipPages(scope: .active)
         cachedClips = clips
         store.applySharedClips(clips)
+        publishRecallConfiguration(to: store)
     }
 
     nonisolated func chapterModelPlan(
@@ -200,6 +203,8 @@ final class SharedLibraryClient {
             receiveLibrary(envelope)
         case .playback(let projection):
             receivePlayback(projection, revision: envelope.stateRevision.value)
+        case .recallConfiguration(let configuration):
+            store?.applySharedRecallConfiguration(configuration)
         case .chapterWorkflows(let projection):
             receiveChapterWorkflows(
                 projection,
@@ -250,6 +255,7 @@ final class SharedLibraryClient {
         dispatcher.shutdown()
         if let librarySubscriptionID { facade.unsubscribe(subscriptionId: librarySubscriptionID) }
         if let playbackSubscriptionID { facade.unsubscribe(subscriptionId: playbackSubscriptionID) }
+        unsubscribeFromRecallConfiguration()
         if let chapterWorkflowSubscriptionID {
             facade.unsubscribe(subscriptionId: chapterWorkflowSubscriptionID)
         }
@@ -277,7 +283,7 @@ final class SharedLibraryClient {
 
 }
 
-private final class SharedLibrarySubscriber: ProjectionSubscriber, @unchecked Sendable {
+final class SharedLibrarySubscriber: ProjectionSubscriber, @unchecked Sendable {
     private let delivery: @Sendable (ProjectionEnvelope) -> Void
 
     init(delivery: @escaping @Sendable (ProjectionEnvelope) -> Void) {

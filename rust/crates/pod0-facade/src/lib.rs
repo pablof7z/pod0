@@ -17,6 +17,7 @@ mod clip_migration;
 #[cfg(test)]
 mod facade_contract_tests;
 mod listening_migration;
+mod listening_migration_error;
 mod model_chapter_cutover;
 #[cfg(test)]
 mod model_chapter_cutover_discard_tests;
@@ -83,10 +84,12 @@ mod runtime_command_fingerprint_values;
 mod runtime_commands;
 mod runtime_core_wakes;
 mod runtime_evidence_commands;
+mod runtime_evidence_completion;
 mod runtime_evidence_projection;
 mod runtime_evidence_state;
 #[cfg(test)]
 mod runtime_evidence_tests;
+mod runtime_failure;
 mod runtime_feed_commands;
 mod runtime_feed_observations;
 mod runtime_feed_state;
@@ -114,12 +117,18 @@ mod runtime_playback_tests;
 mod runtime_playback_transitions;
 mod runtime_projection;
 mod runtime_recall_commands;
+mod runtime_recall_configuration;
+#[cfg(test)]
+mod runtime_recall_configuration_test_support;
+#[cfg(test)]
+mod runtime_recall_configuration_tests;
 mod runtime_recall_cutover;
 #[cfg(test)]
 mod runtime_recall_cutover_tests;
 mod runtime_recall_interrupts;
 mod runtime_recall_observations;
 mod runtime_recall_rerank;
+mod runtime_recall_resolution;
 mod runtime_recall_state;
 #[cfg(test)]
 mod runtime_recall_test_support;

@@ -3,7 +3,6 @@ import uniffi.pod0_domain.*
 import uniffi.pod0_facade.*
 import java.io.File
 import java.nio.file.Files
-
 private class RecordingSubscriber : ProjectionSubscriber {
     val revisions = mutableListOf<ULong>()
 
@@ -11,7 +10,6 @@ private class RecordingSubscriber : ProjectionSubscriber {
         revisions.add(projection.stateRevision.value)
     }
 }
-
 fun main(args: Array<String>) {
     check(args.size == 9)
     val fixture = decodeProperties(File(args[0]).readText())
@@ -46,7 +44,7 @@ fun main(args: Array<String>) {
         check(subscriber.revisions == listOf(0UL, 1UL))
 
         val projection = facade.snapshot(request).projection
-        check(facade.snapshot(request).contractVersion == 25u)
+        check(facade.snapshot(request).contractVersion == 26u)
         check(projection is Projection.Library)
         val unsupportedOperation = projection.value.operations.single()
         check(unsupportedOperation.commandId == CommandId(0UL, 1UL))
@@ -91,6 +89,8 @@ fun main(args: Array<String>) {
             ),
         )
         check(subscriber.revisions == listOf(0UL, 1UL, 2UL, 3UL))
+
+        qualifyRecallConfigurationContract(facade, request)
     } finally {
         facade.destroy()
     }

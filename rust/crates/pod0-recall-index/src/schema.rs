@@ -3,6 +3,8 @@
 use std::sync::OnceLock;
 
 use rusqlite::ffi::{SQLITE_OK, sqlite3_auto_extension};
+use std::path::Path;
+
 use rusqlite::{OptionalExtension, params};
 
 use crate::{RECALL_INDEX_SCHEMA_VERSION, RecallIndex, RecallIndexError};
@@ -45,7 +47,9 @@ impl RecallIndex {
                schema_version INTEGER NOT NULL,
                dimensions INTEGER NOT NULL,
                owner TEXT NOT NULL CHECK(owner='rust'),
-               legacy_cutover_committed INTEGER NOT NULL DEFAULT 0
+               legacy_cutover_committed INTEGER NOT NULL DEFAULT 0,
+               embedding_space_digest BLOB
+                 CHECK(embedding_space_digest IS NULL OR length(embedding_space_digest)=32)
              );",
         )?;
         let existing = self
@@ -155,4 +159,16 @@ impl RecallIndex {
         )?;
         self.initialize_execution_schema()
     }
+}
+
+pub(crate) fn stored_schema_is_older(path: &Path) -> Result<bool, RecallIndexError> {
+    let connection = rusqlite::Connection::open(path)?;
+    let stored = connection
+        .query_row(
+            "SELECT schema_version FROM pod0_recall_index_metadata WHERE singleton=1",
+            [],
+            |row| row.get::<_, u32>(0),
+        )
+        .optional()?;
+    Ok(stored.is_some_and(|version| version < RECALL_INDEX_SCHEMA_VERSION))
 }

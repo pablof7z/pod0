@@ -245,9 +245,9 @@ fn host_failure(code: HostFailureCode) -> (&'static str, bool) {
         | HostFailureCode::IndexUnavailable
         | HostFailureCode::PlatformFailure => (FAILURE_TRANSPORT, true),
         HostFailureCode::ResponseTooLarge => (FAILURE_RESPONSE_TOO_LARGE, false),
-        HostFailureCode::PermissionDenied | HostFailureCode::InvalidResponse => {
-            (FAILURE_INVALID_RESPONSE, false)
-        }
+        HostFailureCode::PermissionDenied
+        | HostFailureCode::Unauthorized
+        | HostFailureCode::InvalidResponse => (FAILURE_INVALID_RESPONSE, false),
         HostFailureCode::Unsupported { .. } => (FAILURE_INVALID_RESPONSE, false),
     }
 }

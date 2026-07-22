@@ -58,6 +58,25 @@ fun qualifyNativeHostContract() {
     check(observation.observedRequestRevision == request.issuedRevision)
     check((observation.observation as HostObservation.PlaybackObserved).value == playback)
 
+    val recallQueryId = RecallQueryId(10UL, 11UL)
+    val embedRecall = HostRequest.EmbedRecallQuery(
+        recallQueryId,
+        RecallEmbeddingProvider.OpenRouter,
+        "openai/text-embedding-3-large",
+        "bounded query",
+        1_024u.toUShort(),
+    )
+    val rerankRecall = HostRequest.RerankRecallCandidates(
+        recallQueryId,
+        RecallRerankProvider.OpenRouter,
+        "cohere/rerank-v3.5",
+        "bounded query",
+        listOf(RecallRerankDocument(EvidenceSpanId(12UL, 13UL), "bounded evidence")),
+    )
+    check(embedRecall.provider == RecallEmbeddingProvider.OpenRouter)
+    check(embedRecall.maximumDimensions == 1_024u.toUShort())
+    check(rerankRecall.candidates.single().excerpt == "bounded evidence")
+
     val fence = ChapterModelSubmissionFenceId(11UL, 12UL)
     val execution = ChapterModelExecutionRequest(
         "openrouter",

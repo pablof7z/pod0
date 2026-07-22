@@ -8,8 +8,7 @@ import os.log
 /// and survive reinstalls.
 ///
 /// **What is synced.** Only portable, non-secret fields:
-///   - LLM model IDs / names (agent, memory compilation, utility, embeddings)
-///   - Reranker preference
+///   - LLM model IDs / names (agent, memory compilation, utility)
 ///   - ElevenLabs TTS/STT model IDs, voice ID, and voice name
 ///   - Playback preferences (default rate, skip intervals, auto-mark-played)
 ///   - Transcript automation toggles
@@ -97,6 +96,15 @@ final class iCloudSettingsSync {
         write(settings, to: kvs)
     }
 
+    /// Removes the former Swift-owned recall keys only after the shared core
+    /// has verified their import. Recall configuration is not an iCloud mirror.
+    func retireLegacyRecallConfiguration() {
+        kvs.removeObject(forKey: Key.embeddingsModel.rawValue)
+        kvs.removeObject(forKey: Key.embeddingsModelName.rawValue)
+        kvs.removeObject(forKey: Key.rerankerEnabled.rawValue)
+        kvs.synchronize()
+    }
+
     // MARK: - Merge helper
 
     /// Applies iCloud values to `settings` for every tracked key that has a
@@ -131,9 +139,15 @@ final class iCloudSettingsSync {
         if let v = string(.categorizationModelName)           { settings.categorizationModelName = v }
         if let v = string(.chapterCompilationModel), !v.isEmpty { settings.chapterCompilationModel = v }
         if let v = string(.chapterCompilationModelName)       { settings.chapterCompilationModelName = v }
-        if let v = string(.embeddingsModel),       !v.isEmpty { settings.embeddingsModel = v }
-        if let v = string(.embeddingsModelName)               { settings.embeddingsModelName = v }
-        if let v = bool(.rerankerEnabled)                     { settings.rerankerEnabled = v }
+        if let v = string(.embeddingsModel), !v.isEmpty {
+            settings.legacyRecallEmbeddingsModel = v
+        }
+        if let v = string(.embeddingsModelName) {
+            settings.legacyRecallEmbeddingsModelName = v
+        }
+        if let v = bool(.rerankerEnabled) {
+            settings.legacyRecallRerankerEnabled = v
+        }
         if let raw = string(.sttProvider),
            let v = STTProvider(rawValue: raw)                  { settings.sttProvider = v }
         if let v = string(.openRouterWhisperModel), !v.isEmpty { settings.openRouterWhisperModel = v }
@@ -174,9 +188,6 @@ final class iCloudSettingsSync {
         kvs.set(settings.categorizationModelName,                 forKey: Key.categorizationModelName.rawValue)
         kvs.set(settings.chapterCompilationModel,                 forKey: Key.chapterCompilationModel.rawValue)
         kvs.set(settings.chapterCompilationModelName,             forKey: Key.chapterCompilationModelName.rawValue)
-        kvs.set(settings.embeddingsModel,                         forKey: Key.embeddingsModel.rawValue)
-        kvs.set(settings.embeddingsModelName,                     forKey: Key.embeddingsModelName.rawValue)
-        kvs.set(settings.rerankerEnabled,                         forKey: Key.rerankerEnabled.rawValue)
         kvs.set(settings.sttProvider.rawValue,                    forKey: Key.sttProvider.rawValue)
         kvs.set(settings.openRouterWhisperModel,                  forKey: Key.openRouterWhisperModel.rawValue)
         kvs.set(settings.assemblyAISTTModel,                      forKey: Key.assemblyAISTTModel.rawValue)

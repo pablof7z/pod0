@@ -31,7 +31,7 @@ fn newer_disposable_schema_is_never_destroyed_during_open() {
                owner TEXT NOT NULL,
                legacy_cutover_committed INTEGER NOT NULL DEFAULT 0
              );
-             INSERT INTO pod0_recall_index_metadata VALUES(1,2,4,'rust',0);",
+             INSERT INTO pod0_recall_index_metadata VALUES(1,3,4,'rust',0);",
         )
         .unwrap();
     drop(connection);
@@ -49,6 +49,33 @@ fn newer_disposable_schema_is_never_destroyed_during_open() {
                 |row| row.get::<_, u32>(0)
             )
             .unwrap(),
-        2
+        3
     );
+}
+
+#[test]
+fn older_disposable_schema_is_recreated_without_touching_other_files() {
+    let directory = tempdir().unwrap();
+    let path = directory.path().join("recall.sqlite");
+    let canonical = directory.path().join("canonical.sqlite");
+    let connection = rusqlite::Connection::open(&path).unwrap();
+    connection
+        .execute_batch(
+            "CREATE TABLE pod0_recall_index_metadata(
+           singleton INTEGER PRIMARY KEY,
+           schema_version INTEGER NOT NULL,
+           dimensions INTEGER NOT NULL,
+           owner TEXT NOT NULL,
+           legacy_cutover_committed INTEGER NOT NULL DEFAULT 0
+         );
+         INSERT INTO pod0_recall_index_metadata VALUES(1,1,4,'rust',1);",
+        )
+        .unwrap();
+    drop(connection);
+    std::fs::write(&canonical, b"canonical").unwrap();
+
+    let index = RecallIndex::open(&path, 4).unwrap();
+
+    assert_eq!(index.sqlite_vec_version().unwrap(), "v0.1.9");
+    assert_eq!(std::fs::read(canonical).unwrap(), b"canonical");
 }

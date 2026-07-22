@@ -92,6 +92,7 @@ mod listening_error;
 mod listening_policy;
 mod notes;
 mod playback_policy;
+mod recall_configuration;
 mod transcript_artifact;
 mod transcript_artifact_hash;
 mod transcript_artifact_validation;
@@ -107,6 +108,7 @@ pub use listening_error::*;
 pub use listening_policy::*;
 pub use notes::*;
 pub use playback_policy::*;
+pub use recall_configuration::*;
 pub use transcript_artifact::*;
 pub use transcript_command::*;
 

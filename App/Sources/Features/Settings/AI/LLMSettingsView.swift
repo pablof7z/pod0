@@ -9,6 +9,7 @@ struct AIModelsSettingsView: View {
     @State private var categorizationSelectorPresented = false
     @State private var chapterSelectorPresented = false
     @State private var embeddingsSelectorPresented = false
+    @State private var embeddingsModelName = ""
     @State private var catalog = OpenRouterModelSelectorViewModel()
 
     var body: some View {
@@ -148,12 +149,12 @@ struct AIModelsSettingsView: View {
                 icon: "rectangle.stack.fill.badge.person.crop",
                 tint: .blue,
                 role: "Embeddings",
-                modelID: store.state.settings.embeddingsModel,
-                modelName: store.state.settings.embeddingsModelName
+                modelID: store.recallConfiguration?.storedEmbeddingModelId ?? "",
+                modelName: embeddingsModelName
             ) {
                 embeddingsSelectorPresented = true
             }
-            ModelPreviewCard(model: catalogModel(for: store.state.settings.embeddingsModel))
+            ModelPreviewCard(model: catalogModel(for: store.recallConfiguration?.storedEmbeddingModelId ?? ""))
         } header: {
             Text("Language Roles")
         } footer: {
@@ -303,25 +304,23 @@ struct AIModelsSettingsView: View {
 
     private var embeddingsModelBinding: Binding<String> {
         Binding(
-            get: { store.state.settings.embeddingsModel },
-            set: { v in var s = store.state.settings; s.embeddingsModel = v; store.updateSettings(s) }
+            get: { store.recallConfiguration?.storedEmbeddingModelId ?? "" },
+            set: { store.updateRecallConfiguration(storedEmbeddingModelID: $0) }
         )
     }
 
     private var embeddingsModelNameBinding: Binding<String> {
         Binding(
-            get: { store.state.settings.embeddingsModelName },
-            set: { v in var s = store.state.settings; s.embeddingsModelName = v; store.updateSettings(s) }
+            get: { embeddingsModelName },
+            set: { embeddingsModelName = $0 }
         )
     }
 
     private var rerankerBinding: Binding<Bool> {
         Binding(
-            get: { store.state.settings.rerankerEnabled },
+            get: { store.recallConfiguration?.rerankerEnabled ?? false },
             set: { v in
-                var s = store.state.settings
-                s.rerankerEnabled = v
-                store.updateSettings(s)
+                store.updateRecallConfiguration(rerankerEnabled: v)
                 Haptics.selection()
             }
         )
@@ -364,11 +363,12 @@ struct AIModelsSettingsView: View {
             s.chapterCompilationModelName = match.name
             changed = true
         }
-        if s.embeddingsModelName.isEmpty, let match = catalog.models.first(where: { $0.id == s.embeddingsModel }) {
-            s.embeddingsModelName = match.name
-            changed = true
-        }
         if changed { store.updateSettings(s) }
+        if embeddingsModelName.isEmpty,
+           let modelID = store.recallConfiguration?.storedEmbeddingModelId,
+           let match = catalog.models.first(where: { $0.id == modelID }) {
+            embeddingsModelName = match.name
+        }
     }
 
     private var speechSummary: String {

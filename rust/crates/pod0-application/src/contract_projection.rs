@@ -6,9 +6,9 @@ use pod0_domain::{
 use crate::{
     ChapterArtifactProjection, ChapterCommitReceipt, ChapterProjectionScope,
     ChapterWorkflowsProjection, ClipProjectionScope, ClipsProjection, CoreFailure,
-    EvidenceIndexProjection, MAX_OPERATION_ITEMS, MAX_PROJECTION_ITEMS, NoteProjectionScope,
-    NotesProjection, PlaybackProjection, RecallResultProjection, TranscriptCommitReceipt,
-    TranscriptProjection, TranscriptProjectionScope,
+    EvidenceIndexProjection, MAX_PROJECTION_ITEMS, NoteProjectionScope, NotesProjection,
+    PlaybackProjection, RecallResultProjection, TranscriptCommitReceipt, TranscriptProjection,
+    TranscriptProjectionScope,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
@@ -21,6 +21,7 @@ pub enum ProjectionScope {
         episode_id: EpisodeId,
     },
     Playback,
+    RecallConfiguration,
     Recall {
         query_id: RecallQueryId,
     },
@@ -81,18 +82,45 @@ pub struct ProjectionEnvelope {
 // boxing only one Rust variant would add indirection without reducing FFI work.
 #[allow(clippy::large_enum_variant)]
 pub enum Projection {
-    Library { value: LibraryProjection },
-    PodcastDetail { value: PodcastDetailProjection },
-    EpisodeDetail { value: EpisodeDetailProjection },
-    Playback { value: PlaybackProjection },
-    Recall { value: RecallResultProjection },
-    EvidenceIndex { value: EvidenceIndexProjection },
-    Transcript { value: TranscriptProjection },
-    Chapter { value: ChapterArtifactProjection },
-    ChapterWorkflows { value: ChapterWorkflowsProjection },
-    Notes { value: NotesProjection },
-    Clips { value: ClipsProjection },
-    Unsupported { value: UnsupportedProjection },
+    Library {
+        value: LibraryProjection,
+    },
+    PodcastDetail {
+        value: PodcastDetailProjection,
+    },
+    EpisodeDetail {
+        value: EpisodeDetailProjection,
+    },
+    Playback {
+        value: PlaybackProjection,
+    },
+    RecallConfiguration {
+        value: pod0_domain::RecallConfiguration,
+    },
+    Recall {
+        value: RecallResultProjection,
+    },
+    EvidenceIndex {
+        value: EvidenceIndexProjection,
+    },
+    Transcript {
+        value: TranscriptProjection,
+    },
+    Chapter {
+        value: ChapterArtifactProjection,
+    },
+    ChapterWorkflows {
+        value: ChapterWorkflowsProjection,
+    },
+    Notes {
+        value: NotesProjection,
+    },
+    Clips {
+        value: ClipsProjection,
+    },
+    Unsupported {
+        value: UnsupportedProjection,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
@@ -110,28 +138,6 @@ pub struct LibraryProjection {
     pub has_more: bool,
 }
 
-impl LibraryProjection {
-    pub fn enforce_bounds(&mut self, offset: usize, requested_items: usize) {
-        let item_limit = requested_items.clamp(1, usize::from(MAX_PROJECTION_ITEMS));
-        let counts = (
-            self.podcasts.len(),
-            self.subscriptions.len(),
-            self.episodes.len(),
-        );
-        self.podcasts = page(std::mem::take(&mut self.podcasts), offset, item_limit);
-        self.subscriptions = page(std::mem::take(&mut self.subscriptions), offset, item_limit);
-        self.episodes = page(std::mem::take(&mut self.episodes), offset, item_limit);
-        self.operations.truncate(MAX_OPERATION_ITEMS);
-        self.has_more |= counts.0 > offset.saturating_add(self.podcasts.len())
-            || counts.1 > offset.saturating_add(self.subscriptions.len())
-            || counts.2 > offset.saturating_add(self.episodes.len());
-    }
-}
-
-fn page<T>(values: Vec<T>, offset: usize, count: usize) -> Vec<T> {
-    values.into_iter().skip(offset).take(count).collect()
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct PodcastDetailProjection {
     pub podcast: Option<PodcastRecord>,
@@ -139,16 +145,6 @@ pub struct PodcastDetailProjection {
     pub episodes: Vec<EpisodeRecord>,
     pub operations: Vec<OperationProjection>,
     pub has_more: bool,
-}
-
-impl PodcastDetailProjection {
-    pub fn enforce_bounds(&mut self, offset: usize, requested_items: usize) {
-        let item_limit = requested_items.clamp(1, usize::from(MAX_PROJECTION_ITEMS));
-        let count = self.episodes.len();
-        self.episodes = page(std::mem::take(&mut self.episodes), offset, item_limit);
-        self.operations.truncate(MAX_OPERATION_ITEMS);
-        self.has_more |= count > offset.saturating_add(self.episodes.len());
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
@@ -220,6 +216,14 @@ pub enum OperationResult {
     RecallIndexCutoverCommitted {
         schema_version: u32,
         removed_legacy_file_count: u8,
+    },
+    RecallConfigurationImported {
+        imported: bool,
+        revision: StateRevision,
+    },
+    RecallConfigurationUpdated {
+        revision: StateRevision,
+        reindexed_episode_count: u32,
     },
     TranscriptCommitted {
         receipt: TranscriptCommitReceipt,

@@ -37,7 +37,17 @@ DELETED_PATHS = (
     "App/Sources/Knowledge/VectorIndex+CoreRecall.swift",
     "App/Sources/Knowledge/VectorIndex+CoreRecallRetrieval.swift",
     "App/Sources/Services/RecallCapabilityService.swift",
+    "App/Sources/Knowledge/ProviderEmbeddingsClient.swift",
+    "App/Sources/Domain/Settings+Embeddings.swift",
 )
+
+LEGACY_CONFIGURATION_ALLOWLIST = {
+    "App/Sources/Domain/Settings.swift",
+    "App/Sources/Domain/Settings+LegacyRecall.swift",
+    "App/Sources/Core/SharedLibraryBootstrap.swift",
+    "App/Sources/State/AppStateStore.swift",
+    "App/Sources/Services/iCloudSettingsSync.swift",
+}
 
 REQUIRED_TOKENS = {
     "App/Sources/Core/SharedLibraryClient+Recall.swift": (
@@ -51,10 +61,13 @@ REQUIRED_TOKENS = {
     ),
     "App/Sources/Core/CoreRecallHost.swift": (
         ".embedRecallSpans(",
+        "provider: RecallEmbeddingProvider",
+        "model: String",
         "RecallSpanEmbeddingObservation",
     ),
     "App/Sources/Services/RecallProviderService.swift": (
-        "ProviderEmbeddingsClient",
+        "RecallProviderExecuting",
+        "provider: RecallEmbeddingProvider",
         "owns no durable index",
     ),
 }
@@ -124,6 +137,15 @@ def main() -> int:
         for path in (root / "App/Sources").rglob("*.swift")
     }
     errors = evaluate(sources)
+    legacy_tokens = (
+        "legacyRecallEmbeddings",
+        "legacyRecallReranker",
+        "legacyRecallConfigurationSeed",
+    )
+    for path, source in sources.items():
+        if any(token in source for token in legacy_tokens) \
+                and path not in LEGACY_CONFIGURATION_ALLOWLIST:
+            errors.append(f"{path}: migration-only recall configuration escaped allowlist")
     for relative in DELETED_PATHS:
         if (root / relative).exists():
             errors.append(f"{relative}: deleted authority path exists")

@@ -20,6 +20,7 @@ pub enum CoreFailureCode {
     InvalidTranscript,
     InvalidChapter,
     HostUnavailable,
+    Unauthorized,
     HostRejected,
     Cancelled,
     Unsupported { wire_code: u32 },

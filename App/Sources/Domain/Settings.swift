@@ -106,16 +106,16 @@ struct Settings: Codable, Hashable, Sendable {
     /// output from a ready transcript. Rust qualifies and selects the result.
     var chapterCompilationModel: String = Defaults.llmModel
     var chapterCompilationModelName: String = ""
-    var embeddingsModel: String = Self.defaultEmbeddingsModel
-    var embeddingsModelName: String = ""
+    /// Migration-only copy of the former Swift-owned recall configuration.
+    /// Cleared after the Rust facade verifies its one-time import.
+    var legacyRecallEmbeddingsModel: String?
+    var legacyRecallEmbeddingsModelName: String?
     /// Model used by `ImageGenerationService`. Multimodal models (Gemini/Banana,
     /// GPT-image) route through /chat/completions; legacy DALL-E/FLUX use
     /// /images/generations. Defaults to Gemini 2.5 Flash Image ("Nano Banana").
     var imageGenerationModel: String = "google/gemini-2.5-flash-image"
     var imageGenerationModelName: String = ""
-    /// When `true`, optionally re-rank top-k RAG candidates with a cross-encoder. Off by
-    /// default to save tokens; settings UI exposes the toggle.
-    var rerankerEnabled: Bool = false
+    var legacyRecallRerankerEnabled: Bool?
 
     // Blossom
     /// Blossom BUD-02 server used for uploading podcast artwork, audio, chapters, and
@@ -240,7 +240,7 @@ struct Settings: Codable, Hashable, Sendable {
         case memoryCompilationModel, memoryCompilationModelName
         case wikiModel, wikiModelName, categorizationModel, categorizationModelName
         case chapterCompilationModel, chapterCompilationModelName
-        case embeddingsModel, embeddingsModelName, rerankerEnabled
+        case legacyRecallEmbeddingsModel = "embeddingsModel", legacyRecallEmbeddingsModelName = "embeddingsModelName", legacyRecallRerankerEnabled = "rerankerEnabled"
         case imageGenerationModel, imageGenerationModelName
         case blossomServerURL
         case openRouterAPIKey                                             // legacy
@@ -275,12 +275,12 @@ struct Settings: Codable, Hashable, Sendable {
         categorizationModelName = try c.decodeIfPresent(String.self, forKey: .categorizationModelName) ?? ""
         chapterCompilationModel = try c.decodeIfPresent(String.self, forKey: .chapterCompilationModel) ?? Defaults.llmModel
         chapterCompilationModelName = try c.decodeIfPresent(String.self, forKey: .chapterCompilationModelName) ?? ""
-        embeddingsModel = try c.decodeIfPresent(String.self, forKey: .embeddingsModel) ?? Self.defaultEmbeddingsModel
-        embeddingsModelName = try c.decodeIfPresent(String.self, forKey: .embeddingsModelName) ?? ""
+        legacyRecallEmbeddingsModel = try c.decodeIfPresent(String.self, forKey: .legacyRecallEmbeddingsModel)
+        legacyRecallEmbeddingsModelName = try c.decodeIfPresent(String.self, forKey: .legacyRecallEmbeddingsModelName)
         imageGenerationModel = try c.decodeIfPresent(String.self, forKey: .imageGenerationModel) ?? "google/gemini-2.5-flash-image"
         imageGenerationModelName = try c.decodeIfPresent(String.self, forKey: .imageGenerationModelName) ?? ""
         blossomServerURL = try c.decodeIfPresent(String.self, forKey: .blossomServerURL) ?? "https://blossom.primal.net"
-        rerankerEnabled = try c.decodeIfPresent(Bool.self, forKey: .rerankerEnabled) ?? false
+        legacyRecallRerankerEnabled = try c.decodeIfPresent(Bool.self, forKey: .legacyRecallRerankerEnabled)
         openRouterCredentialSource = try c.decodeIfPresent(OpenRouterCredentialSource.self, forKey: .openRouterCredentialSource) ?? .none
         openRouterBYOKKeyID = try c.decodeIfPresent(String.self, forKey: .openRouterBYOKKeyID)
         openRouterBYOKKeyLabel = try c.decodeIfPresent(String.self, forKey: .openRouterBYOKKeyLabel)
@@ -340,12 +340,12 @@ struct Settings: Codable, Hashable, Sendable {
         try c.encode(categorizationModelName, forKey: .categorizationModelName)
         try c.encode(chapterCompilationModel, forKey: .chapterCompilationModel)
         try c.encode(chapterCompilationModelName, forKey: .chapterCompilationModelName)
-        try c.encode(embeddingsModel, forKey: .embeddingsModel)
-        try c.encode(embeddingsModelName, forKey: .embeddingsModelName)
+        try c.encodeIfPresent(legacyRecallEmbeddingsModel, forKey: .legacyRecallEmbeddingsModel)
+        try c.encodeIfPresent(legacyRecallEmbeddingsModelName, forKey: .legacyRecallEmbeddingsModelName)
         try c.encode(imageGenerationModel, forKey: .imageGenerationModel)
         try c.encode(imageGenerationModelName, forKey: .imageGenerationModelName)
         try c.encode(blossomServerURL, forKey: .blossomServerURL)
-        try c.encode(rerankerEnabled, forKey: .rerankerEnabled)
+        try c.encodeIfPresent(legacyRecallRerankerEnabled, forKey: .legacyRecallRerankerEnabled)
         try c.encode(openRouterCredentialSource, forKey: .openRouterCredentialSource)
         try c.encodeIfPresent(openRouterBYOKKeyID, forKey: .openRouterBYOKKeyID)
         try c.encodeIfPresent(openRouterBYOKKeyLabel, forKey: .openRouterBYOKKeyLabel)

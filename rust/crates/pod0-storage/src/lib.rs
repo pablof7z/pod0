@@ -102,6 +102,7 @@ mod note_legacy_backup;
 mod note_store_codec;
 mod note_store_model;
 mod note_store_read;
+mod recall_configuration_store;
 mod retained_orphan_parent;
 mod schema;
 mod schema_chapter_workflows;
@@ -110,6 +111,7 @@ mod schema_clips;
 mod schema_evidence;
 mod schema_introspection;
 mod schema_library;
+mod schema_migrations;
 mod schema_model_chapter_workflows;
 mod schema_notes;
 mod schema_transcripts;
@@ -192,6 +194,7 @@ pub use note_import_model::{
 };
 pub use note_import_store::{commit_note_cutover, read_note_import};
 pub use note_store_model::NoteCollectionSnapshot;
+pub use recall_configuration_store::RecallConfigurationMutation;
 pub use transcript_import::{TranscriptImportClock, TranscriptImporter};
 pub use transcript_import_model::{
     LegacyTranscriptSourceKind, TranscriptBackupEvidence, TranscriptImportEntrySummary,

@@ -186,7 +186,8 @@ fn schema_13_imported_history_revalidates_and_activates_after_upgrade() {
     rusqlite::Connection::open(&fixture.target)
         .unwrap()
         .execute_batch(
-            "DROP TABLE pod0_model_chapter_completions;
+            "DROP TABLE pod0_recall_configuration;
+             DROP TABLE pod0_model_chapter_completions;
              DROP TABLE pod0_model_chapter_workflows;
              DROP TABLE pod0_publisher_chapter_workflows;
              DROP TABLE pod0_chapter_commands;

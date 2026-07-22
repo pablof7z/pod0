@@ -53,6 +53,8 @@ final class Pod0NativeHostDispatcherRecallTests: XCTestCase {
             deadlineAt: nil,
             request: .embedRecallQuery(
                 queryId: RecallQueryId(high: 2, low: 3),
+                provider: .openRouter,
+                model: "embedding-model",
                 text: "private query",
                 maximumDimensions: 3
             )

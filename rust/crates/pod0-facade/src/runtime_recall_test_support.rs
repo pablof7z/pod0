@@ -3,6 +3,7 @@ use pod0_application::{
 };
 
 use crate::runtime_playback_test_support::PlaybackFixture;
+use crate::runtime_recall_configuration_test_support::enable_test_reranking;
 use crate::*;
 
 pub(super) struct RecallFixture {
@@ -13,6 +14,7 @@ pub(super) struct RecallFixture {
 impl RecallFixture {
     pub(super) fn new(with_evidence: bool) -> Self {
         let base = PlaybackFixture::new();
+        enable_test_reranking(&base.facade);
         let artifact = build_evidence_artifact(&evidence_input(&base), evidence_policy()).unwrap();
         assert!(artifact.spans.len() >= 2);
         if with_evidence {

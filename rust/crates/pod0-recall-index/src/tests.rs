@@ -139,6 +139,23 @@ fn cached_embeddings_recover_after_restart_without_provider_work() {
 }
 
 #[test]
+fn embedding_space_change_atomically_invalidates_cache_and_execution() {
+    let fixture = fixture();
+    let spans = fixture_spans(&fixture, 1);
+    let mut index = RecallIndex::in_memory(fixture.dimensions).unwrap();
+    let first_space = pod0_domain::ContentDigest::from_bytes([1; 32]);
+    let second_space = pod0_domain::ContentDigest::from_bytes([2; 32]);
+    assert!(index.activate_embedding_space(first_space).unwrap());
+    index_fixture_episode(&mut index, &fixture, 1);
+    assert!(index.has_ready_scope(RecallScope::Library).unwrap());
+    assert!(!index.activate_embedding_space(first_space).unwrap());
+
+    assert!(index.activate_embedding_space(second_space).unwrap());
+    assert!(!index.has_ready_scope(RecallScope::Library).unwrap());
+    assert_eq!(requested(&mut index, &spans).len(), spans.len());
+}
+
+#[test]
 fn cancellation_never_commits_a_partial_generation() {
     let fixture = fixture();
     let spans = fixture_spans(&fixture, 1);

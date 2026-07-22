@@ -16,7 +16,7 @@ struct OllamaEmbeddingsClient: EmbeddingsClient {
     init(
         apiKeyProvider: @Sendable @escaping () throws -> String? = { try OllamaCredentialStore.apiKey() },
         model: String,
-        expectedDimensions: Int = Settings.embeddingsDimensions,
+        expectedDimensions: Int,
         session: URLSession = .shared,
         timeout: TimeInterval = 30
     ) {

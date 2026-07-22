@@ -1,13 +1,14 @@
 use pod0_domain::{
     AutoDownloadPolicy, CancellationId, ChapterArtifactInput, ClipId, ClipRevision, ClipSource,
-    CommandId, CompletionStatus, EpisodeId, NoteAuthor, NoteId, NoteKind, NoteRevision, NoteTarget,
-    PlaybackRatePermille, PlaybackSegment, PlaybackSleepMode, PodcastId, QueueEntry, QueueEntryId,
-    SpeakerId, StateRevision, TranscriptArtifactInput, UnixTimestampMilliseconds,
+    CommandId, CompletionStatus, ContentDigest, EpisodeId, NoteAuthor, NoteId, NoteKind,
+    NoteRevision, NoteTarget, PlaybackRatePermille, PlaybackSegment, PlaybackSleepMode, PodcastId,
+    QueueEntry, QueueEntryId, RecallConfigurationInput, SpeakerId, StateRevision,
+    TranscriptArtifactInput, UnixTimestampMilliseconds,
 };
 
 use crate::{EvidenceChunkPolicy, RecallQuery, TranscriptEvidenceInput};
 
-pub const FACADE_CONTRACT_VERSION: u32 = 25;
+pub const FACADE_CONTRACT_VERSION: u32 = 26;
 pub const MAX_PROJECTION_ITEMS: u16 = 200;
 pub const MAX_OPERATION_ITEMS: usize = 32;
 pub const MAX_HOST_REQUEST_BATCH: u16 = 64;
@@ -91,6 +92,14 @@ pub enum ApplicationCommand {
     },
     RecallQuery {
         query: RecallQuery,
+    },
+    ImportLegacyRecallConfiguration {
+        configuration: RecallConfigurationInput,
+        source_generation: ContentDigest,
+    },
+    SetRecallConfiguration {
+        expected_configuration_revision: StateRevision,
+        configuration: RecallConfigurationInput,
     },
     RebuildTranscriptEvidence {
         input: TranscriptEvidenceInput,

@@ -109,6 +109,8 @@ impl FacadeState {
             RecallHostPhase::Embedding,
             HostRequest::EmbedRecallQuery {
                 query_id,
+                provider: self.recall_configuration.embedding_provider,
+                model: self.recall_configuration.embedding_model.clone(),
                 text: self.recalls[&query_id].normalized_text.clone(),
                 maximum_dimensions: u16::try_from(RECALL_INDEX_DIMENSIONS)
                     .expect("bounded recall dimensions"),

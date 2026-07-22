@@ -20,12 +20,8 @@ extension SharedLibraryClient {
         guard !recallHostAttached else { return }
         recallHostAttached = true
         let host = CoreRecallHost(
-            embedder: providers.embedder,
-            reranker: OpenRouterRerankerClient(),
-            legacyIndexURL: store.persistence.legacyRecallIndexURL,
-            isRerankingEnabled: { [weak store] in
-                await MainActor.run { store?.state.settings.rerankerEnabled ?? false }
-            }
+            providers: providers,
+            legacyIndexURL: store.persistence.legacyRecallIndexURL
         )
         evidenceRebuildTask = Task { @MainActor [weak self, weak store] in
             guard let self else { return }

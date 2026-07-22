@@ -25,6 +25,7 @@ struct Reconciler {
             artifacts: try artifacts.all(),
             transcripts: transcriptSnapshots(),
             transcriptDesiredEpisodeIDs: try transcriptDesiredIDs(),
+            embeddingSpaceID: appStore.recallConfiguration?.embeddingSpaceId.stableString,
             scheduledTasks: appStore.scheduledTasks,
             now: now()
         ))
@@ -191,8 +192,7 @@ struct Reconciler {
                 return EpisodeDownloadStore.shared.exists(for: episode)
             }
         case .metadataIndex, .transcriptIndex:
-            let model = LLMModelReference(storedID: appStore.state.settings.embeddingsModel)
-            return LLMProviderCredentialResolver.hasAPIKey(for: model.provider)
+            return true
         case .scheduledAgentRun:
             guard let payload = try? Self.decoder.decode(
                 ScheduledRunPayload.self, from: job.payload ?? Data()

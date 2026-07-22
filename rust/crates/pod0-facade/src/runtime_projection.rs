@@ -143,6 +143,9 @@ impl FacadeState {
                 value.enforce_bounds(item_limit);
                 Projection::Playback { value }
             }
+            ProjectionScope::RecallConfiguration => Projection::RecallConfiguration {
+                value: self.recall_configuration.clone(),
+            },
             ProjectionScope::Recall { query_id } => {
                 let mut value = if let Some(workflow) = self.recalls.get(&query_id) {
                     RecallResultProjection {

@@ -4,10 +4,10 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use pod0_application::RecallEmbeddingVector;
-use pod0_domain::{EpisodeId, EvidenceGenerationId, EvidenceSpanId, PodcastId};
+use pod0_domain::{ContentDigest, EpisodeId, EvidenceGenerationId, EvidenceSpanId, PodcastId};
 use rusqlite::Connection;
 
-pub const RECALL_INDEX_SCHEMA_VERSION: u32 = 1;
+pub const RECALL_INDEX_SCHEMA_VERSION: u32 = 2;
 pub const RECALL_INDEX_DIMENSIONS: usize = 1_024;
 pub const MAX_RECALL_EMBEDDING_BATCH: usize = 16;
 
@@ -129,6 +129,12 @@ impl RecallIndex {
         crate::migration::validate_disposable_artifacts(path)?;
         let result = Self::open_connection(Connection::open(path)?, dimensions);
         match result {
+            Err(RecallIndexError::IncompatibleSchema)
+                if crate::schema::stored_schema_is_older(path)? =>
+            {
+                crate::migration::remove_disposable_artifacts(path)?;
+                Self::open_connection(Connection::open(path)?, dimensions)
+            }
             Err(error) if error.is_recoverable_corruption() => {
                 crate::migration::remove_disposable_artifacts(path)?;
                 Self::open_connection(Connection::open(path)?, dimensions)
@@ -171,6 +177,35 @@ impl RecallIndex {
         self.connection
             .query_row("SELECT vec_version()", [], |row| row.get(0))
             .map_err(Into::into)
+    }
+
+    pub fn activate_embedding_space(
+        &mut self,
+        identity: ContentDigest,
+    ) -> Result<bool, RecallIndexError> {
+        let digest = identity.into_bytes();
+        let current = self.connection.query_row(
+            "SELECT embedding_space_digest FROM pod0_recall_index_metadata WHERE singleton=1",
+            [],
+            |row| row.get::<_, Option<Vec<u8>>>(0),
+        )?;
+        if current.as_deref() == Some(digest.as_slice()) {
+            return Ok(false);
+        }
+        let transaction = self.connection.transaction()?;
+        transaction.execute_batch(
+            "DELETE FROM pod0_recall_vec_v1;
+             DELETE FROM pod0_recall_fts_v1;
+             DELETE FROM pod0_recall_meta_v1;
+             DELETE FROM pod0_recall_generations_v1;
+             DELETE FROM pod0_recall_embedding_cache_v1;",
+        )?;
+        transaction.execute(
+            "UPDATE pod0_recall_index_metadata SET embedding_space_digest=?1 WHERE singleton=1",
+            [digest.as_slice()],
+        )?;
+        transaction.commit()?;
+        Ok(true)
     }
 }
 

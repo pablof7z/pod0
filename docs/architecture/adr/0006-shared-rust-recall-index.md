@@ -1,9 +1,9 @@
 # ADR-0006: Shared Rust recall-index execution
 
-- Status: Implemented by #106
+- Status: Implemented by #106 and extended by #108
 - Date: 2026-07-20
 - Decision owners: Pod0 knowledge and application architecture
-- Related issues: #59, #61, #105, #106
+- Related issues: #59, #61, #105, #106, #108
 
 ## Context
 
@@ -143,6 +143,15 @@ cancellation ID. Native returns ordered, quantized vectors or a typed provider,
 timeout, invalid-response, or cancellation result. Rust never asks native code
 to select a generation, rank candidates, retry, fall back, or commit state.
 
+Issue #108 extended that contract so Rust also owns provider choice, model
+identity, embedding dimensionality, embedding-space invalidation, and reranker
+enablement. Every host request names the exact typed provider and model to
+execute. Native must not consult a parallel preference, choose a fallback, or
+suppress a Rust-requested rerank. The shared store versions this configuration;
+a model-space change invalidates the disposable index before Rust rebuilds it
+from canonical evidence. Existing Swift preferences are imported once and
+deleted only after the Rust projection verifies authority.
+
 Only the Rust-ranked `RecallResultProjection` crosses back for presentation.
 No arbitrary JSON RPC, Apple type, high-frequency UI state, or unbounded text
 collection enters the shared API.
@@ -189,8 +198,9 @@ canonical evidence. There is no dual-write steady state.
 - SQLiteVec remains linked only as the C header/module bridge for non-vector
   legacy Swift state/workflow stores. Its evidence-backed removal is tracked by
   #107; it has no recall ownership.
-- The isolated Swift provider selector is explicitly temporary and tracked by
-  #108. Credentialed provider execution remains native by design.
+- Issue #108 deleted the isolated Swift provider selector and the former Swift
+  settings/iCloud writes. Credentialed provider execution remains native by
+  design, while its durable configuration is Rust-owned.
 
 ## Rejected alternatives
 

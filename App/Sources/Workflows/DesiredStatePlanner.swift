@@ -7,6 +7,7 @@ struct DesiredStatePlanner: Sendable {
         let artifacts: [ArtifactRecord]
         let transcripts: [TranscriptWorkflowSnapshot]
         let transcriptDesiredEpisodeIDs: Set<UUID>
+        let embeddingSpaceID: String?
         let scheduledTasks: [AgentScheduledTask]
         let now: Date
 
@@ -16,6 +17,7 @@ struct DesiredStatePlanner: Sendable {
             artifacts: [ArtifactRecord],
             transcripts: [TranscriptWorkflowSnapshot],
             transcriptDesiredEpisodeIDs: Set<UUID>,
+            embeddingSpaceID: String? = nil,
             scheduledTasks: [AgentScheduledTask],
             now: Date
         ) {
@@ -24,6 +26,7 @@ struct DesiredStatePlanner: Sendable {
             self.artifacts = artifacts
             self.transcripts = transcripts
             self.transcriptDesiredEpisodeIDs = transcriptDesiredEpisodeIDs
+            self.embeddingSpaceID = embeddingSpaceID
             self.scheduledTasks = scheduledTasks
             self.now = now
         }
@@ -63,10 +66,12 @@ struct DesiredStatePlanner: Sendable {
                 ))
             }
 
-            guard let transcript, transcript.sourceRevision == audioVersion else { continue }
+            guard let transcript,
+                  transcript.sourceRevision == audioVersion,
+                  let embeddingSpaceID = input.embeddingSpaceID else { continue }
             let indexVersion = Self.transcriptIndexInputVersion(
                 transcript,
-                settings: input.settings
+                embeddingSpaceID: embeddingSpaceID
             )
             let semantic = artifacts[ArtifactKey(kind: .semanticIndex, subjectID: episode.id)]
             if !Self.isCurrent(semantic, inputVersion: indexVersion) {
@@ -129,10 +134,10 @@ struct DesiredStatePlanner: Sendable {
 
     static func transcriptIndexInputVersion(
         _ transcript: TranscriptWorkflowSnapshot,
-        settings: Settings
+        embeddingSpaceID: String
     ) -> String {
         ArtifactRepository.version(parts: [
-            transcript.contentDigest, settings.embeddingsModel,
+            transcript.contentDigest, embeddingSpaceID,
             "rust-evidence-v1", "core-recall-index-v1",
         ])
     }

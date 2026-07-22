@@ -7,24 +7,6 @@ enum SharedLibraryBootstrapOutcome {
     case authoritativeUnavailable(reason: String, stage: SharedLibraryBootstrapStage)
 }
 
-enum SharedLibraryBootstrapStage: String {
-    case storePreparation
-    case listening
-    case notes
-    case clips
-    case transcriptInspection
-    case transcriptStaging
-    case transcriptVerification
-    case transcriptCommit
-    case chapterInspection
-    case chapterStaging
-    case chapterVerification
-    case chapterCommit
-    case modelChapterWorkflowCutover
-    case chapterWorkflowRetirement
-    case facade
-}
-
 enum SharedLibraryBootstrap {
     private static let logger = Logger.app("SharedLibraryBootstrap")
 
@@ -32,13 +14,15 @@ enum SharedLibraryBootstrap {
     static func run(
         persistence: Persistence,
         feedHost: any CoreFeedHosting = CoreFeedHost(),
-        chapterCompilationModel: String = Settings().chapterCompilationModel
+        chapterCompilationModel: String = Settings().chapterCompilationModel,
+        legacyRecallConfiguration: LegacyRecallConfigurationSeed? = nil
     ) -> SharedLibraryBootstrapOutcome {
         persistence.withSharedArtifactMigrationLock {
             runLocked(
                 persistence: persistence,
                 feedHost: feedHost,
-                chapterCompilationModel: chapterCompilationModel
+                chapterCompilationModel: chapterCompilationModel,
+                legacyRecallConfiguration: legacyRecallConfiguration
             )
         }
     }
@@ -47,7 +31,8 @@ enum SharedLibraryBootstrap {
     private static func runLocked(
         persistence: Persistence,
         feedHost: any CoreFeedHosting,
-        chapterCompilationModel: String
+        chapterCompilationModel: String,
+        legacyRecallConfiguration: LegacyRecallConfigurationSeed?
     ) -> SharedLibraryBootstrapOutcome {
         let target = persistence.sharedCoreStoreURL
         var stage = SharedLibraryBootstrapStage.storePreparation
@@ -190,6 +175,8 @@ enum SharedLibraryBootstrap {
             }
             stage = .facade
             let facade = try Pod0Facade.open(storePath: target.path)
+            stage = .recallConfiguration
+            try importLegacyRecallConfiguration(legacyRecallConfiguration, into: facade)
             let legacyJobStore = JobStore(fileURL: persistence.episodeStore.fileURL)
             stage = .modelChapterWorkflowCutover
             try LegacyModelChapterWorkflowCutover.run(

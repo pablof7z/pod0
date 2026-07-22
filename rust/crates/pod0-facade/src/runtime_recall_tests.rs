@@ -149,6 +149,32 @@ fn invalid_missing_and_unsupported_queries_have_explicit_terminal_state() {
         provider_failure.projection(25).stage,
         RecallStage::ProviderUnavailable
     );
+
+    let unauthorized = RecallFixture::new(true);
+    unauthorized.dispatch(27, 27, "question with unauthorized provider");
+    let embed = unauthorized
+        .base
+        .facade
+        .next_host_requests(1)
+        .pop()
+        .unwrap();
+    record(
+        &unauthorized.base.facade,
+        &embed,
+        HostObservation::Failed {
+            code: HostFailureCode::Unauthorized,
+            safe_detail: None,
+        },
+    );
+    let projection = unauthorized.projection(27);
+    assert_eq!(projection.stage, RecallStage::ProviderUnavailable);
+    assert_eq!(
+        projection
+            .operation
+            .and_then(|value| value.failure)
+            .map(|value| value.code),
+        Some(CoreFailureCode::Unauthorized)
+    );
 }
 
 #[test]

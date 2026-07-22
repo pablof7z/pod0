@@ -16,6 +16,7 @@ final class AppStateStore {
     let productSignals: any ProductSignalSink
     @ObservationIgnored private(set) var sharedLibrary: SharedLibraryClient?
     @ObservationIgnored private(set) var sharedLibraryUnavailableReason: String?
+    var recallConfigurationRevision: UInt64 = 0
     var transcriptReader: any TranscriptReading {
         sharedLibrary?.authoritativeTranscriptReader ?? UnavailableTranscriptReader.shared
     }
@@ -173,11 +174,18 @@ final class AppStateStore {
         switch SharedLibraryBootstrap.run(
             persistence: persistence,
             feedHost: feedHost,
-            chapterCompilationModel: loadedState.settings.chapterCompilationModel
+            chapterCompilationModel: loadedState.settings.chapterCompilationModel,
+            legacyRecallConfiguration: loadedState.settings.legacyRecallConfigurationSeed
         ) {
         case .ready(let client):
             sharedLibrary = client
             client.attach(store: self)
+            if state.settings.legacyRecallConfigurationSeed != nil {
+                mutateState { $0.settings.retireLegacyRecallConfiguration() }
+                if syncSettingsWithICloud {
+                    iCloudSettingsSync.shared.retireLegacyRecallConfiguration()
+                }
+            }
         case .authoritativeUnavailable(let reason, _):
             sharedLibraryUnavailableReason = reason
         }
@@ -192,10 +200,8 @@ final class AppStateStore {
         // migration source. A later launch resumes from the verified evidence
         // after the core is repaired; Swift never becomes fallback authority.
         guard sharedLibrary != nil else { return }
-        // Attach the native capability host used by the Rust recall workflow.
-        // Hand `self` to the service so provider settings and transcript
-        // metadata can be resolved without moving recall policy into Swift.
-        RecallProviderService.shared.attach(appStore: self)
+        // Attach the native capability executor used by the Rust recall workflow.
+        // Rust supplies the exact provider, model, and dimensionality.
         sharedLibrary?.attachRecall(RecallProviderService.shared, store: self)
         TranscriptIngestService.shared.attach(appStore: self)
         EpisodeDownloadService.shared.attach(appStore: self)

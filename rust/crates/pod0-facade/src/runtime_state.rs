@@ -5,7 +5,7 @@ use pod0_application::{
     Clock, CommandEnvelope, CommandLedger, CommandRegistration, CoreFailure, CoreFailureCode,
     CoreWakeReason, HostCancellationRequest, HostObservation, HostRequestEnvelope,
     HostRequestLedger, OperationProjection, OperationResult, OperationStage, PlaybackPolicyState,
-    Retryability, SubscriptionRegistry, UserAction,
+    SubscriptionRegistry,
 };
 use pod0_domain::{
     CommandId, HostRequestId, ListeningDomainSnapshot, RecallQueryId, StateRevision, SubscriptionId,
@@ -16,6 +16,7 @@ use pod0_storage::{EvidenceStore, LibraryStore, TranscriptStore};
 use crate::ProjectionSubscriber;
 use crate::runtime_clock::SystemClock;
 use crate::runtime_evidence_state::PendingEvidenceIndex;
+pub(super) use crate::runtime_failure::failure;
 use crate::runtime_feed_state::PendingFeed;
 use crate::runtime_playback_state::PlaybackRuntime;
 use crate::runtime_recall_cutover::PendingRecallCutover;
@@ -32,6 +33,7 @@ pub(super) struct FacadeState {
     pub(super) evidence_store: Option<EvidenceStore>,
     pub(super) transcript_store: Option<TranscriptStore>,
     pub(super) recall_index: RecallIndex,
+    pub(super) recall_configuration: pod0_domain::RecallConfiguration,
     pub(super) recall_interrupts: Arc<RecallInterruptRegistry>,
     pub(super) commands: CommandLedger,
     pub(super) host_requests: HostRequestLedger,
@@ -72,8 +74,8 @@ impl Default for FacadeState {
             store: None,
             evidence_store: None,
             transcript_store: None,
-            recall_index: RecallIndex::in_memory(RECALL_INDEX_DIMENSIONS)
-                .expect("in-memory recall index must initialize"),
+            recall_index: default_recall_index(),
+            recall_configuration: pod0_domain::RecallConfiguration::default(),
             recall_interrupts: Arc::default(),
             commands: CommandLedger::default(),
             host_requests: HostRequestLedger::default(),
@@ -127,12 +129,16 @@ impl FacadeState {
         store: LibraryStore,
         evidence_store: EvidenceStore,
         transcript_store: TranscriptStore,
-        recall_index: RecallIndex,
+        mut recall_index: RecallIndex,
     ) -> Result<Self, pod0_storage::StorageError> {
         let _ = store.clear_session_sleep_timer()?;
         let listening = store.snapshot()?;
         let notes = store.note_snapshot()?;
         let clips = store.clip_snapshot()?;
+        let recall_configuration = store.recall_configuration()?.unwrap_or_default();
+        recall_index
+            .activate_embedding_space(recall_configuration.embedding_space_id)
+            .map_err(|_| pod0_storage::StorageError::InvalidRecallConfiguration)?;
         let playback = PlaybackRuntime {
             policy_state: if listening.playback.active_episode_id.is_some() {
                 PlaybackPolicyState::Paused
@@ -157,6 +163,7 @@ impl FacadeState {
             evidence_store: Some(evidence_store),
             transcript_store: Some(transcript_store),
             recall_index,
+            recall_configuration,
             playback,
             ..Self::default()
         };
@@ -254,22 +261,13 @@ impl FacadeState {
     }
 }
 
-pub(super) fn failure(code: CoreFailureCode) -> CoreFailure {
-    let (retryability, user_action) = match code {
-        CoreFailureCode::HostUnavailable | CoreFailureCode::StorageUnavailable => {
-            (Retryability::Automatic, UserAction::Retry)
-        }
-        CoreFailureCode::InvalidFeedUrl | CoreFailureCode::FeedMalformed => {
-            (Retryability::AfterUserAction, UserAction::ReviewPermissions)
-        }
-        _ => (Retryability::Never, UserAction::None),
-    };
-    CoreFailure {
-        code,
-        safe_detail: None,
-        retryability,
-        user_action,
-    }
+fn default_recall_index() -> RecallIndex {
+    let mut index = RecallIndex::in_memory(RECALL_INDEX_DIMENSIONS)
+        .expect("in-memory recall index must initialize");
+    index
+        .activate_embedding_space(pod0_domain::RecallConfiguration::default().embedding_space_id)
+        .expect("the default embedding space must initialize");
+    index
 }
 
 fn empty_listening_snapshot() -> ListeningDomainSnapshot {

@@ -1,8 +1,8 @@
 use pod0_domain::{
     CancellationId, ChapterModelSubmissionFenceId, CommandId, DomainEventId, EpisodeId,
     EvidenceGenerationId, HostRequestId, PlaybackRatePermille, PlaybackSeekReason, PodcastId,
-    RecallQueryId, StateRevision, TranscriptArtifactId, TranscriptVersionId,
-    UnixTimestampMilliseconds,
+    RecallEmbeddingProvider, RecallQueryId, RecallRerankProvider, StateRevision,
+    TranscriptArtifactId, TranscriptVersionId, UnixTimestampMilliseconds,
 };
 
 use crate::{
@@ -130,17 +130,23 @@ pub enum HostRequest {
     },
     EmbedRecallQuery {
         query_id: RecallQueryId,
+        provider: RecallEmbeddingProvider,
+        model: String,
         text: String,
         maximum_dimensions: u16,
     },
     EmbedRecallSpans {
         episode_id: EpisodeId,
         generation_id: EvidenceGenerationId,
+        provider: RecallEmbeddingProvider,
+        model: String,
         spans: Vec<RecallEmbeddingInput>,
         maximum_dimensions: u16,
     },
     RerankRecallCandidates {
         query_id: RecallQueryId,
+        provider: RecallRerankProvider,
+        model: String,
         query: String,
         candidates: Vec<RecallRerankDocument>,
     },
@@ -270,6 +276,7 @@ pub enum HostFailureCode {
     ResponseTooLarge,
     MediaUnavailable,
     ProviderUnavailable,
+    Unauthorized,
     IndexUnavailable,
     PlatformFailure,
     Unsupported { wire_code: u32 },

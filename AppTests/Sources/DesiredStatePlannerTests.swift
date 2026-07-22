@@ -9,7 +9,8 @@ final class DesiredStatePlannerTests: XCTestCase {
         let planner = DesiredStatePlanner()
         let input = DesiredStatePlanner.Input(
             episodes: [episode], settings: settings, artifacts: [], transcripts: [],
-            transcriptDesiredEpisodeIDs: [episode.id], scheduledTasks: [], now: Date()
+            transcriptDesiredEpisodeIDs: [episode.id], embeddingSpaceID: "space-a",
+            scheduledTasks: [], now: Date()
         )
 
         let first = planner.plan(input)
@@ -24,7 +25,8 @@ final class DesiredStatePlannerTests: XCTestCase {
         )
         let withTranscript = planner.plan(.init(
             episodes: [episode], settings: settings, artifacts: [], transcripts: [transcript],
-            transcriptDesiredEpisodeIDs: [episode.id], scheduledTasks: [], now: input.now
+            transcriptDesiredEpisodeIDs: [episode.id], embeddingSpaceID: "space-a",
+            scheduledTasks: [], now: input.now
         ))
         XCTAssertEqual(Set(withTranscript.map(\.kind)), [.transcriptIndex])
 
@@ -35,14 +37,15 @@ final class DesiredStatePlannerTests: XCTestCase {
         XCTAssertTrue(planner.plan(.init(
             episodes: [episode], settings: settings,
             artifacts: completeArtifacts, transcripts: [transcript],
-            transcriptDesiredEpisodeIDs: [episode.id], scheduledTasks: [], now: input.now
+            transcriptDesiredEpisodeIDs: [episode.id], embeddingSpaceID: "space-a",
+            scheduledTasks: [], now: input.now
         )).isEmpty)
 
-        settings.embeddingsModel = "openai/text-embedding-3-small"
         let modelChanged = planner.plan(.init(
             episodes: [episode], settings: settings,
             artifacts: completeArtifacts, transcripts: [transcript],
-            transcriptDesiredEpisodeIDs: [episode.id], scheduledTasks: [], now: input.now
+            transcriptDesiredEpisodeIDs: [episode.id], embeddingSpaceID: "space-b",
+            scheduledTasks: [], now: input.now
         ))
         XCTAssertEqual(Set(modelChanged.map(\.kind)), [.transcriptIndex])
     }
@@ -129,7 +132,8 @@ final class DesiredStatePlannerTests: XCTestCase {
         )
         let jobs = DesiredStatePlanner().plan(.init(
             episodes: [episode], settings: Settings(), artifacts: [], transcripts: [transcript],
-            transcriptDesiredEpisodeIDs: [], scheduledTasks: [], now: Date()
+            transcriptDesiredEpisodeIDs: [], embeddingSpaceID: "space-a",
+            scheduledTasks: [], now: Date()
         ))
 
         XCTAssertEqual(jobs.map(\.kind), [.transcriptIndex])

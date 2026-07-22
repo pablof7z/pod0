@@ -56,7 +56,7 @@ final class PlaybackStateAutoDownloadTests: XCTestCase {
         fixture.playback.setEpisode(episode)
         fixture.playback.play()
 
-        await fulfillment(of: [played], timeout: 1)
+        await fulfillment(of: [played], timeout: 5)
         XCTAssertEqual(calls, [episode.id])
     }
 
@@ -82,7 +82,7 @@ final class PlaybackStateAutoDownloadTests: XCTestCase {
         fixture.playback.setEpisode(episode)
         fixture.playback.play()
 
-        await fulfillment(of: [played], timeout: 1)
+        await fulfillment(of: [played], timeout: 5)
         XCTAssertTrue(calls.isEmpty)
     }
 

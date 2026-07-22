@@ -317,6 +317,19 @@
       "includes": ["rust/crates/pod0-recall-index/", "rust/crates/pod0-facade/src/runtime_recall_commands.rs", "rust/crates/pod0-facade/src/runtime_recall_observations.rs"]
     },
     {
+      "id": "shared-recall-configuration",
+      "classification": "shared_rust_now",
+      "current_owner": "Pod0 Rust domain, storage, recall index, and application facade",
+      "target_owner": "Pod0 Rust application kernel",
+      "reason": "Provider/model choice, embedding-space identity, and reranker enablement are durable cross-platform product decisions. Issue #108 moved them behind the typed facade and removed Swift authority.",
+      "boundary": "Rust emits the exact typed provider, model, and dimensionality on each bounded host request. Native executes that request once using platform credential facilities and reports a typed result.",
+      "persisted_state": "Schema-versioned singleton configuration in the shared Rust store; provider credentials remain native and are never persisted by Rust.",
+      "migration_issues": [60, 108],
+      "deletion_target": "Completed by #108: ProviderEmbeddingsClient, Settings+Embeddings, active Swift recall settings, Swift reranker gating, and iCloud recall dual writes were deleted.",
+      "priority": "highest",
+      "includes": ["rust/crates/pod0-domain/src/recall_configuration.rs", "rust/crates/pod0-storage/src/recall_configuration_store.rs", "rust/crates/pod0-facade/src/runtime_recall_configuration.rs"]
+    },
+    {
       "id": "native-recall-provider-executors",
       "classification": "native_by_design",
       "current_owner": "Swift URLSession, credential, embedding, reranking, and legacy-index file capability adapters",
@@ -326,19 +339,6 @@
       "persisted_state": "None; provider credentials remain in platform security facilities.",
       "priority": "keep_native",
       "includes": ["App/Sources/Core/CoreRecallHost.swift", "App/Sources/Knowledge/EmbeddingsClient.swift", "App/Sources/Knowledge/OllamaEmbeddingsClient.swift", "App/Sources/Knowledge/RerankerClient.swift", "App/Sources/Services/RecallProviderService.swift"]
-    },
-    {
-      "id": "temporary-recall-provider-selection",
-      "classification": "temporary_swift",
-      "current_owner": "Swift maps the existing intelligence setting to one provider executor",
-      "target_owner": "Rust-owned intelligence/provider configuration from issue #60",
-      "reason": "The index cutover cannot invent a second settings store; this single isolated selector remains until the agent/workflow configuration slice moves the durable preference into Rust.",
-      "boundary": "Select exactly one provider from the existing setting, execute it once, and return its typed result; no retry, fallback, index, ranking, or workflow state.",
-      "persisted_state": "None in the adapter; the existing Swift setting remains separately classified temporary state.",
-      "migration_issues": [60, 108],
-      "deletion_target": "Issue #108 replaces this selector with Rust-issued provider-specific host requests and deletes ProviderEmbeddingsClient within epic #60.",
-      "priority": "high",
-      "includes": ["App/Sources/Knowledge/ProviderEmbeddingsClient.swift"]
     },
     {
       "id": "shared-agent-application-policy",

@@ -8,21 +8,15 @@ import Pod0Core
 /// only executes bounded provider or exact-file requests and returns typed
 /// observations.
 struct CoreRecallHost: CoreRecallHosting {
-    private let embedder: any EmbeddingsClient
-    private let reranker: any RerankerClient
+    private let providers: any RecallProviderExecuting
     private let legacyIndexURL: URL?
-    private let isRerankingEnabled: @Sendable () async -> Bool
 
     init(
-        embedder: any EmbeddingsClient,
-        reranker: any RerankerClient,
-        legacyIndexURL: URL?,
-        isRerankingEnabled: @escaping @Sendable () async -> Bool
+        providers: any RecallProviderExecuting,
+        legacyIndexURL: URL?
     ) {
-        self.embedder = embedder
-        self.reranker = reranker
+        self.providers = providers
         self.legacyIndexURL = legacyIndexURL
-        self.isRerankingEnabled = isRerankingEnabled
     }
 
     func execute(_ request: HostRequest) async -> HostObservation {
@@ -33,8 +27,14 @@ struct CoreRecallHost: CoreRecallHosting {
             return .cancelled
         } catch let error as CoreRecallHostError {
             return error.observation
-        } catch is EmbeddingsError, is RerankerError {
-            return .failed(code: .providerUnavailable, safeDetail: "Recall provider unavailable")
+        } catch let error as URLError {
+            return Self.observation(for: error)
+        } catch let error as EmbeddingsError {
+            return Self.observation(for: error)
+        } catch let error as RerankerError {
+            return Self.observation(for: error)
+        } catch is RecallProviderExecutionError {
+            return .failed(code: .invalidResponse, safeDetail: "Unsupported recall provider")
         } catch {
             return .failed(code: .platformFailure, safeDetail: "Recall capability failed")
         }
@@ -42,14 +42,27 @@ struct CoreRecallHost: CoreRecallHosting {
 
     private func executeProviderRequest(_ request: HostRequest) async throws -> HostObservation {
         switch request {
-        case .embedRecallQuery(let queryID, let text, let maximumDimensions):
-            let embedding = try await embed(texts: [text], dimensions: maximumDimensions).only
+        case .embedRecallQuery(
+            let queryID,
+            let provider,
+            let model,
+            let text,
+            let maximumDimensions
+        ):
+            let embedding = try await embed(
+                provider: provider,
+                model: model,
+                texts: [text],
+                dimensions: maximumDimensions
+            ).only
             guard let embedding else { throw CoreRecallHostError.invalidResponse }
             return .recallQueryEmbedded(queryId: queryID, embedding: embedding)
 
         case .embedRecallSpans(
             let episodeID,
             let generationID,
+            let provider,
+            let model,
             let spans,
             let maximumDimensions
         ):
@@ -58,6 +71,8 @@ struct CoreRecallHost: CoreRecallHosting {
                 throw CoreRecallHostError.invalidRequest
             }
             let embeddings = try await embed(
+                provider: provider,
+                model: model,
                 texts: spans.map(\.text),
                 dimensions: maximumDimensions
             )
@@ -72,17 +87,18 @@ struct CoreRecallHost: CoreRecallHosting {
                 }
             )
 
-        case .rerankRecallCandidates(let queryID, let query, let candidates):
-            guard await isRerankingEnabled() else {
-                return .failed(
-                    code: .providerUnavailable,
-                    safeDetail: "Recall reranking is disabled"
-                )
-            }
-            let order = try await reranker.rerank(
+        case .rerankRecallCandidates(
+            let queryID,
+            let provider,
+            let model,
+            let query,
+            let candidates
+        ):
+            let order = try await providers.rerank(
+                provider: provider,
+                model: model,
                 query: query,
-                documents: candidates.map(\.excerpt),
-                topN: candidates.count
+                documents: candidates.map(\.excerpt)
             )
             try Task.checkCancellation()
             guard order.count == candidates.count,
@@ -149,10 +165,17 @@ struct CoreRecallHost: CoreRecallHosting {
     }
 
     private func embed(
+        provider: RecallEmbeddingProvider,
+        model: String,
         texts: [String],
         dimensions: UInt16
     ) async throws -> [RecallEmbeddingVector] {
-        let vectors = try await embedder.embed(texts)
+        let vectors = try await providers.embed(
+            provider: provider,
+            model: model,
+            dimensions: Int(dimensions),
+            texts: texts
+        )
         try Task.checkCancellation()
         guard vectors.count == texts.count,
               vectors.allSatisfy({ $0.count == Int(dimensions) }) else {
@@ -170,6 +193,46 @@ struct CoreRecallHost: CoreRecallHosting {
             throw CoreRecallHostError.invalidResponse
         }
         return Int32(scaled.rounded())
+    }
+
+    private static func observation(for error: URLError) -> HostObservation {
+        switch error.code {
+        case .cancelled:
+            .cancelled
+        case .timedOut:
+            .failed(code: .timedOut, safeDetail: "Recall provider timed out")
+        case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed:
+            .failed(code: .offline, safeDetail: "Recall provider is offline")
+        default:
+            .failed(code: .providerUnavailable, safeDetail: "Recall provider unavailable")
+        }
+    }
+
+    private static func observation(for error: EmbeddingsError) -> HostObservation {
+        switch error {
+        case .missingAPIKey, .providerMissingAPIKey:
+            .failed(code: .providerUnavailable, safeDetail: "Recall provider is not configured")
+        case .unauthorized, .providerUnauthorized:
+            .failed(code: .unauthorized, safeDetail: "Recall provider authorization failed")
+        case .decoding, .shapeMismatch, .providerDecoding, .dimensionMismatch:
+            .failed(code: .invalidResponse, safeDetail: "Invalid recall provider response")
+        case .rateLimited, .serverError, .transport,
+             .providerRateLimited, .providerServerError, .providerTransport:
+            .failed(code: .providerUnavailable, safeDetail: "Recall provider unavailable")
+        }
+    }
+
+    private static func observation(for error: RerankerError) -> HostObservation {
+        switch error {
+        case .missingAPIKey:
+            .failed(code: .providerUnavailable, safeDetail: "Recall provider is not configured")
+        case .unauthorized:
+            .failed(code: .unauthorized, safeDetail: "Recall provider authorization failed")
+        case .decoding:
+            .failed(code: .invalidResponse, safeDetail: "Invalid recall provider response")
+        case .rateLimited, .serverError, .transport:
+            .failed(code: .providerUnavailable, safeDetail: "Recall provider unavailable")
+        }
     }
 }
 

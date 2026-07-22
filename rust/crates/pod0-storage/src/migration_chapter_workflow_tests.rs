@@ -13,7 +13,7 @@ impl MigrationClock for FixedClock {
 }
 
 #[test]
-fn schema_14_through_17_preserves_and_adopts_current_publisher_chapters() {
+fn schema_14_through_18_preserves_and_adopts_current_publisher_chapters() {
     let (fixture, store, episode_id) = workflow_fixture();
     store
         .commit_and_select_chapter(
@@ -27,7 +27,8 @@ fn schema_14_through_17_preserves_and_adopts_current_publisher_chapters() {
     rusqlite::Connection::open(&fixture.target)
         .unwrap()
         .execute_batch(
-            "DROP TABLE pod0_model_chapter_completions;
+            "DROP TABLE pod0_recall_configuration;
+             DROP TABLE pod0_model_chapter_completions;
              DROP TABLE pod0_model_chapter_workflows;
              DROP TABLE pod0_publisher_chapter_workflows;
              UPDATE pod0_schema_versions SET version=14 WHERE component='kernel';
@@ -38,7 +39,7 @@ fn schema_14_through_17_preserves_and_adopts_current_publisher_chapters() {
     CoreStoreMigrator::new(FixedClock)
         .migrate(
             &fixture.target,
-            17,
+            18,
             &fixture.target.with_extension("v14-backup.sqlite"),
             CommandId::from_parts(70, 14),
         )
@@ -57,14 +58,15 @@ fn schema_14_through_17_preserves_and_adopts_current_publisher_chapters() {
 }
 
 #[test]
-fn schema_15_to_17_preserves_publisher_state_and_adds_fenced_model_storage() {
+fn schema_15_to_18_preserves_publisher_state_and_adds_fenced_model_storage() {
     let (fixture, store, episode_id) = workflow_fixture();
     let publisher = ensure(&store, episode_id, 3, false);
     drop(store);
     let connection = rusqlite::Connection::open(&fixture.target).unwrap();
     connection
         .execute_batch(
-            "DROP TABLE pod0_model_chapter_completions;
+            "DROP TABLE pod0_recall_configuration;
+             DROP TABLE pod0_model_chapter_completions;
              DROP TABLE pod0_model_chapter_workflows;
              UPDATE pod0_schema_versions SET version=15 WHERE component='kernel';
              PRAGMA user_version=15;",
@@ -75,12 +77,12 @@ fn schema_15_to_17_preserves_publisher_state_and_adds_fenced_model_storage() {
     let report = CoreStoreMigrator::new(FixedClock)
         .migrate(
             &fixture.target,
-            17,
+            18,
             &fixture.target.with_extension("v15-backup.sqlite"),
             CommandId::from_parts(70, 15),
         )
         .unwrap();
-    assert_eq!(report.applied_versions, [16, 17]);
+    assert_eq!(report.applied_versions, [16, 17, 18]);
 
     let reopened = crate::LibraryStore::open_authoritative(&fixture.target).unwrap();
     assert_eq!(

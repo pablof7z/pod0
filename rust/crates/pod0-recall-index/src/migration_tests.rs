@@ -15,7 +15,7 @@ fn legacy_cutover_marker_accepts_only_a_bounded_native_deletion_receipt() {
 
     let receipt = index.commit_legacy_cutover(2).unwrap();
 
-    assert_eq!(receipt.schema_version, 1);
+    assert_eq!(receipt.schema_version, 2);
     assert_eq!(receipt.removed_legacy_file_count, 2);
     assert!(index.legacy_cutover_is_committed().unwrap());
     assert!(current.exists());

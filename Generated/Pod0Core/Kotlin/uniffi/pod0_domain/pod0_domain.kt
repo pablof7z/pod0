@@ -3403,6 +3403,127 @@ public object FfiConverterTypeQueueEntryId: FfiConverterRustBuffer<QueueEntryId>
 
 
 
+data class RecallConfiguration (
+    val `schemaVersion`: kotlin.UInt
+    ,
+    val `revision`: StateRevision
+    ,
+    val `origin`: RecallConfigurationOrigin
+    ,
+    val `embeddingProvider`: RecallEmbeddingProvider
+    ,
+    val `embeddingModel`: kotlin.String
+    ,
+    val `storedEmbeddingModelId`: kotlin.String
+    ,
+    val `embeddingDimensions`: kotlin.UShort
+    ,
+    val `embeddingSpaceId`: ContentDigest
+    ,
+    val `rerankerEnabled`: kotlin.Boolean
+    ,
+    val `rerankerProvider`: RecallRerankProvider?
+    ,
+    val `rerankerModel`: kotlin.String?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeRecallConfiguration: FfiConverterRustBuffer<RecallConfiguration> {
+    override fun read(buf: ByteBuffer): RecallConfiguration {
+        return RecallConfiguration(
+            FfiConverterUInt.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterTypeRecallConfigurationOrigin.read(buf),
+            FfiConverterTypeRecallEmbeddingProvider.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUShort.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalTypeRecallRerankProvider.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: RecallConfiguration) = (
+            FfiConverterUInt.allocationSize(value.`schemaVersion`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`revision`) +
+            FfiConverterTypeRecallConfigurationOrigin.allocationSize(value.`origin`) +
+            FfiConverterTypeRecallEmbeddingProvider.allocationSize(value.`embeddingProvider`) +
+            FfiConverterString.allocationSize(value.`embeddingModel`) +
+            FfiConverterString.allocationSize(value.`storedEmbeddingModelId`) +
+            FfiConverterUShort.allocationSize(value.`embeddingDimensions`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`embeddingSpaceId`) +
+            FfiConverterBoolean.allocationSize(value.`rerankerEnabled`) +
+            FfiConverterOptionalTypeRecallRerankProvider.allocationSize(value.`rerankerProvider`) +
+            FfiConverterOptionalString.allocationSize(value.`rerankerModel`)
+    )
+
+    override fun write(value: RecallConfiguration, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`schemaVersion`, buf)
+            FfiConverterTypeStateRevision.write(value.`revision`, buf)
+            FfiConverterTypeRecallConfigurationOrigin.write(value.`origin`, buf)
+            FfiConverterTypeRecallEmbeddingProvider.write(value.`embeddingProvider`, buf)
+            FfiConverterString.write(value.`embeddingModel`, buf)
+            FfiConverterString.write(value.`storedEmbeddingModelId`, buf)
+            FfiConverterUShort.write(value.`embeddingDimensions`, buf)
+            FfiConverterTypeContentDigest.write(value.`embeddingSpaceId`, buf)
+            FfiConverterBoolean.write(value.`rerankerEnabled`, buf)
+            FfiConverterOptionalTypeRecallRerankProvider.write(value.`rerankerProvider`, buf)
+            FfiConverterOptionalString.write(value.`rerankerModel`, buf)
+    }
+}
+
+
+
+data class RecallConfigurationInput (
+    val `storedEmbeddingModelId`: kotlin.String
+    ,
+    val `rerankerEnabled`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeRecallConfigurationInput: FfiConverterRustBuffer<RecallConfigurationInput> {
+    override fun read(buf: ByteBuffer): RecallConfigurationInput {
+        return RecallConfigurationInput(
+            FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: RecallConfigurationInput) = (
+            FfiConverterString.allocationSize(value.`storedEmbeddingModelId`) +
+            FfiConverterBoolean.allocationSize(value.`rerankerEnabled`)
+    )
+
+    override fun write(value: RecallConfigurationInput, buf: ByteBuffer) {
+            FfiConverterString.write(value.`storedEmbeddingModelId`, buf)
+            FfiConverterBoolean.write(value.`rerankerEnabled`, buf)
+    }
+}
+
+
+
 data class RecallQueryId (
     val `high`: kotlin.ULong
     ,
@@ -6212,6 +6333,267 @@ public object FfiConverterTypePublisherTranscriptFormat : FfiConverterRustBuffer
 
 
 
+sealed class RecallConfigurationOrigin {
+
+    object Default : RecallConfigurationOrigin()
+
+
+    object LegacySwift : RecallConfigurationOrigin()
+
+
+    object User : RecallConfigurationOrigin()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : RecallConfigurationOrigin()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeRecallConfigurationOrigin : FfiConverterRustBuffer<RecallConfigurationOrigin>{
+    override fun read(buf: ByteBuffer): RecallConfigurationOrigin {
+        return when(buf.getInt()) {
+            1 -> RecallConfigurationOrigin.Default
+            2 -> RecallConfigurationOrigin.LegacySwift
+            3 -> RecallConfigurationOrigin.User
+            4 -> RecallConfigurationOrigin.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: RecallConfigurationOrigin): ULong = when(value) {
+        is RecallConfigurationOrigin.Default -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is RecallConfigurationOrigin.LegacySwift -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is RecallConfigurationOrigin.User -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is RecallConfigurationOrigin.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: RecallConfigurationOrigin, buf: ByteBuffer) {
+        when(value) {
+            is RecallConfigurationOrigin.Default -> {
+                buf.putInt(1)
+                Unit
+            }
+            is RecallConfigurationOrigin.LegacySwift -> {
+                buf.putInt(2)
+                Unit
+            }
+            is RecallConfigurationOrigin.User -> {
+                buf.putInt(3)
+                Unit
+            }
+            is RecallConfigurationOrigin.Unsupported -> {
+                buf.putInt(4)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class RecallEmbeddingProvider {
+
+    object OpenRouter : RecallEmbeddingProvider()
+
+
+    object Ollama : RecallEmbeddingProvider()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : RecallEmbeddingProvider()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeRecallEmbeddingProvider : FfiConverterRustBuffer<RecallEmbeddingProvider>{
+    override fun read(buf: ByteBuffer): RecallEmbeddingProvider {
+        return when(buf.getInt()) {
+            1 -> RecallEmbeddingProvider.OpenRouter
+            2 -> RecallEmbeddingProvider.Ollama
+            3 -> RecallEmbeddingProvider.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: RecallEmbeddingProvider): ULong = when(value) {
+        is RecallEmbeddingProvider.OpenRouter -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is RecallEmbeddingProvider.Ollama -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is RecallEmbeddingProvider.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: RecallEmbeddingProvider, buf: ByteBuffer) {
+        when(value) {
+            is RecallEmbeddingProvider.OpenRouter -> {
+                buf.putInt(1)
+                Unit
+            }
+            is RecallEmbeddingProvider.Ollama -> {
+                buf.putInt(2)
+                Unit
+            }
+            is RecallEmbeddingProvider.Unsupported -> {
+                buf.putInt(3)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class RecallRerankProvider {
+
+    object OpenRouter : RecallRerankProvider()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : RecallRerankProvider()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeRecallRerankProvider : FfiConverterRustBuffer<RecallRerankProvider>{
+    override fun read(buf: ByteBuffer): RecallRerankProvider {
+        return when(buf.getInt()) {
+            1 -> RecallRerankProvider.OpenRouter
+            2 -> RecallRerankProvider.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: RecallRerankProvider): ULong = when(value) {
+        is RecallRerankProvider.OpenRouter -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is RecallRerankProvider.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: RecallRerankProvider, buf: ByteBuffer) {
+        when(value) {
+            is RecallRerankProvider.OpenRouter -> {
+                buf.putInt(1)
+                Unit
+            }
+            is RecallRerankProvider.Unsupported -> {
+                buf.putInt(2)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 sealed class TranscriptArtifactStatus {
 
     object Unavailable : TranscriptArtifactStatus()
@@ -6962,6 +7344,38 @@ public object FfiConverterOptionalTypeNoteTarget: FfiConverterRustBuffer<NoteTar
         } else {
             buf.put(1)
             FfiConverterTypeNoteTarget.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeRecallRerankProvider: FfiConverterRustBuffer<RecallRerankProvider?> {
+    override fun read(buf: ByteBuffer): RecallRerankProvider? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeRecallRerankProvider.read(buf)
+    }
+
+    override fun allocationSize(value: RecallRerankProvider?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeRecallRerankProvider.allocationSize(value)
+        }
+    }
+
+    override fun write(value: RecallRerankProvider?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeRecallRerankProvider.write(value, buf)
         }
     }
 }

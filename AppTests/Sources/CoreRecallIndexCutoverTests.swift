@@ -48,7 +48,7 @@ final class CoreRecallIndexCutoverTests: XCTestCase {
         XCTAssertEqual(operation.stage, .succeeded)
         XCTAssertEqual(
             operation.result,
-            .recallIndexCutoverCommitted(schemaVersion: 1, removedLegacyFileCount: 3)
+            .recallIndexCutoverCommitted(schemaVersion: 2, removedLegacyFileCount: 3)
         )
         XCTAssertFalse(FileManager.default.fileExists(atPath: legacy.path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: wal.path))
@@ -103,10 +103,11 @@ final class CoreRecallIndexCutoverTests: XCTestCase {
 
     private func makeHost(legacyIndexURL: URL?) -> CoreRecallHost {
         CoreRecallHost(
-            embedder: UnusedCutoverEmbedder(),
-            reranker: UnusedCutoverReranker(),
-            legacyIndexURL: legacyIndexURL,
-            isRerankingEnabled: { false }
+            providers: TestRecallProviderExecutor(
+                embedder: UnusedCutoverEmbedder(),
+                reranker: UnusedCutoverReranker()
+            ),
+            legacyIndexURL: legacyIndexURL
         )
     }
 

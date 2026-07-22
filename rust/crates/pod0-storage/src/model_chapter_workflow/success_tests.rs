@@ -153,6 +153,7 @@ fn schema_16_completion_is_preserved_and_no_longer_pins_the_current_request() {
     connection
         .execute_batch(
             "PRAGMA foreign_keys=OFF;
+             DROP TABLE pod0_recall_configuration;
              ALTER TABLE pod0_model_chapter_completions
                  RENAME TO pod0_model_chapter_completions_v17;
              CREATE TABLE pod0_model_chapter_completions(
@@ -185,12 +186,12 @@ fn schema_16_completion_is_preserved_and_no_longer_pins_the_current_request() {
     let report = CoreStoreMigrator::new(FixedClock)
         .migrate(
             &path,
-            17,
+            18,
             &path.with_extension("v16-model-completion-backup.sqlite"),
             CommandId::from_parts(91, 17),
         )
         .unwrap();
-    assert_eq!(report.applied_versions, [17]);
+    assert_eq!(report.applied_versions, [17, 18]);
     let connection = rusqlite::Connection::open(&path).unwrap();
     connection.execute("PRAGMA foreign_keys=ON", []).unwrap();
     assert_eq!(

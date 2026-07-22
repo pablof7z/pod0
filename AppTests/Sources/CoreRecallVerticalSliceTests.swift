@@ -154,12 +154,13 @@ final class CoreRecallVerticalSliceTests: XCTestCase {
         embedder: RestartCountingEmbedder
     ) async {
         await client.deferredRecallHost.attach(CoreRecallHost(
-            embedder: embedder,
-            reranker: VerticalSliceReranker(),
+            providers: TestRecallProviderExecutor(
+                embedder: embedder,
+                reranker: VerticalSliceReranker()
+            ),
             legacyIndexURL: FileManager.default.temporaryDirectory
                 .appendingPathComponent("pod0-recall-vertical-\(UUID().uuidString)")
-                .appendingPathComponent("vectors.sqlite"),
-            isRerankingEnabled: { false }
+                .appendingPathComponent("vectors.sqlite")
         ))
     }
 

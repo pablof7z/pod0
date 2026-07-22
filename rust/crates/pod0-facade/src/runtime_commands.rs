@@ -128,6 +128,24 @@ impl FacadeState {
                 self.accept_playback_command(&envelope, &fingerprint, command)
             }
             ApplicationCommand::RecallQuery { query } => self.start_recall(&envelope, query),
+            ApplicationCommand::ImportLegacyRecallConfiguration {
+                configuration,
+                source_generation,
+            } => self.import_legacy_recall_configuration(
+                &envelope,
+                &fingerprint,
+                configuration,
+                source_generation,
+            ),
+            ApplicationCommand::SetRecallConfiguration {
+                expected_configuration_revision,
+                configuration,
+            } => self.set_recall_configuration(
+                &envelope,
+                &fingerprint,
+                expected_configuration_revision,
+                configuration,
+            ),
             ApplicationCommand::RebuildTranscriptEvidence { input, policy } => {
                 self.rebuild_transcript_evidence(&envelope, input, policy);
             }

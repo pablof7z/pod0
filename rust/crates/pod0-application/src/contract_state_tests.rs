@@ -1,6 +1,6 @@
 use pod0_domain::{
     CancellationId, ChapterModelSubmissionFenceId, CommandId, EpisodeId, HostRequestId,
-    RecallQueryId, StateRevision, UnixTimestampMilliseconds,
+    RecallEmbeddingProvider, RecallQueryId, StateRevision, UnixTimestampMilliseconds,
 };
 
 use crate::{
@@ -225,6 +225,8 @@ fn recall_observations_match_query_identity_and_payload_bounds() {
     let mut request = host_request();
     request.request = HostRequest::EmbedRecallQuery {
         query_id: RecallQueryId::from_parts(0, 8),
+        provider: RecallEmbeddingProvider::OpenRouter,
+        model: "openai/embed".to_owned(),
         text: "question".to_owned(),
         maximum_dimensions: 2,
     };

@@ -121,9 +121,11 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
                   let transcript = transcriptSnapshot(episodeID: episode.id),
                   transcript.sourceRevision == DesiredStatePlanner.audioVersion(episode)
             else { return false }
+            guard let embeddingSpaceID = appStore.recallConfiguration?
+                .embeddingSpaceId.stableString else { return false }
             return DesiredStatePlanner.transcriptIndexInputVersion(
                 transcript,
-                settings: appStore.state.settings
+                embeddingSpaceID: embeddingSpaceID
             ) == job.inputVersion
         case .feedDiscovery, .autoDownload, .newEpisodeNotification, .scheduledAgentRun:
             return true

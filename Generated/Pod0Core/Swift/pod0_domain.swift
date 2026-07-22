@@ -3566,6 +3566,150 @@ public func FfiConverterTypeQueueEntryId_lower(_ value: QueueEntryId) -> RustBuf
 }
 
 
+public struct RecallConfiguration: Equatable, Hashable {
+    public let schemaVersion: UInt32
+    public let revision: StateRevision
+    public let origin: RecallConfigurationOrigin
+    public let embeddingProvider: RecallEmbeddingProvider
+    public let embeddingModel: String
+    public let storedEmbeddingModelId: String
+    public let embeddingDimensions: UInt16
+    public let embeddingSpaceId: ContentDigest
+    public let rerankerEnabled: Bool
+    public let rerankerProvider: RecallRerankProvider?
+    public let rerankerModel: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(schemaVersion: UInt32, revision: StateRevision, origin: RecallConfigurationOrigin, embeddingProvider: RecallEmbeddingProvider, embeddingModel: String, storedEmbeddingModelId: String, embeddingDimensions: UInt16, embeddingSpaceId: ContentDigest, rerankerEnabled: Bool, rerankerProvider: RecallRerankProvider?, rerankerModel: String?) {
+        self.schemaVersion = schemaVersion
+        self.revision = revision
+        self.origin = origin
+        self.embeddingProvider = embeddingProvider
+        self.embeddingModel = embeddingModel
+        self.storedEmbeddingModelId = storedEmbeddingModelId
+        self.embeddingDimensions = embeddingDimensions
+        self.embeddingSpaceId = embeddingSpaceId
+        self.rerankerEnabled = rerankerEnabled
+        self.rerankerProvider = rerankerProvider
+        self.rerankerModel = rerankerModel
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension RecallConfiguration: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRecallConfiguration: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RecallConfiguration {
+        return
+            try RecallConfiguration(
+                schemaVersion: FfiConverterUInt32.read(from: &buf),
+                revision: FfiConverterTypeStateRevision.read(from: &buf),
+                origin: FfiConverterTypeRecallConfigurationOrigin.read(from: &buf),
+                embeddingProvider: FfiConverterTypeRecallEmbeddingProvider.read(from: &buf),
+                embeddingModel: FfiConverterString.read(from: &buf),
+                storedEmbeddingModelId: FfiConverterString.read(from: &buf),
+                embeddingDimensions: FfiConverterUInt16.read(from: &buf),
+                embeddingSpaceId: FfiConverterTypeContentDigest.read(from: &buf),
+                rerankerEnabled: FfiConverterBool.read(from: &buf),
+                rerankerProvider: FfiConverterOptionTypeRecallRerankProvider.read(from: &buf),
+                rerankerModel: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: RecallConfiguration, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.schemaVersion, into: &buf)
+        FfiConverterTypeStateRevision.write(value.revision, into: &buf)
+        FfiConverterTypeRecallConfigurationOrigin.write(value.origin, into: &buf)
+        FfiConverterTypeRecallEmbeddingProvider.write(value.embeddingProvider, into: &buf)
+        FfiConverterString.write(value.embeddingModel, into: &buf)
+        FfiConverterString.write(value.storedEmbeddingModelId, into: &buf)
+        FfiConverterUInt16.write(value.embeddingDimensions, into: &buf)
+        FfiConverterTypeContentDigest.write(value.embeddingSpaceId, into: &buf)
+        FfiConverterBool.write(value.rerankerEnabled, into: &buf)
+        FfiConverterOptionTypeRecallRerankProvider.write(value.rerankerProvider, into: &buf)
+        FfiConverterOptionString.write(value.rerankerModel, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallConfiguration_lift(_ buf: RustBuffer) throws -> RecallConfiguration {
+    return try FfiConverterTypeRecallConfiguration.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallConfiguration_lower(_ value: RecallConfiguration) -> RustBuffer {
+    return FfiConverterTypeRecallConfiguration.lower(value)
+}
+
+
+public struct RecallConfigurationInput: Equatable, Hashable {
+    public let storedEmbeddingModelId: String
+    public let rerankerEnabled: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(storedEmbeddingModelId: String, rerankerEnabled: Bool) {
+        self.storedEmbeddingModelId = storedEmbeddingModelId
+        self.rerankerEnabled = rerankerEnabled
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension RecallConfigurationInput: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRecallConfigurationInput: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RecallConfigurationInput {
+        return
+            try RecallConfigurationInput(
+                storedEmbeddingModelId: FfiConverterString.read(from: &buf),
+                rerankerEnabled: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: RecallConfigurationInput, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.storedEmbeddingModelId, into: &buf)
+        FfiConverterBool.write(value.rerankerEnabled, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallConfigurationInput_lift(_ buf: RustBuffer) throws -> RecallConfigurationInput {
+    return try FfiConverterTypeRecallConfigurationInput.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallConfigurationInput_lower(_ value: RecallConfigurationInput) -> RustBuffer {
+    return FfiConverterTypeRecallConfigurationInput.lower(value)
+}
+
+
 public struct RecallQueryId: Equatable, Hashable {
     public let high: UInt64
     public let low: UInt64
@@ -6030,6 +6174,234 @@ public func FfiConverterTypePublisherTranscriptFormat_lower(_ value: PublisherTr
 
 
 
+public enum RecallConfigurationOrigin: Equatable, Hashable {
+
+    case `default`
+    case legacySwift
+    case user
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension RecallConfigurationOrigin: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRecallConfigurationOrigin: FfiConverterRustBuffer {
+    typealias SwiftType = RecallConfigurationOrigin
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RecallConfigurationOrigin {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .`default`
+
+        case 2: return .legacySwift
+
+        case 3: return .user
+
+        case 4: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: RecallConfigurationOrigin, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .`default`:
+            writeInt(&buf, Int32(1))
+
+
+        case .legacySwift:
+            writeInt(&buf, Int32(2))
+
+
+        case .user:
+            writeInt(&buf, Int32(3))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(4))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallConfigurationOrigin_lift(_ buf: RustBuffer) throws -> RecallConfigurationOrigin {
+    return try FfiConverterTypeRecallConfigurationOrigin.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallConfigurationOrigin_lower(_ value: RecallConfigurationOrigin) -> RustBuffer {
+    return FfiConverterTypeRecallConfigurationOrigin.lower(value)
+}
+
+
+
+
+public enum RecallEmbeddingProvider: Equatable, Hashable {
+
+    case openRouter
+    case ollama
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension RecallEmbeddingProvider: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRecallEmbeddingProvider: FfiConverterRustBuffer {
+    typealias SwiftType = RecallEmbeddingProvider
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RecallEmbeddingProvider {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .openRouter
+
+        case 2: return .ollama
+
+        case 3: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: RecallEmbeddingProvider, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .openRouter:
+            writeInt(&buf, Int32(1))
+
+
+        case .ollama:
+            writeInt(&buf, Int32(2))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallEmbeddingProvider_lift(_ buf: RustBuffer) throws -> RecallEmbeddingProvider {
+    return try FfiConverterTypeRecallEmbeddingProvider.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallEmbeddingProvider_lower(_ value: RecallEmbeddingProvider) -> RustBuffer {
+    return FfiConverterTypeRecallEmbeddingProvider.lower(value)
+}
+
+
+
+
+public enum RecallRerankProvider: Equatable, Hashable {
+
+    case openRouter
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension RecallRerankProvider: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRecallRerankProvider: FfiConverterRustBuffer {
+    typealias SwiftType = RecallRerankProvider
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RecallRerankProvider {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .openRouter
+
+        case 2: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: RecallRerankProvider, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .openRouter:
+            writeInt(&buf, Int32(1))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(2))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallRerankProvider_lift(_ buf: RustBuffer) throws -> RecallRerankProvider {
+    return try FfiConverterTypeRecallRerankProvider.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecallRerankProvider_lower(_ value: RecallRerankProvider) -> RustBuffer {
+    return FfiConverterTypeRecallRerankProvider.lower(value)
+}
+
+
+
+
 public enum TranscriptArtifactStatus: Equatable, Hashable {
 
     case unavailable
@@ -6591,6 +6963,30 @@ fileprivate struct FfiConverterOptionTypeNoteTarget: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeNoteTarget.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeRecallRerankProvider: FfiConverterRustBuffer {
+    typealias SwiftType = RecallRerankProvider?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeRecallRerankProvider.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeRecallRerankProvider.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }

@@ -45,6 +45,7 @@ mod contract;
 mod contract_failure;
 mod contract_playback_projection;
 mod contract_projection;
+mod contract_projection_bounds;
 #[cfg(test)]
 mod contract_projection_tests;
 mod contract_state;
