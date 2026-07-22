@@ -16,6 +16,7 @@ The operating rule is:
 4. [ADR-0004: Persistence, schemas, and single-writer migration](adr/0004-persistence-and-single-writer-migration.md)
 5. [ADR-0005: Android investment gate](adr/0005-android-investment-gate.md)
 6. [ADR-0006: Shared Rust recall-index execution](adr/0006-shared-rust-recall-index.md)
+7. [ADR-0007: Scheduled agent workflow and artifact ownership](adr/0007-scheduled-agent-workflow-and-artifact-ownership.md)
 
 ## Planning and enforcement
 

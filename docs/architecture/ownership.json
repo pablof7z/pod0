@@ -231,8 +231,8 @@
       "reason": "Desired state, leases, fencing, retry, recovery, and artifact adoption are durable cross-platform decisions.",
       "boundary": "Native executes BGTask, URLSession, notification, and platform provider capabilities.",
       "persisted_state": "Rust publisher/model chapter workflow rows plus versioned Swift workflow/artifact tables and staged files for unmigrated kinds; no chapter workflow row remains in Swift.",
-      "migration_issues": [48, 51, 52, 60, 100, 107, 109, 110, 111, 115, 116, 117, 118, 119],
-      "deletion_target": "Issue #119 deletes Swift download admission, scheduling, reconciliation, and durable artifact ownership immediately after the staged Rust cutover; later workflow kinds follow the same ownership-complete rule.",
+      "migration_issues": [48, 51, 52, 60, 100, 107, 109, 110, 111, 115, 116, 117, 118, 119, 125, 126, 127, 128, 129, 130],
+      "deletion_target": "Issue #119 deleted Swift download admission, scheduling, reconciliation, and durable artifact ownership. Issue #130 deletes scheduled-agent planning, execution, recovery, artifact completion, and recurrence ownership immediately after its staged Rust cutover.",
       "priority": "high",
       "includes": ["App/Sources/Workflows/"],
       "excludes": [
@@ -359,8 +359,8 @@
       "reason": "Tool validation, permission, durable commits, jobs, and generated artifact policy must be identical across platforms.",
       "boundary": "Native presents conversations and executes typed platform capabilities.",
       "persisted_state": "Agent memories/activity, conversations, scheduled tasks, generated artifacts, and run logs.",
-      "migration_issues": [60],
-      "deletion_target": "Delete Swift tool/workflow policy after shared agent cutover; retain native conversation presentation.",
+      "migration_issues": [60, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138],
+      "deletion_target": "Issue #130 deletes scheduled-agent workflow ownership; issue #138 deletes interactive tool, permission, durable conversation/artifact, and Nostr publication policy after shared agent cutover. Retain native conversation presentation and typed platform capabilities.",
       "priority": "high",
       "includes": ["App/Sources/Agent/"]
     },
@@ -372,8 +372,8 @@
       "reason": "Queue/resume/completion and agent turn/tool decisions are durable cross-platform behavior.",
       "boundary": "Swift feature views render projections; AVFoundation and LLM/provider capabilities report raw results.",
       "persisted_state": "Rust owns playback resume/played state, selected canonical chapter artifacts, chapter sessions, and skipped-ad session state; agent conversation and turn state remain unmigrated.",
-      "migration_issues": [58, 60, 78, 80, 81, 82, 83, 103, 104],
-      "deletion_target": "Issue #60 deletes agent policy while retaining thin native view/capability adapters; chapter playback has no remaining Swift policy owner.",
+      "migration_issues": [58, 60, 78, 80, 81, 82, 83, 103, 104, 125, 127, 129, 130, 131, 133, 134, 138],
+      "deletion_target": "Issue #130 deletes scheduled-agent controller policy and issue #138 deletes remaining interactive agent policy while retaining thin native view/capability adapters; chapter playback has no remaining Swift policy owner.",
       "priority": "highest",
       "includes": ["App/Sources/Features/Player/PlaybackState+Chapters.swift", "App/Sources/Features/Player/PlaybackState+HeadphoneGestures.swift", "App/Sources/Features/Agent/AgentChatSession", "App/Sources/Features/Agent/AgentLLMClient.swift", "App/Sources/Features/Agent/AgentOllamaClient.swift", "App/Sources/Features/Agent/AgentOpenRouterClient.swift", "App/Sources/Features/Agent/AgentChatTitleGenerator.swift", "App/Sources/Features/Agent/ChatConversation.swift", "App/Sources/Features/Agent/ChatMessage.swift"],
       "excludes": [
@@ -388,7 +388,7 @@
       "reason": "Auto-snip, recall intent routing, and persisted chat presentation are still being validated behind typed feature/domain boundaries.",
       "boundary": "Commit only through typed store/library interfaces; no new independent durable store.",
       "persisted_state": "Clip records commit through the Rust facade; controller state is transient.",
-      "migration_issues": [59, 60, 93, 96, 97],
+      "migration_issues": [59, 60, 93, 96, 97, 125, 130, 131, 138],
       "deletion_target": "Replace transcript-selection and workflow policy as those slices migrate; retain native capture UI and typed clip commands.",
       "priority": "next",
       "includes": ["App/Sources/Features/Player/AutoSnip/AutoSnipController.swift", "App/Sources/Features/Recall/RecallAnswerModels.swift", "App/Sources/Features/Recall/RecallAnswerService.swift", "App/Sources/Features/Recall/RecallFeature.swift", "App/Sources/Features/Agent/AgentChatSession+Recall.swift"]
@@ -424,8 +424,8 @@
       "reason": "This mixed service layer currently owns subscription, download, transcript, knowledge, agent, Nostr, and artifact decisions that must migrate by vertical slice.",
       "boundary": "Existing typed service protocols are characterization seams; no second store or new untracked policy.",
       "persisted_state": "AppState, workflow/artifact SQLite, transcript files, chat history, logs, and generated media.",
-      "migration_issues": [58, 59, 60, 69, 79, 80, 81, 82, 83, 94, 95, 96, 97, 115, 116, 117, 118, 119],
-      "deletion_target": "Issue #119 reduces EpisodeDownloadService to the typed URLSession capability and deletes its Swift policy; other services are deleted or reduced at their domain cutover.",
+      "migration_issues": [58, 59, 60, 69, 79, 80, 81, 82, 83, 94, 95, 96, 97, 115, 116, 117, 118, 119, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138],
+      "deletion_target": "Issue #119 reduced EpisodeDownloadService to the typed URLSession capability and deleted its Swift policy. Issue #130 retires scheduled workflow services; issue #138 deletes or reduces agent/Nostr services to typed native capabilities at final cutover.",
       "priority": "high",
       "includes": ["App/Sources/Services/"],
       "excludes": ["App/Sources/Services/AssemblyAICredentialStore.swift", "App/Sources/Services/BYOK", "App/Sources/Services/ClipExporter.swift", "App/Sources/Services/DataExport.swift", "App/Sources/Services/DeepLinkHandler.swift", "App/Sources/Services/ElevenLabsCredentialStore.swift", "App/Sources/Services/EpisodeDownloadService+Delegate.swift", "App/Sources/Services/HandoffActivityType.swift", "App/Sources/Services/KeychainStore.swift", "App/Sources/Services/NotificationService.swift", "App/Sources/Services/NowPlayingSnapshotStore.swift", "App/Sources/Services/OllamaCredentialStore.swift", "App/Sources/Services/OpenRouterCredentialStore.swift", "App/Sources/Services/PerplexityCredentialStore.swift", "App/Sources/Services/Pod0FeedbackProtocol.swift", "App/Sources/Services/RecallProviderService.swift", "App/Sources/Services/ReviewPrompt.swift", "App/Sources/Services/SpotlightIndexer.swift", "App/Sources/Services/WhatsNew.swift", "App/Sources/Services/iCloudSettingsSync.swift"]

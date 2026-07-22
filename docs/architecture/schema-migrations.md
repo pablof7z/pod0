@@ -60,6 +60,15 @@ publisher-row deletion commit in one immediate transaction after the Rust model
 cutover is authoritative and both immutable manifests have been verified. No
 normal scheduler query decodes or mutates the retired raw kinds.
 
+ADR-0007 reserves scheduled-agent state for the next ownership-complete Rust
+workflow schema extension (#128). It must persist recurring definitions,
+immutable occurrence identity, fenced attempts, raw completion evidence,
+selected generated-artifact references, command receipts, and the one-way
+authority marker in the app-core store. Until #130 commits that marker, the
+native schema-v1 scheduled rows remain the sole production writer; shadow
+comparison may read them, but Rust and Swift must never schedule or complete
+the same occurrence concurrently.
+
 Facade contract version 12 adds the canonical full-transcript application
 command, typed receipt/failures, and bounded runtime projections. Schema v10
 persists imported and runtime-observed artifacts. Issue #97 makes that store

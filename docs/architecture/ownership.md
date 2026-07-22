@@ -37,8 +37,9 @@ already migrated. `current_owner`, `target_owner`, `migration_issues`, and
    #92–#97. The version-12 transcript command/projection path and Rust store are
    authoritative after #97; remaining work migrates derived knowledge policy,
    not transcript selection back to Swift.
-3. Download intent and recovery: #115–#119; remaining agent, artifact, and
-   Nostr workflow policy: #60.
+3. Download intent and recovery: #115–#119; scheduled-agent workflow and
+   artifact ownership: #125–#130; remaining agent permissions, artifacts, and
+   Nostr publication: #131–#138 under #60.
 4. Native UI and platform capabilities remain native and converge on typed
    host/projection boundaries as their domains migrate.
 
