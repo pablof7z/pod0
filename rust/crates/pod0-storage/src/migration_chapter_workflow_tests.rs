@@ -1,7 +1,9 @@
 use pod0_domain::{CancellationId, CommandId, StateRevision};
 
 use crate::chapter_workflow_test_support::{current_publisher_artifact, ensure, workflow_fixture};
-use crate::{CoreStoreMigrator, MigrationClock, PublisherChapterWorkflowState};
+use crate::{
+    CURRENT_SCHEMA_VERSION, CoreStoreMigrator, MigrationClock, PublisherChapterWorkflowState,
+};
 
 #[derive(Clone, Copy)]
 struct FixedClock;
@@ -13,7 +15,7 @@ impl MigrationClock for FixedClock {
 }
 
 #[test]
-fn schema_14_through_18_preserves_and_adopts_current_publisher_chapters() {
+fn schema_14_through_current_preserves_and_adopts_current_publisher_chapters() {
     let (fixture, store, episode_id) = workflow_fixture();
     store
         .commit_and_select_chapter(
@@ -27,7 +29,11 @@ fn schema_14_through_18_preserves_and_adopts_current_publisher_chapters() {
     rusqlite::Connection::open(&fixture.target)
         .unwrap()
         .execute_batch(
-            "DROP TABLE pod0_recall_configuration;
+            "DROP TABLE pod0_download_host_requests;
+             DROP TABLE pod0_download_attempts;
+             DROP TABLE pod0_download_workflows;
+             DROP TABLE pod0_download_environment;
+             DROP TABLE pod0_recall_configuration;
              DROP TABLE pod0_model_chapter_completions;
              DROP TABLE pod0_model_chapter_workflows;
              DROP TABLE pod0_publisher_chapter_workflows;
@@ -39,7 +45,7 @@ fn schema_14_through_18_preserves_and_adopts_current_publisher_chapters() {
     CoreStoreMigrator::new(FixedClock)
         .migrate(
             &fixture.target,
-            18,
+            CURRENT_SCHEMA_VERSION,
             &fixture.target.with_extension("v14-backup.sqlite"),
             CommandId::from_parts(70, 14),
         )
@@ -58,14 +64,18 @@ fn schema_14_through_18_preserves_and_adopts_current_publisher_chapters() {
 }
 
 #[test]
-fn schema_15_to_18_preserves_publisher_state_and_adds_fenced_model_storage() {
+fn schema_15_to_current_preserves_publisher_state_and_adds_fenced_model_storage() {
     let (fixture, store, episode_id) = workflow_fixture();
     let publisher = ensure(&store, episode_id, 3, false);
     drop(store);
     let connection = rusqlite::Connection::open(&fixture.target).unwrap();
     connection
         .execute_batch(
-            "DROP TABLE pod0_recall_configuration;
+            "DROP TABLE pod0_download_host_requests;
+             DROP TABLE pod0_download_attempts;
+             DROP TABLE pod0_download_workflows;
+             DROP TABLE pod0_download_environment;
+             DROP TABLE pod0_recall_configuration;
              DROP TABLE pod0_model_chapter_completions;
              DROP TABLE pod0_model_chapter_workflows;
              UPDATE pod0_schema_versions SET version=15 WHERE component='kernel';
@@ -77,12 +87,12 @@ fn schema_15_to_18_preserves_publisher_state_and_adds_fenced_model_storage() {
     let report = CoreStoreMigrator::new(FixedClock)
         .migrate(
             &fixture.target,
-            18,
+            CURRENT_SCHEMA_VERSION,
             &fixture.target.with_extension("v15-backup.sqlite"),
             CommandId::from_parts(70, 15),
         )
         .unwrap();
-    assert_eq!(report.applied_versions, [16, 17, 18]);
+    assert_eq!(report.applied_versions, [16, 17, 18, 19]);
 
     let reopened = crate::LibraryStore::open_authoritative(&fixture.target).unwrap();
     assert_eq!(

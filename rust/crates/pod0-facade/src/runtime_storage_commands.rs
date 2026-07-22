@@ -40,6 +40,12 @@ pub(super) fn storage_failure(error: pod0_storage::StorageError) -> CoreFailureC
         pod0_storage::StorageError::ChapterCommandConflict => CoreFailureCode::InvalidCommand,
         pod0_storage::StorageError::ChapterWorkflowConflict => CoreFailureCode::RevisionConflict,
         pod0_storage::StorageError::ChapterWorkflowNotFound => CoreFailureCode::NotFound,
+        pod0_storage::StorageError::DownloadCommandConflict => CoreFailureCode::InvalidCommand,
+        pod0_storage::StorageError::DownloadWorkflowConflict
+        | pod0_storage::StorageError::StaleDownloadAttempt => CoreFailureCode::RevisionConflict,
+        pod0_storage::StorageError::DownloadWorkflowNotFound
+        | pod0_storage::StorageError::DownloadRequestNotFound => CoreFailureCode::NotFound,
+        pod0_storage::StorageError::InvalidDownloadArtifact => CoreFailureCode::HostRejected,
         _ => CoreFailureCode::StorageUnavailable,
     }
 }

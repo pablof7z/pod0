@@ -161,7 +161,9 @@ impl Pod0Facade {
         let (changed, requests) = {
             let mut state = self.state();
             let mut changed = state.retry_pending_publisher_observations();
+            changed |= state.reconcile_download_deadlines();
             let _ = state.admit_publisher_chapter_requests();
+            let _ = state.admit_download_requests();
             let maximum = bounded_host_request_count(maximum_count);
             let first_count = maximum.min(state.host_queue.len());
             let mut requests = state.host_queue.drain(..first_count).collect::<Vec<_>>();

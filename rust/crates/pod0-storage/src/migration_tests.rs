@@ -152,6 +152,44 @@ fn retained_library_artifact_upgrade_is_one_step_and_preserves_v10_backup() {
 }
 
 #[test]
+fn download_workflow_upgrade_is_one_step_and_preserves_v18_backup() {
+    let fixture = Fixture::new();
+    fixture.migrate_to(18, 1).unwrap();
+    let connection = rusqlite::Connection::open(&fixture.store).unwrap();
+    connection
+        .execute(
+            "INSERT INTO pod0_schema_versions(component,version,updated_at_ms) \
+             VALUES('pre-download-sentinel',7,1)",
+            [],
+        )
+        .unwrap();
+    drop(connection);
+
+    let report = fixture.migrate_to(19, 2).unwrap();
+
+    assert_eq!(report.applied_versions, [19]);
+    assert_eq!(report.backup.unwrap().schema_version, 18);
+    let connection = rusqlite::Connection::open(&fixture.store).unwrap();
+    let environment: (i64, Option<i64>, Option<i64>, i64) = connection
+        .query_row(
+            "SELECT network_code,network_wire_code,available_capacity_bytes,observed_at_ms \
+             FROM pod0_download_environment WHERE singleton=1",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+        )
+        .unwrap();
+    assert_eq!(environment, (1, None, None, 0));
+    let sentinel: i64 = connection
+        .query_row(
+            "SELECT version FROM pod0_schema_versions WHERE component='pre-download-sentinel'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(sentinel, 7);
+}
+
+#[test]
 fn interruption_rolls_back_the_step_and_restart_resumes_the_journal() {
     let fixture = Fixture::new();
     fixture.migrate_to(2, 1).unwrap();

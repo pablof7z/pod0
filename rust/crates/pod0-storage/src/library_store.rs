@@ -13,6 +13,10 @@ pub struct LibraryStore {
 }
 
 impl LibraryStore {
+    pub(crate) fn path(&self) -> &Path {
+        &self.path
+    }
+
     pub fn open_authoritative(path: &Path) -> Result<Self, StorageError> {
         let connection = open_current(path, true)?;
         require_authoritative(&connection)?;

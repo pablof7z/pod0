@@ -39,6 +39,15 @@ Current versions:
 - v14: runtime chapter commands and replay receipts, nullable import identity
   for newly observed artifacts, and the atomic chapter authority state used by
   production cutover.
+- v15: durable publisher-chapter acquisition workflows, request fences, retry
+  timing, and raw completion evidence.
+- v16: durable model-chapter workflow planning, claims, provider operations,
+  ambiguity handling, and cutover state.
+- v17: model-chapter completion history separated from the current request so
+  later planning cannot erase durable provider evidence.
+- v18: versioned shared recall-provider and embedding configuration.
+- v19: download environment observations, intents, fenced attempts, exact host
+  requests, staged-artifact verification, retry state, and canonical adoption.
 
 The separate native workflow database remains authoritative only for workflow
 kinds that are native or not yet migrated. Its `jobs` component is schema v1.

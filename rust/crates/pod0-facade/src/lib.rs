@@ -83,9 +83,21 @@ mod runtime_command_fingerprint;
 mod runtime_command_fingerprint_values;
 mod runtime_commands;
 mod runtime_core_wakes;
+mod runtime_download_admission;
+#[cfg(test)]
+mod runtime_download_admission_tests;
 mod runtime_download_command_fingerprint;
+mod runtime_download_commands;
 #[cfg(test)]
 mod runtime_download_contract_tests;
+#[cfg(test)]
+mod runtime_download_deadline_tests;
+mod runtime_download_mapping;
+mod runtime_download_observations;
+mod runtime_download_projection;
+mod runtime_download_workflow;
+#[cfg(test)]
+mod runtime_download_workflow_tests;
 mod runtime_evidence_commands;
 mod runtime_evidence_completion;
 mod runtime_evidence_projection;
@@ -102,6 +114,7 @@ mod runtime_note_commands;
 mod runtime_note_evidence_tests;
 #[cfg(test)]
 mod runtime_note_tests;
+mod runtime_observation_mapping;
 mod runtime_observations;
 mod runtime_playback_actions;
 mod runtime_playback_commands;
@@ -139,6 +152,7 @@ mod runtime_recall_test_support;
 mod runtime_recall_tests;
 mod runtime_state;
 mod runtime_storage_commands;
+mod runtime_subscription_commands;
 #[cfg(test)]
 mod runtime_tests;
 mod runtime_transcript_commands;

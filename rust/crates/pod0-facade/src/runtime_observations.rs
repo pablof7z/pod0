@@ -3,6 +3,7 @@ use pod0_application::{
     HostObservationReceipt, HostObservationRejection, ObservationAcceptance, OperationStage,
 };
 
+use crate::runtime_observation_mapping::{accepted, host_failure, rejected, retain};
 use crate::runtime_state::{FacadeState, failure};
 
 impl FacadeState {
@@ -11,6 +12,17 @@ impl FacadeState {
         observation: HostObservationEnvelope,
     ) -> (bool, HostObservationReceipt) {
         let request_id = observation.request_id;
+        if let Some(pending) = self.pending_download_observations.get(&request_id).cloned() {
+            if pending != observation {
+                return (false, retain(request_id));
+            }
+            let receipt = self.persist_download_observation(observation);
+            let changed = matches!(receipt, HostObservationReceipt::Persisted { .. });
+            if !matches!(receipt, HostObservationReceipt::RetainAndRetry { .. }) {
+                self.pending_download_observations.remove(&request_id);
+            }
+            return (changed, receipt);
+        }
         if let Some(receipt) = self.replayed_model_completion_receipt(&observation) {
             return (false, receipt);
         }
@@ -75,6 +87,7 @@ impl FacadeState {
                     .flatten()
             });
         let pending_wake = self.pending_core_wakes.contains_key(&request_id);
+        let pending_download = self.pending_downloads.contains_key(&request_id);
         let acceptance = self.host_requests.accept_observation(&observation);
         if acceptance == ObservationAcceptance::PayloadTooLarge
             && let Some(record) = pending_model
@@ -120,6 +133,16 @@ impl FacadeState {
         if pending_wake {
             let changed = self.finish_core_wake(request_id, observation.observation);
             return (changed, accepted(request_id));
+        }
+        if pending_download {
+            let retained = observation.clone();
+            let receipt = self.persist_download_observation(observation);
+            if matches!(receipt, HostObservationReceipt::RetainAndRetry { .. }) {
+                self.pending_download_observations
+                    .insert(request_id, retained);
+            }
+            let changed = matches!(receipt, HostObservationReceipt::Persisted { .. });
+            return (changed, receipt);
         }
         self.advance_revision();
         if pending_publisher.is_some() {
@@ -246,44 +269,4 @@ impl FacadeState {
             && record.issued_revision == observation.observed_request_revision)
             .then_some(record)
     }
-}
-
-pub(super) fn host_failure(code: HostFailureCode) -> CoreFailureCode {
-    match code {
-        HostFailureCode::PermissionDenied => CoreFailureCode::HostRejected,
-        HostFailureCode::InvalidResponse | HostFailureCode::ResponseTooLarge => {
-            CoreFailureCode::FeedMalformed
-        }
-        _ => CoreFailureCode::HostUnavailable,
-    }
-}
-
-fn accepted(request_id: pod0_domain::HostRequestId) -> HostObservationReceipt {
-    HostObservationReceipt::AcceptedTransient { request_id }
-}
-
-fn retain(request_id: pod0_domain::HostRequestId) -> HostObservationReceipt {
-    HostObservationReceipt::RetainAndRetry { request_id }
-}
-
-fn rejected(
-    request_id: pod0_domain::HostRequestId,
-    acceptance: ObservationAcceptance,
-) -> HostObservationReceipt {
-    let reason = match acceptance {
-        ObservationAcceptance::UnknownRequest => HostObservationRejection::UnknownRequest,
-        ObservationAcceptance::Duplicate => HostObservationRejection::Duplicate,
-        ObservationAcceptance::Cancelled => HostObservationRejection::Cancelled,
-        ObservationAcceptance::CancellationMismatch => {
-            HostObservationRejection::CancellationMismatch
-        }
-        ObservationAcceptance::StaleRequestRevision => {
-            HostObservationRejection::StaleRequestRevision
-        }
-        ObservationAcceptance::OutOfOrder => HostObservationRejection::OutOfOrder,
-        ObservationAcceptance::MismatchedPayload => HostObservationRejection::MismatchedPayload,
-        ObservationAcceptance::PayloadTooLarge => HostObservationRejection::PayloadTooLarge,
-        ObservationAcceptance::Accepted => unreachable!("accepted observations are handled above"),
-    };
-    HostObservationReceipt::Rejected { request_id, reason }
 }

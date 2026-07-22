@@ -1,7 +1,7 @@
 use pod0_application::{CoreFailureCode, HostObservation, OperationResult, OperationStage};
 
 use crate::runtime_feed_state::{FeedIntent, PendingFeed};
-use crate::runtime_observations::host_failure;
+use crate::runtime_observation_mapping::host_failure;
 use crate::runtime_state::{FacadeState, failure};
 use crate::runtime_storage_commands::storage_failure;
 

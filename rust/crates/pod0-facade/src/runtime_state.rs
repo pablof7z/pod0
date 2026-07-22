@@ -43,6 +43,9 @@ pub(super) struct FacadeState {
     pub(super) pending_publisher_chapters:
         BTreeMap<HostRequestId, pod0_storage::PublisherChapterWorkflowRecord>,
     pub(super) pending_publisher_observations: BTreeMap<HostRequestId, HostObservation>,
+    pub(super) pending_downloads: BTreeMap<HostRequestId, pod0_storage::DownloadHostRequestRecord>,
+    pub(super) pending_download_observations:
+        BTreeMap<HostRequestId, pod0_application::HostObservationEnvelope>,
     pub(super) pending_model_chapters: BTreeMap<HostRequestId, pod0_domain::EpisodeId>,
     pub(super) pending_model_observations:
         BTreeMap<HostRequestId, pod0_application::HostObservationEnvelope>,
@@ -84,6 +87,8 @@ impl Default for FacadeState {
             pending_feeds: BTreeMap::new(),
             pending_publisher_chapters: BTreeMap::new(),
             pending_publisher_observations: BTreeMap::new(),
+            pending_downloads: BTreeMap::new(),
+            pending_download_observations: BTreeMap::new(),
             pending_model_chapters: BTreeMap::new(),
             pending_model_observations: BTreeMap::new(),
             pending_core_wakes: BTreeMap::new(),
@@ -132,6 +137,7 @@ impl FacadeState {
         mut recall_index: RecallIndex,
     ) -> Result<Self, pod0_storage::StorageError> {
         let _ = store.clear_session_sleep_timer()?;
+        let _ = store.recover_download_artifacts()?;
         let listening = store.snapshot()?;
         let notes = store.note_snapshot()?;
         let clips = store.clip_snapshot()?;
@@ -168,6 +174,7 @@ impl FacadeState {
             ..Self::default()
         };
         state.rehydrate_publisher_chapter_workflows()?;
+        state.rehydrate_download_workflows()?;
         state.rehydrate_model_chapter_workflows()?;
         Ok(state)
     }

@@ -5,7 +5,7 @@ use pod0_domain::CommandId;
 
 pub const APPLICATION_ID: i64 = 0x504F_4430;
 pub const MIN_SUPPORTED_SCHEMA_VERSION: u32 = 0;
-pub const CURRENT_SCHEMA_VERSION: u32 = 18;
+pub const CURRENT_SCHEMA_VERSION: u32 = 19;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AccessMode {
@@ -155,6 +155,12 @@ pub enum StorageError {
     InvalidEvidenceArtifact,
     InvalidRecallConfiguration,
     RecallConfigurationNotFound,
+    DownloadCommandConflict,
+    DownloadWorkflowConflict,
+    DownloadWorkflowNotFound,
+    DownloadRequestNotFound,
+    InvalidDownloadArtifact,
+    StaleDownloadAttempt,
     NewerEvidenceSchema {
         stored: u32,
         supported: u32,
@@ -210,6 +216,12 @@ impl StorageError {
             Self::InvalidEvidenceArtifact => "invalid_evidence_artifact",
             Self::InvalidRecallConfiguration => "invalid_recall_configuration",
             Self::RecallConfigurationNotFound => "recall_configuration_not_found",
+            Self::DownloadCommandConflict => "download_command_conflict",
+            Self::DownloadWorkflowConflict => "download_workflow_conflict",
+            Self::DownloadWorkflowNotFound => "download_workflow_not_found",
+            Self::DownloadRequestNotFound => "download_request_not_found",
+            Self::InvalidDownloadArtifact => "invalid_download_artifact",
+            Self::StaleDownloadAttempt => "stale_download_attempt",
             Self::NewerEvidenceSchema { .. } => "newer_evidence_schema",
             Self::Interrupted => "migration_interrupted",
         }

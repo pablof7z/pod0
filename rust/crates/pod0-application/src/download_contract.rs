@@ -228,13 +228,7 @@ pub fn download_intent_id(episode_id: EpisodeId, input_version: &str) -> Option<
 
 #[must_use]
 pub fn download_attempt_id(intent_id: DownloadIntentId, attempt: u16) -> Option<DownloadAttemptId> {
-    if attempt == 0 {
-        return None;
-    }
-    let mut hash = FramedHash::new(b"pod0-download-attempt-v1");
-    hash.bytes(&intent_id.into_bytes());
-    hash.u64(u64::from(attempt));
-    Some(DownloadAttemptId::from_bytes(hash.first_16()))
+    pod0_domain::download_attempt_identity(intent_id, attempt)
 }
 
 struct FramedHash(Sha256);

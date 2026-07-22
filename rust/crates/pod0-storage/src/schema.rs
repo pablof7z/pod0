@@ -222,6 +222,9 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
     if version >= 18 {
         recall_configuration::validate_recall_configuration_schema(connection)?;
     }
+    if version >= 19 {
+        crate::schema_download_workflows::validate_download_workflow_schema(connection)?;
+    }
     if version >= 8 {
         crate::schema_notes::validate_notes_schema(connection)?;
     }

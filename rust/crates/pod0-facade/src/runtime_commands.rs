@@ -28,68 +28,14 @@ impl FacadeState {
                 self.upsert_external_episode(&envelope, &fingerprint, episode)
             }
             ApplicationCommand::Unsubscribe { podcast_id } => {
-                let result = self
-                    .store
-                    .as_ref()
-                    .ok_or(pod0_storage::StorageError::CutoverNotAuthoritative)
-                    .and_then(|store| {
-                        store.unsubscribe(
-                            envelope.command_id,
-                            &fingerprint,
-                            podcast_id,
-                            self.now().value,
-                        )
-                    });
-                self.finish_storage_command(
-                    envelope.command_id,
-                    result,
-                    OperationResult::RemovedPodcast { podcast_id },
-                );
+                self.unsubscribe_podcast(&envelope, &fingerprint, podcast_id)
             }
             ApplicationCommand::SetSubscriptionNotifications {
                 podcast_id,
                 enabled,
-            } => {
-                let result = self
-                    .store
-                    .as_ref()
-                    .ok_or(pod0_storage::StorageError::CutoverNotAuthoritative)
-                    .and_then(|store| {
-                        store.update_subscription_preferences(
-                            envelope.command_id,
-                            &fingerprint,
-                            podcast_id,
-                            None,
-                            Some(enabled),
-                            self.now().value,
-                        )
-                    });
-                self.finish_storage_command(
-                    envelope.command_id,
-                    result,
-                    OperationResult::PreferencesUpdated { podcast_id },
-                );
-            }
+            } => self.set_subscription_notifications(&envelope, &fingerprint, podcast_id, enabled),
             ApplicationCommand::SetSubscriptionAutoDownload { podcast_id, policy } => {
-                let result = self
-                    .store
-                    .as_ref()
-                    .ok_or(pod0_storage::StorageError::CutoverNotAuthoritative)
-                    .and_then(|store| {
-                        store.update_subscription_preferences(
-                            envelope.command_id,
-                            &fingerprint,
-                            podcast_id,
-                            Some(policy),
-                            None,
-                            self.now().value,
-                        )
-                    });
-                self.finish_storage_command(
-                    envelope.command_id,
-                    result,
-                    OperationResult::PreferencesUpdated { podcast_id },
-                );
+                self.set_subscription_auto_download(&envelope, &fingerprint, podcast_id, policy)
             }
             ApplicationCommand::SetEpisodeStarred {
                 episode_id,
@@ -114,11 +60,29 @@ impl FacadeState {
                     OperationResult::EpisodeUpdated { episode_id },
                 );
             }
-            ApplicationCommand::RequestEpisodeDownload { .. }
-            | ApplicationCommand::CancelEpisodeDownload { .. }
-            | ApplicationCommand::RemoveEpisodeDownload { .. }
-            | ApplicationCommand::ObserveDownloadEnvironment { .. } => {
-                self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable)
+            ApplicationCommand::RequestEpisodeDownload { episode_id, origin } => {
+                self.request_episode_download(&envelope, &fingerprint, episode_id, origin)
+            }
+            ApplicationCommand::CancelEpisodeDownload {
+                episode_id,
+                expected_workflow_revision,
+            } => self.cancel_episode_download(
+                &envelope,
+                &fingerprint,
+                episode_id,
+                expected_workflow_revision,
+            ),
+            ApplicationCommand::RemoveEpisodeDownload {
+                episode_id,
+                expected_workflow_revision,
+            } => self.remove_episode_download(
+                &envelope,
+                &fingerprint,
+                episode_id,
+                expected_workflow_revision,
+            ),
+            ApplicationCommand::ObserveDownloadEnvironment { observation } => {
+                self.observe_download_environment(&envelope, &fingerprint, observation)
             }
             ApplicationCommand::ResetListeningData => {
                 self.reset_listening_data(&envelope, &fingerprint);

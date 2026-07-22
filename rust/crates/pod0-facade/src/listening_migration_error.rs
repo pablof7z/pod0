@@ -48,7 +48,13 @@ impl From<StorageError> for LegacyListeningMigrationError {
             | StorageError::InvalidEvidenceArtifact
             | StorageError::InvalidRecallConfiguration
             | StorageError::RecallConfigurationNotFound
-            | StorageError::NewerEvidenceSchema { .. } => Self::TargetBlocked,
+            | StorageError::NewerEvidenceSchema { .. }
+            | StorageError::DownloadCommandConflict
+            | StorageError::DownloadWorkflowConflict
+            | StorageError::DownloadWorkflowNotFound
+            | StorageError::DownloadRequestNotFound
+            | StorageError::InvalidDownloadArtifact
+            | StorageError::StaleDownloadAttempt => Self::TargetBlocked,
             StorageError::Io { .. } | StorageError::Sqlite { .. } => Self::StorageUnavailable,
         }
     }

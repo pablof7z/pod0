@@ -38,6 +38,17 @@ mod clip_legacy_backup;
 mod clip_store_codec;
 mod clip_store_model;
 mod clip_store_read;
+mod download_store;
+mod download_store_artifact;
+mod download_store_artifact_file;
+mod download_store_artifact_recovery;
+mod download_store_cancel;
+mod download_store_model;
+mod download_store_observations;
+mod download_store_read;
+mod download_store_request;
+mod download_store_retry;
+mod download_store_write;
 mod evidence_codec;
 mod evidence_commands;
 mod evidence_model;
@@ -45,6 +56,7 @@ mod evidence_store;
 mod evidence_store_mutations;
 mod evidence_store_read;
 mod evidence_store_stage;
+mod exports;
 mod import_model;
 mod legacy_backup;
 mod legacy_chapter_artifact_source;
@@ -108,6 +120,7 @@ mod schema;
 mod schema_chapter_workflows;
 mod schema_chapters;
 mod schema_clips;
+mod schema_download_workflows;
 mod schema_evidence;
 mod schema_introspection;
 mod schema_library;
@@ -137,82 +150,13 @@ mod transcript_store_read_rows;
 mod transcript_store_write;
 mod transcript_store_write_artifact;
 mod transcript_store_write_rows;
-pub use backup::{restore_backup_to_new_store, verify_backup};
-pub use chapter_authority::chapter_store_is_authoritative;
-pub use chapter_import::{ChapterImportClock, ChapterImporter};
-pub use chapter_import_model::{
-    ChapterBackupEvidence, ChapterImportPlan, ChapterImportReport, ChapterImportState,
-    ChapterImportVerification, ChapterRollbackExportReport, LegacyChapterSourceKind,
-};
 pub(crate) use chapter_import_model::{
     ChapterEvidenceKind, ChapterEvidenceValidation, InspectedChapterEvidence,
     InspectedChapterSource, LegacyAdSpanIdentity, LegacyChapterIdentity, StoredChapterEvidence,
 };
-pub use chapter_import_store_read::{read_active_chapter_import, read_chapter_import};
-pub use chapter_rollback_export::{
-    CHAPTER_ROLLBACK_FORMAT_VERSION, export_chapter_rollback_bundle,
-};
-pub use chapter_store_model::{ChapterCommitStorageReceipt, SelectedChapterArtifact};
-pub use chapter_workflow_model::*;
-pub use clip_import::{ClipImportClock, ClipImporter};
 pub(crate) use clip_import_model::InspectedClipSource;
-pub use clip_import_model::{
-    ClipBackupEvidence, ClipImportPlan, ClipImportReport, ClipImportVerification,
-};
-pub use clip_import_store::{commit_clip_cutover, read_clip_import};
-pub use clip_store_model::ClipCollectionSnapshot;
-pub use evidence_model::{
-    EvidenceGenerationState, EvidenceGenerationSummary, EvidencePruneReceipt,
-    EvidenceSelectionReceipt, EvidenceStageReceipt, EvidenceVerificationReceipt,
-};
-pub use evidence_store::EvidenceStore;
-pub use import_model::{
-    LegacyBackupEvidence, LegacyImportPlan, LegacySourceKind, ListeningImportReport,
-    ListeningImportVerification,
-};
-pub use legacy_chapter_source::inspect_legacy_chapter_source;
-pub use legacy_clip_source::inspect_legacy_clip_source;
-pub use legacy_note_source::inspect_legacy_note_source;
-pub use legacy_source::inspect_legacy_listening_source;
-pub use legacy_transcript_source::inspect_legacy_transcript_source;
-pub use library_store::{LibraryStore, commit_listening_cutover};
-pub use library_store_playback::{
-    PlaybackMutation, PlaybackMutationResult, PlaybackQueuePlacement,
-};
-pub use listening_import::{ListeningImportClock, ListeningImporter};
-pub use listening_store::read_listening_import;
-pub use migration::{CoreStoreMigrator, MigrationClock};
-pub use model::{
-    APPLICATION_ID, AccessMode, BackupEvidence, BlockedReason, CURRENT_SCHEMA_VERSION,
-    MIN_SUPPORTED_SCHEMA_VERSION, MigrationReport, MigrationState, SchemaStatus, StorageError,
-};
-pub use model_chapter_workflow::*;
-pub use note_import::{NoteImportClock, NoteImporter};
+pub use exports::*;
 pub(crate) use note_import_model::InspectedNoteSource;
-pub use note_import_model::{
-    NoteBackupEvidence, NoteImportPlan, NoteImportReport, NoteImportVerification,
-};
-pub use note_import_store::{commit_note_cutover, read_note_import};
-pub use note_store_model::NoteCollectionSnapshot;
-pub use recall_configuration_store::RecallConfigurationMutation;
-pub use transcript_import::{TranscriptImportClock, TranscriptImporter};
-pub use transcript_import_model::{
-    LegacyTranscriptSourceKind, TranscriptBackupEvidence, TranscriptImportEntrySummary,
-    TranscriptImportPlan, TranscriptImportReport, TranscriptImportState,
-    TranscriptImportVerification,
-};
-pub use transcript_import_store_read::{
-    read_active_transcript_import, read_transcript_import, read_transcript_import_entries,
-};
-pub use transcript_rollback_export::{
-    TranscriptRollbackExportReport, export_transcript_rollback_bundle,
-};
-pub use transcript_store::{TranscriptStore, transcript_store_is_authoritative};
-pub use transcript_store_model::{
-    MAX_TRANSCRIPT_PROJECTION_ITEMS, StoredTranscriptSegment, StoredTranscriptSpeaker,
-    StoredTranscriptWord, TranscriptCommitStorageReceipt, TranscriptPage,
-    TranscriptSelectionSummary,
-};
 #[cfg(test)]
 mod chapter_import_evidence_tests;
 #[cfg(test)]
@@ -241,6 +185,14 @@ mod clip_import_failure_tests;
 mod clip_import_orphan_tests;
 #[cfg(test)]
 mod clip_import_tests;
+#[cfg(test)]
+mod download_store_artifact_tests;
+#[cfg(test)]
+mod download_store_lifecycle_tests;
+#[cfg(test)]
+mod download_store_test_support;
+#[cfg(test)]
+mod download_store_tests;
 #[cfg(test)]
 mod evidence_store_recovery_tests;
 #[cfg(test)]
