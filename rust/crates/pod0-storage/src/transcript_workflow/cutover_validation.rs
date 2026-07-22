@@ -102,12 +102,21 @@ const fn disposition_classification(
 
 fn validate_candidate(candidate: &LegacyTranscriptWorkflowCandidate) -> Result<(), StorageError> {
     let has_attempt = candidate.prepared_attempt.is_some() && candidate.request_id.is_some();
-    if candidate.prepared_attempt.is_some() != candidate.request_id.is_some() {
+    let publisher_restart = matches!(
+        candidate.disposition,
+        LegacyTranscriptWorkflowDisposition::Restart
+    ) && candidate.request.publisher_first;
+    if publisher_restart {
+        if candidate.prepared_attempt.is_some() || candidate.request_id.is_none() {
+            return Err(StorageError::TranscriptWorkflowConflict);
+        }
+    } else if candidate.prepared_attempt.is_some() != candidate.request_id.is_some() {
         return Err(StorageError::TranscriptWorkflowConflict);
     }
     match &candidate.disposition {
         LegacyTranscriptWorkflowDisposition::Restart
-            if !has_attempt || candidate.deadline_at_ms.is_none_or(|deadline| deadline < 0) =>
+            if (!publisher_restart && !has_attempt)
+                || candidate.deadline_at_ms.is_none_or(|deadline| deadline < 0) =>
         {
             Err(StorageError::TranscriptWorkflowConflict)
         }

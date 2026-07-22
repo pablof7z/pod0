@@ -81,7 +81,11 @@ fn apply_disposition(
 ) -> Result<(), StorageError> {
     match disposition {
         LegacyTranscriptWorkflowDisposition::Restart => {
-            record.stage = StoredTranscriptWorkflowStage::Requested;
+            record.stage = if record.request.publisher_first {
+                StoredTranscriptWorkflowStage::PublisherRequested
+            } else {
+                StoredTranscriptWorkflowStage::Requested
+            };
         }
         LegacyTranscriptWorkflowDisposition::RecoverProvider {
             external_operation_id,

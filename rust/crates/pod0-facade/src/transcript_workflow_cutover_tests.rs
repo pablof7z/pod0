@@ -142,6 +142,88 @@ fn non_obsolete_row_cannot_be_silently_omitted_from_adoption() {
     );
 }
 
+#[test]
+fn automatic_publisher_restart_preserves_the_idempotent_fetch_path() {
+    let fixture = PlaybackFixture::new_before_transcript_workflow_cutover();
+    fixture.facade.state().listening.episodes[0]
+        .feed_metadata
+        .publisher_transcript = Some(pod0_domain::PublisherTranscriptReference {
+        url: "https://legacy.example/transcript.vtt".into(),
+        media_type: Some("text/vtt".into()),
+        format: pod0_domain::PublisherTranscriptFormat::WebVtt,
+    });
+    let configuration = TranscriptWorkflowConfiguration {
+        provider: TranscriptProvider::AssemblyAi,
+        model: "universal-2".into(),
+        local_audio_url: None,
+        credential_available: false,
+        auto_publisher_enabled: true,
+        auto_provider_enabled: false,
+    };
+    let request = fixture
+        .facade
+        .state()
+        .legacy_transcript_workflow_request(
+            fixture.episode_id,
+            TranscriptWorkflowOrigin::Automatic,
+            configuration.clone(),
+        )
+        .unwrap()
+        .0;
+    assert!(request.publisher_first);
+    let row_bytes = b"legacy publisher fetch".to_vec();
+    let row = LegacyTranscriptWorkflowBackupRow {
+        episode_id: fixture.episode_id,
+        row_fingerprint: digest(&row_bytes),
+        row_bytes,
+        classification: LegacyTranscriptWorkflowRowClassification::Restart,
+    };
+    let staged = fixture.facade.stage_legacy_transcript_workflow_cutover(
+        digest(b"publisher backup"),
+        row.row_bytes.len() as u64,
+        vec![row],
+        vec![LegacyTranscriptWorkflowCutoverCandidate {
+            episode_id: fixture.episode_id,
+            source_revision: request.source_revision,
+            origin: TranscriptWorkflowOrigin::Automatic,
+            configuration,
+            disposition: LegacyTranscriptWorkflowCutoverDisposition::Restart { attempt: 1 },
+        }],
+    );
+    let generation = staged.source_generation.unwrap();
+    assert_eq!(
+        fixture
+            .facade
+            .verify_legacy_transcript_workflow_cutover(generation)
+            .stage,
+        LegacyTranscriptWorkflowCutoverStage::Verified
+    );
+    assert_eq!(
+        fixture
+            .facade
+            .commit_legacy_transcript_workflow_cutover(generation)
+            .stage,
+        LegacyTranscriptWorkflowCutoverStage::Authoritative
+    );
+    let request = fixture
+        .facade
+        .next_host_requests(u16::MAX)
+        .into_iter()
+        .find(|request| {
+            matches!(
+                request.request,
+                HostRequest::ExecuteTranscriptCapability { .. }
+            )
+        })
+        .expect("publisher fetch request");
+    assert!(matches!(
+        request.request,
+        HostRequest::ExecuteTranscriptCapability {
+            capability: pod0_application::TranscriptCapabilityRequest::FetchPublisher { .. }
+        }
+    ));
+}
+
 fn restart_candidate(
     fixture: &PlaybackFixture,
 ) -> (

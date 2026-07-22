@@ -57,7 +57,12 @@ fn stored_candidate(
         return Err(StorageError::TranscriptWorkflowConflict);
     }
     let attempt = disposition_attempt(&candidate.disposition);
-    let prepared_attempt = match attempt {
+    let publisher_restart = request.publisher_first
+        && matches!(
+            candidate.disposition,
+            LegacyTranscriptWorkflowCutoverDisposition::Restart { .. }
+        );
+    let prepared_attempt = match attempt.filter(|_| !publisher_restart) {
         Some(attempt) => {
             let attempt_id = transcript_attempt_id(request.workflow_id, attempt)
                 .ok_or(StorageError::TranscriptWorkflowConflict)?;
@@ -69,8 +74,11 @@ fn stored_candidate(
         }
         None => None,
     };
-    let host_request_id =
-        prepared_attempt.map(|attempt| request_id(request.workflow_id, attempt.attempt, false));
+    let host_request_id = if publisher_restart {
+        Some(request_id(request.workflow_id, 1, true))
+    } else {
+        prepared_attempt.map(|attempt| request_id(request.workflow_id, attempt.attempt, false))
+    };
     let deadline_at_ms = matches!(
         candidate.disposition,
         LegacyTranscriptWorkflowCutoverDisposition::Restart { .. }
