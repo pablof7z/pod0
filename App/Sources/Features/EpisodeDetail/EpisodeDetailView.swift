@@ -32,9 +32,6 @@ struct EpisodeDetailView: View {
 
     // MARK: State
 
-    /// Live download service — observed so the toolbar's progress indicator
-    /// updates smoothly without re-persisting `AppStateStore` on every tick.
-    @State private var downloadService = EpisodeDownloadService.shared
     @State private var showProviderSettings = false
     @State private var workflowActionNotice: WorkflowActionNotice?
 
@@ -95,7 +92,7 @@ struct EpisodeDetailView: View {
                 playback.enqueue(episode.id)
             },
             activeChapterID: liveActiveChapterID(for: episode),
-            downloadProgress: downloadService.progress[episode.id],
+            downloadProgress: store.sharedLibrary?.downloadProgress(episodeID: episode.id),
             downloadJobState: downloadJob(for: episode.id)?.state,
             preparationStatus: preparationStatus,
             onPreparationAction: { action, job in
@@ -188,15 +185,14 @@ struct EpisodeDetailView: View {
     /// primary surface — and sees a live "Downloading 42%" badge while
     /// bytes move.
     private func toggleDownload(episode: Episode) {
-        EpisodeDownloadService.shared.attach(appStore: store)
         if case .downloaded = episode.downloadState { return }
         switch downloadJob(for: episode.id)?.state {
         case .pending, .leased, .running, .retryScheduled:
             Haptics.light()
-            EpisodeDownloadService.shared.cancel(episodeID: episode.id)
+            store.sharedLibrary?.cancelDownload(episodeID: episode.id)
         default:
             Haptics.success()
-            EpisodeDownloadService.shared.download(episodeID: episode.id)
+            store.sharedLibrary?.requestDownload(episodeID: episode.id)
         }
     }
 
@@ -222,8 +218,7 @@ struct EpisodeDetailView: View {
         case .openProviders:
             showProviderSettings = true
         case .downloadEpisode:
-            EpisodeDownloadService.shared.attach(appStore: store)
-            EpisodeDownloadService.shared.download(episodeID: episode.id)
+            store.sharedLibrary?.requestDownload(episodeID: episode.id)
         case .retry, .cancel:
             guard let job else { return }
             let workflowAction: WorkflowJobAction = action == .retry ? .retry : .cancel
@@ -234,11 +229,10 @@ struct EpisodeDetailView: View {
     @ToolbarContentBuilder
     private func actionsToolbar(episode: Episode) -> some ToolbarContent {
         // Inline progress indicator — only present while a download is in
-        // flight. Reads `EpisodeDownloadService.progress` directly so it
-        // updates at the throttled service cadence (5% / 200ms).
-        if downloadService.progress[episode.id] != nil {
+        // flight. Progress is transient native capability state.
+        if store.sharedLibrary?.downloadProgress(episodeID: episode.id) != nil {
             ToolbarItem(placement: .topBarTrailing) {
-                let live = downloadService.progress[episode.id] ?? 0
+                let live = store.sharedLibrary?.downloadProgress(episodeID: episode.id) ?? 0
                 ProgressView(value: live)
                     .progressViewStyle(.circular)
                     .controlSize(.small)

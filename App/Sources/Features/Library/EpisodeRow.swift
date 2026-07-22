@@ -12,6 +12,7 @@ import SwiftUI
 ///   - Transcribing: 2 px progress bar (accent color) pinned to bottom edge.
 ///   - Downloaded:   title at full opacity; not-yet-downloaded titles are muted.
 struct EpisodeRow: View {
+    @Environment(AppStateStore.self) private var store
     let episode: Episode
     let showAccent: Color
     /// Fallback artwork URL when the episode has no per-item `<itunes:image>`.
@@ -26,10 +27,6 @@ struct EpisodeRow: View {
     var onPlay: (() -> Void)? = nil
 
     private static let thumbnailSize: CGFloat = 56
-
-    /// Live progress map — drives the bottom progress bar without hitting
-    /// `AppStateStore` on every 5%/200 ms tick.
-    @State private var downloadService = EpisodeDownloadService.shared
 
     var body: some View {
         HStack(alignment: .center, spacing: AppTheme.Spacing.md) {
@@ -195,7 +192,7 @@ struct EpisodeRow: View {
 
     @ViewBuilder
     private var downloadProgressBar: some View {
-        if let live = downloadService.progress[episode.id] {
+        if let live = store.sharedLibrary?.downloadProgress(episodeID: episode.id) {
             let p = live.clamped01
             thinProgressBar(progress: p, color: Color.primary)
         }
@@ -243,7 +240,7 @@ struct EpisodeRow: View {
                 parts.append("downloaded")
             }
         case .notDownloaded:
-            if let progress = downloadService.progress[episode.id] {
+            if let progress = store.sharedLibrary?.downloadProgress(episodeID: episode.id) {
                 parts.append("downloading \(Int((progress.clamped01 * 100).rounded())) percent")
             }
         }

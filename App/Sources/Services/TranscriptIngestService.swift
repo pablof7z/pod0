@@ -116,15 +116,16 @@ final class TranscriptIngestService {
         }
 
         let provider = payload.provider
-        if provider == .appleNative && !EpisodeDownloadStore.shared.exists(for: episode) {
+        let localAudio = episode.downloadState.localFileURL.flatMap { url in
+            FileManager.default.fileExists(atPath: url.path) ? url : nil
+        }
+        if provider == .appleNative && localAudio == nil {
             throw JobFailure(
                 classification: .missingDependency,
                 message: "On-device transcription is waiting for downloaded audio."
             )
         }
-        let localOrRemote = EpisodeDownloadStore.shared.exists(for: episode)
-            ? EpisodeDownloadStore.shared.localFileURL(for: episode)
-            : episode.enclosureURL
+        let localOrRemote = localAudio ?? episode.enclosureURL
         let audioURL = provider == .assemblyAI ? episode.enclosureURL : localOrRemote
         let resumedExternalID = try Self.resumableExternalOperationID(
             expectedProvider: Self.externalProviderName(for: provider),

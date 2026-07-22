@@ -8,7 +8,9 @@ extension AppStateStore {
             record.episodeId.uuid.flatMap {
                 record.swiftValue(
                     preserving: existingEpisodes[$0],
-                    chapters: projection.chaptersByEpisodeID[$0]
+                    chapters: projection.chaptersByEpisodeID[$0],
+                    downloadState: sharedLibrary?.downloadState(for: record.download)
+                        ?? .notDownloaded
                 )
             }
         }

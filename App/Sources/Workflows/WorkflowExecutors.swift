@@ -21,32 +21,10 @@ final class FeedDiscoveryJobExecutor: JobExecutor {
             return $0.episodeID.uuidString < $1.episodeID.uuidString
         }
 
-        if payload.autoDownloadPolicy != nil {
-            let current = store.effectiveAutoDownload(forPodcast: payload.podcastID)
-            let selected: [FeedDiscoveryPayload.EpisodeInput]
-            switch current.mode {
-            case .off: selected = []
-            case .latestN(let count): selected = Array(sorted.prefix(max(0, count)))
-            case .allNew: selected = sorted
-            }
-            for input in selected {
-                let occurrence = "autodownload:\(payload.occurrenceID):\(input.episodeID.uuidString)"
-                let child = AutoDownloadJobPayload(
-                    discoveryOccurrenceID: payload.occurrenceID,
-                    policyVersion: payload.policyVersion
-                )
-                _ = try jobStore.ensureJob(DesiredJob(
-                    idempotencyKey: occurrence,
-                    kind: .autoDownload,
-                    subjectID: input.episodeID,
-                    inputVersion: input.inputVersion,
-                    occurrenceID: occurrence,
-                    payload: try workflowEncoder.encode(child),
-                    priority: 20,
-                    resourceClass: .planning
-                ))
-            }
-        }
+        store.sharedLibrary?.reportAutomaticDownloadCandidates(
+            podcastID: payload.podcastID,
+            episodeIDs: available.map(\.episodeID)
+        )
 
         if payload.notificationsEnabled,
            store.state.settings.notifyOnNewEpisodes,
@@ -72,49 +50,6 @@ final class FeedDiscoveryJobExecutor: JobExecutor {
             }
         }
         return .succeeded(outputVersion: payload.occurrenceID)
-    }
-}
-
-@MainActor
-final class DownloadJobExecutor: JobExecutor {
-    private let store: AppStateStore
-    private let jobStore: JobStore
-
-    init(store: AppStateStore, jobStore: JobStore) {
-        self.store = store
-        self.jobStore = jobStore
-    }
-
-    func run(_ context: JobAttemptContext) async throws -> JobOutcome {
-        guard let episode = store.episode(id: context.job.subjectID) else { return .obsolete }
-        let payload = try decode(DownloadJobPayload.self, from: context.job)
-        guard payload.audioVersion == context.job.inputVersion,
-              payload.enclosureURL == episode.enclosureURL,
-              DesiredStatePlanner.audioVersion(episode) == context.job.inputVersion else {
-            return .obsolete
-        }
-        let admission = DownloadAdmissionPolicy().evaluate(
-            origin: payload.origin,
-            automaticPolicy: store.effectiveAutoDownload(forPodcast: episode.podcastID),
-            network: EpisodeDownloadService.shared.networkStatus,
-            availableStorageCapacity: EpisodeDownloadService.shared.availableStorageCapacity
-        )
-        switch admission {
-        case .obsolete:
-            return .obsolete
-        case .wait(let reason):
-            return .retry(
-                notBefore: Date().addingTimeInterval(5 * 60),
-                error: JobFailure(classification: .missingDependency, message: reason)
-            )
-        case .admit:
-            break
-        }
-        let output = try await EpisodeDownloadService.shared.startAdmittedDownload(
-            context: context,
-            jobStore: jobStore
-        )
-        return .succeeded(outputVersion: output)
     }
 }
 
@@ -175,49 +110,6 @@ final class MetadataIndexJobExecutor: JobExecutor {
     func run(_ context: JobAttemptContext) async throws -> JobOutcome {
         _ = context
         return .obsolete
-    }
-}
-
-@MainActor
-final class AutoDownloadJobExecutor: JobExecutor {
-    private let store: AppStateStore
-    private let persistDownload: @MainActor @Sendable (
-        UUID,
-        DownloadIntentOrigin
-    ) throws -> WorkJob
-
-    init(
-        store: AppStateStore,
-        persistDownload: @escaping @MainActor @Sendable (
-            UUID,
-            DownloadIntentOrigin
-        ) throws -> WorkJob = { episodeID, origin in
-            try WorkflowRuntime.shared.persistDownloadIntent(
-                episodeID: episodeID,
-                origin: origin
-            )
-        }
-    ) {
-        self.store = store
-        self.persistDownload = persistDownload
-    }
-
-    func run(_ context: JobAttemptContext) async throws -> JobOutcome {
-        guard let episode = store.episode(id: context.job.subjectID) else { return .obsolete }
-        EpisodeDownloadService.shared.attach(appStore: store)
-        let policy = store.effectiveAutoDownload(forPodcast: episode.podcastID)
-        if case .off = policy.mode { return .obsolete }
-        if policy.wifiOnly, !EpisodeDownloadService.shared.isOnWiFi {
-            return .retry(
-                notBefore: Date().addingTimeInterval(15 * 60),
-                error: JobFailure(
-                    classification: .missingDependency,
-                    message: "Automatic download is waiting for Wi-Fi."
-                )
-            )
-        }
-        _ = try persistDownload(episode.id, .autoDownload)
-        return .succeeded(outputVersion: context.job.inputVersion)
     }
 }
 

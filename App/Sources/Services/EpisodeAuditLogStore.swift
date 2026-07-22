@@ -7,7 +7,7 @@ import os.log
 ///
 /// Files live under `$applicationSupport/podcastr/audit/<episodeID>.json` —
 /// the same per-episode `Application Support` shape as other artifact stores and
-/// `EpisodeDownloadStore` so a single fallback to `temporaryDirectory` covers
+/// the app's durable stores so a single fallback to `temporaryDirectory` covers
 /// every persistence path when the container is unavailable.
 ///
 /// Concurrency: every mutation runs on `@MainActor`. Writes are synchronous —

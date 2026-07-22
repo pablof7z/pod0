@@ -1,14 +1,14 @@
 import Foundation
+import Pod0Core
 import XCTest
 @testable import Podcastr
 
 @MainActor
 final class FeedDiscoveryWorkflowTests: XCTestCase {
     func testExactDiscoveryBatchPlansLatestNAndNotificationsIdempotently() async throws {
-        let made = AppStateTestSupport.makeIsolatedStore()
-        defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
-        let store = made.store
-        let jobs = JobStore(fileURL: store.persistence.episodeStore.fileURL)
+        let fileURL = AppStateTestSupport.uniqueTempFileURL()
+        let persistence = Persistence(fileURL: fileURL)
+        defer { AppStateTestSupport.disposeIsolatedStore(at: fileURL) }
         let podcast = Podcast(
             id: UUID(),
             feedURL: URL(string: "https://example.com/feed.xml"),
@@ -24,16 +24,23 @@ final class FeedDiscoveryWorkflowTests: XCTestCase {
                 enclosureURL: URL(string: "https://example.com/\(index).mp3")!
             )
         }
-        store.mutateState {
-            $0.podcasts = [podcast]
-            $0.subscriptions = [PodcastSubscription(
+        var legacy = AppState()
+        legacy.podcasts = [podcast]
+        legacy.subscriptions = [PodcastSubscription(
                 podcastID: podcast.id,
                 autoDownload: AutoDownloadPolicy(mode: .latestN(2), wifiOnly: false),
                 notificationsEnabled: true
-            )]
-            $0.episodes = episodes
-            $0.settings.notifyOnNewEpisodes = true
-        }
+        )]
+        legacy.episodes = episodes
+        legacy.settings.notifyOnNewEpisodes = true
+        XCTAssertTrue(persistence.write(legacy, revision: 1))
+        let store = AppStateStore(
+            persistence: persistence,
+            sharedFeedHost: QueuedCoreFeedHost([]),
+            startSubscriptionRefresh: false
+        )
+        let client = try XCTUnwrap(store.sharedLibrary)
+        let jobs = JobStore(fileURL: store.persistence.episodeStore.fileURL)
         let occurrence = "discovery:test-batch"
         let payload = FeedDiscoveryPayload(
             podcastID: podcast.id,
@@ -79,13 +86,22 @@ final class FeedDiscoveryWorkflowTests: XCTestCase {
         _ = try await executor.run(context)
 
         let created = try jobs.allJobs()
-        let automatic = created.filter { $0.kind == .autoDownload }
         let notifications = created.filter { $0.kind == .newEpisodeNotification }
-        XCTAssertEqual(automatic.count, 2)
+        XCTAssertTrue(created.filter { $0.kind == .autoDownload }.isEmpty)
+        let downloads = client.facade.snapshot(request: ProjectionRequest(
+            scope: .downloads(episodeId: nil),
+            offset: 0,
+            maxItems: 20
+        ))
+        guard case .downloads(let page) = downloads.projection else {
+            return XCTFail("Expected Rust download workflows")
+        }
+        XCTAssertEqual(page.workflows.count, 2)
         XCTAssertEqual(
-            Set(automatic.map(\.subjectID)),
+            Set(page.workflows.compactMap { $0.episodeId.uuid }),
             Set(episodes.sorted { $0.pubDate > $1.pubDate }.prefix(2).map(\.id))
         )
+        XCTAssertTrue(page.workflows.allSatisfy { $0.origin == .automatic })
         XCTAssertEqual(notifications.count, 3)
         XCTAssertEqual(Set(notifications.compactMap(\.occurrenceID)).count, 3)
         XCTAssertEqual(

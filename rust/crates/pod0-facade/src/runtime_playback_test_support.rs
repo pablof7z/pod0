@@ -168,6 +168,19 @@ impl PlaybackFixture {
         } else {
             install_empty_chapter_fixture(&directory, &target);
         }
+        let download_store = pod0_storage::LibraryStore::open_authoritative(&target).unwrap();
+        download_store
+            .stage_legacy_download_cutover(pod0_storage::LegacyDownloadCutoverInput {
+                source_generation: 1,
+                entries: Vec::new(),
+                issued_revision: StateRevision::INITIAL,
+                now_ms: 1_800_000_000_008,
+                deadline_at_ms: 1_800_000_060_008,
+            })
+            .unwrap();
+        download_store
+            .commit_legacy_download_cutover(1, 1_800_000_000_009)
+            .unwrap();
         let facade = Pod0Facade::open(target.to_string_lossy().into_owned()).unwrap();
         assert_eq!(
             facade

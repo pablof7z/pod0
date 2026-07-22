@@ -5,8 +5,8 @@ use rusqlite::{OptionalExtension, Transaction, params};
 
 use crate::download_store_read::workflow;
 use crate::download_store_request::{
-    download_command_was_applied, insert_attempt_and_start_request, retire_request,
-    start_request_id, u64_to_i64,
+    download_command_was_applied, download_start_request_id, insert_attempt_and_start_request,
+    retire_request, u64_to_i64,
 };
 use crate::library_store::finish_command;
 use crate::{
@@ -69,7 +69,10 @@ impl LibraryStore {
                     .filter(|record| record.intent_id == input.intent_id)
                     .and_then(|record| record.attempt_id)
             };
-            let request_id = input.admitted.then(|| attempt_id.map(start_request_id)).flatten();
+            let request_id = input
+                .admitted
+                .then(|| attempt_id.map(download_start_request_id))
+                .flatten();
             let stage = if input.admitted {
                 StoredDownloadStage::Requested
             } else {

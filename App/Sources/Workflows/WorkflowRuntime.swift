@@ -45,11 +45,9 @@ final class WorkflowRuntime {
         }
         let executors: [WorkJobKind: any JobExecutor] = [
             .feedDiscovery: FeedDiscoveryJobExecutor(store: store, jobStore: jobs),
-            .download: DownloadJobExecutor(store: store, jobStore: jobs),
             .transcriptIngest: TranscriptIngestJobExecutor(store: store, jobStore: jobs),
             .transcriptIndex: TranscriptIndexJobExecutor(),
             .metadataIndex: MetadataIndexJobExecutor(store: store),
-            .autoDownload: AutoDownloadJobExecutor(store: store),
             .newEpisodeNotification: NewEpisodeNotificationJobExecutor(store: store),
             .scheduledAgentRun: scheduled,
         ]
@@ -72,8 +70,7 @@ final class WorkflowRuntime {
     }
 
     func startAndReconcile() async {
-        guard let coordinator, let jobStore else { return }
-        await EpisodeDownloadService.shared.reconcileBackgroundTransfers(jobStore: jobStore)
+        guard let coordinator else { return }
         await coordinator.start()
         await reconcile(signalOnly: true)
     }
@@ -90,90 +87,6 @@ final class WorkflowRuntime {
         wake()
     }
 
-    func requestDownload(
-        episodeID: UUID,
-        origin: DownloadIntentOrigin = .user
-    ) {
-        do {
-            _ = try persistDownloadIntent(episodeID: episodeID, origin: origin)
-        } catch {
-            Self.logger.error("Unable to persist download intent: \(error, privacy: .public)")
-        }
-    }
-
-    /// Persists and confirms the canonical child intent. Workflow executors
-    /// use this throwing form so a parent occurrence cannot report success
-    /// after a failed child handoff.
-    @discardableResult
-    func persistDownloadIntent(
-        episodeID: UUID,
-        origin: DownloadIntentOrigin
-    ) throws -> WorkJob {
-        guard let episode = appStore?.episode(id: episodeID), let jobStore else {
-            throw JobFailure(
-                classification: .invalidInput,
-                message: "Download intent has no attached episode or workflow store."
-            )
-        }
-        let inputVersion = DesiredStatePlanner.audioVersion(episode)
-        let payload = DownloadJobPayload(
-            origin: origin,
-            enclosureURL: episode.enclosureURL,
-            audioVersion: inputVersion
-        )
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        let desired = DesiredJob(
-            idempotencyKey: "download:\(episodeID):\(inputVersion):\(origin.rawValue)",
-            kind: .download,
-            subjectID: episodeID,
-            inputVersion: inputVersion,
-            occurrenceID: "download:\(episodeID):\(inputVersion):\(origin.rawValue)",
-            payload: try? encoder.encode(payload),
-            priority: origin.priority,
-            resourceClass: .download,
-            maxAttempts: 8
-        )
-        let inserted = try jobStore.ensureJob(desired)
-        if !inserted {
-            let shouldRearmSucceeded: Bool
-            switch episode.downloadState {
-            case .notDownloaded: shouldRearmSucceeded = true
-            case .downloaded: shouldRearmSucceeded = false
-            }
-            try jobStore.rearmJob(
-                idempotencyKey: desired.idempotencyKey,
-                includeSucceeded: shouldRearmSucceeded
-            )
-        }
-        guard let persisted = try jobStore.job(idempotencyKey: desired.idempotencyKey) else {
-            throw JobStoreError.corruptRow
-        }
-        wake()
-        return persisted
-    }
-
-    func cancelDownload(episodeID: UUID) {
-        do {
-            try jobStore?.cancelActiveJobs(kind: .download, subjectID: episodeID)
-            wake()
-        } catch {
-            Self.logger.error("Unable to cancel download intent: \(error, privacy: .public)")
-        }
-    }
-
-    func dismissDownloadFailure(episodeID: UUID) {
-        do {
-            try jobStore?.dismissJobsNeedingAttention(
-                kind: .download,
-                subjectID: episodeID
-            )
-            wake()
-        } catch {
-            Self.logger.error("Unable to dismiss download failure: \(error, privacy: .public)")
-        }
-    }
-
     func perform(
         _ action: WorkflowJobAction,
         on projection: WorkflowJobProjection
@@ -186,6 +99,12 @@ final class WorkflowRuntime {
         }
         if projection.authority == .sharedRustModelChapters {
             return appStore?.sharedLibrary?.performModelChapterAction(
+                action,
+                on: projection
+            ) ?? .failed
+        }
+        if projection.authority == .sharedRustDownloads {
+            return appStore?.sharedLibrary?.performDownloadAction(
                 action,
                 on: projection
             ) ?? .failed

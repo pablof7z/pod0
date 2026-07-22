@@ -2,10 +2,12 @@ import Foundation
 
 enum WorkJobKind: String, CaseIterable, Codable, Sendable {
     case feedDiscovery
+    /// Decode-only legacy cutover value. The Swift runtime cannot execute it.
     case download
     case transcriptIngest
     case transcriptIndex
     case metadataIndex
+    /// Decode-only legacy cutover value. Selection now runs in Rust.
     case autoDownload
     case newEpisodeNotification
     case scheduledAgentRun
@@ -13,6 +15,7 @@ enum WorkJobKind: String, CaseIterable, Codable, Sendable {
 
 enum WorkResourceClass: String, CaseIterable, Codable, Sendable {
     case planning
+    /// Decode-only resource value for retired Swift download rows.
     case download
     case onDeviceSTT
     case remoteSTT

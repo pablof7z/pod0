@@ -5,6 +5,7 @@ extension JobStore {
     /// SQL literal assembled only from the closed native enum. Legacy or
     /// unknown raw kinds are never eligible for generic scheduler mutation.
     static let supportedKindSQL = WorkJobKind.allCases
+        .filter { $0 != .download && $0 != .autoDownload }
         .map { "'\($0.rawValue)'" }
         .joined(separator: ",")
 

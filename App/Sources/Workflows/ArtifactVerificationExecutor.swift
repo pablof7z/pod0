@@ -140,43 +140,6 @@ actor ArtifactVerificationExecutor {
         return verified
     }
 
-    func stageDownload(
-        _ source: URL,
-        episode: Episode,
-        jobID: UUID,
-        inputVersion: String
-    ) throws -> StagedDownloadOutput {
-        try Task.checkCancellation()
-        let staged = try EpisodeDownloadStore.shared.stage(
-            source, episode: episode, jobID: jobID, inputVersion: inputVersion
-        )
-        try Task.checkCancellation()
-        return staged
-    }
-
-    func verifiedStagedDownload(
-        episodeID: UUID,
-        jobID: UUID,
-        inputVersion: String,
-        contentHash: String? = nil
-    ) -> StagedDownloadOutput? {
-        guard !Task.isCancelled else { return nil }
-        let staged = EpisodeDownloadStore.shared.verifiedStagedOutput(
-            episodeID: episodeID,
-            jobID: jobID,
-            inputVersion: inputVersion,
-            contentHash: contentHash
-        )
-        return Task.isCancelled ? nil : staged
-    }
-
-    func promoteDownload(_ staged: StagedDownloadOutput, episode: Episode) throws -> URL {
-        try Task.checkCancellation()
-        let url = try EpisodeDownloadStore.shared.promote(staged, episode: episode)
-        try Task.checkCancellation()
-        return url
-    }
-
     private func fingerprint(_ url: URL) throws -> (hash: String, size: Int64) {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }

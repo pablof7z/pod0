@@ -30,7 +30,7 @@ fn download_contract_is_typed_but_truthfully_unavailable_before_storage_slice() 
     ));
 
     let snapshot = facade.snapshot(download_request());
-    assert_eq!(snapshot.contract_version, 27);
+    assert_eq!(snapshot.contract_version, 29);
     let Projection::Downloads { value } = snapshot.projection else {
         panic!("expected download projection");
     };

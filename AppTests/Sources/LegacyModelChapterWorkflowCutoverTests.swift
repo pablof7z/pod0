@@ -55,6 +55,7 @@ final class LegacyModelChapterWorkflowCutoverTests: XCTestCase {
 
         switch SharedLibraryBootstrap.run(
             persistence: prepared.fixture.persistence,
+            legacyState: try prepared.fixture.persistence.load(),
             feedHost: QueuedCoreFeedHost([]),
             chapterCompilationModel: configuredModel
         ) {
@@ -89,6 +90,7 @@ final class LegacyModelChapterWorkflowCutoverTests: XCTestCase {
 
         switch SharedLibraryBootstrap.run(
             persistence: prepared.fixture.persistence,
+            legacyState: try prepared.fixture.persistence.load(),
             feedHost: QueuedCoreFeedHost([]),
             chapterCompilationModel: configuredModel
         ) {
@@ -204,6 +206,7 @@ final class LegacyModelChapterWorkflowCutoverTests: XCTestCase {
     ) throws -> SharedLibraryClient {
         switch SharedLibraryBootstrap.run(
             persistence: fixture.persistence,
+            legacyState: try fixture.persistence.load(),
             feedHost: QueuedCoreFeedHost([]),
             chapterCompilationModel: configuredModel
         ) {

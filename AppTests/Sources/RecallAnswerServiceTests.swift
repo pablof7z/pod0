@@ -36,12 +36,9 @@ final class RecallAnswerServiceTests: XCTestCase {
         let service = makeService(projection: goldenProjection(), productSignals: sink)
 
         _ = await service.answer(query: "private question about habits")
-        let arrived = await ProductSignalTestSupport.eventually {
-            await sink.captured().count == 3
-        }
-        let captured = await sink.captured()
+        let captured = await sink.waitForCount(3)
 
-        XCTAssertTrue(arrived)
+        XCTAssertEqual(captured.count, 3)
         XCTAssertEqual(Set(captured.map(\.name)), [.recallAsked, .recallGrounded, .transcriptUsed])
         XCTAssertEqual(captured.first { $0.name == .recallGrounded }?.outcome, .grounded)
     }

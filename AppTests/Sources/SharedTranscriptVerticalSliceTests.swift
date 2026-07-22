@@ -135,6 +135,7 @@ final class SharedTranscriptVerticalSliceTests: XCTestCase {
         )
         let reopened = SharedLibraryClient(
             facade: reopenedFacade,
+            coreStoreURL: made.store.persistence.sharedCoreStoreURL,
             feedHost: QueuedCoreFeedHost([])
         )
         let replayed = try reopened.submitTranscriptObservation(

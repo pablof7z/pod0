@@ -104,6 +104,12 @@ let project = Project(
                     "TARGETED_DEVICE_FAMILY": "1,2",
                     "PROVISIONING_PROFILE_SPECIFIER": "$(CI_APP_PROFILE_SPECIFIER)",
                     "SWIFT_INCLUDE_PATHS": "$(SRCROOT)/App/Support",
+                ],
+                configurations: [
+                    .release(
+                        name: "Release",
+                        settings: ["ENABLE_TESTABILITY": "YES"]
+                    ),
                 ]
             )
         ),

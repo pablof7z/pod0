@@ -18,7 +18,6 @@ struct Reconciler {
     @discardableResult
     func reconcile() throws -> ReconciliationReport {
         var report = ReconciliationReport()
-        report.adoptedArtifacts += try verifyAndAdoptFilesystemArtifacts()
         let desired = DesiredStatePlanner().plan(.init(
             episodes: appStore.state.episodes,
             settings: appStore.state.settings,
@@ -41,9 +40,7 @@ struct Reconciler {
             try jobStore.unblock(idempotencyKey: desiredJob.idempotencyKey, now: now())
         }
 
-        report.obsoletedJobs += try obsoleteDisabledAutomaticDownloads()
         report.obsoletedJobs += try obsoleteDisabledNotifications()
-        report.obsoletedJobs += try obsoleteStaleDownloadInputs()
 
         let desiredKeys = Set(desired.map(\.idempotencyKey))
         let before = try jobStore.allJobs().filter { $0.state.isActive && $0.occurrenceID == nil }.count
@@ -51,65 +48,6 @@ struct Reconciler {
         let after = try jobStore.allJobs().filter { $0.state.isActive && $0.occurrenceID == nil }.count
         report.obsoletedJobs += max(0, before - after)
         return report
-    }
-
-    private func obsoleteDisabledAutomaticDownloads() throws -> Int {
-        var count = 0
-        let jobs = try jobStore.allJobs()
-        for job in jobs where job.state.isActive {
-            let isAutomatic: Bool
-            switch job.kind {
-            case .autoDownload:
-                isAutomatic = true
-            case .download:
-                isAutomatic = (try? Self.decoder.decode(
-                    DownloadJobPayload.self,
-                    from: job.payload ?? Data()
-                ).origin) == .autoDownload
-            default:
-                isAutomatic = false
-            }
-            guard isAutomatic,
-                  let episode = appStore.episode(id: job.subjectID) else { continue }
-            if case .off = appStore.effectiveAutoDownload(forPodcast: episode.podcastID).mode {
-                try jobStore.updateActiveTerminal(id: job.id, state: .obsolete)
-                let hasOtherIntent = jobs.contains {
-                    $0.id != job.id && $0.kind == .download && $0.state.isActive
-                        && $0.subjectID == job.subjectID
-                        && $0.inputVersion == job.inputVersion
-                        && (try? Self.decoder.decode(
-                            DownloadJobPayload.self,
-                            from: $0.payload ?? Data()
-                        ).origin) != .autoDownload
-                }
-                if !hasOtherIntent {
-                    EpisodeDownloadService.shared.cancelAdmittedTransfer(
-                        jobID: job.id,
-                        episodeID: job.subjectID
-                    )
-                }
-                count += 1
-            }
-        }
-        return count
-    }
-
-    private func obsoleteStaleDownloadInputs() throws -> Int {
-        var count = 0
-        for job in try jobStore.allJobs()
-            where job.kind == .download && job.state.isActive {
-            guard let episode = appStore.episode(id: job.subjectID),
-                  DesiredStatePlanner.audioVersion(episode) != job.inputVersion else {
-                continue
-            }
-            try jobStore.updateActiveTerminal(id: job.id, state: .obsolete)
-            EpisodeDownloadService.shared.cancelAdmittedTransfer(
-                jobID: job.id,
-                episodeID: job.subjectID
-            )
-            count += 1
-        }
-        return count
     }
 
     /// Notification occurrences are authoritative history, but an undelivered
@@ -189,7 +127,7 @@ struct Reconciler {
                 return TranscriptIngestService.shared.resolvedAssemblyAIKey() != nil
             case .appleNative:
                 guard let episode = appStore.episode(id: job.subjectID) else { return false }
-                return EpisodeDownloadStore.shared.exists(for: episode)
+                return episode.downloadState.localFileURL != nil
             }
         case .metadataIndex, .transcriptIndex:
             return true
@@ -200,8 +138,7 @@ struct Reconciler {
             return LLMProviderCredentialResolver.hasAPIKey(
                 for: LLMModelReference(storedID: payload.modelID).provider
             )
-        case .feedDiscovery, .download, .autoDownload,
-             .newEpisodeNotification:
+        case .feedDiscovery, .download, .autoDownload, .newEpisodeNotification:
             return true
         }
     }

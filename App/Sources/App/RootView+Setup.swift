@@ -8,8 +8,7 @@ extension RootView {
         store.sharedLibrary?.attachPlayback(playbackState, store: store)
         playbackState.productSignals = store.productSignals
         playbackState.onEnsureDownloadEnqueued = { [store] id in
-            EpisodeDownloadService.shared.attach(appStore: store)
-            EpisodeDownloadService.shared.ensureDownloadEnqueued(episodeID: id)
+            store.sharedLibrary?.requestDownload(episodeID: id, origin: .playback)
         }
         // Cold-launch quick-action routing.
         if let delegate = UIApplication.shared.delegate as? AppDelegate,

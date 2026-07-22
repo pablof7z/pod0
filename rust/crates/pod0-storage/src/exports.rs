@@ -17,7 +17,9 @@ pub use crate::clip_import_model::{
 };
 pub use crate::clip_import_store::{commit_clip_cutover, read_clip_import};
 pub use crate::clip_store_model::ClipCollectionSnapshot;
+pub use crate::download_store_cutover_model::*;
 pub use crate::download_store_model::*;
+pub use crate::download_store_request::download_start_request_id;
 pub use crate::evidence_model::{
     EvidenceGenerationState, EvidenceGenerationSummary, EvidencePruneReceipt,
     EvidenceSelectionReceipt, EvidenceStageReceipt, EvidenceVerificationReceipt,

@@ -15,6 +15,11 @@ extension SharedLibraryClient {
                 Self.modelChapterWorkflows(facade: facade, query: query)
             }.value
         }
+        workflowClient.attachDownloadCore { query in
+            await Task.detached(priority: .userInitiated) {
+                Self.downloadWorkflows(facade: facade, query: query)
+            }.value
+        }
     }
 
     /// Announces a native execution opportunity only. Rust derives whether a

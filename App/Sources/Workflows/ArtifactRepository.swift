@@ -3,12 +3,14 @@ import CryptoKit
 import Foundation
 
 enum ArtifactKind: String, CaseIterable, Codable, Sendable {
+    /// Decode-only evidence imported by the one-shot download cutover.
     case downloadFile
     case semanticIndex
     case metadataIndex
     case scheduledOutput
     case notificationDelivery
     case feedDiscovery
+    /// Decode-only evidence imported by the one-shot download cutover.
     case autoDownloadDecision
 }
 
@@ -18,7 +20,7 @@ enum ArtifactIntegrity: String, Codable, Sendable {
     case corrupt
 }
 
-struct ArtifactRecord: Sendable, Equatable {
+struct ArtifactRecord: Codable, Sendable, Equatable {
     let kind: ArtifactKind
     let subjectID: UUID
     let inputVersion: String

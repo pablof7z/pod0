@@ -8,7 +8,7 @@ use pod0_domain::{
 
 use crate::{EvidenceChunkPolicy, RecallQuery, TranscriptEvidenceInput};
 
-pub const FACADE_CONTRACT_VERSION: u32 = 27;
+pub const FACADE_CONTRACT_VERSION: u32 = 29;
 pub const MAX_PROJECTION_ITEMS: u16 = 200;
 pub const MAX_OPERATION_ITEMS: usize = 32;
 pub const MAX_HOST_REQUEST_BATCH: u16 = 64;
@@ -86,6 +86,10 @@ pub enum ApplicationCommand {
     RequestEpisodeDownload {
         episode_id: EpisodeId,
         origin: crate::DownloadIntentOrigin,
+    },
+    ReportAutomaticDownloadCandidates {
+        podcast_id: PodcastId,
+        episode_ids: Vec<EpisodeId>,
     },
     CancelEpisodeDownload {
         episode_id: EpisodeId,

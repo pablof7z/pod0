@@ -3,7 +3,7 @@ use rusqlite::params;
 
 use crate::download_store_read::{environment, page, pending_requests, request, workflow};
 use crate::download_store_request::{
-    insert_attempt_and_start_request, start_request_id, u64_to_i64,
+    download_start_request_id, insert_attempt_and_start_request, u64_to_i64,
 };
 use crate::{
     DownloadEnvironmentRecord, DownloadHostRequestRecord, DownloadWorkflowPage,
@@ -36,6 +36,9 @@ impl LibraryStore {
         &self,
         max_items: u16,
     ) -> Result<Vec<DownloadHostRequestRecord>, StorageError> {
+        if !self.download_workflow_authority()?.is_authoritative() {
+            return Ok(Vec::new());
+        }
         self.read(|connection| pending_requests(connection, max_items))
     }
 
@@ -68,7 +71,7 @@ impl LibraryStore {
                 .ok_or(StorageError::DownloadWorkflowConflict)?;
             let attempt_id = download_attempt_identity(existing.intent_id, attempt)
                 .ok_or(StorageError::DownloadWorkflowConflict)?;
-            let request_id = start_request_id(attempt_id);
+            let request_id = download_start_request_id(attempt_id);
             transaction
                 .execute(
                     "UPDATE pod0_download_workflows SET stage='requested',\

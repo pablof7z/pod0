@@ -4,8 +4,7 @@ import SwiftUI
 
 /// Trailing toolbar menu shown by `EpisodeDetailView`: download / mark-played
 /// toggles. Routes every mutation through `AppStateStore` (state) plus
-/// `EpisodeDownloadService` (network) so the change persists immediately and
-/// a real `URLSession` task carries the bytes.
+/// the shared core so durable intent and policy have one owner.
 ///
 /// Stable file evidence comes from the episode; active and failed lifecycle
 /// comes from the authoritative workflow job.
@@ -54,8 +53,7 @@ struct EpisodeDetailActionsMenu: View {
         ) {
             Button("Cancel", role: .cancel) {}
             Button("Remove", role: .destructive) {
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.delete(episodeID: episode.id)
+                store.sharedLibrary?.removeDownload(episodeID: episode.id)
             }
         } message: {
             Text("The local file will be deleted. You can download it again later.")
@@ -80,22 +78,19 @@ struct EpisodeDetailActionsMenu: View {
             switch downloadJob?.state {
             case .pending, .leased, .running, .retryScheduled:
                 Button {
-                    EpisodeDownloadService.shared.attach(appStore: store)
-                    EpisodeDownloadService.shared.cancel(episodeID: episode.id)
+                    store.sharedLibrary?.cancelDownload(episodeID: episode.id)
                 } label: {
                     Label("Cancel download", systemImage: "xmark.circle")
                 }
             case .blocked, .failedPermanent:
                 Button {
-                    EpisodeDownloadService.shared.attach(appStore: store)
-                    EpisodeDownloadService.shared.download(episodeID: episode.id)
+                    store.sharedLibrary?.retryDownload(episodeID: episode.id)
                 } label: {
                     Label("Retry download", systemImage: "arrow.clockwise")
                 }
             default:
             Button {
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.download(episodeID: episode.id)
+                store.sharedLibrary?.requestDownload(episodeID: episode.id)
             } label: {
                 Label("Download", systemImage: "arrow.down.circle")
             }

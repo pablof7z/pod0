@@ -607,6 +607,14 @@ fileprivate struct FfiConverterString: FfiConverter {
 
 public protocol Pod0FacadeProtocol: AnyObject, Sendable {
 
+    func commitLegacyDownloadCutover(sourceGeneration: UInt64)  -> LegacyDownloadCutoverProjection
+
+    func discardStagedLegacyDownloadCutover(sourceGeneration: UInt64, candidates: [LegacyDownloadCutoverCandidate])  -> LegacyDownloadCutoverProjection
+
+    func downloadCutover()  -> LegacyDownloadCutoverProjection
+
+    func stageLegacyDownloadCutover(sourceGeneration: UInt64, candidates: [LegacyDownloadCutoverCandidate])  -> LegacyDownloadCutoverProjection
+
     func commitLegacyModelChapterCutover(sourceGeneration: UInt64)  -> LegacyModelChapterCutoverProjection
 
     func discardStagedLegacyModelChapterCutover(sourceGeneration: UInt64)  -> LegacyModelChapterCutoverProjection
@@ -705,6 +713,47 @@ public static func `open`(storePath: String)throws  -> Pod0Facade  {
 }
 
 
+
+open func commitLegacyDownloadCutover(sourceGeneration: UInt64) -> LegacyDownloadCutoverProjection  {
+    return try!  FfiConverterTypeLegacyDownloadCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_download_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt64.lower(sourceGeneration),uniffiCallStatus
+    )
+})
+}
+
+open func discardStagedLegacyDownloadCutover(sourceGeneration: UInt64, candidates: [LegacyDownloadCutoverCandidate]) -> LegacyDownloadCutoverProjection  {
+    return try!  FfiConverterTypeLegacyDownloadCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_download_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt64.lower(sourceGeneration),
+        FfiConverterSequenceTypeLegacyDownloadCutoverCandidate.lower(candidates),uniffiCallStatus
+    )
+})
+}
+
+open func downloadCutover() -> LegacyDownloadCutoverProjection  {
+    return try!  FfiConverterTypeLegacyDownloadCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_download_cutover(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+
+open func stageLegacyDownloadCutover(sourceGeneration: UInt64, candidates: [LegacyDownloadCutoverCandidate]) -> LegacyDownloadCutoverProjection  {
+    return try!  FfiConverterTypeLegacyDownloadCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_download_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt64.lower(sourceGeneration),
+        FfiConverterSequenceTypeLegacyDownloadCutoverCandidate.lower(candidates),uniffiCallStatus
+    )
+})
+}
 
 open func commitLegacyModelChapterCutover(sourceGeneration: UInt64) -> LegacyModelChapterCutoverProjection  {
     return try!  FfiConverterTypeLegacyModelChapterCutoverProjection_lift(try! rustCall() {
@@ -1836,6 +1885,188 @@ public func FfiConverterTypeLegacyClipImportVerification_lift(_ buf: RustBuffer)
 #endif
 public func FfiConverterTypeLegacyClipImportVerification_lower(_ value: LegacyClipImportVerification) -> RustBuffer {
     return FfiConverterTypeLegacyClipImportVerification.lower(value)
+}
+
+
+public struct LegacyDownloadCutoverCandidate: Equatable, Hashable {
+    public let episodeId: EpisodeId
+    public let origin: DownloadIntentOrigin
+    public let disposition: LegacyDownloadCutoverDisposition
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(episodeId: EpisodeId, origin: DownloadIntentOrigin, disposition: LegacyDownloadCutoverDisposition) {
+        self.episodeId = episodeId
+        self.origin = origin
+        self.disposition = disposition
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyDownloadCutoverCandidate: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyDownloadCutoverCandidate: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyDownloadCutoverCandidate {
+        return
+            try LegacyDownloadCutoverCandidate(
+                episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
+                origin: FfiConverterTypeDownloadIntentOrigin.read(from: &buf),
+                disposition: FfiConverterTypeLegacyDownloadCutoverDisposition.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyDownloadCutoverCandidate, into buf: inout [UInt8]) {
+        FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
+        FfiConverterTypeDownloadIntentOrigin.write(value.origin, into: &buf)
+        FfiConverterTypeLegacyDownloadCutoverDisposition.write(value.disposition, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyDownloadCutoverCandidate_lift(_ buf: RustBuffer) throws -> LegacyDownloadCutoverCandidate {
+    return try FfiConverterTypeLegacyDownloadCutoverCandidate.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyDownloadCutoverCandidate_lower(_ value: LegacyDownloadCutoverCandidate) -> RustBuffer {
+    return FfiConverterTypeLegacyDownloadCutoverCandidate.lower(value)
+}
+
+
+public struct LegacyDownloadCutoverFailure: Equatable, Hashable {
+    public let code: LegacyDownloadCutoverFailureCode
+    public let diagnosticCode: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(code: LegacyDownloadCutoverFailureCode, diagnosticCode: String) {
+        self.code = code
+        self.diagnosticCode = diagnosticCode
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyDownloadCutoverFailure: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyDownloadCutoverFailure: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyDownloadCutoverFailure {
+        return
+            try LegacyDownloadCutoverFailure(
+                code: FfiConverterTypeLegacyDownloadCutoverFailureCode.read(from: &buf),
+                diagnosticCode: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyDownloadCutoverFailure, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyDownloadCutoverFailureCode.write(value.code, into: &buf)
+        FfiConverterString.write(value.diagnosticCode, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyDownloadCutoverFailure_lift(_ buf: RustBuffer) throws -> LegacyDownloadCutoverFailure {
+    return try FfiConverterTypeLegacyDownloadCutoverFailure.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyDownloadCutoverFailure_lower(_ value: LegacyDownloadCutoverFailure) -> RustBuffer {
+    return FfiConverterTypeLegacyDownloadCutoverFailure.lower(value)
+}
+
+
+public struct LegacyDownloadCutoverProjection: Equatable, Hashable {
+    public let stage: LegacyDownloadCutoverStage
+    public let sourceGeneration: UInt64?
+    public let adoptedAvailable: UInt32
+    public let scheduledRestart: UInt32
+    public let repairedInvalid: UInt32
+    public let failure: LegacyDownloadCutoverFailure?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(stage: LegacyDownloadCutoverStage, sourceGeneration: UInt64?, adoptedAvailable: UInt32, scheduledRestart: UInt32, repairedInvalid: UInt32, failure: LegacyDownloadCutoverFailure?) {
+        self.stage = stage
+        self.sourceGeneration = sourceGeneration
+        self.adoptedAvailable = adoptedAvailable
+        self.scheduledRestart = scheduledRestart
+        self.repairedInvalid = repairedInvalid
+        self.failure = failure
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyDownloadCutoverProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyDownloadCutoverProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyDownloadCutoverProjection {
+        return
+            try LegacyDownloadCutoverProjection(
+                stage: FfiConverterTypeLegacyDownloadCutoverStage.read(from: &buf),
+                sourceGeneration: FfiConverterOptionUInt64.read(from: &buf),
+                adoptedAvailable: FfiConverterUInt32.read(from: &buf),
+                scheduledRestart: FfiConverterUInt32.read(from: &buf),
+                repairedInvalid: FfiConverterUInt32.read(from: &buf),
+                failure: FfiConverterOptionTypeLegacyDownloadCutoverFailure.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyDownloadCutoverProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyDownloadCutoverStage.write(value.stage, into: &buf)
+        FfiConverterOptionUInt64.write(value.sourceGeneration, into: &buf)
+        FfiConverterUInt32.write(value.adoptedAvailable, into: &buf)
+        FfiConverterUInt32.write(value.scheduledRestart, into: &buf)
+        FfiConverterUInt32.write(value.repairedInvalid, into: &buf)
+        FfiConverterOptionTypeLegacyDownloadCutoverFailure.write(value.failure, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyDownloadCutoverProjection_lift(_ buf: RustBuffer) throws -> LegacyDownloadCutoverProjection {
+    return try FfiConverterTypeLegacyDownloadCutoverProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyDownloadCutoverProjection_lower(_ value: LegacyDownloadCutoverProjection) -> RustBuffer {
+    return FfiConverterTypeLegacyDownloadCutoverProjection.lower(value)
 }
 
 
@@ -3506,6 +3737,232 @@ public func FfiConverterTypeLegacyClipMigrationError_lower(_ value: LegacyClipMi
 }
 
 
+
+public enum LegacyDownloadCutoverDisposition: Equatable, Hashable {
+
+    case available(sourcePath: String, byteCount: UInt64
+    )
+    case restart(resumeAvailable: Bool
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyDownloadCutoverDisposition: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyDownloadCutoverDisposition: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyDownloadCutoverDisposition
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyDownloadCutoverDisposition {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .available(sourcePath: try FfiConverterString.read(from: &buf), byteCount: try FfiConverterUInt64.read(from: &buf)
+        )
+
+        case 2: return .restart(resumeAvailable: try FfiConverterBool.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyDownloadCutoverDisposition, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case let .available(sourcePath,byteCount):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(sourcePath, into: &buf)
+            FfiConverterUInt64.write(byteCount, into: &buf)
+
+
+        case let .restart(resumeAvailable):
+            writeInt(&buf, Int32(2))
+            FfiConverterBool.write(resumeAvailable, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyDownloadCutoverDisposition_lift(_ buf: RustBuffer) throws -> LegacyDownloadCutoverDisposition {
+    return try FfiConverterTypeLegacyDownloadCutoverDisposition.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyDownloadCutoverDisposition_lower(_ value: LegacyDownloadCutoverDisposition) -> RustBuffer {
+    return FfiConverterTypeLegacyDownloadCutoverDisposition.lower(value)
+}
+
+
+
+
+public enum LegacyDownloadCutoverFailureCode: Equatable, Hashable {
+
+    case invalidSource
+    case conflictingCoreState
+    case storageUnavailable
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyDownloadCutoverFailureCode: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyDownloadCutoverFailureCode: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyDownloadCutoverFailureCode
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyDownloadCutoverFailureCode {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .invalidSource
+
+        case 2: return .conflictingCoreState
+
+        case 3: return .storageUnavailable
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyDownloadCutoverFailureCode, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .invalidSource:
+            writeInt(&buf, Int32(1))
+
+
+        case .conflictingCoreState:
+            writeInt(&buf, Int32(2))
+
+
+        case .storageUnavailable:
+            writeInt(&buf, Int32(3))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyDownloadCutoverFailureCode_lift(_ buf: RustBuffer) throws -> LegacyDownloadCutoverFailureCode {
+    return try FfiConverterTypeLegacyDownloadCutoverFailureCode.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyDownloadCutoverFailureCode_lower(_ value: LegacyDownloadCutoverFailureCode) -> RustBuffer {
+    return FfiConverterTypeLegacyDownloadCutoverFailureCode.lower(value)
+}
+
+
+
+
+public enum LegacyDownloadCutoverStage: Equatable, Hashable {
+
+    case notStarted
+    case staged
+    case authoritative
+    case blocked
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyDownloadCutoverStage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyDownloadCutoverStage: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyDownloadCutoverStage
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyDownloadCutoverStage {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .notStarted
+
+        case 2: return .staged
+
+        case 3: return .authoritative
+
+        case 4: return .blocked
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyDownloadCutoverStage, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .notStarted:
+            writeInt(&buf, Int32(1))
+
+
+        case .staged:
+            writeInt(&buf, Int32(2))
+
+
+        case .authoritative:
+            writeInt(&buf, Int32(3))
+
+
+        case .blocked:
+            writeInt(&buf, Int32(4))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyDownloadCutoverStage_lift(_ buf: RustBuffer) throws -> LegacyDownloadCutoverStage {
+    return try FfiConverterTypeLegacyDownloadCutoverStage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyDownloadCutoverStage_lower(_ value: LegacyDownloadCutoverStage) -> RustBuffer {
+    return FfiConverterTypeLegacyDownloadCutoverStage.lower(value)
+}
+
+
+
 public
 enum LegacyListeningMigrationError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
@@ -4499,6 +4956,30 @@ fileprivate struct FfiConverterOptionTypeLegacyChapterRollbackExportReport: FfiC
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeLegacyDownloadCutoverFailure: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyDownloadCutoverFailure?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeLegacyDownloadCutoverFailure.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeLegacyDownloadCutoverFailure.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeLegacyModelChapterCutoverFailure: FfiConverterRustBuffer {
     typealias SwiftType = LegacyModelChapterCutoverFailure?
 
@@ -4664,6 +5145,31 @@ fileprivate struct FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeNoteRecord.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeLegacyDownloadCutoverCandidate: FfiConverterRustBuffer {
+    typealias SwiftType = [LegacyDownloadCutoverCandidate]
+
+    public static func write(_ value: [LegacyDownloadCutoverCandidate], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeLegacyDownloadCutoverCandidate.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [LegacyDownloadCutoverCandidate] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [LegacyDownloadCutoverCandidate]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeLegacyDownloadCutoverCandidate.read(from: &buf))
         }
         return seq
     }
@@ -5230,6 +5736,18 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_projectionsubscriber_receive() != 23861) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_download_cutover() != 39705) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_download_cutover() != 44304) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_download_cutover() != 9691) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_download_cutover() != 2411) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_model_chapter_cutover() != 7355) {

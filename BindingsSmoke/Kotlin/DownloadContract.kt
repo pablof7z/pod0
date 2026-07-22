@@ -12,6 +12,11 @@ fun qualifyDownloadContract() {
     )
     check(requestCommand.episodeId == episodeId)
     check(requestCommand.origin == DownloadIntentOrigin.User)
+    val automaticCandidates = ApplicationCommand.ReportAutomaticDownloadCandidates(
+        PodcastId(5UL, 6UL),
+        listOf(episodeId),
+    )
+    check(automaticCandidates.episodeIds == listOf(episodeId))
 
     val cancelCommand = ApplicationCommand.CancelEpisodeDownload(
         episodeId,
@@ -98,7 +103,7 @@ fun qualifyDownloadContract() {
                 20u.toUShort(),
             ),
         )
-        check(projection.contractVersion == 27u)
+        check(projection.contractVersion == 29u)
         val projected = projection.projection
         check(projected is Projection.Downloads)
         val downloads = projected.value

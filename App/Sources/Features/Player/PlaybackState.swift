@@ -81,7 +81,7 @@ final class PlaybackState {
     /// pipeline without blocking playback — the audio engine has already
     /// started streaming by the time this closure fires.
     ///
-    /// Wired by `RootView` to `EpisodeDownloadService.ensureDownloadEnqueued`.
+    /// Wired by `RootView` to the shared-core download command boundary.
     /// The closure keeps `PlaybackState` decoupled from the download service
     /// while still funnelling every playback entry point
     /// (`play_episode`, Continue Listening, Home featured, deep links)

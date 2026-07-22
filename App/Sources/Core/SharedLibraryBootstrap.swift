@@ -13,6 +13,7 @@ enum SharedLibraryBootstrap {
     @MainActor
     static func run(
         persistence: Persistence,
+        legacyState: AppState,
         feedHost: any CoreFeedHosting = CoreFeedHost(),
         chapterCompilationModel: String = Settings().chapterCompilationModel,
         legacyRecallConfiguration: LegacyRecallConfigurationSeed? = nil
@@ -20,6 +21,7 @@ enum SharedLibraryBootstrap {
         persistence.withSharedArtifactMigrationLock {
             runLocked(
                 persistence: persistence,
+                legacyState: legacyState,
                 feedHost: feedHost,
                 chapterCompilationModel: chapterCompilationModel,
                 legacyRecallConfiguration: legacyRecallConfiguration
@@ -30,6 +32,7 @@ enum SharedLibraryBootstrap {
     @MainActor
     private static func runLocked(
         persistence: Persistence,
+        legacyState: AppState,
         feedHost: any CoreFeedHosting,
         chapterCompilationModel: String,
         legacyRecallConfiguration: LegacyRecallConfigurationSeed?
@@ -178,6 +181,16 @@ enum SharedLibraryBootstrap {
             stage = .recallConfiguration
             try importLegacyRecallConfiguration(legacyRecallConfiguration, into: facade)
             let legacyJobStore = JobStore(fileURL: persistence.episodeStore.fileURL)
+            stage = .downloadWorkflowCutover
+            try LegacyDownloadWorkflowCutover.run(
+                facade: facade,
+                state: legacyState,
+                jobStore: legacyJobStore,
+                artifactRepository: ArtifactRepository(
+                    fileURL: persistence.episodeStore.fileURL
+                ),
+                backupURL: persistence.legacyDownloadWorkflowBackupURL
+            )
             stage = .modelChapterWorkflowCutover
             try LegacyModelChapterWorkflowCutover.run(
                 facade: facade,
@@ -201,6 +214,7 @@ enum SharedLibraryBootstrap {
             CoreDownloadHost.shared.configure(coreStoreURL: target)
             let client = SharedLibraryClient(
                 facade: facade,
+                coreStoreURL: target,
                 feedHost: feedHost,
                 downloadHost: CoreDownloadHost.shared,
                 observationOutbox: observationOutbox

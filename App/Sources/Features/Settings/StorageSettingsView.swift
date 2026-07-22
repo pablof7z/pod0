@@ -221,45 +221,20 @@ struct StorageSettingsView: View {
 
     private func deleteShow(_ row: ShowRow) {
         for episodeID in row.episodeIDs {
-            EpisodeDownloadService.shared.delete(episodeID: episodeID)
+            store.sharedLibrary?.removeDownload(episodeID: episodeID)
         }
         Task { await refresh() }
     }
 
-    /// Re-walks the on-disk artifacts and removes only those whose
-    /// `episodeID` no longer resolves to a live `Episode` in the store.
-    /// Tracked downloads are untouched. Snapshot URLs aren't cached on
-    /// `Snapshot` (only the count + total bytes) — re-enumerating is
-    /// cheap and avoids a stale-URL race if a tracked episode was just
-    /// added.
     private func deleteOrphans() {
-        let store = EpisodeDownloadStore.shared
-        for file in store.enumerateOnDisk() {
-            let isOrphan: Bool
-            if let id = file.episodeID {
-                isOrphan = self.store.episode(id: id) == nil
-            } else {
-                isOrphan = true
-            }
-            if isOrphan {
-                try? FileManager.default.removeItem(at: file.url)
-            }
-        }
+        // Core artifacts are never removed by directory walking. A future
+        // typed recovery command may expose safe orphan cleanup.
         Task { await refresh() }
     }
 
     private func deleteAll() {
-        // Walk every artifact (including orphans) and remove via the
-        // service for tracked episodes; for orphans, hit the file
-        // directly so we don't leak. Service path also clears
-        // `downloadState` on the live episode.
-        let store = EpisodeDownloadStore.shared
-        for file in store.enumerateOnDisk() {
-            if let id = file.episodeID, self.store.episode(id: id) != nil {
-                EpisodeDownloadService.shared.delete(episodeID: id)
-            } else {
-                try? FileManager.default.removeItem(at: file.url)
-            }
+        for episode in store.state.episodes where episode.downloadState.isAvailable {
+            store.sharedLibrary?.removeDownload(episodeID: episode.id)
         }
         Task { await refresh() }
     }
@@ -271,29 +246,20 @@ struct StorageSettingsView: View {
     /// orphan tally. Static so it's straightforward to drive from a
     /// detached `Task` without holding `self`.
     static func compute(store: AppStateStore) async -> Snapshot {
-        let files = EpisodeDownloadStore.shared.enumerateOnDisk()
-        guard !files.isEmpty else { return .empty }
-
-        // Pre-build lookup tables.
-        let episodes = Dictionary(uniqueKeysWithValues: store.state.episodes.map { ($0.id, $0) })
+        let episodes = store.state.episodes
         let podcasts = Dictionary(uniqueKeysWithValues: store.state.podcasts.map { ($0.id, $0) })
 
         var byShow: [UUID: (title: String, bytes: Int64, episodes: Set<UUID>)] = [:]
-        var orphanBytes: Int64 = 0
-        var orphanFiles: Set<URL> = []
+        let orphanBytes: Int64 = 0
         var totalBytes: Int64 = 0
 
-        for file in files {
-            totalBytes += file.bytes
-            guard let episodeID = file.episodeID, let episode = episodes[episodeID] else {
-                orphanBytes += file.bytes
-                orphanFiles.insert(file.url)
-                continue
-            }
+        for episode in episodes {
+            guard let bytes = episode.downloadState.byteCount else { continue }
+            totalBytes += bytes
             let title = podcasts[episode.podcastID]?.title ?? "Unknown show"
             var entry = byShow[episode.podcastID] ?? (title, 0, [])
-            entry.bytes += file.bytes
-            entry.episodes.insert(episodeID)
+            entry.bytes += bytes
+            entry.episodes.insert(episode.id)
             // Title may have arrived stable from the first file; refresh anyway
             // in case the first file we hit was an orphan-titled fallback.
             entry.title = title
@@ -316,7 +282,7 @@ struct StorageSettingsView: View {
             totalBytes: totalBytes,
             shows: shows,
             orphanBytes: orphanBytes,
-            orphanCount: orphanFiles.count
+            orphanCount: 0
         )
     }
 

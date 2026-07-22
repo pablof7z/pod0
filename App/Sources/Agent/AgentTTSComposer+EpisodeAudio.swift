@@ -15,15 +15,15 @@ extension AgentTTSComposer {
 
         let alreadyReady: URL? = await MainActor.run {
             guard let store, let episode = store.episode(id: uuid) else { return nil }
-            if case .downloaded = episode.downloadState {
-                let localURL = EpisodeDownloadStore.shared.localFileURL(for: episode)
-                if FileManager.default.fileExists(atPath: localURL.path) {
-                    return localURL
-                }
+            if let localURL = episode.downloadState.localFileURL,
+               FileManager.default.fileExists(atPath: localURL.path) {
+                return localURL
             }
-            let service = EpisodeDownloadService.shared
-            service.attach(appStore: store)
-            service.download(episodeID: uuid)
+            if episode.enclosureURL.isFileURL,
+               FileManager.default.fileExists(atPath: episode.enclosureURL.path) {
+                return episode.enclosureURL
+            }
+            store.sharedLibrary?.requestDownload(episodeID: uuid)
             return nil
         }
         if let alreadyReady { return alreadyReady }
@@ -36,25 +36,30 @@ extension AgentTTSComposer {
         Self.logger.info(
             "AgentTTSComposer: awaiting download of snippet episode \(episodeID, privacy: .public)"
         )
-        let observerID = UUID()
         do {
-            return try await withThrowingTaskGroup(of: URL.self) { group in
-                group.addTask {
-                    try await EpisodeDownloadService.shared.observeDownloadCompletion(
-                        episodeID: uuid,
-                        observerID: observerID
+            let deadline = ContinuousClock.now.advanced(by: .seconds(timeout))
+            while ContinuousClock.now < deadline {
+                try Task.checkCancellation()
+                if let result = await MainActor.run(body: { () -> URL? in
+                    guard let episode = store?.episode(id: uuid),
+                          let url = episode.downloadState.localFileURL,
+                          FileManager.default.fileExists(atPath: url.path)
+                    else { return nil }
+                    return url
+                }) {
+                    return result
+                }
+                if await MainActor.run(body: {
+                    store?.sharedLibrary?.downloadWorkflow(episodeID: uuid)?.stage == .failed
+                }) {
+                    throw AgentTTSError.snippetDownloadFailed(
+                        episodeID: episodeID,
+                        message: "Shared download workflow failed"
                     )
                 }
-                group.addTask {
-                    try await Task.sleep(for: .seconds(timeout))
-                    throw AgentTTSError.snippetDownloadTimeout(episodeID: episodeID)
-                }
-                defer { group.cancelAll() }
-                guard let result = try await group.next() else {
-                    throw AgentTTSError.snippetDownloadTimeout(episodeID: episodeID)
-                }
-                return result
+                try await Task.sleep(for: .milliseconds(250))
             }
+            throw AgentTTSError.snippetDownloadTimeout(episodeID: episodeID)
         } catch let error as AgentTTSError {
             throw error
         } catch is CancellationError {

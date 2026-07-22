@@ -127,23 +127,6 @@ final class AppStateStorePerformanceTests: XCTestCase {
         XCTAssertEqual(store.unplayedCount(forPodcast: sub.id), 2)
     }
 
-    func testSetDownloadStateUpdatesHasDownloadedSet() throws {
-        let sub = addSubscription(title: "Download")
-        let ep = makeEpisode(podcastID: sub.id, guid: "d1")
-        store.installEpisodeFixtures([ep], forPodcast: sub.id)
-        XCTAssertFalse(store.hasDownloadedEpisode(forPodcast: sub.id))
-
-        let fileURL = try installDownloadEvidence(for: ep)
-        store.setEpisodeDownloadState(
-            ep.id,
-            state: .downloaded(localFileURL: fileURL, byteCount: 100)
-        )
-        XCTAssertTrue(store.hasDownloadedEpisode(forPodcast: sub.id))
-
-        store.setEpisodeDownloadState(ep.id, state: .notDownloaded)
-        XCTAssertFalse(store.hasDownloadedEpisode(forPodcast: sub.id))
-    }
-
     func testCommittedTranscriptUpdatesHasTranscribedSet() async throws {
         let sub = addSubscription(title: "Transcript")
         let ep = try await store.upsertExternalEpisodeAndWait(

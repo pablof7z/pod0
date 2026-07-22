@@ -5,6 +5,61 @@ enum WorkflowProjectionAuthority: Sendable, Equatable {
     case swiftJobStore
     case sharedRustPublisherChapters
     case sharedRustModelChapters
+    case sharedRustDownloads
+}
+
+extension WorkflowJobProjection {
+    init(downloadWorkflow workflow: DownloadWorkflowProjection) {
+        guard let episodeID = workflow.episodeId.uuid else {
+            preconditionFailure("Rust download workflow returned an invalid episode ID")
+        }
+        id = OccurrenceIdentity.uuid(
+            for: "rust-download:\(workflow.intentId.stableString)"
+        )
+        kind = .download
+        subjectID = episodeID
+        state = switch workflow.stage {
+        case .waitingForEnvironment, .requested: .pending
+        case .hostAccepted, .transferring, .staged, .removing: .running
+        case .retryScheduled: .retryScheduled
+        case .cancelled: .cancelled
+        case .failed, .unsupported: .failedPermanent
+        case .succeeded: .succeeded
+        }
+        resourceClass = .download
+        attempt = Int(workflow.attempt)
+        maxAttempts = max(8, Int(workflow.attempt))
+        notBefore = workflow.notBefore?.date ?? workflow.updatedAt.date
+        externalProvider = "native-download-host"
+        externalOperationState = String(describing: workflow.stage)
+        outputVersion = workflow.stage == .succeeded ? workflow.inputVersion : nil
+        lastErrorClass = workflow.failure.map { Self.downloadErrorClass($0.code) }
+        lastErrorMessage = workflow.failure?.safeDetail
+        createdAt = workflow.updatedAt.date
+        updatedAt = workflow.updatedAt.date
+        var actions: Set<WorkflowJobAction> = []
+        if workflow.allowedActions.canRetry { actions.insert(.retry) }
+        if workflow.allowedActions.canCancel { actions.insert(.cancel) }
+        allowedActions = actions
+        authority = .sharedRustDownloads
+        coreWorkflowRevision = workflow.workflowRevision.value
+    }
+
+    private static func downloadErrorClass(
+        _ code: DownloadWorkflowFailureCode
+    ) -> JobErrorClass {
+        switch code {
+        case .offline: .offline
+        case .insufficientStorage, .wifiRequired, .storageUnavailable: .missingDependency
+        case .missingEpisode, .invalidEnclosure, .invalidArtifact: .invalidInput
+        case .timedOut, .transport, .hostRejected: .network
+        case .permissionDenied: .missingCredential
+        case .staleInput: .transient
+        case .cancelled: .cancelled
+        case .retryExhausted: .unexpected
+        case .unsupported: .unsupportedFormat
+        }
+    }
 }
 
 /// Read-only semantic kinds rendered by native workflow surfaces. Chapter

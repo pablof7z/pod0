@@ -120,6 +120,43 @@ final class AppStateMutationBoundaryTests: XCTestCase {
         XCTAssertFalse(clipsAPI.contains("mutateState"))
     }
 
+    func testRustOwnedDownloadsCannotReintroduceLegacySwiftAuthority() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sources = repositoryRoot.appendingPathComponent("App/Sources")
+        let enumerator = try XCTUnwrap(FileManager.default.enumerator(
+            at: sources,
+            includingPropertiesForKeys: nil
+        ))
+        let prohibitedDeclarations = [
+            "final class EpisodeDownloadService",
+            "struct EpisodeDownloadStore",
+            "func setEpisodeDownloadState",
+            "func applyDownloadEvent",
+            "struct DownloadJobExecutor",
+            "struct AutoDownloadJobExecutor",
+            "struct DownloadAdmissionPolicy",
+            "struct DownloadReconciliationPlanner",
+        ]
+        var violations: [String] = []
+        for case let file as URL in enumerator where file.pathExtension == "swift" {
+            let contents = try String(contentsOf: file, encoding: .utf8)
+            if prohibitedDeclarations.contains(where: contents.contains) {
+                violations.append(file.path.replacingOccurrences(
+                    of: repositoryRoot.path + "/",
+                    with: ""
+                ))
+            }
+        }
+        XCTAssertEqual(
+            violations,
+            [],
+            "Rust-owned downloads cannot regain a Swift writer: \(violations)"
+        )
+    }
+
     private static func containsCollectionMutation(
         _ contents: String,
         property: String

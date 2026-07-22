@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 import Pod0Core
 import XCTest
@@ -10,6 +11,7 @@ final class CoreDownloadVerticalSliceTests: XCTestCase {
         defer { SharedTranscriptRecoveryTestSupport.dispose(fixture) }
         guard case .ready(let bootstrap) = SharedLibraryBootstrap.run(
             persistence: fixture.persistence,
+            legacyState: try fixture.persistence.load(),
             feedHost: DownloadVerticalFeedHost()
         ) else { return XCTFail("Expected shared core bootstrap") }
         let facade = bootstrap.facade
@@ -18,8 +20,8 @@ final class CoreDownloadVerticalSliceTests: XCTestCase {
         let stagedURL = fixture.fileURL.deletingLastPathComponent().appendingPathComponent(
             "native-download-\(UUID().uuidString).media"
         )
-        let bytes = Data("end-to-end-native-download".utf8)
-        try bytes.write(to: stagedURL)
+        try SilentAudioWriter.writeSilence(durationSeconds: 0.1, to: stagedURL)
+        let bytes = try Data(contentsOf: stagedURL)
         defer { try? FileManager.default.removeItem(at: stagedURL) }
         let host = ImmediateDownloadHost(stagedURL: stagedURL, byteCount: UInt64(bytes.count))
         let outbox = try NativeHostObservationOutbox(
@@ -31,8 +33,21 @@ final class CoreDownloadVerticalSliceTests: XCTestCase {
             playbackHost: DownloadVerticalPlaybackHost(),
             observationOutbox: outbox
         )
-        dispatcher.executePendingRequests(from: facade)
-        try await waitUntil { dispatcher.observationRecoveryReady }
+        dispatcher.activateExecution()
+        let completed = expectation(description: "Rust persisted native download evidence")
+        let subscriber = SuccessfulDownloadSubscriber(
+            episodeID: fixture.episodeID,
+            completed: completed
+        )
+        let subscription = facade.subscribe(
+            request: ProjectionRequest(
+                scope: .downloads(episodeId: EpisodeId(uuid: fixture.episodeID)),
+                offset: 0,
+                maxItems: 20
+            ),
+            subscriber: subscriber
+        )
+        defer { facade.unsubscribe(subscriptionId: subscription) }
 
         facade.dispatch(command: command(
             1,
@@ -49,13 +64,17 @@ final class CoreDownloadVerticalSliceTests: XCTestCase {
             )
         ))
         dispatcher.executePendingRequests(from: facade)
-        try await waitUntil {
-            self.workflow(facade, episodeID: fixture.episodeID)?.stage == .succeeded
-        }
+        await fulfillment(of: [completed], timeout: 3)
 
         XCTAssertEqual(host.executeCount, 1)
-        let pendingOutboxCount = await outbox.pendingCount()
-        XCTAssertEqual(pendingOutboxCount, 0)
+        let pendingObservationCount = await outbox.pendingCount()
+        XCTAssertEqual(pendingObservationCount, 0)
+        let completedWorkflow = workflow(facade, episodeID: fixture.episodeID)
+        XCTAssertEqual(
+            completedWorkflow?.stage,
+            .succeeded,
+            "Unexpected workflow after native evidence: \(String(describing: completedWorkflow))"
+        )
         guard case let .episodeDetail(detail) = facade.snapshot(request: ProjectionRequest(
             scope: .episodeDetail(episodeId: EpisodeId(uuid: fixture.episodeID)),
             offset: 0,
@@ -85,6 +104,46 @@ final class CoreDownloadVerticalSliceTests: XCTestCase {
             )
         ).projection else { return XCTFail("Expected reopened episode detail") }
         XCTAssertEqual(reopenedDetail.episode?.download, detail.episode?.download)
+        let mappingClient = SharedLibraryClient(
+            facade: reopened,
+            coreStoreURL: fixture.persistence.sharedCoreStoreURL,
+            feedHost: DownloadVerticalFeedHost()
+        )
+        let mappedState = mappingClient.downloadState(
+            for: try XCTUnwrap(reopenedDetail.episode?.download)
+        )
+        XCTAssertEqual(
+            mappedState,
+            .downloaded(localFileURL: artifactURL, byteCount: Int64(bytes.count))
+        )
+        let offlineEpisode = Episode(
+            id: fixture.episodeID,
+            podcastID: fixture.podcastID,
+            guid: "offline-download-smoke",
+            title: "Offline Download Smoke",
+            pubDate: Date(timeIntervalSince1970: 1_700_000_000),
+            enclosureURL: URL(string: "https://offline.example/episode.m4a")!,
+            downloadState: mappedState
+        )
+        let engine = AudioEngine()
+        let playbackHost = CorePlaybackHost(engine: engine) { id in
+            id == offlineEpisode.id ? offlineEpisode : nil
+        }
+        let episodeID = EpisodeId(uuid: offlineEpisode.id)
+        guard case .playbackObserved = playbackHost.execute(.loadMedia(
+            episodeId: episodeID,
+            audioUrl: offlineEpisode.enclosureURL.absoluteString,
+            startPositionMilliseconds: 0
+        )) else { return XCTFail("Expected native host to load verified local audio") }
+        let loadedAsset = try XCTUnwrap(engine.player.currentItem?.asset as? AVURLAsset)
+        XCTAssertEqual(loadedAsset.url.standardizedFileURL, artifactURL.standardizedFileURL)
+        guard case .playbackObserved(let playObservation) = playbackHost.execute(.play(
+            episodeId: episodeID,
+            transitionCue: .immediate
+        )) else { return XCTFail("Expected native host to play verified local audio") }
+        XCTAssertEqual(playObservation.state, .playing)
+        _ = playbackHost.execute(.pause(episodeId: episodeID))
+        mappingClient.shutdown()
     }
 
     private func command(_ low: UInt64, _ command: ApplicationCommand) -> CommandEnvelope {
@@ -105,12 +164,29 @@ final class CoreDownloadVerticalSliceTests: XCTestCase {
         return projection.workflows.first
     }
 
-    private func waitUntil(_ condition: @escaping @MainActor () -> Bool) async throws {
-        for _ in 0 ..< 200 {
-            if condition() { return }
-            try await Task.sleep(for: .milliseconds(10))
+}
+
+private final class SuccessfulDownloadSubscriber: ProjectionSubscriber, @unchecked Sendable {
+    private let episodeID: UUID
+    private let completed: XCTestExpectation
+    private let lock = NSLock()
+    private var fulfilled = false
+
+    init(episodeID: UUID, completed: XCTestExpectation) {
+        self.episodeID = episodeID
+        self.completed = completed
+    }
+
+    func receive(projection: ProjectionEnvelope) {
+        guard case .downloads(let value) = projection.projection,
+              value.workflows.contains(where: {
+                  $0.episodeId.uuid == episodeID && $0.stage == .succeeded
+              }) else { return }
+        lock.withLock {
+            guard !fulfilled else { return }
+            fulfilled = true
+            completed.fulfill()
         }
-        XCTFail("Condition did not become true")
     }
 }
 

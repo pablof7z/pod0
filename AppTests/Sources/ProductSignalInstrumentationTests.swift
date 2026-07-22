@@ -60,6 +60,10 @@ final class ProductSignalInstrumentationTests: XCTestCase {
         let fixture = makePlaybackFixture(position: 0, sink: sink)
         defer { fixture.persistence.reset() }
 
+        await waitUntil(
+            "Rust restore loads the native playback host",
+            condition: { fixture.engine.episode != nil }
+        )
         fixture.playback.play()
 
         let captured = await waitForCount(1, sink: sink)
@@ -207,10 +211,52 @@ final class ProductSignalInstrumentationTests: XCTestCase {
         _ count: Int,
         sink: RecordingProductSignalSink
     ) async -> [ProductSignalObservation] {
-        let arrived = await ProductSignalTestSupport.eventually {
-            await sink.captured().count >= count
+        let captured = await sink.waitForCount(count)
+        XCTAssertGreaterThanOrEqual(
+            captured.count,
+            count,
+            "Timed out waiting for product signals"
+        )
+        return captured
+    }
+
+    private func waitUntil(
+        _ description: String,
+        condition: @escaping @MainActor () -> Bool
+    ) async {
+        let completed = expectation(description: description)
+        let waiter = ProductSignalObservableWaiter(condition: condition) {
+            completed.fulfill()
         }
-        XCTAssertTrue(arrived, "Timed out waiting for product signals")
-        return await sink.captured()
+        waiter.start()
+        await fulfillment(of: [completed], timeout: 5)
+        withExtendedLifetime(waiter) {}
+    }
+}
+
+@MainActor
+private final class ProductSignalObservableWaiter {
+    private let condition: @MainActor () -> Bool
+    private let completion: @MainActor () -> Void
+    private var completed = false
+
+    init(
+        condition: @escaping @MainActor () -> Bool,
+        completion: @escaping @MainActor () -> Void
+    ) {
+        self.condition = condition
+        self.completion = completion
+    }
+
+    func start() {
+        guard !completed else { return }
+        let satisfied = withObservationTracking {
+            condition()
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in self?.start() }
+        }
+        guard satisfied, !completed else { return }
+        completed = true
+        completion()
     }
 }

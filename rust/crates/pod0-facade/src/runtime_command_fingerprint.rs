@@ -102,6 +102,17 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
         | ApplicationCommand::ObserveDownloadEnvironment { .. } => {
             hash_download_command(&mut hash, command)
         }
+        ApplicationCommand::ReportAutomaticDownloadCandidates {
+            podcast_id,
+            episode_ids,
+        } => {
+            hash.update(b"automatic-download-candidates\0");
+            hash.update(podcast_id.into_bytes());
+            hash.update((episode_ids.len() as u64).to_be_bytes());
+            for episode_id in episode_ids {
+                hash.update(episode_id.into_bytes());
+            }
+        }
         ApplicationCommand::ResetListeningData => hash.update(b"reset-listening\0"),
         ApplicationCommand::RequestPlayback { episode_id } => {
             hash.update(b"play\0");

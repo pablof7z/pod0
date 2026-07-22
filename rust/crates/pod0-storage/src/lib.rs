@@ -43,6 +43,10 @@ mod download_store_artifact;
 mod download_store_artifact_file;
 mod download_store_artifact_recovery;
 mod download_store_cancel;
+mod download_store_cutover;
+mod download_store_cutover_discard;
+mod download_store_cutover_entry;
+mod download_store_cutover_model;
 mod download_store_model;
 mod download_store_observations;
 mod download_store_read;
@@ -187,6 +191,10 @@ mod clip_import_orphan_tests;
 mod clip_import_tests;
 #[cfg(test)]
 mod download_store_artifact_tests;
+#[cfg(test)]
+mod download_store_cutover_recovery_tests;
+#[cfg(test)]
+mod download_store_cutover_tests;
 #[cfg(test)]
 mod download_store_lifecycle_tests;
 #[cfg(test)]

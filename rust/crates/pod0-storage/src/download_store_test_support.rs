@@ -3,8 +3,8 @@ use pod0_domain::{CancellationId, CommandId, EpisodeId, StateRevision};
 
 use crate::listening_import_test_support::{ImportFixture, create_legacy_json};
 use crate::{
-    DownloadEnsureInput, DownloadEnsureOutcome, DownloadWorkflowRecord, LibraryStore,
-    StoredDownloadOrigin, commit_listening_cutover,
+    DownloadEnsureInput, DownloadEnsureOutcome, DownloadWorkflowRecord, LegacyDownloadCutoverInput,
+    LibraryStore, StoredDownloadOrigin, commit_listening_cutover,
 };
 
 pub(crate) struct DownloadFixture {
@@ -15,6 +15,25 @@ pub(crate) struct DownloadFixture {
 
 impl DownloadFixture {
     pub(crate) fn new() -> Self {
+        let fixture = Self::new_before_download_cutover();
+        fixture
+            .store
+            .stage_legacy_download_cutover(LegacyDownloadCutoverInput {
+                source_generation: 1,
+                entries: Vec::new(),
+                issued_revision: StateRevision::INITIAL,
+                now_ms: 1_800_000_000_002,
+                deadline_at_ms: 1_800_000_060_002,
+            })
+            .unwrap();
+        fixture
+            .store
+            .commit_legacy_download_cutover(1, 1_800_000_000_003)
+            .unwrap();
+        fixture
+    }
+
+    pub(crate) fn new_before_download_cutover() -> Self {
         let import = ImportFixture::new();
         create_legacy_json(&import.source);
         let plan = import.plan();

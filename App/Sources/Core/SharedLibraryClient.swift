@@ -21,6 +21,7 @@ final class SharedLibraryClient {
     var recallConfigurationSubscriptionID: SubscriptionId?
     private var notesSubscriptionID: SubscriptionId?
     private var clipsSubscriptionID: SubscriptionId?
+    private var downloadsSubscriptionID: SubscriptionId?
     var waiters: [CommandId: Waiter] = [:]
     var lastLibraryRevision: UInt64 = 0
     private var lastPlaybackRevision: UInt64 = 0
@@ -40,6 +41,8 @@ final class SharedLibraryClient {
     private var cachedPlaybackRevision: UInt64 = 0
     var cachedNotes: SharedNoteSnapshot?
     var cachedClips: SharedClipSnapshot?
+    var lastDownloadsRevision: UInt64 = 0
+    var cachedDownloadWorkflows: [UUID: DownloadWorkflowProjection] = [:]
     private var playbackHostAttached = false
     var evidenceRebuildTask: Task<Void, Never>?
     var evidenceUpdateTasks: [UUID: Task<Void, Never>] = [:]
@@ -47,14 +50,18 @@ final class SharedLibraryClient {
     var rebuildingEvidenceEpisodeIDs: Set<UUID> = []
     var recallHostAttached = false
     weak var workflowClient: WorkflowClient?
+    let coreStoreURL: URL
+    let downloadNativeStore = CoreDownloadNativeStore()
 
     init(
         facade: Pod0Facade,
+        coreStoreURL: URL,
         feedHost: any CoreFeedHosting,
         downloadHost: any CoreDownloadHosting = UnavailableCoreDownloadHost(),
         observationOutbox: NativeHostObservationOutbox? = nil
     ) {
         self.facade = facade
+        self.coreStoreURL = coreStoreURL
         self.authoritativeTranscriptReader = SharedTranscriptReader(facade: facade)
         self.authoritativeChapterReader = SharedChapterReader(facade: facade)
         let playbackHost = DeferredPlaybackHost()
@@ -73,6 +80,8 @@ final class SharedLibraryClient {
 
     func start() {
         guard librarySubscriptionID == nil else { return }
+        dispatcher.activateExecution()
+        CoreDownloadEnvironmentMonitor.shared.start(client: self)
         let subscriber = SharedLibrarySubscriber { [weak self] projection in
             Task { @MainActor [weak self] in self?.receive(projection) }
         }
@@ -100,6 +109,14 @@ final class SharedLibraryClient {
         )
         clipsSubscriptionID = facade.subscribe(
             request: ProjectionRequest(scope: .clips(scope: .active), offset: 0, maxItems: 200),
+            subscriber: subscriber
+        )
+        downloadsSubscriptionID = facade.subscribe(
+            request: ProjectionRequest(
+                scope: .downloads(episodeId: nil),
+                offset: 0,
+                maxItems: 200
+            ),
             subscriber: subscriber
         )
         dispatcher.executePendingRequests(from: facade)
@@ -217,8 +234,10 @@ final class SharedLibraryClient {
             receiveNotes(revision: envelope.stateRevision.value)
         case .clips:
             receiveClips(revision: envelope.stateRevision.value)
+        case .downloads:
+            receiveDownloads(revision: envelope.stateRevision.value)
         case .podcastDetail, .episodeDetail, .recall, .evidenceIndex, .transcript, .chapter,
-             .downloads, .unsupported:
+             .unsupported:
             break
         }
     }
@@ -264,11 +283,15 @@ final class SharedLibraryClient {
         }
         if let notesSubscriptionID { facade.unsubscribe(subscriptionId: notesSubscriptionID) }
         if let clipsSubscriptionID { facade.unsubscribe(subscriptionId: clipsSubscriptionID) }
+        if let downloadsSubscriptionID {
+            facade.unsubscribe(subscriptionId: downloadsSubscriptionID)
+        }
         librarySubscriptionID = nil
         playbackSubscriptionID = nil
         chapterWorkflowSubscriptionID = nil
         notesSubscriptionID = nil
         clipsSubscriptionID = nil
+        downloadsSubscriptionID = nil
         chapterScopeCounts.removeAll()
         chapterSnapshots.removeAll()
         announcedPublisherChapterEpisodeIDs.removeAll()
@@ -276,6 +299,7 @@ final class SharedLibraryClient {
         cachedPublisherChapterWorkflows.removeAll()
         workflowClient?.detachPublisherChapterCore()
         workflowClient?.detachModelChapterCore()
+        workflowClient?.detachDownloadCore()
         playbackChapterEpisodeID = nil
         subscriber = nil
         for waiter in waiters.values {

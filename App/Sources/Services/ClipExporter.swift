@@ -143,7 +143,7 @@ actor ClipExporter {
         theme: SubtitleStyle,
         aspectRatio: ClipVideo.Aspect
     ) async throws -> URL {
-        guard EpisodeDownloadStore.shared.exists(for: episode) else {
+        guard episode.downloadState.localFileURL != nil else {
             throw ExportError.audioUnavailable
         }
         throw ExportError.notImplemented(

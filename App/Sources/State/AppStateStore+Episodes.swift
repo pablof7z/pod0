@@ -49,43 +49,4 @@ extension AppStateStore {
         state.episodes.sorted { $0.pubDate > $1.pubDate }
     }
 
-    // MARK: - Temporary native adjunct writes
-
-    /// Updates stable local-file evidence. Active/retry/failure lifecycle is
-    /// owned exclusively by JobStore.
-    @discardableResult
-    func setEpisodeDownloadState(
-        _ id: UUID,
-        state newState: DownloadState
-    ) -> EpisodeTransitionResult {
-        guard let episode = episode(id: id) else {
-            return rejectEpisodeTransition("Episode does not exist")
-        }
-        switch newState {
-        case .notDownloaded:
-            return applyDownloadEvent(.userRemoved, episodeID: id)
-        case .downloaded(let url, let byteCount):
-            let selected = try? ArtifactRepository(
-                fileURL: persistence.episodeStore.fileURL
-            ).current(kind: .downloadFile, subjectID: id)
-            let inputVersion = DesiredStatePlanner.audioVersion(episode)
-            guard let selected,
-                  selected.integrity == .available,
-                  selected.inputVersion == inputVersion,
-                  selected.location == url.path,
-                  let data = try? Data(contentsOf: url, options: .mappedIfSafe),
-                  selected.contentHash == ArtifactRepository.hash(data),
-                  Int64(data.count) == byteCount else {
-                return rejectEpisodeTransition(
-                    "Downloaded state requires matching selected artifact evidence"
-                )
-            }
-            return applyDownloadEvent(.artifactCommitted(.init(
-                inputVersion: selected.inputVersion,
-                contentHash: selected.contentHash, fileURL: url,
-                byteCount: byteCount
-            )), episodeID: id)
-        }
-    }
-
 }

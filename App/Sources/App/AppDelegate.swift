@@ -63,9 +63,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
                 )
                 return
             }
-            EpisodeDownloadService.shared.handleEventsForBackgroundURLSession(
+            LegacyDownloadSessionRetirement.shared.handleEvents(
                 identifier: identifier,
-                completionHandler: completionHandler
+                completion: completionHandler
             )
         }
     }

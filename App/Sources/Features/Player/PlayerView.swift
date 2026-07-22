@@ -27,11 +27,6 @@ struct PlayerView: View {
     @State private var showAddNoteSheet: Bool = false
     @State private var noteAnchorTime: TimeInterval = 0
 
-    /// Observed so the editorial-header download badge tracks the service's
-    /// `progress[id]` map at 5%/200ms without each tick re-rendering through
-    /// `AppStateStore`. Mirrors the pattern used by `EpisodeRow`.
-    @State private var downloadService = EpisodeDownloadService.shared
-
     private var podcast: Podcast? {
         guard let podID = state.episode?.podcastID else { return nil }
         return store.podcast(id: podID)
@@ -328,7 +323,9 @@ struct PlayerView: View {
     private var downloadFraction: Double? {
         guard let id = state.episode?.id,
               let episode = store.episode(id: id) ?? state.episode else { return nil }
-        if let progress = downloadService.progress[id] { return progress.clamped01 }
+        if let progress = store.sharedLibrary?.downloadProgress(episodeID: id) {
+            return progress.clamped01
+        }
         if case .downloaded = episode.downloadState { return 1.0 }
         return nil
     }

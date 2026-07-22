@@ -23,27 +23,16 @@ struct NotificationJobPayload: Codable, Sendable, Equatable {
     let episodeTitle: String
 }
 
-struct AutoDownloadJobPayload: Codable, Sendable, Equatable {
-    let discoveryOccurrenceID: String
-    let policyVersion: String
-}
-
-enum DownloadIntentOrigin: String, Codable, Sendable, Equatable {
+/// Decode-only shape for the one-shot legacy download migration.
+enum LegacyDownloadIntentOrigin: String, Codable, Sendable, Equatable {
     case user
     case playback
     case autoDownload
-
-    var priority: Int {
-        switch self {
-        case .user: 100
-        case .playback: 80
-        case .autoDownload: 20
-        }
-    }
 }
 
-struct DownloadJobPayload: Codable, Sendable, Equatable {
-    let origin: DownloadIntentOrigin
+/// Decode-only shape for retired Swift JobStore rows.
+struct LegacyDownloadJobPayload: Codable, Sendable, Equatable {
+    let origin: LegacyDownloadIntentOrigin
     let enclosureURL: URL
     let audioVersion: String
 }

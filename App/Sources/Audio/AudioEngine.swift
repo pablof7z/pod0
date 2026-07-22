@@ -149,20 +149,17 @@ final class AudioEngine {
     /// Replace the current item with `episode`. Begins buffering immediately;
     /// caller must follow with `play()` to start playback.
     ///
-    /// Prefers the locally-downloaded enclosure when available. We recompute
-    /// the local path from `EpisodeDownloadStore` (rather than trusting the
-    /// `localFileURL` baked into `DownloadState.downloaded`) because iOS may
-    /// rotate the app container path across launches, leaving the persisted
-    /// absolute URL stale. Falls back to streaming when no local file exists.
+    /// Prefers the verified Rust-projected local artifact when available.
     func load(_ episode: Episode, requestedURL: URL? = nil) {
         let url: URL = {
-            if EpisodeDownloadStore.shared.exists(for: episode) {
-                return EpisodeDownloadStore.shared.localFileURL(for: episode)
+            if let local = episode.downloadState.localFileURL,
+               FileManager.default.fileExists(atPath: local.path) {
+                return local
             }
             // Agent-generated episodes live under agent-episodes/, not downloads/.
             // Recompute the path fresh so stale container-relative absolute URLs
             // (persisted from a previous launch) are never handed to AVPlayer.
-            if case .downloaded = episode.downloadState,
+            if episode.enclosureURL.isFileURL,
                let freshURL = try? AgentGeneratedPodcastService.audioFileURL(episodeID: episode.id),
                FileManager.default.fileExists(atPath: freshURL.path) {
                 return freshURL

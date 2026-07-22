@@ -17,6 +17,7 @@ final class Pod0NativeModelWorkflowIntegrationTests: XCTestCase {
             observationOutbox: outbox
         )
 
+        dispatcher.activateExecution()
         ensure(fixture.facade, episodeID: fixture.episodeID, commandLow: 1)
         dispatcher.executePendingRequests(from: fixture.facade)
 
@@ -56,6 +57,7 @@ final class Pod0NativeModelWorkflowIntegrationTests: XCTestCase {
             observationOutbox: relaunchedOutbox
         )
 
+        dispatcher.activateExecution()
         dispatcher.executePendingRequests(from: reopened)
 
         try await waitForStage(.succeeded, facade: reopened, episodeID: fixture.episodeID)

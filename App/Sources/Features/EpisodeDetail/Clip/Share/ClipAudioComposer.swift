@@ -89,11 +89,12 @@ enum ClipAudioComposer {
     /// audio path stays self-contained and the video stub is free to
     /// evolve without coupling them.
     private static func resolveLocalAudioURL(for episode: Episode) throws -> URL {
-        let store = EpisodeDownloadStore.shared
-        guard store.exists(for: episode) else {
+        guard let url = episode.downloadState.localFileURL
+                ?? (episode.enclosureURL.isFileURL ? episode.enclosureURL : nil),
+              FileManager.default.fileExists(atPath: url.path) else {
             throw ClipExporter.ExportError.audioUnavailable
         }
-        return store.localFileURL(for: episode)
+        return url
     }
 
     /// Metadata embedded in the exported `.m4a` so when the recipient

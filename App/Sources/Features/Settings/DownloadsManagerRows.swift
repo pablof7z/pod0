@@ -104,11 +104,6 @@ struct DownloadsManagerRow: View {
                 } label: {
                     Label("Retry Download", systemImage: "arrow.clockwise")
                 }
-                Button {
-                    onAction(.dismissFailure, row)
-                } label: {
-                    Label("Dismiss", systemImage: "xmark.circle")
-                }
             case .downloaded:
                 Button(role: .destructive) {
                     onAction(.delete, row)

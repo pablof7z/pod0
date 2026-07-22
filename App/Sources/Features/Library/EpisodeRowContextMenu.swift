@@ -8,7 +8,7 @@ import SwiftUI
 ///   - Open episode details (NavigationLink with a caller-supplied route value).
 ///   - Mark as played / Mark as unplayed (toggle based on `episode.played`).
 ///   - Download / Cancel download / Remove download / Retry download
-///     (state-aware via `EpisodeDownloadService.shared`).
+///     (state-aware via the shared-core download projection).
 ///   - Share (`ShareLink` with the enclosure URL).
 ///
 /// The route is generic over `Hashable` so Library can pass `LibraryEpisodeRoute`
@@ -40,7 +40,6 @@ struct EpisodeRowContextMenu<Route: Hashable>: View {
 
     /// Live download service — observed so the surfaced affordance flips between
     /// Download / Cancel / Remove / Retry as the underlying state moves.
-    @State private var downloadService = EpisodeDownloadService.shared
     @Environment(WorkflowClient.self) private var workflows
 
     var body: some View {
@@ -191,32 +190,29 @@ struct EpisodeRowContextMenu<Route: Hashable>: View {
             // `.contextMenu` the dialog modifier orphans, so remove directly.
             Button(role: .destructive) {
                 Haptics.warning()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.delete(episodeID: episode.id)
+                store.sharedLibrary?.removeDownload(episodeID: episode.id)
             } label: {
                 Label("Remove download", systemImage: "trash")
             }
-        } else if EpisodeDownloadService.shared.progress[episode.id] != nil || downloadIsActive {
+        } else if store.sharedLibrary?.downloadProgress(episodeID: episode.id) != nil
+                    || downloadIsActive {
             Button {
                 Haptics.light()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.cancel(episodeID: episode.id)
+                store.sharedLibrary?.cancelDownload(episodeID: episode.id)
             } label: {
                 Label("Cancel download", systemImage: "xmark.circle")
             }
         } else if downloadNeedsAttention {
             Button {
                 Haptics.light()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.download(episodeID: episode.id)
+                store.sharedLibrary?.retryDownload(episodeID: episode.id)
             } label: {
                 Label("Retry download", systemImage: "arrow.clockwise")
             }
         } else {
             Button {
                 Haptics.light()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.download(episodeID: episode.id)
+                store.sharedLibrary?.requestDownload(episodeID: episode.id)
             } label: {
                 Label("Download", systemImage: "arrow.down.circle")
             }

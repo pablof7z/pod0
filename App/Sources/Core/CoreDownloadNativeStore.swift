@@ -69,6 +69,37 @@ struct CoreDownloadNativeStore: @unchecked Sendable {
         }
     }
 
+    func importLegacyResumeData(_ data: Data, for attemptID: DownloadAttemptId) throws {
+        guard !data.isEmpty else { return }
+        let url = try resumeURL(for: resumeKey(for: attemptID))
+        try fileManager.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try data.write(to: url, options: .atomic)
+    }
+
+    func artifactURL(
+        coreStoreURL: URL?,
+        artifactKey: String,
+        expectedByteCount: UInt64? = nil
+    ) -> URL? {
+        guard let url = try? resolvedArtifactURL(
+            coreStoreURL: coreStoreURL,
+            artifactKey: artifactKey
+        ),
+        let values = try? url.resourceValues(
+            forKeys: [.isSymbolicLinkKey, .isRegularFileKey, .fileSizeKey]
+        ),
+        values.isSymbolicLink != true,
+        values.isRegularFile == true,
+        let size = values.fileSize,
+        size > 0,
+        expectedByteCount.map({ UInt64(size) == $0 }) ?? true
+        else { return nil }
+        return url
+    }
+
     func removeNativeFiles(for attemptID: DownloadAttemptId) {
         try? fileManager.removeItem(at: stagedURL(for: attemptID))
         let key = resumeKey(for: attemptID)
@@ -78,6 +109,22 @@ struct CoreDownloadNativeStore: @unchecked Sendable {
     }
 
     func removeArtifact(coreStoreURL: URL?, artifactKey: String) throws {
+        let url = try resolvedArtifactURL(
+            coreStoreURL: coreStoreURL,
+            artifactKey: artifactKey
+        )
+        guard fileManager.fileExists(atPath: url.path) else { return }
+        let values = try url.resourceValues(forKeys: [.isSymbolicLinkKey, .isRegularFileKey])
+        guard values.isSymbolicLink != true, values.isRegularFile == true else {
+            throw StoreError.invalidArtifactKey
+        }
+        try fileManager.removeItem(at: url)
+    }
+
+    private func resolvedArtifactURL(
+        coreStoreURL: URL?,
+        artifactKey: String
+    ) throws -> URL {
         guard let coreStoreURL else { throw StoreError.coreStoreUnavailable }
         let components = artifactKey.split(separator: "/", omittingEmptySubsequences: false)
         guard components.count == 2,
@@ -94,12 +141,7 @@ struct CoreDownloadNativeStore: @unchecked Sendable {
         guard url.standardizedFileURL.path.hasPrefix(root.standardizedFileURL.path + "/") else {
             throw StoreError.invalidArtifactKey
         }
-        guard fileManager.fileExists(atPath: url.path) else { return }
-        let values = try url.resourceValues(forKeys: [.isSymbolicLinkKey, .isRegularFileKey])
-        guard values.isSymbolicLink != true, values.isRegularFile == true else {
-            throw StoreError.invalidArtifactKey
-        }
-        try fileManager.removeItem(at: url)
+        return url
     }
 
     private func stagedURL(for attemptID: DownloadAttemptId) -> URL {

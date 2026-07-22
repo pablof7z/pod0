@@ -42,6 +42,7 @@ final class SharedTranscriptRecoveryTests: XCTestCase {
         ))
         let outcome = SharedLibraryBootstrap.run(
             persistence: persistence,
+            legacyState: try persistence.load(),
             feedHost: QueuedCoreFeedHost([])
         )
         guard case .ready(let client) = outcome else {

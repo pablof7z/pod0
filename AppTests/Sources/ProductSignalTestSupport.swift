@@ -4,9 +4,16 @@ import XCTest
 
 actor RecordingProductSignalSink: ProductSignalSink {
     private(set) var observations: [ProductSignalObservation] = []
+    private var waiters: [UUID: Waiter] = [:]
+
+    private struct Waiter {
+        let minimumCount: Int
+        let continuation: CheckedContinuation<[ProductSignalObservation], Never>
+    }
 
     func record(_ observation: ProductSignalObservation) async {
         observations.append(observation)
+        resumeSatisfiedWaiters()
     }
 
     func deleteAll() async {
@@ -15,6 +22,40 @@ actor RecordingProductSignalSink: ProductSignalSink {
 
     func captured() -> [ProductSignalObservation] {
         observations
+    }
+
+    func waitForCount(
+        _ minimumCount: Int,
+        timeout: Duration = .seconds(2)
+    ) async -> [ProductSignalObservation] {
+        if observations.count >= minimumCount { return observations }
+        let id = UUID()
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                waiters[id] = Waiter(
+                    minimumCount: minimumCount,
+                    continuation: continuation
+                )
+                Task { [weak self] in
+                    try? await Task.sleep(for: timeout)
+                    await self?.resumeWaiter(id)
+                }
+            }
+        } onCancel: {
+            Task { [weak self] in await self?.resumeWaiter(id) }
+        }
+    }
+
+    private func resumeSatisfiedWaiters() {
+        for id in waiters.compactMap({ key, waiter in
+            observations.count >= waiter.minimumCount ? key : nil
+        }) {
+            resumeWaiter(id)
+        }
+    }
+
+    private func resumeWaiter(_ id: UUID) {
+        waiters.removeValue(forKey: id)?.continuation.resume(returning: observations)
     }
 }
 
@@ -45,16 +86,4 @@ enum ProductSignalTestSupport {
         try? FileManager.default.removeItem(at: url.deletingLastPathComponent())
     }
 
-    static func eventually(
-        timeoutNanoseconds: UInt64 = 1_000_000_000,
-        _ condition: @escaping @Sendable () async -> Bool
-    ) async -> Bool {
-        let clock = ContinuousClock()
-        let deadline = clock.now + .nanoseconds(Int64(timeoutNanoseconds))
-        while clock.now < deadline {
-            if await condition() { return true }
-            try? await Task.sleep(for: .milliseconds(10))
-        }
-        return await condition()
-    }
 }

@@ -42,6 +42,7 @@ import uniffi.pod0_application.ChapterObservationLimits
 import uniffi.pod0_application.ChapterObservationProjection
 import uniffi.pod0_application.ChapterProjectionScope
 import uniffi.pod0_application.CommandEnvelope
+import uniffi.pod0_application.DownloadIntentOrigin
 import uniffi.pod0_application.FfiConverterTypeAgentComposedChapterObservation
 import uniffi.pod0_application.FfiConverterTypeChapterContractProjection
 import uniffi.pod0_application.FfiConverterTypeChapterContractRequest
@@ -53,6 +54,7 @@ import uniffi.pod0_application.FfiConverterTypeChapterObservationLimits
 import uniffi.pod0_application.FfiConverterTypeChapterObservationProjection
 import uniffi.pod0_application.FfiConverterTypeChapterProjectionScope
 import uniffi.pod0_application.FfiConverterTypeCommandEnvelope
+import uniffi.pod0_application.FfiConverterTypeDownloadIntentOrigin
 import uniffi.pod0_application.FfiConverterTypeHostCancellationRequest
 import uniffi.pod0_application.FfiConverterTypeHostObservationEnvelope
 import uniffi.pod0_application.FfiConverterTypeHostObservationReceipt
@@ -104,6 +106,7 @@ import uniffi.pod0_application.RustBuffer as RustBufferChapterObservationLimits
 import uniffi.pod0_application.RustBuffer as RustBufferChapterObservationProjection
 import uniffi.pod0_application.RustBuffer as RustBufferChapterProjectionScope
 import uniffi.pod0_application.RustBuffer as RustBufferCommandEnvelope
+import uniffi.pod0_application.RustBuffer as RustBufferDownloadIntentOrigin
 import uniffi.pod0_application.RustBuffer as RustBufferHostCancellationRequest
 import uniffi.pod0_application.RustBuffer as RustBufferHostObservationEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferHostObservationReceipt
@@ -866,6 +869,14 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_method_projectionsubscriber_receive(
     ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_download_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_download_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_download_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_download_cutover(
+    ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_model_chapter_cutover(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_model_chapter_cutover(
@@ -931,6 +942,14 @@ internal object UniffiLib {
     ): Long
     external fun uniffi_pod0_facade_fn_constructor_pod0facade_open(`storePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): Long
+    external fun uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_download_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_download_cutover(`ptr`: Long,`sourceGeneration`: Long,`candidates`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_download_cutover(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_download_cutover(`ptr`: Long,`sourceGeneration`: Long,`candidates`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_model_chapter_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_model_chapter_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
@@ -1265,6 +1284,18 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_projectionsubscriber_receive() != 23861) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_download_cutover() != 39705) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_download_cutover() != 44304) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_download_cutover() != 9691) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_download_cutover() != 2411) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_model_chapter_cutover() != 7355) {
@@ -1771,6 +1802,14 @@ public object FfiConverterString: FfiConverter<String, RustBuffer.ByValue> {
 
 public interface Pod0FacadeInterface {
 
+    fun `commitLegacyDownloadCutover`(`sourceGeneration`: kotlin.ULong): LegacyDownloadCutoverProjection
+
+    fun `discardStagedLegacyDownloadCutover`(`sourceGeneration`: kotlin.ULong, `candidates`: List<LegacyDownloadCutoverCandidate>): LegacyDownloadCutoverProjection
+
+    fun `downloadCutover`(): LegacyDownloadCutoverProjection
+
+    fun `stageLegacyDownloadCutover`(`sourceGeneration`: kotlin.ULong, `candidates`: List<LegacyDownloadCutoverCandidate>): LegacyDownloadCutoverProjection
+
     fun `commitLegacyModelChapterCutover`(`sourceGeneration`: kotlin.ULong): LegacyModelChapterCutoverProjection
 
     fun `discardStagedLegacyModelChapterCutover`(`sourceGeneration`: kotlin.ULong): LegacyModelChapterCutoverProjection
@@ -1910,6 +1949,63 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
             UniffiLib.uniffi_pod0_facade_fn_clone_pod0facade(handle, status)
         }
     }
+
+    override fun `commitLegacyDownloadCutover`(`sourceGeneration`: kotlin.ULong): LegacyDownloadCutoverProjection {
+            return FfiConverterTypeLegacyDownloadCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_download_cutover(
+        it,
+
+        FfiConverterULong.lower(`sourceGeneration`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `discardStagedLegacyDownloadCutover`(`sourceGeneration`: kotlin.ULong, `candidates`: List<LegacyDownloadCutoverCandidate>): LegacyDownloadCutoverProjection {
+            return FfiConverterTypeLegacyDownloadCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_download_cutover(
+        it,
+
+        FfiConverterULong.lower(`sourceGeneration`),
+        FfiConverterSequenceTypeLegacyDownloadCutoverCandidate.lower(`candidates`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `downloadCutover`(): LegacyDownloadCutoverProjection {
+            return FfiConverterTypeLegacyDownloadCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_download_cutover(
+        it,
+        _status)
+}
+    }
+    )
+    }
+
+
+    override fun `stageLegacyDownloadCutover`(`sourceGeneration`: kotlin.ULong, `candidates`: List<LegacyDownloadCutoverCandidate>): LegacyDownloadCutoverProjection {
+            return FfiConverterTypeLegacyDownloadCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_download_cutover(
+        it,
+
+        FfiConverterULong.lower(`sourceGeneration`),
+        FfiConverterSequenceTypeLegacyDownloadCutoverCandidate.lower(`candidates`),_status)
+}
+    }
+    )
+    }
+
 
     override fun `commitLegacyModelChapterCutover`(`sourceGeneration`: kotlin.ULong): LegacyModelChapterCutoverProjection {
             return FfiConverterTypeLegacyModelChapterCutoverProjection.lift(
@@ -3067,6 +3163,145 @@ public object FfiConverterTypeLegacyClipImportVerification: FfiConverterRustBuff
             FfiConverterTypeLegacyClipImportReport.write(value.`report`, buf)
             FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
             FfiConverterSequenceTypeClipRecord.write(value.`clips`, buf)
+    }
+}
+
+
+
+data class LegacyDownloadCutoverCandidate (
+    val `episodeId`: EpisodeId
+    ,
+    val `origin`: DownloadIntentOrigin
+    ,
+    val `disposition`: LegacyDownloadCutoverDisposition
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyDownloadCutoverCandidate: FfiConverterRustBuffer<LegacyDownloadCutoverCandidate> {
+    override fun read(buf: ByteBuffer): LegacyDownloadCutoverCandidate {
+        return LegacyDownloadCutoverCandidate(
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterTypeDownloadIntentOrigin.read(buf),
+            FfiConverterTypeLegacyDownloadCutoverDisposition.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyDownloadCutoverCandidate) = (
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterTypeDownloadIntentOrigin.allocationSize(value.`origin`) +
+            FfiConverterTypeLegacyDownloadCutoverDisposition.allocationSize(value.`disposition`)
+    )
+
+    override fun write(value: LegacyDownloadCutoverCandidate, buf: ByteBuffer) {
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterTypeDownloadIntentOrigin.write(value.`origin`, buf)
+            FfiConverterTypeLegacyDownloadCutoverDisposition.write(value.`disposition`, buf)
+    }
+}
+
+
+
+data class LegacyDownloadCutoverFailure (
+    val `code`: LegacyDownloadCutoverFailureCode
+    ,
+    val `diagnosticCode`: kotlin.String
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyDownloadCutoverFailure: FfiConverterRustBuffer<LegacyDownloadCutoverFailure> {
+    override fun read(buf: ByteBuffer): LegacyDownloadCutoverFailure {
+        return LegacyDownloadCutoverFailure(
+            FfiConverterTypeLegacyDownloadCutoverFailureCode.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyDownloadCutoverFailure) = (
+            FfiConverterTypeLegacyDownloadCutoverFailureCode.allocationSize(value.`code`) +
+            FfiConverterString.allocationSize(value.`diagnosticCode`)
+    )
+
+    override fun write(value: LegacyDownloadCutoverFailure, buf: ByteBuffer) {
+            FfiConverterTypeLegacyDownloadCutoverFailureCode.write(value.`code`, buf)
+            FfiConverterString.write(value.`diagnosticCode`, buf)
+    }
+}
+
+
+
+data class LegacyDownloadCutoverProjection (
+    val `stage`: LegacyDownloadCutoverStage
+    ,
+    val `sourceGeneration`: kotlin.ULong?
+    ,
+    val `adoptedAvailable`: kotlin.UInt
+    ,
+    val `scheduledRestart`: kotlin.UInt
+    ,
+    val `repairedInvalid`: kotlin.UInt
+    ,
+    val `failure`: LegacyDownloadCutoverFailure?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyDownloadCutoverProjection: FfiConverterRustBuffer<LegacyDownloadCutoverProjection> {
+    override fun read(buf: ByteBuffer): LegacyDownloadCutoverProjection {
+        return LegacyDownloadCutoverProjection(
+            FfiConverterTypeLegacyDownloadCutoverStage.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterOptionalTypeLegacyDownloadCutoverFailure.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyDownloadCutoverProjection) = (
+            FfiConverterTypeLegacyDownloadCutoverStage.allocationSize(value.`stage`) +
+            FfiConverterOptionalULong.allocationSize(value.`sourceGeneration`) +
+            FfiConverterUInt.allocationSize(value.`adoptedAvailable`) +
+            FfiConverterUInt.allocationSize(value.`scheduledRestart`) +
+            FfiConverterUInt.allocationSize(value.`repairedInvalid`) +
+            FfiConverterOptionalTypeLegacyDownloadCutoverFailure.allocationSize(value.`failure`)
+    )
+
+    override fun write(value: LegacyDownloadCutoverProjection, buf: ByteBuffer) {
+            FfiConverterTypeLegacyDownloadCutoverStage.write(value.`stage`, buf)
+            FfiConverterOptionalULong.write(value.`sourceGeneration`, buf)
+            FfiConverterUInt.write(value.`adoptedAvailable`, buf)
+            FfiConverterUInt.write(value.`scheduledRestart`, buf)
+            FfiConverterUInt.write(value.`repairedInvalid`, buf)
+            FfiConverterOptionalTypeLegacyDownloadCutoverFailure.write(value.`failure`, buf)
     }
 }
 
@@ -4354,6 +4589,168 @@ public object FfiConverterTypeLegacyClipMigrationError : FfiConverterRustBuffer<
 
 
 
+sealed class LegacyDownloadCutoverDisposition {
+
+    data class Available(
+        val `sourcePath`: kotlin.String,
+        val `byteCount`: kotlin.ULong) : LegacyDownloadCutoverDisposition()
+
+    {
+
+
+        companion object
+    }
+
+    data class Restart(
+        val `resumeAvailable`: kotlin.Boolean) : LegacyDownloadCutoverDisposition()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyDownloadCutoverDisposition : FfiConverterRustBuffer<LegacyDownloadCutoverDisposition>{
+    override fun read(buf: ByteBuffer): LegacyDownloadCutoverDisposition {
+        return when(buf.getInt()) {
+            1 -> LegacyDownloadCutoverDisposition.Available(
+                FfiConverterString.read(buf),
+                FfiConverterULong.read(buf),
+                )
+            2 -> LegacyDownloadCutoverDisposition.Restart(
+                FfiConverterBoolean.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: LegacyDownloadCutoverDisposition): ULong = when(value) {
+        is LegacyDownloadCutoverDisposition.Available -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`sourcePath`)
+                + FfiConverterULong.allocationSize(value.`byteCount`)
+            )
+        }
+        is LegacyDownloadCutoverDisposition.Restart -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterBoolean.allocationSize(value.`resumeAvailable`)
+            )
+        }
+    }
+
+    override fun write(value: LegacyDownloadCutoverDisposition, buf: ByteBuffer) {
+        when(value) {
+            is LegacyDownloadCutoverDisposition.Available -> {
+                buf.putInt(1)
+                FfiConverterString.write(value.`sourcePath`, buf)
+                FfiConverterULong.write(value.`byteCount`, buf)
+                Unit
+            }
+            is LegacyDownloadCutoverDisposition.Restart -> {
+                buf.putInt(2)
+                FfiConverterBoolean.write(value.`resumeAvailable`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+
+enum class LegacyDownloadCutoverFailureCode {
+
+    INVALID_SOURCE,
+    CONFLICTING_CORE_STATE,
+    STORAGE_UNAVAILABLE;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyDownloadCutoverFailureCode: FfiConverterRustBuffer<LegacyDownloadCutoverFailureCode> {
+    override fun read(buf: ByteBuffer) = try {
+
+        LegacyDownloadCutoverFailureCode.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: LegacyDownloadCutoverFailureCode) = 4UL
+
+    override fun write(value: LegacyDownloadCutoverFailureCode, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+enum class LegacyDownloadCutoverStage {
+
+    NOT_STARTED,
+    STAGED,
+    AUTHORITATIVE,
+    BLOCKED;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyDownloadCutoverStage: FfiConverterRustBuffer<LegacyDownloadCutoverStage> {
+    override fun read(buf: ByteBuffer) = try {
+
+        LegacyDownloadCutoverStage.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: LegacyDownloadCutoverStage) = 4UL
+
+    override fun write(value: LegacyDownloadCutoverStage, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 
 
 sealed class LegacyListeningMigrationException: kotlin.Exception() {
@@ -5439,6 +5836,38 @@ public object FfiConverterOptionalTypeLegacyChapterRollbackExportReport: FfiConv
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeLegacyDownloadCutoverFailure: FfiConverterRustBuffer<LegacyDownloadCutoverFailure?> {
+    override fun read(buf: ByteBuffer): LegacyDownloadCutoverFailure? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeLegacyDownloadCutoverFailure.read(buf)
+    }
+
+    override fun allocationSize(value: LegacyDownloadCutoverFailure?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeLegacyDownloadCutoverFailure.allocationSize(value)
+        }
+    }
+
+    override fun write(value: LegacyDownloadCutoverFailure?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeLegacyDownloadCutoverFailure.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeLegacyModelChapterCutoverFailure: FfiConverterRustBuffer<LegacyModelChapterCutoverFailure?> {
     override fun read(buf: ByteBuffer): LegacyModelChapterCutoverFailure? {
         if (buf.get().toInt() == 0) {
@@ -5643,6 +6072,34 @@ public object FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer<List<No
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeLegacyDownloadCutoverCandidate: FfiConverterRustBuffer<List<LegacyDownloadCutoverCandidate>> {
+    override fun read(buf: ByteBuffer): List<LegacyDownloadCutoverCandidate> {
+        val len = buf.getInt()
+        return List<LegacyDownloadCutoverCandidate>(len) {
+            FfiConverterTypeLegacyDownloadCutoverCandidate.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<LegacyDownloadCutoverCandidate>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeLegacyDownloadCutoverCandidate.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<LegacyDownloadCutoverCandidate>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeLegacyDownloadCutoverCandidate.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeLegacyModelChapterCutoverCandidate: FfiConverterRustBuffer<List<LegacyModelChapterCutoverCandidate>> {
     override fun read(buf: ByteBuffer): List<LegacyModelChapterCutoverCandidate> {
         val len = buf.getInt()
@@ -5664,6 +6121,8 @@ public object FfiConverterSequenceTypeLegacyModelChapterCutoverCandidate: FfiCon
         }
     }
 }
+
+
 
 
 

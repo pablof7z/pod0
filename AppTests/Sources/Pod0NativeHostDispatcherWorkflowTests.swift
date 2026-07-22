@@ -52,6 +52,7 @@ final class Pod0NativeHostDispatcherWorkflowTests: XCTestCase {
             ))
         }
 
+        dispatcher.activateExecution()
         dispatcher.executePendingRequests(from: facade)
         await Task.yield()
 

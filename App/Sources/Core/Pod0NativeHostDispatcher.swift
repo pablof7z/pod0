@@ -51,6 +51,7 @@ final class Pod0NativeHostDispatcher {
     var observationRecoveryReady: Bool
     private var completedRequestIDs: Set<HostRequestId> = []
     private var completionOrder: [HostRequestId] = []
+    private var executionEnabled = false
 
     init(
         feedHost: any CoreFeedHosting,
@@ -82,6 +83,7 @@ final class Pod0NativeHostDispatcher {
     }
 
     func executePendingRequests(from facade: Pod0Facade, maximumCount: UInt16 = 64) {
+        guard executionEnabled else { return }
         guard observationRecoveryReady else {
             startObservationRecovery(from: facade, maximumCount: maximumCount)
             return
@@ -107,6 +109,10 @@ final class Pod0NativeHostDispatcher {
                 }
             }
         }
+    }
+
+    func activateExecution() {
+        executionEnabled = true
     }
 
     func execute(_ envelope: HostRequestEnvelope, delivery: @escaping Delivery) {

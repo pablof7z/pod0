@@ -51,6 +51,7 @@ final class SharedChapterRecoveryTests: XCTestCase {
 
         let outcome = SharedLibraryBootstrap.run(
             persistence: persistence,
+            legacyState: try persistence.load(),
             feedHost: QueuedCoreFeedHost([])
         )
         guard case .ready(let client) = outcome else {
@@ -116,6 +117,7 @@ final class SharedChapterRecoveryTests: XCTestCase {
         _ = try SharedTranscriptRecoveryTestSupport.prepareCorePrerequisites(fixture)
         let first = SharedLibraryBootstrap.run(
             persistence: fixture.persistence,
+            legacyState: try fixture.persistence.load(),
             feedHost: QueuedCoreFeedHost([])
         )
         guard case .ready(let firstClient) = first else {
@@ -147,6 +149,7 @@ final class SharedChapterRecoveryTests: XCTestCase {
         _ = try SharedTranscriptRecoveryTestSupport.prepareCorePrerequisites(fixture)
         let outcome = SharedLibraryBootstrap.run(
             persistence: fixture.persistence,
+            legacyState: try fixture.persistence.load(),
             feedHost: QueuedCoreFeedHost([])
         )
         guard case .ready(let client) = outcome else {

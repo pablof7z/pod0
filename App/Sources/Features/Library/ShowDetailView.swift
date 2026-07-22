@@ -354,12 +354,10 @@ struct ShowDetailView: View {
     }
 
     private func downloadAllEpisodes() {
-        let service = EpisodeDownloadService.shared
-        service.attach(appStore: store)
         for episode in episodes {
             if case .downloaded = episode.downloadState { continue }
             guard !hasActiveDownloadJob(episodeID: episode.id) else { continue }
-            service.download(episodeID: episode.id)
+            store.sharedLibrary?.requestDownload(episodeID: episode.id)
         }
         Haptics.success()
     }

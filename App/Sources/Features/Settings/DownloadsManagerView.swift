@@ -1,11 +1,11 @@
 import SwiftUI
+import Pod0Core
 
 // MARK: - DownloadsManagerView
 
 struct DownloadsManagerView: View {
     @Environment(AppStateStore.self) private var store
     @Environment(WorkflowClient.self) private var workflows
-    @State private var downloadService = EpisodeDownloadService.shared
     @State private var confirmCancelActive = false
     @State private var confirmDeleteDownloaded = false
 
@@ -32,9 +32,6 @@ struct DownloadsManagerView: View {
         .navigationTitle("Downloads")
         .navigationBarTitleDisplayMode(.large)
         .workflowAttentionScope(kinds: [.download])
-        .task {
-            downloadService.attach(appStore: store)
-        }
         .alert("Cancel active downloads?", isPresented: $confirmCancelActive) {
             Button("Keep Downloads", role: .cancel) {}
             Button("Cancel Downloads", role: .destructive) {
@@ -184,64 +181,56 @@ struct DownloadsManagerView: View {
     }
 
     private func status(for episode: Episode) -> DownloadManagerStatus? {
-        if let progress = downloadService.progress[episode.id] {
+        if let progress = store.sharedLibrary?.downloadProgress(episodeID: episode.id) {
             return .downloading(
                 progress: progress.clampedDownloadProgress,
                 bytesWritten: nil,
-                expectedBytes: downloadService.expectedBytes[episode.id]
+                expectedBytes: store.sharedLibrary?.downloadExpectedBytes(episodeID: episode.id)
             )
         }
         switch episode.downloadState {
         case .downloaded(_, let byteCount):
             return .downloaded(byteCount: byteCount)
         case .notDownloaded:
-            guard let job = latestDownloadJob(for: episode.id) else { return nil }
-            switch job.state {
-            case .pending, .leased, .retryScheduled: return .queued
-            case .running:
+            guard let workflow = store.sharedLibrary?.downloadWorkflow(episodeID: episode.id)
+            else { return nil }
+            switch workflow.stage {
+            case .waitingForEnvironment, .requested, .retryScheduled: return .queued
+            case .hostAccepted, .transferring, .staged, .removing:
                 return .downloading(progress: 0, bytesWritten: nil, expectedBytes: nil)
-            case .blocked, .failedPermanent:
-                return .failed(message: WorkflowPresentationCopy.failureDetail(for: job))
-            case .cancelled, .obsolete, .succeeded: return nil
+            case .failed:
+                return .failed(message: workflow.failure?.safeDetail ?? "Download failed")
+            case .cancelled, .succeeded: return nil
+            case .unsupported: return .failed(message: "Unsupported download state")
             }
         }
-    }
-
-    private func latestDownloadJob(for episodeID: UUID) -> WorkflowJobProjection? {
-        workflows.latest(kind: .download, subjectID: episodeID)
     }
 
     // MARK: - Actions
 
     private func perform(_ action: DownloadManagerAction, row: DownloadManagerRowData) {
-        downloadService.attach(appStore: store)
         switch action {
         case .start, .retry:
             Haptics.light()
-            downloadService.download(episodeID: row.id)
+            store.sharedLibrary?.retryDownload(episodeID: row.id)
         case .cancel:
             Haptics.light()
-            downloadService.cancel(episodeID: row.id)
-        case .dismissFailure:
-            Haptics.light()
-            workflows.dismissDownloadFailure(episodeID: row.id)
+            store.sharedLibrary?.cancelDownload(episodeID: row.id)
         case .delete:
             Haptics.warning()
-            downloadService.delete(episodeID: row.id)
+            store.sharedLibrary?.removeDownload(episodeID: row.id)
         }
     }
 
     private func cancelActiveDownloads() {
-        downloadService.attach(appStore: store)
         for row in activeRows {
-            downloadService.cancel(episodeID: row.id)
+            store.sharedLibrary?.cancelDownload(episodeID: row.id)
         }
     }
 
     private func deleteDownloadedEpisodes() {
-        downloadService.attach(appStore: store)
         for row in downloadedRows {
-            downloadService.delete(episodeID: row.id)
+            store.sharedLibrary?.removeDownload(episodeID: row.id)
         }
     }
 

@@ -4,16 +4,13 @@ import Foundation
 final class WorkflowArtifactVerifier: JobPostconditionVerifier {
     private let appStore: AppStateStore
     private let artifacts: ArtifactRepository
-    private let fileVerifier: ArtifactVerificationExecutor
 
     init(
         appStore: AppStateStore,
-        artifacts: ArtifactRepository,
-        fileVerifier: ArtifactVerificationExecutor = .shared
+        artifacts: ArtifactRepository
     ) {
         self.appStore = appStore
         self.artifacts = artifacts
-        self.fileVerifier = fileVerifier
     }
 
     func verifyAndCommit(
@@ -61,8 +58,8 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
             )]
         case .metadataIndex:
             return false
-        case .autoDownload:
-            records = [record(.autoDownloadDecision, job: job, output: outputVersion, hash: outputVersion)]
+        case .autoDownload, .download:
+            return false
         case .newEpisodeNotification:
             records = [record(.notificationDelivery, job: job, output: outputVersion, hash: outputVersion)]
         case .scheduledAgentRun:
@@ -72,46 +69,14 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
                     occurrenceID: occurrenceID
                   )?.hasCompletedScheduledOutput == true else { return false }
             records = [record(.scheduledOutput, job: job, output: outputVersion, hash: outputVersion)]
-        case .download:
-            guard let episode = appStore.episode(id: job.subjectID) else { return false }
-            if let selected = try artifacts.current(
-                kind: .downloadFile,
-                subjectID: job.subjectID
-            ), selected.integrity == .available,
-               selected.inputVersion == job.inputVersion,
-               selected.contentHash == outputVersion,
-               let location = selected.location,
-               await fileVerifier.verify(.init(
-                artifactID: "download:\(job.subjectID.uuidString)",
-                location: URL(fileURLWithPath: location),
-                expectedHash: selected.contentHash,
-                expectedSize: nil,
-                schemaVersion: selected.schemaVersion,
-                cancellationID: leaseToken
-               )).isAvailable {
-                records = [selected]
-            } else {
-                guard let staged = await fileVerifier.verifiedStagedDownload(
-                    episodeID: job.subjectID,
-                    jobID: job.id,
-                    inputVersion: job.inputVersion,
-                    contentHash: outputVersion
-                ) else { return false }
-                let url = try await fileVerifier.promoteDownload(staged, episode: episode)
-                records = [record(
-                    .downloadFile, job: job, output: staged.contentHash,
-                    hash: staged.contentHash, location: url.path, origin: "urlSession"
-                )]
-            }
         }
         try artifacts.commit(records, completingJobID: job.id, leaseToken: leaseToken)
-        for record in records { await applyStableProjection(for: record, job: job) }
         return true
     }
 
     func isStillCurrent(_ job: WorkJob) -> Bool {
         switch job.kind {
-        case .download, .transcriptIngest:
+        case .transcriptIngest:
             guard let episode = appStore.episode(id: job.subjectID) else { return false }
             return DesiredStatePlanner.audioVersion(episode) == job.inputVersion
         case .metadataIndex:
@@ -127,7 +92,8 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
                 transcript,
                 embeddingSpaceID: embeddingSpaceID
             ) == job.inputVersion
-        case .feedDiscovery, .autoDownload, .newEpisodeNotification, .scheduledAgentRun:
+        case .feedDiscovery, .download, .autoDownload,
+             .newEpisodeNotification, .scheduledAgentRun:
             return true
         }
     }
@@ -136,24 +102,6 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
         appStore.sharedLibrary?.transcriptWorkflowSnapshots(
             episodeIDs: [episodeID]
         ).first
-    }
-
-    private func applyStableProjection(for record: ArtifactRecord, job: WorkJob) async {
-        switch record.kind {
-        case .downloadFile:
-            guard let location = record.location,
-                  let attributes = try? FileManager.default.attributesOfItem(atPath: location),
-                  let size = attributes[.size] as? NSNumber
-            else { return }
-            _ = appStore.applyDownloadEvent(.artifactCommitted(.init(
-                inputVersion: record.inputVersion,
-                contentHash: record.contentHash,
-                fileURL: URL(fileURLWithPath: location),
-                byteCount: size.int64Value
-            )), episodeID: record.subjectID)
-        default:
-            break
-        }
     }
 
     private func record(

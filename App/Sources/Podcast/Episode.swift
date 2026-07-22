@@ -201,7 +201,7 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         try c.encode(playbackPosition, forKey: .playbackPosition)
         try c.encode(played, forKey: .played)
         try c.encode(isStarred, forKey: .isStarred)
-        try c.encode(downloadState, forKey: .downloadState)
+        // Rust owns durable download state; the legacy key remains decode-only.
         // Rust owns durable readiness; decode the legacy key but never re-encode it.
         try c.encodeIfPresent(requestedTranscriptProvider, forKey: .requestedTranscriptProvider)
         // Rust owns durable ad spans; the legacy key remains decode-only.

@@ -173,6 +173,7 @@ final class AppStateStore {
         let feedHost: any CoreFeedHosting = sharedFeedHost ?? CoreFeedHost()
         switch SharedLibraryBootstrap.run(
             persistence: persistence,
+            legacyState: loadedState,
             feedHost: feedHost,
             chapterCompilationModel: loadedState.settings.chapterCompilationModel,
             legacyRecallConfiguration: loadedState.settings.legacyRecallConfigurationSeed
@@ -204,7 +205,6 @@ final class AppStateStore {
         // Rust supplies the exact provider, model, and dimensionality.
         sharedLibrary?.attachRecall(RecallProviderService.shared, store: self)
         TranscriptIngestService.shared.attach(appStore: self)
-        EpisodeDownloadService.shared.attach(appStore: self)
         WorkflowRuntime.shared.attach(store: self)
         BackgroundWorkScheduler.shared.attach(store: self)
         // Prune agent-activity entries older than 30 days so the persisted log

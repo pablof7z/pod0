@@ -108,6 +108,10 @@ extension ChapterId {
     var uuid: UUID? { UUID(coreHigh: high, low: low) }
 }
 
+extension DownloadIntentId {
+    var stableString: String { coreIdentifier(high: high, low: low) }
+}
+
 extension AdSpanId {
     var uuid: UUID? { UUID(coreHigh: high, low: low) }
 }

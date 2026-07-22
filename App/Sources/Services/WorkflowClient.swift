@@ -14,6 +14,8 @@ final class WorkflowClient {
         -> [PublisherChapterWorkflowProjection]
     typealias ModelChapterLoader = @Sendable (WorkflowProjectionQuery) async
         -> [ModelChapterWorkflowProjection]
+    typealias DownloadLoader = @Sendable (WorkflowProjectionQuery) async
+        -> [DownloadWorkflowProjection]
 
     nonisolated private static let logger = Logger.app("WorkflowClient")
     private(set) var revision: UInt64 = 0
@@ -21,12 +23,14 @@ final class WorkflowClient {
     private var swiftJobsByID: [UUID: WorkflowJobProjection] = [:]
     private var corePublisherJobsByID: [UUID: WorkflowJobProjection] = [:]
     private var coreModelChapterJobsByID: [UUID: WorkflowJobProjection] = [:]
+    private var coreDownloadJobsByID: [UUID: WorkflowJobProjection] = [:]
     private var latestByKey: [WorkflowJobKey: WorkflowJobProjection] = [:]
 
     @ObservationIgnored private var registrations: [UUID: WorkflowProjectionRequest] = [:]
     @ObservationIgnored private var loader: Loader?
     @ObservationIgnored private var publisherLoader: PublisherLoader?
     @ObservationIgnored private var modelChapterLoader: ModelChapterLoader?
+    @ObservationIgnored private var downloadLoader: DownloadLoader?
     @ObservationIgnored private var databaseURL: URL?
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     @ObservationIgnored private var generation: UInt64 = 0
@@ -80,6 +84,16 @@ final class WorkflowClient {
 
     func detachModelChapterCore() {
         modelChapterLoader = nil
+        refresh(immediately: true)
+    }
+
+    func attachDownloadCore(loader: @escaping DownloadLoader) {
+        downloadLoader = loader
+        refresh()
+    }
+
+    func detachDownloadCore() {
+        downloadLoader = nil
         refresh(immediately: true)
     }
 
@@ -138,7 +152,9 @@ final class WorkflowClient {
         let loader = loader
         let publisherLoader = publisherLoader
         let modelChapterLoader = modelChapterLoader
-        guard loader != nil || publisherLoader != nil || modelChapterLoader != nil else {
+        let downloadLoader = downloadLoader
+        guard loader != nil || publisherLoader != nil || modelChapterLoader != nil
+                || downloadLoader != nil else {
             replaceJobs(
                 [],
                 publisherWorkflows: [],
@@ -154,11 +170,13 @@ final class WorkflowClient {
                 let jobs = try await loader?(query) ?? []
                 let publisherWorkflows = await publisherLoader?(query) ?? []
                 let modelChapterWorkflows = await modelChapterLoader?(query) ?? []
+                let downloadWorkflows = await downloadLoader?(query) ?? []
                 guard !Task.isCancelled else { return }
                 self?.replaceJobs(
                     jobs,
                     publisherWorkflows: publisherWorkflows,
                     modelChapterWorkflows: modelChapterWorkflows,
+                    downloadWorkflows: downloadWorkflows,
                     generation: requestedGeneration
                 )
             } catch is CancellationError {
@@ -192,10 +210,6 @@ final class WorkflowClient {
 
     func requestTranscript(episodeID: UUID, provider: STTProvider? = nil) {
         WorkflowRuntime.shared.requestTranscript(episodeID: episodeID, provider: provider)
-    }
-
-    func dismissDownloadFailure(episodeID: UUID) {
-        WorkflowRuntime.shared.dismissDownloadFailure(episodeID: episodeID)
     }
 
     func perform(
@@ -237,6 +251,7 @@ final class WorkflowClient {
         _ jobs: [WorkflowJobProjection],
         publisherWorkflows: [PublisherChapterWorkflowProjection],
         modelChapterWorkflows: [ModelChapterWorkflowProjection],
+        downloadWorkflows: [DownloadWorkflowProjection] = [],
         generation: UInt64
     ) {
         guard generation == self.generation else { return }
@@ -249,11 +264,16 @@ final class WorkflowClient {
             let projection = WorkflowJobProjection(modelChapterWorkflow: $0)
             return (projection.id, projection)
         })
+        coreDownloadJobsByID = Dictionary(uniqueKeysWithValues: downloadWorkflows.map {
+            let projection = WorkflowJobProjection(downloadWorkflow: $0)
+            return (projection.id, projection)
+        })
         mergeJobs()
     }
 
     private func mergeJobs() {
-        let coreJobs = corePublisherJobsByID.merging(coreModelChapterJobsByID) { _, model in model }
+        let chapterJobs = corePublisherJobsByID.merging(coreModelChapterJobsByID) { _, model in model }
+        let coreJobs = chapterJobs.merging(coreDownloadJobsByID) { _, download in download }
         let replacement = swiftJobsByID.merging(coreJobs) { _, core in core }
         guard replacement != jobsByID else { return }
         jobsByID = replacement

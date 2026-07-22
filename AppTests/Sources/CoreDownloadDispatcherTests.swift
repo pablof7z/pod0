@@ -87,6 +87,7 @@ final class CoreDownloadDispatcherTests: XCTestCase {
             observationOutbox: outbox
         )
 
+        dispatcher.activateExecution()
         dispatcher.executePendingRequests(from: Pod0Facade())
         for _ in 0 ..< 100 where !dispatcher.observationRecoveryReady {
             try await Task.sleep(for: .milliseconds(10))

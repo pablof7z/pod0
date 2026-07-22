@@ -63,6 +63,15 @@ impl FacadeState {
             ApplicationCommand::RequestEpisodeDownload { episode_id, origin } => {
                 self.request_episode_download(&envelope, &fingerprint, episode_id, origin)
             }
+            ApplicationCommand::ReportAutomaticDownloadCandidates {
+                podcast_id,
+                episode_ids,
+            } => self.report_automatic_download_candidates(
+                &envelope,
+                &fingerprint,
+                podcast_id,
+                episode_ids,
+            ),
             ApplicationCommand::CancelEpisodeDownload {
                 episode_id,
                 expected_workflow_revision,

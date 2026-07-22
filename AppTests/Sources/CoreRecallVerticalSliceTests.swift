@@ -49,6 +49,7 @@ final class CoreRecallVerticalSliceTests: XCTestCase {
 
         guard case .ready(let first) = SharedLibraryBootstrap.run(
             persistence: persistence,
+            legacyState: state,
             feedHost: VerticalSliceFeedHost()
         ) else { return XCTFail("Expected an authoritative shared store") }
         await attachRecall(to: first, embedder: embedder)
@@ -113,6 +114,7 @@ final class CoreRecallVerticalSliceTests: XCTestCase {
 
         let reopened = await makeClient(
             facade: reopenedFacade,
+            coreStoreURL: persistence.sharedCoreStoreURL,
             embedder: embedder
         )
         let reopenedSummary = try XCTUnwrap(
@@ -141,9 +143,14 @@ final class CoreRecallVerticalSliceTests: XCTestCase {
 
     private func makeClient(
         facade: Pod0Facade,
+        coreStoreURL: URL,
         embedder: RestartCountingEmbedder
     ) async -> SharedLibraryClient {
-        let client = SharedLibraryClient(facade: facade, feedHost: VerticalSliceFeedHost())
+        let client = SharedLibraryClient(
+            facade: facade,
+            coreStoreURL: coreStoreURL,
+            feedHost: VerticalSliceFeedHost()
+        )
         await attachRecall(to: client, embedder: embedder)
         client.start()
         return client

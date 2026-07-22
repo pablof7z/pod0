@@ -1,3 +1,8 @@
+use crate::runtime_download_mapping::{
+    environment_projection, stored_network, stored_origin, wait_failure,
+};
+use crate::runtime_state::FacadeState;
+use crate::runtime_storage_commands::storage_failure;
 use pod0_application::{
     CommandEnvelope, CoreFailureCode, DOWNLOAD_HOST_REQUEST_DEADLINE_MILLISECONDS,
     DownloadAdmissionDecision, DownloadEnvironmentObservation, DownloadIntentOrigin,
@@ -7,12 +12,6 @@ use pod0_domain::{EpisodeId, StateRevision};
 use pod0_storage::{
     DownloadEnsureInput, DownloadEnsureOutcome, DownloadWorkflowRecord, StoredDownloadStage,
 };
-
-use crate::runtime_download_mapping::{
-    environment_projection, stored_network, stored_origin, wait_failure,
-};
-use crate::runtime_state::FacadeState;
-use crate::runtime_storage_commands::storage_failure;
 
 impl FacadeState {
     pub(super) fn request_episode_download(
@@ -26,6 +25,10 @@ impl FacadeState {
             self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
             return;
         };
+        if store.require_download_workflow_authoritative().is_err() {
+            self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
+            return;
+        }
         if let Err(error) = self.reload_listening() {
             self.fail(envelope.command_id, storage_failure(error));
             return;
@@ -124,6 +127,10 @@ impl FacadeState {
             self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
             return;
         };
+        if store.require_download_workflow_authoritative().is_err() {
+            self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
+            return;
+        }
         let existing = store.download_workflow(episode_id).ok().flatten();
         let result = store.cancel_download_workflow(
             envelope.command_id,
@@ -168,6 +175,10 @@ impl FacadeState {
             self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
             return;
         };
+        if store.require_download_workflow_authoritative().is_err() {
+            self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
+            return;
+        }
         let now = self.now().value;
         let Some(deadline) = now.checked_add(DOWNLOAD_HOST_REQUEST_DEADLINE_MILLISECONDS) else {
             self.fail(envelope.command_id, CoreFailureCode::InvalidCommand);
@@ -208,6 +219,10 @@ impl FacadeState {
             self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
             return;
         };
+        if store.require_download_workflow_authoritative().is_err() {
+            self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
+            return;
+        }
         let network = stored_network(observation.network);
         let result = store.observe_download_environment(
             envelope.command_id,

@@ -35,7 +35,7 @@ pub(crate) fn copy_and_hash_staged(
     let staging_root = download_root(store).join(".staging");
     fs::create_dir_all(&staging_root)
         .map_err(|error| StorageError::io("create download staging directory", error))?;
-    let pending_path = staging_root.join(format!("{}.pending", hex(&attempt_id.into_bytes())));
+    let pending_path = pending_artifact_path(store, attempt_id);
     let mut input =
         File::open(source).map_err(|error| StorageError::io("open staged download", error))?;
     let mut output = OpenOptions::new()
@@ -74,6 +74,12 @@ pub(crate) fn copy_and_hash_staged(
         byte_count: count,
         digest: hash.finalize().into(),
     })
+}
+
+pub(crate) fn pending_artifact_path(store: &Path, attempt_id: DownloadAttemptId) -> PathBuf {
+    download_root(store)
+        .join(".staging")
+        .join(format!("{}.pending", hex(&attempt_id.into_bytes())))
 }
 
 pub(crate) fn artifact_path(store: &Path, artifact_key: &str) -> Result<PathBuf, StorageError> {

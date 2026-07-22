@@ -78,17 +78,16 @@ struct EpisodeRowDownloadSwipeAction: View {
             // destructive adjacent action that marks the episode played.
             Button {
                 Haptics.light()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.delete(episodeID: episode.id)
+                store.sharedLibrary?.removeDownload(episodeID: episode.id)
             } label: {
                 Label("Free up", systemImage: "internaldrive")
             }
             .tint(.gray)
-        } else if EpisodeDownloadService.shared.progress[episode.id] != nil || downloadIsActive {
+        } else if store.sharedLibrary?.downloadProgress(episodeID: episode.id) != nil
+                    || downloadIsActive {
             Button {
                 Haptics.light()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.cancel(episodeID: episode.id)
+                store.sharedLibrary?.cancelDownload(episodeID: episode.id)
             } label: {
                 Label("Cancel", systemImage: "xmark.circle")
             }
@@ -96,8 +95,7 @@ struct EpisodeRowDownloadSwipeAction: View {
         } else if downloadNeedsAttention {
             Button {
                 Haptics.light()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.download(episodeID: episode.id)
+                store.sharedLibrary?.retryDownload(episodeID: episode.id)
             } label: {
                 Label("Retry", systemImage: "arrow.clockwise")
             }
@@ -105,8 +103,7 @@ struct EpisodeRowDownloadSwipeAction: View {
         } else {
             Button {
                 Haptics.light()
-                EpisodeDownloadService.shared.attach(appStore: store)
-                EpisodeDownloadService.shared.download(episodeID: episode.id)
+                store.sharedLibrary?.requestDownload(episodeID: episode.id)
             } label: {
                 Label("Download", systemImage: "arrow.down.circle")
             }

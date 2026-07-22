@@ -3,7 +3,7 @@ use rusqlite::params;
 
 use crate::download_store_read::workflow_for_request;
 use crate::download_store_request::{
-    insert_attempt_and_start_request, start_request_id, u64_to_i64,
+    download_start_request_id, insert_attempt_and_start_request, u64_to_i64,
 };
 use crate::{
     DownloadFailureInput, DownloadObservationOutcome, DownloadWorkflowRecord, StorageError,
@@ -20,7 +20,7 @@ pub(crate) fn schedule_retry(
         .ok_or(StorageError::DownloadWorkflowConflict)?;
     let attempt_id = download_attempt_identity(current.intent_id, attempt)
         .ok_or(StorageError::DownloadWorkflowConflict)?;
-    let request_id = start_request_id(attempt_id);
+    let request_id = download_start_request_id(attempt_id);
     let retry_at = input
         .retry_at_ms
         .ok_or(StorageError::DownloadWorkflowConflict)?;

@@ -2,20 +2,17 @@ import Foundation
 
 final class LivePodcastLibraryAdapter: PodcastLibraryProtocol, @unchecked Sendable {
     weak var store: AppStateStore?
-    private let downloadService: EpisodeDownloadService
     private let transcriptService: TranscriptIngestService
     private let refreshService: SubscriptionRefreshService
     private let transcriptReader: any TranscriptReading
 
     init(
         store: AppStateStore,
-        downloadService: EpisodeDownloadService,
         transcriptService: TranscriptIngestService,
         refreshService: SubscriptionRefreshService,
         transcriptReader: any TranscriptReading
     ) {
         self.store = store
-        self.downloadService = downloadService
         self.transcriptService = transcriptService
         self.refreshService = refreshService
         self.transcriptReader = transcriptReader
@@ -35,8 +32,7 @@ final class LivePodcastLibraryAdapter: PodcastLibraryProtocol, @unchecked Sendab
 
     func downloadEpisode(episodeID: EpisodeID) async throws -> EpisodeMutationResult {
         try await mutateEpisode(episodeID: episodeID, state: nil) { store, id in
-            self.downloadService.attach(appStore: store)
-            self.downloadService.download(episodeID: id)
+            store.sharedLibrary?.requestDownload(episodeID: id)
         }
     }
 
@@ -82,8 +78,7 @@ final class LivePodcastLibraryAdapter: PodcastLibraryProtocol, @unchecked Sendab
             )
         }
         await MainActor.run {
-            downloadService.attach(appStore: store)
-            downloadService.download(episodeID: uuid)
+            store.sharedLibrary?.requestDownload(episodeID: uuid)
             WorkflowRuntime.shared.requestTranscript(episodeID: uuid)
         }
         return TranscriptRequestResult(

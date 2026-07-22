@@ -79,7 +79,7 @@ pub(crate) fn insert_attempt_and_start_request(
     Ok(())
 }
 
-pub(crate) fn start_request_id(attempt_id: DownloadAttemptId) -> HostRequestId {
+pub fn download_start_request_id(attempt_id: DownloadAttemptId) -> HostRequestId {
     derived_request_id(
         b"pod0-download-start-request-v1",
         &attempt_id.into_bytes(),

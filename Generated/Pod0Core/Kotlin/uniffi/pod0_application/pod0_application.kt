@@ -5933,6 +5933,16 @@ sealed class ApplicationCommand {
         companion object
     }
 
+    data class ReportAutomaticDownloadCandidates(
+        val `podcastId`: uniffi.pod0_domain.PodcastId,
+        val `episodeIds`: List<uniffi.pod0_domain.EpisodeId>) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
     data class CancelEpisodeDownload(
         val `episodeId`: uniffi.pod0_domain.EpisodeId,
         val `expectedWorkflowRevision`: uniffi.pod0_domain.StateRevision) : ApplicationCommand()
@@ -6273,94 +6283,98 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypeDownloadIntentOrigin.read(buf),
                 )
-            12 -> ApplicationCommand.CancelEpisodeDownload(
+            12 -> ApplicationCommand.ReportAutomaticDownloadCandidates(
+                FfiConverterTypePodcastId.read(buf),
+                FfiConverterSequenceTypeEpisodeId.read(buf),
+                )
+            13 -> ApplicationCommand.CancelEpisodeDownload(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            13 -> ApplicationCommand.RemoveEpisodeDownload(
+            14 -> ApplicationCommand.RemoveEpisodeDownload(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            14 -> ApplicationCommand.ObserveDownloadEnvironment(
+            15 -> ApplicationCommand.ObserveDownloadEnvironment(
                 FfiConverterTypeDownloadEnvironmentObservation.read(buf),
                 )
-            15 -> ApplicationCommand.ResetListeningData
-            16 -> ApplicationCommand.RequestPlayback(
+            16 -> ApplicationCommand.ResetListeningData
+            17 -> ApplicationCommand.RequestPlayback(
                 FfiConverterTypeEpisodeId.read(buf),
                 )
-            17 -> ApplicationCommand.Playback(
+            18 -> ApplicationCommand.Playback(
                 FfiConverterTypePlaybackCommand.read(buf),
                 )
-            18 -> ApplicationCommand.RecallQuery(
+            19 -> ApplicationCommand.RecallQuery(
                 FfiConverterTypeRecallQuery.read(buf),
                 )
-            19 -> ApplicationCommand.ImportLegacyRecallConfiguration(
+            20 -> ApplicationCommand.ImportLegacyRecallConfiguration(
                 FfiConverterTypeRecallConfigurationInput.read(buf),
                 FfiConverterTypeContentDigest.read(buf),
                 )
-            20 -> ApplicationCommand.SetRecallConfiguration(
+            21 -> ApplicationCommand.SetRecallConfiguration(
                 FfiConverterTypeStateRevision.read(buf),
                 FfiConverterTypeRecallConfigurationInput.read(buf),
                 )
-            21 -> ApplicationCommand.RebuildTranscriptEvidence(
+            22 -> ApplicationCommand.RebuildTranscriptEvidence(
                 FfiConverterTypeTranscriptEvidenceInput.read(buf),
                 FfiConverterTypeEvidenceChunkPolicy.read(buf),
                 )
-            22 -> ApplicationCommand.CommitRecallIndexCutover
-            23 -> ApplicationCommand.CommitTranscript(
+            23 -> ApplicationCommand.CommitRecallIndexCutover
+            24 -> ApplicationCommand.CommitTranscript(
                 FfiConverterTypeStateRevision.read(buf),
                 FfiConverterTypeTranscriptArtifactInput.read(buf),
                 )
-            24 -> ApplicationCommand.CommitChapter(
+            25 -> ApplicationCommand.CommitChapter(
                 FfiConverterTypeStateRevision.read(buf),
                 FfiConverterTypeChapterArtifactInput.read(buf),
                 )
-            25 -> ApplicationCommand.EnsurePublisherChapters(
+            26 -> ApplicationCommand.EnsurePublisherChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 )
-            26 -> ApplicationCommand.RetryPublisherChapters(
-                FfiConverterTypeEpisodeId.read(buf),
-                FfiConverterTypeStateRevision.read(buf),
-                )
-            27 -> ApplicationCommand.CancelPublisherChapters(
+            27 -> ApplicationCommand.RetryPublisherChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            28 -> ApplicationCommand.EnsureModelChapters(
+            28 -> ApplicationCommand.CancelPublisherChapters(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeStateRevision.read(buf),
+                )
+            29 -> ApplicationCommand.EnsureModelChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterString.read(buf),
                 )
-            29 -> ApplicationCommand.RetryModelChapters(
+            30 -> ApplicationCommand.RetryModelChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            30 -> ApplicationCommand.CancelModelChapters(
+            31 -> ApplicationCommand.CancelModelChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            31 -> ApplicationCommand.CreateNote(
+            32 -> ApplicationCommand.CreateNote(
                 FfiConverterString.read(buf),
                 FfiConverterTypeNoteKind.read(buf),
                 FfiConverterTypeNoteAuthor.read(buf),
                 FfiConverterOptionalTypeNoteTarget.read(buf),
                 )
-            32 -> ApplicationCommand.UpdateNote(
+            33 -> ApplicationCommand.UpdateNote(
                 FfiConverterTypeNoteId.read(buf),
                 FfiConverterTypeNoteRevision.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterTypeNoteKind.read(buf),
                 FfiConverterOptionalTypeNoteTarget.read(buf),
                 )
-            33 -> ApplicationCommand.SetNoteDeleted(
+            34 -> ApplicationCommand.SetNoteDeleted(
                 FfiConverterTypeNoteId.read(buf),
                 FfiConverterTypeNoteRevision.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
-            34 -> ApplicationCommand.ClearNotes(
+            35 -> ApplicationCommand.ClearNotes(
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            35 -> ApplicationCommand.CreateClip(
+            36 -> ApplicationCommand.CreateClip(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypePodcastId.read(buf),
@@ -6371,7 +6385,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterString.read(buf),
                 FfiConverterTypeClipSource.read(buf),
                 )
-            36 -> ApplicationCommand.UpdateClip(
+            37 -> ApplicationCommand.UpdateClip(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterULong.read(buf),
@@ -6380,18 +6394,18 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterOptionalTypeSpeakerId.read(buf),
                 FfiConverterString.read(buf),
                 )
-            37 -> ApplicationCommand.SetClipDeleted(
+            38 -> ApplicationCommand.SetClipDeleted(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
-            38 -> ApplicationCommand.ClearClips(
+            39 -> ApplicationCommand.ClearClips(
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            39 -> ApplicationCommand.CancelOperation(
+            40 -> ApplicationCommand.CancelOperation(
                 FfiConverterTypeCancellationId.read(buf),
                 )
-            40 -> ApplicationCommand.Unsupported(
+            41 -> ApplicationCommand.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -6478,6 +6492,14 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 4UL
                 + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
                 + FfiConverterTypeDownloadIntentOrigin.allocationSize(value.`origin`)
+            )
+        }
+        is ApplicationCommand.ReportAutomaticDownloadCandidates -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
+                + FfiConverterSequenceTypeEpisodeId.allocationSize(value.`episodeIds`)
             )
         }
         is ApplicationCommand.CancelEpisodeDownload -> {
@@ -6782,114 +6804,120 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterTypeDownloadIntentOrigin.write(value.`origin`, buf)
                 Unit
             }
-            is ApplicationCommand.CancelEpisodeDownload -> {
+            is ApplicationCommand.ReportAutomaticDownloadCandidates -> {
                 buf.putInt(12)
-                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
-                FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
+                FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+                FfiConverterSequenceTypeEpisodeId.write(value.`episodeIds`, buf)
                 Unit
             }
-            is ApplicationCommand.RemoveEpisodeDownload -> {
+            is ApplicationCommand.CancelEpisodeDownload -> {
                 buf.putInt(13)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
-            is ApplicationCommand.ObserveDownloadEnvironment -> {
+            is ApplicationCommand.RemoveEpisodeDownload -> {
                 buf.putInt(14)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
+                Unit
+            }
+            is ApplicationCommand.ObserveDownloadEnvironment -> {
+                buf.putInt(15)
                 FfiConverterTypeDownloadEnvironmentObservation.write(value.`observation`, buf)
                 Unit
             }
             is ApplicationCommand.ResetListeningData -> {
-                buf.putInt(15)
+                buf.putInt(16)
                 Unit
             }
             is ApplicationCommand.RequestPlayback -> {
-                buf.putInt(16)
+                buf.putInt(17)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 Unit
             }
             is ApplicationCommand.Playback -> {
-                buf.putInt(17)
+                buf.putInt(18)
                 FfiConverterTypePlaybackCommand.write(value.`command`, buf)
                 Unit
             }
             is ApplicationCommand.RecallQuery -> {
-                buf.putInt(18)
+                buf.putInt(19)
                 FfiConverterTypeRecallQuery.write(value.`query`, buf)
                 Unit
             }
             is ApplicationCommand.ImportLegacyRecallConfiguration -> {
-                buf.putInt(19)
+                buf.putInt(20)
                 FfiConverterTypeRecallConfigurationInput.write(value.`configuration`, buf)
                 FfiConverterTypeContentDigest.write(value.`sourceGeneration`, buf)
                 Unit
             }
             is ApplicationCommand.SetRecallConfiguration -> {
-                buf.putInt(20)
+                buf.putInt(21)
                 FfiConverterTypeStateRevision.write(value.`expectedConfigurationRevision`, buf)
                 FfiConverterTypeRecallConfigurationInput.write(value.`configuration`, buf)
                 Unit
             }
             is ApplicationCommand.RebuildTranscriptEvidence -> {
-                buf.putInt(21)
+                buf.putInt(22)
                 FfiConverterTypeTranscriptEvidenceInput.write(value.`input`, buf)
                 FfiConverterTypeEvidenceChunkPolicy.write(value.`policy`, buf)
                 Unit
             }
             is ApplicationCommand.CommitRecallIndexCutover -> {
-                buf.putInt(22)
+                buf.putInt(23)
                 Unit
             }
             is ApplicationCommand.CommitTranscript -> {
-                buf.putInt(23)
+                buf.putInt(24)
                 FfiConverterTypeStateRevision.write(value.`expectedSelectionRevision`, buf)
                 FfiConverterTypeTranscriptArtifactInput.write(value.`artifact`, buf)
                 Unit
             }
             is ApplicationCommand.CommitChapter -> {
-                buf.putInt(24)
+                buf.putInt(25)
                 FfiConverterTypeStateRevision.write(value.`expectedSelectionRevision`, buf)
                 FfiConverterTypeChapterArtifactInput.write(value.`artifact`, buf)
                 Unit
             }
             is ApplicationCommand.EnsurePublisherChapters -> {
-                buf.putInt(25)
+                buf.putInt(26)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 Unit
             }
             is ApplicationCommand.RetryPublisherChapters -> {
-                buf.putInt(26)
-                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
-                FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
-                Unit
-            }
-            is ApplicationCommand.CancelPublisherChapters -> {
                 buf.putInt(27)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
-            is ApplicationCommand.EnsureModelChapters -> {
+            is ApplicationCommand.CancelPublisherChapters -> {
                 buf.putInt(28)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
+                Unit
+            }
+            is ApplicationCommand.EnsureModelChapters -> {
+                buf.putInt(29)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterString.write(value.`configuredModel`, buf)
                 Unit
             }
             is ApplicationCommand.RetryModelChapters -> {
-                buf.putInt(29)
+                buf.putInt(30)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterString.write(value.`configuredModel`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CancelModelChapters -> {
-                buf.putInt(30)
+                buf.putInt(31)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CreateNote -> {
-                buf.putInt(31)
+                buf.putInt(32)
                 FfiConverterString.write(value.`text`, buf)
                 FfiConverterTypeNoteKind.write(value.`kind`, buf)
                 FfiConverterTypeNoteAuthor.write(value.`author`, buf)
@@ -6897,7 +6925,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.UpdateNote -> {
-                buf.putInt(32)
+                buf.putInt(33)
                 FfiConverterTypeNoteId.write(value.`noteId`, buf)
                 FfiConverterTypeNoteRevision.write(value.`expectedNoteRevision`, buf)
                 FfiConverterString.write(value.`text`, buf)
@@ -6906,19 +6934,19 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.SetNoteDeleted -> {
-                buf.putInt(33)
+                buf.putInt(34)
                 FfiConverterTypeNoteId.write(value.`noteId`, buf)
                 FfiConverterTypeNoteRevision.write(value.`expectedNoteRevision`, buf)
                 FfiConverterBoolean.write(value.`deleted`, buf)
                 Unit
             }
             is ApplicationCommand.ClearNotes -> {
-                buf.putInt(34)
+                buf.putInt(35)
                 FfiConverterTypeStateRevision.write(value.`expectedCollectionRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CreateClip -> {
-                buf.putInt(35)
+                buf.putInt(36)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
@@ -6931,7 +6959,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.UpdateClip -> {
-                buf.putInt(36)
+                buf.putInt(37)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`expectedClipRevision`, buf)
                 FfiConverterULong.write(value.`startMilliseconds`, buf)
@@ -6942,24 +6970,24 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.SetClipDeleted -> {
-                buf.putInt(37)
+                buf.putInt(38)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`expectedClipRevision`, buf)
                 FfiConverterBoolean.write(value.`deleted`, buf)
                 Unit
             }
             is ApplicationCommand.ClearClips -> {
-                buf.putInt(38)
+                buf.putInt(39)
                 FfiConverterTypeStateRevision.write(value.`expectedCollectionRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CancelOperation -> {
-                buf.putInt(39)
+                buf.putInt(40)
                 FfiConverterTypeCancellationId.write(value.`cancellationId`, buf)
                 Unit
             }
             is ApplicationCommand.Unsupported -> {
-                buf.putInt(40)
+                buf.putInt(41)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -19105,6 +19133,34 @@ public object FfiConverterSequenceTypeClipRecord: FfiConverterRustBuffer<List<Cl
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeClipRecord.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeEpisodeId: FfiConverterRustBuffer<List<EpisodeId>> {
+    override fun read(buf: ByteBuffer): List<EpisodeId> {
+        val len = buf.getInt()
+        return List<EpisodeId>(len) {
+            FfiConverterTypeEpisodeId.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<EpisodeId>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeEpisodeId.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<EpisodeId>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeEpisodeId.write(it, buf)
         }
     }
 }

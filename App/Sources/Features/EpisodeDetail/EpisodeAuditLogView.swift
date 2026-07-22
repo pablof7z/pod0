@@ -118,8 +118,7 @@ struct EpisodeAuditLogView: View {
             }
             if downloadJob == nil, case .notDownloaded = episode.downloadState {
                 Button("Start download", systemImage: "arrow.down.circle") {
-                    EpisodeDownloadService.shared.attach(appStore: store)
-                    EpisodeDownloadService.shared.download(episodeID: episode.id)
+                    store.sharedLibrary?.requestDownload(episodeID: episode.id)
                 }
             }
         } header: {
@@ -219,7 +218,8 @@ struct EpisodeAuditLogView: View {
 
     private var downloadStateSummary: String {
         switch episode.downloadState {
-        case .downloaded(_, let bytes): return EpisodeDownloadService.formatBytes(bytes)
+        case .downloaded(_, let bytes):
+            return ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
         case .notDownloaded:
             return jobSummary(downloadJob) ?? "not downloaded"
         }

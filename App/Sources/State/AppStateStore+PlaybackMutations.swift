@@ -11,7 +11,7 @@ extension AppStateStore {
         if let episode = episode(id: id),
            case .downloaded = episode.downloadState,
            state.settings.autoDeleteDownloadsAfterPlayed {
-            EpisodeDownloadService.shared.delete(episodeID: id)
+            sharedLibrary?.removeDownload(episodeID: id)
         }
     }
 

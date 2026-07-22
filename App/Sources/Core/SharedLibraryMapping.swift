@@ -65,7 +65,8 @@ extension AutoDownloadPolicy {
 extension EpisodeRecord {
     func swiftValue(
         preserving adjunct: Episode?,
-        chapters chapterProjection: SharedChapterSnapshot?
+        chapters chapterProjection: SharedChapterSnapshot?,
+        downloadState: DownloadState
     ) -> Episode? {
         guard let id = episodeId.uuid,
               let podcastID = podcastId.uuid,
@@ -97,7 +98,7 @@ extension EpisodeRecord {
             playbackPosition: Double(listening.resumePositionMilliseconds) / 1_000,
             played: completed,
             isStarred: isStarred,
-            downloadState: adjunct?.downloadState ?? .notDownloaded,
+            downloadState: downloadState,
             transcriptState: transcript.swiftValue,
             requestedTranscriptProvider: adjunct?.requestedTranscriptProvider,
             adSegments: chapterProjection?.adSegments,

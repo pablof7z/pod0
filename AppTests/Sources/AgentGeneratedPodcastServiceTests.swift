@@ -4,7 +4,7 @@ import XCTest
 
 @MainActor
 final class AgentGeneratedPodcastServiceTests: XCTestCase {
-    func testPublishEpisodeCommitsVerifiedDownloadEvidence() async throws {
+    func testPublishEpisodeUsesLocalEnclosureWithoutLegacyDownloadEvidence() async throws {
         let made = AppStateTestSupport.makeIsolatedStore()
         defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
         let audioURL = FileManager.default.temporaryDirectory
@@ -21,16 +21,13 @@ final class AgentGeneratedPodcastServiceTests: XCTestCase {
             in: made.store
         )
 
-        guard case .downloaded(let selectedURL, let byteCount) = episode.downloadState else {
-            return XCTFail("Expected verified downloaded projection")
-        }
-        XCTAssertEqual(selectedURL, audioURL)
-        XCTAssertEqual(byteCount, Int64(audio.count))
+        XCTAssertEqual(episode.enclosureURL, audioURL)
+        XCTAssertEqual(try Data(contentsOf: episode.enclosureURL), audio)
+        XCTAssertEqual(episode.downloadState, .notDownloaded)
         let artifact = try ArtifactRepository(
             fileURL: made.store.persistence.episodeStore.fileURL
         ).current(kind: .downloadFile, subjectID: episode.id)
-        XCTAssertEqual(artifact?.integrity, .available)
-        XCTAssertEqual(artifact?.contentHash, ArtifactRepository.hash(audio))
+        XCTAssertNil(artifact)
         XCTAssertEqual(made.store.podcast(id: episode.podcastID)?.kind, .synthetic)
         XCTAssertEqual(episode.description, "Verified")
 
@@ -40,7 +37,8 @@ final class AgentGeneratedPodcastServiceTests: XCTestCase {
             startSubscriptionRefresh: false
         )
         XCTAssertEqual(relaunched.episode(id: episode.id)?.description, "Verified")
-        XCTAssertEqual(relaunched.episode(id: episode.id)?.downloadState, episode.downloadState)
+        XCTAssertEqual(relaunched.episode(id: episode.id)?.enclosureURL, audioURL)
+        XCTAssertEqual(relaunched.episode(id: episode.id)?.downloadState, .notDownloaded)
     }
 
     func testPublishEpisodeWithMissingFileDoesNotManufactureDownloadedState() async throws {

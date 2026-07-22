@@ -1,4 +1,5 @@
 import Foundation
+import Pod0Core
 import XCTest
 @testable import Podcastr
 
@@ -7,7 +8,7 @@ import XCTest
 ///
 /// The download closure (`PlaybackState.onEnsureDownloadEnqueued`) is the
 /// indirection point: `RootView` wires it to
-/// `EpisodeDownloadService.ensureDownloadEnqueued`, tests stub it directly
+/// the shared-core download request boundary; tests stub it directly
 /// so the URLSession / `AppStateStore` graph stays out of the test fixture.
 @MainActor
 final class PlaybackStateAutoDownloadTests: XCTestCase {
@@ -60,29 +61,48 @@ final class PlaybackStateAutoDownloadTests: XCTestCase {
         XCTAssertEqual(calls, [episode.id])
     }
 
-    func testDownloadedEpisodeDoesNotFireDownload() async {
-        let played = expectation(description: "Rust committed playing")
+    func testDownloadedEpisodeDoesNotFireDownload() {
         let episode = makeEpisode(
             downloadState: .downloaded(
                 localFileURL: URL(fileURLWithPath: "/tmp/episode.mp3"),
                 byteCount: 4096
             )
         )
-        let fixture = makeFixture(
-            episodes: [episode],
-            productSignals: ProductSignalExpectationSink(
-                name: .playStarted,
-                expectation: played
-            )
-        )
-        defer { fixture.persistence.reset() }
+        let playback = PlaybackState()
         var calls: [UUID] = []
-        fixture.playback.onEnsureDownloadEnqueued = { calls.append($0) }
+        playback.onEnsureDownloadEnqueued = { calls.append($0) }
+        let projection = PlaybackProjection(
+            current: PlaybackItem(
+                episodeId: EpisodeId(uuid: episode.id),
+                title: episode.title,
+                durableResumePositionMilliseconds: 0,
+                meaningfulListeningReached: false,
+                segment: nil,
+                label: nil,
+                completed: false,
+                policyState: .paused,
+                chapterContext: nil
+            ),
+            queue: [],
+            rate: PlaybackRatePermille(value: 1_000),
+            sleepMode: .off,
+            autoMarkPlayedAtNaturalEnd: true,
+            autoPlayNext: true,
+            autoSkipAds: false,
+            allowedActions: PlaybackAllowedActions(
+                canPlay: true,
+                canPause: false,
+                canSeek: true,
+                canAdvance: false
+            ),
+            hostState: .prepared,
+            operations: []
+        )
 
-        fixture.playback.setEpisode(episode)
-        fixture.playback.play()
+        playback.applySharedPlayback(projection, stateRevision: 1) { id in
+            id == episode.id ? episode : nil
+        }
 
-        await fulfillment(of: [played], timeout: 5)
         XCTAssertTrue(calls.isEmpty)
     }
 

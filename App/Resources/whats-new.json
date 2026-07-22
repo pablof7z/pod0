@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-22T09:43:32Z",
+      "lines": [
+        "Downloads now recover reliably after relaunches and interrupted transfers without losing progress."
+      ]
+    },
+    {
       "shipped_at": "2026-07-21T01:06:28Z",
       "lines": [
         "Transcript-built chapters now recover safely after relaunches without repeating paid AI requests.",

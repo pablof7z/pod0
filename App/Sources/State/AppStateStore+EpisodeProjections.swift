@@ -130,7 +130,7 @@ extension AppStateStore {
     }
 
     /// Alias for `recomputeEpisodeProjections()`. Kept as a separate name
-    /// so call sites read intent-fully — `setEpisodeDownloadState` calls
+    /// so call sites read intentionally — shared-core projection application
     /// `invalidateEpisodeProjections()` to mean "the cached download/
     /// transcribed sets may now be stale", not "rebuild everything for
     /// performance reasons".

@@ -8,7 +8,7 @@ import os.log
 //
 // The podcast uses the sentinel feed URL `agent-generated://podcast` and
 // `kind: .synthetic` so it is excluded from OPML export, feed-refresh
-// scheduling, and the download service's auto-download evaluator. Callers
+// scheduling, and automatic download candidate reporting. Callers
 // branch on `Podcast.kind == .synthetic` rather than comparing URL strings.
 //
 // The user is NOT auto-subscribed to this podcast — synthetic shows have a
@@ -19,10 +19,10 @@ import os.log
 // Audio files live under:
 //   Application Support / podcastr / agent-episodes / <episodeID>.m4a
 //
-// Each call to `publishEpisode` creates a new `Episode` with
-// `downloadState = .downloaded` and a `file://` `enclosureURL` pointing at
-// the stitched m4a. The player reads local URLs exactly like remote ones
-// through the existing AudioEngine local-file fallback.
+// Each call to `publishEpisode` creates a new `Episode` with a `file://`
+// `enclosureURL` pointing at the stitched m4a. This is source media, not a
+// downloaded-artifact fact; the player reads it through AudioEngine's native
+// local-file path.
 
 struct AgentGeneratedPodcastService: Sendable {
 
@@ -133,33 +133,6 @@ struct AgentGeneratedPodcastService: Sendable {
             duration: durationSeconds
         )
         store.setEpisodeGenerationSource(episode.id, source: generationSource)
-        do {
-            let data = try Data(contentsOf: audioURL, options: .mappedIfSafe)
-            let hash = ArtifactRepository.hash(data)
-            let repository = ArtifactRepository(fileURL: store.persistence.episodeStore.fileURL)
-            try repository.adopt(ArtifactRecord(
-                kind: .downloadFile,
-                subjectID: episode.id,
-                inputVersion: DesiredStatePlanner.audioVersion(episode),
-                outputVersion: hash,
-                contentHash: hash,
-                location: audioURL.path,
-                origin: "agent-generated",
-                schemaVersion: 1,
-                integrity: .available,
-                verifiedAt: Date()
-            ))
-            _ = store.applyDownloadEvent(.artifactCommitted(.init(
-                inputVersion: DesiredStatePlanner.audioVersion(episode),
-                contentHash: hash,
-                fileURL: audioURL,
-                byteCount: Int64(data.count)
-            )), episodeID: episode.id)
-        } catch {
-            logger.error(
-                "Could not verify generated episode audio at \(audioURL.path, privacy: .public): \(error, privacy: .public)"
-            )
-        }
         logger.info("Published agent episode '\(title, privacy: .public)' id=\(episode.id, privacy: .public)")
         return store.episode(id: episode.id) ?? episode
     }

@@ -14,6 +14,8 @@ mod chapter_migration_mapping;
 mod chapter_migration_tests;
 mod chapter_observation_facade;
 mod clip_migration;
+mod download_cutover;
+mod download_cutover_types;
 #[cfg(test)]
 mod facade_contract_tests;
 mod listening_migration;
@@ -86,6 +88,7 @@ mod runtime_core_wakes;
 mod runtime_download_admission;
 #[cfg(test)]
 mod runtime_download_admission_tests;
+mod runtime_download_automatic;
 mod runtime_download_command_fingerprint;
 mod runtime_download_commands;
 #[cfg(test)]
@@ -179,6 +182,10 @@ pub use clip_migration::{
     LegacyClipBackupEvidence, LegacyClipImportPlan, LegacyClipImportReport,
     LegacyClipImportVerification, LegacyClipMigrationError, commit_staged_legacy_clip_import,
     inspect_legacy_clip_source, read_staged_legacy_clip_import, stage_legacy_clip_import,
+};
+pub use download_cutover_types::{
+    LegacyDownloadCutoverCandidate, LegacyDownloadCutoverDisposition, LegacyDownloadCutoverFailure,
+    LegacyDownloadCutoverFailureCode, LegacyDownloadCutoverProjection, LegacyDownloadCutoverStage,
 };
 pub use listening_migration::{
     LegacyListeningBackupEvidence, LegacyListeningImportPlan, LegacyListeningImportReport,

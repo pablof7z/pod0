@@ -119,6 +119,10 @@ extension Persistence {
         episodeStore.fileURL.appendingPathExtension("publisher-chapter-workflow-backups")
     }
 
+    var legacyDownloadWorkflowBackupURL: URL {
+        episodeStore.fileURL.appendingPathExtension("download-workflow-backup-v1.json")
+    }
+
     var legacyRecallIndexURL: URL? {
         guard let support = try? FileManager.default.url(
             for: .applicationSupportDirectory,
@@ -151,7 +155,8 @@ extension Persistence {
             legacyTranscriptBackupRootURL,
             legacyChapterBackupRootURL,
             legacyModelChapterWorkflowBackupRootURL,
-            legacyPublisherChapterWorkflowBackupRootURL
+            legacyPublisherChapterWorkflowBackupRootURL,
+            legacyDownloadWorkflowBackupURL
         ]
         urls.append(contentsOf: (1...32).map {
             sharedCoreSchemaBackupURL(targetVersion: UInt32($0))

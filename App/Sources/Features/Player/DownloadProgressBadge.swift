@@ -13,7 +13,7 @@ import SwiftUI
 ///   - `.failed`         → `exclamationmark.triangle.fill` in error tint.
 ///
 /// `liveProgress` overrides the persisted `.downloading(progress, _)` value
-/// so the percentage updates smoothly with `EpisodeDownloadService.progress`
+/// so the percentage updates smoothly with native capability progress
 /// (5%/200ms) without each tick going through `AppStateStore`. Mirrors the
 /// pattern used by `EpisodeRow` + `DownloadStatusCapsule`.
 ///
@@ -23,7 +23,7 @@ import SwiftUI
 /// into the player chrome instead of stealing focus.
 struct DownloadProgressBadge: View {
     let episode: Episode
-    /// Live progress in `0...1` from `EpisodeDownloadService.progress[id]`.
+    /// Live progress in `0...1` from the native download capability.
     /// `nil` falls back to the value baked into `episode.downloadState`.
     var liveProgress: Double? = nil
 
