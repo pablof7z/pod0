@@ -194,7 +194,7 @@ Swift and Kotlin bindings. CI rejects drift from Rust metadata.
   Rust workflow format. Before deletion it durably writes a content-qualified,
   integrity-checked classification manifest containing every legacy job row. The no-clobber
   manifest is retained beside the episode store under the
-  `model-chapter-workflow-backups` suffix until issue #111 closes the rollback
+  `model-chapter-workflow-backups` suffix through the documented rollback
   support window. Only after the manifest is re-read and verified may the
   cutover delete legacy rows and commit the Rust authority marker; staged
   restarts verify the exact source. A changed, still-present legacy source
@@ -202,6 +202,16 @@ Swift and Kotlin bindings. CI rejects drift from Rust metadata.
   snapshot; missing rows without the verified backup fail closed.
   The former Swift planner, executor, verifier, and receipt writer are no longer
   authoritative or executable.
+- Version 26 removes both chapter kinds from the mutable Swift job model. A
+  quarantined compatibility decoder preserves every pre-cutover model and
+  publisher row in immutable, integrity-checked manifests; it never feeds the
+  native scheduler or UI. After Rust model authority is verified, one immediate
+  SQLite transaction proves model rows absent, compare-deletes the exact
+  publisher source, and commits `legacy_chapter_workflow_retirement`. Generic
+  native recovery and claim SQL accepts only current `WorkJobKind` values, while
+  UI status and actions use read-only Rust publisher/model projections. The
+  compatibility bridge remains only for supported direct upgrades and is
+  deleted under issue #114 after the two-release/90-day support gate.
 - Open views receive bounded, revisioned, screen-shaped projections.
 - Operation failure and cancellation appear in projection state, not thrown
   per-operation FFI results.

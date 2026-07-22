@@ -11,13 +11,13 @@ final class LegacyModelChapterWorkflowCutoverTests: XCTestCase {
     func testBootstrapResumesStagedCutoverDeletesLegacyRowsAndNeverReposts() throws {
         let prepared = try prepareInterruptedCutover()
         defer { SharedTranscriptRecoveryTestSupport.dispose(prepared.fixture) }
-        XCTAssertEqual(try prepared.jobs.allJobs().filter { $0.kind == .chapterArtifacts }.count, 1)
+        XCTAssertEqual(try prepared.jobs.legacyChapterJobs(kind: .chapterArtifacts).count, 1)
 
         let client = try bootstrap(prepared.fixture)
         defer { client.shutdown() }
 
         assertAuthoritativeAmbiguity(client, episodeID: prepared.fixture.episodeID)
-        XCTAssertTrue(try prepared.jobs.allJobs().allSatisfy { $0.kind != .chapterArtifacts })
+        XCTAssertTrue(try prepared.jobs.legacyChapterJobs(kind: .chapterArtifacts).isEmpty)
         XCTAssertEqual(
             try LegacyModelChapterWorkflowBackupManifest.load(
                 from: prepared.fixture.persistence.legacyModelChapterWorkflowBackupRootURL,
@@ -33,19 +33,25 @@ final class LegacyModelChapterWorkflowCutoverTests: XCTestCase {
         try prepared.snapshot.backup.publish(
             to: prepared.fixture.persistence.legacyModelChapterWorkflowBackupRootURL
         )
-        try prepared.jobs.removeJobs(kind: .chapterArtifacts)
+        try LegacyChapterWorkflowTestSupport.remove(
+            kind: .chapterArtifacts,
+            from: prepared.jobs
+        )
 
         let client = try bootstrap(prepared.fixture)
         defer { client.shutdown() }
 
         assertAuthoritativeAmbiguity(client, episodeID: prepared.fixture.episodeID)
-        XCTAssertTrue(try prepared.jobs.allJobs().allSatisfy { $0.kind != .chapterArtifacts })
+        XCTAssertTrue(try prepared.jobs.legacyChapterJobs(kind: .chapterArtifacts).isEmpty)
     }
 
     func testBootstrapFailsClosedWhenRowsDisappearWithoutVerifiedBackup() throws {
         let prepared = try prepareInterruptedCutover()
         defer { SharedTranscriptRecoveryTestSupport.dispose(prepared.fixture) }
-        try prepared.jobs.removeJobs(kind: .chapterArtifacts)
+        try LegacyChapterWorkflowTestSupport.remove(
+            kind: .chapterArtifacts,
+            from: prepared.jobs
+        )
 
         switch SharedLibraryBootstrap.run(
             persistence: prepared.fixture.persistence,
@@ -76,7 +82,10 @@ final class LegacyModelChapterWorkflowCutoverTests: XCTestCase {
             includingPropertiesForKeys: nil
         ).first { $0.lastPathComponent.contains("\(prepared.snapshot.sourceGeneration)-") })
         try Data("corrupt".utf8).write(to: backupURL, options: .atomic)
-        try prepared.jobs.removeJobs(kind: .chapterArtifacts)
+        try LegacyChapterWorkflowTestSupport.remove(
+            kind: .chapterArtifacts,
+            from: prepared.jobs
+        )
 
         switch SharedLibraryBootstrap.run(
             persistence: prepared.fixture.persistence,
@@ -115,7 +124,7 @@ final class LegacyModelChapterWorkflowCutoverTests: XCTestCase {
             client.facade.modelChapterCutover().sourceGeneration,
             refreshed.sourceGeneration
         )
-        XCTAssertTrue(try prepared.jobs.allJobs().allSatisfy { $0.kind != .chapterArtifacts })
+        XCTAssertTrue(try prepared.jobs.legacyChapterJobs(kind: .chapterArtifacts).isEmpty)
         XCTAssertEqual(try LegacyModelChapterWorkflowBackupManifest.load(
             from: prepared.fixture.persistence.legacyModelChapterWorkflowBackupRootURL,
             sourceGeneration: refreshed.sourceGeneration
@@ -137,7 +146,7 @@ final class LegacyModelChapterWorkflowCutoverTests: XCTestCase {
         let client = try bootstrap(prepared.fixture)
         defer { client.shutdown() }
         assertAuthoritativeAmbiguity(client, episodeID: prepared.fixture.episodeID)
-        XCTAssertTrue(try prepared.jobs.allJobs().allSatisfy { $0.kind != .chapterArtifacts })
+        XCTAssertTrue(try prepared.jobs.legacyChapterJobs(kind: .chapterArtifacts).isEmpty)
     }
 
     private struct PreparedCutover {
@@ -161,16 +170,13 @@ final class LegacyModelChapterWorkflowCutoverTests: XCTestCase {
 
             try resetModelAuthority(at: fixture.persistence.sharedCoreStoreURL)
             let jobs = JobStore(fileURL: fixture.persistence.episodeStore.fileURL)
-            let running = try claim(
-                jobs,
-                episodeID: fixture.episodeID,
-                key: "legacy-model-running",
-                inputVersion: request.sourceVersion
-            )
-            try jobs.markRunning(
-                id: running.id,
-                leaseToken: try XCTUnwrap(running.leaseToken)
-            )
+            try resetChapterRetirementMarker(in: jobs)
+            try insert(LegacyChapterWorkflowTestSupport.makeJob(
+                key: "legacy-model-running", episodeID: fixture.episodeID,
+                inputVersion: request.sourceVersion, state: .running, attempt: 1,
+                leaseToken: UUID(), leaseOwner: "retired-model-executor",
+                leaseExpiresAt: .distantFuture
+            ), into: jobs)
             var interruptedFacade: Pod0Facade? = try Pod0Facade.open(
                 storePath: fixture.persistence.sharedCoreStoreURL.path
             )
@@ -244,35 +250,31 @@ final class LegacyModelChapterWorkflowCutoverTests: XCTestCase {
         }
     }
 
+    private func resetChapterRetirementMarker(in store: JobStore) throws {
+        try store.withDatabase { db in
+            try WorkflowSQLite.execute(
+                "DELETE FROM legacy_chapter_workflow_retirement",
+                db
+            )
+        }
+    }
+
     private func insert(
         _ store: JobStore,
         episodeID: UUID,
         key: String,
         inputVersion: String
     ) throws {
-        _ = try store.ensureJob(DesiredJob(
-            idempotencyKey: key,
-            kind: .chapterArtifacts,
-            subjectID: episodeID,
-            inputVersion: inputVersion,
-            resourceClass: .utilityLLM
-        ), notBefore: .distantPast)
+        try insert(LegacyChapterWorkflowTestSupport.makeJob(
+            key: key, episodeID: episodeID, inputVersion: inputVersion
+        ), into: store)
     }
 
-    private func claim(
-        _ store: JobStore,
-        episodeID: UUID,
-        key: String,
-        inputVersion: String
-    ) throws -> WorkJob {
-        try insert(store, episodeID: episodeID, key: key, inputVersion: inputVersion)
-        return try XCTUnwrap(try store.claimDueJobs(
-            resourceClass: .utilityLLM,
-            capacity: 1,
-            now: Date(),
-            owner: "cutover-test",
-            leaseDuration: 60
-        ).first)
+    private func insert(
+        _ job: LegacyChapterWorkflowJob,
+        into store: JobStore
+    ) throws {
+        try LegacyChapterWorkflowTestSupport.insert(job, into: store)
     }
 
     private enum TestFailure: Error {

@@ -2,6 +2,12 @@ import CSQLite3
 import Foundation
 
 extension JobStore {
+    /// SQL literal assembled only from the closed native enum. Legacy or
+    /// unknown raw kinds are never eligible for generic scheduler mutation.
+    static let supportedKindSQL = WorkJobKind.allCases
+        .map { "'\($0.rawValue)'" }
+        .joined(separator: ",")
+
     static let columns = """
         id,idempotency_key,kind,subject_id,input_version,occurrence_id,
         payload_version,payload,state,priority,resource_class,attempt,max_attempts,
@@ -28,6 +34,7 @@ extension JobStore {
 
     func ensureSchema(_ db: OpaquePointer) throws {
         try WorkflowSchemaMigrations.ensureJobs(db)
+        try WorkflowSchemaMigrations.ensureChapterRetirement(db)
     }
 
     func reclaimExpiredLeases(
@@ -54,7 +61,8 @@ extension JobStore {
                     THEN 'Attempt limit reached while recovering an interrupted lease'
                     ELSE 'Lease expired after interruption' END,
                 updated_at=?
-            WHERE state IN ('leased','running') AND lease_expires_at <= ?
+            WHERE kind IN (\(Self.supportedKindSQL))
+              AND state IN ('leased','running') AND lease_expires_at <= ?
               AND (? IS NULL OR lease_owner IS NULL OR lease_owner <> ?)
             """,
             db: db
@@ -79,7 +87,8 @@ extension JobStore {
                     'Attempt limit reached before another claim'
                 ),
                 updated_at=?
-            WHERE state IN ('pending','retryScheduled')
+            WHERE kind IN (\(Self.supportedKindSQL))
+              AND state IN ('pending','retryScheduled')
               AND attempt >= max_attempts
             """,
             db: db

@@ -204,6 +204,7 @@ final class WorkflowSchemaMigrationTests: XCTestCase {
         XCTAssertEqual(try store.ensureJobs([desired]), 1)
         XCTAssertEqual(try store.ensureJobs([desired]), 0)
     }
+
 }
 
 private extension WorkflowSchemaMigrationTests {

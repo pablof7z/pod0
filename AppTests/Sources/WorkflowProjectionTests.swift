@@ -1,4 +1,5 @@
 import Foundation
+import Pod0Core
 import XCTest
 @testable import Podcastr
 
@@ -181,6 +182,54 @@ final class WorkflowProjectionTests: XCTestCase {
             recentKinds: [.download], limit: 1
         ))
         XCTAssertEqual(bounded.count, 1)
+    }
+
+    func testChapterQueryIgnoresLegacyRowsAndRendersOnlyRustProjection() async throws {
+        let episodeID = UUID()
+        try LegacyChapterWorkflowTestSupport.insert(
+            LegacyChapterWorkflowTestSupport.makeJob(
+                key: "retired-publisher", kind: .publisherChapters,
+                episodeID: episodeID, inputVersion: "legacy-source"
+            ),
+            into: store
+        )
+        let core = PublisherChapterWorkflowProjection(
+            episodeId: EpisodeId(uuid: episodeID),
+            sourceVersion: "rust-source",
+            stage: .requested,
+            workflowRevision: StateRevision(value: 3),
+            attempt: 1,
+            maxAttempts: 5,
+            requestId: HostRequestId(high: 1, low: 2),
+            cancellationId: CancellationId(high: 3, low: 4),
+            notBefore: UnixTimestampMilliseconds(value: 1_000),
+            selectedArtifactId: nil,
+            failure: nil,
+            createdAt: UnixTimestampMilliseconds(value: 900),
+            updatedAt: UnixTimestampMilliseconds(value: 1_000),
+            canRetry: false,
+            canCancel: true
+        )
+        let client = WorkflowClient(coalescingDelayNanoseconds: 0)
+        client.attach(jobStore: store)
+        client.attachPublisherChapterCore { _ in [core] }
+        _ = client.register(WorkflowProjectionRequest(
+            subjectIDs: [episodeID],
+            kinds: [.publisherChapters]
+        ))
+
+        await assertEventually {
+            client.latest(kind: .publisherChapters, subjectID: episodeID)?.authority
+                == .sharedRustPublisherChapters
+        }
+        XCTAssertEqual(
+            client.latest(kind: .publisherChapters, subjectID: episodeID)?.coreWorkflowRevision,
+            3
+        )
+        XCTAssertEqual(
+            try store.legacyChapterJobs(kind: .publisherChapters).map(\.idempotencyKey),
+            ["retired-publisher"]
+        )
     }
 
     private func insert(

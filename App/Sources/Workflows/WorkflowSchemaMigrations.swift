@@ -8,7 +8,7 @@ enum WorkflowSchemaMigrationStep {
 
 enum WorkflowSchemaMigrations {
     private static let metadataTable = "workflow_schema_versions"
-    private static let currentVersion = 1
+    static let currentVersion = 1
 
     private static let jobColumnsV0: Set<String> = [
         "id", "kind", "subject_id", "input_version", "occurrence_id",
@@ -119,7 +119,7 @@ enum WorkflowSchemaMigrations {
     }
 }
 
-private extension WorkflowSchemaMigrations {
+extension WorkflowSchemaMigrations {
     static func migrate(
         component: String,
         db: OpaquePointer,

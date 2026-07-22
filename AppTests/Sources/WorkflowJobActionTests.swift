@@ -126,22 +126,6 @@ final class WorkflowJobActionTests: XCTestCase {
         XCTAssertEqual(try store.job(id: blocked.id)?.state, .blocked)
     }
 
-    func testPublisherAuthorityCutoverDeletesOnlyRetiredSwiftRows() throws {
-        _ = try store.ensureJob(DesiredJob(
-            idempotencyKey: "legacy-publisher",
-            kind: .publisherChapters,
-            subjectID: UUID(),
-            inputVersion: "legacy-v1",
-            resourceClass: .planning
-        ))
-        _ = try store.ensureJob(desired(subjectID: UUID()))
-
-        try store.removeJobs(kind: .publisherChapters)
-
-        XCTAssertNil(try store.job(idempotencyKey: "legacy-publisher"))
-        XCTAssertNotNil(try store.job(idempotencyKey: "action"))
-    }
-
     private func desired(subjectID: UUID) -> DesiredJob {
         DesiredJob(
             idempotencyKey: "action",

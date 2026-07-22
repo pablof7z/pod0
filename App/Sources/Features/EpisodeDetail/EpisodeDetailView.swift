@@ -205,7 +205,7 @@ struct EpisodeDetailView: View {
     }
 
     private func preparationStatus(for episode: Episode) -> EpisodePreparationStatus? {
-        let kinds: [WorkJobKind] = [
+        let kinds: [WorkflowProjectionKind] = [
             .transcriptIngest, .transcriptIndex, .publisherChapters,
             .chapterArtifacts, .metadataIndex,
         ]

@@ -83,11 +83,11 @@ final class WorkflowClient {
         refresh(immediately: true)
     }
 
-    func latest(kind: WorkJobKind, subjectID: UUID) -> WorkflowJobProjection? {
+    func latest(kind: WorkflowProjectionKind, subjectID: UUID) -> WorkflowJobProjection? {
         latestByKey[WorkflowJobKey(kind: kind, subjectID: subjectID)]
     }
 
-    func jobs(kind: WorkJobKind) -> [WorkflowJobProjection] {
+    func jobs(kind: WorkflowProjectionKind) -> [WorkflowJobProjection] {
         jobsByID.values
             .filter { $0.kind == kind }
             .sorted {
@@ -213,9 +213,9 @@ final class WorkflowClient {
 
     private func mergedQuery() -> WorkflowProjectionQuery? {
         var subjects: Set<UUID> = []
-        var kinds: Set<WorkJobKind> = []
-        var attentionKinds: Set<WorkJobKind> = []
-        var recentKinds: Set<WorkJobKind> = []
+        var kinds: Set<WorkflowProjectionKind> = []
+        var attentionKinds: Set<WorkflowProjectionKind> = []
+        var recentKinds: Set<WorkflowProjectionKind> = []
         for request in registrations.values where !request.isEmpty {
             subjects.formUnion(request.subjectIDs)
             kinds.formUnion(request.kinds)
@@ -240,9 +240,7 @@ final class WorkflowClient {
         generation: UInt64
     ) {
         guard generation == self.generation else { return }
-        swiftJobsByID = Dictionary(uniqueKeysWithValues: jobs
-            .filter { $0.kind != .publisherChapters && $0.kind != .chapterArtifacts }
-            .map { ($0.id, $0) })
+        swiftJobsByID = Dictionary(uniqueKeysWithValues: jobs.map { ($0.id, $0) })
         corePublisherJobsByID = Dictionary(uniqueKeysWithValues: publisherWorkflows.map {
             let projection = WorkflowJobProjection(publisherChapterWorkflow: $0)
             return (projection.id, projection)

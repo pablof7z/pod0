@@ -43,65 +43,6 @@ final class SharedChapterWorkflowSafetyTests: XCTestCase {
         )
     }
 
-    func testVerifierRejectsEveryLegacySwiftChapterJobAfterRustCutover() throws {
-        let fixture = makeStore()
-        defer { dispose(fixture) }
-        let client = try XCTUnwrap(fixture.store.sharedLibrary)
-        let transcript = Transcript(
-            episodeID: fixture.episode.id,
-            language: "en",
-            source: .publisher,
-            segments: [Segment(start: 0, end: 5, text: "Current transcript")]
-        )
-        _ = try client.submitTranscriptObservation(
-            transcript,
-            context: TranscriptObservationContext(
-                podcastID: fixture.episode.podcastID,
-                sourceRevision: DesiredStatePlanner.audioVersion(fixture.episode),
-                sourcePayloadDigest: ArtifactRepository.hash(Data("transcript".utf8)),
-                provider: nil
-            )
-        )
-        _ = try client.submitChapterObservation(
-            try publisherQualification(
-                episode: fixture.episode,
-                title: "Selected publisher chapter"
-            ),
-            expectedSelectionRevision: StateRevision(value: 0)
-        )
-        let configuredModel = fixture.store.state.settings.chapterCompilationModel
-        let modelPlan = client.chapterModelPlan(
-            episodeID: fixture.episode.id,
-            configuredModel: configuredModel
-        )
-        guard case .ready(let planned) = modelPlan else {
-            return XCTFail(
-                "Rust chapter model plan is unavailable for \(configuredModel): \(modelPlan)"
-            )
-        }
-        let inputVersion = planned.sourceVersion
-        let jobs = JobStore(fileURL: fixture.store.persistence.episodeStore.fileURL)
-        let key = "compile:\(fixture.episode.id):\(inputVersion)"
-        _ = try jobs.ensureJob(DesiredJob(
-            idempotencyKey: key,
-            kind: .chapterArtifacts,
-            subjectID: fixture.episode.id,
-            inputVersion: inputVersion,
-            resourceClass: .utilityLLM
-        ))
-        let job = try XCTUnwrap(jobs.job(idempotencyKey: key))
-        let verifier = WorkflowArtifactVerifier(
-            appStore: fixture.store,
-            artifacts: ArtifactRepository(fileURL: jobs.fileURL)
-        )
-
-        XCTAssertFalse(verifier.isStillCurrent(job))
-        var changed = fixture.store.state.settings
-        changed.chapterCompilationModel += "-changed"
-        fixture.store.updateSettings(changed)
-        XCTAssertFalse(verifier.isStillCurrent(job))
-    }
-
     func testInjectedStoreDoesNotPublishSettingsToProcessWideICloudChannel() {
         let key = "sync.settings.chapterCompilationModel"
         let remoteBefore = NSUbiquitousKeyValueStore.default.object(forKey: key) as? String

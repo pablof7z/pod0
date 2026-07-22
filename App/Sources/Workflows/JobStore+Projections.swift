@@ -4,9 +4,12 @@ import Foundation
 extension JobStore {
     func projections(for query: WorkflowProjectionQuery) throws -> [WorkflowJobProjection] {
         let subjectIDs = Array(Set(query.subjectIDs)).sorted { $0.uuidString < $1.uuidString }
-        let kinds = Array(Set(query.kinds)).sorted { $0.rawValue < $1.rawValue }
-        let attentionKinds = Array(Set(query.attentionKinds)).sorted { $0.rawValue < $1.rawValue }
-        let recentKinds = Array(Set(query.recentKinds)).sorted { $0.rawValue < $1.rawValue }
+        let kinds = Array(Set(query.kinds.compactMap(\.swiftJobKind)))
+            .sorted { $0.rawValue < $1.rawValue }
+        let attentionKinds = Array(Set(query.attentionKinds.compactMap(\.swiftJobKind)))
+            .sorted { $0.rawValue < $1.rawValue }
+        let recentKinds = Array(Set(query.recentKinds.compactMap(\.swiftJobKind)))
+            .sorted { $0.rawValue < $1.rawValue }
         guard (!subjectIDs.isEmpty && !kinds.isEmpty)
                 || !attentionKinds.isEmpty || !recentKinds.isEmpty else { return [] }
 

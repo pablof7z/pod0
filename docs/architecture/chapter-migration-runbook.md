@@ -46,9 +46,25 @@ workflow artifacts to the Pod0 Rust core. It complements
 8. Reinspect the source and verify all staged counts and backup digests.
 9. Begin an immediate transaction, recheck the source, write selections and
    import state, activate authority, and commit atomically.
-10. Open `Pod0Facade`; iOS reads bounded projections. Rust issues recoverable
-    publisher HTTP requests and qualifies their raw native observations;
-    temporary model/agent adapters submit typed observations only.
+10. Open `Pod0Facade`, capture legacy model-workflow rows through the quarantined
+    compatibility schema, stage reconstructable evidence in Rust, publish and
+    reread the immutable full-row model manifest, compare-delete the exact rows,
+    and commit the Rust model-workflow authority marker.
+11. Capture every legacy publisher-workflow row without passing it through
+    `WorkJobKind`. Classify valid rows as completed evidence, cancelled/obsolete
+    history, or safe idempotent-GET re-derivation; preserve malformed payloads
+    as unsupported evidence. Publish and reread the immutable full-row manifest.
+12. In one immediate transaction, prove model rows are absent, compare the full
+    publisher source, delete only those exact publisher rows, and insert
+    `legacy_chapter_workflow_retirement`. Only then may the Swift workflow
+    coordinator and bounded Rust projection adapters start.
+
+The final marker records schema version, Rust model source generation,
+publisher source generation and fingerprint, and completion time. A marker with
+missing/tampered backup evidence or any reappearing legacy row fails bootstrap
+closed. Generic Swift claiming and recovery SQL filters through current
+`WorkJobKind` values, so unknown legacy kinds cannot be leased or mutated even
+before retirement completes.
 
 The logged diagnostic surface is limited to the bootstrap stage and a stable
 failure code. Chapter titles, summaries, provider payloads, URLs, file contents,
@@ -70,6 +86,10 @@ credentials, and raw SQLite/decoder errors must not be logged.
 | Publisher observation accepted but storage commit fails | Retain the bounded observation in process and replay it; after termination reissue the still-durable request. |
 | Publisher source removed and later restored | Preserve the source-absent tombstone and advance generation so the old request identity can never be reused. |
 | Publisher artifact committed | Reopen the succeeded workflow and selected artifact without another GET. |
+| Model workflow staged, Swift rows present | Reverify the exact source/backup, compare-delete, then commit Rust authority. |
+| Model workflow staged, Swift rows absent | Require the matching verified model manifest before committing authority. |
+| Publisher manifest published, marker absent | Reinspect the same source; reuse the manifest only on exact equality, then commit delete+marker atomically. |
+| Retirement marker present | Require both legacy kinds to be absent and the publisher manifest fingerprint to match; never restore Swift execution. |
 
 Repeated stage, verify, commit, command, and rollback-export calls are
 idempotent for the same typed identity and fingerprint. A different payload
@@ -111,6 +131,16 @@ The bundle includes the original source database, a replayable selection
 database, content-addressed evidence, a typed manifest, and a bundle digest.
 It is recovery evidence for a separately reviewed rollback, not a dual-write
 mechanism.
+
+Legacy workflow rollback evidence lives beside the episode SQLite store at the
+`model-chapter-workflow-backups` and `publisher-chapter-workflow-backups`
+suffixes. These manifests are immutable and read-only after the retirement
+marker commits. Retain the compatibility decoder and both manifest roots for at
+least two subsequent production releases and no less than 90 days, whichever
+is longer. Removal is tracked by issue #114 and requires proof that supported
+installations have crossed the marker, and a replacement export path if support
+still needs the evidence. No rollback may reinsert rows or reactivate a Swift
+chapter executor.
 
 ## Release verification
 

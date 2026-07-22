@@ -19,45 +19,31 @@ final class LegacyModelChapterWorkflowSnapshotTests: XCTestCase {
         )
 
         let blockedID = UUID()
-        let blocked = try claim(store, episodeID: blockedID, key: "blocked", inputVersion: "blocked-v1")
-        try store.markBlocked(
-            id: blocked.id,
-            leaseToken: try XCTUnwrap(blocked.leaseToken),
-            reason: JobFailure(classification: .missingCredential, message: "credential missing")
-        )
+        try insert(LegacyChapterWorkflowTestSupport.makeJob(
+            key: "blocked", episodeID: blockedID, inputVersion: "blocked-v1",
+            state: .blocked, attempt: 1, lastErrorClass: .missingCredential,
+            lastErrorMessage: "credential missing"
+        ), into: store)
 
         let failedID = UUID()
-        let failed = try claim(store, episodeID: failedID, key: "failed", inputVersion: "failed-v1")
-        try store.markFailedPermanent(
-            id: failed.id,
-            leaseToken: try XCTUnwrap(failed.leaseToken),
-            error: JobFailure(classification: .network, message: "provider unreachable")
-        )
+        try insert(LegacyChapterWorkflowTestSupport.makeJob(
+            key: "failed", episodeID: failedID, inputVersion: "failed-v1",
+            state: .failedPermanent, attempt: 1, lastErrorClass: .network,
+            lastErrorMessage: "provider unreachable"
+        ), into: store)
 
         let cancelledID = UUID()
-        let cancelled = try claim(
-            store,
-            episodeID: cancelledID,
-            key: "cancelled",
-            inputVersion: "cancelled-v1"
-        )
-        try store.markCancelled(
-            id: cancelled.id,
-            leaseToken: try XCTUnwrap(cancelled.leaseToken)
-        )
+        try insert(LegacyChapterWorkflowTestSupport.makeJob(
+            key: "cancelled", episodeID: cancelledID, inputVersion: "cancelled-v1",
+            state: .cancelled, attempt: 1
+        ), into: store)
 
         let successID = UUID()
         let artifactID = UUID()
         let contentDigest = String(repeating: "a", count: 64)
         let integrityDigest = String(repeating: "b", count: 64)
-        let succeeded = try claim(
-            store,
-            episodeID: successID,
-            key: "succeeded",
-            inputVersion: "succeeded-v1"
-        )
-        let receipt = SharedChapterWorkflowReceipt(
-            schemaVersion: SharedChapterWorkflowReceipt.currentSchemaVersion,
+        let receipt = LegacySharedChapterWorkflowReceiptV1(
+            schemaVersion: LegacySharedChapterWorkflowReceiptV1.schemaVersion,
             episodeID: successID,
             inputVersion: "succeeded-v1",
             artifactID: artifactID.uuidString,
@@ -65,15 +51,18 @@ final class LegacyModelChapterWorkflowSnapshotTests: XCTestCase {
             integrityDigest: integrityDigest,
             selectionRevision: 7
         )
-        try store.complete(
-            id: succeeded.id,
-            leaseToken: try XCTUnwrap(succeeded.leaseToken),
+        try insert(LegacyChapterWorkflowTestSupport.makeJob(
+            key: "succeeded", episodeID: successID, inputVersion: "succeeded-v1",
+            state: .succeeded, attempt: 1,
             outputVersion: try JSONEncoder().encode(receipt).base64EncodedString()
-        )
+        ), into: store)
 
         let runningID = UUID()
-        let running = try claim(store, episodeID: runningID, key: "running", inputVersion: "running-v1")
-        try store.markRunning(id: running.id, leaseToken: try XCTUnwrap(running.leaseToken))
+        try insert(LegacyChapterWorkflowTestSupport.makeJob(
+            key: "running", episodeID: runningID, inputVersion: "running-v1",
+            state: .running, attempt: 1, leaseToken: UUID(),
+            leaseOwner: "retired-executor", leaseExpiresAt: .distantFuture
+        ), into: store)
 
         let snapshot = try LegacyModelChapterWorkflowSnapshot.capture(from: store)
         XCTAssertEqual(
@@ -197,7 +186,7 @@ final class LegacyModelChapterWorkflowSnapshotTests: XCTestCase {
             key: "verified-row",
             inputVersion: "verified-v1"
         )
-        let verified = try store.allJobs().filter { $0.kind == .chapterArtifacts }
+        let verified = try store.legacyChapterJobs(kind: .chapterArtifacts)
         try insert(
             store,
             episodeID: UUID(),
@@ -205,11 +194,17 @@ final class LegacyModelChapterWorkflowSnapshotTests: XCTestCase {
             inputVersion: "late-v1"
         )
 
-        XCTAssertFalse(try store.removeJobs(kind: .chapterArtifacts, matching: verified))
-        let current = try store.allJobs().filter { $0.kind == .chapterArtifacts }
+        XCTAssertFalse(try store.removeLegacyChapterJobs(
+            kind: .chapterArtifacts,
+            matching: verified
+        ))
+        let current = try store.legacyChapterJobs(kind: .chapterArtifacts)
         XCTAssertEqual(current.count, 2)
-        XCTAssertTrue(try store.removeJobs(kind: .chapterArtifacts, matching: current))
-        XCTAssertTrue(try store.allJobs().allSatisfy { $0.kind != .chapterArtifacts })
+        XCTAssertTrue(try store.removeLegacyChapterJobs(
+            kind: .chapterArtifacts,
+            matching: current
+        ))
+        XCTAssertTrue(try store.legacyChapterJobs(kind: .chapterArtifacts).isEmpty)
     }
 
     private func insert(
@@ -219,29 +214,10 @@ final class LegacyModelChapterWorkflowSnapshotTests: XCTestCase {
         inputVersion: String,
         notBefore: Date = .distantPast
     ) throws {
-        _ = try store.ensureJob(DesiredJob(
-            idempotencyKey: key,
-            kind: .chapterArtifacts,
-            subjectID: episodeID,
-            inputVersion: inputVersion,
-            resourceClass: .utilityLLM
-        ), notBefore: notBefore)
-    }
-
-    private func claim(
-        _ store: JobStore,
-        episodeID: UUID,
-        key: String,
-        inputVersion: String
-    ) throws -> WorkJob {
-        try insert(store, episodeID: episodeID, key: key, inputVersion: inputVersion)
-        return try XCTUnwrap(try store.claimDueJobs(
-            resourceClass: .utilityLLM,
-            capacity: 1,
-            now: Date(),
-            owner: "snapshot-test",
-            leaseDuration: 60
-        ).first)
+        try insert(LegacyChapterWorkflowTestSupport.makeJob(
+            key: key, episodeID: episodeID, inputVersion: inputVersion,
+            notBefore: notBefore
+        ), into: store)
     }
 
     private func candidate(
@@ -251,19 +227,19 @@ final class LegacyModelChapterWorkflowSnapshotTests: XCTestCase {
         snapshot.candidates.first { $0.episodeId == EpisodeId(uuid: episodeID) }
     }
 
-    private func fingerprint(_ job: WorkJob) throws -> String {
+    private func fingerprint(_ job: LegacyChapterWorkflowJob) throws -> String {
         try LegacyModelChapterWorkflowSnapshot.sourceFingerprint(for: [job])
     }
 
     private func makeFingerprintJob(
-        kind: WorkJobKind = .chapterArtifacts,
+        kind: LegacyChapterWorkflowJobKind = .chapterArtifacts,
         occurrenceID: String? = "occurrence-1",
         payloadVersion: Int = 1,
         payload: Data? = Data("payload-1".utf8),
         priority: Int = 10,
         resourceClass: WorkResourceClass = .utilityLLM
-    ) -> WorkJob {
-        WorkJob(
+    ) -> LegacyChapterWorkflowJob {
+        LegacyChapterWorkflowJob(
             id: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
             idempotencyKey: "fingerprint-job",
             kind: kind,
@@ -290,5 +266,12 @@ final class LegacyModelChapterWorkflowSnapshotTests: XCTestCase {
             createdAt: Date(timeIntervalSince1970: 90),
             updatedAt: Date(timeIntervalSince1970: 100)
         )
+    }
+
+    private func insert(
+        _ job: LegacyChapterWorkflowJob,
+        into store: JobStore
+    ) throws {
+        try LegacyChapterWorkflowTestSupport.insert(job, into: store)
     }
 }

@@ -252,7 +252,6 @@ final class JobStoreCoordinatorTests: XCTestCase {
             (.transcriptIngest, .onDeviceSTT, 1),
             (.transcriptIngest, .remoteSTT, 2),
             (.transcriptIndex, .embedding, 4),
-            (.chapterArtifacts, .utilityLLM, 2),
             (.scheduledAgentRun, .scheduledAgent, 2),
             (.newEpisodeNotification, .notification, 5),
         ]

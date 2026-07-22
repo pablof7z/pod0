@@ -7,9 +7,7 @@ struct LegacyModelChapterWorkflowSnapshot: Equatable {
     let backup: LegacyModelChapterWorkflowBackupManifest
 
     static func capture(from store: JobStore) throws -> Self {
-        let jobs = try store.allJobs()
-            .filter { $0.kind == .chapterArtifacts }
-            .sorted { $0.id.uuidString < $1.id.uuidString }
+        let jobs = try store.legacyChapterJobs(kind: .chapterArtifacts)
         let digest = try sourceFingerprint(for: jobs)
         let generation = sourceGeneration(for: digest)
         let classified = jobs.map { ($0, candidate($0)) }
@@ -29,7 +27,9 @@ struct LegacyModelChapterWorkflowSnapshot: Equatable {
         )
     }
 
-    static func candidate(_ job: WorkJob) -> LegacyModelChapterCutoverCandidate? {
+    static func candidate(
+        _ job: LegacyChapterWorkflowJob
+    ) -> LegacyModelChapterCutoverCandidate? {
         let disposition: LegacyModelChapterCutoverDisposition
         switch job.state {
         case .succeeded:
@@ -77,14 +77,16 @@ struct LegacyModelChapterWorkflowSnapshot: Equatable {
 
     /// Parses bounded legacy receipt evidence. Rust verifies that the referenced
     /// artifact and selection are authoritative before adopting it as success.
-    private static func parsedSuccessReceipt(_ job: WorkJob) -> ParsedSuccess? {
+    private static func parsedSuccessReceipt(
+        _ job: LegacyChapterWorkflowJob
+    ) -> ParsedSuccess? {
         guard let encoded = job.outputVersion,
               let data = Data(base64Encoded: encoded),
               let receipt = try? JSONDecoder().decode(
-                SharedChapterWorkflowReceipt.self,
+                LegacySharedChapterWorkflowReceiptV1.self,
                 from: data
               ),
-              receipt.schemaVersion == SharedChapterWorkflowReceipt.currentSchemaVersion,
+              receipt.schemaVersion == LegacySharedChapterWorkflowReceiptV1.schemaVersion,
               receipt.episodeID == job.subjectID,
               receipt.inputVersion == job.inputVersion,
               let artifactUUID = UUID(uuidString: receipt.artifactID),
@@ -99,7 +101,7 @@ struct LegacyModelChapterWorkflowSnapshot: Equatable {
         )
     }
 
-    private static func mayHaveSubmitted(_ job: WorkJob) -> Bool {
+    private static func mayHaveSubmitted(_ job: LegacyChapterWorkflowJob) -> Bool {
         guard job.attempt > 0 else { return false }
         switch job.lastErrorClass {
         case .missingCredential, .missingDependency, .unsupportedFormat, .invalidInput:
@@ -135,18 +137,12 @@ struct LegacyModelChapterWorkflowSnapshot: Equatable {
         return nil
     }
 
-    static func sourceFingerprint(for jobs: [WorkJob]) throws -> String {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        let source = try encoder.encode(
-            jobs.sorted { $0.id.uuidString < $1.id.uuidString }
-        )
-        return ArtifactRepository.hash(source)
+    static func sourceFingerprint(for jobs: [LegacyChapterWorkflowJob]) throws -> String {
+        try LegacyChapterWorkflowSource.fingerprint(for: jobs)
     }
 
     static func sourceGeneration(for fingerprint: String) -> UInt64 {
-        let raw = UInt64(fingerprint.prefix(16), radix: 16) ?? 0
-        return max(1, raw & UInt64(Int64.max))
+        LegacyChapterWorkflowSource.generation(for: fingerprint)
     }
 
     private struct ParsedSuccess {

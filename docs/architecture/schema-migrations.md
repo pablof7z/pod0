@@ -40,6 +40,14 @@ Current versions:
   for newly observed artifacts, and the atomic chapter authority state used by
   production cutover.
 
+The separate native workflow database remains authoritative only for workflow
+kinds that are native or not yet migrated. Its `jobs` component is schema v1.
+Its versioned `chapter_retirement` component is schema v1 and contains exactly
+one optional `legacy_chapter_workflow_retirement` marker. The marker and exact
+publisher-row deletion commit in one immediate transaction after the Rust model
+cutover is authoritative and both immutable manifests have been verified. No
+normal scheduler query decodes or mutates the retired raw kinds.
+
 Facade contract version 12 adds the canonical full-transcript application
 command, typed receipt/failures, and bounded runtime projections. Schema v10
 persists imported and runtime-observed artifacts. Issue #97 makes that store

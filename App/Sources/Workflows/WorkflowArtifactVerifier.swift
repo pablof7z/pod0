@@ -61,10 +61,6 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
             )]
         case .metadataIndex:
             return false
-        case .publisherChapters:
-            return false
-        case .chapterArtifacts:
-            return false
         case .autoDownload:
             records = [record(.autoDownloadDecision, job: job, output: outputVersion, hash: outputVersion)]
         case .newEpisodeNotification:
@@ -129,10 +125,6 @@ final class WorkflowArtifactVerifier: JobPostconditionVerifier {
                 transcript,
                 settings: appStore.state.settings
             ) == job.inputVersion
-        case .publisherChapters:
-            return false
-        case .chapterArtifacts:
-            return false
         case .feedDiscovery, .autoDownload, .newEpisodeNotification, .scheduledAgentRun:
             return true
         }

@@ -7,8 +7,35 @@ enum WorkflowProjectionAuthority: Sendable, Equatable {
     case sharedRustModelChapters
 }
 
+/// Read-only semantic kinds rendered by native workflow surfaces. Chapter
+/// kinds exist only here because their durable rows and actions are owned by
+/// Rust; `WorkJobKind` remains limited to mutable Swift job-store records.
+enum WorkflowProjectionKind: String, CaseIterable, Sendable {
+    case feedDiscovery
+    case download
+    case transcriptIngest
+    case transcriptIndex
+    case publisherChapters
+    case chapterArtifacts
+    case metadataIndex
+    case autoDownload
+    case newEpisodeNotification
+    case scheduledAgentRun
+
+    init(_ kind: WorkJobKind) {
+        guard let projection = Self(rawValue: kind.rawValue) else {
+            preconditionFailure("Every Swift job kind must have a projection kind")
+        }
+        self = projection
+    }
+
+    var swiftJobKind: WorkJobKind? {
+        WorkJobKind(rawValue: rawValue)
+    }
+}
+
 struct WorkflowJobKey: Hashable, Sendable {
-    let kind: WorkJobKind
+    let kind: WorkflowProjectionKind
     let subjectID: UUID
 }
 
@@ -30,7 +57,7 @@ enum WorkflowJobActionResult: Sendable, Equatable {
 /// payload bytes stay inside the durable workflow implementation.
 struct WorkflowJobProjection: Identifiable, Sendable, Equatable {
     let id: UUID
-    let kind: WorkJobKind
+    let kind: WorkflowProjectionKind
     let subjectID: UUID
     let state: WorkJobState
     let resourceClass: WorkResourceClass
@@ -54,7 +81,7 @@ struct WorkflowJobProjection: Identifiable, Sendable, Equatable {
 
     init(job: WorkJob) {
         id = job.id
-        kind = job.kind
+        kind = WorkflowProjectionKind(job.kind)
         subjectID = job.subjectID
         state = job.state
         resourceClass = job.resourceClass
@@ -153,15 +180,15 @@ struct WorkflowJobProjection: Identifiable, Sendable, Equatable {
 /// terminal row; attention scopes include only active or failed work.
 struct WorkflowProjectionRequest: Hashable, Sendable {
     let subjectIDs: Set<UUID>
-    let kinds: Set<WorkJobKind>
-    let attentionKinds: Set<WorkJobKind>
-    let recentKinds: Set<WorkJobKind>
+    let kinds: Set<WorkflowProjectionKind>
+    let attentionKinds: Set<WorkflowProjectionKind>
+    let recentKinds: Set<WorkflowProjectionKind>
 
     init(
         subjectIDs: some Sequence<UUID> = [],
-        kinds: some Sequence<WorkJobKind> = [],
-        attentionKinds: some Sequence<WorkJobKind> = [],
-        recentKinds: some Sequence<WorkJobKind> = []
+        kinds: some Sequence<WorkflowProjectionKind> = [],
+        attentionKinds: some Sequence<WorkflowProjectionKind> = [],
+        recentKinds: some Sequence<WorkflowProjectionKind> = []
     ) {
         self.subjectIDs = Set(subjectIDs)
         self.kinds = Set(kinds)
@@ -176,8 +203,8 @@ struct WorkflowProjectionRequest: Hashable, Sendable {
 
 struct WorkflowProjectionQuery: Sendable, Equatable {
     let subjectIDs: [UUID]
-    let kinds: [WorkJobKind]
-    let attentionKinds: [WorkJobKind]
-    let recentKinds: [WorkJobKind]
+    let kinds: [WorkflowProjectionKind]
+    let attentionKinds: [WorkflowProjectionKind]
+    let recentKinds: [WorkflowProjectionKind]
     let limit: Int
 }

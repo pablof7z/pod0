@@ -8,6 +8,8 @@ from pathlib import Path
 import re
 import sys
 
+from chapter_single_writer_contract import REQUIRED_TOKENS, SHARED_POLICY_TOKENS
+
 
 DELETED_PATHS = (
     "App/Sources/Services/AIChapterCompiler.swift",
@@ -58,116 +60,6 @@ FORBIDDEN = (
     ),
 )
 
-REQUIRED_TOKENS = {
-    "App/Sources/Core/SharedLibraryClient+Chapters.swift": (
-        ".commitChapter(",
-        "facade.dispatch(",
-        "facade.snapshot(",
-    ),
-    "App/Sources/Core/SharedChapterReader.swift": (
-        "facade.snapshot(",
-        "maximumPageSize",
-        "selectedArtifactInput",
-    ),
-    "App/Sources/Core/SharedLibraryBootstrap+Chapters.swift": (
-        "sharedChapterStoreIsAuthoritative(",
-        "stageLegacyChapterImport(",
-        "verifyStagedLegacyChapterImport(",
-        "commitStagedLegacyChapterImport(",
-    ),
-    "App/Sources/Workflows/ArtifactRepository.swift": (
-        "kind NOT IN ('transcript','chapters','adSegments')",
-    ),
-    "App/Sources/Core/LegacyModelChapterWorkflowCutover.swift": (
-        "facade.modelChapterCutover()",
-        "facade.stageLegacyModelChapterCutover(",
-        "facade.discardStagedLegacyModelChapterCutover(",
-        "LegacyModelChapterWorkflowBackupManifest.load(",
-        "snapshot.backup.publish(to: backupRoot)",
-        "removeJobs(",
-        "matching: jobs",
-        "facade.commitLegacyModelChapterCutover(",
-    ),
-    "App/Sources/Core/LegacyModelChapterWorkflowBackup.swift": (
-        "LegacyModelChapterWorkflowBackupClassification",
-        "integrityDigest: ArtifactRepository.hash(",
-        "try validate()",
-        "backupConflict",
-    ),
-    "App/Sources/Core/LegacyModelChapterWorkflowSnapshot.swift": (
-        "LegacyModelChapterCutoverCandidate(",
-        "SharedChapterWorkflowReceipt.self",
-        ".ambiguous",
-    ),
-    "App/Sources/Core/SharedLibraryClient.swift": (
-        "facade.planChapterModelRequest(",
-        "episodeId: EpisodeId(uuid: episodeID)",
-    ),
-    "App/Sources/Core/ChapterModelTransport.swift": (
-        "request.systemPrompt",
-        "request.userPrompt",
-        "request.responseFormat",
-        "request.maximumCompletionBytes",
-    ),
-    "App/Sources/Workflows/WorkflowRuntime.swift": (
-        "removeJobs(kind: .publisherChapters)",
-        "projection.authority == .sharedRustPublisherChapters",
-        "ensureModelChapters(",
-    ),
-    "App/Sources/Services/WorkflowClient.swift": (
-        "attachPublisherChapterCore(",
-        ".filter { $0.kind != .publisherChapters && $0.kind != .chapterArtifacts }",
-    ),
-    "App/Sources/Core/SharedLibraryClient+PublisherChapterWorkflows.swift": (
-        ".ensurePublisherChapters(",
-        ".retryPublisherChapters(",
-        ".cancelPublisherChapters(",
-        ".chapterWorkflows(episodeId:",
-    ),
-    "App/Sources/Core/SharedLibraryClient+ModelChapterWorkflows.swift": (
-        ".ensureModelChapters(",
-        ".retryModelChapters(",
-        ".cancelModelChapters(",
-        ".chapterWorkflows(episodeId:",
-    ),
-    "App/Sources/Core/CorePublisherChapterHost.swift": (
-        "session.bytes(for: request)",
-        ".publisherChaptersFetched(",
-    ),
-    "App/Sources/Features/Player/PlaybackState+Chapters.swift": (
-        ".nextChapter(",
-        ".previousChapter(",
-        "chapterContext",
-    ),
-    "App/Sources/State/AppStateStore.swift": (
-        "sharedChapterStoreIsAuthoritative(",
-        "loadLegacyChapterAdjuncts: !chapterAuthorityActive",
-    ),
-    "App/Sources/Podcast/Episode.swift": (
-        "decoder.userInfo[.loadLegacyChapterAdjuncts]",
-        "chapters = loadLegacyChapterAdjuncts",
-        "adSegments = loadLegacyChapterAdjuncts",
-    ),
-}
-
-SHARED_POLICY_TOKENS = {
-    "rust/crates/pod0-application/src/chapter_model_policy.rs": (
-        "pub fn plan_chapter_model_desired_state",
-        "pub fn plan_chapter_model_request",
-        "pub struct PlannedChapterModelRequest",
-    ),
-    "rust/crates/pod0-application/src/chapter_model_policy_prompt.rs": (
-        "GENERATION_SYSTEM_PROMPT",
-        "ENRICHMENT_SYSTEM_PROMPT",
-        "MAX_CHAPTER_MODEL_TRANSCRIPT_CHARACTERS",
-    ),
-    "rust/crates/pod0-facade/src/runtime_chapter_model_plan.rs": (
-        "selected_artifact(episode_id)",
-        "selected_chapter_artifact(episode_id)",
-        "expected_chapter_selection_revision",
-    ),
-}
-
 ALLOWED_MATCH_FILES: set[str] = set()
 
 
@@ -188,6 +80,18 @@ def findings(relative: str, source: str) -> list[str]:
     return errors
 
 
+def has_retired_work_job_kind(source: str) -> bool:
+    body = re.search(
+        r"enum\s+WorkJobKind\b[^\{]*\{(?P<body>.*?)\n\}",
+        strip_comments(source),
+        re.S,
+    )
+    return bool(body and re.search(
+        r"\bcase\s+(?:publisherChapters|chapterArtifacts)\b",
+        body.group("body"),
+    ))
+
+
 def validate(root: Path) -> list[str]:
     errors = [
         f"{relative}: deleted chapter authority path exists"
@@ -204,6 +108,9 @@ def validate(root: Path) -> list[str]:
     kind_body = re.search(r"enum\s+ArtifactKind\b[^\{]*\{(?P<body>.*?)\n\}", repository, re.S)
     if kind_body and re.search(r"\bcase\s+(?:chapters|adSegments)\b", kind_body.group("body")):
         errors.append("App/Sources/Workflows/ArtifactRepository.swift: chapter/ad kind is representable")
+    work_job = sources.get("App/Sources/Workflows/WorkJob.swift", "")
+    if has_retired_work_job_kind(work_job):
+        errors.append("App/Sources/Workflows/WorkJob.swift: retired chapter job kind is mutable")
     for relative, tokens in REQUIRED_TOKENS.items():
         source = sources.get(relative)
         if source is None:
@@ -246,6 +153,12 @@ def self_test() -> None:
     )
     for sample in samples:
         assert findings("App/Sources/Bad.swift", sample), sample
+    assert has_retired_work_job_kind(
+        "enum WorkJobKind: String {\n case download\n case chapterArtifacts\n}"
+    )
+    assert not has_retired_work_job_kind(
+        "enum WorkflowProjectionKind: String {\n case chapterArtifacts\n}"
+    )
 
 
 def main() -> int:

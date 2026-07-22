@@ -27,7 +27,7 @@ enum WorkflowDiagnosticPresenter {
         ).title
     }
 
-    static func kindTitle(_ kind: WorkJobKind) -> String {
+    static func kindTitle(_ kind: WorkflowProjectionKind) -> String {
         switch kind {
         case .feedDiscovery: "Feed discovery"
         case .download: "Download"
@@ -42,7 +42,7 @@ enum WorkflowDiagnosticPresenter {
         }
     }
 
-    static func kindIcon(_ kind: WorkJobKind) -> String {
+    static func kindIcon(_ kind: WorkflowProjectionKind) -> String {
         switch kind {
         case .feedDiscovery: "dot.radiowaves.left.and.right"
         case .download: "arrow.down.circle"

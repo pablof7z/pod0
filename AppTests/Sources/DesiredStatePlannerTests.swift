@@ -115,7 +115,7 @@ final class DesiredStatePlannerTests: XCTestCase {
             episodes: [episode], settings: Settings(), artifacts: [], transcripts: [],
             transcriptDesiredEpisodeIDs: [], scheduledTasks: [], now: Date()
         ))
-        XCTAssertFalse(jobs.contains { $0.kind == .publisherChapters })
+        XCTAssertTrue(jobs.isEmpty)
     }
 
     func testSwiftPlannerNeverCreatesAnyChapterWorkflow() throws {
@@ -132,9 +132,9 @@ final class DesiredStatePlannerTests: XCTestCase {
             transcriptDesiredEpisodeIDs: [], scheduledTasks: [], now: Date()
         ))
 
-        XCTAssertFalse(jobs.contains { $0.kind == .publisherChapters })
-        XCTAssertTrue(jobs.contains { $0.kind == .transcriptIndex })
-        XCTAssertFalse(jobs.contains { $0.kind == .chapterArtifacts })
+        XCTAssertEqual(jobs.map(\.kind), [.transcriptIndex])
+        XCTAssertFalse(WorkJobKind.allCases.map(\.rawValue).contains("publisherChapters"))
+        XCTAssertFalse(WorkJobKind.allCases.map(\.rawValue).contains("chapterArtifacts"))
     }
 
     private func makeEpisode() -> Episode {

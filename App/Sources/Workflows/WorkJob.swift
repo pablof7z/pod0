@@ -5,8 +5,6 @@ enum WorkJobKind: String, CaseIterable, Codable, Sendable {
     case download
     case transcriptIngest
     case transcriptIndex
-    case publisherChapters
-    case chapterArtifacts
     case metadataIndex
     case autoDownload
     case newEpisodeNotification

@@ -7,7 +7,7 @@ extension JobStore {
             let statement = try WorkflowSQLite.prepare(
                 """
                 UPDATE jobs SET state='pending', not_before=?, updated_at=?
-                WHERE state='blocked'
+                WHERE kind IN (\(Self.supportedKindSQL)) AND state='blocked'
                   AND last_error_class IN ('missingCredential','missingDependency')
                 """,
                 db: db
@@ -26,6 +26,7 @@ extension JobStore {
                 UPDATE jobs SET state='pending', not_before=?, updated_at=?,
                     last_error_class=NULL,last_error_message=NULL
                 WHERE idempotency_key=? AND state='blocked'
+                  AND kind IN (\(Self.supportedKindSQL))
                   AND last_error_class IN ('missingCredential','missingDependency')
                 """,
                 db: db
@@ -95,6 +96,7 @@ extension JobStore {
                     external_operation_state=NULL, last_error_class=NULL,
                     last_error_message=NULL, updated_at=?
                 WHERE idempotency_key=?
+                  AND kind IN (\(Self.supportedKindSQL))
                   AND (
                     state IN ('blocked','failedPermanent','cancelled')
                     OR (?=1 AND state='succeeded')
@@ -188,7 +190,11 @@ extension JobStore {
     func nextDueDate() throws -> Date? {
         try withDatabase { db in
             let statement = try WorkflowSQLite.prepare(
-                "SELECT MIN(not_before) FROM jobs WHERE state IN ('pending','retryScheduled')",
+                """
+                SELECT MIN(not_before) FROM jobs
+                WHERE kind IN (\(Self.supportedKindSQL))
+                  AND state IN ('pending','retryScheduled')
+                """,
                 db: db
             )
             defer { sqlite3_finalize(statement) }
@@ -253,6 +259,7 @@ extension JobStore {
                         ELSE 'Coordinator task disappeared before a terminal commit' END,
                     updated_at=?
                 WHERE lease_owner=? AND state IN ('leased','running')
+                  AND kind IN (\(Self.supportedKindSQL))
                 """,
                 db: db
             )
@@ -261,16 +268,6 @@ extension JobStore {
             try WorkflowSQLite.bind(now, 2, statement, db)
             try WorkflowSQLite.bind(owner, 3, statement, db)
             try WorkflowSQLite.stepDone(statement, db)
-        }
-    }
-
-    func removeAll() throws {
-        try withDatabase { db in try WorkflowSQLite.execute("DELETE FROM jobs", db) }
-    }
-
-    func removeDerivableJobs() throws {
-        try withDatabase { db in
-            try WorkflowSQLite.execute("DELETE FROM jobs WHERE occurrence_id IS NULL", db)
         }
     }
 

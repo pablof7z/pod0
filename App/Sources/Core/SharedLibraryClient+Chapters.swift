@@ -6,18 +6,6 @@ struct SharedChapterCommitResult: Sendable, Equatable {
     let snapshot: SharedChapterSnapshot
 }
 
-struct SharedChapterWorkflowReceipt: Codable, Sendable, Equatable {
-    static let currentSchemaVersion = 1
-
-    let schemaVersion: Int
-    let episodeID: UUID
-    let inputVersion: String
-    let artifactID: String
-    let contentDigest: String
-    let integrityDigest: String
-    let selectionRevision: UInt64
-}
-
 extension SharedLibraryClient {
     nonisolated func submitChapterObservation(
         _ qualification: ChapterObservationProjection,

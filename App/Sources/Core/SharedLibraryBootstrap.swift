@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 import Pod0Core
 import os.log
@@ -22,6 +21,7 @@ enum SharedLibraryBootstrapStage: String {
     case chapterVerification
     case chapterCommit
     case modelChapterWorkflowCutover
+    case chapterWorkflowRetirement
     case facade
 }
 
@@ -190,12 +190,23 @@ enum SharedLibraryBootstrap {
             }
             stage = .facade
             let facade = try Pod0Facade.open(storePath: target.path)
+            let legacyJobStore = JobStore(fileURL: persistence.episodeStore.fileURL)
             stage = .modelChapterWorkflowCutover
             try LegacyModelChapterWorkflowCutover.run(
                 facade: facade,
-                jobStore: JobStore(fileURL: persistence.episodeStore.fileURL),
+                jobStore: legacyJobStore,
                 backupRoot: persistence.legacyModelChapterWorkflowBackupRootURL,
                 configuredModel: chapterCompilationModel
+            )
+            let modelCutover = facade.modelChapterCutover()
+            guard modelCutover.stage == .authoritative,
+                  let modelSourceGeneration = modelCutover.sourceGeneration
+            else { throw SharedLibraryBootstrapError.verificationFailed }
+            stage = .chapterWorkflowRetirement
+            try LegacyPublisherChapterWorkflowRetirement.run(
+                jobStore: legacyJobStore,
+                backupRoot: persistence.legacyPublisherChapterWorkflowBackupRootURL,
+                modelSourceGeneration: modelSourceGeneration
             )
             let observationOutbox = try NativeHostObservationOutbox(
                 fileURL: persistence.nativeHostObservationOutboxURL
@@ -281,12 +292,6 @@ enum SharedLibraryBootstrap {
         }
     }
 
-    static func stableID(_ seed: String) -> CommandId {
-        let digest = Array(SHA256.hash(data: Data(seed.utf8)))
-        let high = digest[0..<8].reduce(UInt64(0)) { ($0 << 8) | UInt64($1) }
-        let low = digest[8..<16].reduce(UInt64(0)) { ($0 << 8) | UInt64($1) }
-        return CommandId(high: high, low: low)
-    }
 }
 
 enum SharedLibraryBootstrapError: Error {

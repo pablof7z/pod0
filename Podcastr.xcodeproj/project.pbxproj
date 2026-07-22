@@ -118,6 +118,7 @@
 		1B6E87CF80D2804E8FE7ACA3 /* VoiceCaption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52DFE92608991791CA9F8A7D /* VoiceCaption.swift */; };
 		1B72D746B542606C47EB90B9 /* AgentChatEmptyViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B4D66C7A05CE603F320CA51 /* AgentChatEmptyViews.swift */; };
 		1BDBC5A594054F2F5C209400 /* AppStateStore+PlaybackMutations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A777FE2885A22F502B7D7DD /* AppStateStore+PlaybackMutations.swift */; };
+		1C6A492B6AB2ED9DA6443954 /* WorkflowChapterRetirementSchemaTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5FE2C36865485129BB50EE5 /* WorkflowChapterRetirementSchemaTests.swift */; };
 		1C6D35F8975DDD1CB379C092 /* Clip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16627FDF9F864B55F2AF04F3 /* Clip.swift */; };
 		1CD96AA0A79904F2C10128C3 /* PlayerMoreMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA594AA5EEB9C2B662718060 /* PlayerMoreMenu.swift */; };
 		1D4F12E3A1B9272379D4059E /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80C9EDADBA130E2FABAB2FA3 /* AppState.swift */; };
@@ -130,11 +131,13 @@
 		1EFA64E1EAE461C528D334B9 /* PlaybackState+SleepTimer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4CEBBDB59D0DB18F9BAF906 /* PlaybackState+SleepTimer.swift */; };
 		20FC80800B7E50AB1BBC26C1 /* WorkflowProjectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A7114533C53959375349833 /* WorkflowProjectionTests.swift */; };
 		211D27E9D551047748BEB71A /* PlaybackState+AudioCallbacks.swift in Sources */ = {isa = PBXBuildFile; fileRef = A93A36DF0D016260B4381015 /* PlaybackState+AudioCallbacks.swift */; };
+		215A144F8BB0B198AB0640F2 /* LegacyWorkflowBackupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3680E0783D3CC698F1463183 /* LegacyWorkflowBackupStorage.swift */; };
 		21C724CB01B917D25C423253 /* KeyInfoCardShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C3E3000629215F397FAF146 /* KeyInfoCardShared.swift */; };
 		21CFAE8F1EDF45BB33B9F6DE /* PodcastSearchModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AAC3A488B0EBCACB21C0C18 /* PodcastSearchModels.swift */; };
 		21F29CF282E912330AD37DDC /* PodcastAgentToolDeps+YouTube.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60CF898917E7C8D0A004B14B /* PodcastAgentToolDeps+YouTube.swift */; };
 		2264C604A99D32BB6DAB7758 /* HomeSubscriptionListSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED750E463583E2328F34CFF7 /* HomeSubscriptionListSection.swift */; };
 		227409224EF28DE569ED85D8 /* AgentToolsPodcastMocks.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3FD47EEADBCE56BD001A991 /* AgentToolsPodcastMocks.swift */; };
+		227E633C0B1D8E4005558B2B /* JobStore+Reset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A04D74CB62C33E1E0C021BE /* JobStore+Reset.swift */; };
 		22B49771C1607C6636BAD2E0 /* CachedAsyncImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654532F9ECE33BB8040DDFFB /* CachedAsyncImage.swift */; };
 		233AEF21A720396B3BAE3BBD /* ProductSignalsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 567908DCB8897D1C082EA6F9 /* ProductSignalsView.swift */; };
 		244CF1B10EE5641CB74732AB /* OpenRouterModelRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6DE04206A4EB69411D25F42 /* OpenRouterModelRow.swift */; };
@@ -158,6 +161,7 @@
 		292D0FDE51B6CB5BB17AD821 /* LibraryGridCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8D1F5BAA93104D8CEDC80FE /* LibraryGridCell.swift */; };
 		2990AB5CC09EAF5FF2EEEC20 /* JobStore+Database.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5470D491B139E56525E04A24 /* JobStore+Database.swift */; };
 		29915D0E8D5D0222B856D9A3 /* GlassSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECA3625104C81ABBDB593864 /* GlassSurface.swift */; };
+		29D4FADE11A42E4B2C9E3C30 /* SharedLibraryBootstrap+StableID.swift in Sources */ = {isa = PBXBuildFile; fileRef = F062BBBF6B4B41CFDF97E77D /* SharedLibraryBootstrap+StableID.swift */; };
 		2A485631BEA6A53677E9CCCB /* AgentRunFormatTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BABF75DD82031E22B307B85D /* AgentRunFormatTests.swift */; };
 		2AD35FC413408C174A141525 /* AutoSnipButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5AAF68D8DF54A1E812AF400 /* AutoSnipButton.swift */; };
 		2B4CA2B86901F9597FA6828A /* SRTParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE94D97C7CBAFF7A0974685 /* SRTParser.swift */; };
@@ -199,7 +203,6 @@
 		398C6F7A4FB6418F662BDD95 /* PlayerNavSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7B74353E34FC5F74A23CDE5 /* PlayerNavSheets.swift */; };
 		3992DC27F6BB072BF808FFD9 /* PodcastSubscription.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEB88A1AC5FC71153442A40A /* PodcastSubscription.swift */; };
 		3994B8ACC0D85691C2A89E28 /* Settings+Embeddings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0066858CC2F8B6E6B570CD47 /* Settings+Embeddings.swift */; };
-		3A34E3D7A14EEB161947B6D0 /* JobStore+Cleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B5E0AD054E7E657507BEE93 /* JobStore+Cleanup.swift */; };
 		3B155B629BEE0FC159BF33E1 /* AppTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32D6DCC3AC57739150675344 /* AppTests.swift */; };
 		3C6587F61908F2AB024BFEE6 /* VoiceNoteRecordingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A07B87C15E98C7F3A7F93ED7 /* VoiceNoteRecordingSheet.swift */; };
 		3D72CC53EC0E568081C00C99 /* CorePlaybackHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87AD2A35A78499B7D133A765 /* CorePlaybackHost.swift */; };
@@ -215,6 +218,7 @@
 		401EA90530E9237B3718A0C7 /* PerplexityClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7304D6B61EDDFDC0BE016C7A /* PerplexityClient.swift */; };
 		40204D625A749CA92DCB41A6 /* AgentChatTranscriptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB078595EB58FDF44BC5B602 /* AgentChatTranscriptView.swift */; };
 		4099E117EE6B5D095AD02C66 /* HomeThreadedTodayPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = D18C3BBBCBB1EA86DC3453E1 /* HomeThreadedTodayPill.swift */; };
+		40C442DD5820B29705C051DE /* LegacyPublisherChapterWorkflowRetirementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E256806EE2E0049D102BDAD2 /* LegacyPublisherChapterWorkflowRetirementTests.swift */; };
 		4188EEF9C028387D11BFFC7D /* Pod0ListeningDomainBindingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28F0D32EAD095A2692D767F6 /* Pod0ListeningDomainBindingTests.swift */; };
 		418AEEE47C4356C8B9F79FF3 /* TranscriptIngestService+Indexing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 031D5061E5C9221398D16398 /* TranscriptIngestService+Indexing.swift */; };
 		421651B3FFE1F19DBD78AD4C /* NowPlayingCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E7306EF6FF2CA2DA6FC2F66 /* NowPlayingCenter.swift */; };
@@ -369,6 +373,7 @@
 		79AB7DCAABA473536336D3AD /* ConversationHistorySkill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37BB5B7D6051FDAC75466074 /* ConversationHistorySkill.swift */; };
 		79B8D1F81EF1A28D03C3ADA0 /* AgentTools+Voices.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC251F9CF9946FF112BC46DB /* AgentTools+Voices.swift */; };
 		79D1D9914C9DCC31FD4ED58F /* AgentChatBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C70D48DA04DEB4330285B88 /* AgentChatBubble.swift */; };
+		79D2E0F2B51CAD1AF21D86FE /* LegacyPublisherChapterWorkflowRetirement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21938E51EFC5EC5103E6DE59 /* LegacyPublisherChapterWorkflowRetirement.swift */; };
 		7A223ED81673C6B19D5A7384 /* transcript-contract-v1.properties in Resources */ = {isa = PBXBuildFile; fileRef = D78BC9634F6F6220C816CFF1 /* transcript-contract-v1.properties */; };
 		7A9A1A3BC1F2E6B447AE0724 /* VoiceItemService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EC9A01379FA98400B6083FB /* VoiceItemService.swift */; };
 		7B38745DD2DF0D924C751D64 /* TranscriptIngestService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 604C4FDC93784B68593EB785 /* TranscriptIngestService.swift */; };
@@ -403,6 +408,7 @@
 		87B6D49DBAF7EADDD0FFB80B /* TranscriptKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02384F0D2237354AF64B2F85 /* TranscriptKind.swift */; };
 		88C1A5F477E331A6AA46D8B5 /* LivePodcastLibraryAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9803A82B10D2CA3E728DADB0 /* LivePodcastLibraryAdapter.swift */; };
 		8923D48AA4C8D98A7303AC8D /* AgentRunInspectionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F221E829C03E40A4E3EFD8C8 /* AgentRunInspectionViews.swift */; };
+		8985A61DF6EBB8C9E72E4776 /* LegacyChapterWorkflowTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E40D4967F4BCB148023CD349 /* LegacyChapterWorkflowTestSupport.swift */; };
 		898C82BA93DFAACF920E86F4 /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB34028F5B06CDE094BE03B4 /* Persistence.swift */; };
 		89D7C214BCD15840294A8650 /* RSSDateParsingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E524C12E0B388ADFE8E37CD /* RSSDateParsingTests.swift */; };
 		89E4894F867017DC5D7A78E3 /* Persistence+Locations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953A34D21D06F66661D76077 /* Persistence+Locations.swift */; };
@@ -446,6 +452,7 @@
 		939502AB327D27876753398A /* EpisodeAuditEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4F8B87E49AE8CE274362E96 /* EpisodeAuditEvent.swift */; };
 		93DABAF2425B0AA8E510232D /* ProductFailure.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56354D181C5416354A65B705 /* ProductFailure.swift */; };
 		9484391CB4EB1D4DEB61AF3A /* PlayerShareSheetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278CA9637B1B804C8D5D4509 /* PlayerShareSheetTests.swift */; };
+		94F78F623F1C0AE9269C8AF4 /* LegacyModelChapterWorkflowCompatibilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EABA7C333ABB324F027E25D /* LegacyModelChapterWorkflowCompatibilityTests.swift */; };
 		957745942FC5E37DE36EA2CD /* CostLedger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BE8777EE4FC402BB3C9C36E /* CostLedger.swift */; };
 		95BA21171EE66A3C592CCB44 /* chapter-model-generation-user-v1.txt in Resources */ = {isa = PBXBuildFile; fileRef = B7B0EF9D5F0364CF7C00BDFB /* chapter-model-generation-user-v1.txt */; };
 		961A89E9FA7759A554D5113E /* PlaybackSleepTimerLabelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B26E781D85D5AE64D68D81 /* PlaybackSleepTimerLabelTests.swift */; };
@@ -541,6 +548,7 @@
 		B3911A6DDB986C6528C2C4F1 /* RSSParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252381473A916661CCBA523E /* RSSParserTests.swift */; };
 		B3970DA45FCC4CB32765FCCD /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = AC95E5BC4A660944ADC3109C /* Kingfisher */; };
 		B3A905E197AB568191C7B2A6 /* AgentNostrSignerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15A2D929FA7CC3D15CA4ABB8 /* AgentNostrSignerTests.swift */; };
+		B3BA8FDE00001B3DB0D8F99A /* JobStore+LegacyChapterRetirement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BB0A5BD6C0C71A08B836609 /* JobStore+LegacyChapterRetirement.swift */; };
 		B3D650CB33926951017490CF /* ElevenLabsVoiceRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDD80384C741138D608DAECE /* ElevenLabsVoiceRow.swift */; };
 		B3E189C5BA5D59D07FF8FC37 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCDBEC4F0E2BBCFFB096BEFD /* AppDelegate.swift */; };
 		B47AD2A9B6079333C170E9E4 /* AgentOpenRouterClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34AD101F19534A8D54E47BB7 /* AgentOpenRouterClient.swift */; };
@@ -592,6 +600,7 @@
 		C77A985078E47C235BFA90B4 /* PlayerCompactTitleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F93D5146D6F408B4CECDC8FE /* PlayerCompactTitleView.swift */; };
 		C77DBC83450A4C649F71B3A8 /* AppStateStore+Threading.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB9C42182225DE1D0DECA8D6 /* AppStateStore+Threading.swift */; };
 		C7998F4B556E8475F2B62FEA /* PodcastAgentToolDeps+OwnedPodcasts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 912CDD0E2D32B88C0B6A07F6 /* PodcastAgentToolDeps+OwnedPodcasts.swift */; };
+		C7F92330EF697CC87F596BDA /* WorkflowSchemaMigrations+ChapterRetirement.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4FF46F18852A9C7F82E1A93 /* WorkflowSchemaMigrations+ChapterRetirement.swift */; };
 		C84F8CC794A5D052E8448BF5 /* AppStateStore+Workflow.swift in Sources */ = {isa = PBXBuildFile; fileRef = C49A7EA4A1DDA8AC1862B2B3 /* AppStateStore+Workflow.swift */; };
 		C8F0692B36D89EA61DF73B8D /* UtilityLLMFailureMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CE727069146EB44154EE57B /* UtilityLLMFailureMapping.swift */; };
 		C93E672F9BAD84BA35BDAFCE /* CategoriesRecomputeSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0922C8E549FB8ADA466CA4CD /* CategoriesRecomputeSheet.swift */; };
@@ -643,6 +652,7 @@
 		DB10B5AD9F69EEF1856576D7 /* PlaybackLifecycleQualificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF9E66C5E53CB0271421BAAA /* PlaybackLifecycleQualificationTests.swift */; };
 		DB2873BD9B10BCD9A324F18F /* recall-index-v1.json in Resources */ = {isa = PBXBuildFile; fileRef = 0B8057F4F41E105DA6D7964F /* recall-index-v1.json */; };
 		DB4F9A232170D7D2FB52BA5B /* JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C0D3294375130D07F658B6C /* JobStore.swift */; };
+		DB602E7256003F7275C3C75D /* LegacyChapterWorkflowJob.swift in Sources */ = {isa = PBXBuildFile; fileRef = E870217CC0A73FC46D927747 /* LegacyChapterWorkflowJob.swift */; };
 		DB718E131E4E2D08A59F5ECC /* PlaybackState+SharedCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5830870176D2E57736DF1FD /* PlaybackState+SharedCore.swift */; };
 		DBA51DA25D1EE89ACDF5BC3C /* PlayerTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5378716211A015BB0F29358F /* PlayerTimelineView.swift */; };
 		DC1EB18AAB5F257ACEDE26F6 /* SharedNoteMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE2832339016F48EA79D974B /* SharedNoteMapping.swift */; };
@@ -936,6 +946,7 @@
 		1FD9A6BB1CAF812368C6176B /* ItemColorTag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemColorTag.swift; sourceTree = "<group>"; };
 		203947342F242E2D9AA15EDE /* PlayerPrerollSkipButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerPrerollSkipButton.swift; sourceTree = "<group>"; };
 		217583758124753E4CBB7A52 /* ProviderConnectionSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderConnectionSection.swift; sourceTree = "<group>"; };
+		21938E51EFC5EC5103E6DE59 /* LegacyPublisherChapterWorkflowRetirement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyPublisherChapterWorkflowRetirement.swift; sourceTree = "<group>"; };
 		22225646A576B054D752BF8B /* CoreRecallHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreRecallHost.swift; sourceTree = "<group>"; };
 		229944585A479C4A0ADFBB9D /* RSSParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RSSParser.swift; sourceTree = "<group>"; };
 		231918694FAD88B827406518 /* ChapterObservationCapabilityAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChapterObservationCapabilityAdapter.swift; sourceTree = "<group>"; };
@@ -974,6 +985,7 @@
 		2B186185610FEBCA338E83C9 /* EpisodeShowNotesFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeShowNotesFormatter.swift; sourceTree = "<group>"; };
 		2B18F2755F485C2CADD88CDF /* KeyboardToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardToolbar.swift; sourceTree = "<group>"; };
 		2B93A04888D8331D4E91870B /* LibraryFilters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryFilters.swift; sourceTree = "<group>"; };
+		2BB0A5BD6C0C71A08B836609 /* JobStore+LegacyChapterRetirement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JobStore+LegacyChapterRetirement.swift"; sourceTree = "<group>"; };
 		2BD7F743FEB2B7E0ADC851CA /* AppStateStore+DerivedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+DerivedViews.swift"; sourceTree = "<group>"; };
 		2D218B2EB67FB5CBD9EE56E1 /* legacy-listening-v1.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "legacy-listening-v1.json"; sourceTree = "<group>"; };
 		2D35497449C304B3CCCACDEE /* AgentTools+Schedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AgentTools+Schedule.swift"; sourceTree = "<group>"; };
@@ -1002,6 +1014,7 @@
 		34844619100E1D12A7AB23CE /* SpeechRecognizerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognizerService.swift; sourceTree = "<group>"; };
 		34AD101F19534A8D54E47BB7 /* AgentOpenRouterClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentOpenRouterClient.swift; sourceTree = "<group>"; };
 		3556F9FBC20C7EE5C2A37BCD /* AgentChatSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentChatSession.swift; sourceTree = "<group>"; };
+		3680E0783D3CC698F1463183 /* LegacyWorkflowBackupStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyWorkflowBackupStorage.swift; sourceTree = "<group>"; };
 		3687910CDE28D4C09EFD0A0A /* ElevenLabsVoiceBrowserViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElevenLabsVoiceBrowserViewModel.swift; sourceTree = "<group>"; };
 		36961222960629DE35F87A8B /* HomeEmptyStates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeEmptyStates.swift; sourceTree = "<group>"; };
 		36BC4C7B96C81AF433712CA9 /* ProductSignalInstrumentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductSignalInstrumentationTests.swift; sourceTree = "<group>"; };
@@ -1013,6 +1026,7 @@
 		383F2A339D48BC3930A8A40A /* OpenRouterKeyValidationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenRouterKeyValidationService.swift; sourceTree = "<group>"; };
 		393839ED97D42FF8C4A0D5F0 /* StringExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StringExtensions.swift; sourceTree = "<group>"; };
 		39B17265DC9B5B24DF801B3D /* NostrKeyPair.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NostrKeyPair.swift; sourceTree = "<group>"; };
+		3A04D74CB62C33E1E0C021BE /* JobStore+Reset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JobStore+Reset.swift"; sourceTree = "<group>"; };
 		3A1E29B99F5D8B00AF50D68B /* AgentActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentActivity.swift; sourceTree = "<group>"; };
 		3A4AB512EBE066569F5BCA79 /* DownloadProgressBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadProgressBadge.swift; sourceTree = "<group>"; };
 		3A6C1274B3B348EF9D1A50B5 /* HomeFeaturedSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeFeaturedSection.swift; sourceTree = "<group>"; };
@@ -1146,7 +1160,6 @@
 		6A4C33F157CAC4BB21A070B7 /* AgentMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentMemory.swift; sourceTree = "<group>"; };
 		6A973CC1C68553201DCE3289 /* TuistBundle+Podcastr.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TuistBundle+Podcastr.swift"; sourceTree = "<group>"; };
 		6B03EB912BE98A4069F55105 /* PlayerSpeedSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSpeedSheet.swift; sourceTree = "<group>"; };
-		6B5E0AD054E7E657507BEE93 /* JobStore+Cleanup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JobStore+Cleanup.swift"; sourceTree = "<group>"; };
 		6B5EF75D983AA1947DD5036A /* chapter-contract-v1.properties */ = {isa = PBXFileReference; path = "chapter-contract-v1.properties"; sourceTree = "<group>"; };
 		6B911B317E44998B217BA40B /* LibraryUnplayedBadgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryUnplayedBadgeTests.swift; sourceTree = "<group>"; };
 		6C26132310DE731CD5831919 /* PodcastSearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PodcastSearchTests.swift; sourceTree = "<group>"; };
@@ -1303,6 +1316,7 @@
 		9DA1784D7FF22F8FFE06C5E3 /* WhatsNew.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNew.swift; sourceTree = "<group>"; };
 		9DB1F1E58D70483A1E52161C /* CoreFeedHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreFeedHost.swift; sourceTree = "<group>"; };
 		9DBBBBEC7AFD829308C67EA9 /* RerankerClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RerankerClient.swift; sourceTree = "<group>"; };
+		9EABA7C333ABB324F027E25D /* LegacyModelChapterWorkflowCompatibilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyModelChapterWorkflowCompatibilityTests.swift; sourceTree = "<group>"; };
 		9ED03C0C88CEA9A6A0F679F0 /* pod0_facade.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = pod0_facade.swift; sourceTree = "<group>"; };
 		9ED28D177808259F929D4477 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		9F01D52619F42226F96452B4 /* CategoryAutoDownloadSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryAutoDownloadSection.swift; sourceTree = "<group>"; };
@@ -1316,6 +1330,7 @@
 		A42B0D74B9E27A1106F55BB7 /* ComposedAudioStitcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposedAudioStitcher.swift; sourceTree = "<group>"; };
 		A481CB0441AD3B8D91735AFC /* AgentRunLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentRunLogger.swift; sourceTree = "<group>"; };
 		A4D4309281FE532B1008199C /* AppStateStore+ProductSignals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+ProductSignals.swift"; sourceTree = "<group>"; };
+		A4FF46F18852A9C7F82E1A93 /* WorkflowSchemaMigrations+ChapterRetirement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkflowSchemaMigrations+ChapterRetirement.swift"; sourceTree = "<group>"; };
 		A504DF2340BE447873EA10A7 /* ArtifactRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactRepository.swift; sourceTree = "<group>"; };
 		A619964441015F750E5F983B /* CorePublisherChapterHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CorePublisherChapterHost.swift; sourceTree = "<group>"; };
 		A65E496125B673987C19A296 /* AgentTools+NotesMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AgentTools+NotesMemory.swift"; sourceTree = "<group>"; };
@@ -1446,6 +1461,7 @@
 		D5B3D200FFBFC6759CF54614 /* PlaybackState+Chapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlaybackState+Chapters.swift"; sourceTree = "<group>"; };
 		D5D503B1DFB044504C7F8548 /* SharedLibraryClient+Recall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SharedLibraryClient+Recall.swift"; sourceTree = "<group>"; };
 		D5F13F2BBC4FECC8B7B3D4BF /* AgentToolSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentToolSchema.swift; sourceTree = "<group>"; };
+		D5FE2C36865485129BB50EE5 /* WorkflowChapterRetirementSchemaTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowChapterRetirementSchemaTests.swift; sourceTree = "<group>"; };
 		D78BC9634F6F6220C816CFF1 /* transcript-contract-v1.properties */ = {isa = PBXFileReference; path = "transcript-contract-v1.properties"; sourceTree = "<group>"; };
 		D7E11F16DE4127AD138AB04C /* SRTParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SRTParserTests.swift; sourceTree = "<group>"; };
 		D7F60152A0CC4362B8C76F4D /* SharedTranscriptReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedTranscriptReader.swift; sourceTree = "<group>"; };
@@ -1480,10 +1496,12 @@
 		E170D097AEBA050922B45FD1 /* WorkflowJobProjection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowJobProjection.swift; sourceTree = "<group>"; };
 		E1A8BA5BF5CA7F9151D4B12F /* ModelChapterWorkflowProjectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelChapterWorkflowProjectionTests.swift; sourceTree = "<group>"; };
 		E1CA95C0A91FA2689DE5A2D3 /* EpisodeSQLiteStore+Statements.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EpisodeSQLiteStore+Statements.swift"; sourceTree = "<group>"; };
+		E256806EE2E0049D102BDAD2 /* LegacyPublisherChapterWorkflowRetirementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyPublisherChapterWorkflowRetirementTests.swift; sourceTree = "<group>"; };
 		E26A23D8B0DB7A94A9DCB8A2 /* schema-status-v1.properties */ = {isa = PBXFileReference; path = "schema-status-v1.properties"; sourceTree = "<group>"; };
 		E292AE2975F658126600FBE8 /* WorkCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkCoordinator.swift; sourceTree = "<group>"; };
 		E30B0ADA63732E117A3CDA25 /* OllamaSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaSettingsView.swift; sourceTree = "<group>"; };
 		E39D85E4B13CD42BCEDDFE48 /* HighlightedTextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighlightedTextTests.swift; sourceTree = "<group>"; };
+		E40D4967F4BCB148023CD349 /* LegacyChapterWorkflowTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyChapterWorkflowTestSupport.swift; sourceTree = "<group>"; };
 		E41F78E78D2864D74B499ADB /* LivePodcastInventoryAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivePodcastInventoryAdapter.swift; sourceTree = "<group>"; };
 		E42CB8A998DB2D33F01D5663 /* EpisodePreparationStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodePreparationStatusView.swift; sourceTree = "<group>"; };
 		E45408AE77046384B1927326 /* AgentScheduledTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentScheduledTask.swift; sourceTree = "<group>"; };
@@ -1494,6 +1512,7 @@
 		E6798DD9D598179F938ADAF5 /* JobStore+ExternalOperations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JobStore+ExternalOperations.swift"; sourceTree = "<group>"; };
 		E7A69E33C9E7B75C499BDEDB /* AgentRunCollector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentRunCollector.swift; sourceTree = "<group>"; };
 		E8350DA2ECAB3BD4233213FF /* AppStateStore+Sorting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+Sorting.swift"; sourceTree = "<group>"; };
+		E870217CC0A73FC46D927747 /* LegacyChapterWorkflowJob.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyChapterWorkflowJob.swift; sourceTree = "<group>"; };
 		E9AE8E479340DB6594116029 /* EpisodeSQLiteStore+Loading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EpisodeSQLiteStore+Loading.swift"; sourceTree = "<group>"; };
 		EB3B9E805746F849981E7824 /* NostrEventModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NostrEventModels.swift; sourceTree = "<group>"; };
 		EB700211550DA4FE9D8A7C77 /* AssemblyAISettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssemblyAISettingsView.swift; sourceTree = "<group>"; };
@@ -1517,6 +1536,7 @@
 		EFC9C30A6DEBF6B139B6F833 /* LLMPayloadDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMPayloadDetailView.swift; sourceTree = "<group>"; };
 		F01C4CDCD1CB068B9037440C /* AppStateStore+PeerConversations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+PeerConversations.swift"; sourceTree = "<group>"; };
 		F051A45D6FE07D8D57E5E774 /* EpisodeChapterAuthorityDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeChapterAuthorityDecodingTests.swift; sourceTree = "<group>"; };
+		F062BBBF6B4B41CFDF97E77D /* SharedLibraryBootstrap+StableID.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SharedLibraryBootstrap+StableID.swift"; sourceTree = "<group>"; };
 		F150294DC49C482E113FA838 /* UserFacingFailureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserFacingFailureTests.swift; sourceTree = "<group>"; };
 		F168E9CBBA106D4121FE5137 /* empty-legacy-chapter-v1.sql */ = {isa = PBXFileReference; path = "empty-legacy-chapter-v1.sql"; sourceTree = "<group>"; };
 		F18BBA6536A206E89AD9A0D1 /* VTTParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VTTParser.swift; sourceTree = "<group>"; };
@@ -1784,9 +1804,12 @@
 				22225646A576B054D752BF8B /* CoreRecallHost.swift */,
 				DDEB69C8E70BC8FE9028E8A0 /* CoreRecallHosting.swift */,
 				5F882238D10B58E8E4C579CD /* DeferredPlaybackHost.swift */,
+				E870217CC0A73FC46D927747 /* LegacyChapterWorkflowJob.swift */,
 				14582385378569EE4050CAA7 /* LegacyModelChapterWorkflowBackup.swift */,
 				FEC80878D6955C66A41BBFEF /* LegacyModelChapterWorkflowCutover.swift */,
 				5C81C6D415CD402C1CACAAA5 /* LegacyModelChapterWorkflowSnapshot.swift */,
+				21938E51EFC5EC5103E6DE59 /* LegacyPublisherChapterWorkflowRetirement.swift */,
+				3680E0783D3CC698F1463183 /* LegacyWorkflowBackupStorage.swift */,
 				48D702DAB2E7E35DFF627413 /* NativeHostObservationOutbox.swift */,
 				CCA6356EFC2F304644896C5E /* Pod0CoreAvailability.swift */,
 				1C72EF4F71C0F0365B3281BA /* Pod0CoreIdentifiers.swift */,
@@ -1802,6 +1825,7 @@
 				CB2E1784F7F1D6FA71A3C7EE /* SharedLibraryBootstrap+Chapters.swift */,
 				0F40ACC743FBEB970D090E1B /* SharedLibraryBootstrap+Clips.swift */,
 				CEB1AFDC0772403E1CB41622 /* SharedLibraryBootstrap+Failure.swift */,
+				F062BBBF6B4B41CFDF97E77D /* SharedLibraryBootstrap+StableID.swift */,
 				9845A66D6541149776C5A704 /* SharedLibraryClient.swift */,
 				9BF7D8F507F5C81409CE7D8D /* SharedLibraryClient+Chapters.swift */,
 				FC5989AD8EADF52633EFF49A /* SharedLibraryClient+ChapterScopes.swift */,
@@ -2411,9 +2435,12 @@
 				D26B8714E79416A98090264D /* ITunesSearchClientTests.swift */,
 				5718F8E779077D4AEC975F82 /* JobStoreCoordinatorTests.swift */,
 				4EE69F82ACAA07BA4FE98489 /* JobStoreExternalRecoveryTests.swift */,
+				E40D4967F4BCB148023CD349 /* LegacyChapterWorkflowTestSupport.swift */,
 				085925CD9C1838B3E1097264 /* LegacyListeningImportBindingTests.swift */,
+				9EABA7C333ABB324F027E25D /* LegacyModelChapterWorkflowCompatibilityTests.swift */,
 				43B964D7FDC5F1D285AF2389 /* LegacyModelChapterWorkflowCutoverTests.swift */,
 				17C14BF8FACB9A41D8142B6A /* LegacyModelChapterWorkflowSnapshotTests.swift */,
+				E256806EE2E0049D102BDAD2 /* LegacyPublisherChapterWorkflowRetirementTests.swift */,
 				6B911B317E44998B217BA40B /* LibraryUnplayedBadgeTests.swift */,
 				75560A14955994ED192ECB7A /* LiquidGlassSegmentedPickerTests.swift */,
 				80D89E3501095FCCE1DCE609 /* LLMProviderTests.swift */,
@@ -2475,6 +2502,7 @@
 				F150294DC49C482E113FA838 /* UserFacingFailureTests.swift */,
 				8B23D6259BBB5DC5ECF273D4 /* VTTParserTests.swift */,
 				DE8C3FF9B6198A0AA6C3A16E /* WhatsNewServiceTests.swift */,
+				D5FE2C36865485129BB50EE5 /* WorkflowChapterRetirementSchemaTests.swift */,
 				4459FFAA5B612863E89245C6 /* WorkflowDiagnosticsTests.swift */,
 				3424D1E18F97C6D890FC6148 /* WorkflowHardeningRegressionTests.swift */,
 				DE9B39F7AA15D322E1A5CFBA /* WorkflowJobActionTests.swift */,
@@ -2814,11 +2842,12 @@
 				C73EEC47ABDC89046500A473 /* DownloadReconciliationPlanner.swift */,
 				1C0D3294375130D07F658B6C /* JobStore.swift */,
 				F3FAD2D0BCC38C7E50226CD7 /* JobStore+Actions.swift */,
-				6B5E0AD054E7E657507BEE93 /* JobStore+Cleanup.swift */,
 				5470D491B139E56525E04A24 /* JobStore+Database.swift */,
 				E6798DD9D598179F938ADAF5 /* JobStore+ExternalOperations.swift */,
+				2BB0A5BD6C0C71A08B836609 /* JobStore+LegacyChapterRetirement.swift */,
 				DE9FF7C16D46BF6031894A1C /* JobStore+Projections.swift */,
 				8ACC23063DAAC097C9A2243D /* JobStore+Recovery.swift */,
+				3A04D74CB62C33E1E0C021BE /* JobStore+Reset.swift */,
 				25D9CA0A3B6B064C904C87B7 /* JobStore+Transaction.swift */,
 				796DEC742BBA51E1C316B82C /* OccurrenceIdentity.swift */,
 				8A72886DDA602EA8FC1E8447 /* Reconciler.swift */,
@@ -2834,6 +2863,7 @@
 				37D4A39DB63529BC6011FE6C /* WorkflowProcessReconstructionHarness.swift */,
 				F3FAC13B9D5D6EC0946A22E7 /* WorkflowRuntime.swift */,
 				B78A95330784E4C734798745 /* WorkflowSchemaMigrations.swift */,
+				A4FF46F18852A9C7F82E1A93 /* WorkflowSchemaMigrations+ChapterRetirement.swift */,
 				D3FC91748AF64CE72EE4EA81 /* WorkflowSQLite.swift */,
 				98290E5BED82A45D3111528A /* WorkJob.swift */,
 			);
@@ -3124,9 +3154,12 @@
 				4FC99BC8EDBEFE3490BEF1C1 /* CoreRecallHost.swift in Sources */,
 				EBB7BBA82A7520183C315781 /* CoreRecallHosting.swift in Sources */,
 				A7DCA134CE2936165EA432A5 /* DeferredPlaybackHost.swift in Sources */,
+				DB602E7256003F7275C3C75D /* LegacyChapterWorkflowJob.swift in Sources */,
 				974CC2F2107B0A55D7D36669 /* LegacyModelChapterWorkflowBackup.swift in Sources */,
 				1E7C800FE5CEFA439EDE0DD2 /* LegacyModelChapterWorkflowCutover.swift in Sources */,
 				2C5CB84D0BB5066BD015501A /* LegacyModelChapterWorkflowSnapshot.swift in Sources */,
+				79D2E0F2B51CAD1AF21D86FE /* LegacyPublisherChapterWorkflowRetirement.swift in Sources */,
+				215A144F8BB0B198AB0640F2 /* LegacyWorkflowBackupStorage.swift in Sources */,
 				F2DCA92A67EB2646732B744B /* NativeHostObservationOutbox.swift in Sources */,
 				5A6656DD0FEA7214F615F814 /* Pod0CoreAvailability.swift in Sources */,
 				CADCF9D01B6E836EC4E1A4D3 /* Pod0CoreIdentifiers.swift in Sources */,
@@ -3141,6 +3174,7 @@
 				32E01A7B2E7D00C37D22F638 /* SharedLibraryBootstrap+Chapters.swift in Sources */,
 				B74F70DEFC8511D7C299FD32 /* SharedLibraryBootstrap+Clips.swift in Sources */,
 				AE97B0BFE3EF1537421A56F5 /* SharedLibraryBootstrap+Failure.swift in Sources */,
+				29D4FADE11A42E4B2C9E3C30 /* SharedLibraryBootstrap+StableID.swift in Sources */,
 				4247B2501382E4EC9B529E54 /* SharedLibraryBootstrap.swift in Sources */,
 				4A72751DD2A18D2376C979D5 /* SharedLibraryClient+ChapterScopes.swift in Sources */,
 				736AA12F85B0324ED647D6E0 /* SharedLibraryClient+Chapters.swift in Sources */,
@@ -3579,11 +3613,12 @@
 				7568B56977DD6A3EC7168E16 /* DesiredStatePlanner.swift in Sources */,
 				01CEF64E8090D455830F6038 /* DownloadReconciliationPlanner.swift in Sources */,
 				AD6227B9138618E9F97F6DE1 /* JobStore+Actions.swift in Sources */,
-				3A34E3D7A14EEB161947B6D0 /* JobStore+Cleanup.swift in Sources */,
 				2990AB5CC09EAF5FF2EEEC20 /* JobStore+Database.swift in Sources */,
 				791C152505FFC1EEB8BC4094 /* JobStore+ExternalOperations.swift in Sources */,
+				B3BA8FDE00001B3DB0D8F99A /* JobStore+LegacyChapterRetirement.swift in Sources */,
 				96B7AD7B9423F19310572786 /* JobStore+Projections.swift in Sources */,
 				AEDA65950C6B688BC14977AC /* JobStore+Recovery.swift in Sources */,
+				227E633C0B1D8E4005558B2B /* JobStore+Reset.swift in Sources */,
 				650B16220A342C2D8418DB1C /* JobStore+Transaction.swift in Sources */,
 				DB4F9A232170D7D2FB52BA5B /* JobStore.swift in Sources */,
 				44F5E62712EE5954AFB4826E /* OccurrenceIdentity.swift in Sources */,
@@ -3601,6 +3636,7 @@
 				36B1EE50E2CCFD5678A10590 /* WorkflowProcessReconstructionHarness.swift in Sources */,
 				99CC0AD436E013F8727CE08D /* WorkflowRuntime.swift in Sources */,
 				6A9CCF09E39CA0D09D80DA78 /* WorkflowSQLite.swift in Sources */,
+				C7F92330EF697CC87F596BDA /* WorkflowSchemaMigrations+ChapterRetirement.swift in Sources */,
 				6E21267F061FD08238128FAF /* WorkflowSchemaMigrations.swift in Sources */,
 				E2DE2F86BC10C63E271C989C /* TuistAssets+Podcastr.swift in Sources */,
 				F1D74AD842C37F08A407C6B4 /* TuistBundle+Podcastr.swift in Sources */,
@@ -3692,9 +3728,12 @@
 				2E33C88244DAABF6FF05563C /* JobStoreCoordinatorTests.swift in Sources */,
 				964A5FB69F9B1136EA3D4A36 /* JobStoreExternalRecoveryTests.swift in Sources */,
 				132BF50E44A13F6CC6B1351A /* LLMProviderTests.swift in Sources */,
+				8985A61DF6EBB8C9E72E4776 /* LegacyChapterWorkflowTestSupport.swift in Sources */,
 				E54B79F5C7748984BE2C2DFF /* LegacyListeningImportBindingTests.swift in Sources */,
+				94F78F623F1C0AE9269C8AF4 /* LegacyModelChapterWorkflowCompatibilityTests.swift in Sources */,
 				D2166048A744428BC78782C0 /* LegacyModelChapterWorkflowCutoverTests.swift in Sources */,
 				55F965F6F2D3782509E4BE67 /* LegacyModelChapterWorkflowSnapshotTests.swift in Sources */,
+				40C442DD5820B29705C051DE /* LegacyPublisherChapterWorkflowRetirementTests.swift in Sources */,
 				4244877912A09DD057D41003 /* LibraryUnplayedBadgeTests.swift in Sources */,
 				BBCC62B1CD794D7805AA77CC /* LiquidGlassSegmentedPickerTests.swift in Sources */,
 				72B40DD159BEBE66778B0F82 /* ModelChapterWorkflowProjectionTests.swift in Sources */,
@@ -3755,6 +3794,7 @@
 				0C3A781A34425927D565DF41 /* UserFacingFailureTests.swift in Sources */,
 				8F6C7ACA9A78C7AB02DADBF7 /* VTTParserTests.swift in Sources */,
 				84C1F2E7E12E30068AE3CAE2 /* WhatsNewServiceTests.swift in Sources */,
+				1C6A492B6AB2ED9DA6443954 /* WorkflowChapterRetirementSchemaTests.swift in Sources */,
 				55C1F812CAF36A910A183F46 /* WorkflowDiagnosticsTests.swift in Sources */,
 				7D3D3773A5E730618022F244 /* WorkflowHardeningRegressionTests.swift in Sources */,
 				0F4B277AF572F80D2E6F3C01 /* WorkflowJobActionTests.swift in Sources */,

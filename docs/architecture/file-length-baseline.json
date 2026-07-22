@@ -17,7 +17,7 @@
   "baseline_reason": "Existing 300-500 line source is visible soft-limit debt and may not grow; a decrease must ratchet the recorded ceiling down.",
   "soft_baseline": {
     "App/Sources/State/Persistence.swift": 376,
-    "AppTests/Sources/JobStoreCoordinatorTests.swift": 473,
+    "AppTests/Sources/JobStoreCoordinatorTests.swift": 472,
     "App/Sources/Domain/Settings.swift": 472,
     "App/Sources/Transcript/AssemblyAITranscriptClient.swift": 470,
     "App/Sources/Features/Settings/AI/LLMSettingsView.swift": 467,
@@ -52,7 +52,7 @@
     "App/Sources/App/RootView.swift": 323,
     "App/Sources/Agent/AgentTools+PodcastInventory.swift": 337,
     "App/Sources/Features/Home/HomeRelatedSheet.swift": 323,
-    "App/Sources/Workflows/JobStore+Recovery.swift": 323,
+    "App/Sources/Workflows/JobStore+Recovery.swift": 320,
     "App/Sources/Features/Voice/VoiceView.swift": 322,
     "App/Sources/Features/Voice/VoiceOrbView.swift": 322,
     "App/Sources/Features/Settings/AI/OpenRouterModelSelectorView.swift": 319,

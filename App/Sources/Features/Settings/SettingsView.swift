@@ -16,7 +16,7 @@ struct SettingsView: View {
         .settingsListStyle()
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.large)
-        .workflowAttentionScope(kinds: WorkJobKind.allCases)
+        .workflowAttentionScope(kinds: WorkflowProjectionKind.allCases)
         .task {
             // Cheap directory walk; runs once when Settings opens so the
             // Data & Storage row can show the total without a navigation push.

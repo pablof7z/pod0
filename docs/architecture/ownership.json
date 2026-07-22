@@ -68,26 +68,33 @@
         "App/Sources/Core/SharedChapterReader.swift",
         "App/Sources/Core/SharedLibraryClient+Chapters.swift",
         "App/Sources/Core/SharedLibraryClient+ChapterScopes.swift",
+        "App/Sources/Core/LegacyChapterWorkflowJob.swift",
         "App/Sources/Core/LegacyModelChapterWorkflowBackup.swift",
         "App/Sources/Core/LegacyModelChapterWorkflowCutover.swift",
-        "App/Sources/Core/LegacyModelChapterWorkflowSnapshot.swift"
+        "App/Sources/Core/LegacyModelChapterWorkflowSnapshot.swift",
+        "App/Sources/Core/LegacyPublisherChapterWorkflowRetirement.swift",
+        "App/Sources/Core/LegacyWorkflowBackupStorage.swift"
       ]
     },
     {
       "id": "temporary-model-chapter-workflow-cutover",
       "classification": "temporary_swift",
-      "current_owner": "Swift one-shot legacy workflow reader and rollback-manifest publisher",
-      "target_owner": "Deleted after the issue #111 rollback support window closes",
+      "current_owner": "Swift one-shot legacy workflow reader, exact retirement transaction, and read-only rollback manifests",
+      "target_owner": "Deleted after the documented post-#111 rollback support window closes",
       "reason": "The Rust workflow cutover must safely classify and preserve legacy Swift job rows before Rust becomes authoritative, but this compatibility path is not product behavior and must not become a second source of truth.",
-      "boundary": "Read legacy model-chapter jobs once, stage current reconstructable semantic candidates in Rust, durably publish and verify an immutable content-qualified full-row backup, atomically compare-and-delete the exact Swift rows, then commit Rust authority without executing or mutating legacy workflow policy.",
-      "persisted_state": "A versioned integrity-checked rollback manifest containing the exact legacy rows; Rust remains the only authoritative workflow writer after cutover.",
-      "migration_issues": [110, 111],
-      "deletion_target": "Issue #111 removes the importer, snapshot classifier, and retained manifests after rollback/export support is verified and the compatibility window closes.",
+      "boundary": "Decode legacy model and publisher rows only through a quarantined compatibility type. Stage reconstructable model evidence in Rust, durably publish and verify immutable full-row manifests, compare-delete exact rows, and atomically commit the final Swift-retirement marker before any native coordinator starts. After the marker, the path only verifies absence and reads rollback evidence.",
+      "persisted_state": "Versioned integrity-checked model and publisher manifests plus a versioned retirement marker. Rust remains the only authoritative workflow writer after cutover; no restore API exists.",
+      "migration_issues": [110, 111, 114],
+      "deletion_target": "Issue #114 removes the compatibility decoder and retirement command after at least two production releases and 90 days, once supported installations are proven across the marker; immutable export support may remain read-only.",
       "priority": "highest",
       "includes": [
+        "App/Sources/Core/LegacyChapterWorkflowJob.swift",
         "App/Sources/Core/LegacyModelChapterWorkflowBackup.swift",
         "App/Sources/Core/LegacyModelChapterWorkflowCutover.swift",
-        "App/Sources/Core/LegacyModelChapterWorkflowSnapshot.swift"
+        "App/Sources/Core/LegacyModelChapterWorkflowSnapshot.swift",
+        "App/Sources/Core/LegacyPublisherChapterWorkflowRetirement.swift",
+        "App/Sources/Core/LegacyWorkflowBackupStorage.swift",
+        "App/Sources/Workflows/JobStore+LegacyChapterRetirement.swift"
       ]
     },
     {
@@ -228,7 +235,10 @@
       "deletion_target": "Delete each Swift workflow-kind owner after drain/import/cutover and recovery proof.",
       "priority": "high",
       "includes": ["App/Sources/Workflows/"],
-      "excludes": ["App/Sources/Workflows/ArtifactVerificationExecutor.swift"]
+      "excludes": [
+        "App/Sources/Workflows/ArtifactVerificationExecutor.swift",
+        "App/Sources/Workflows/JobStore+LegacyChapterRetirement.swift"
+      ]
     },
     {
       "id": "temporary-workflow-verification-executor",

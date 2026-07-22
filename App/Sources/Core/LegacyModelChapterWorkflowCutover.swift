@@ -41,7 +41,7 @@ enum LegacyModelChapterWorkflowCutover {
                 jobStore: jobStore
             ) {
                 guard !jobs.isEmpty else {
-                    throw LegacyModelChapterWorkflowBackupError.backupMissing
+                    throw LegacyChapterWorkflowBackupError.backupMissing
                 }
                 let discarded = facade.discardStagedLegacyModelChapterCutover(
                     sourceGeneration: sourceGeneration
@@ -72,16 +72,16 @@ enum LegacyModelChapterWorkflowCutover {
                     backupRoot: backupRoot,
                     jobStore: jobStore
                 ) else {
-                    throw LegacyModelChapterWorkflowBackupError.sourceChanged
+                    throw LegacyChapterWorkflowBackupError.sourceChanged
                 }
             }
-            guard try jobStore.removeJobs(
+            guard try jobStore.removeLegacyChapterJobs(
                 kind: .chapterArtifacts,
                 matching: jobs
             ) else {
-                throw LegacyModelChapterWorkflowBackupError.sourceChanged
+                throw LegacyChapterWorkflowBackupError.sourceChanged
             }
-            guard try jobStore.allJobs().allSatisfy({ $0.kind != .chapterArtifacts }) else {
+            guard try jobStore.legacyChapterJobs(kind: .chapterArtifacts).isEmpty else {
                 throw LegacyModelChapterWorkflowCutoverError.legacyRowsRemain
             }
             projection = facade.commitLegacyModelChapterCutover(
@@ -92,7 +92,7 @@ enum LegacyModelChapterWorkflowCutover {
                 from: backupRoot,
                 sourceGeneration: sourceGeneration
             )
-            guard try jobStore.allJobs().allSatisfy({ $0.kind != .chapterArtifacts }) else {
+            guard try jobStore.legacyChapterJobs(kind: .chapterArtifacts).isEmpty else {
                 throw LegacyModelChapterWorkflowCutoverError.legacyRowsRemain
             }
         }
@@ -114,14 +114,14 @@ enum LegacyModelChapterWorkflowCutover {
         )
     }
 
-    private static func legacyJobs(in store: JobStore) throws -> [WorkJob] {
-        try store.allJobs()
-            .filter { $0.kind == .chapterArtifacts }
-            .sorted { $0.id.uuidString < $1.id.uuidString }
+    private static func legacyJobs(
+        in store: JobStore
+    ) throws -> [LegacyChapterWorkflowJob] {
+        try store.legacyChapterJobs(kind: .chapterArtifacts)
     }
 
     private static func sourceMatchesStage(
-        jobs: [WorkJob],
+        jobs: [LegacyChapterWorkflowJob],
         captured: LegacyModelChapterWorkflowSnapshot?,
         sourceGeneration: UInt64,
         backupRoot: URL,

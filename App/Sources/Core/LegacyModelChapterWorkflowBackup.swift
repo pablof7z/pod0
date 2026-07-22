@@ -1,8 +1,7 @@
-import Darwin
 import Foundation
 import Pod0Core
 
-enum LegacyModelChapterWorkflowBackupError: Error, Equatable {
+enum LegacyChapterWorkflowBackupError: Error, Equatable {
     case sourceChanged
     case backupMissing
     case backupConflict
@@ -23,7 +22,7 @@ enum LegacyModelChapterWorkflowBackupClassification: String, Codable, Sendable {
     case obsoleteUnattempted
 
     static func classify(
-        job: WorkJob,
+        job: LegacyChapterWorkflowJob,
         candidate: LegacyModelChapterCutoverCandidate?
     ) -> Self {
         guard let candidate else {
@@ -45,7 +44,7 @@ enum LegacyModelChapterWorkflowBackupClassification: String, Codable, Sendable {
 }
 
 struct LegacyModelChapterWorkflowBackupRow: Codable, Sendable, Equatable {
-    let job: WorkJob
+    let job: LegacyChapterWorkflowJob
     let classification: LegacyModelChapterWorkflowBackupClassification
 }
 
@@ -69,52 +68,14 @@ struct LegacyModelChapterWorkflowBackupManifest: Codable, Sendable, Equatable {
     }
 
     func publish(to root: URL) throws {
-        try validate()
-        let destination = fileURL(in: root)
-        if let existing = try Self.load(
-            from: root,
-            sourceGeneration: sourceGeneration,
-            required: false
-        ) {
-            guard existing == self else {
-                throw LegacyModelChapterWorkflowBackupError.backupConflict
-            }
-            try Self.synchronizePublishedFile(at: destination, in: root)
-            return
-        }
-        try FileManager.default.createDirectory(
-            at: root,
-            withIntermediateDirectories: true
+        try LegacyWorkflowBackupStorage.publish(
+            self,
+            to: root,
+            destinationName: fileName,
+            matchingPrefix: Self.prefix(sourceGeneration),
+            temporaryPrefix: "model-chapter-workflows",
+            validate: { try $0.validate() }
         )
-        let data = try Self.encodedData(LegacyModelChapterWorkflowBackupEnvelope(
-            manifest: self,
-            integrityDigest: ArtifactRepository.hash(try Self.encodedData(self))
-        ))
-        let temporary = root.appendingPathComponent(
-            ".model-chapter-workflows-\(UUID().uuidString).tmp",
-            isDirectory: false
-        )
-        defer { try? FileManager.default.removeItem(at: temporary) }
-        try data.write(to: temporary, options: .atomic)
-        do {
-            try FileManager.default.linkItem(
-                at: temporary,
-                to: destination
-            )
-        } catch {
-            if let existing = try? Self.load(
-                from: root,
-                sourceGeneration: sourceGeneration
-            ), existing == self {
-                try Self.synchronizePublishedFile(at: destination, in: root)
-                return
-            }
-            throw LegacyModelChapterWorkflowBackupError.backupConflict
-        }
-        try Self.synchronizePublishedFile(at: destination, in: root)
-        guard try Self.load(from: root, sourceGeneration: sourceGeneration) == self else {
-            throw LegacyModelChapterWorkflowBackupError.invalidBackup
-        }
     }
 
     static func load(
@@ -122,50 +83,30 @@ struct LegacyModelChapterWorkflowBackupManifest: Codable, Sendable, Equatable {
         sourceGeneration: UInt64,
         required: Bool = true
     ) throws -> Self? {
-        let prefix = "model-chapter-workflows-v1-\(sourceGeneration)-"
-        let files = (try? FileManager.default.contentsOfDirectory(
-            at: root,
-            includingPropertiesForKeys: nil
-        ))?.filter {
-            $0.lastPathComponent.hasPrefix(prefix) && $0.pathExtension == "json"
-        } ?? []
-        guard files.count <= 1 else {
-            throw LegacyModelChapterWorkflowBackupError.backupConflict
+        let manifest: Self? = try LegacyWorkflowBackupStorage.load(
+            from: root,
+            matchingPrefix: prefix(sourceGeneration),
+            required: required,
+            validate: { try $0.validate() }
+        )
+        guard manifest?.sourceGeneration == sourceGeneration || manifest == nil else {
+            throw LegacyChapterWorkflowBackupError.invalidBackup
         }
-        guard let file = files.first else {
-            if required { throw LegacyModelChapterWorkflowBackupError.backupMissing }
-            return nil
-        }
-        let envelope: LegacyModelChapterWorkflowBackupEnvelope
-        do {
-            envelope = try JSONDecoder().decode(
-                LegacyModelChapterWorkflowBackupEnvelope.self,
-                from: Data(contentsOf: file)
-            )
-        } catch {
-            throw LegacyModelChapterWorkflowBackupError.invalidBackup
-        }
-        let manifestData = try Self.encodedData(envelope.manifest)
-        guard ArtifactRepository.hash(manifestData) == envelope.integrityDigest,
-              envelope.manifest.sourceGeneration == sourceGeneration else {
-            throw LegacyModelChapterWorkflowBackupError.invalidBackup
-        }
-        try envelope.manifest.validate()
-        return envelope.manifest
+        return manifest
     }
 
-    func matches(_ jobs: [WorkJob]) -> Bool {
+    func matches(_ jobs: [LegacyChapterWorkflowJob]) -> Bool {
         rows.map(\.job) == jobs.sorted { $0.id.uuidString < $1.id.uuidString }
     }
 
-    private func validate() throws {
+    func validate() throws {
         let jobs = rows.map(\.job)
         let ids = Set(jobs.map(\.id))
         let fingerprint: String
         do {
             fingerprint = try LegacyModelChapterWorkflowSnapshot.sourceFingerprint(for: jobs)
         } catch {
-            throw LegacyModelChapterWorkflowBackupError.invalidBackup
+            throw LegacyChapterWorkflowBackupError.invalidBackup
         }
         guard schemaVersion == Self.currentSchemaVersion,
               sourceGeneration > 0,
@@ -181,44 +122,15 @@ struct LegacyModelChapterWorkflowBackupManifest: Codable, Sendable, Equatable {
                       candidate: LegacyModelChapterWorkflowSnapshot.candidate(row.job)
                   )
               }) else {
-            throw LegacyModelChapterWorkflowBackupError.invalidBackup
+            throw LegacyChapterWorkflowBackupError.invalidBackup
         }
     }
 
-    private func fileURL(in root: URL) -> URL {
-        root.appendingPathComponent(
-            "model-chapter-workflows-v1-\(sourceGeneration)-\(sourceFingerprint).json",
-            isDirectory: false
-        )
+    private var fileName: String {
+        "model-chapter-workflows-v1-\(sourceGeneration)-\(sourceFingerprint).json"
     }
 
-    private static func encodedData<T: Encodable>(_ value: T) throws -> Data {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        return try encoder.encode(value)
+    private static func prefix(_ sourceGeneration: UInt64) -> String {
+        "model-chapter-workflows-v1-\(sourceGeneration)-"
     }
-
-    /// Flushes both the linked file and its directory entry before the legacy
-    /// SQLite transaction is allowed to delete source rows.
-    private static func synchronizePublishedFile(at file: URL, in root: URL) throws {
-        try synchronize(file, requestFullSync: true)
-        try synchronize(root, requestFullSync: false)
-    }
-
-    private static func synchronize(_ url: URL, requestFullSync: Bool) throws {
-        let descriptor = Darwin.open(url.path, O_RDONLY)
-        guard descriptor >= 0 else {
-            throw LegacyModelChapterWorkflowBackupError.durabilityFailed
-        }
-        defer { _ = Darwin.close(descriptor) }
-        if requestFullSync, Darwin.fcntl(descriptor, F_FULLFSYNC) == 0 { return }
-        guard Darwin.fsync(descriptor) == 0 else {
-            throw LegacyModelChapterWorkflowBackupError.durabilityFailed
-        }
-    }
-}
-
-private struct LegacyModelChapterWorkflowBackupEnvelope: Codable {
-    let manifest: LegacyModelChapterWorkflowBackupManifest
-    let integrityDigest: String
 }

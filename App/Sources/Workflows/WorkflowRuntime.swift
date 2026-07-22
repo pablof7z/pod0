@@ -32,13 +32,6 @@ final class WorkflowRuntime {
         let databaseURL = store.persistence.episodeStore.fileURL
         let jobs = JobStore(fileURL: databaseURL)
         let artifacts = ArtifactRepository(fileURL: databaseURL)
-        do {
-            try jobs.removeJobs(kind: .publisherChapters)
-        } catch {
-            Self.logger.error(
-                "Unable to remove retired Swift publisher workflows: \(error, privacy: .public)"
-            )
-        }
         jobStore = jobs
         artifactRepository = artifacts
         client?.attach(jobStore: jobs)

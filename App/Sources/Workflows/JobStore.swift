@@ -76,7 +76,8 @@ struct JobStore: Sendable {
                 let count = try WorkflowSQLite.prepare(
                     """
                     SELECT COUNT(*) FROM jobs
-                    WHERE resource_class=? AND state IN ('leased','running')
+                    WHERE kind IN (\(Self.supportedKindSQL))
+                      AND resource_class=? AND state IN ('leased','running')
                     """,
                     db: db
                 )
@@ -92,7 +93,8 @@ struct JobStore: Sendable {
                 let select = try WorkflowSQLite.prepare(
                     """
                     SELECT id FROM jobs
-                    WHERE resource_class = ?
+                    WHERE kind IN (\(Self.supportedKindSQL))
+                      AND resource_class = ?
                       AND state IN ('pending','retryScheduled')
                       AND not_before <= ?
                       AND attempt < max_attempts

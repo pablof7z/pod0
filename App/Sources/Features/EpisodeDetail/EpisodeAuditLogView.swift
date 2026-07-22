@@ -63,7 +63,7 @@ struct EpisodeAuditLogView: View {
         }
         .workflowProjectionScope(
             subjectIDs: [episode.id],
-            kinds: WorkJobKind.allCases
+            kinds: WorkflowProjectionKind.allCases
         )
     }
     // MARK: - Sections
@@ -131,7 +131,7 @@ struct EpisodeAuditLogView: View {
     }
 
     private var workflowJobs: [WorkflowJobProjection] {
-        WorkJobKind.allCases
+        WorkflowProjectionKind.allCases
             .compactMap { workflows.latest(kind: $0, subjectID: episode.id) }
             .sorted { $0.updatedAt > $1.updatedAt }
     }

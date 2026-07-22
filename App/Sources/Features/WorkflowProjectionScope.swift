@@ -24,7 +24,7 @@ private struct WorkflowProjectionScopeModifier: ViewModifier {
 extension View {
     func workflowProjectionScope(
         subjectIDs: some Sequence<UUID>,
-        kinds: some Sequence<WorkJobKind>
+        kinds: some Sequence<WorkflowProjectionKind>
     ) -> some View {
         modifier(WorkflowProjectionScopeModifier(request: WorkflowProjectionRequest(
             subjectIDs: subjectIDs,
@@ -32,13 +32,13 @@ extension View {
         )))
     }
 
-    func workflowAttentionScope(kinds: some Sequence<WorkJobKind>) -> some View {
+    func workflowAttentionScope(kinds: some Sequence<WorkflowProjectionKind>) -> some View {
         modifier(WorkflowProjectionScopeModifier(request: WorkflowProjectionRequest(
             attentionKinds: kinds
         )))
     }
 
-    func workflowRecentScope(kinds: some Sequence<WorkJobKind>) -> some View {
+    func workflowRecentScope(kinds: some Sequence<WorkflowProjectionKind>) -> some View {
         modifier(WorkflowProjectionScopeModifier(request: WorkflowProjectionRequest(
             recentKinds: kinds
         )))

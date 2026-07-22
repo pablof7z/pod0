@@ -193,8 +193,6 @@ struct Reconciler {
         case .metadataIndex, .transcriptIndex:
             let model = LLMModelReference(storedID: appStore.state.settings.embeddingsModel)
             return LLMProviderCredentialResolver.hasAPIKey(for: model.provider)
-        case .chapterArtifacts:
-            return false
         case .scheduledAgentRun:
             guard let payload = try? Self.decoder.decode(
                 ScheduledRunPayload.self, from: job.payload ?? Data()
@@ -202,7 +200,7 @@ struct Reconciler {
             return LLMProviderCredentialResolver.hasAPIKey(
                 for: LLMModelReference(storedID: payload.modelID).provider
             )
-        case .feedDiscovery, .download, .publisherChapters, .autoDownload,
+        case .feedDiscovery, .download, .autoDownload,
              .newEpisodeNotification:
             return true
         }

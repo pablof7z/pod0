@@ -2,7 +2,7 @@ import SwiftUI
 
 struct WorkflowDiagnosticsView: View {
     @Environment(WorkflowClient.self) private var workflows
-    @State private var selectedKind: WorkJobKind?
+    @State private var selectedKind: WorkflowProjectionKind?
     @State private var actionNotice: WorkflowActionNotice?
 
     private var jobs: [WorkflowJobProjection] {
@@ -16,7 +16,7 @@ struct WorkflowDiagnosticsView: View {
         }
         .navigationTitle("Workflow Diagnostics")
         .navigationBarTitleDisplayMode(.inline)
-        .workflowRecentScope(kinds: WorkJobKind.allCases)
+        .workflowRecentScope(kinds: WorkflowProjectionKind.allCases)
         .toolbar { filterToolbar }
         .alert(item: $actionNotice) { notice in
             Alert(
@@ -29,7 +29,7 @@ struct WorkflowDiagnosticsView: View {
 
     private var inventorySection: some View {
         Section("Kinds") {
-            ForEach(WorkJobKind.allCases, id: \.rawValue) { kind in
+            ForEach(WorkflowProjectionKind.allCases, id: \.rawValue) { kind in
                 Button {
                     selectedKind = selectedKind == kind ? nil : kind
                 } label: {

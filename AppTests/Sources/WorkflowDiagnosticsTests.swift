@@ -4,10 +4,17 @@ import XCTest
 
 final class WorkflowDiagnosticsTests: XCTestCase {
     func testEveryWorkflowKindAndStateHasExhaustivePresentation() {
-        let kindTitles = WorkJobKind.allCases.map(WorkflowDiagnosticPresenter.kindTitle)
-        let kindIcons = WorkJobKind.allCases.map(WorkflowDiagnosticPresenter.kindIcon)
-        XCTAssertEqual(Set(kindTitles).count, WorkJobKind.allCases.count)
-        XCTAssertEqual(Set(kindIcons).count, WorkJobKind.allCases.count)
+        let kindTitles = WorkflowProjectionKind.allCases.map(
+            WorkflowDiagnosticPresenter.kindTitle
+        )
+        let kindIcons = WorkflowProjectionKind.allCases.map(
+            WorkflowDiagnosticPresenter.kindIcon
+        )
+        XCTAssertEqual(Set(kindTitles).count, WorkflowProjectionKind.allCases.count)
+        XCTAssertEqual(Set(kindIcons).count, WorkflowProjectionKind.allCases.count)
+        XCTAssertTrue(WorkJobKind.allCases.allSatisfy {
+            WorkflowProjectionKind(rawValue: $0.rawValue) != nil
+        })
         XCTAssertTrue(kindTitles.allSatisfy { !$0.isEmpty })
         XCTAssertTrue(WorkJobState.allCases.allSatisfy {
             !WorkflowDiagnosticPresenter.stateTitle($0).isEmpty

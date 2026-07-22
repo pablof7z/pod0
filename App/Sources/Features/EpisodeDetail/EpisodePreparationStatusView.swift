@@ -56,7 +56,7 @@ enum WorkflowPresentationCopy {
         UserFacingFailurePresenter.make(job: job).message
     }
 
-    private static func noun(for kind: WorkJobKind) -> String {
+    private static func noun(for kind: WorkflowProjectionKind) -> String {
         switch kind {
         case .transcriptIngest: return "Transcript"
         case .transcriptIndex, .metadataIndex: return "Search index"
@@ -69,7 +69,7 @@ enum WorkflowPresentationCopy {
         }
     }
 
-    private static func runningTitle(for kind: WorkJobKind) -> String {
+    private static func runningTitle(for kind: WorkflowProjectionKind) -> String {
         switch kind {
         case .transcriptIngest: return "Preparing transcript"
         case .transcriptIndex, .metadataIndex: return "Indexing episode"
@@ -80,7 +80,7 @@ enum WorkflowPresentationCopy {
         }
     }
 
-    private static func runningDetail(for kind: WorkJobKind) -> String {
+    private static func runningDetail(for kind: WorkflowProjectionKind) -> String {
         switch kind {
         case .transcriptIngest: return "Audio is being turned into searchable text."
         case .transcriptIndex, .metadataIndex: return "Making this episode available to search and recall."
