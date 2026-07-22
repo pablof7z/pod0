@@ -17,11 +17,13 @@ The operating rule is:
 5. [ADR-0005: Android investment gate](adr/0005-android-investment-gate.md)
 6. [ADR-0006: Shared Rust recall-index execution](adr/0006-shared-rust-recall-index.md)
 7. [ADR-0007: Scheduled agent workflow and artifact ownership](adr/0007-scheduled-agent-workflow-and-artifact-ownership.md)
+8. [ADR-0008: Agent actions, permissions, commits, and NMP publication](adr/0008-agent-actions-permissions-and-nmp-publication.md)
 
 ## Planning and enforcement
 
 - [iOS-first shared-core roadmap](../../Plans/2026-07-18-ios-first-rust-nmp-roadmap.md)
 - [Swift ownership inventory](ownership.md)
+- [Agent tool permission matrix](agent-tool-permissions.json)
 - [Native UI to durable-state boundary](ui-storage-boundary.md)
 - [Architecture CI ratchets](ci-ratchets.md)
 - [App-core schema migration policy](schema-migrations.md)

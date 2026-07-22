@@ -33,6 +33,9 @@ it not applicable and explain why.
   or stale revisions create inconsistent durable state or repeat a paid effect?
 - [ ] **10. Deletion:** What obsolete code, schema, exception, feature flag, or
   duplicate owner is deleted when this work completes?
+- [ ] **Agent actions:** Any added or changed agent tool appears exactly once in
+  `docs/architecture/agent-tool-permissions.json`, has durable Rust authority,
+  and links its typed capability and Swift deletion disposition.
 
 ### Ownership declaration
 

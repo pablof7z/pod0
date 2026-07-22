@@ -383,10 +383,10 @@
       "current_owner": "Swift agent tools, schemas, prompts, permissions, generated artifacts, skills, and run logs",
       "target_owner": "Pod0 Rust agent/application layer",
       "reason": "Tool validation, permission, durable commits, jobs, and generated artifact policy must be identical across platforms.",
-      "boundary": "Native presents conversations and executes typed platform capabilities.",
+      "boundary": "ADR-0008 and agent-tool-permissions.json require typed Rust proposals, durable grants, effect fences, commits, and bounded projections. Native presents conversations/approvals and returns raw observations for typed platform capabilities. pod0-nmp alone owns generic NMP engine, signing, routing, and receipt facts; the app facade accepts no relay selection.",
       "persisted_state": "Agent memories/activity, conversations, scheduled tasks, generated artifacts, and run logs.",
       "migration_issues": [60, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138],
-      "deletion_target": "Issue #130 deletes scheduled-agent workflow ownership; issue #138 deletes interactive tool, permission, durable conversation/artifact, and Nostr publication policy after shared agent cutover. Retain native conversation presentation and typed platform capabilities.",
+      "deletion_target": "Issue #130 deleted scheduled-agent workflow ownership. Issues #133-#137 establish the typed Rust reducer, native capability surface, durable conversation/artifact store, NMP publication, and signer path. Issue #138 then deletes AgentTools dispatch/schema authority, AgentChatSession policy, Swift chat/run-log durability, AgentNostrSigner, direct publication orchestration, and store-mutating tool adapters. Retain native conversation/approval presentation and exact typed platform capability executors.",
       "priority": "high",
       "includes": ["App/Sources/Agent/"]
     },
