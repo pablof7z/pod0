@@ -182,6 +182,11 @@ mod runtime_transcript_workflow_test_support;
 #[cfg(test)]
 mod runtime_transcript_workflow_tests;
 mod runtime_transcript_workflow_wakes;
+mod scheduled_agent_cutover;
+mod scheduled_agent_cutover_mapping;
+#[cfg(test)]
+mod scheduled_agent_cutover_tests;
+mod scheduled_agent_cutover_types;
 mod scheduled_agent_facade;
 mod transcript_migration;
 mod transcript_migration_mapping;
@@ -234,6 +239,7 @@ pub use note_migration::{
     inspect_legacy_note_source, read_staged_legacy_note_import, stage_legacy_note_import,
 };
 pub use runtime::{FacadeOpenError, Pod0Facade};
+pub use scheduled_agent_cutover_types::*;
 pub use transcript_migration::{
     LegacyTranscriptBackupEvidence, LegacyTranscriptImportPlan, LegacyTranscriptImportReport,
     LegacyTranscriptImportState, LegacyTranscriptImportVerification,

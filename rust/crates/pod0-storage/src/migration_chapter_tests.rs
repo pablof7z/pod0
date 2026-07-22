@@ -192,6 +192,7 @@ fn schema_13_imported_history_revalidates_and_activates_after_upgrade() {
              DROP TABLE pod0_scheduled_attempts;
              DROP TABLE pod0_scheduled_occurrences;
              DROP TABLE pod0_scheduled_tasks;
+             DROP TABLE pod0_scheduled_agent_cutover_evidence;
              DROP TABLE pod0_scheduled_agent_authority;
              DROP TABLE pod0_transcript_evidence_requests;
              DROP TABLE pod0_transcript_attempts;

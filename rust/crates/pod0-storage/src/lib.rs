@@ -120,6 +120,11 @@ mod note_store_model;
 mod note_store_read;
 mod recall_configuration_store;
 mod retained_orphan_parent;
+mod scheduled_agent_cutover;
+mod scheduled_agent_cutover_model;
+mod scheduled_agent_cutover_read;
+mod scheduled_agent_cutover_stage;
+mod scheduled_agent_cutover_validation;
 mod scheduled_agent_store;
 mod scheduled_agent_store_codec;
 mod scheduled_agent_store_completion;
@@ -248,6 +253,8 @@ mod note_import_tests;
 mod recovery_test_support;
 #[cfg(test)]
 mod recovery_tests;
+#[cfg(test)]
+mod scheduled_agent_cutover_tests;
 #[cfg(test)]
 mod scheduled_agent_store_lifecycle_tests;
 #[cfg(test)]

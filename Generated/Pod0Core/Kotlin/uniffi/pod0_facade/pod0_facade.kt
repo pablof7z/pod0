@@ -65,6 +65,7 @@ import uniffi.pod0_application.FfiConverterTypeProjectionRequest
 import uniffi.pod0_application.FfiConverterTypePublisherChapterObservation
 import uniffi.pod0_application.FfiConverterTypeScheduledAgentExecutionObservation
 import uniffi.pod0_application.FfiConverterTypeScheduledAgentExecutionRequest
+import uniffi.pod0_application.FfiConverterTypeScheduledAgentFailureCode
 import uniffi.pod0_application.FfiConverterTypeTranscriptCapabilityObservation
 import uniffi.pod0_application.FfiConverterTypeTranscriptCapabilityRequest
 import uniffi.pod0_application.FfiConverterTypeTranscriptCapabilityValidation
@@ -85,6 +86,7 @@ import uniffi.pod0_application.ProjectionRequest
 import uniffi.pod0_application.PublisherChapterObservation
 import uniffi.pod0_application.ScheduledAgentExecutionObservation
 import uniffi.pod0_application.ScheduledAgentExecutionRequest
+import uniffi.pod0_application.ScheduledAgentFailureCode
 import uniffi.pod0_application.TranscriptCapabilityObservation
 import uniffi.pod0_application.TranscriptCapabilityRequest
 import uniffi.pod0_application.TranscriptCapabilityValidation
@@ -107,14 +109,18 @@ import uniffi.pod0_domain.FfiConverterTypeContentDigest
 import uniffi.pod0_domain.FfiConverterTypeEpisodeId
 import uniffi.pod0_domain.FfiConverterTypeListeningDomainSnapshot
 import uniffi.pod0_domain.FfiConverterTypeNoteRecord
+import uniffi.pod0_domain.FfiConverterTypeScheduledTaskId
 import uniffi.pod0_domain.FfiConverterTypeSpeakerId
 import uniffi.pod0_domain.FfiConverterTypeStateRevision
 import uniffi.pod0_domain.FfiConverterTypeSubscriptionId
+import uniffi.pod0_domain.FfiConverterTypeUnixTimestampMilliseconds
 import uniffi.pod0_domain.ListeningDomainSnapshot
 import uniffi.pod0_domain.NoteRecord
+import uniffi.pod0_domain.ScheduledTaskId
 import uniffi.pod0_domain.SpeakerId
 import uniffi.pod0_domain.StateRevision
 import uniffi.pod0_domain.SubscriptionId
+import uniffi.pod0_domain.UnixTimestampMilliseconds
 import uniffi.pod0_application.RustBuffer as RustBufferAgentComposedChapterObservation
 import uniffi.pod0_application.RustBuffer as RustBufferChapterContractProjection
 import uniffi.pod0_application.RustBuffer as RustBufferChapterContractRequest
@@ -137,6 +143,7 @@ import uniffi.pod0_application.RustBuffer as RustBufferProjectionRequest
 import uniffi.pod0_application.RustBuffer as RustBufferPublisherChapterObservation
 import uniffi.pod0_application.RustBuffer as RustBufferScheduledAgentExecutionObservation
 import uniffi.pod0_application.RustBuffer as RustBufferScheduledAgentExecutionRequest
+import uniffi.pod0_application.RustBuffer as RustBufferScheduledAgentFailureCode
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptCapabilityObservation
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptCapabilityRequest
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptCapabilityValidation
@@ -154,9 +161,11 @@ import uniffi.pod0_domain.RustBuffer as RustBufferContentDigest
 import uniffi.pod0_domain.RustBuffer as RustBufferEpisodeId
 import uniffi.pod0_domain.RustBuffer as RustBufferListeningDomainSnapshot
 import uniffi.pod0_domain.RustBuffer as RustBufferNoteRecord
+import uniffi.pod0_domain.RustBuffer as RustBufferScheduledTaskId
 import uniffi.pod0_domain.RustBuffer as RustBufferSpeakerId
 import uniffi.pod0_domain.RustBuffer as RustBufferStateRevision
 import uniffi.pod0_domain.RustBuffer as RustBufferSubscriptionId
+import uniffi.pod0_domain.RustBuffer as RustBufferUnixTimestampMilliseconds
 
 // This is a helper for safely working with byte buffers returned from the Rust code.
 // A rust-owned buffer is represented by its capacity, its current length, and a
@@ -941,6 +950,18 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_unsubscribe(
     ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_scheduled_agent_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_scheduled_agent_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_inspect_legacy_scheduled_agent_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_scheduled_agent_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_scheduled_agent_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_scheduled_agent_cutover(
+    ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_transcript_workflow_cutover(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_transcript_workflow_cutover(
@@ -1024,6 +1045,18 @@ internal object UniffiLib {
     ): RustBufferSubscriptionId.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_unsubscribe(`ptr`: Long,`subscriptionId`: RustBufferSubscriptionId.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): Unit
+    external fun uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_scheduled_agent_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_scheduled_agent_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_inspect_legacy_scheduled_agent_cutover(`ptr`: Long,`backupDigest`: RustBufferContentDigest.ByValue,`backupByteCount`: Long,`tasks`: RustBuffer.ByValue,`occurrences`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_scheduled_agent_cutover(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_scheduled_agent_cutover(`ptr`: Long,`backupDigest`: RustBufferContentDigest.ByValue,`backupByteCount`: Long,`tasks`: RustBuffer.ByValue,`occurrences`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_verify_legacy_scheduled_agent_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_transcript_workflow_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_transcript_workflow_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
@@ -1417,6 +1450,24 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_unsubscribe() != 29741) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_scheduled_agent_cutover() != 55891) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_scheduled_agent_cutover() != 63460) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_inspect_legacy_scheduled_agent_cutover() != 47226) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_scheduled_agent_cutover() != 44594) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_scheduled_agent_cutover() != 49270) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_scheduled_agent_cutover() != 63971) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_transcript_workflow_cutover() != 1245) {
@@ -1957,6 +2008,18 @@ public interface Pod0FacadeInterface {
 
     fun `unsubscribe`(`subscriptionId`: SubscriptionId)
 
+    fun `commitLegacyScheduledAgentCutover`(`sourceGeneration`: kotlin.ULong): LegacyScheduledAgentCutoverProjection
+
+    fun `discardStagedLegacyScheduledAgentCutover`(`sourceGeneration`: kotlin.ULong): LegacyScheduledAgentCutoverProjection
+
+    fun `inspectLegacyScheduledAgentCutover`(`backupDigest`: ContentDigest, `backupByteCount`: kotlin.ULong, `tasks`: List<LegacyScheduledAgentTaskInput>, `occurrences`: List<LegacyScheduledAgentOccurrenceInput>): LegacyScheduledAgentCutoverProjection
+
+    fun `scheduledAgentCutover`(): LegacyScheduledAgentCutoverProjection
+
+    fun `stageLegacyScheduledAgentCutover`(`backupDigest`: ContentDigest, `backupByteCount`: kotlin.ULong, `tasks`: List<LegacyScheduledAgentTaskInput>, `occurrences`: List<LegacyScheduledAgentOccurrenceInput>): LegacyScheduledAgentCutoverProjection
+
+    fun `verifyLegacyScheduledAgentCutover`(`sourceGeneration`: kotlin.ULong): LegacyScheduledAgentCutoverProjection
+
     fun `commitLegacyTranscriptWorkflowCutover`(`sourceGeneration`: kotlin.ULong): LegacyTranscriptWorkflowCutoverProjection
 
     fun `discardStagedLegacyTranscriptWorkflowCutover`(`sourceGeneration`: kotlin.ULong): LegacyTranscriptWorkflowCutoverProjection
@@ -2307,6 +2370,95 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
 }
     }
 
+
+
+    override fun `commitLegacyScheduledAgentCutover`(`sourceGeneration`: kotlin.ULong): LegacyScheduledAgentCutoverProjection {
+            return FfiConverterTypeLegacyScheduledAgentCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_scheduled_agent_cutover(
+        it,
+
+        FfiConverterULong.lower(`sourceGeneration`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `discardStagedLegacyScheduledAgentCutover`(`sourceGeneration`: kotlin.ULong): LegacyScheduledAgentCutoverProjection {
+            return FfiConverterTypeLegacyScheduledAgentCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_scheduled_agent_cutover(
+        it,
+
+        FfiConverterULong.lower(`sourceGeneration`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `inspectLegacyScheduledAgentCutover`(`backupDigest`: ContentDigest, `backupByteCount`: kotlin.ULong, `tasks`: List<LegacyScheduledAgentTaskInput>, `occurrences`: List<LegacyScheduledAgentOccurrenceInput>): LegacyScheduledAgentCutoverProjection {
+            return FfiConverterTypeLegacyScheduledAgentCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_inspect_legacy_scheduled_agent_cutover(
+        it,
+
+        FfiConverterTypeContentDigest.lower(`backupDigest`),
+        FfiConverterULong.lower(`backupByteCount`),
+        FfiConverterSequenceTypeLegacyScheduledAgentTaskInput.lower(`tasks`),
+        FfiConverterSequenceTypeLegacyScheduledAgentOccurrenceInput.lower(`occurrences`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `scheduledAgentCutover`(): LegacyScheduledAgentCutoverProjection {
+            return FfiConverterTypeLegacyScheduledAgentCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_scheduled_agent_cutover(
+        it,
+        _status)
+}
+    }
+    )
+    }
+
+
+    override fun `stageLegacyScheduledAgentCutover`(`backupDigest`: ContentDigest, `backupByteCount`: kotlin.ULong, `tasks`: List<LegacyScheduledAgentTaskInput>, `occurrences`: List<LegacyScheduledAgentOccurrenceInput>): LegacyScheduledAgentCutoverProjection {
+            return FfiConverterTypeLegacyScheduledAgentCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_scheduled_agent_cutover(
+        it,
+
+        FfiConverterTypeContentDigest.lower(`backupDigest`),
+        FfiConverterULong.lower(`backupByteCount`),
+        FfiConverterSequenceTypeLegacyScheduledAgentTaskInput.lower(`tasks`),
+        FfiConverterSequenceTypeLegacyScheduledAgentOccurrenceInput.lower(`occurrences`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `verifyLegacyScheduledAgentCutover`(`sourceGeneration`: kotlin.ULong): LegacyScheduledAgentCutoverProjection {
+            return FfiConverterTypeLegacyScheduledAgentCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_verify_legacy_scheduled_agent_cutover(
+        it,
+
+        FfiConverterULong.lower(`sourceGeneration`),_status)
+}
+    }
+    )
+    }
 
 
     override fun `commitLegacyTranscriptWorkflowCutover`(`sourceGeneration`: kotlin.ULong): LegacyTranscriptWorkflowCutoverProjection {
@@ -4051,6 +4203,243 @@ public object FfiConverterTypeLegacyNoteImportVerification: FfiConverterRustBuff
 
 
 
+data class LegacyScheduledAgentCutoverFailure (
+    val `code`: LegacyScheduledAgentCutoverFailureCode
+    ,
+    val `diagnosticCode`: kotlin.String
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyScheduledAgentCutoverFailure: FfiConverterRustBuffer<LegacyScheduledAgentCutoverFailure> {
+    override fun read(buf: ByteBuffer): LegacyScheduledAgentCutoverFailure {
+        return LegacyScheduledAgentCutoverFailure(
+            FfiConverterTypeLegacyScheduledAgentCutoverFailureCode.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyScheduledAgentCutoverFailure) = (
+            FfiConverterTypeLegacyScheduledAgentCutoverFailureCode.allocationSize(value.`code`) +
+            FfiConverterString.allocationSize(value.`diagnosticCode`)
+    )
+
+    override fun write(value: LegacyScheduledAgentCutoverFailure, buf: ByteBuffer) {
+            FfiConverterTypeLegacyScheduledAgentCutoverFailureCode.write(value.`code`, buf)
+            FfiConverterString.write(value.`diagnosticCode`, buf)
+    }
+}
+
+
+
+data class LegacyScheduledAgentCutoverProjection (
+    val `stage`: LegacyScheduledAgentCutoverStage
+    ,
+    val `sourceGeneration`: kotlin.ULong?
+    ,
+    val `sourceFingerprint`: ContentDigest?
+    ,
+    val `backupDigest`: ContentDigest?
+    ,
+    val `backupByteCount`: kotlin.ULong?
+    ,
+    val `taskCount`: kotlin.UInt
+    ,
+    val `occurrenceCount`: kotlin.UInt
+    ,
+    val `failure`: LegacyScheduledAgentCutoverFailure?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyScheduledAgentCutoverProjection: FfiConverterRustBuffer<LegacyScheduledAgentCutoverProjection> {
+    override fun read(buf: ByteBuffer): LegacyScheduledAgentCutoverProjection {
+        return LegacyScheduledAgentCutoverProjection(
+            FfiConverterTypeLegacyScheduledAgentCutoverStage.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterOptionalTypeContentDigest.read(buf),
+            FfiConverterOptionalTypeContentDigest.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterOptionalTypeLegacyScheduledAgentCutoverFailure.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyScheduledAgentCutoverProjection) = (
+            FfiConverterTypeLegacyScheduledAgentCutoverStage.allocationSize(value.`stage`) +
+            FfiConverterOptionalULong.allocationSize(value.`sourceGeneration`) +
+            FfiConverterOptionalTypeContentDigest.allocationSize(value.`sourceFingerprint`) +
+            FfiConverterOptionalTypeContentDigest.allocationSize(value.`backupDigest`) +
+            FfiConverterOptionalULong.allocationSize(value.`backupByteCount`) +
+            FfiConverterUInt.allocationSize(value.`taskCount`) +
+            FfiConverterUInt.allocationSize(value.`occurrenceCount`) +
+            FfiConverterOptionalTypeLegacyScheduledAgentCutoverFailure.allocationSize(value.`failure`)
+    )
+
+    override fun write(value: LegacyScheduledAgentCutoverProjection, buf: ByteBuffer) {
+            FfiConverterTypeLegacyScheduledAgentCutoverStage.write(value.`stage`, buf)
+            FfiConverterOptionalULong.write(value.`sourceGeneration`, buf)
+            FfiConverterOptionalTypeContentDigest.write(value.`sourceFingerprint`, buf)
+            FfiConverterOptionalTypeContentDigest.write(value.`backupDigest`, buf)
+            FfiConverterOptionalULong.write(value.`backupByteCount`, buf)
+            FfiConverterUInt.write(value.`taskCount`, buf)
+            FfiConverterUInt.write(value.`occurrenceCount`, buf)
+            FfiConverterOptionalTypeLegacyScheduledAgentCutoverFailure.write(value.`failure`, buf)
+    }
+}
+
+
+
+data class LegacyScheduledAgentOccurrenceInput (
+    val `taskId`: ScheduledTaskId
+    ,
+    val `scheduledFor`: UnixTimestampMilliseconds
+    ,
+    val `createdAt`: UnixTimestampMilliseconds
+    ,
+    val `prompt`: kotlin.String
+    ,
+    val `modelReference`: kotlin.String
+    ,
+    val `updatedAt`: UnixTimestampMilliseconds
+    ,
+    val `disposition`: LegacyScheduledAgentOccurrenceDisposition
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyScheduledAgentOccurrenceInput: FfiConverterRustBuffer<LegacyScheduledAgentOccurrenceInput> {
+    override fun read(buf: ByteBuffer): LegacyScheduledAgentOccurrenceInput {
+        return LegacyScheduledAgentOccurrenceInput(
+            FfiConverterTypeScheduledTaskId.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterTypeLegacyScheduledAgentOccurrenceDisposition.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyScheduledAgentOccurrenceInput) = (
+            FfiConverterTypeScheduledTaskId.allocationSize(value.`taskId`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`scheduledFor`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`createdAt`) +
+            FfiConverterString.allocationSize(value.`prompt`) +
+            FfiConverterString.allocationSize(value.`modelReference`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`updatedAt`) +
+            FfiConverterTypeLegacyScheduledAgentOccurrenceDisposition.allocationSize(value.`disposition`)
+    )
+
+    override fun write(value: LegacyScheduledAgentOccurrenceInput, buf: ByteBuffer) {
+            FfiConverterTypeScheduledTaskId.write(value.`taskId`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`scheduledFor`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`createdAt`, buf)
+            FfiConverterString.write(value.`prompt`, buf)
+            FfiConverterString.write(value.`modelReference`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`updatedAt`, buf)
+            FfiConverterTypeLegacyScheduledAgentOccurrenceDisposition.write(value.`disposition`, buf)
+    }
+}
+
+
+
+data class LegacyScheduledAgentTaskInput (
+    val `taskId`: ScheduledTaskId
+    ,
+    val `label`: kotlin.String
+    ,
+    val `prompt`: kotlin.String
+    ,
+    val `modelReference`: kotlin.String
+    ,
+    val `intervalMilliseconds`: kotlin.ULong
+    ,
+    val `createdAt`: UnixTimestampMilliseconds
+    ,
+    val `lastRunAt`: UnixTimestampMilliseconds?
+    ,
+    val `nextRunAt`: UnixTimestampMilliseconds
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyScheduledAgentTaskInput: FfiConverterRustBuffer<LegacyScheduledAgentTaskInput> {
+    override fun read(buf: ByteBuffer): LegacyScheduledAgentTaskInput {
+        return LegacyScheduledAgentTaskInput(
+            FfiConverterTypeScheduledTaskId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyScheduledAgentTaskInput) = (
+            FfiConverterTypeScheduledTaskId.allocationSize(value.`taskId`) +
+            FfiConverterString.allocationSize(value.`label`) +
+            FfiConverterString.allocationSize(value.`prompt`) +
+            FfiConverterString.allocationSize(value.`modelReference`) +
+            FfiConverterULong.allocationSize(value.`intervalMilliseconds`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`createdAt`) +
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.allocationSize(value.`lastRunAt`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`nextRunAt`)
+    )
+
+    override fun write(value: LegacyScheduledAgentTaskInput, buf: ByteBuffer) {
+            FfiConverterTypeScheduledTaskId.write(value.`taskId`, buf)
+            FfiConverterString.write(value.`label`, buf)
+            FfiConverterString.write(value.`prompt`, buf)
+            FfiConverterString.write(value.`modelReference`, buf)
+            FfiConverterULong.write(value.`intervalMilliseconds`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`createdAt`, buf)
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.write(value.`lastRunAt`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`nextRunAt`, buf)
+    }
+}
+
+
+
 data class LegacyTranscriptBackupEvidence (
     val `databaseDigest`: ContentDigest
     ,
@@ -5756,6 +6145,339 @@ public object FfiConverterTypeLegacyNoteMigrationError : FfiConverterRustBuffer<
 
 
 
+enum class LegacyScheduledAgentCutoverFailureCode {
+
+    INVALID_SOURCE,
+    CONFLICTING_CORE_STATE,
+    STORAGE_UNAVAILABLE;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyScheduledAgentCutoverFailureCode: FfiConverterRustBuffer<LegacyScheduledAgentCutoverFailureCode> {
+    override fun read(buf: ByteBuffer) = try {
+
+        LegacyScheduledAgentCutoverFailureCode.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: LegacyScheduledAgentCutoverFailureCode) = 4UL
+
+    override fun write(value: LegacyScheduledAgentCutoverFailureCode, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+enum class LegacyScheduledAgentCutoverStage {
+
+    NOT_STARTED,
+    STAGED,
+    VERIFIED,
+    AUTHORITATIVE,
+    BLOCKED;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyScheduledAgentCutoverStage: FfiConverterRustBuffer<LegacyScheduledAgentCutoverStage> {
+    override fun read(buf: ByteBuffer) = try {
+
+        LegacyScheduledAgentCutoverStage.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: LegacyScheduledAgentCutoverStage) = 4UL
+
+    override fun write(value: LegacyScheduledAgentCutoverStage, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+sealed class LegacyScheduledAgentOccurrenceDisposition {
+
+    object Pending : LegacyScheduledAgentOccurrenceDisposition()
+
+
+    data class RetryScheduled(
+        val `attempt`: kotlin.UShort,
+        val `notBefore`: uniffi.pod0_domain.UnixTimestampMilliseconds,
+        val `failureCode`: uniffi.pod0_application.ScheduledAgentFailureCode,
+        val `safeDetail`: kotlin.String?) : LegacyScheduledAgentOccurrenceDisposition()
+
+    {
+
+
+        companion object
+    }
+
+    data class Blocked(
+        val `attempt`: kotlin.UShort,
+        val `failureCode`: uniffi.pod0_application.ScheduledAgentFailureCode,
+        val `safeDetail`: kotlin.String?,
+        val `retryable`: kotlin.Boolean) : LegacyScheduledAgentOccurrenceDisposition()
+
+    {
+
+
+        companion object
+    }
+
+    data class Ambiguous(
+        val `attempt`: kotlin.UShort,
+        val `safeDetail`: kotlin.String?) : LegacyScheduledAgentOccurrenceDisposition()
+
+    {
+
+
+        companion object
+    }
+
+    data class FailedPermanent(
+        val `attempt`: kotlin.UShort,
+        val `failureCode`: uniffi.pod0_application.ScheduledAgentFailureCode,
+        val `safeDetail`: kotlin.String?) : LegacyScheduledAgentOccurrenceDisposition()
+
+    {
+
+
+        companion object
+    }
+
+    data class Cancelled(
+        val `attempt`: kotlin.UShort) : LegacyScheduledAgentOccurrenceDisposition()
+
+    {
+
+
+        companion object
+    }
+
+    data class Obsolete(
+        val `attempt`: kotlin.UShort) : LegacyScheduledAgentOccurrenceDisposition()
+
+    {
+
+
+        companion object
+    }
+
+    data class Succeeded(
+        val `attempt`: kotlin.UShort,
+        val `outputExcerpt`: kotlin.String) : LegacyScheduledAgentOccurrenceDisposition()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyScheduledAgentOccurrenceDisposition : FfiConverterRustBuffer<LegacyScheduledAgentOccurrenceDisposition>{
+    override fun read(buf: ByteBuffer): LegacyScheduledAgentOccurrenceDisposition {
+        return when(buf.getInt()) {
+            1 -> LegacyScheduledAgentOccurrenceDisposition.Pending
+            2 -> LegacyScheduledAgentOccurrenceDisposition.RetryScheduled(
+                FfiConverterUShort.read(buf),
+                FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+                FfiConverterTypeScheduledAgentFailureCode.read(buf),
+                FfiConverterOptionalString.read(buf),
+                )
+            3 -> LegacyScheduledAgentOccurrenceDisposition.Blocked(
+                FfiConverterUShort.read(buf),
+                FfiConverterTypeScheduledAgentFailureCode.read(buf),
+                FfiConverterOptionalString.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            4 -> LegacyScheduledAgentOccurrenceDisposition.Ambiguous(
+                FfiConverterUShort.read(buf),
+                FfiConverterOptionalString.read(buf),
+                )
+            5 -> LegacyScheduledAgentOccurrenceDisposition.FailedPermanent(
+                FfiConverterUShort.read(buf),
+                FfiConverterTypeScheduledAgentFailureCode.read(buf),
+                FfiConverterOptionalString.read(buf),
+                )
+            6 -> LegacyScheduledAgentOccurrenceDisposition.Cancelled(
+                FfiConverterUShort.read(buf),
+                )
+            7 -> LegacyScheduledAgentOccurrenceDisposition.Obsolete(
+                FfiConverterUShort.read(buf),
+                )
+            8 -> LegacyScheduledAgentOccurrenceDisposition.Succeeded(
+                FfiConverterUShort.read(buf),
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: LegacyScheduledAgentOccurrenceDisposition): ULong = when(value) {
+        is LegacyScheduledAgentOccurrenceDisposition.Pending -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is LegacyScheduledAgentOccurrenceDisposition.RetryScheduled -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUShort.allocationSize(value.`attempt`)
+                + FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`notBefore`)
+                + FfiConverterTypeScheduledAgentFailureCode.allocationSize(value.`failureCode`)
+                + FfiConverterOptionalString.allocationSize(value.`safeDetail`)
+            )
+        }
+        is LegacyScheduledAgentOccurrenceDisposition.Blocked -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUShort.allocationSize(value.`attempt`)
+                + FfiConverterTypeScheduledAgentFailureCode.allocationSize(value.`failureCode`)
+                + FfiConverterOptionalString.allocationSize(value.`safeDetail`)
+                + FfiConverterBoolean.allocationSize(value.`retryable`)
+            )
+        }
+        is LegacyScheduledAgentOccurrenceDisposition.Ambiguous -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUShort.allocationSize(value.`attempt`)
+                + FfiConverterOptionalString.allocationSize(value.`safeDetail`)
+            )
+        }
+        is LegacyScheduledAgentOccurrenceDisposition.FailedPermanent -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUShort.allocationSize(value.`attempt`)
+                + FfiConverterTypeScheduledAgentFailureCode.allocationSize(value.`failureCode`)
+                + FfiConverterOptionalString.allocationSize(value.`safeDetail`)
+            )
+        }
+        is LegacyScheduledAgentOccurrenceDisposition.Cancelled -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUShort.allocationSize(value.`attempt`)
+            )
+        }
+        is LegacyScheduledAgentOccurrenceDisposition.Obsolete -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUShort.allocationSize(value.`attempt`)
+            )
+        }
+        is LegacyScheduledAgentOccurrenceDisposition.Succeeded -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUShort.allocationSize(value.`attempt`)
+                + FfiConverterString.allocationSize(value.`outputExcerpt`)
+            )
+        }
+    }
+
+    override fun write(value: LegacyScheduledAgentOccurrenceDisposition, buf: ByteBuffer) {
+        when(value) {
+            is LegacyScheduledAgentOccurrenceDisposition.Pending -> {
+                buf.putInt(1)
+                Unit
+            }
+            is LegacyScheduledAgentOccurrenceDisposition.RetryScheduled -> {
+                buf.putInt(2)
+                FfiConverterUShort.write(value.`attempt`, buf)
+                FfiConverterTypeUnixTimestampMilliseconds.write(value.`notBefore`, buf)
+                FfiConverterTypeScheduledAgentFailureCode.write(value.`failureCode`, buf)
+                FfiConverterOptionalString.write(value.`safeDetail`, buf)
+                Unit
+            }
+            is LegacyScheduledAgentOccurrenceDisposition.Blocked -> {
+                buf.putInt(3)
+                FfiConverterUShort.write(value.`attempt`, buf)
+                FfiConverterTypeScheduledAgentFailureCode.write(value.`failureCode`, buf)
+                FfiConverterOptionalString.write(value.`safeDetail`, buf)
+                FfiConverterBoolean.write(value.`retryable`, buf)
+                Unit
+            }
+            is LegacyScheduledAgentOccurrenceDisposition.Ambiguous -> {
+                buf.putInt(4)
+                FfiConverterUShort.write(value.`attempt`, buf)
+                FfiConverterOptionalString.write(value.`safeDetail`, buf)
+                Unit
+            }
+            is LegacyScheduledAgentOccurrenceDisposition.FailedPermanent -> {
+                buf.putInt(5)
+                FfiConverterUShort.write(value.`attempt`, buf)
+                FfiConverterTypeScheduledAgentFailureCode.write(value.`failureCode`, buf)
+                FfiConverterOptionalString.write(value.`safeDetail`, buf)
+                Unit
+            }
+            is LegacyScheduledAgentOccurrenceDisposition.Cancelled -> {
+                buf.putInt(6)
+                FfiConverterUShort.write(value.`attempt`, buf)
+                Unit
+            }
+            is LegacyScheduledAgentOccurrenceDisposition.Obsolete -> {
+                buf.putInt(7)
+                FfiConverterUShort.write(value.`attempt`, buf)
+                Unit
+            }
+            is LegacyScheduledAgentOccurrenceDisposition.Succeeded -> {
+                buf.putInt(8)
+                FfiConverterUShort.write(value.`attempt`, buf)
+                FfiConverterString.write(value.`outputExcerpt`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+
 enum class LegacyTranscriptImportState {
 
     STAGED,
@@ -6577,6 +7299,38 @@ public object FfiConverterOptionalTypeSpeakerId: FfiConverterRustBuffer<SpeakerI
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeUnixTimestampMilliseconds: FfiConverterRustBuffer<UnixTimestampMilliseconds?> {
+    override fun read(buf: ByteBuffer): UnixTimestampMilliseconds? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeUnixTimestampMilliseconds.read(buf)
+    }
+
+    override fun allocationSize(value: UnixTimestampMilliseconds?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value)
+        }
+    }
+
+    override fun write(value: UnixTimestampMilliseconds?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeLegacyChapterImportPlan: FfiConverterRustBuffer<LegacyChapterImportPlan?> {
     override fun read(buf: ByteBuffer): LegacyChapterImportPlan? {
         if (buf.get().toInt() == 0) {
@@ -6791,6 +7545,38 @@ public object FfiConverterOptionalTypeLegacyModelChapterCutoverFailure: FfiConve
         } else {
             buf.put(1)
             FfiConverterTypeLegacyModelChapterCutoverFailure.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeLegacyScheduledAgentCutoverFailure: FfiConverterRustBuffer<LegacyScheduledAgentCutoverFailure?> {
+    override fun read(buf: ByteBuffer): LegacyScheduledAgentCutoverFailure? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeLegacyScheduledAgentCutoverFailure.read(buf)
+    }
+
+    override fun allocationSize(value: LegacyScheduledAgentCutoverFailure?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeLegacyScheduledAgentCutoverFailure.allocationSize(value)
+        }
+    }
+
+    override fun write(value: LegacyScheduledAgentCutoverFailure?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeLegacyScheduledAgentCutoverFailure.write(value, buf)
         }
     }
 }
@@ -7093,6 +7879,62 @@ public object FfiConverterSequenceTypeLegacyModelChapterCutoverCandidate: FfiCon
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeLegacyScheduledAgentOccurrenceInput: FfiConverterRustBuffer<List<LegacyScheduledAgentOccurrenceInput>> {
+    override fun read(buf: ByteBuffer): List<LegacyScheduledAgentOccurrenceInput> {
+        val len = buf.getInt()
+        return List<LegacyScheduledAgentOccurrenceInput>(len) {
+            FfiConverterTypeLegacyScheduledAgentOccurrenceInput.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<LegacyScheduledAgentOccurrenceInput>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeLegacyScheduledAgentOccurrenceInput.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<LegacyScheduledAgentOccurrenceInput>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeLegacyScheduledAgentOccurrenceInput.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeLegacyScheduledAgentTaskInput: FfiConverterRustBuffer<List<LegacyScheduledAgentTaskInput>> {
+    override fun read(buf: ByteBuffer): List<LegacyScheduledAgentTaskInput> {
+        val len = buf.getInt()
+        return List<LegacyScheduledAgentTaskInput>(len) {
+            FfiConverterTypeLegacyScheduledAgentTaskInput.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<LegacyScheduledAgentTaskInput>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeLegacyScheduledAgentTaskInput.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<LegacyScheduledAgentTaskInput>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeLegacyScheduledAgentTaskInput.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeLegacyTranscriptWorkflowBackupRow: FfiConverterRustBuffer<List<LegacyTranscriptWorkflowBackupRow>> {
     override fun read(buf: ByteBuffer): List<LegacyTranscriptWorkflowBackupRow> {
         val len = buf.getInt()
@@ -7142,6 +7984,12 @@ public object FfiConverterSequenceTypeLegacyTranscriptWorkflowCutoverCandidate: 
         }
     }
 }
+
+
+
+
+
+
 
 
 

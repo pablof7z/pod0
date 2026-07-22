@@ -159,6 +159,7 @@ fn schema_16_completion_is_preserved_and_no_longer_pins_the_current_request() {
              DROP TABLE pod0_scheduled_attempts;
              DROP TABLE pod0_scheduled_occurrences;
              DROP TABLE pod0_scheduled_tasks;
+             DROP TABLE pod0_scheduled_agent_cutover_evidence;
              DROP TABLE pod0_scheduled_agent_authority;
              DROP TABLE pod0_transcript_evidence_requests;
              DROP TABLE pod0_transcript_attempts;
@@ -207,7 +208,7 @@ fn schema_16_completion_is_preserved_and_no_longer_pins_the_current_request() {
             CommandId::from_parts(91, 17),
         )
         .unwrap();
-    assert_eq!(report.applied_versions, [17, 18, 19, 20, 21]);
+    assert_eq!(report.applied_versions, [17, 18, 19, 20, 21, 22]);
     let connection = rusqlite::Connection::open(&path).unwrap();
     connection.execute("PRAGMA foreign_keys=ON", []).unwrap();
     assert_eq!(

@@ -128,3 +128,25 @@ pub(crate) fn validate_scheduled_agent_schema(connection: &Connection) -> Result
         ],
     )
 }
+
+pub(crate) fn validate_scheduled_agent_cutover_schema(
+    connection: &Connection,
+) -> Result<(), StorageError> {
+    require_columns(
+        connection,
+        "pod0_scheduled_agent_cutover_evidence",
+        &[
+            "backup_byte_count",
+            "backup_digest",
+            "committed_at_ms",
+            "occurrence_count",
+            "singleton",
+            "source_fingerprint",
+            "source_generation",
+            "staged_at_ms",
+            "state",
+            "task_count",
+            "verified_at_ms",
+        ],
+    )
+}

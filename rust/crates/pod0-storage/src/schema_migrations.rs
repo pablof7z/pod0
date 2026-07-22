@@ -25,6 +25,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../../../schema/migrations/0019_download_workflows.sql"),
     include_str!("../../../schema/migrations/0020_transcript_workflows.sql"),
     include_str!("../../../schema/migrations/0021_scheduled_agent_workflows.sql"),
+    include_str!("../../../schema/migrations/0022_scheduled_agent_cutover_evidence.sql"),
 ];
 
 pub(crate) fn migration_sql(version: u32) -> Option<&'static str> {

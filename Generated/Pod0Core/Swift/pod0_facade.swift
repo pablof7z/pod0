@@ -661,6 +661,18 @@ public protocol Pod0FacadeProtocol: AnyObject, Sendable {
 
     func unsubscribe(subscriptionId: SubscriptionId)
 
+    func commitLegacyScheduledAgentCutover(sourceGeneration: UInt64)  -> LegacyScheduledAgentCutoverProjection
+
+    func discardStagedLegacyScheduledAgentCutover(sourceGeneration: UInt64)  -> LegacyScheduledAgentCutoverProjection
+
+    func inspectLegacyScheduledAgentCutover(backupDigest: ContentDigest, backupByteCount: UInt64, tasks: [LegacyScheduledAgentTaskInput], occurrences: [LegacyScheduledAgentOccurrenceInput])  -> LegacyScheduledAgentCutoverProjection
+
+    func scheduledAgentCutover()  -> LegacyScheduledAgentCutoverProjection
+
+    func stageLegacyScheduledAgentCutover(backupDigest: ContentDigest, backupByteCount: UInt64, tasks: [LegacyScheduledAgentTaskInput], occurrences: [LegacyScheduledAgentOccurrenceInput])  -> LegacyScheduledAgentCutoverProjection
+
+    func verifyLegacyScheduledAgentCutover(sourceGeneration: UInt64)  -> LegacyScheduledAgentCutoverProjection
+
     func commitLegacyTranscriptWorkflowCutover(sourceGeneration: UInt64)  -> LegacyTranscriptWorkflowCutoverProjection
 
     func discardStagedLegacyTranscriptWorkflowCutover(sourceGeneration: UInt64)  -> LegacyTranscriptWorkflowCutoverProjection
@@ -906,6 +918,71 @@ open func unsubscribe(subscriptionId: SubscriptionId)  {try! rustCall() {
         FfiConverterTypeSubscriptionId_lower(subscriptionId),uniffiCallStatus
     )
 }
+}
+
+open func commitLegacyScheduledAgentCutover(sourceGeneration: UInt64) -> LegacyScheduledAgentCutoverProjection  {
+    return try!  FfiConverterTypeLegacyScheduledAgentCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_scheduled_agent_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt64.lower(sourceGeneration),uniffiCallStatus
+    )
+})
+}
+
+open func discardStagedLegacyScheduledAgentCutover(sourceGeneration: UInt64) -> LegacyScheduledAgentCutoverProjection  {
+    return try!  FfiConverterTypeLegacyScheduledAgentCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_scheduled_agent_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt64.lower(sourceGeneration),uniffiCallStatus
+    )
+})
+}
+
+open func inspectLegacyScheduledAgentCutover(backupDigest: ContentDigest, backupByteCount: UInt64, tasks: [LegacyScheduledAgentTaskInput], occurrences: [LegacyScheduledAgentOccurrenceInput]) -> LegacyScheduledAgentCutoverProjection  {
+    return try!  FfiConverterTypeLegacyScheduledAgentCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_inspect_legacy_scheduled_agent_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeContentDigest_lower(backupDigest),
+        FfiConverterUInt64.lower(backupByteCount),
+        FfiConverterSequenceTypeLegacyScheduledAgentTaskInput.lower(tasks),
+        FfiConverterSequenceTypeLegacyScheduledAgentOccurrenceInput.lower(occurrences),uniffiCallStatus
+    )
+})
+}
+
+open func scheduledAgentCutover() -> LegacyScheduledAgentCutoverProjection  {
+    return try!  FfiConverterTypeLegacyScheduledAgentCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_scheduled_agent_cutover(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+
+open func stageLegacyScheduledAgentCutover(backupDigest: ContentDigest, backupByteCount: UInt64, tasks: [LegacyScheduledAgentTaskInput], occurrences: [LegacyScheduledAgentOccurrenceInput]) -> LegacyScheduledAgentCutoverProjection  {
+    return try!  FfiConverterTypeLegacyScheduledAgentCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_scheduled_agent_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeContentDigest_lower(backupDigest),
+        FfiConverterUInt64.lower(backupByteCount),
+        FfiConverterSequenceTypeLegacyScheduledAgentTaskInput.lower(tasks),
+        FfiConverterSequenceTypeLegacyScheduledAgentOccurrenceInput.lower(occurrences),uniffiCallStatus
+    )
+})
+}
+
+open func verifyLegacyScheduledAgentCutover(sourceGeneration: UInt64) -> LegacyScheduledAgentCutoverProjection  {
+    return try!  FfiConverterTypeLegacyScheduledAgentCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_verify_legacy_scheduled_agent_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt64.lower(sourceGeneration),uniffiCallStatus
+    )
+})
 }
 
 open func commitLegacyTranscriptWorkflowCutover(sourceGeneration: UInt64) -> LegacyTranscriptWorkflowCutoverProjection  {
@@ -2841,6 +2918,290 @@ public func FfiConverterTypeLegacyNoteImportVerification_lift(_ buf: RustBuffer)
 #endif
 public func FfiConverterTypeLegacyNoteImportVerification_lower(_ value: LegacyNoteImportVerification) -> RustBuffer {
     return FfiConverterTypeLegacyNoteImportVerification.lower(value)
+}
+
+
+public struct LegacyScheduledAgentCutoverFailure: Equatable, Hashable {
+    public let code: LegacyScheduledAgentCutoverFailureCode
+    public let diagnosticCode: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(code: LegacyScheduledAgentCutoverFailureCode, diagnosticCode: String) {
+        self.code = code
+        self.diagnosticCode = diagnosticCode
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyScheduledAgentCutoverFailure: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyScheduledAgentCutoverFailure: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyScheduledAgentCutoverFailure {
+        return
+            try LegacyScheduledAgentCutoverFailure(
+                code: FfiConverterTypeLegacyScheduledAgentCutoverFailureCode.read(from: &buf),
+                diagnosticCode: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyScheduledAgentCutoverFailure, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyScheduledAgentCutoverFailureCode.write(value.code, into: &buf)
+        FfiConverterString.write(value.diagnosticCode, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyScheduledAgentCutoverFailure_lift(_ buf: RustBuffer) throws -> LegacyScheduledAgentCutoverFailure {
+    return try FfiConverterTypeLegacyScheduledAgentCutoverFailure.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyScheduledAgentCutoverFailure_lower(_ value: LegacyScheduledAgentCutoverFailure) -> RustBuffer {
+    return FfiConverterTypeLegacyScheduledAgentCutoverFailure.lower(value)
+}
+
+
+public struct LegacyScheduledAgentCutoverProjection: Equatable, Hashable {
+    public let stage: LegacyScheduledAgentCutoverStage
+    public let sourceGeneration: UInt64?
+    public let sourceFingerprint: ContentDigest?
+    public let backupDigest: ContentDigest?
+    public let backupByteCount: UInt64?
+    public let taskCount: UInt32
+    public let occurrenceCount: UInt32
+    public let failure: LegacyScheduledAgentCutoverFailure?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(stage: LegacyScheduledAgentCutoverStage, sourceGeneration: UInt64?, sourceFingerprint: ContentDigest?, backupDigest: ContentDigest?, backupByteCount: UInt64?, taskCount: UInt32, occurrenceCount: UInt32, failure: LegacyScheduledAgentCutoverFailure?) {
+        self.stage = stage
+        self.sourceGeneration = sourceGeneration
+        self.sourceFingerprint = sourceFingerprint
+        self.backupDigest = backupDigest
+        self.backupByteCount = backupByteCount
+        self.taskCount = taskCount
+        self.occurrenceCount = occurrenceCount
+        self.failure = failure
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyScheduledAgentCutoverProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyScheduledAgentCutoverProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyScheduledAgentCutoverProjection {
+        return
+            try LegacyScheduledAgentCutoverProjection(
+                stage: FfiConverterTypeLegacyScheduledAgentCutoverStage.read(from: &buf),
+                sourceGeneration: FfiConverterOptionUInt64.read(from: &buf),
+                sourceFingerprint: FfiConverterOptionTypeContentDigest.read(from: &buf),
+                backupDigest: FfiConverterOptionTypeContentDigest.read(from: &buf),
+                backupByteCount: FfiConverterOptionUInt64.read(from: &buf),
+                taskCount: FfiConverterUInt32.read(from: &buf),
+                occurrenceCount: FfiConverterUInt32.read(from: &buf),
+                failure: FfiConverterOptionTypeLegacyScheduledAgentCutoverFailure.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyScheduledAgentCutoverProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyScheduledAgentCutoverStage.write(value.stage, into: &buf)
+        FfiConverterOptionUInt64.write(value.sourceGeneration, into: &buf)
+        FfiConverterOptionTypeContentDigest.write(value.sourceFingerprint, into: &buf)
+        FfiConverterOptionTypeContentDigest.write(value.backupDigest, into: &buf)
+        FfiConverterOptionUInt64.write(value.backupByteCount, into: &buf)
+        FfiConverterUInt32.write(value.taskCount, into: &buf)
+        FfiConverterUInt32.write(value.occurrenceCount, into: &buf)
+        FfiConverterOptionTypeLegacyScheduledAgentCutoverFailure.write(value.failure, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyScheduledAgentCutoverProjection_lift(_ buf: RustBuffer) throws -> LegacyScheduledAgentCutoverProjection {
+    return try FfiConverterTypeLegacyScheduledAgentCutoverProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyScheduledAgentCutoverProjection_lower(_ value: LegacyScheduledAgentCutoverProjection) -> RustBuffer {
+    return FfiConverterTypeLegacyScheduledAgentCutoverProjection.lower(value)
+}
+
+
+public struct LegacyScheduledAgentOccurrenceInput: Equatable, Hashable {
+    public let taskId: ScheduledTaskId
+    public let scheduledFor: UnixTimestampMilliseconds
+    public let createdAt: UnixTimestampMilliseconds
+    public let prompt: String
+    public let modelReference: String
+    public let updatedAt: UnixTimestampMilliseconds
+    public let disposition: LegacyScheduledAgentOccurrenceDisposition
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(taskId: ScheduledTaskId, scheduledFor: UnixTimestampMilliseconds, createdAt: UnixTimestampMilliseconds, prompt: String, modelReference: String, updatedAt: UnixTimestampMilliseconds, disposition: LegacyScheduledAgentOccurrenceDisposition) {
+        self.taskId = taskId
+        self.scheduledFor = scheduledFor
+        self.createdAt = createdAt
+        self.prompt = prompt
+        self.modelReference = modelReference
+        self.updatedAt = updatedAt
+        self.disposition = disposition
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyScheduledAgentOccurrenceInput: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyScheduledAgentOccurrenceInput: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyScheduledAgentOccurrenceInput {
+        return
+            try LegacyScheduledAgentOccurrenceInput(
+                taskId: FfiConverterTypeScheduledTaskId.read(from: &buf),
+                scheduledFor: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                createdAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                prompt: FfiConverterString.read(from: &buf),
+                modelReference: FfiConverterString.read(from: &buf),
+                updatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                disposition: FfiConverterTypeLegacyScheduledAgentOccurrenceDisposition.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyScheduledAgentOccurrenceInput, into buf: inout [UInt8]) {
+        FfiConverterTypeScheduledTaskId.write(value.taskId, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.scheduledFor, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.createdAt, into: &buf)
+        FfiConverterString.write(value.prompt, into: &buf)
+        FfiConverterString.write(value.modelReference, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.updatedAt, into: &buf)
+        FfiConverterTypeLegacyScheduledAgentOccurrenceDisposition.write(value.disposition, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyScheduledAgentOccurrenceInput_lift(_ buf: RustBuffer) throws -> LegacyScheduledAgentOccurrenceInput {
+    return try FfiConverterTypeLegacyScheduledAgentOccurrenceInput.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyScheduledAgentOccurrenceInput_lower(_ value: LegacyScheduledAgentOccurrenceInput) -> RustBuffer {
+    return FfiConverterTypeLegacyScheduledAgentOccurrenceInput.lower(value)
+}
+
+
+public struct LegacyScheduledAgentTaskInput: Equatable, Hashable {
+    public let taskId: ScheduledTaskId
+    public let label: String
+    public let prompt: String
+    public let modelReference: String
+    public let intervalMilliseconds: UInt64
+    public let createdAt: UnixTimestampMilliseconds
+    public let lastRunAt: UnixTimestampMilliseconds?
+    public let nextRunAt: UnixTimestampMilliseconds
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(taskId: ScheduledTaskId, label: String, prompt: String, modelReference: String, intervalMilliseconds: UInt64, createdAt: UnixTimestampMilliseconds, lastRunAt: UnixTimestampMilliseconds?, nextRunAt: UnixTimestampMilliseconds) {
+        self.taskId = taskId
+        self.label = label
+        self.prompt = prompt
+        self.modelReference = modelReference
+        self.intervalMilliseconds = intervalMilliseconds
+        self.createdAt = createdAt
+        self.lastRunAt = lastRunAt
+        self.nextRunAt = nextRunAt
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyScheduledAgentTaskInput: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyScheduledAgentTaskInput: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyScheduledAgentTaskInput {
+        return
+            try LegacyScheduledAgentTaskInput(
+                taskId: FfiConverterTypeScheduledTaskId.read(from: &buf),
+                label: FfiConverterString.read(from: &buf),
+                prompt: FfiConverterString.read(from: &buf),
+                modelReference: FfiConverterString.read(from: &buf),
+                intervalMilliseconds: FfiConverterUInt64.read(from: &buf),
+                createdAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                lastRunAt: FfiConverterOptionTypeUnixTimestampMilliseconds.read(from: &buf),
+                nextRunAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyScheduledAgentTaskInput, into buf: inout [UInt8]) {
+        FfiConverterTypeScheduledTaskId.write(value.taskId, into: &buf)
+        FfiConverterString.write(value.label, into: &buf)
+        FfiConverterString.write(value.prompt, into: &buf)
+        FfiConverterString.write(value.modelReference, into: &buf)
+        FfiConverterUInt64.write(value.intervalMilliseconds, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.createdAt, into: &buf)
+        FfiConverterOptionTypeUnixTimestampMilliseconds.write(value.lastRunAt, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.nextRunAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyScheduledAgentTaskInput_lift(_ buf: RustBuffer) throws -> LegacyScheduledAgentTaskInput {
+    return try FfiConverterTypeLegacyScheduledAgentTaskInput.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyScheduledAgentTaskInput_lower(_ value: LegacyScheduledAgentTaskInput) -> RustBuffer {
+    return FfiConverterTypeLegacyScheduledAgentTaskInput.lower(value)
 }
 
 
@@ -4847,6 +5208,305 @@ public func FfiConverterTypeLegacyNoteMigrationError_lower(_ value: LegacyNoteMi
 
 
 
+public enum LegacyScheduledAgentCutoverFailureCode: Equatable, Hashable {
+
+    case invalidSource
+    case conflictingCoreState
+    case storageUnavailable
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyScheduledAgentCutoverFailureCode: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyScheduledAgentCutoverFailureCode: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyScheduledAgentCutoverFailureCode
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyScheduledAgentCutoverFailureCode {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .invalidSource
+
+        case 2: return .conflictingCoreState
+
+        case 3: return .storageUnavailable
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyScheduledAgentCutoverFailureCode, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .invalidSource:
+            writeInt(&buf, Int32(1))
+
+
+        case .conflictingCoreState:
+            writeInt(&buf, Int32(2))
+
+
+        case .storageUnavailable:
+            writeInt(&buf, Int32(3))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyScheduledAgentCutoverFailureCode_lift(_ buf: RustBuffer) throws -> LegacyScheduledAgentCutoverFailureCode {
+    return try FfiConverterTypeLegacyScheduledAgentCutoverFailureCode.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyScheduledAgentCutoverFailureCode_lower(_ value: LegacyScheduledAgentCutoverFailureCode) -> RustBuffer {
+    return FfiConverterTypeLegacyScheduledAgentCutoverFailureCode.lower(value)
+}
+
+
+
+
+public enum LegacyScheduledAgentCutoverStage: Equatable, Hashable {
+
+    case notStarted
+    case staged
+    case verified
+    case authoritative
+    case blocked
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyScheduledAgentCutoverStage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyScheduledAgentCutoverStage: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyScheduledAgentCutoverStage
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyScheduledAgentCutoverStage {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .notStarted
+
+        case 2: return .staged
+
+        case 3: return .verified
+
+        case 4: return .authoritative
+
+        case 5: return .blocked
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyScheduledAgentCutoverStage, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .notStarted:
+            writeInt(&buf, Int32(1))
+
+
+        case .staged:
+            writeInt(&buf, Int32(2))
+
+
+        case .verified:
+            writeInt(&buf, Int32(3))
+
+
+        case .authoritative:
+            writeInt(&buf, Int32(4))
+
+
+        case .blocked:
+            writeInt(&buf, Int32(5))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyScheduledAgentCutoverStage_lift(_ buf: RustBuffer) throws -> LegacyScheduledAgentCutoverStage {
+    return try FfiConverterTypeLegacyScheduledAgentCutoverStage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyScheduledAgentCutoverStage_lower(_ value: LegacyScheduledAgentCutoverStage) -> RustBuffer {
+    return FfiConverterTypeLegacyScheduledAgentCutoverStage.lower(value)
+}
+
+
+
+
+public enum LegacyScheduledAgentOccurrenceDisposition: Equatable, Hashable {
+
+    case pending
+    case retryScheduled(attempt: UInt16, notBefore: UnixTimestampMilliseconds, failureCode: ScheduledAgentFailureCode, safeDetail: String?
+    )
+    case blocked(attempt: UInt16, failureCode: ScheduledAgentFailureCode, safeDetail: String?, retryable: Bool
+    )
+    case ambiguous(attempt: UInt16, safeDetail: String?
+    )
+    case failedPermanent(attempt: UInt16, failureCode: ScheduledAgentFailureCode, safeDetail: String?
+    )
+    case cancelled(attempt: UInt16
+    )
+    case obsolete(attempt: UInt16
+    )
+    case succeeded(attempt: UInt16, outputExcerpt: String
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyScheduledAgentOccurrenceDisposition: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyScheduledAgentOccurrenceDisposition: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyScheduledAgentOccurrenceDisposition
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyScheduledAgentOccurrenceDisposition {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .pending
+
+        case 2: return .retryScheduled(attempt: try FfiConverterUInt16.read(from: &buf), notBefore: try FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf), failureCode: try FfiConverterTypeScheduledAgentFailureCode.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf)
+        )
+
+        case 3: return .blocked(attempt: try FfiConverterUInt16.read(from: &buf), failureCode: try FfiConverterTypeScheduledAgentFailureCode.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf), retryable: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 4: return .ambiguous(attempt: try FfiConverterUInt16.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf)
+        )
+
+        case 5: return .failedPermanent(attempt: try FfiConverterUInt16.read(from: &buf), failureCode: try FfiConverterTypeScheduledAgentFailureCode.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf)
+        )
+
+        case 6: return .cancelled(attempt: try FfiConverterUInt16.read(from: &buf)
+        )
+
+        case 7: return .obsolete(attempt: try FfiConverterUInt16.read(from: &buf)
+        )
+
+        case 8: return .succeeded(attempt: try FfiConverterUInt16.read(from: &buf), outputExcerpt: try FfiConverterString.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyScheduledAgentOccurrenceDisposition, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .pending:
+            writeInt(&buf, Int32(1))
+
+
+        case let .retryScheduled(attempt,notBefore,failureCode,safeDetail):
+            writeInt(&buf, Int32(2))
+            FfiConverterUInt16.write(attempt, into: &buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(notBefore, into: &buf)
+            FfiConverterTypeScheduledAgentFailureCode.write(failureCode, into: &buf)
+            FfiConverterOptionString.write(safeDetail, into: &buf)
+
+
+        case let .blocked(attempt,failureCode,safeDetail,retryable):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt16.write(attempt, into: &buf)
+            FfiConverterTypeScheduledAgentFailureCode.write(failureCode, into: &buf)
+            FfiConverterOptionString.write(safeDetail, into: &buf)
+            FfiConverterBool.write(retryable, into: &buf)
+
+
+        case let .ambiguous(attempt,safeDetail):
+            writeInt(&buf, Int32(4))
+            FfiConverterUInt16.write(attempt, into: &buf)
+            FfiConverterOptionString.write(safeDetail, into: &buf)
+
+
+        case let .failedPermanent(attempt,failureCode,safeDetail):
+            writeInt(&buf, Int32(5))
+            FfiConverterUInt16.write(attempt, into: &buf)
+            FfiConverterTypeScheduledAgentFailureCode.write(failureCode, into: &buf)
+            FfiConverterOptionString.write(safeDetail, into: &buf)
+
+
+        case let .cancelled(attempt):
+            writeInt(&buf, Int32(6))
+            FfiConverterUInt16.write(attempt, into: &buf)
+
+
+        case let .obsolete(attempt):
+            writeInt(&buf, Int32(7))
+            FfiConverterUInt16.write(attempt, into: &buf)
+
+
+        case let .succeeded(attempt,outputExcerpt):
+            writeInt(&buf, Int32(8))
+            FfiConverterUInt16.write(attempt, into: &buf)
+            FfiConverterString.write(outputExcerpt, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyScheduledAgentOccurrenceDisposition_lift(_ buf: RustBuffer) throws -> LegacyScheduledAgentOccurrenceDisposition {
+    return try FfiConverterTypeLegacyScheduledAgentOccurrenceDisposition.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyScheduledAgentOccurrenceDisposition_lower(_ value: LegacyScheduledAgentOccurrenceDisposition) -> RustBuffer {
+    return FfiConverterTypeLegacyScheduledAgentOccurrenceDisposition.lower(value)
+}
+
+
+
+
 public enum LegacyTranscriptImportState: Equatable, Hashable {
 
     case staged
@@ -5673,6 +6333,30 @@ fileprivate struct FfiConverterOptionTypeSpeakerId: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeUnixTimestampMilliseconds: FfiConverterRustBuffer {
+    typealias SwiftType = UnixTimestampMilliseconds?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeUnixTimestampMilliseconds.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeLegacyChapterImportPlan: FfiConverterRustBuffer {
     typealias SwiftType = LegacyChapterImportPlan?
 
@@ -5833,6 +6517,30 @@ fileprivate struct FfiConverterOptionTypeLegacyModelChapterCutoverFailure: FfiCo
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeLegacyModelChapterCutoverFailure.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeLegacyScheduledAgentCutoverFailure: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyScheduledAgentCutoverFailure?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeLegacyScheduledAgentCutoverFailure.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeLegacyScheduledAgentCutoverFailure.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -6080,6 +6788,56 @@ fileprivate struct FfiConverterSequenceTypeLegacyModelChapterCutoverCandidate: F
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeLegacyModelChapterCutoverCandidate.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeLegacyScheduledAgentOccurrenceInput: FfiConverterRustBuffer {
+    typealias SwiftType = [LegacyScheduledAgentOccurrenceInput]
+
+    public static func write(_ value: [LegacyScheduledAgentOccurrenceInput], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeLegacyScheduledAgentOccurrenceInput.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [LegacyScheduledAgentOccurrenceInput] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [LegacyScheduledAgentOccurrenceInput]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeLegacyScheduledAgentOccurrenceInput.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeLegacyScheduledAgentTaskInput: FfiConverterRustBuffer {
+    typealias SwiftType = [LegacyScheduledAgentTaskInput]
+
+    public static func write(_ value: [LegacyScheduledAgentTaskInput], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeLegacyScheduledAgentTaskInput.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [LegacyScheduledAgentTaskInput] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [LegacyScheduledAgentTaskInput]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeLegacyScheduledAgentTaskInput.read(from: &buf))
         }
         return seq
     }
@@ -6787,6 +7545,24 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_unsubscribe() != 29741) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_scheduled_agent_cutover() != 55891) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_scheduled_agent_cutover() != 63460) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_inspect_legacy_scheduled_agent_cutover() != 47226) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_scheduled_agent_cutover() != 44594) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_scheduled_agent_cutover() != 49270) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_scheduled_agent_cutover() != 63971) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_transcript_workflow_cutover() != 1245) {
