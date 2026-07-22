@@ -14,6 +14,10 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 MATRIX = ROOT / "docs/architecture/agent-tool-permissions.json"
 TOOL_PATTERN = re.compile(r'static let \w+\s*=\s*"([a-z][a-z0-9_]*)"')
+RUST_TOOL_PATTERN = re.compile(
+    r'\(\s*"([a-z][a-z0-9_]*)"\s*,\s*AgentToolName::', re.MULTILINE
+)
+RUST_TOOL_SOURCE = ROOT / "rust/crates/pod0-application/src/agent_tool_names.rs"
 ALLOWED_CLASSES = {
     "read_only", "reversible_write", "external_side_effect",
     "destructive_write", "secret_bearing", "publication", "session_local",
@@ -55,6 +59,15 @@ def validate(payload: dict, actual: list[str]) -> list[str]:
         errors.append(f"matrix tools absent from Swift: {', '.join(extra)}")
     if len(actual) != len(set(actual)):
         errors.append("Swift declares duplicate canonical tool strings")
+    rust_names = RUST_TOOL_PATTERN.findall(RUST_TOOL_SOURCE.read_text())
+    if len(rust_names) != len(set(rust_names)):
+        errors.append("Rust declares duplicate canonical tool strings")
+    rust_missing = sorted(set(actual) - set(rust_names))
+    rust_extra = sorted(set(rust_names) - set(actual))
+    if rust_missing:
+        errors.append(f"Swift tools missing from Rust enum map: {', '.join(rust_missing)}")
+    if rust_extra:
+        errors.append(f"Rust enum-map tools absent from Swift: {', '.join(rust_extra)}")
 
     for row in rows:
         name = row.get("tool", "<missing>")

@@ -4,6 +4,14 @@ use pod0_domain::{CommandId, UnixTimestampMilliseconds};
 
 uniffi::setup_scaffolding!();
 
+mod agent_action_hash;
+mod agent_contract;
+mod agent_policy;
+mod agent_tool_names;
+mod agent_workflow;
+#[cfg(test)]
+mod agent_workflow_tests;
+mod agent_workflow_values;
 mod chapter_contract;
 #[cfg(test)]
 mod chapter_contract_fixture_tests;
@@ -108,6 +116,11 @@ mod transcript_workflow_policy;
 #[cfg(test)]
 mod transcript_workflow_tests;
 
+pub use agent_action_hash::*;
+pub use agent_contract::*;
+pub use agent_policy::*;
+pub use agent_tool_names::*;
+pub use agent_workflow_values::*;
 pub use chapter_contract::*;
 pub use chapter_model_host::*;
 pub use chapter_model_policy::*;
