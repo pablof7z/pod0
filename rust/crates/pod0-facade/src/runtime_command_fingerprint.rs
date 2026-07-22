@@ -9,6 +9,7 @@ use crate::runtime_command_fingerprint_values::{
 };
 use crate::runtime_download_command_fingerprint::hash_download_command;
 use crate::runtime_playback_fingerprint::hash_playback;
+use crate::runtime_transcript_workflow_fingerprint::hash_transcript_workflow_command;
 
 pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
     let mut hash = Sha256::new();
@@ -170,6 +171,11 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
             artifact,
         } => {
             hash_transcript_commit(&mut hash, *expected_selection_revision, artifact);
+        }
+        ApplicationCommand::EnsureTranscriptWorkflow { .. }
+        | ApplicationCommand::RetryTranscriptWorkflow { .. }
+        | ApplicationCommand::CancelTranscriptWorkflow { .. } => {
+            hash_transcript_workflow_command(&mut hash, command)
         }
         ApplicationCommand::CommitChapter {
             expected_selection_revision,

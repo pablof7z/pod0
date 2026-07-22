@@ -5971,6 +5971,70 @@ public object FfiConverterTypeTranscriptWorkflowAllowedActions: FfiConverterRust
 
 
 
+/**
+ * Platform facts and user-selected provider configuration needed by the
+ * shared kernel to plan a transcript workflow. Durable episode, transcript,
+ * evidence, retry, and fallback state are intentionally not supplied by the
+ * native application.
+ */
+data class TranscriptWorkflowConfiguration (
+    val `provider`: TranscriptProvider
+    ,
+    val `model`: kotlin.String
+    ,
+    val `localAudioUrl`: kotlin.String?
+    ,
+    val `credentialAvailable`: kotlin.Boolean
+    ,
+    val `autoPublisherEnabled`: kotlin.Boolean
+    ,
+    val `autoProviderEnabled`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptWorkflowConfiguration: FfiConverterRustBuffer<TranscriptWorkflowConfiguration> {
+    override fun read(buf: ByteBuffer): TranscriptWorkflowConfiguration {
+        return TranscriptWorkflowConfiguration(
+            FfiConverterTypeTranscriptProvider.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TranscriptWorkflowConfiguration) = (
+            FfiConverterTypeTranscriptProvider.allocationSize(value.`provider`) +
+            FfiConverterString.allocationSize(value.`model`) +
+            FfiConverterOptionalString.allocationSize(value.`localAudioUrl`) +
+            FfiConverterBoolean.allocationSize(value.`credentialAvailable`) +
+            FfiConverterBoolean.allocationSize(value.`autoPublisherEnabled`) +
+            FfiConverterBoolean.allocationSize(value.`autoProviderEnabled`)
+    )
+
+    override fun write(value: TranscriptWorkflowConfiguration, buf: ByteBuffer) {
+            FfiConverterTypeTranscriptProvider.write(value.`provider`, buf)
+            FfiConverterString.write(value.`model`, buf)
+            FfiConverterOptionalString.write(value.`localAudioUrl`, buf)
+            FfiConverterBoolean.write(value.`credentialAvailable`, buf)
+            FfiConverterBoolean.write(value.`autoPublisherEnabled`, buf)
+            FfiConverterBoolean.write(value.`autoProviderEnabled`, buf)
+    }
+}
+
+
+
 data class TranscriptWorkflowFailure (
     val `code`: TranscriptWorkflowFailureCode
     ,
@@ -6659,6 +6723,38 @@ sealed class ApplicationCommand {
         companion object
     }
 
+    data class EnsureTranscriptWorkflow(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `origin`: uniffi.pod0_application.TranscriptWorkflowOrigin,
+        val `configuration`: uniffi.pod0_application.TranscriptWorkflowConfiguration) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class RetryTranscriptWorkflow(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `expectedWorkflowRevision`: uniffi.pod0_domain.StateRevision,
+        val `configuration`: uniffi.pod0_application.TranscriptWorkflowConfiguration) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class CancelTranscriptWorkflow(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `expectedWorkflowRevision`: uniffi.pod0_domain.StateRevision) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
     data class CommitChapter(
         val `expectedSelectionRevision`: uniffi.pod0_domain.StateRevision,
         val `artifact`: uniffi.pod0_domain.ChapterArtifactInput) : ApplicationCommand()
@@ -6939,56 +7035,70 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterTypeStateRevision.read(buf),
                 FfiConverterTypeTranscriptArtifactInput.read(buf),
                 )
-            25 -> ApplicationCommand.CommitChapter(
+            25 -> ApplicationCommand.EnsureTranscriptWorkflow(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeTranscriptWorkflowOrigin.read(buf),
+                FfiConverterTypeTranscriptWorkflowConfiguration.read(buf),
+                )
+            26 -> ApplicationCommand.RetryTranscriptWorkflow(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeStateRevision.read(buf),
+                FfiConverterTypeTranscriptWorkflowConfiguration.read(buf),
+                )
+            27 -> ApplicationCommand.CancelTranscriptWorkflow(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeStateRevision.read(buf),
+                )
+            28 -> ApplicationCommand.CommitChapter(
                 FfiConverterTypeStateRevision.read(buf),
                 FfiConverterTypeChapterArtifactInput.read(buf),
                 )
-            26 -> ApplicationCommand.EnsurePublisherChapters(
+            29 -> ApplicationCommand.EnsurePublisherChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 )
-            27 -> ApplicationCommand.RetryPublisherChapters(
-                FfiConverterTypeEpisodeId.read(buf),
-                FfiConverterTypeStateRevision.read(buf),
-                )
-            28 -> ApplicationCommand.CancelPublisherChapters(
+            30 -> ApplicationCommand.RetryPublisherChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            29 -> ApplicationCommand.EnsureModelChapters(
+            31 -> ApplicationCommand.CancelPublisherChapters(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeStateRevision.read(buf),
+                )
+            32 -> ApplicationCommand.EnsureModelChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterString.read(buf),
                 )
-            30 -> ApplicationCommand.RetryModelChapters(
+            33 -> ApplicationCommand.RetryModelChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            31 -> ApplicationCommand.CancelModelChapters(
+            34 -> ApplicationCommand.CancelModelChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            32 -> ApplicationCommand.CreateNote(
+            35 -> ApplicationCommand.CreateNote(
                 FfiConverterString.read(buf),
                 FfiConverterTypeNoteKind.read(buf),
                 FfiConverterTypeNoteAuthor.read(buf),
                 FfiConverterOptionalTypeNoteTarget.read(buf),
                 )
-            33 -> ApplicationCommand.UpdateNote(
+            36 -> ApplicationCommand.UpdateNote(
                 FfiConverterTypeNoteId.read(buf),
                 FfiConverterTypeNoteRevision.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterTypeNoteKind.read(buf),
                 FfiConverterOptionalTypeNoteTarget.read(buf),
                 )
-            34 -> ApplicationCommand.SetNoteDeleted(
+            37 -> ApplicationCommand.SetNoteDeleted(
                 FfiConverterTypeNoteId.read(buf),
                 FfiConverterTypeNoteRevision.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
-            35 -> ApplicationCommand.ClearNotes(
+            38 -> ApplicationCommand.ClearNotes(
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            36 -> ApplicationCommand.CreateClip(
+            39 -> ApplicationCommand.CreateClip(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypePodcastId.read(buf),
@@ -6999,7 +7109,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterString.read(buf),
                 FfiConverterTypeClipSource.read(buf),
                 )
-            37 -> ApplicationCommand.UpdateClip(
+            40 -> ApplicationCommand.UpdateClip(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterULong.read(buf),
@@ -7008,18 +7118,18 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterOptionalTypeSpeakerId.read(buf),
                 FfiConverterString.read(buf),
                 )
-            38 -> ApplicationCommand.SetClipDeleted(
+            41 -> ApplicationCommand.SetClipDeleted(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
-            39 -> ApplicationCommand.ClearClips(
+            42 -> ApplicationCommand.ClearClips(
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            40 -> ApplicationCommand.CancelOperation(
+            43 -> ApplicationCommand.CancelOperation(
                 FfiConverterTypeCancellationId.read(buf),
                 )
-            41 -> ApplicationCommand.Unsupported(
+            44 -> ApplicationCommand.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -7202,6 +7312,32 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 4UL
                 + FfiConverterTypeStateRevision.allocationSize(value.`expectedSelectionRevision`)
                 + FfiConverterTypeTranscriptArtifactInput.allocationSize(value.`artifact`)
+            )
+        }
+        is ApplicationCommand.EnsureTranscriptWorkflow -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeTranscriptWorkflowOrigin.allocationSize(value.`origin`)
+                + FfiConverterTypeTranscriptWorkflowConfiguration.allocationSize(value.`configuration`)
+            )
+        }
+        is ApplicationCommand.RetryTranscriptWorkflow -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeStateRevision.allocationSize(value.`expectedWorkflowRevision`)
+                + FfiConverterTypeTranscriptWorkflowConfiguration.allocationSize(value.`configuration`)
+            )
+        }
+        is ApplicationCommand.CancelTranscriptWorkflow -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeStateRevision.allocationSize(value.`expectedWorkflowRevision`)
             )
         }
         is ApplicationCommand.CommitChapter -> {
@@ -7488,50 +7624,70 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterTypeTranscriptArtifactInput.write(value.`artifact`, buf)
                 Unit
             }
-            is ApplicationCommand.CommitChapter -> {
+            is ApplicationCommand.EnsureTranscriptWorkflow -> {
                 buf.putInt(25)
-                FfiConverterTypeStateRevision.write(value.`expectedSelectionRevision`, buf)
-                FfiConverterTypeChapterArtifactInput.write(value.`artifact`, buf)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeTranscriptWorkflowOrigin.write(value.`origin`, buf)
+                FfiConverterTypeTranscriptWorkflowConfiguration.write(value.`configuration`, buf)
                 Unit
             }
-            is ApplicationCommand.EnsurePublisherChapters -> {
+            is ApplicationCommand.RetryTranscriptWorkflow -> {
                 buf.putInt(26)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
+                FfiConverterTypeTranscriptWorkflowConfiguration.write(value.`configuration`, buf)
                 Unit
             }
-            is ApplicationCommand.RetryPublisherChapters -> {
+            is ApplicationCommand.CancelTranscriptWorkflow -> {
                 buf.putInt(27)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
-            is ApplicationCommand.CancelPublisherChapters -> {
+            is ApplicationCommand.CommitChapter -> {
                 buf.putInt(28)
+                FfiConverterTypeStateRevision.write(value.`expectedSelectionRevision`, buf)
+                FfiConverterTypeChapterArtifactInput.write(value.`artifact`, buf)
+                Unit
+            }
+            is ApplicationCommand.EnsurePublisherChapters -> {
+                buf.putInt(29)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                Unit
+            }
+            is ApplicationCommand.RetryPublisherChapters -> {
+                buf.putInt(30)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
+                Unit
+            }
+            is ApplicationCommand.CancelPublisherChapters -> {
+                buf.putInt(31)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
             is ApplicationCommand.EnsureModelChapters -> {
-                buf.putInt(29)
+                buf.putInt(32)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterString.write(value.`configuredModel`, buf)
                 Unit
             }
             is ApplicationCommand.RetryModelChapters -> {
-                buf.putInt(30)
+                buf.putInt(33)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterString.write(value.`configuredModel`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CancelModelChapters -> {
-                buf.putInt(31)
+                buf.putInt(34)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CreateNote -> {
-                buf.putInt(32)
+                buf.putInt(35)
                 FfiConverterString.write(value.`text`, buf)
                 FfiConverterTypeNoteKind.write(value.`kind`, buf)
                 FfiConverterTypeNoteAuthor.write(value.`author`, buf)
@@ -7539,7 +7695,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.UpdateNote -> {
-                buf.putInt(33)
+                buf.putInt(36)
                 FfiConverterTypeNoteId.write(value.`noteId`, buf)
                 FfiConverterTypeNoteRevision.write(value.`expectedNoteRevision`, buf)
                 FfiConverterString.write(value.`text`, buf)
@@ -7548,19 +7704,19 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.SetNoteDeleted -> {
-                buf.putInt(34)
+                buf.putInt(37)
                 FfiConverterTypeNoteId.write(value.`noteId`, buf)
                 FfiConverterTypeNoteRevision.write(value.`expectedNoteRevision`, buf)
                 FfiConverterBoolean.write(value.`deleted`, buf)
                 Unit
             }
             is ApplicationCommand.ClearNotes -> {
-                buf.putInt(35)
+                buf.putInt(38)
                 FfiConverterTypeStateRevision.write(value.`expectedCollectionRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CreateClip -> {
-                buf.putInt(36)
+                buf.putInt(39)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
@@ -7573,7 +7729,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.UpdateClip -> {
-                buf.putInt(37)
+                buf.putInt(40)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`expectedClipRevision`, buf)
                 FfiConverterULong.write(value.`startMilliseconds`, buf)
@@ -7584,24 +7740,24 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.SetClipDeleted -> {
-                buf.putInt(38)
+                buf.putInt(41)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`expectedClipRevision`, buf)
                 FfiConverterBoolean.write(value.`deleted`, buf)
                 Unit
             }
             is ApplicationCommand.ClearClips -> {
-                buf.putInt(39)
+                buf.putInt(42)
                 FfiConverterTypeStateRevision.write(value.`expectedCollectionRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CancelOperation -> {
-                buf.putInt(40)
+                buf.putInt(43)
                 FfiConverterTypeCancellationId.write(value.`cancellationId`, buf)
                 Unit
             }
             is ApplicationCommand.Unsupported -> {
-                buf.putInt(41)
+                buf.putInt(44)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -9887,6 +10043,37 @@ sealed class CoreWakeReason {
         companion object
     }
 
+    data class TranscriptProviderRecovery(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `attemptId`: uniffi.pod0_domain.TranscriptAttemptId,
+        val `submissionFenceId`: uniffi.pod0_domain.TranscriptSubmissionFenceId) : CoreWakeReason()
+
+    {
+
+
+        companion object
+    }
+
+    data class TranscriptRetry(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `attemptId`: uniffi.pod0_domain.TranscriptAttemptId,
+        val `submissionFenceId`: uniffi.pod0_domain.TranscriptSubmissionFenceId) : CoreWakeReason()
+
+    {
+
+
+        companion object
+    }
+
+    data class TranscriptFinalization(
+        val `requestId`: uniffi.pod0_domain.HostRequestId) : CoreWakeReason()
+
+    {
+
+
+        companion object
+    }
+
     data class Unsupported(
         val `wireCode`: kotlin.UInt) : CoreWakeReason()
 
@@ -9920,7 +10107,20 @@ public object FfiConverterTypeCoreWakeReason : FfiConverterRustBuffer<CoreWakeRe
             2 -> CoreWakeReason.ModelChapterFinalization(
                 FfiConverterTypeHostRequestId.read(buf),
                 )
-            3 -> CoreWakeReason.Unsupported(
+            3 -> CoreWakeReason.TranscriptProviderRecovery(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeTranscriptAttemptId.read(buf),
+                FfiConverterTypeTranscriptSubmissionFenceId.read(buf),
+                )
+            4 -> CoreWakeReason.TranscriptRetry(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeTranscriptAttemptId.read(buf),
+                FfiConverterTypeTranscriptSubmissionFenceId.read(buf),
+                )
+            5 -> CoreWakeReason.TranscriptFinalization(
+                FfiConverterTypeHostRequestId.read(buf),
+                )
+            6 -> CoreWakeReason.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -9938,6 +10138,31 @@ public object FfiConverterTypeCoreWakeReason : FfiConverterRustBuffer<CoreWakeRe
             )
         }
         is CoreWakeReason.ModelChapterFinalization -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeHostRequestId.allocationSize(value.`requestId`)
+            )
+        }
+        is CoreWakeReason.TranscriptProviderRecovery -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeTranscriptAttemptId.allocationSize(value.`attemptId`)
+                + FfiConverterTypeTranscriptSubmissionFenceId.allocationSize(value.`submissionFenceId`)
+            )
+        }
+        is CoreWakeReason.TranscriptRetry -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypeTranscriptAttemptId.allocationSize(value.`attemptId`)
+                + FfiConverterTypeTranscriptSubmissionFenceId.allocationSize(value.`submissionFenceId`)
+            )
+        }
+        is CoreWakeReason.TranscriptFinalization -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
@@ -9967,8 +10192,27 @@ public object FfiConverterTypeCoreWakeReason : FfiConverterRustBuffer<CoreWakeRe
                 FfiConverterTypeHostRequestId.write(value.`requestId`, buf)
                 Unit
             }
-            is CoreWakeReason.Unsupported -> {
+            is CoreWakeReason.TranscriptProviderRecovery -> {
                 buf.putInt(3)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeTranscriptAttemptId.write(value.`attemptId`, buf)
+                FfiConverterTypeTranscriptSubmissionFenceId.write(value.`submissionFenceId`, buf)
+                Unit
+            }
+            is CoreWakeReason.TranscriptRetry -> {
+                buf.putInt(4)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypeTranscriptAttemptId.write(value.`attemptId`, buf)
+                FfiConverterTypeTranscriptSubmissionFenceId.write(value.`submissionFenceId`, buf)
+                Unit
+            }
+            is CoreWakeReason.TranscriptFinalization -> {
+                buf.putInt(5)
+                FfiConverterTypeHostRequestId.write(value.`requestId`, buf)
+                Unit
+            }
+            is CoreWakeReason.Unsupported -> {
+                buf.putInt(6)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -16024,6 +16268,15 @@ sealed class Projection {
         companion object
     }
 
+    data class TranscriptWorkflows(
+        val `value`: uniffi.pod0_application.TranscriptWorkflowsProjection) : Projection()
+
+    {
+
+
+        companion object
+    }
+
     data class Chapter(
         val `value`: uniffi.pod0_application.ChapterArtifactProjection) : Projection()
 
@@ -16118,22 +16371,25 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
             8 -> Projection.Transcript(
                 FfiConverterTypeTranscriptProjection.read(buf),
                 )
-            9 -> Projection.Chapter(
+            9 -> Projection.TranscriptWorkflows(
+                FfiConverterTypeTranscriptWorkflowsProjection.read(buf),
+                )
+            10 -> Projection.Chapter(
                 FfiConverterTypeChapterArtifactProjection.read(buf),
                 )
-            10 -> Projection.ChapterWorkflows(
+            11 -> Projection.ChapterWorkflows(
                 FfiConverterTypeChapterWorkflowsProjection.read(buf),
                 )
-            11 -> Projection.Downloads(
+            12 -> Projection.Downloads(
                 FfiConverterTypeDownloadWorkflowsProjection.read(buf),
                 )
-            12 -> Projection.Notes(
+            13 -> Projection.Notes(
                 FfiConverterTypeNotesProjection.read(buf),
                 )
-            13 -> Projection.Clips(
+            14 -> Projection.Clips(
                 FfiConverterTypeClipsProjection.read(buf),
                 )
-            14 -> Projection.Unsupported(
+            15 -> Projection.Unsupported(
                 FfiConverterTypeUnsupportedProjection.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -16195,6 +16451,13 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
             (
                 4UL
                 + FfiConverterTypeTranscriptProjection.allocationSize(value.`value`)
+            )
+        }
+        is Projection.TranscriptWorkflows -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeTranscriptWorkflowsProjection.allocationSize(value.`value`)
             )
         }
         is Projection.Chapter -> {
@@ -16283,33 +16546,38 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
                 FfiConverterTypeTranscriptProjection.write(value.`value`, buf)
                 Unit
             }
-            is Projection.Chapter -> {
+            is Projection.TranscriptWorkflows -> {
                 buf.putInt(9)
+                FfiConverterTypeTranscriptWorkflowsProjection.write(value.`value`, buf)
+                Unit
+            }
+            is Projection.Chapter -> {
+                buf.putInt(10)
                 FfiConverterTypeChapterArtifactProjection.write(value.`value`, buf)
                 Unit
             }
             is Projection.ChapterWorkflows -> {
-                buf.putInt(10)
+                buf.putInt(11)
                 FfiConverterTypeChapterWorkflowsProjection.write(value.`value`, buf)
                 Unit
             }
             is Projection.Downloads -> {
-                buf.putInt(11)
+                buf.putInt(12)
                 FfiConverterTypeDownloadWorkflowsProjection.write(value.`value`, buf)
                 Unit
             }
             is Projection.Notes -> {
-                buf.putInt(12)
+                buf.putInt(13)
                 FfiConverterTypeNotesProjection.write(value.`value`, buf)
                 Unit
             }
             is Projection.Clips -> {
-                buf.putInt(13)
+                buf.putInt(14)
                 FfiConverterTypeClipsProjection.write(value.`value`, buf)
                 Unit
             }
             is Projection.Unsupported -> {
-                buf.putInt(14)
+                buf.putInt(15)
                 FfiConverterTypeUnsupportedProjection.write(value.`value`, buf)
                 Unit
             }
@@ -16371,6 +16639,15 @@ sealed class ProjectionScope {
     data class Transcript(
         val `episodeId`: uniffi.pod0_domain.EpisodeId,
         val `scope`: uniffi.pod0_application.TranscriptProjectionScope) : ProjectionScope()
+
+    {
+
+
+        companion object
+    }
+
+    data class TranscriptWorkflows(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId?) : ProjectionScope()
 
     {
 
@@ -16468,23 +16745,26 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypeTranscriptProjectionScope.read(buf),
                 )
-            9 -> ProjectionScope.Chapter(
+            9 -> ProjectionScope.TranscriptWorkflows(
+                FfiConverterOptionalTypeEpisodeId.read(buf),
+                )
+            10 -> ProjectionScope.Chapter(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypeChapterProjectionScope.read(buf),
                 )
-            10 -> ProjectionScope.ChapterWorkflows(
+            11 -> ProjectionScope.ChapterWorkflows(
                 FfiConverterOptionalTypeEpisodeId.read(buf),
                 )
-            11 -> ProjectionScope.Downloads(
+            12 -> ProjectionScope.Downloads(
                 FfiConverterOptionalTypeEpisodeId.read(buf),
                 )
-            12 -> ProjectionScope.Notes(
+            13 -> ProjectionScope.Notes(
                 FfiConverterTypeNoteProjectionScope.read(buf),
                 )
-            13 -> ProjectionScope.Clips(
+            14 -> ProjectionScope.Clips(
                 FfiConverterTypeClipProjectionScope.read(buf),
                 )
-            14 -> ProjectionScope.Unsupported(
+            15 -> ProjectionScope.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -16544,6 +16824,13 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
                 4UL
                 + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
                 + FfiConverterTypeTranscriptProjectionScope.allocationSize(value.`scope`)
+            )
+        }
+        is ProjectionScope.TranscriptWorkflows -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterOptionalTypeEpisodeId.allocationSize(value.`episodeId`)
             )
         }
         is ProjectionScope.Chapter -> {
@@ -16631,34 +16918,39 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
                 FfiConverterTypeTranscriptProjectionScope.write(value.`scope`, buf)
                 Unit
             }
-            is ProjectionScope.Chapter -> {
+            is ProjectionScope.TranscriptWorkflows -> {
                 buf.putInt(9)
+                FfiConverterOptionalTypeEpisodeId.write(value.`episodeId`, buf)
+                Unit
+            }
+            is ProjectionScope.Chapter -> {
+                buf.putInt(10)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypeChapterProjectionScope.write(value.`scope`, buf)
                 Unit
             }
             is ProjectionScope.ChapterWorkflows -> {
-                buf.putInt(10)
-                FfiConverterOptionalTypeEpisodeId.write(value.`episodeId`, buf)
-                Unit
-            }
-            is ProjectionScope.Downloads -> {
                 buf.putInt(11)
                 FfiConverterOptionalTypeEpisodeId.write(value.`episodeId`, buf)
                 Unit
             }
-            is ProjectionScope.Notes -> {
+            is ProjectionScope.Downloads -> {
                 buf.putInt(12)
+                FfiConverterOptionalTypeEpisodeId.write(value.`episodeId`, buf)
+                Unit
+            }
+            is ProjectionScope.Notes -> {
+                buf.putInt(13)
                 FfiConverterTypeNoteProjectionScope.write(value.`scope`, buf)
                 Unit
             }
             is ProjectionScope.Clips -> {
-                buf.putInt(13)
+                buf.putInt(14)
                 FfiConverterTypeClipProjectionScope.write(value.`scope`, buf)
                 Unit
             }
             is ProjectionScope.Unsupported -> {
-                buf.putInt(14)
+                buf.putInt(15)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }

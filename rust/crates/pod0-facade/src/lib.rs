@@ -155,6 +155,7 @@ mod runtime_recall_test_support;
 #[cfg(test)]
 mod runtime_recall_tests;
 mod runtime_state;
+mod runtime_state_defaults;
 mod runtime_storage_commands;
 mod runtime_subscription_commands;
 #[cfg(test)]
@@ -163,6 +164,22 @@ mod runtime_transcript_commands;
 mod runtime_transcript_projection;
 #[cfg(test)]
 mod runtime_transcript_tests;
+mod runtime_transcript_workflow_commands;
+mod runtime_transcript_workflow_completion;
+mod runtime_transcript_workflow_fingerprint;
+mod runtime_transcript_workflow_mapping;
+mod runtime_transcript_workflow_observations;
+mod runtime_transcript_workflow_plan;
+mod runtime_transcript_workflow_projection;
+mod runtime_transcript_workflow_queue;
+mod runtime_transcript_workflow_receipts;
+#[cfg(test)]
+mod runtime_transcript_workflow_recovery_tests;
+#[cfg(test)]
+mod runtime_transcript_workflow_test_support;
+#[cfg(test)]
+mod runtime_transcript_workflow_tests;
+mod runtime_transcript_workflow_wakes;
 mod transcript_migration;
 mod transcript_migration_mapping;
 pub use chapter_migration::{

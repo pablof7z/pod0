@@ -52,6 +52,56 @@ impl LibraryStore {
         self.record_transcript_provider_accepted_with_observer(input, || Ok(()))
     }
 
+    pub fn record_transcript_provider_pending(
+        &self,
+        input: TranscriptProviderPendingInput,
+    ) -> Result<TranscriptWorkflowRecord, StorageError> {
+        validate_time(input.observed_at_ms)?;
+        validate_time(input.not_before_ms)?;
+        if input.not_before_ms < input.observed_at_ms
+            || input
+                .provider_status
+                .as_ref()
+                .is_some_and(|value| value.len() > 1_024)
+        {
+            return Err(StorageError::TranscriptWorkflowConflict);
+        }
+        self.write(|transaction| {
+            require_authoritative(transaction)?;
+            let mut record = exact_attempt(
+                transaction,
+                input.episode_id,
+                input.request_id,
+                input.attempt_id,
+                input.submission_fence_id,
+            )?;
+            if record.stage != StoredTranscriptWorkflowStage::ProviderAccepted
+                || input.observed_at_ms < record.updated_at_ms
+            {
+                return Err(StorageError::StaleTranscriptAttempt);
+            }
+            record.workflow_revision = super::support::next_revision(record.workflow_revision)?;
+            record.provider_status = input.provider_status;
+            record.not_before_ms = Some(input.not_before_ms);
+            record.updated_at_ms = input.observed_at_ms;
+            super::persist::persist_workflow(transaction, &record)?;
+            transaction
+                .execute(
+                    "UPDATE pod0_transcript_attempts SET provider_status=?1,updated_at_ms=?2
+                     WHERE attempt_id=?3 AND state='provider_accepted'",
+                    params![
+                        record.provider_status,
+                        input.observed_at_ms,
+                        input.attempt_id.into_bytes().as_slice()
+                    ],
+                )
+                .map_err(|error| {
+                    StorageError::sqlite("record transcript provider pending", error)
+                })?;
+            Ok(record)
+        })
+    }
+
     pub(crate) fn record_transcript_provider_accepted_with_observer<F>(
         &self,
         input: TranscriptProviderAcceptedInput,

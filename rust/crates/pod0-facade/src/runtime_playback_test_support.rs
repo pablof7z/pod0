@@ -10,6 +10,7 @@ mod observations;
 pub(super) use observations::*;
 #[path = "runtime_chapter_playback_test_support.rs"]
 mod chapters;
+use crate::runtime_transcript_workflow_test_support::install_empty_transcript_workflow_cutover;
 use chapters::{install_chapter_fixture, install_empty_chapter_fixture};
 
 pub(super) struct PlaybackFixture {
@@ -181,6 +182,7 @@ impl PlaybackFixture {
         download_store
             .commit_legacy_download_cutover(1, 1_800_000_000_009)
             .unwrap();
+        install_empty_transcript_workflow_cutover(&target);
         let facade = Pod0Facade::open(target.to_string_lossy().into_owned()).unwrap();
         assert_eq!(
             facade

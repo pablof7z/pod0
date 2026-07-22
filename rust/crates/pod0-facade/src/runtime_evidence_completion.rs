@@ -18,6 +18,28 @@ impl FacadeState {
                     span_count: indexed_span_count,
                 }),
             ),
+            EvidenceIndexCompletion::TranscriptWorkflow {
+                workflow_id,
+                input_version,
+            } => {
+                let completed = self.store.as_ref().is_some_and(|store| {
+                    store
+                        .complete_transcript_evidence_request(
+                            workflow_id,
+                            &input_version,
+                            self.now().value,
+                        )
+                        .is_ok()
+                });
+                if completed {
+                    self.succeed(pending.command_id, None);
+                } else {
+                    self.fail(
+                        pending.command_id,
+                        pod0_application::CoreFailureCode::StorageUnavailable,
+                    );
+                }
+            }
             EvidenceIndexCompletion::RecallConfiguration {
                 imported,
                 revision,

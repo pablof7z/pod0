@@ -135,6 +135,25 @@ impl FacadeState {
                 expected_selection_revision,
                 artifact,
             } => self.commit_transcript(&envelope, expected_selection_revision, artifact),
+            ApplicationCommand::EnsureTranscriptWorkflow {
+                episode_id,
+                origin,
+                configuration,
+            } => self.ensure_transcript_workflow(&envelope, episode_id, origin, configuration),
+            ApplicationCommand::RetryTranscriptWorkflow {
+                episode_id,
+                expected_workflow_revision,
+                configuration,
+            } => self.retry_transcript_workflow(
+                &envelope,
+                episode_id,
+                expected_workflow_revision,
+                configuration,
+            ),
+            ApplicationCommand::CancelTranscriptWorkflow {
+                episode_id,
+                expected_workflow_revision,
+            } => self.cancel_transcript_workflow(&envelope, episode_id, expected_workflow_revision),
             ApplicationCommand::CommitChapter {
                 expected_selection_revision,
                 artifact,

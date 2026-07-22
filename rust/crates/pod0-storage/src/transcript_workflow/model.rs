@@ -190,6 +190,17 @@ pub struct TranscriptProviderAcceptedInput {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TranscriptProviderPendingInput {
+    pub episode_id: EpisodeId,
+    pub request_id: HostRequestId,
+    pub attempt_id: TranscriptAttemptId,
+    pub submission_fence_id: TranscriptSubmissionFenceId,
+    pub provider_status: Option<String>,
+    pub not_before_ms: i64,
+    pub observed_at_ms: i64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TranscriptCompletionInput {
     pub episode_id: EpisodeId,
     pub request_id: HostRequestId,

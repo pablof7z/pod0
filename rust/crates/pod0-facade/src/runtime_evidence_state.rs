@@ -12,6 +12,10 @@ pub(super) struct EvidenceIndexTarget {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) enum EvidenceIndexCompletion {
     EvidenceRebuild,
+    TranscriptWorkflow {
+        workflow_id: pod0_domain::TranscriptWorkflowId,
+        input_version: String,
+    },
     RecallConfiguration {
         imported: Option<bool>,
         revision: StateRevision,

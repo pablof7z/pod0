@@ -183,6 +183,11 @@ impl FacadeState {
                     request.max_items,
                 ),
             },
+            ProjectionScope::TranscriptWorkflows { episode_id } => {
+                Projection::TranscriptWorkflows {
+                    value: self.transcript_workflows_projection(episode_id, offset, item_limit),
+                }
+            }
             ProjectionScope::Chapter { episode_id, scope } => Projection::Chapter {
                 value: self.chapter_projection(
                     episode_id,

@@ -22,6 +22,21 @@ impl FacadeState {
         input: TranscriptEvidenceInput,
         policy: EvidenceChunkPolicy,
     ) {
+        self.start_evidence_index(
+            envelope,
+            input,
+            policy,
+            EvidenceIndexCompletion::EvidenceRebuild,
+        );
+    }
+
+    pub(super) fn start_evidence_index(
+        &mut self,
+        envelope: &pod0_application::CommandEnvelope,
+        input: TranscriptEvidenceInput,
+        policy: EvidenceChunkPolicy,
+        completion: EvidenceIndexCompletion,
+    ) {
         let Ok(artifact) = build_evidence_artifact(&input, policy) else {
             self.fail(envelope.command_id, CoreFailureCode::InvalidCommand);
             return;
@@ -66,7 +81,7 @@ impl FacadeState {
             generation_id,
             expected_span_count: span_count,
             requested_span_ids: Vec::new(),
-            completion: EvidenceIndexCompletion::EvidenceRebuild,
+            completion,
         });
     }
 
@@ -229,7 +244,10 @@ fn index_spans(artifact: &TranscriptEvidenceArtifact) -> Vec<RecallIndexSpan> {
         .collect()
 }
 
-fn evidence_phase_command_id(generation_id: EvidenceGenerationId, phase: &[u8]) -> CommandId {
+pub(super) fn evidence_phase_command_id(
+    generation_id: EvidenceGenerationId,
+    phase: &[u8],
+) -> CommandId {
     let mut hash = Sha256::new();
     hash.update(b"pod0-evidence-rebuild-phase-v1\0");
     hash.update(generation_id.into_bytes());

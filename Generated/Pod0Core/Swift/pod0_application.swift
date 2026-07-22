@@ -6255,6 +6255,82 @@ public func FfiConverterTypeTranscriptWorkflowAllowedActions_lower(_ value: Tran
 }
 
 
+/**
+ * Platform facts and user-selected provider configuration needed by the
+ * shared kernel to plan a transcript workflow. Durable episode, transcript,
+ * evidence, retry, and fallback state are intentionally not supplied by the
+ * native application.
+ */
+public struct TranscriptWorkflowConfiguration: Equatable, Hashable {
+    public let provider: TranscriptProvider
+    public let model: String
+    public let localAudioUrl: String?
+    public let credentialAvailable: Bool
+    public let autoPublisherEnabled: Bool
+    public let autoProviderEnabled: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(provider: TranscriptProvider, model: String, localAudioUrl: String?, credentialAvailable: Bool, autoPublisherEnabled: Bool, autoProviderEnabled: Bool) {
+        self.provider = provider
+        self.model = model
+        self.localAudioUrl = localAudioUrl
+        self.credentialAvailable = credentialAvailable
+        self.autoPublisherEnabled = autoPublisherEnabled
+        self.autoProviderEnabled = autoProviderEnabled
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptWorkflowConfiguration: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptWorkflowConfiguration: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptWorkflowConfiguration {
+        return
+            try TranscriptWorkflowConfiguration(
+                provider: FfiConverterTypeTranscriptProvider.read(from: &buf),
+                model: FfiConverterString.read(from: &buf),
+                localAudioUrl: FfiConverterOptionString.read(from: &buf),
+                credentialAvailable: FfiConverterBool.read(from: &buf),
+                autoPublisherEnabled: FfiConverterBool.read(from: &buf),
+                autoProviderEnabled: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TranscriptWorkflowConfiguration, into buf: inout [UInt8]) {
+        FfiConverterTypeTranscriptProvider.write(value.provider, into: &buf)
+        FfiConverterString.write(value.model, into: &buf)
+        FfiConverterOptionString.write(value.localAudioUrl, into: &buf)
+        FfiConverterBool.write(value.credentialAvailable, into: &buf)
+        FfiConverterBool.write(value.autoPublisherEnabled, into: &buf)
+        FfiConverterBool.write(value.autoProviderEnabled, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowConfiguration_lift(_ buf: RustBuffer) throws -> TranscriptWorkflowConfiguration {
+    return try FfiConverterTypeTranscriptWorkflowConfiguration.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptWorkflowConfiguration_lower(_ value: TranscriptWorkflowConfiguration) -> RustBuffer {
+    return FfiConverterTypeTranscriptWorkflowConfiguration.lower(value)
+}
+
+
 public struct TranscriptWorkflowFailure: Equatable, Hashable {
     public let code: TranscriptWorkflowFailureCode
     public let safeDetail: String?
@@ -6846,6 +6922,12 @@ public enum ApplicationCommand: Equatable, Hashable {
     case commitRecallIndexCutover
     case commitTranscript(expectedSelectionRevision: StateRevision, artifact: TranscriptArtifactInput
     )
+    case ensureTranscriptWorkflow(episodeId: EpisodeId, origin: TranscriptWorkflowOrigin, configuration: TranscriptWorkflowConfiguration
+    )
+    case retryTranscriptWorkflow(episodeId: EpisodeId, expectedWorkflowRevision: StateRevision, configuration: TranscriptWorkflowConfiguration
+    )
+    case cancelTranscriptWorkflow(episodeId: EpisodeId, expectedWorkflowRevision: StateRevision
+    )
     case commitChapter(expectedSelectionRevision: StateRevision, artifact: ChapterArtifactInput
     )
     case ensurePublisherChapters(episodeId: EpisodeId
@@ -6971,55 +7053,64 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
         case 24: return .commitTranscript(expectedSelectionRevision: try FfiConverterTypeStateRevision.read(from: &buf), artifact: try FfiConverterTypeTranscriptArtifactInput.read(from: &buf)
         )
 
-        case 25: return .commitChapter(expectedSelectionRevision: try FfiConverterTypeStateRevision.read(from: &buf), artifact: try FfiConverterTypeChapterArtifactInput.read(from: &buf)
+        case 25: return .ensureTranscriptWorkflow(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), origin: try FfiConverterTypeTranscriptWorkflowOrigin.read(from: &buf), configuration: try FfiConverterTypeTranscriptWorkflowConfiguration.read(from: &buf)
         )
 
-        case 26: return .ensurePublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
+        case 26: return .retryTranscriptWorkflow(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf), configuration: try FfiConverterTypeTranscriptWorkflowConfiguration.read(from: &buf)
         )
 
-        case 27: return .retryPublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 27: return .cancelTranscriptWorkflow(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 28: return .cancelPublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 28: return .commitChapter(expectedSelectionRevision: try FfiConverterTypeStateRevision.read(from: &buf), artifact: try FfiConverterTypeChapterArtifactInput.read(from: &buf)
         )
 
-        case 29: return .ensureModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), configuredModel: try FfiConverterString.read(from: &buf)
+        case 29: return .ensurePublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
         )
 
-        case 30: return .retryModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), configuredModel: try FfiConverterString.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 30: return .retryPublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 31: return .cancelModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 31: return .cancelPublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 32: return .createNote(text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), author: try FfiConverterTypeNoteAuthor.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
+        case 32: return .ensureModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), configuredModel: try FfiConverterString.read(from: &buf)
         )
 
-        case 33: return .updateNote(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
+        case 33: return .retryModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), configuredModel: try FfiConverterString.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 34: return .setNoteDeleted(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
+        case 34: return .cancelModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 35: return .clearNotes(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 35: return .createNote(text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), author: try FfiConverterTypeNoteAuthor.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
         )
 
-        case 36: return .createClip(clipId: try FfiConverterTypeClipId.read(from: &buf), episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), podcastId: try FfiConverterTypePodcastId.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf), source: try FfiConverterTypeClipSource.read(from: &buf)
+        case 36: return .updateNote(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
         )
 
-        case 37: return .updateClip(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf)
+        case 37: return .setNoteDeleted(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
         )
 
-        case 38: return .setClipDeleted(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
+        case 38: return .clearNotes(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 39: return .clearClips(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 39: return .createClip(clipId: try FfiConverterTypeClipId.read(from: &buf), episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), podcastId: try FfiConverterTypePodcastId.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf), source: try FfiConverterTypeClipSource.read(from: &buf)
         )
 
-        case 40: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
+        case 40: return .updateClip(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf)
         )
 
-        case 41: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 41: return .setClipDeleted(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 42: return .clearClips(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        )
+
+        case 43: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
+        )
+
+        case 44: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -7159,50 +7250,70 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
             FfiConverterTypeTranscriptArtifactInput.write(artifact, into: &buf)
 
 
-        case let .commitChapter(expectedSelectionRevision,artifact):
+        case let .ensureTranscriptWorkflow(episodeId,origin,configuration):
             writeInt(&buf, Int32(25))
-            FfiConverterTypeStateRevision.write(expectedSelectionRevision, into: &buf)
-            FfiConverterTypeChapterArtifactInput.write(artifact, into: &buf)
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeTranscriptWorkflowOrigin.write(origin, into: &buf)
+            FfiConverterTypeTranscriptWorkflowConfiguration.write(configuration, into: &buf)
 
 
-        case let .ensurePublisherChapters(episodeId):
+        case let .retryTranscriptWorkflow(episodeId,expectedWorkflowRevision,configuration):
             writeInt(&buf, Int32(26))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
+            FfiConverterTypeTranscriptWorkflowConfiguration.write(configuration, into: &buf)
 
 
-        case let .retryPublisherChapters(episodeId,expectedWorkflowRevision):
+        case let .cancelTranscriptWorkflow(episodeId,expectedWorkflowRevision):
             writeInt(&buf, Int32(27))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
-        case let .cancelPublisherChapters(episodeId,expectedWorkflowRevision):
+        case let .commitChapter(expectedSelectionRevision,artifact):
             writeInt(&buf, Int32(28))
+            FfiConverterTypeStateRevision.write(expectedSelectionRevision, into: &buf)
+            FfiConverterTypeChapterArtifactInput.write(artifact, into: &buf)
+
+
+        case let .ensurePublisherChapters(episodeId):
+            writeInt(&buf, Int32(29))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+
+
+        case let .retryPublisherChapters(episodeId,expectedWorkflowRevision):
+            writeInt(&buf, Int32(30))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
+
+
+        case let .cancelPublisherChapters(episodeId,expectedWorkflowRevision):
+            writeInt(&buf, Int32(31))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
         case let .ensureModelChapters(episodeId,configuredModel):
-            writeInt(&buf, Int32(29))
+            writeInt(&buf, Int32(32))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterString.write(configuredModel, into: &buf)
 
 
         case let .retryModelChapters(episodeId,configuredModel,expectedWorkflowRevision):
-            writeInt(&buf, Int32(30))
+            writeInt(&buf, Int32(33))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterString.write(configuredModel, into: &buf)
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
         case let .cancelModelChapters(episodeId,expectedWorkflowRevision):
-            writeInt(&buf, Int32(31))
+            writeInt(&buf, Int32(34))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
         case let .createNote(text,kind,author,target):
-            writeInt(&buf, Int32(32))
+            writeInt(&buf, Int32(35))
             FfiConverterString.write(text, into: &buf)
             FfiConverterTypeNoteKind.write(kind, into: &buf)
             FfiConverterTypeNoteAuthor.write(author, into: &buf)
@@ -7210,7 +7321,7 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .updateNote(noteId,expectedNoteRevision,text,kind,target):
-            writeInt(&buf, Int32(33))
+            writeInt(&buf, Int32(36))
             FfiConverterTypeNoteId.write(noteId, into: &buf)
             FfiConverterTypeNoteRevision.write(expectedNoteRevision, into: &buf)
             FfiConverterString.write(text, into: &buf)
@@ -7219,19 +7330,19 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .setNoteDeleted(noteId,expectedNoteRevision,deleted):
-            writeInt(&buf, Int32(34))
+            writeInt(&buf, Int32(37))
             FfiConverterTypeNoteId.write(noteId, into: &buf)
             FfiConverterTypeNoteRevision.write(expectedNoteRevision, into: &buf)
             FfiConverterBool.write(deleted, into: &buf)
 
 
         case let .clearNotes(expectedCollectionRevision):
-            writeInt(&buf, Int32(35))
+            writeInt(&buf, Int32(38))
             FfiConverterTypeStateRevision.write(expectedCollectionRevision, into: &buf)
 
 
         case let .createClip(clipId,episodeId,podcastId,startMilliseconds,endMilliseconds,caption,speakerId,frozenTranscriptText,source):
-            writeInt(&buf, Int32(36))
+            writeInt(&buf, Int32(39))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypePodcastId.write(podcastId, into: &buf)
@@ -7244,7 +7355,7 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .updateClip(clipId,expectedClipRevision,startMilliseconds,endMilliseconds,caption,speakerId,frozenTranscriptText):
-            writeInt(&buf, Int32(37))
+            writeInt(&buf, Int32(40))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeClipRevision.write(expectedClipRevision, into: &buf)
             FfiConverterUInt64.write(startMilliseconds, into: &buf)
@@ -7255,24 +7366,24 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .setClipDeleted(clipId,expectedClipRevision,deleted):
-            writeInt(&buf, Int32(38))
+            writeInt(&buf, Int32(41))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeClipRevision.write(expectedClipRevision, into: &buf)
             FfiConverterBool.write(deleted, into: &buf)
 
 
         case let .clearClips(expectedCollectionRevision):
-            writeInt(&buf, Int32(39))
+            writeInt(&buf, Int32(42))
             FfiConverterTypeStateRevision.write(expectedCollectionRevision, into: &buf)
 
 
         case let .cancelOperation(cancellationId):
-            writeInt(&buf, Int32(40))
+            writeInt(&buf, Int32(43))
             FfiConverterTypeCancellationId.write(cancellationId, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(41))
+            writeInt(&buf, Int32(44))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -8887,6 +8998,12 @@ public enum CoreWakeReason: Equatable, Hashable {
     )
     case modelChapterFinalization(requestId: HostRequestId
     )
+    case transcriptProviderRecovery(episodeId: EpisodeId, attemptId: TranscriptAttemptId, submissionFenceId: TranscriptSubmissionFenceId
+    )
+    case transcriptRetry(episodeId: EpisodeId, attemptId: TranscriptAttemptId, submissionFenceId: TranscriptSubmissionFenceId
+    )
+    case transcriptFinalization(requestId: HostRequestId
+    )
     case unsupported(wireCode: UInt32
     )
 
@@ -8916,7 +9033,16 @@ public struct FfiConverterTypeCoreWakeReason: FfiConverterRustBuffer {
         case 2: return .modelChapterFinalization(requestId: try FfiConverterTypeHostRequestId.read(from: &buf)
         )
 
-        case 3: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 3: return .transcriptProviderRecovery(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), attemptId: try FfiConverterTypeTranscriptAttemptId.read(from: &buf), submissionFenceId: try FfiConverterTypeTranscriptSubmissionFenceId.read(from: &buf)
+        )
+
+        case 4: return .transcriptRetry(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), attemptId: try FfiConverterTypeTranscriptAttemptId.read(from: &buf), submissionFenceId: try FfiConverterTypeTranscriptSubmissionFenceId.read(from: &buf)
+        )
+
+        case 5: return .transcriptFinalization(requestId: try FfiConverterTypeHostRequestId.read(from: &buf)
+        )
+
+        case 6: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -8939,8 +9065,27 @@ public struct FfiConverterTypeCoreWakeReason: FfiConverterRustBuffer {
             FfiConverterTypeHostRequestId.write(requestId, into: &buf)
 
 
-        case let .unsupported(wireCode):
+        case let .transcriptProviderRecovery(episodeId,attemptId,submissionFenceId):
             writeInt(&buf, Int32(3))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeTranscriptAttemptId.write(attemptId, into: &buf)
+            FfiConverterTypeTranscriptSubmissionFenceId.write(submissionFenceId, into: &buf)
+
+
+        case let .transcriptRetry(episodeId,attemptId,submissionFenceId):
+            writeInt(&buf, Int32(4))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypeTranscriptAttemptId.write(attemptId, into: &buf)
+            FfiConverterTypeTranscriptSubmissionFenceId.write(submissionFenceId, into: &buf)
+
+
+        case let .transcriptFinalization(requestId):
+            writeInt(&buf, Int32(5))
+            FfiConverterTypeHostRequestId.write(requestId, into: &buf)
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(6))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -12683,6 +12828,8 @@ public enum Projection: Equatable, Hashable {
     )
     case transcript(value: TranscriptProjection
     )
+    case transcriptWorkflows(value: TranscriptWorkflowsProjection
+    )
     case chapter(value: ChapterArtifactProjection
     )
     case chapterWorkflows(value: ChapterWorkflowsProjection
@@ -12740,22 +12887,25 @@ public struct FfiConverterTypeProjection: FfiConverterRustBuffer {
         case 8: return .transcript(value: try FfiConverterTypeTranscriptProjection.read(from: &buf)
         )
 
-        case 9: return .chapter(value: try FfiConverterTypeChapterArtifactProjection.read(from: &buf)
+        case 9: return .transcriptWorkflows(value: try FfiConverterTypeTranscriptWorkflowsProjection.read(from: &buf)
         )
 
-        case 10: return .chapterWorkflows(value: try FfiConverterTypeChapterWorkflowsProjection.read(from: &buf)
+        case 10: return .chapter(value: try FfiConverterTypeChapterArtifactProjection.read(from: &buf)
         )
 
-        case 11: return .downloads(value: try FfiConverterTypeDownloadWorkflowsProjection.read(from: &buf)
+        case 11: return .chapterWorkflows(value: try FfiConverterTypeChapterWorkflowsProjection.read(from: &buf)
         )
 
-        case 12: return .notes(value: try FfiConverterTypeNotesProjection.read(from: &buf)
+        case 12: return .downloads(value: try FfiConverterTypeDownloadWorkflowsProjection.read(from: &buf)
         )
 
-        case 13: return .clips(value: try FfiConverterTypeClipsProjection.read(from: &buf)
+        case 13: return .notes(value: try FfiConverterTypeNotesProjection.read(from: &buf)
         )
 
-        case 14: return .unsupported(value: try FfiConverterTypeUnsupportedProjection.read(from: &buf)
+        case 14: return .clips(value: try FfiConverterTypeClipsProjection.read(from: &buf)
+        )
+
+        case 15: return .unsupported(value: try FfiConverterTypeUnsupportedProjection.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -12806,33 +12956,38 @@ public struct FfiConverterTypeProjection: FfiConverterRustBuffer {
             FfiConverterTypeTranscriptProjection.write(value, into: &buf)
 
 
-        case let .chapter(value):
+        case let .transcriptWorkflows(value):
             writeInt(&buf, Int32(9))
+            FfiConverterTypeTranscriptWorkflowsProjection.write(value, into: &buf)
+
+
+        case let .chapter(value):
+            writeInt(&buf, Int32(10))
             FfiConverterTypeChapterArtifactProjection.write(value, into: &buf)
 
 
         case let .chapterWorkflows(value):
-            writeInt(&buf, Int32(10))
+            writeInt(&buf, Int32(11))
             FfiConverterTypeChapterWorkflowsProjection.write(value, into: &buf)
 
 
         case let .downloads(value):
-            writeInt(&buf, Int32(11))
+            writeInt(&buf, Int32(12))
             FfiConverterTypeDownloadWorkflowsProjection.write(value, into: &buf)
 
 
         case let .notes(value):
-            writeInt(&buf, Int32(12))
+            writeInt(&buf, Int32(13))
             FfiConverterTypeNotesProjection.write(value, into: &buf)
 
 
         case let .clips(value):
-            writeInt(&buf, Int32(13))
+            writeInt(&buf, Int32(14))
             FfiConverterTypeClipsProjection.write(value, into: &buf)
 
 
         case let .unsupported(value):
-            writeInt(&buf, Int32(14))
+            writeInt(&buf, Int32(15))
             FfiConverterTypeUnsupportedProjection.write(value, into: &buf)
 
         }
@@ -12871,6 +13026,8 @@ public enum ProjectionScope: Equatable, Hashable {
     case evidenceIndex(episodeId: EpisodeId
     )
     case transcript(episodeId: EpisodeId, scope: TranscriptProjectionScope
+    )
+    case transcriptWorkflows(episodeId: EpisodeId?
     )
     case chapter(episodeId: EpisodeId, scope: ChapterProjectionScope
     )
@@ -12926,22 +13083,25 @@ public struct FfiConverterTypeProjectionScope: FfiConverterRustBuffer {
         case 8: return .transcript(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), scope: try FfiConverterTypeTranscriptProjectionScope.read(from: &buf)
         )
 
-        case 9: return .chapter(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), scope: try FfiConverterTypeChapterProjectionScope.read(from: &buf)
+        case 9: return .transcriptWorkflows(episodeId: try FfiConverterOptionTypeEpisodeId.read(from: &buf)
         )
 
-        case 10: return .chapterWorkflows(episodeId: try FfiConverterOptionTypeEpisodeId.read(from: &buf)
+        case 10: return .chapter(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), scope: try FfiConverterTypeChapterProjectionScope.read(from: &buf)
         )
 
-        case 11: return .downloads(episodeId: try FfiConverterOptionTypeEpisodeId.read(from: &buf)
+        case 11: return .chapterWorkflows(episodeId: try FfiConverterOptionTypeEpisodeId.read(from: &buf)
         )
 
-        case 12: return .notes(scope: try FfiConverterTypeNoteProjectionScope.read(from: &buf)
+        case 12: return .downloads(episodeId: try FfiConverterOptionTypeEpisodeId.read(from: &buf)
         )
 
-        case 13: return .clips(scope: try FfiConverterTypeClipProjectionScope.read(from: &buf)
+        case 13: return .notes(scope: try FfiConverterTypeNoteProjectionScope.read(from: &buf)
         )
 
-        case 14: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 14: return .clips(scope: try FfiConverterTypeClipProjectionScope.read(from: &buf)
+        )
+
+        case 15: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -12990,34 +13150,39 @@ public struct FfiConverterTypeProjectionScope: FfiConverterRustBuffer {
             FfiConverterTypeTranscriptProjectionScope.write(scope, into: &buf)
 
 
-        case let .chapter(episodeId,scope):
+        case let .transcriptWorkflows(episodeId):
             writeInt(&buf, Int32(9))
+            FfiConverterOptionTypeEpisodeId.write(episodeId, into: &buf)
+
+
+        case let .chapter(episodeId,scope):
+            writeInt(&buf, Int32(10))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypeChapterProjectionScope.write(scope, into: &buf)
 
 
         case let .chapterWorkflows(episodeId):
-            writeInt(&buf, Int32(10))
-            FfiConverterOptionTypeEpisodeId.write(episodeId, into: &buf)
-
-
-        case let .downloads(episodeId):
             writeInt(&buf, Int32(11))
             FfiConverterOptionTypeEpisodeId.write(episodeId, into: &buf)
 
 
-        case let .notes(scope):
+        case let .downloads(episodeId):
             writeInt(&buf, Int32(12))
+            FfiConverterOptionTypeEpisodeId.write(episodeId, into: &buf)
+
+
+        case let .notes(scope):
+            writeInt(&buf, Int32(13))
             FfiConverterTypeNoteProjectionScope.write(scope, into: &buf)
 
 
         case let .clips(scope):
-            writeInt(&buf, Int32(13))
+            writeInt(&buf, Int32(14))
             FfiConverterTypeClipProjectionScope.write(scope, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(14))
+            writeInt(&buf, Int32(15))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }

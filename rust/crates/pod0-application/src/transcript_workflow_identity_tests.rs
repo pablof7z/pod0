@@ -1,7 +1,7 @@
 use pod0_domain::EpisodeId;
 
 use crate::{
-    TranscriptProvider, transcript_attempt_id, transcript_speaker_id,
+    TranscriptProvider, transcript_attempt_id, transcript_source_revision, transcript_speaker_id,
     transcript_submission_fence_id, transcript_workflow_id,
 };
 
@@ -49,4 +49,23 @@ fn speaker_identity_is_replay_stable_and_scoped_to_source() {
     );
     assert!(transcript_speaker_id(episode, " audio-v1", "speaker-0").is_none());
     assert!(transcript_speaker_id(episode, "audio-v1", " ").is_none());
+}
+
+#[test]
+fn source_revision_preserves_the_legacy_ios_audio_version_contract() {
+    let revision = transcript_source_revision(
+        "https://example.com/episode.mp3",
+        Some("audio/mpeg"),
+        Some(3_600_500),
+    )
+    .expect("valid media");
+    assert_eq!(
+        revision,
+        "224dd593e74d189fd783abc3e5f9ef938ef5eee11132650bb0812d6bd6074a3e"
+    );
+    assert_eq!(
+        transcript_source_revision("https://example.com/episode.mp3", None, None),
+        Some("50eeb91c85bd35e364c4bec0c06be4d7aae8809e6def29b43521e2b920dbb136".into())
+    );
+    assert!(transcript_source_revision("not a URL", None, None).is_none());
 }

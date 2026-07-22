@@ -1,4 +1,4 @@
-use pod0_domain::{EpisodeId, TranscriptArtifact, TranscriptSegmentId};
+use pod0_domain::{EpisodeId, TranscriptArtifact, TranscriptArtifactId, TranscriptSegmentId};
 use rusqlite::params;
 
 use crate::StorageError;
@@ -14,6 +14,13 @@ use crate::transcript_store_read_rows::{
 };
 
 impl TranscriptStore {
+    pub fn artifact(
+        &self,
+        artifact_id: TranscriptArtifactId,
+    ) -> Result<Option<TranscriptArtifact>, StorageError> {
+        self.read(|connection| read_artifact_by_id(connection, artifact_id))
+    }
+
     pub fn selected_artifact(
         &self,
         episode_id: EpisodeId,

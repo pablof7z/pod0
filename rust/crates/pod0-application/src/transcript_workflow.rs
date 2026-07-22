@@ -73,6 +73,20 @@ pub struct TranscriptWorkflowPlanInput {
     pub embedding_space_id: String,
 }
 
+/// Platform facts and user-selected provider configuration needed by the
+/// shared kernel to plan a transcript workflow. Durable episode, transcript,
+/// evidence, retry, and fallback state are intentionally not supplied by the
+/// native application.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TranscriptWorkflowConfiguration {
+    pub provider: TranscriptProvider,
+    pub model: String,
+    pub local_audio_url: Option<String>,
+    pub credential_available: bool,
+    pub auto_publisher_enabled: bool,
+    pub auto_provider_enabled: bool,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct TranscriptWorkflowRequest {
     pub workflow_id: TranscriptWorkflowId,

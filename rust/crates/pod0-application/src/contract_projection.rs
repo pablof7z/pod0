@@ -9,6 +9,7 @@ use crate::{
     DownloadWorkflowsProjection, EvidenceIndexProjection, MAX_PROJECTION_ITEMS,
     NoteProjectionScope, NotesProjection, PlaybackProjection, RecallResultProjection,
     TranscriptCommitReceipt, TranscriptProjection, TranscriptProjectionScope,
+    TranscriptWorkflowsProjection,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
@@ -31,6 +32,9 @@ pub enum ProjectionScope {
     Transcript {
         episode_id: EpisodeId,
         scope: TranscriptProjectionScope,
+    },
+    TranscriptWorkflows {
+        episode_id: Option<EpisodeId>,
     },
     Chapter {
         episode_id: EpisodeId,
@@ -108,6 +112,9 @@ pub enum Projection {
     },
     Transcript {
         value: TranscriptProjection,
+    },
+    TranscriptWorkflows {
+        value: TranscriptWorkflowsProjection,
     },
     Chapter {
         value: ChapterArtifactProjection,

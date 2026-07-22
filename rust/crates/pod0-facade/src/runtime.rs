@@ -170,6 +170,9 @@ impl Pod0Facade {
             if requests.len() < maximum && state.prepare_model_chapter_host_request() {
                 changed = true;
             }
+            if requests.len() < maximum && state.prepare_transcript_host_request() {
+                changed = true;
+            }
             let remaining = maximum
                 .saturating_sub(requests.len())
                 .min(state.host_queue.len());

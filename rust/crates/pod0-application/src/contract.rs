@@ -1,14 +1,16 @@
 use pod0_domain::{
     AutoDownloadPolicy, CancellationId, ChapterArtifactInput, ClipId, ClipRevision, ClipSource,
-    CommandId, CompletionStatus, ContentDigest, EpisodeId, NoteAuthor, NoteId, NoteKind,
-    NoteRevision, NoteTarget, PlaybackRatePermille, PlaybackSegment, PlaybackSleepMode, PodcastId,
-    QueueEntry, QueueEntryId, RecallConfigurationInput, SpeakerId, StateRevision,
-    TranscriptArtifactInput, UnixTimestampMilliseconds,
+    CommandId, ContentDigest, EpisodeId, NoteAuthor, NoteId, NoteKind, NoteRevision, NoteTarget,
+    PodcastId, RecallConfigurationInput, SpeakerId, StateRevision, TranscriptArtifactInput,
+    UnixTimestampMilliseconds,
 };
 
-use crate::{EvidenceChunkPolicy, RecallQuery, TranscriptEvidenceInput};
+use crate::{
+    EvidenceChunkPolicy, PlaybackCommand, RecallQuery, TranscriptEvidenceInput,
+    TranscriptWorkflowConfiguration, TranscriptWorkflowOrigin,
+};
 
-pub const FACADE_CONTRACT_VERSION: u32 = 32;
+pub const FACADE_CONTRACT_VERSION: u32 = 33;
 pub const MAX_PROJECTION_ITEMS: u16 = 200;
 pub const MAX_OPERATION_ITEMS: usize = 32;
 pub const MAX_HOST_REQUEST_BATCH: u16 = 64;
@@ -129,6 +131,20 @@ pub enum ApplicationCommand {
         expected_selection_revision: StateRevision,
         artifact: TranscriptArtifactInput,
     },
+    EnsureTranscriptWorkflow {
+        episode_id: EpisodeId,
+        origin: TranscriptWorkflowOrigin,
+        configuration: TranscriptWorkflowConfiguration,
+    },
+    RetryTranscriptWorkflow {
+        episode_id: EpisodeId,
+        expected_workflow_revision: StateRevision,
+        configuration: TranscriptWorkflowConfiguration,
+    },
+    CancelTranscriptWorkflow {
+        episode_id: EpisodeId,
+        expected_workflow_revision: StateRevision,
+    },
     CommitChapter {
         expected_selection_revision: StateRevision,
         artifact: ChapterArtifactInput,
@@ -212,72 +228,4 @@ pub enum ApplicationCommand {
     Unsupported {
         wire_code: u32,
     },
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
-pub enum PlaybackCommand {
-    Select {
-        episode_id: EpisodeId,
-        segment: Option<PlaybackSegment>,
-        label: Option<String>,
-    },
-    Restore,
-    Play,
-    Pause,
-    Seek {
-        position_milliseconds: u64,
-    },
-    NextChapter {
-        context: crate::ChapterPlaybackContext,
-        position_milliseconds: u64,
-    },
-    PreviousChapter {
-        context: crate::ChapterPlaybackContext,
-        position_milliseconds: u64,
-    },
-    Enqueue {
-        entry: QueueEntry,
-        placement: QueuePlacement,
-    },
-    RemoveQueueEntry {
-        queue_entry_id: QueueEntryId,
-    },
-    RemoveEpisodeFromQueue {
-        episode_id: EpisodeId,
-    },
-    ReplaceQueueOrder {
-        queue_entry_ids: Vec<QueueEntryId>,
-    },
-    ClearQueue,
-    AdvanceQueue,
-    SetRate {
-        rate: PlaybackRatePermille,
-    },
-    SetSleepTimer {
-        mode: PlaybackSleepMode,
-    },
-    SetPreferences {
-        auto_mark_played_at_natural_end: bool,
-        auto_play_next: bool,
-        auto_skip_ads: bool,
-    },
-    SetCompletion {
-        episode_id: EpisodeId,
-        completion: CompletionStatus,
-    },
-    ResetProgress {
-        episode_id: EpisodeId,
-    },
-    Checkpoint {
-        episode_id: EpisodeId,
-        position_milliseconds: u64,
-    },
-    NativeTimerFired,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
-pub enum QueuePlacement {
-    Back,
-    Next,
-    Unsupported { wire_code: u32 },
 }

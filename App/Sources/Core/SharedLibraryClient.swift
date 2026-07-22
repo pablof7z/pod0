@@ -236,8 +236,8 @@ final class SharedLibraryClient {
             receiveClips(revision: envelope.stateRevision.value)
         case .downloads:
             receiveDownloads(revision: envelope.stateRevision.value)
-        case .podcastDetail, .episodeDetail, .recall, .evidenceIndex, .transcript, .chapter,
-             .unsupported:
+        case .podcastDetail, .episodeDetail, .recall, .evidenceIndex, .transcript,
+             .transcriptWorkflows, .chapter, .unsupported:
             break
         }
     }

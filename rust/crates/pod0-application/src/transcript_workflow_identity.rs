@@ -26,6 +26,27 @@ pub fn transcript_workflow_id(
     TranscriptWorkflowId::from_bytes(hash.first_16())
 }
 
+/// Matches the existing iOS audio-version contract so selected transcripts
+/// remain current across the source-of-truth cutover.
+#[must_use]
+pub fn transcript_source_revision(
+    enclosure_url: &str,
+    enclosure_mime_type: Option<&str>,
+    duration_milliseconds: Option<u64>,
+) -> Option<String> {
+    crate::normalize_media_url(enclosure_url)?;
+    let seconds = duration_milliseconds.map_or(0.0, |value| value as f64 / 1_000.0);
+    let duration = if seconds.fract() == 0.0 {
+        format!("{seconds:.1}")
+    } else {
+        seconds.to_string()
+    };
+    let parts = [enclosure_url, enclosure_mime_type.unwrap_or(""), &duration];
+    let mut hash = Sha256::new();
+    hash.update(parts.join("\u{1f}").as_bytes());
+    Some(format!("{:x}", hash.finalize()))
+}
+
 #[must_use]
 pub fn transcript_attempt_id(
     workflow_id: TranscriptWorkflowId,

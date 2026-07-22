@@ -8,9 +8,10 @@ use pod0_application::{
     SubscriptionRegistry,
 };
 use pod0_domain::{
-    CommandId, HostRequestId, ListeningDomainSnapshot, RecallQueryId, StateRevision, SubscriptionId,
+    CommandId, EpisodeId, HostRequestId, ListeningDomainSnapshot, RecallQueryId, StateRevision,
+    SubscriptionId,
 };
-use pod0_recall_index::{RECALL_INDEX_DIMENSIONS, RecallIndex};
+use pod0_recall_index::RecallIndex;
 use pod0_storage::{EvidenceStore, LibraryStore, TranscriptStore};
 
 use crate::ProjectionSubscriber;
@@ -22,6 +23,7 @@ use crate::runtime_playback_state::PlaybackRuntime;
 use crate::runtime_recall_cutover::PendingRecallCutover;
 use crate::runtime_recall_interrupts::{RecallInterruptLease, RecallInterruptRegistry};
 use crate::runtime_recall_state::{PendingRecall, RecallWorkflow};
+use crate::runtime_state_defaults::{default_recall_index, empty_listening_snapshot};
 
 pub(super) struct FacadeState {
     clock: Arc<dyn Clock>,
@@ -48,6 +50,9 @@ pub(super) struct FacadeState {
         BTreeMap<HostRequestId, pod0_application::HostObservationEnvelope>,
     pub(super) pending_model_chapters: BTreeMap<HostRequestId, pod0_domain::EpisodeId>,
     pub(super) pending_model_observations:
+        BTreeMap<HostRequestId, pod0_application::HostObservationEnvelope>,
+    pub(super) pending_transcripts: BTreeMap<HostRequestId, EpisodeId>,
+    pub(super) pending_transcript_observations:
         BTreeMap<HostRequestId, pod0_application::HostObservationEnvelope>,
     pub(super) pending_core_wakes: BTreeMap<HostRequestId, CoreWakeReason>,
     pub(super) pending_evidence_indexes: BTreeMap<HostRequestId, PendingEvidenceIndex>,
@@ -91,6 +96,8 @@ impl Default for FacadeState {
             pending_download_observations: BTreeMap::new(),
             pending_model_chapters: BTreeMap::new(),
             pending_model_observations: BTreeMap::new(),
+            pending_transcripts: BTreeMap::new(),
+            pending_transcript_observations: BTreeMap::new(),
             pending_core_wakes: BTreeMap::new(),
             pending_evidence_indexes: BTreeMap::new(),
             pending_recall_cutovers: BTreeMap::new(),
@@ -176,6 +183,7 @@ impl FacadeState {
         state.rehydrate_publisher_chapter_workflows()?;
         state.rehydrate_download_workflows()?;
         state.rehydrate_model_chapter_workflows()?;
+        state.rehydrate_transcript_workflows()?;
         Ok(state)
     }
 
@@ -265,34 +273,5 @@ impl FacadeState {
             let excess = self.operations.len() - pod0_application::MAX_OPERATION_ITEMS;
             self.operations.drain(..excess);
         }
-    }
-}
-
-fn default_recall_index() -> RecallIndex {
-    let mut index = RecallIndex::in_memory(RECALL_INDEX_DIMENSIONS)
-        .expect("in-memory recall index must initialize");
-    index
-        .activate_embedding_space(pod0_domain::RecallConfiguration::default().embedding_space_id)
-        .expect("the default embedding space must initialize");
-    index
-}
-
-fn empty_listening_snapshot() -> ListeningDomainSnapshot {
-    use pod0_domain::{ListeningPlaybackPolicy, PlaybackRatePermille, PlaybackSleepMode};
-    ListeningDomainSnapshot {
-        podcasts: Vec::new(),
-        subscriptions: Vec::new(),
-        episodes: Vec::new(),
-        playback: ListeningPlaybackPolicy {
-            active_episode_id: None,
-            active_segment: None,
-            active_label: None,
-            queue: Vec::new(),
-            rate: PlaybackRatePermille { value: 1_000 },
-            sleep_mode: PlaybackSleepMode::Off,
-            auto_mark_played_at_natural_end: true,
-            auto_play_next: true,
-            revision: StateRevision::INITIAL,
-        },
     }
 }

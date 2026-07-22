@@ -20,7 +20,9 @@ impl FacadeState {
             return false;
         };
         self.schedule_core_wake(
-            record,
+            record.command_id,
+            record.cancellation_id,
+            record.issued_revision,
             wake_at,
             CoreWakeReason::ModelChapterRetry {
                 episode_id: record.episode_id,
@@ -38,7 +40,9 @@ impl FacadeState {
             return false;
         };
         self.schedule_core_wake(
-            record,
+            record.command_id,
+            record.cancellation_id,
+            record.issued_revision,
             self.now()
                 .value
                 .saturating_add(MODEL_FINALIZATION_RETRY_MILLISECONDS),
@@ -99,6 +103,44 @@ impl FacadeState {
                 }
                 true
             }
+            CoreWakeReason::TranscriptProviderRecovery {
+                episode_id,
+                attempt_id,
+                submission_fence_id,
+            } => self.finish_transcript_wake(
+                episode_id,
+                attempt_id,
+                submission_fence_id,
+                false,
+                reached,
+            ),
+            CoreWakeReason::TranscriptRetry {
+                episode_id,
+                attempt_id,
+                submission_fence_id,
+            } => self.finish_transcript_wake(
+                episode_id,
+                attempt_id,
+                submission_fence_id,
+                true,
+                reached,
+            ),
+            CoreWakeReason::TranscriptFinalization { request_id } => {
+                let record = self.pending_transcript_record(request_id);
+                if reached
+                    && record
+                        .as_ref()
+                        .is_some_and(|record| self.finalize_transcript_completion(record))
+                {
+                    return true;
+                }
+                if let Some(record) = record.filter(|record| {
+                    record.stage == pod0_storage::StoredTranscriptWorkflowStage::CompletionObserved
+                }) {
+                    self.schedule_transcript_finalization_wake(&record);
+                }
+                true
+            }
             CoreWakeReason::Unsupported { .. } => true,
         }
     }
@@ -143,9 +185,11 @@ impl FacadeState {
             })
     }
 
-    fn schedule_core_wake(
+    pub(super) fn schedule_core_wake(
         &mut self,
-        record: &ModelChapterWorkflowRecord,
+        command_id: pod0_domain::CommandId,
+        cancellation_id: pod0_domain::CancellationId,
+        issued_revision: pod0_domain::StateRevision,
         wake_at_ms: i64,
         reason: CoreWakeReason,
     ) -> bool {
@@ -159,9 +203,9 @@ impl FacadeState {
         }
         let request = HostRequestEnvelope {
             request_id: wake_request_id(reason, wake_at_ms),
-            command_id: record.command_id,
-            cancellation_id: record.cancellation_id,
-            issued_revision: record.issued_revision,
+            command_id,
+            cancellation_id,
+            issued_revision,
             deadline_at: None,
             request: HostRequest::ScheduleCoreWake {
                 wake_at: UnixTimestampMilliseconds::new(wake_at_ms),
@@ -183,6 +227,9 @@ fn reason_matches_record(reason: CoreWakeReason, record: &ModelChapterWorkflowRe
         CoreWakeReason::ModelChapterFinalization { request_id } => {
             Some(request_id) == record.request_id
         }
+        CoreWakeReason::TranscriptProviderRecovery { .. }
+        | CoreWakeReason::TranscriptRetry { .. }
+        | CoreWakeReason::TranscriptFinalization { .. } => false,
         CoreWakeReason::Unsupported { .. } => false,
     }
 }
@@ -204,6 +251,30 @@ fn wake_request_id(reason: CoreWakeReason, wake_at_ms: i64) -> HostRequestId {
         }
         CoreWakeReason::ModelChapterFinalization { request_id } => {
             hash.update([2]);
+            hash.update(request_id.into_bytes());
+        }
+        CoreWakeReason::TranscriptProviderRecovery {
+            episode_id,
+            attempt_id,
+            submission_fence_id,
+        } => {
+            hash.update([3]);
+            hash.update(episode_id.into_bytes());
+            hash.update(attempt_id.into_bytes());
+            hash.update(submission_fence_id.into_bytes());
+        }
+        CoreWakeReason::TranscriptRetry {
+            episode_id,
+            attempt_id,
+            submission_fence_id,
+        } => {
+            hash.update([4]);
+            hash.update(episode_id.into_bytes());
+            hash.update(attempt_id.into_bytes());
+            hash.update(submission_fence_id.into_bytes());
+        }
+        CoreWakeReason::TranscriptFinalization { request_id } => {
+            hash.update([5]);
             hash.update(request_id.into_bytes());
         }
         CoreWakeReason::Unsupported { wire_code } => {
