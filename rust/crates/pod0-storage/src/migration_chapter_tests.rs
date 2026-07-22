@@ -186,7 +186,14 @@ fn schema_13_imported_history_revalidates_and_activates_after_upgrade() {
     rusqlite::Connection::open(&fixture.target)
         .unwrap()
         .execute_batch(
-            "DROP TABLE pod0_transcript_evidence_requests;
+            "DROP TABLE pod0_scheduled_completion_evidence;
+             DROP TABLE pod0_generated_artifacts;
+             DROP TABLE pod0_scheduled_command_receipts;
+             DROP TABLE pod0_scheduled_attempts;
+             DROP TABLE pod0_scheduled_occurrences;
+             DROP TABLE pod0_scheduled_tasks;
+             DROP TABLE pod0_scheduled_agent_authority;
+             DROP TABLE pod0_transcript_evidence_requests;
              DROP TABLE pod0_transcript_attempts;
              DROP TABLE pod0_transcript_workflows;
              DROP TABLE pod0_transcript_workflow_import_rows;

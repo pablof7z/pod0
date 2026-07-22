@@ -60,7 +60,7 @@ pub fn reconcile_scheduled_occurrence(
     definition: &ScheduledTaskDefinition,
     observed_at: UnixTimestampMilliseconds,
 ) -> Result<Option<ScheduledAgentOccurrenceState>, ScheduledAgentPolicyError> {
-    validate_definition(definition)?;
+    validate_scheduled_task_definition(definition)?;
     if definition.next_run_at > observed_at {
         return Ok(None);
     }
@@ -137,7 +137,7 @@ pub fn advance_scheduled_task_after_completion(
     occurrence: &ScheduledAgentOccurrenceState,
     completed_at: UnixTimestampMilliseconds,
 ) -> Result<ScheduledTaskDefinition, ScheduledAgentPolicyError> {
-    validate_definition(definition)?;
+    validate_scheduled_task_definition(definition)?;
     if occurrence.stage != ScheduledAgentStage::Succeeded
         || occurrence.occurrence_id
             != scheduled_occurrence_id(definition.task_id, definition.next_run_at)
@@ -181,7 +181,7 @@ impl ScheduledAgentOccurrenceState {
     }
 }
 
-fn validate_definition(
+pub fn validate_scheduled_task_definition(
     definition: &ScheduledTaskDefinition,
 ) -> Result<(), ScheduledAgentPolicyError> {
     let valid = !definition.label.trim().is_empty()

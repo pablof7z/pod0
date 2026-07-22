@@ -120,6 +120,16 @@ mod note_store_model;
 mod note_store_read;
 mod recall_configuration_store;
 mod retained_orphan_parent;
+mod scheduled_agent_store;
+mod scheduled_agent_store_codec;
+mod scheduled_agent_store_completion;
+mod scheduled_agent_store_model;
+mod scheduled_agent_store_observation_fingerprint;
+mod scheduled_agent_store_observations;
+mod scheduled_agent_store_read;
+mod scheduled_agent_store_reconcile;
+mod scheduled_agent_store_recovery;
+mod scheduled_agent_store_tasks;
 mod schema;
 mod schema_chapter_workflows;
 mod schema_chapters;
@@ -131,6 +141,7 @@ mod schema_library;
 mod schema_migrations;
 mod schema_model_chapter_workflows;
 mod schema_notes;
+mod schema_scheduled_agent;
 mod schema_transcript_workflows;
 mod schema_transcripts;
 mod transcript_authority;
@@ -226,6 +237,8 @@ mod migration_chapter_tests;
 #[cfg(test)]
 mod migration_chapter_workflow_tests;
 #[cfg(test)]
+mod migration_scheduled_agent_tests;
+#[cfg(test)]
 mod migration_tests;
 #[cfg(test)]
 mod migration_transcript_history_tests;
@@ -235,6 +248,14 @@ mod note_import_tests;
 mod recovery_test_support;
 #[cfg(test)]
 mod recovery_tests;
+#[cfg(test)]
+mod scheduled_agent_store_lifecycle_tests;
+#[cfg(test)]
+mod scheduled_agent_store_schema_tests;
+#[cfg(test)]
+mod scheduled_agent_store_test_support;
+#[cfg(test)]
+mod scheduled_agent_store_tests;
 #[cfg(test)]
 mod transcript_import_empty_tests;
 #[cfg(test)]

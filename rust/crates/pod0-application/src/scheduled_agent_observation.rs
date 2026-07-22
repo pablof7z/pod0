@@ -155,6 +155,27 @@ pub fn cancel_scheduled_agent(
     ScheduledAgentTransition::Applied
 }
 
+pub fn mark_scheduled_agent_ambiguous_after_restart(
+    state: &mut ScheduledAgentOccurrenceState,
+    observed_at: UnixTimestampMilliseconds,
+) -> ScheduledAgentTransition {
+    if state.stage == ScheduledAgentStage::Ambiguous {
+        return ScheduledAgentTransition::IgnoredDuplicate;
+    }
+    if state.stage != ScheduledAgentStage::HostAccepted {
+        return ScheduledAgentTransition::IgnoredStale;
+    }
+    state.stage = ScheduledAgentStage::Ambiguous;
+    state.failure = Some(failure(
+        ScheduledAgentFailureCode::UnsafeToRetry,
+        Some("Provider acceptance was persisted before process termination.".to_owned()),
+        false,
+    ));
+    state.revision = next_revision(state.revision);
+    state.updated_at = observed_at;
+    ScheduledAgentTransition::Applied
+}
+
 fn observation_identity(
     observation: &ScheduledAgentExecutionObservation,
 ) -> Option<(ScheduledOccurrenceId, ScheduledAttemptId)> {

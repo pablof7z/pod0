@@ -53,6 +53,10 @@ pub use crate::note_import_model::{
 pub use crate::note_import_store::{commit_note_cutover, read_note_import};
 pub use crate::note_store_model::NoteCollectionSnapshot;
 pub use crate::recall_configuration_store::RecallConfigurationMutation;
+pub use crate::scheduled_agent_store::{
+    ScheduledAgentStore, scheduled_agent_store_is_authoritative,
+};
+pub use crate::scheduled_agent_store_model::*;
 pub use crate::transcript_import::{TranscriptImportClock, TranscriptImporter};
 pub use crate::transcript_import_model::{
     LegacyTranscriptSourceKind, TranscriptBackupEvidence, TranscriptImportEntrySummary,

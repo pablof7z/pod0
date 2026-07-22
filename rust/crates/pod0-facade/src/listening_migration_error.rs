@@ -57,7 +57,12 @@ impl From<StorageError> for LegacyListeningMigrationError {
             | StorageError::StaleDownloadAttempt
             | StorageError::TranscriptWorkflowConflict
             | StorageError::TranscriptWorkflowNotFound
-            | StorageError::StaleTranscriptAttempt => Self::TargetBlocked,
+            | StorageError::StaleTranscriptAttempt
+            | StorageError::ScheduledAgentCommandConflict
+            | StorageError::ScheduledAgentWorkflowConflict
+            | StorageError::ScheduledAgentTaskNotFound
+            | StorageError::ScheduledAgentWorkflowNotFound
+            | StorageError::StaleScheduledAgentAttempt => Self::TargetBlocked,
             StorageError::Io { .. } | StorageError::Sqlite { .. } => Self::StorageUnavailable,
         }
     }

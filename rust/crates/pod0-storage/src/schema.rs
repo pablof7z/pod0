@@ -228,6 +228,9 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
     if version >= 20 {
         crate::schema_transcript_workflows::validate_transcript_workflow_schema(connection)?;
     }
+    if version >= 21 {
+        crate::schema_scheduled_agent::validate_scheduled_agent_schema(connection)?;
+    }
     if version >= 8 {
         crate::schema_notes::validate_notes_schema(connection)?;
     }

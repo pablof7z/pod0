@@ -29,7 +29,14 @@ fn schema_14_through_current_preserves_and_adopts_current_publisher_chapters() {
     rusqlite::Connection::open(&fixture.target)
         .unwrap()
         .execute_batch(
-            "DROP TABLE pod0_transcript_evidence_requests;
+            "DROP TABLE pod0_scheduled_completion_evidence;
+             DROP TABLE pod0_generated_artifacts;
+             DROP TABLE pod0_scheduled_command_receipts;
+             DROP TABLE pod0_scheduled_attempts;
+             DROP TABLE pod0_scheduled_occurrences;
+             DROP TABLE pod0_scheduled_tasks;
+             DROP TABLE pod0_scheduled_agent_authority;
+             DROP TABLE pod0_transcript_evidence_requests;
              DROP TABLE pod0_transcript_attempts;
              DROP TABLE pod0_transcript_workflows;
              DROP TABLE pod0_transcript_workflow_import_rows;
@@ -76,7 +83,14 @@ fn schema_15_to_current_preserves_publisher_state_and_adds_fenced_model_storage(
     let connection = rusqlite::Connection::open(&fixture.target).unwrap();
     connection
         .execute_batch(
-            "DROP TABLE pod0_transcript_evidence_requests;
+            "DROP TABLE pod0_scheduled_completion_evidence;
+             DROP TABLE pod0_generated_artifacts;
+             DROP TABLE pod0_scheduled_command_receipts;
+             DROP TABLE pod0_scheduled_attempts;
+             DROP TABLE pod0_scheduled_occurrences;
+             DROP TABLE pod0_scheduled_tasks;
+             DROP TABLE pod0_scheduled_agent_authority;
+             DROP TABLE pod0_transcript_evidence_requests;
              DROP TABLE pod0_transcript_attempts;
              DROP TABLE pod0_transcript_workflows;
              DROP TABLE pod0_transcript_workflow_import_rows;
@@ -102,7 +116,7 @@ fn schema_15_to_current_preserves_publisher_state_and_adds_fenced_model_storage(
             CommandId::from_parts(70, 15),
         )
         .unwrap();
-    assert_eq!(report.applied_versions, [16, 17, 18, 19, 20]);
+    assert_eq!(report.applied_versions, [16, 17, 18, 19, 20, 21]);
 
     let reopened = crate::LibraryStore::open_authoritative(&fixture.target).unwrap();
     assert_eq!(

@@ -5,7 +5,7 @@ use pod0_domain::CommandId;
 
 pub const APPLICATION_ID: i64 = 0x504F_4430;
 pub const MIN_SUPPORTED_SCHEMA_VERSION: u32 = 0;
-pub const CURRENT_SCHEMA_VERSION: u32 = 20;
+pub const CURRENT_SCHEMA_VERSION: u32 = 21;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AccessMode {
@@ -164,6 +164,11 @@ pub enum StorageError {
     TranscriptWorkflowConflict,
     TranscriptWorkflowNotFound,
     StaleTranscriptAttempt,
+    ScheduledAgentCommandConflict,
+    ScheduledAgentWorkflowConflict,
+    ScheduledAgentTaskNotFound,
+    ScheduledAgentWorkflowNotFound,
+    StaleScheduledAgentAttempt,
     NewerEvidenceSchema {
         stored: u32,
         supported: u32,
@@ -228,6 +233,11 @@ impl StorageError {
             Self::TranscriptWorkflowConflict => "transcript_workflow_conflict",
             Self::TranscriptWorkflowNotFound => "transcript_workflow_not_found",
             Self::StaleTranscriptAttempt => "stale_transcript_attempt",
+            Self::ScheduledAgentCommandConflict => "scheduled_agent_command_conflict",
+            Self::ScheduledAgentWorkflowConflict => "scheduled_agent_workflow_conflict",
+            Self::ScheduledAgentTaskNotFound => "scheduled_agent_task_not_found",
+            Self::ScheduledAgentWorkflowNotFound => "scheduled_agent_workflow_not_found",
+            Self::StaleScheduledAgentAttempt => "stale_scheduled_agent_attempt",
             Self::NewerEvidenceSchema { .. } => "newer_evidence_schema",
             Self::Interrupted => "migration_interrupted",
         }
