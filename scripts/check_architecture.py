@@ -37,6 +37,7 @@ def main() -> int:
         (scripts / "check_recall_privacy.py", True),
         (scripts / "check_sqlitevec_absence.py", True),
         (scripts / "check_transcript_single_writer.py", True),
+        (scripts / "check_transcript_capability_boundary.py", True),
         (scripts / "check_chapter_capability_boundary.py", True),
         (scripts / "check_chapter_playback_staging.py", True),
         (scripts / "check_chapter_single_writer.py", True),

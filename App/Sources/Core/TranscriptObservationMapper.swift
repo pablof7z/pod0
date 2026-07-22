@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import Pod0Core
 
@@ -18,6 +19,10 @@ struct TranscriptObservationContext: Sendable, Equatable {
 /// Maps raw native/provider observations into the typed Rust command contract.
 /// It owns no durable state or transcript-selection policy.
 enum TranscriptObservationMapper {
+    static func payloadDigest(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
     static func map(
         _ transcript: Transcript,
         context: TranscriptObservationContext

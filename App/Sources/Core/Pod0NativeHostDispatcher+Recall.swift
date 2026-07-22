@@ -21,10 +21,12 @@ extension Pod0NativeHostDispatcher {
                 await recorder.record(observation, in: facade)
                 completion()
             }
-        case .executeChapterModel, .recoverChapterModelOperation, .scheduleCoreWake:
+        case .executeChapterModel, .recoverChapterModelOperation,
+             .executeTranscriptCapability, .scheduleCoreWake:
             let recorder = durableObservationRecorder
             let persistForRelaunch = switch envelope.request {
-            case .executeChapterModel, .recoverChapterModelOperation: true
+            case .executeChapterModel, .recoverChapterModelOperation,
+                 .executeTranscriptCapability: true
             default: false
             }
             let task = Task { @MainActor [weak self] in

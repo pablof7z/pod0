@@ -36,6 +36,7 @@ final class Pod0NativeHostDispatcher {
     let playbackHost: any CorePlaybackHosting
     private let maximumConcurrentTasks: Int
     let recallHost: any CoreRecallHosting
+    let transcriptHost: any CoreTranscriptHosting
     let recallObservationRecorder = CoreRecallObservationRecorder()
     let publisherObservationRecorder = CorePublisherChapterObservationRecorder()
     let durableObservationRecorder: CoreDurableObservationRecorder
@@ -60,6 +61,7 @@ final class Pod0NativeHostDispatcher {
         chapterModelHost: any CoreChapterModelHosting = CoreChapterModelHost(),
         playbackHost: any CorePlaybackHosting,
         recallHost: any CoreRecallHosting = UnavailableCoreRecallHost(),
+        transcriptHost: any CoreTranscriptHosting = CoreTranscriptHost(),
         maximumConcurrentTasks: Int = 8,
         now: @escaping @MainActor () -> Date = Date.init,
         observationOutbox: NativeHostObservationOutbox? = nil
@@ -70,6 +72,7 @@ final class Pod0NativeHostDispatcher {
         self.chapterModelHost = chapterModelHost
         self.playbackHost = playbackHost
         self.recallHost = recallHost
+        self.transcriptHost = transcriptHost
         self.observationOutbox = observationOutbox
         self.durableObservationRecorder = CoreDurableObservationRecorder(
             outbox: observationOutbox
@@ -181,6 +184,21 @@ final class Pod0NativeHostDispatcher {
                 return
             }
             startChapterModelTask(envelope, delivery: delivery)
+        case .executeTranscriptCapability:
+            guard observationOutbox != nil else {
+                finish(
+                    envelope,
+                    sequenceNumber: 0,
+                    observation: .failed(
+                        code: .platformFailure,
+                        safeDetail: "Durable transcript observation staging is unavailable"
+                    ),
+                    delivery: delivery,
+                    remember: false
+                )
+                return
+            }
+            startTranscriptTask(envelope, delivery: delivery)
         case .scheduleCoreWake(let wakeAt, let reason):
             startCoreWakeTask(
                 envelope,

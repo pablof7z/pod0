@@ -291,6 +291,17 @@
       "includes": ["App/Sources/Transcript/AppleNativeSTTClient.swift", "App/Sources/Transcript/AppleSTT+TranscriptAdapter.swift"]
     },
     {
+      "id": "native-transcript-provider-status-capability",
+      "classification": "native_by_design",
+      "current_owner": "Swift typed provider status executor",
+      "target_owner": "Swift and Kotlin platform capability adapters",
+      "reason": "Credential custody and bounded provider HTTP execution remain native capabilities while Rust owns provider choice, workflow state, retry, and recovery timing.",
+      "boundary": "Execute exactly one authorized typed status request and return raw bounded status or transcript evidence; never poll, retry, fall back, or persist workflow state.",
+      "persisted_state": "None; external operation identity and recovery state remain in Rust.",
+      "priority": "keep_native",
+      "includes": ["App/Sources/Transcript/AssemblyAITranscriptClient+Status.swift"]
+    },
+    {
       "id": "shared-utility-llm-policy",
       "classification": "shared_rust_now",
       "current_owner": "Swift utility-model request and provider error mapping",

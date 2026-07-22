@@ -90,6 +90,8 @@ mod transcript_workflow;
 mod transcript_workflow_capability;
 mod transcript_workflow_failure;
 mod transcript_workflow_identity;
+#[cfg(test)]
+mod transcript_workflow_identity_tests;
 mod transcript_workflow_policy;
 #[cfg(test)]
 mod transcript_workflow_tests;

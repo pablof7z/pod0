@@ -81,7 +81,7 @@ actor AssemblyAITranscriptClient {
 
     /// Decoder shared across calls - `JSONDecoder` is Sendable and reentrant
     /// after construction, so a single instance is fine.
-    private static let decoder = JSONDecoder()
+    static let decoder = JSONDecoder()
 
     /// Submit request timeout - short, the submit endpoint just validates and
     /// returns immediately with a queued job ID.
@@ -96,9 +96,9 @@ actor AssemblyAITranscriptClient {
     /// 3-hour podcast at AssemblyAI's typical real-time factor.
     static let pollTimeout: TimeInterval = 1_800
 
-    private let baseURL: URL
-    private let session: URLSession
-    private let credential: @Sendable () throws -> String?
+    let baseURL: URL
+    let session: URLSession
+    let credential: @Sendable () throws -> String?
 
     init(
         baseURL: URL = URL(string: "https://api.assemblyai.com")!,

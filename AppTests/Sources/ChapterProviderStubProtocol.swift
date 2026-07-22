@@ -8,6 +8,7 @@ final class ChapterProviderStubProtocol: URLProtocol, @unchecked Sendable {
     nonisolated(unsafe) static var responseBody = Data()
     nonisolated(unsafe) static var error: Error?
     nonisolated(unsafe) static var lastRequest: URLRequest?
+    nonisolated(unsafe) static var requestCount = 0
 
     static func reset() {
         responseStatus = 200
@@ -15,12 +16,14 @@ final class ChapterProviderStubProtocol: URLProtocol, @unchecked Sendable {
         responseBody = Data()
         error = nil
         lastRequest = nil
+        requestCount = 0
     }
 
     override class func canInit(with _: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
+        Self.requestCount += 1
         var captured = request
         if let stream = request.httpBodyStream {
             stream.open()

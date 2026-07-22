@@ -5,6 +5,17 @@ import XCTest
 
 @MainActor
 final class NativeHostObservationOutboxTests: XCTestCase {
+    func testStandardLimitsCanStageMaximumTranscriptObservation() {
+        XCTAssertGreaterThanOrEqual(
+            NativeHostObservationOutbox.Limits.standard.maximumEnvelopeBytes,
+            40 * 1_024 * 1_024
+        )
+        XCTAssertGreaterThanOrEqual(
+            NativeHostObservationOutbox.Limits.standard.maximumArchiveBytes,
+            128 * 1_024 * 1_024
+        )
+    }
+
     func testExactTypedEvidenceRestoresAfterProcessDeath() async throws {
         let fileURL = temporaryFileURL()
         defer { try? FileManager.default.removeItem(at: fileURL.deletingLastPathComponent()) }

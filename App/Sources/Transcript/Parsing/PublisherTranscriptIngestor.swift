@@ -61,6 +61,24 @@ struct PublisherTranscriptIngestor: Sendable {
             throw ProductFailure.classify(error)
         }
 
+        return try Self.parse(
+            data,
+            mimeHint: mimeHint,
+            responseMime: responseMime,
+            url: url,
+            episodeID: episodeID,
+            language: language
+        )
+    }
+
+    static func parse(
+        _ data: Data,
+        mimeHint: String?,
+        responseMime: String?,
+        url: URL,
+        episodeID: UUID,
+        language: String = "en-US"
+    ) throws -> Transcript {
         let kind = TranscriptFormat.detect(
             mimeHint: mimeHint,
             responseMime: responseMime,
@@ -71,7 +89,11 @@ struct PublisherTranscriptIngestor: Sendable {
         switch kind {
         case .podcastingJSON:
             do {
-                return try PodcastingTranscriptJSONParser.parse(data, episodeID: episodeID, language: language)
+                return try PodcastingTranscriptJSONParser.parse(
+                    data,
+                    episodeID: episodeID,
+                    language: language
+                )
             } catch {
                 throw ProductFailure(code: .corruptArtifact)
             }

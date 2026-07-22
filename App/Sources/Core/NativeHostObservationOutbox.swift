@@ -7,8 +7,8 @@ actor NativeHostObservationOutbox {
     struct Limits: Sendable, Equatable {
         static let standard = Limits(
             maximumRecordCount: 64,
-            maximumEnvelopeBytes: 2 * 1_024 * 1_024,
-            maximumArchiveBytes: 16 * 1_024 * 1_024
+            maximumEnvelopeBytes: 40 * 1_024 * 1_024,
+            maximumArchiveBytes: 128 * 1_024 * 1_024
         )
 
         let maximumRecordCount: Int
