@@ -145,6 +145,26 @@ fn identities_are_stable_and_attempt_zero_is_rejected() {
 }
 
 #[test]
+fn speaker_identity_is_replay_stable_and_scoped_to_source() {
+    let episode = EpisodeId::from_parts(4, 5);
+    let first = transcript_speaker_id(episode, "audio-v1", "speaker-0").unwrap();
+    assert_eq!(
+        first,
+        transcript_speaker_id(episode, "audio-v1", "speaker-0").unwrap()
+    );
+    assert_ne!(
+        first,
+        transcript_speaker_id(episode, "audio-v2", "speaker-0").unwrap()
+    );
+    assert_ne!(
+        first,
+        transcript_speaker_id(episode, "audio-v1", "speaker-1").unwrap()
+    );
+    assert!(transcript_speaker_id(episode, " audio-v1", "speaker-0").is_none());
+    assert!(transcript_speaker_id(episode, "audio-v1", " ").is_none());
+}
+
+#[test]
 fn failure_classification_never_resubmits_an_ambiguous_attempt() {
     let before = classify_transcript_failure(TranscriptFailureEvidence::Transport {
         submission_authorized: false,

@@ -168,3 +168,8 @@ bounded typed observation; completed artifacts must match the requested
 context, provider recovery cannot change the external operation identity, and
 the ledger rejects stale, cancelled, malformed, oversized, or mismatched
 observations before durable workflow state can advance.
+
+Contract version 32 adds a Rust-owned transcript speaker identity helper.
+Native providers may supply unstable UUIDs, but canonical transcript artifacts
+derive speaker identity from the episode, source revision, and provider label
+so replay produces the same durable artifact.

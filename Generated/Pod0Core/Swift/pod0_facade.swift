@@ -4836,6 +4836,30 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeSpeakerId: FfiConverterRustBuffer {
+    typealias SwiftType = SpeakerId?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeSpeakerId.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeSpeakerId.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeLegacyChapterImportPlan: FfiConverterRustBuffer {
     typealias SwiftType = LegacyChapterImportPlan?
 
@@ -5428,6 +5452,19 @@ public func projectTranscriptContract(request: TranscriptCommitRequest, scope: T
 })
 }
 /**
+ * Produces a replay-stable speaker identity without trusting native UUIDs.
+ */
+public func transcriptSpeakerId(episodeId: EpisodeId, sourceRevision: String, label: String) -> SpeakerId?  {
+    return try!  FfiConverterOptionTypeSpeakerId.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_transcript_speaker_id(
+        FfiConverterTypeEpisodeId_lower(episodeId),
+        FfiConverterString.lower(sourceRevision),
+        FfiConverterString.lower(label),uniffiCallStatus
+    )
+})
+}
+/**
  * Validates raw native evidence before a durable state transition.
  */
 public func validateTranscriptCapabilityObservation(observation: TranscriptCapabilityObservation) -> TranscriptCapabilityValidation  {
@@ -5709,6 +5746,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_func_project_transcript_contract() != 58859) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_transcript_speaker_id() != 48640) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_func_validate_transcript_capability_observation() != 27832) {

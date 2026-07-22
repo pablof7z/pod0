@@ -1,5 +1,5 @@
 use pod0_domain::{
-    ContentDigest, EpisodeId, TranscriptAttemptId, TranscriptSubmissionFenceId,
+    ContentDigest, EpisodeId, SpeakerId, TranscriptAttemptId, TranscriptSubmissionFenceId,
     TranscriptVersionId, TranscriptWorkflowId, UnixTimestampMilliseconds,
 };
 use sha2::{Digest as _, Sha256};
@@ -47,6 +47,27 @@ pub fn transcript_submission_fence_id(
     let mut hash = FramedHash::new(b"pod0-transcript-submission-fence-v1");
     hash.bytes(&attempt_id.into_bytes());
     TranscriptSubmissionFenceId::from_bytes(hash.first_16())
+}
+
+#[must_use]
+pub fn transcript_speaker_id(
+    episode_id: EpisodeId,
+    source_revision: &str,
+    label: &str,
+) -> Option<SpeakerId> {
+    if source_revision.is_empty()
+        || source_revision.trim() != source_revision
+        || source_revision.len() > pod0_domain::MAX_SOURCE_REVISION_BYTES
+        || label.trim().is_empty()
+        || label.len() > pod0_domain::MAX_TRANSCRIPT_SPEAKER_LABEL_BYTES
+    {
+        return None;
+    }
+    let mut hash = FramedHash::new(b"pod0-transcript-speaker-v1");
+    hash.bytes(&episode_id.into_bytes());
+    hash.string(source_revision);
+    hash.string(label);
+    Some(SpeakerId::from_bytes(hash.first_16()))
 }
 
 #[must_use]

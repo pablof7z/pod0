@@ -45,7 +45,7 @@ fun qualifyClipProjection(fixture: Map<String, String>) {
     )
 
     check(fixture["fixture_version"] == "1")
-    check(fixture["contract_version"]?.toUInt() == 31u)
+    check(fixture["contract_version"]?.toUInt() == 32u)
     check(fixture["source"] == "touch")
     check(projection.clips.single().frozenTranscriptText == fixture["frozen_transcript_text"])
     check(projection.clips.single().evidence?.spanId == evidence.spanId)

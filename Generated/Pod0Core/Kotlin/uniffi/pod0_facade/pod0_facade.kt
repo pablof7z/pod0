@@ -99,10 +99,12 @@ import uniffi.pod0_domain.FfiConverterTypeContentDigest
 import uniffi.pod0_domain.FfiConverterTypeEpisodeId
 import uniffi.pod0_domain.FfiConverterTypeListeningDomainSnapshot
 import uniffi.pod0_domain.FfiConverterTypeNoteRecord
+import uniffi.pod0_domain.FfiConverterTypeSpeakerId
 import uniffi.pod0_domain.FfiConverterTypeStateRevision
 import uniffi.pod0_domain.FfiConverterTypeSubscriptionId
 import uniffi.pod0_domain.ListeningDomainSnapshot
 import uniffi.pod0_domain.NoteRecord
+import uniffi.pod0_domain.SpeakerId
 import uniffi.pod0_domain.StateRevision
 import uniffi.pod0_domain.SubscriptionId
 import uniffi.pod0_application.RustBuffer as RustBufferAgentComposedChapterObservation
@@ -140,6 +142,7 @@ import uniffi.pod0_domain.RustBuffer as RustBufferContentDigest
 import uniffi.pod0_domain.RustBuffer as RustBufferEpisodeId
 import uniffi.pod0_domain.RustBuffer as RustBufferListeningDomainSnapshot
 import uniffi.pod0_domain.RustBuffer as RustBufferNoteRecord
+import uniffi.pod0_domain.RustBuffer as RustBufferSpeakerId
 import uniffi.pod0_domain.RustBuffer as RustBufferStateRevision
 import uniffi.pod0_domain.RustBuffer as RustBufferSubscriptionId
 
@@ -848,6 +851,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_func_project_transcript_contract(
     ): Int
+    external fun uniffi_pod0_facade_checksum_func_transcript_speaker_id(
+    ): Int
     external fun uniffi_pod0_facade_checksum_func_validate_transcript_capability_observation(
     ): Int
     external fun uniffi_pod0_facade_checksum_func_validate_transcript_capability_request(
@@ -1037,6 +1042,8 @@ internal object UniffiLib {
     ): RustBufferChapterContractProjection.ByValue
     external fun uniffi_pod0_facade_fn_func_project_transcript_contract(`request`: RustBufferTranscriptCommitRequest.ByValue,`scope`: RustBufferTranscriptProjectionScope.ByValue,`offset`: Int,`maxItems`: Short,uniffi_out_err: UniffiRustCallStatus,
     ): RustBufferTranscriptContractProjection.ByValue
+    external fun uniffi_pod0_facade_fn_func_transcript_speaker_id(`episodeId`: RustBufferEpisodeId.ByValue,`sourceRevision`: RustBuffer.ByValue,`label`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_func_validate_transcript_capability_observation(`observation`: RustBufferTranscriptCapabilityObservation.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBufferTranscriptCapabilityValidation.ByValue
     external fun uniffi_pod0_facade_fn_func_validate_transcript_capability_request(`request`: RustBufferTranscriptCapabilityRequest.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1257,6 +1264,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_func_project_transcript_contract() != 58859) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_transcript_speaker_id() != 48640) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_func_validate_transcript_capability_observation() != 27832) {
@@ -5712,6 +5722,38 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeSpeakerId: FfiConverterRustBuffer<SpeakerId?> {
+    override fun read(buf: ByteBuffer): SpeakerId? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeSpeakerId.read(buf)
+    }
+
+    override fun allocationSize(value: SpeakerId?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeSpeakerId.allocationSize(value)
+        }
+    }
+
+    override fun write(value: SpeakerId?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeSpeakerId.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeLegacyChapterImportPlan: FfiConverterRustBuffer<LegacyChapterImportPlan?> {
     override fun read(buf: ByteBuffer): LegacyChapterImportPlan? {
         if (buf.get().toInt() == 0) {
@@ -6230,6 +6272,8 @@ public object FfiConverterSequenceTypeLegacyModelChapterCutoverCandidate: FfiCon
 
 
 
+
+
  fun `commitStagedLegacyChapterImport`(`sourceDatabasePath`: kotlin.String, `artifactRootPath`: kotlin.String, `targetPath`: kotlin.String, `importId`: CommandId): LegacyChapterMigrationProjection {
             return FfiConverterTypeLegacyChapterMigrationProjection.lift(
     uniffiRustCall() { _status ->
@@ -6521,6 +6565,22 @@ public object FfiConverterSequenceTypeLegacyModelChapterCutoverCandidate: FfiCon
         FfiConverterTypeTranscriptProjectionScope.lower(`scope`),
         FfiConverterUInt.lower(`offset`),
         FfiConverterUShort.lower(`maxItems`),_status)
+}
+    )
+    }
+
+
+        /**
+         * Produces a replay-stable speaker identity without trusting native UUIDs.
+         */ fun `transcriptSpeakerId`(`episodeId`: EpisodeId, `sourceRevision`: kotlin.String, `label`: kotlin.String): SpeakerId? {
+            return FfiConverterOptionalTypeSpeakerId.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_transcript_speaker_id(
+
+
+        FfiConverterTypeEpisodeId.lower(`episodeId`),
+        FfiConverterString.lower(`sourceRevision`),
+        FfiConverterString.lower(`label`),_status)
 }
     )
     }

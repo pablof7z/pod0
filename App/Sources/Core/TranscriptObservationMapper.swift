@@ -3,6 +3,8 @@ import Pod0Core
 
 enum TranscriptObservationMappingError: Error, Equatable {
     case invalidSourcePayloadDigest
+    case invalidSpeakerIdentity
+    case unknownSpeakerReference
     case invalidTimestamp
 }
 
@@ -28,6 +30,35 @@ enum TranscriptObservationMapper {
               generatedMilliseconds >= Double(Int64.min),
               generatedMilliseconds <= Double(Int64.max)
         else { throw TranscriptObservationMappingError.invalidTimestamp }
+        let speakerIDs = try stableSpeakerIDs(
+            transcript.speakers,
+            episodeID: transcript.episodeID,
+            sourceRevision: context.sourceRevision
+        )
+        let segments = try transcript.segments.map { segment in
+            let speakerID: SpeakerId?
+            if let nativeID = segment.speakerID {
+                guard let stableID = speakerIDs[nativeID] else {
+                    throw TranscriptObservationMappingError.unknownSpeakerReference
+                }
+                speakerID = stableID
+            } else {
+                speakerID = nil
+            }
+            return TranscriptArtifactSegmentInput(
+                text: segment.text,
+                startMilliseconds: try milliseconds(segment.start),
+                endMilliseconds: try milliseconds(segment.end),
+                speakerId: speakerID,
+                words: try (segment.words ?? []).map {
+                    TranscriptArtifactWordInput(
+                        text: $0.text,
+                        startMilliseconds: try milliseconds($0.start),
+                        endMilliseconds: try milliseconds($0.end)
+                    )
+                }
+            )
+        }
 
         return TranscriptArtifactInput(
             episodeId: EpisodeId(uuid: transcript.episodeID),
@@ -38,29 +69,40 @@ enum TranscriptObservationMapper {
             sourcePayloadDigest: digest,
             language: transcript.language,
             generatedAt: UnixTimestampMilliseconds(value: Int64(generatedMilliseconds.rounded())),
-            speakers: transcript.speakers.map {
-                TranscriptArtifactSpeakerInput(
-                    speakerId: SpeakerId(uuid: $0.id),
+            speakers: try transcript.speakers.map {
+                guard let speakerID = speakerIDs[$0.id] else {
+                    throw TranscriptObservationMappingError.invalidSpeakerIdentity
+                }
+                return TranscriptArtifactSpeakerInput(
+                    speakerId: speakerID,
                     label: $0.label,
                     displayName: $0.displayName
                 )
             },
-            segments: try transcript.segments.map { segment in
-                TranscriptArtifactSegmentInput(
-                    text: segment.text,
-                    startMilliseconds: try milliseconds(segment.start),
-                    endMilliseconds: try milliseconds(segment.end),
-                    speakerId: segment.speakerID.map(SpeakerId.init(uuid:)),
-                    words: try (segment.words ?? []).map {
-                        TranscriptArtifactWordInput(
-                            text: $0.text,
-                            startMilliseconds: try milliseconds($0.start),
-                            endMilliseconds: try milliseconds($0.end)
-                        )
-                    }
-                )
-            }
+            segments: segments
         )
+    }
+
+    private static func stableSpeakerIDs(
+        _ speakers: [Speaker],
+        episodeID: UUID,
+        sourceRevision: String
+    ) throws -> [UUID: SpeakerId] {
+        var nativeIDs = Set<UUID>()
+        var labels = Set<String>()
+        var result: [UUID: SpeakerId] = [:]
+        for speaker in speakers {
+            guard nativeIDs.insert(speaker.id).inserted,
+                  labels.insert(speaker.label).inserted,
+                  let stableID = transcriptSpeakerId(
+                    episodeId: EpisodeId(uuid: episodeID),
+                    sourceRevision: sourceRevision,
+                    label: speaker.label
+                  )
+            else { throw TranscriptObservationMappingError.invalidSpeakerIdentity }
+            result[speaker.id] = stableID
+        }
+        return result
     }
 
     static func milliseconds(_ seconds: TimeInterval) throws -> UInt64 {

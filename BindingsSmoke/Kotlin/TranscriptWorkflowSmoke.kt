@@ -54,6 +54,11 @@ fun qualifyTranscriptWorkflowContract() {
         ),
     )
     check(rejected is TranscriptCapabilityValidation.Rejected)
+    val speakerId = checkNotNull(
+        transcriptSpeakerId(episodeId, "audio-v1", "speaker-0"),
+    )
+    check(speakerId == transcriptSpeakerId(episodeId, "audio-v1", "speaker-0"))
+    check(speakerId != transcriptSpeakerId(episodeId, "audio-v2", "speaker-0"))
 
     check(
         validateTranscriptCapabilityObservation(

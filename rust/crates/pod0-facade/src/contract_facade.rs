@@ -5,6 +5,7 @@ use pod0_application::{
     TranscriptCommitRequest, TranscriptContractProjection, TranscriptProjectionScope,
     TranscriptWorkflowPlan, TranscriptWorkflowPlanInput,
 };
+use pod0_domain::{EpisodeId, SpeakerId};
 
 /// Produces bounded, state-shaped evidence for the typed transcript contract.
 #[uniffi::export]
@@ -62,4 +63,14 @@ pub fn validate_transcript_capability_observation(
     observation: TranscriptCapabilityObservation,
 ) -> TranscriptCapabilityValidation {
     pod0_application::validate_transcript_capability_observation(observation)
+}
+
+/// Produces a replay-stable speaker identity without trusting native UUIDs.
+#[uniffi::export]
+pub fn transcript_speaker_id(
+    episode_id: EpisodeId,
+    source_revision: String,
+    label: String,
+) -> Option<SpeakerId> {
+    pod0_application::transcript_speaker_id(episode_id, &source_revision, &label)
 }

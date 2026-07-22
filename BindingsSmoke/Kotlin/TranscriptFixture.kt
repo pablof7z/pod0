@@ -71,7 +71,7 @@ fun qualifyTranscriptContract(fixture: Map<String, String>) {
     val expectedArtifactId = id("expected_artifact_id")
     val expectedVersionId = id("expected_transcript_version_id")
     check(fixture["fixture_version"] == "1")
-    check(fixture["contract_version"]?.toUInt() == 31u)
+    check(fixture["contract_version"]?.toUInt() == 32u)
     check(fixture["unknown_future_field"] == "ignored-by-v1-readers")
     check(receipt.artifactId == TranscriptArtifactId(expectedArtifactId.first, expectedArtifactId.second))
     check(receipt.transcriptVersionId == TranscriptVersionId(expectedVersionId.first, expectedVersionId.second))

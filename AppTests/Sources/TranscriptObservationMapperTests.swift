@@ -36,7 +36,15 @@ final class TranscriptObservationMapperTests: XCTestCase {
         XCTAssertEqual(mapped.segments[0].words[0].endMilliseconds, 2)
         XCTAssertEqual(mapped.segments[1].startMilliseconds, 1_000)
         XCTAssertTrue(mapped.segments[1].words.isEmpty)
-        XCTAssertEqual(mapped.speakers[0].speakerId.uuid, speaker.id)
+        XCTAssertEqual(
+            mapped.speakers[0].speakerId,
+            transcriptSpeakerId(
+                episodeId: EpisodeId(uuid: transcript.episodeID),
+                sourceRevision: "audio-v1",
+                label: speaker.label
+            )
+        )
+        XCTAssertEqual(mapped.segments[0].speakerId, mapped.speakers[0].speakerId)
         XCTAssertEqual(mapped.speakers[0].label, "spk_0")
         XCTAssertEqual(mapped.speakers[0].displayName, "Ada")
         XCTAssertEqual(mapped.provider, "elevenLabsScribe")
@@ -98,6 +106,38 @@ final class TranscriptObservationMapperTests: XCTestCase {
                 sourcePayloadDigest: "not-a-digest", provider: nil
             )
         ))
+    }
+
+    func testSpeakerIdentityIgnoresProviderGeneratedUUIDsAndRejectsUnknownReferences() throws {
+        let episodeID = UUID()
+        func mappedSpeaker(nativeID: UUID) throws -> SpeakerId {
+            let speaker = Speaker(id: nativeID, label: "speaker-0", displayName: nil)
+            let transcript = Transcript(
+                episodeID: episodeID,
+                language: "en",
+                source: .assemblyAI,
+                segments: [Segment(start: 0, end: 1, speakerID: nativeID, text: "Stable")],
+                speakers: [speaker]
+            )
+            return try TranscriptObservationMapper.map(
+                transcript,
+                context: context(podcastID: UUID())
+            ).speakers[0].speakerId
+        }
+        XCTAssertEqual(try mappedSpeaker(nativeID: UUID()), try mappedSpeaker(nativeID: UUID()))
+
+        let transcript = Transcript(
+            episodeID: episodeID,
+            language: "en",
+            source: .assemblyAI,
+            segments: [Segment(start: 0, end: 1, speakerID: UUID(), text: "Unknown")]
+        )
+        XCTAssertThrowsError(try TranscriptObservationMapper.map(
+            transcript,
+            context: context(podcastID: UUID())
+        )) { error in
+            XCTAssertEqual(error as? TranscriptObservationMappingError, .unknownSpeakerReference)
+        }
     }
 
     func testFutureAndOtherCoreSourcesFailClosed() {
