@@ -54,7 +54,10 @@ impl From<StorageError> for LegacyListeningMigrationError {
             | StorageError::DownloadWorkflowNotFound
             | StorageError::DownloadRequestNotFound
             | StorageError::InvalidDownloadArtifact
-            | StorageError::StaleDownloadAttempt => Self::TargetBlocked,
+            | StorageError::StaleDownloadAttempt
+            | StorageError::TranscriptWorkflowConflict
+            | StorageError::TranscriptWorkflowNotFound
+            | StorageError::StaleTranscriptAttempt => Self::TargetBlocked,
             StorageError::Io { .. } | StorageError::Sqlite { .. } => Self::StorageUnavailable,
         }
     }

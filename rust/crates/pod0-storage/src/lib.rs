@@ -131,6 +131,7 @@ mod schema_library;
 mod schema_migrations;
 mod schema_model_chapter_workflows;
 mod schema_notes;
+mod schema_transcript_workflows;
 mod schema_transcripts;
 mod transcript_authority;
 mod transcript_backup_atomic;
@@ -154,6 +155,7 @@ mod transcript_store_read_rows;
 mod transcript_store_write;
 mod transcript_store_write_artifact;
 mod transcript_store_write_rows;
+mod transcript_workflow;
 pub(crate) use chapter_import_model::{
     ChapterEvidenceKind, ChapterEvidenceValidation, InspectedChapterEvidence,
     InspectedChapterSource, LegacyAdSpanIdentity, LegacyChapterIdentity, StoredChapterEvidence,

@@ -48,6 +48,9 @@ Current versions:
 - v18: versioned shared recall-provider and embedding configuration.
 - v19: download environment observations, intents, fenced attempts, exact host
   requests, staged-artifact verification, retry state, and canonical adoption.
+- v20: fenced transcript workflow intent, immutable submission attempts,
+  provider recovery identity, staged completion artifacts, evidence admission,
+  and verified legacy workflow cutover evidence.
 
 The separate native workflow database remains authoritative only for workflow
 kinds that are native or not yet migrated. Its `jobs` component is schema v1.

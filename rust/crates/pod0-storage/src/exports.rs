@@ -71,3 +71,4 @@ pub use crate::transcript_store_model::{
     StoredTranscriptWord, TranscriptCommitStorageReceipt, TranscriptPage,
     TranscriptSelectionSummary,
 };
+pub use crate::transcript_workflow::*;

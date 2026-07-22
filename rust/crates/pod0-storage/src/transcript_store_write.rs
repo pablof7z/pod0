@@ -51,84 +51,100 @@ impl TranscriptStore {
         if completed_at_ms < 0 || artifact.generated_at.value < 0 {
             return Err(StorageError::InvalidTranscriptArtifact);
         }
-        let fingerprint = transcript_command_fingerprint(expected_selection_revision, &artifact);
-        let resulting_revision = expected_selection_revision
-            .value
-            .checked_add(1)
-            .ok_or(StorageError::TranscriptRevisionConflict)?;
-        let resulting_revision_i64 = i64::try_from(resulting_revision)
-            .map_err(|_| StorageError::TranscriptRevisionConflict)?;
-        let expected_revision_i64 = i64::try_from(expected_selection_revision.value)
-            .map_err(|_| StorageError::TranscriptRevisionConflict)?;
-
         self.write(|transaction| {
-            require_transcript_authoritative(transaction)?;
-            if let Some(receipt) = replay(transaction, command_id, fingerprint, &artifact)? {
-                return Ok(receipt);
-            }
-            require_episode_parent(transaction, &artifact)?;
-            let current = current_selection(transaction, artifact.episode_id)?;
-            let current_revision = current.as_ref().map_or(0, |item| item.1.value);
-            if current_revision != expected_selection_revision.value {
-                return Err(StorageError::TranscriptRevisionConflict);
-            }
-            ensure_semantic_document(transaction, &artifact)?;
-            insert_or_validate_artifact(transaction, &artifact, None, completed_at_ms)?;
-            let previous_artifact_id = current.map(|item| item.0);
-            let already_selected = previous_artifact_id == Some(artifact.artifact_id);
-            transaction
-                .execute(
-                    "INSERT INTO pod0_transcript_selection(episode_id,artifact_id,\
-                     transcript_version_id,selection_revision,selected_at_ms,source_import_id) \
-                     VALUES(?1,?2,?3,?4,?5,NULL) ON CONFLICT(episode_id) DO UPDATE SET \
-                     artifact_id=excluded.artifact_id,transcript_version_id=excluded.transcript_version_id,\
-                     selection_revision=excluded.selection_revision,selected_at_ms=excluded.selected_at_ms,\
-                     source_import_id=NULL",
-                    params![
-                        artifact.episode_id.into_bytes().as_slice(),
-                        artifact.artifact_id.into_bytes().as_slice(),
-                        artifact.transcript_version_id.into_bytes().as_slice(),
-                        resulting_revision_i64,
-                        completed_at_ms,
-                    ],
-                )
-                .map_err(|error| StorageError::sqlite("select transcript artifact", error))?;
-            advance_collection_revision(transaction)?;
-            set_episode_transcript_available(transaction, &artifact)?;
-            let _ = advance_listening_revision(transaction)?;
-            set_transcript_cutover_revision(transaction, resulting_revision)?;
-            let receipt = receipt(
+            let receipt = commit_and_select_transcript_in_transaction(
+                transaction,
                 command_id,
-                fingerprint,
-                previous_artifact_id,
-                StateRevision::new(resulting_revision),
-                already_selected,
+                expected_selection_revision,
                 &artifact,
+                completed_at_ms,
             )?;
-            transaction
-                .execute(
-                    "INSERT INTO pod0_transcript_commands(command_id,operation_code,\
-                     command_fingerprint,episode_id,artifact_id,transcript_version_id,\
-                     expected_selection_revision,previous_artifact_id,resulting_selection_revision,\
-                     already_selected,completed_at_ms) VALUES(?1,1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
-                    params![
-                        command_id.into_bytes().as_slice(),
-                        fingerprint.into_bytes().as_slice(),
-                        artifact.episode_id.into_bytes().as_slice(),
-                        artifact.artifact_id.into_bytes().as_slice(),
-                        artifact.transcript_version_id.into_bytes().as_slice(),
-                        expected_revision_i64,
-                        previous_artifact_id.map(|id| id.into_bytes().to_vec()),
-                        resulting_revision_i64,
-                        i64::from(receipt.already_selected),
-                        completed_at_ms,
-                    ],
-                )
-                .map_err(|error| StorageError::sqlite("record transcript command", error))?;
             before_commit()?;
             Ok(receipt)
         })
     }
+}
+
+pub(crate) fn commit_and_select_transcript_in_transaction(
+    transaction: &Transaction<'_>,
+    command_id: CommandId,
+    expected_selection_revision: StateRevision,
+    artifact: &TranscriptArtifact,
+    completed_at_ms: i64,
+) -> Result<TranscriptCommitStorageReceipt, StorageError> {
+    require_transcript_authoritative(transaction)?;
+    let fingerprint = transcript_command_fingerprint(expected_selection_revision, artifact);
+    if let Some(receipt) = replay(transaction, command_id, fingerprint, artifact)? {
+        return Ok(receipt);
+    }
+    require_episode_parent(transaction, artifact)?;
+    let current = current_selection(transaction, artifact.episode_id)?;
+    let current_revision = current.as_ref().map_or(0, |item| item.1.value);
+    if current_revision != expected_selection_revision.value {
+        return Err(StorageError::TranscriptRevisionConflict);
+    }
+    ensure_semantic_document(transaction, artifact)?;
+    insert_or_validate_artifact(transaction, artifact, None, completed_at_ms)?;
+    let resulting_revision = expected_selection_revision
+        .value
+        .checked_add(1)
+        .ok_or(StorageError::TranscriptRevisionConflict)?;
+    let resulting_revision_i64 =
+        i64::try_from(resulting_revision).map_err(|_| StorageError::TranscriptRevisionConflict)?;
+    let expected_revision_i64 = i64::try_from(expected_selection_revision.value)
+        .map_err(|_| StorageError::TranscriptRevisionConflict)?;
+    let previous_artifact_id = current.map(|item| item.0);
+    let already_selected = previous_artifact_id == Some(artifact.artifact_id);
+    transaction
+        .execute(
+            "INSERT INTO pod0_transcript_selection(episode_id,artifact_id,transcript_version_id,\
+             selection_revision,selected_at_ms,source_import_id) VALUES(?1,?2,?3,?4,?5,NULL) \
+             ON CONFLICT(episode_id) DO UPDATE SET artifact_id=excluded.artifact_id,\
+             transcript_version_id=excluded.transcript_version_id,\
+             selection_revision=excluded.selection_revision,selected_at_ms=excluded.selected_at_ms,\
+             source_import_id=NULL",
+            params![
+                artifact.episode_id.into_bytes().as_slice(),
+                artifact.artifact_id.into_bytes().as_slice(),
+                artifact.transcript_version_id.into_bytes().as_slice(),
+                resulting_revision_i64,
+                completed_at_ms,
+            ],
+        )
+        .map_err(|error| StorageError::sqlite("select transcript artifact", error))?;
+    advance_collection_revision(transaction)?;
+    set_episode_transcript_available(transaction, artifact)?;
+    let _ = advance_listening_revision(transaction)?;
+    set_transcript_cutover_revision(transaction, resulting_revision)?;
+    let receipt = receipt(
+        command_id,
+        fingerprint,
+        previous_artifact_id,
+        StateRevision::new(resulting_revision),
+        already_selected,
+        artifact,
+    )?;
+    transaction
+        .execute(
+            "INSERT INTO pod0_transcript_commands(command_id,operation_code,command_fingerprint,\
+             episode_id,artifact_id,transcript_version_id,expected_selection_revision,\
+             previous_artifact_id,resulting_selection_revision,already_selected,completed_at_ms) \
+             VALUES(?1,1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
+            params![
+                command_id.into_bytes().as_slice(),
+                fingerprint.into_bytes().as_slice(),
+                artifact.episode_id.into_bytes().as_slice(),
+                artifact.artifact_id.into_bytes().as_slice(),
+                artifact.transcript_version_id.into_bytes().as_slice(),
+                expected_revision_i64,
+                previous_artifact_id.map(|id| id.into_bytes().to_vec()),
+                resulting_revision_i64,
+                i64::from(receipt.already_selected),
+                completed_at_ms,
+            ],
+        )
+        .map_err(|error| StorageError::sqlite("record transcript command", error))?;
+    Ok(receipt)
 }
 
 fn current_selection(

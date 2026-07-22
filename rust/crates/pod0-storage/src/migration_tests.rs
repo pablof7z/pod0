@@ -190,6 +190,35 @@ fn download_workflow_upgrade_is_one_step_and_preserves_v18_backup() {
 }
 
 #[test]
+fn transcript_workflow_upgrade_is_one_step_and_rejects_downgrade() {
+    let fixture = Fixture::new();
+    fixture.migrate_to(19, 1).unwrap();
+
+    let report = fixture.migrate_to(20, 2).unwrap();
+
+    assert_eq!(report.applied_versions, [20]);
+    assert_eq!(report.backup.unwrap().schema_version, 19);
+    let connection = rusqlite::Connection::open(&fixture.store).unwrap();
+    let table_count: i64 = connection
+        .query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN(
+             'pod0_transcript_workflows','pod0_transcript_attempts',
+             'pod0_transcript_evidence_requests','pod0_transcript_workflow_imports')",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(table_count, 4);
+    assert_eq!(
+        fixture.migrate_to(19, 3),
+        Err(StorageError::DowngradeForbidden {
+            stored: 20,
+            requested: 19,
+        })
+    );
+}
+
+#[test]
 fn interruption_rolls_back_the_step_and_restart_resumes_the_journal() {
     let fixture = Fixture::new();
     fixture.migrate_to(2, 1).unwrap();
