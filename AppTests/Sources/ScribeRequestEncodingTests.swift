@@ -153,7 +153,7 @@ final class ScribeRequestEncodingTests: XCTestCase {
         XCTAssertTrue(s.contains("scribe_v2"))
     }
 
-    func testPollReconstructsTranscriptByDurableProviderIDWithoutSubmitting() async throws {
+    func testSingleReadReconstructsTranscriptByDurableProviderIDWithoutSubmitting() async throws {
         let stub = ScribeStubProtocol.self
         stub.reset()
         stub.responseBody = #"{"transcription_id":"scribe-recovered","language_code":"en","text":"Recovered","words":[{"text":"Recovered","start":0.0,"end":0.8,"type":"word","speaker_id":"spk_0"}]}"#
@@ -166,7 +166,7 @@ final class ScribeRequestEncodingTests: XCTestCase {
             credential: { "test-key-xyz" }
         )
         let episodeID = UUID()
-        let recovered = try await client.pollResult(ScribeJob(
+        let recovered = try await client.result(for: ScribeJob(
             requestID: "scribe-recovered",
             episodeID: episodeID,
             createdAt: Date(),

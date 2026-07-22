@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-22T16:18:45Z",
+      "lines": [
+        "Transcriptions now recover more reliably after interruptions without repeating paid provider requests."
+      ]
+    },
+    {
       "shipped_at": "2026-07-22T09:43:32Z",
       "lines": [
         "Downloads now recover reliably after relaunches and interrupted transfers without losing progress."

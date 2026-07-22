@@ -23,14 +23,7 @@ final class LiveCoreTranscriptTransportTests: XCTestCase {
         Bounded publisher transcript
         """.utf8)
         let session = makeSession()
-        let transport = LiveCoreTranscriptTransport(
-            session: session,
-            assemblyAI: AssemblyAITranscriptClient(
-                baseURL: URL(string: "https://assembly.example.test")!,
-                session: session,
-                credential: { nil }
-            )
-        )
+        let transport = LiveCoreTranscriptTransport(session: session)
 
         let observation = try await transport.execute(.fetchPublisher(
             context: context,
@@ -53,14 +46,7 @@ final class LiveCoreTranscriptTransportTests: XCTestCase {
         ChapterProviderStubProtocol.responseHeaders = ["Content-Type": "text/vtt"]
         ChapterProviderStubProtocol.responseBody = Data(repeating: 65, count: 128)
         let session = makeSession()
-        let transport = LiveCoreTranscriptTransport(
-            session: session,
-            assemblyAI: AssemblyAITranscriptClient(
-                baseURL: URL(string: "https://assembly.example.test")!,
-                session: session,
-                credential: { nil }
-            )
-        )
+        let transport = LiveCoreTranscriptTransport(session: session)
 
         do {
             _ = try await transport.execute(.fetchPublisher(

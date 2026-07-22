@@ -3,17 +3,14 @@ import Pod0Core
 
 actor LiveCoreTranscriptTransport: CoreTranscriptTransporting {
     let session: URLSession
-    private let assemblyAI: AssemblyAITranscriptClient
-    private let appleSTT: AppleNativeSTTClient
+    private let providers: CoreTranscriptProviderClients
 
     init(
         session: URLSession = .shared,
-        assemblyAI: AssemblyAITranscriptClient = AssemblyAITranscriptClient(),
-        appleSTT: AppleNativeSTTClient = AppleNativeSTTClient()
+        providers: CoreTranscriptProviderClients? = nil
     ) {
         self.session = session
-        self.assemblyAI = assemblyAI
-        self.appleSTT = appleSTT
+        self.providers = providers ?? .live(session: session)
     }
 
     func execute(
@@ -64,7 +61,7 @@ actor LiveCoreTranscriptTransport: CoreTranscriptTransporting {
             guard let url = URL(string: audioURL), let episodeID = context.episodeId.uuid else {
                 throw CoreTranscriptTransportError.invalidRequest
             }
-            let transcript = try await appleSTT.transcribe(
+            let transcript = try await providers.appleSpeech.transcribe(
                 audioFileURL: url,
                 episodeID: episodeID,
                 languageHint: locale
@@ -89,18 +86,23 @@ actor LiveCoreTranscriptTransport: CoreTranscriptTransporting {
         }
         switch provider {
         case .assemblyAi:
-            let job = try await assemblyAI.submit(
+            let job = try await providers.assemblyAI.submit(
                 audioURL: url,
                 episodeID: episodeID,
                 speechModels: [model],
                 speakerLabels: true,
-                languageDetection: true
+                languageDetection: true,
+                languageHint: nil
             )
             return .providerAccepted(externalOperationID: job.transcriptID, status: "queued")
         case .elevenLabsScribe:
-            let client = ElevenLabsScribeClient(modelID: model)
-            let job = try await client.submit(audioURL: url, episodeID: episodeID)
-            let transcript = try await client.pollResult(job)
+            let client = providers.elevenLabs(model)
+            let job = try await client.submit(
+                audioURL: url,
+                episodeID: episodeID,
+                languageHint: nil
+            )
+            let transcript = try await client.result(for: job)
             try enforceBound(transcript, maximumResponseBytes: maximumResponseBytes)
             return .completed(
                 transcript: transcript,
@@ -108,9 +110,10 @@ actor LiveCoreTranscriptTransport: CoreTranscriptTransporting {
                 status: "completed"
             )
         case .openRouterWhisper:
-            let transcript = try await OpenRouterWhisperClient(model: model).transcribe(
+            let transcript = try await providers.openRouter(model).transcribe(
                 audioURL: url,
-                episodeID: episodeID
+                episodeID: episodeID,
+                languageHint: nil
             )
             try enforceBound(transcript, maximumResponseBytes: maximumResponseBytes)
             return .completed(
@@ -142,7 +145,10 @@ actor LiveCoreTranscriptTransport: CoreTranscriptTransporting {
                 languageHint: nil,
                 speechModels: [model]
             )
-            switch try await assemblyAI.observe(job, maximumResponseBytes: maximumResponseBytes) {
+            switch try await providers.assemblyAI.observe(
+                job,
+                maximumResponseBytes: maximumResponseBytes
+            ) {
             case .pending(let status):
                 return .providerPending(status: status, retryAfterMilliseconds: nil)
             case .completed(let transcript):
@@ -153,8 +159,8 @@ actor LiveCoreTranscriptTransport: CoreTranscriptTransporting {
                 )
             }
         case .elevenLabsScribe:
-            let client = ElevenLabsScribeClient(modelID: model)
-            let transcript = try await client.pollResult(ScribeJob(
+            let client = providers.elevenLabs(model)
+            let transcript = try await client.result(for: ScribeJob(
                 requestID: externalOperationID,
                 episodeID: episodeID,
                 createdAt: Date(),

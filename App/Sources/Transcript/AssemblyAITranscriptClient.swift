@@ -18,8 +18,8 @@ import os.log
 //     FALLBACK LIST - first model is tried, on availability failure the
 //     gateway falls through to the next. A single transcript is produced by
 //     exactly one model. Default we send: `["universal-3-pro","universal-2"]`.
-//   - Poll: `GET /v2/transcript/{id}`. Status moves `queued` -> `processing`
-//     -> `completed` | `error`. We poll every 3 s with cancellation checks.
+//   - Status: `GET /v2/transcript/{id}`. One native read reports `queued`,
+//     `processing`, `completed`, or `error`; Rust schedules any later read.
 //   - Timestamps are in MILLISECONDS in the response (`start`, `end`). We
 //     divide by 1000 to land on our seconds-based `Transcript.Segment`.
 //   - `audio_duration` is in seconds (the one exception).
@@ -29,8 +29,8 @@ import os.log
 //     because every episode that lacks a local file always has an enclosure
 //     URL - and we prefer the URL anyway to avoid client-side upload.
 //
-// The submit / poll split matches `ElevenLabsScribeClient` so callers see an
-// identical lifecycle across both providers.
+// Submission and status observation remain separate so a reconstructed Rust
+// workflow can recover by durable provider ID without resubmitting paid work.
 
 actor AssemblyAITranscriptClient {
 
@@ -87,15 +87,6 @@ actor AssemblyAITranscriptClient {
     /// returns immediately with a queued job ID.
     static let submitTimeout: TimeInterval = 30
 
-    /// Poll interval. AssemblyAI's docs recommend at least 3 s. Long episodes can take
-    /// several minutes - the poll loop watches for cancellation each iteration
-    /// so a user-cancelled task tears down promptly.
-    static let pollInterval: TimeInterval = 3
-
-    /// Hard cap on total poll wall-time. 30 minutes is more than enough for a
-    /// 3-hour podcast at AssemblyAI's typical real-time factor.
-    static let pollTimeout: TimeInterval = 1_800
-
     let baseURL: URL
     let session: URLSession
     let credential: @Sendable () throws -> String?
@@ -113,7 +104,7 @@ actor AssemblyAITranscriptClient {
     // MARK: - API
 
     /// Submits an audio URL for transcription and returns a job handle. The
-    /// caller drives the poll loop via `pollResult(_:)`.
+    /// Rust drives later status observations through typed recovery requests.
     ///
     /// `speechModels` is the ordered fallback list (e.g. `["universal-3-pro",
     /// "universal-2"]`). `audioURL` must be HTTPS - AssemblyAI fetches it
@@ -196,93 +187,6 @@ actor AssemblyAITranscriptClient {
             languageHint: languageHint,
             speechModels: speechModels
         )
-    }
-
-    /// Polls `GET /v2/transcript/{id}` until the job reaches a terminal status.
-    /// Returns the resolved `Transcript` on success; throws on `error` status
-    /// or after `pollTimeout` seconds.
-    func pollResult(_ job: AssemblyAIJob) async throws -> Transcript {
-        try Task.checkCancellation()
-        guard let key = try credential(), !key.isEmpty else { throw TranscribeError.missingAPIKey }
-
-        let endpoint = baseURL
-            .appendingPathComponent("v2")
-            .appendingPathComponent("transcript")
-            .appendingPathComponent(job.transcriptID)
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "GET"
-        request.setValue(key, forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.timeoutInterval = Self.submitTimeout
-
-        let deadline = Date().addingTimeInterval(Self.pollTimeout)
-        var attempt = 0
-
-        while Date() < deadline {
-            try Task.checkCancellation()
-            attempt += 1
-
-            let data: Data
-            let response: URLResponse
-            do {
-                (data, response) = try await session.data(for: request)
-            } catch is CancellationError {
-                throw TranscribeError.cancelled
-            } catch let error as URLError where error.code == .cancelled {
-                throw TranscribeError.cancelled
-            } catch let error as URLError where error.code == .timedOut {
-                // Treat transient submit-call timeouts as recoverable; the poll
-                // loop will try again. Only the outer `pollTimeout` deadline
-                // is fatal.
-                Self.logger.notice("poll attempt \(attempt, privacy: .public): URLError.timedOut - retrying")
-                try await Task.sleep(nanoseconds: UInt64(Self.pollInterval * 1_000_000_000))
-                continue
-            }
-
-            try Self.assertOK(response: response, data: data)
-
-            let payload: AssemblyAITranscriptPayload
-            do {
-                payload = try Self.decoder.decode(AssemblyAITranscriptPayload.self, from: data)
-            } catch {
-                Self.logger.error("AssemblyAI poll response could not be decoded")
-                throw TranscribeError.decoding
-            }
-
-            switch payload.status {
-            case "completed":
-                Self.logger.info("poll attempt \(attempt, privacy: .public): completed")
-                let latencyMs = Int(Date().timeIntervalSince(job.createdAt) * 1000)
-                let modelLabel = job.speechModels.joined(separator: ",")
-                let cost = payload.usage?.cost ?? 0
-                let seconds = payload.usage?.seconds ?? payload.audio_duration
-                let promptTokens = payload.usage?.input_tokens ?? 0
-                let completionTokens = payload.usage?.output_tokens ?? 0
-                Task { @MainActor in
-                    CostLedger.shared.logSTT(
-                        feature: CostFeature.sttAssemblyAI,
-                        model: modelLabel.isEmpty ? "universal-3-pro" : modelLabel,
-                        costUSD: cost,
-                        audioDurationSeconds: seconds,
-                        latencyMs: latencyMs,
-                        promptTokens: promptTokens,
-                        completionTokens: completionTokens
-                    )
-                }
-                return Transcript.fromAssemblyAI(payload, episodeID: job.episodeID, languageHint: job.languageHint)
-            case "error":
-                let message = payload.error ?? "AssemblyAI returned status=error without a message."
-                Self.logger.error("poll attempt \(attempt, privacy: .public): error - \(message, privacy: .public)")
-                throw TranscribeError.remoteError
-            default:
-                // queued / processing / nil / unexpected - keep polling.
-                break
-            }
-
-            try await Task.sleep(nanoseconds: UInt64(Self.pollInterval * 1_000_000_000))
-        }
-
-        throw TranscribeError.timedOut
     }
 
     // MARK: - HTTP

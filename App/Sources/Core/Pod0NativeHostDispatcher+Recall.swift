@@ -35,9 +35,13 @@ extension Pod0NativeHostDispatcher {
                     in: facade,
                     persistForRelaunch: persistForRelaunch
                 )
-                guard let self,
-                      acknowledgementTasks.removeValue(forKey: envelope.requestId) != nil
-                else { return }
+                guard let self, acknowledgementTasks[envelope.requestId] != nil else { return }
+                if case .retainAndRetry = receipt {
+                    retainedObservationIDs.insert(envelope.requestId)
+                    return
+                }
+                retainedObservationIDs.remove(envelope.requestId)
+                acknowledgementTasks.removeValue(forKey: envelope.requestId)
                 if Self.receiptAllowsRetirement(receipt, for: envelope.request) {
                     rememberCompletion(envelope.requestId)
                 }
@@ -45,6 +49,8 @@ extension Pod0NativeHostDispatcher {
             }
             acknowledgementTasks[envelope.requestId] = AcknowledgementTask(
                 envelope: envelope,
+                observation: observation,
+                completion: completion,
                 task: task
             )
         case .startEpisodeDownload, .cancelEpisodeDownload,
@@ -89,6 +95,8 @@ extension Pod0NativeHostDispatcher {
     func shutdown() {
         observationRecoveryTask?.cancel()
         observationRecoveryTask = nil
+        retainedObservationRetryTask?.cancel()
+        retainedObservationRetryTask = nil
         for active in activeTasks.values {
             active.task.cancel()
         }
@@ -97,6 +105,7 @@ extension Pod0NativeHostDispatcher {
             acknowledgement.task.cancel()
         }
         acknowledgementTasks.removeAll()
+        retainedObservationIDs.removeAll()
         for acknowledgement in downloadAcknowledgementTasks.values {
             acknowledgement.cancel()
         }
@@ -118,6 +127,51 @@ extension Pod0NativeHostDispatcher {
         case .rejected: true
         case .retainAndRetry: false
         }
+    }
+
+    @discardableResult
+    func retryRetainedObservations(in facade: Pod0Facade) -> Bool {
+        guard retainedObservationRetryTask == nil else { return true }
+        let retained = acknowledgementTasks.values.filter {
+            retainedObservationIDs.contains($0.envelope.requestId)
+        }
+        guard !retained.isEmpty else { return false }
+        let recorder = durableObservationRecorder
+        retainedObservationRetryTask = Task { @MainActor [weak self] in
+            var completions: [@MainActor () -> Void] = []
+            for acknowledgement in retained {
+                guard !Task.isCancelled else { return }
+                let persistForRelaunch = switch acknowledgement.envelope.request {
+                case .executeChapterModel, .recoverChapterModelOperation,
+                     .executeTranscriptCapability: true
+                default: false
+                }
+                let receipt = await recorder.recordRetaining(
+                    acknowledgement.observation,
+                    in: facade,
+                    persistForRelaunch: persistForRelaunch
+                )
+                guard let self,
+                      retainedObservationIDs.contains(acknowledgement.envelope.requestId)
+                else { continue }
+                guard case .retainAndRetry = receipt else {
+                    retainedObservationIDs.remove(acknowledgement.envelope.requestId)
+                    acknowledgementTasks.removeValue(forKey: acknowledgement.envelope.requestId)
+                    if Self.receiptAllowsRetirement(
+                        receipt,
+                        for: acknowledgement.envelope.request
+                    ) {
+                        rememberCompletion(acknowledgement.envelope.requestId)
+                    }
+                    completions.append(acknowledgement.completion)
+                    continue
+                }
+            }
+            guard let self else { return }
+            retainedObservationRetryTask = nil
+            for completion in completions { completion() }
+        }
+        return true
     }
 }
 
@@ -153,11 +207,19 @@ actor CoreDurableObservationRecorder {
         persistForRelaunch: Bool
     ) async -> HostObservationReceipt {
         if persistForRelaunch {
-            guard await persist(observation) else {
+            guard let outbox else {
+                return .retainAndRetry(requestId: observation.requestId)
+            }
+            do {
+                _ = try await outbox.persistBeforeDelivery(observation)
+            } catch {
                 return .retainAndRetry(requestId: observation.requestId)
             }
         }
-        let receipt = await deliverRetaining(observation, in: facade)
+        guard !Task.isCancelled else {
+            return .retainAndRetry(requestId: observation.requestId)
+        }
+        let receipt = facade.recordHostObservation(observation: observation)
         if persistForRelaunch, let outbox {
             _ = try? await outbox.acknowledge(receipt)
         }
@@ -171,48 +233,11 @@ actor CoreDurableObservationRecorder {
         var replayed: [(HostObservationEnvelope, HostObservationReceipt)] = []
         for observation in await outbox.pendingObservations() {
             guard !Task.isCancelled else { return replayed }
-            let receipt = await deliverRetaining(observation, in: facade)
+            let receipt = facade.recordHostObservation(observation: observation)
             guard !Task.isCancelled else { return replayed }
             _ = try? await outbox.acknowledge(receipt)
             replayed.append((observation, receipt))
         }
         return replayed
-    }
-
-    private func persist(_ observation: HostObservationEnvelope) async -> Bool {
-        guard let outbox else { return false }
-        var delay = Duration.milliseconds(25)
-        while !Task.isCancelled {
-            do {
-                _ = try await outbox.persistBeforeDelivery(observation)
-                return true
-            } catch {
-                guard await pause(&delay) else { return false }
-            }
-        }
-        return false
-    }
-
-    private func deliverRetaining(
-        _ observation: HostObservationEnvelope,
-        in facade: Pod0Facade
-    ) async -> HostObservationReceipt {
-        var delay = Duration.milliseconds(25)
-        while !Task.isCancelled {
-            let receipt = facade.recordHostObservation(observation: observation)
-            guard case .retainAndRetry = receipt else { return receipt }
-            guard await pause(&delay) else { break }
-        }
-        return .retainAndRetry(requestId: observation.requestId)
-    }
-
-    private func pause(_ delay: inout Duration) async -> Bool {
-        do {
-            try await Task.sleep(for: delay)
-        } catch {
-            return false
-        }
-        delay = min(delay * 2, .seconds(2))
-        return true
     }
 }

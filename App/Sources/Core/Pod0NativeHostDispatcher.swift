@@ -16,6 +16,8 @@ final class Pod0NativeHostDispatcher {
 
     struct AcknowledgementTask {
         let envelope: HostRequestEnvelope
+        let observation: HostObservationEnvelope
+        let completion: @MainActor () -> Void
         let task: Task<Void, Never>
     }
 
@@ -45,6 +47,8 @@ final class Pod0NativeHostDispatcher {
     var activeTasks: [HostRequestId: ActiveTask] = [:]
     var playbackStreams: [HostRequestId: PlaybackStream] = [:]
     var acknowledgementTasks: [HostRequestId: AcknowledgementTask] = [:]
+    var retainedObservationIDs: Set<HostRequestId> = []
+    var retainedObservationRetryTask: Task<Void, Never>?
     var downloadAcknowledgementTasks: [HostRequestId: Task<Void, Never>] = [:]
     var downloadRequests: [HostRequestId: ActiveDownloadRequest] = [:]
     var pendingDownloadObservations: [HostRequestId: [HostObservationEnvelope]] = [:]
@@ -91,6 +95,7 @@ final class Pod0NativeHostDispatcher {
             startObservationRecovery(from: facade, maximumCount: maximumCount)
             return
         }
+        if retryRetainedObservations(in: facade) { return }
         for cancellation in facade.nextHostCancellations(maximumCount: maximumCount) {
             cancel(
                 requestID: cancellation.requestId,

@@ -18,8 +18,11 @@ extension Pod0NativeHostDispatcher {
                     receipt: receipt
                 )
             }
-            observationRecoveryReady = true
             observationRecoveryTask = nil
+            guard !replayed.contains(where: {
+                if case .retainAndRetry = $0.1 { true } else { false }
+            }) else { return }
+            observationRecoveryReady = true
             executePendingRequests(from: facade, maximumCount: maximumCount)
         }
     }

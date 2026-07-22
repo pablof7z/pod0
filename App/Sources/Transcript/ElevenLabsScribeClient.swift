@@ -36,9 +36,8 @@ import os.log
 ///      against the default 60-second `URLRequest.timeoutInterval`, which
 ///      is far shorter than transcription wall time.
 ///
-/// The client keeps the `submit` → `pollResult` shape: the first process uses
-/// the inline response, while a reconstructed process retrieves the same
-/// transcript through `/v1/speech-to-text/transcripts/{transcription_id}`.
+/// Submission returns an inline result. A reconstructed process can perform
+/// exactly one read of `/v1/speech-to-text/transcripts/{transcription_id}`.
 /// It chooses the multipart audio source based on the URL scheme —
 /// `file://` → `file` field with bytes, `https://` → `source_url` field with
 /// the URL string (the server fetches it for us).
@@ -207,7 +206,7 @@ actor ElevenLabsScribeClient {
 
     /// Returns the inline synchronous result, or reconstructs it by durable
     /// provider ID after process termination.
-    func pollResult(_ job: ScribeJob) async throws -> Transcript {
+    func result(for job: ScribeJob) async throws -> Transcript {
         let raw: ScribeRawResult
         if let inline = job.inlineResult {
             raw = inline

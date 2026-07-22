@@ -260,6 +260,7 @@
 		4B9EC98884940350EB3E246D /* ClipsSegment.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB01C3600CB6751A61528D44 /* ClipsSegment.swift */; };
 		4BB96AE05D1F9355B925ED81 /* CoreRecallHostTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D56B6C98AE8A408817234A5F /* CoreRecallHostTests.swift */; };
 		4BDBBB305AE94E07BCDC1F97 /* BlossomUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92CA53594D5B5B3AC527ABCC /* BlossomUploader.swift */; };
+		4C0F0F208B4F7F5779E49A07 /* LiveCoreTranscriptProviderRoutingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F176BF34BD4DB43BA41F268 /* LiveCoreTranscriptProviderRoutingTests.swift */; };
 		4C122C9061687270E223FDD1 /* SharedLibraryClient+Transcripts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83C900479C94EF8A1D66DCDD /* SharedLibraryClient+Transcripts.swift */; };
 		4C393466478D6C48F228242D /* StartVoiceModeIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A44B416299A474FC718E2C5 /* StartVoiceModeIntent.swift */; };
 		4C4CB5A35CE4E74A759B267F /* PodcastAgentToolValues+Inventory.swift in Sources */ = {isa = PBXBuildFile; fileRef = E11C803B51B48C93B46F0F4B /* PodcastAgentToolValues+Inventory.swift */; };
@@ -422,6 +423,7 @@
 		84C1F2E7E12E30068AE3CAE2 /* WhatsNewServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE8C3FF9B6198A0AA6C3A16E /* WhatsNewServiceTests.swift */; };
 		84C4716C2B0CCD9831BC48DD /* PlaybackState+HeadphoneGestures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B5149E1C7DBDCE872668E5D /* PlaybackState+HeadphoneGestures.swift */; };
 		84DD823D72F4E5C852881AEA /* PlayerQueueSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02AA954731D0DD21C365DB3D /* PlayerQueueSheet.swift */; };
+		84F4C3268820B113E6B4380F /* CoreTranscriptProviderClients.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67679771A82A6A18CE582F21 /* CoreTranscriptProviderClients.swift */; };
 		85092C4EECD728D1EC9F6AAF /* CoreFeedHostTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 534ECE6D4FCD465390D7C355 /* CoreFeedHostTests.swift */; };
 		87B6D49DBAF7EADDD0FFB80B /* TranscriptKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02384F0D2237354AF64B2F85 /* TranscriptKind.swift */; };
 		88C1A5F477E331A6AA46D8B5 /* LivePodcastLibraryAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9803A82B10D2CA3E728DADB0 /* LivePodcastLibraryAdapter.swift */; };
@@ -1191,6 +1193,7 @@
 		65542A2ED21DC8A56840AF63 /* WorkflowPayloads.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowPayloads.swift; sourceTree = "<group>"; };
 		661B46155E318E5D5685CAAA /* PlayerChaptersScrollView+AskAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlayerChaptersScrollView+AskAgent.swift"; sourceTree = "<group>"; };
 		669769358704C67AF9A3A23E /* Pod0Core.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pod0Core.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		67679771A82A6A18CE582F21 /* CoreTranscriptProviderClients.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreTranscriptProviderClients.swift; sourceTree = "<group>"; };
 		67C23A0E19F361DFBDC0F4CC /* OPMLExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OPMLExport.swift; sourceTree = "<group>"; };
 		68330F2571B90C7BBD19CA19 /* AgentTools+PodcastExternal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AgentTools+PodcastExternal.swift"; sourceTree = "<group>"; };
 		68ED540F100187954217474A /* SharedClipMappingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedClipMappingTests.swift; sourceTree = "<group>"; };
@@ -1367,6 +1370,7 @@
 		9ED03C0C88CEA9A6A0F679F0 /* pod0_facade.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = pod0_facade.swift; sourceTree = "<group>"; };
 		9ED28D177808259F929D4477 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		9F01D52619F42226F96452B4 /* CategoryAutoDownloadSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryAutoDownloadSection.swift; sourceTree = "<group>"; };
+		9F176BF34BD4DB43BA41F268 /* LiveCoreTranscriptProviderRoutingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveCoreTranscriptProviderRoutingTests.swift; sourceTree = "<group>"; };
 		A04BFBCE02E158B5F49611AB /* BYOKConnectService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BYOKConnectService.swift; sourceTree = "<group>"; };
 		A07B87C15E98C7F3A7F93ED7 /* VoiceNoteRecordingSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceNoteRecordingSheet.swift; sourceTree = "<group>"; };
 		A0D41A0CA0529F2D52C96470 /* LiveAgentOwnedPodcastManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveAgentOwnedPodcastManager.swift; sourceTree = "<group>"; };
@@ -1870,6 +1874,7 @@
 				DDEB69C8E70BC8FE9028E8A0 /* CoreRecallHosting.swift */,
 				2A98B5A6A98940B969CE4310 /* CoreTranscriptHost.swift */,
 				6C05FE2C8FA78969B2C4EA29 /* CoreTranscriptHost+Failures.swift */,
+				67679771A82A6A18CE582F21 /* CoreTranscriptProviderClients.swift */,
 				613DA20A1D34D650FD88F4F2 /* CoreTranscriptTransport.swift */,
 				5F882238D10B58E8E4C579CD /* DeferredPlaybackHost.swift */,
 				E870217CC0A73FC46D927747 /* LegacyChapterWorkflowJob.swift */,
@@ -2540,6 +2545,7 @@
 				18D7250607DCA100F0032DED /* LegacyTranscriptWorkflowCutoverTests.swift */,
 				6B911B317E44998B217BA40B /* LibraryUnplayedBadgeTests.swift */,
 				75560A14955994ED192ECB7A /* LiquidGlassSegmentedPickerTests.swift */,
+				9F176BF34BD4DB43BA41F268 /* LiveCoreTranscriptProviderRoutingTests.swift */,
 				4E624151A4602D2698EB71AB /* LiveCoreTranscriptTransportTests.swift */,
 				80D89E3501095FCCE1DCE609 /* LLMProviderTests.swift */,
 				E1A8BA5BF5CA7F9151D4B12F /* ModelChapterWorkflowProjectionTests.swift */,
@@ -3252,6 +3258,7 @@
 				EBB7BBA82A7520183C315781 /* CoreRecallHosting.swift in Sources */,
 				C6CACC9B70E0CDDD373D9A27 /* CoreTranscriptHost+Failures.swift in Sources */,
 				5EBAC12672EDFEF02D453E54 /* CoreTranscriptHost.swift in Sources */,
+				84F4C3268820B113E6B4380F /* CoreTranscriptProviderClients.swift in Sources */,
 				05F2AC4043C523AC4368E06A /* CoreTranscriptTransport.swift in Sources */,
 				A7DCA134CE2936165EA432A5 /* DeferredPlaybackHost.swift in Sources */,
 				DB602E7256003F7275C3C75D /* LegacyChapterWorkflowJob.swift in Sources */,
@@ -3854,6 +3861,7 @@
 				322DF7D260F4E7633BA8123C /* LegacyTranscriptWorkflowCutoverTests.swift in Sources */,
 				4244877912A09DD057D41003 /* LibraryUnplayedBadgeTests.swift in Sources */,
 				BBCC62B1CD794D7805AA77CC /* LiquidGlassSegmentedPickerTests.swift in Sources */,
+				4C0F0F208B4F7F5779E49A07 /* LiveCoreTranscriptProviderRoutingTests.swift in Sources */,
 				05197AD7DF009D85BAE76DFC /* LiveCoreTranscriptTransportTests.swift in Sources */,
 				72B40DD159BEBE66778B0F82 /* ModelChapterWorkflowProjectionTests.swift in Sources */,
 				0C36FBB0AFE6F68F8FA42010 /* NativeHostObservationOutboxTests.swift in Sources */,
