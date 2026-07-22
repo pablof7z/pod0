@@ -184,6 +184,7 @@ mod runtime_transcript_workflow_test_support;
 #[cfg(test)]
 mod runtime_transcript_workflow_tests;
 mod runtime_transcript_workflow_wakes;
+mod scheduled_agent_facade;
 mod transcript_migration;
 mod transcript_migration_mapping;
 mod transcript_workflow_cutover;

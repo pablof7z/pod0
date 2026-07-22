@@ -31,13 +31,14 @@ final class Pod0NativeHostDispatcher {
         var lastObservation: PlaybackLifecycleObservation?
     }
 
-    private let feedHost: any CoreFeedHosting
+    let feedHost: any CoreFeedHosting
     let downloadHost: any CoreDownloadHosting
     let publisherChapterHost: any CorePublisherChapterHosting
     let chapterModelHost: any CoreChapterModelHosting
     let playbackHost: any CorePlaybackHosting
     private let maximumConcurrentTasks: Int
     let recallHost: any CoreRecallHosting
+    let scheduledAgentHost: any CoreScheduledAgentHosting
     let transcriptHost: any CoreTranscriptHosting
     let recallObservationRecorder = CoreRecallObservationRecorder()
     let publisherObservationRecorder = CorePublisherChapterObservationRecorder()
@@ -47,6 +48,10 @@ final class Pod0NativeHostDispatcher {
     var activeTasks: [HostRequestId: ActiveTask] = [:]
     var playbackStreams: [HostRequestId: PlaybackStream] = [:]
     var acknowledgementTasks: [HostRequestId: AcknowledgementTask] = [:]
+    var scheduledAgentAcknowledgementTasks: [HostRequestId: Task<Void, Never>] = [:]
+    var pendingScheduledAgentObservations: [HostRequestId: [HostObservationEnvelope]] = [:]
+    var scheduledAgentObservationCompletions: [HostRequestId: @MainActor () -> Void] = [:]
+    var retainedScheduledAgentObservationIDs: Set<HostRequestId> = []
     var retainedObservationIDs: Set<HostRequestId> = []
     var retainedObservationRetryTask: Task<Void, Never>?
     var downloadAcknowledgementTasks: [HostRequestId: Task<Void, Never>] = [:]
@@ -54,8 +59,8 @@ final class Pod0NativeHostDispatcher {
     var pendingDownloadObservations: [HostRequestId: [HostObservationEnvelope]] = [:]
     var observationRecoveryTask: Task<Void, Never>?
     var observationRecoveryReady: Bool
-    private var completedRequestIDs: Set<HostRequestId> = []
-    private var completionOrder: [HostRequestId] = []
+    var completedRequestIDs: Set<HostRequestId> = []
+    var completionOrder: [HostRequestId] = []
     private var executionEnabled = false
 
     init(
@@ -65,6 +70,7 @@ final class Pod0NativeHostDispatcher {
         chapterModelHost: any CoreChapterModelHosting = CoreChapterModelHost(),
         playbackHost: any CorePlaybackHosting,
         recallHost: any CoreRecallHosting = UnavailableCoreRecallHost(),
+        scheduledAgentHost: any CoreScheduledAgentHosting = CoreScheduledAgentHost(),
         transcriptHost: any CoreTranscriptHosting = CoreTranscriptHost(),
         maximumConcurrentTasks: Int = 8,
         now: @escaping @MainActor () -> Date = Date.init,
@@ -76,6 +82,7 @@ final class Pod0NativeHostDispatcher {
         self.chapterModelHost = chapterModelHost
         self.playbackHost = playbackHost
         self.recallHost = recallHost
+        self.scheduledAgentHost = scheduledAgentHost
         self.transcriptHost = transcriptHost
         self.observationOutbox = observationOutbox
         self.durableObservationRecorder = CoreDurableObservationRecorder(
@@ -96,6 +103,7 @@ final class Pod0NativeHostDispatcher {
             return
         }
         if retryRetainedObservations(in: facade) { return }
+        if retryRetainedScheduledAgentObservations(in: facade) { return }
         for cancellation in facade.nextHostCancellations(maximumCount: maximumCount) {
             cancel(
                 requestID: cancellation.requestId,
@@ -105,7 +113,7 @@ final class Pod0NativeHostDispatcher {
         let capacity = max(
             0,
             maximumConcurrentTasks - activeTasks.count - acknowledgementTasks.count
-                - downloadRequests.count
+                - downloadRequests.count - scheduledAgentAcknowledgementTasks.count
         )
         let boundedCount = min(Int(maximumCount), capacity)
         guard boundedCount > 0 else { return }
@@ -126,10 +134,21 @@ final class Pod0NativeHostDispatcher {
     func execute(_ envelope: HostRequestEnvelope, delivery: @escaping Delivery) {
         guard !isKnown(envelope.requestId) else { return }
         guard !isExpired(envelope) else {
+            let observation: HostObservation
+            if case .executeScheduledAgentTurn(let execution) = envelope.request {
+                observation = .scheduledAgentExecutionObserved(
+                    observation: expiredScheduledAgentObservation(execution)
+                )
+            } else {
+                observation = .failed(
+                    code: .timedOut,
+                    safeDetail: "Host request deadline expired"
+                )
+            }
             finish(
                 envelope,
                 sequenceNumber: 0,
-                observation: .failed(code: .timedOut, safeDetail: "Host request deadline expired"),
+                observation: observation,
                 delivery: delivery
             )
             return
@@ -204,6 +223,28 @@ final class Pod0NativeHostDispatcher {
                 return
             }
             startTranscriptTask(envelope, delivery: delivery)
+        case .executeScheduledAgentTurn(let execution):
+            guard observationOutbox != nil else {
+                finish(
+                    envelope,
+                    sequenceNumber: 0,
+                    observation: .scheduledAgentExecutionObserved(observation: .failed(
+                        occurrenceId: execution.occurrenceId,
+                        attemptId: execution.attemptId,
+                        code: .storageUnavailable,
+                        safeDetail: "Durable scheduled-agent observation staging is unavailable",
+                        retryAfterMilliseconds: nil
+                    )),
+                    delivery: delivery,
+                    remember: false
+                )
+                return
+            }
+            startScheduledAgentTask(
+                envelope,
+                execution: execution,
+                delivery: delivery
+            )
         case .scheduleCoreWake(let wakeAt, let reason):
             startCoreWakeTask(
                 envelope,
@@ -224,54 +265,4 @@ final class Pod0NativeHostDispatcher {
         }
     }
 
-    private func startFeedTask(
-        _ envelope: HostRequestEnvelope,
-        feedURL: String,
-        entityTag: String?,
-        lastModified: String?,
-        maximumResponseBytes: UInt64,
-        delivery: @escaping Delivery
-    ) {
-        let task = Task { @MainActor [weak self] in
-            guard let self else { return }
-            let result = await feedHost.fetch(
-                feedURL: feedURL,
-                entityTag: entityTag,
-                lastModified: lastModified,
-                maximumResponseBytes: maximumResponseBytes,
-                deadline: envelope.deadlineAt?.date
-            )
-            guard activeTasks.removeValue(forKey: envelope.requestId) != nil else { return }
-            let observation: HostObservation = isExpired(envelope)
-                ? .failed(code: .timedOut, safeDetail: "Host request deadline expired")
-                : result
-            finish(
-                envelope,
-                sequenceNumber: 0,
-                observation: observation,
-                delivery: delivery
-            )
-        }
-        activeTasks[envelope.requestId] = ActiveTask(
-            envelope: envelope,
-            task: task,
-            delivery: delivery
-        )
-    }
-
-    private func isKnown(_ requestID: HostRequestId) -> Bool {
-        activeTasks[requestID] != nil
-            || downloadRequests[requestID] != nil
-            || playbackStreams[requestID] != nil
-            || acknowledgementTasks[requestID] != nil
-            || completedRequestIDs.contains(requestID)
-    }
-
-    func rememberCompletion(_ requestID: HostRequestId) {
-        guard completedRequestIDs.insert(requestID).inserted else { return }
-        completionOrder.append(requestID)
-        if completionOrder.count > 256 {
-            completedRequestIDs.remove(completionOrder.removeFirst())
-        }
-    }
 }

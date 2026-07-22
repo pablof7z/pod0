@@ -1,13 +1,12 @@
-use pod0_domain::{ScheduledAttemptId, ScheduledOccurrenceId, UnixTimestampMilliseconds};
-
 use crate::{
     MAX_SCHEDULED_AGENT_ATTEMPTS, MAX_SCHEDULED_AGENT_OUTPUT_EXCERPT_BYTES,
     MAX_SCHEDULED_AGENT_PROVIDER_OPERATION_BYTES, MAX_SCHEDULED_AGENT_SAFE_DETAIL_BYTES,
     SCHEDULED_AGENT_RETRY_DELAY_MILLISECONDS, ScheduledAgentExecutionObservation,
     ScheduledAgentFailure, ScheduledAgentFailureCode, ScheduledAgentOccurrenceState,
     ScheduledAgentStage, ScheduledAgentTransition, add_milliseconds, is_terminal, next_revision,
+    scheduled_generated_artifact_id,
 };
-
+use pod0_domain::{ScheduledAttemptId, ScheduledOccurrenceId, UnixTimestampMilliseconds};
 pub fn apply_scheduled_agent_observation(
     state: &mut ScheduledAgentOccurrenceState,
     observation: &ScheduledAgentExecutionObservation,
@@ -51,10 +50,12 @@ pub fn apply_scheduled_agent_observation(
             output_excerpt,
             ..
         } => {
-            if !matches!(
-                state.stage,
-                ScheduledAgentStage::Requested | ScheduledAgentStage::HostAccepted
-            ) || output_excerpt.trim().is_empty()
+            if *artifact_id != scheduled_generated_artifact_id(attempt_id)
+                || !matches!(
+                    state.stage,
+                    ScheduledAgentStage::Requested | ScheduledAgentStage::HostAccepted
+                )
+                || output_excerpt.trim().is_empty()
             {
                 return ScheduledAgentTransition::RejectedInvalid;
             }

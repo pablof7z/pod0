@@ -4,7 +4,7 @@ use pod0_domain::{
 };
 use sha2::{Digest as _, Sha256};
 
-pub const SCHEDULED_AGENT_POLICY_VERSION: u32 = 1;
+pub const SCHEDULED_AGENT_POLICY_VERSION: u32 = 2;
 pub const MAX_SCHEDULED_AGENT_TASKS: u16 = 200;
 pub const MAX_SCHEDULED_AGENT_LABEL_BYTES: usize = 160;
 pub const MAX_SCHEDULED_AGENT_PROMPT_BYTES: usize = 32 * 1_024;
@@ -241,13 +241,13 @@ pub fn scheduled_prompt_revision(prompt: &str) -> Option<ContentDigest> {
 pub(crate) struct StableHash(Sha256);
 
 impl StableHash {
-    fn new(domain: &[u8]) -> Self {
+    pub(crate) fn new(domain: &[u8]) -> Self {
         let mut value = Self(Sha256::new());
         value.bytes(domain);
         value
     }
 
-    fn bytes(&mut self, value: &[u8]) {
+    pub(crate) fn bytes(&mut self, value: &[u8]) {
         self.0.update((value.len() as u64).to_be_bytes());
         self.0.update(value);
     }
@@ -260,7 +260,7 @@ impl StableHash {
         self.bytes(&value.to_be_bytes());
     }
 
-    fn first_16(self) -> [u8; 16] {
+    pub(crate) fn first_16(self) -> [u8; 16] {
         self.finish()[..16].try_into().expect("digest prefix")
     }
 

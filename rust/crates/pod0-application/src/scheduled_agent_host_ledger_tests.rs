@@ -1,5 +1,5 @@
 use pod0_domain::{
-    CancellationId, CommandId, ContentDigest, GeneratedArtifactId, ScheduledTaskId, StateRevision,
+    CancellationId, CommandId, ContentDigest, ScheduledTaskId, StateRevision,
     UnixTimestampMilliseconds,
 };
 
@@ -63,7 +63,7 @@ fn host_ledger_keeps_acceptance_streaming_then_retires_completion() {
     let completion = ScheduledAgentExecutionObservation::Completed {
         occurrence_id: plan.request.occurrence_id,
         attempt_id: plan.request.attempt_id,
-        artifact_id: GeneratedArtifactId::from_parts(4, 5),
+        artifact_id: scheduled_generated_artifact_id(plan.request.attempt_id),
         output_digest: ContentDigest::from_bytes([3; 32]),
         output_excerpt: "Complete".to_owned(),
     };

@@ -3,7 +3,8 @@ use crate::{
     MAX_SCHEDULED_AGENT_CONTEXT_MESSAGES, MAX_SCHEDULED_AGENT_MODEL_BYTES,
     MAX_SCHEDULED_AGENT_OUTPUT_EXCERPT_BYTES, MAX_SCHEDULED_AGENT_PROMPT_BYTES,
     MAX_SCHEDULED_AGENT_PROVIDER_OPERATION_BYTES, MAX_SCHEDULED_AGENT_SAFE_DETAIL_BYTES,
-    ScheduledAgentContextRole, ScheduledAgentExecutionObservation, scheduled_prompt_revision,
+    ScheduledAgentContextRole, ScheduledAgentExecutionObservation, scheduled_generated_artifact_id,
+    scheduled_prompt_revision,
 };
 
 pub(super) fn scheduled_agent_observation_matches(
@@ -30,11 +31,13 @@ pub(super) fn scheduled_agent_observation_matches(
         ScheduledAgentExecutionObservation::Completed {
             occurrence_id,
             attempt_id,
+            artifact_id,
             output_excerpt,
             ..
         } => {
             *occurrence_id == execution.occurrence_id
                 && *attempt_id == execution.attempt_id
+                && *artifact_id == scheduled_generated_artifact_id(execution.attempt_id)
                 && !output_excerpt.trim().is_empty()
                 && output_excerpt.len() <= MAX_SCHEDULED_AGENT_OUTPUT_EXCERPT_BYTES
                 && u64::try_from(output_excerpt.len())

@@ -84,6 +84,7 @@ mod knowledge_test_fixture;
 mod note_contract;
 mod recall_contract;
 mod scheduled_agent;
+mod scheduled_agent_completion;
 #[cfg(test)]
 mod scheduled_agent_host_ledger_tests;
 mod scheduled_agent_observation;
@@ -133,6 +134,7 @@ pub use knowledge_ranking::*;
 pub use note_contract::*;
 pub use recall_contract::*;
 pub use scheduled_agent::*;
+pub use scheduled_agent_completion::*;
 pub use scheduled_agent_observation::*;
 pub use scheduled_agent_policy::*;
 pub use transcript_contract::*;

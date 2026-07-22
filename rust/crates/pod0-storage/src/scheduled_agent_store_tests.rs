@@ -1,5 +1,6 @@
 use pod0_application::{
     ScheduledAgentExecutionObservation, ScheduledAgentFailureCode, ScheduledAgentStage,
+    scheduled_generated_artifact_id,
 };
 use pod0_domain::{ContentDigest, GeneratedArtifactId};
 use rusqlite::Connection;
@@ -113,7 +114,7 @@ fn completion_atomically_selects_artifact_and_advances_recurrence_once() {
         .unwrap()
         .requests
         .remove(0);
-    let artifact_id = GeneratedArtifactId::from_parts(5, 1);
+    let artifact_id = scheduled_generated_artifact_id(request.execution.attempt_id);
     let digest = ContentDigest::from_bytes([7; 32]);
     let completion = ScheduledAgentObservationInput {
         request_id: request.request_id,
@@ -156,10 +157,10 @@ fn completion_atomically_selects_artifact_and_advances_recurrence_once() {
 }
 
 #[test]
-fn conflicting_completion_rolls_back_occurrence_artifact_and_recurrence() {
+fn noncanonical_completion_rolls_back_occurrence_artifact_and_recurrence() {
     let fixture = ScheduledFixture::new();
     let shared_artifact = GeneratedArtifactId::from_parts(6, 1);
-    complete_task(&fixture, 1, shared_artifact);
+    complete_task(&fixture, 1);
 
     let definition = fixture.definition(2, 4_000);
     fixture
@@ -191,7 +192,7 @@ fn conflicting_completion_rolls_back_occurrence_artifact_and_recurrence() {
                 output_excerpt: "Conflicting artifact".to_owned(),
             },
         });
-    assert!(matches!(result, Err(StorageError::Sqlite { .. })));
+    assert_eq!(result, Err(StorageError::ScheduledAgentWorkflowConflict));
     assert_eq!(
         fixture
             .store
@@ -206,7 +207,7 @@ fn conflicting_completion_rolls_back_occurrence_artifact_and_recurrence() {
     assert_eq!(task.next_run_at, time(4_000));
 }
 
-fn complete_task(fixture: &ScheduledFixture, value: u64, artifact_id: GeneratedArtifactId) {
+fn complete_task(fixture: &ScheduledFixture, value: u64) {
     let due = 2_000 + i64::try_from(value).unwrap();
     let definition = fixture.definition(value, due);
     fixture
@@ -233,7 +234,7 @@ fn complete_task(fixture: &ScheduledFixture, value: u64, artifact_id: GeneratedA
             observation: ScheduledAgentExecutionObservation::Completed {
                 occurrence_id: request.execution.occurrence_id,
                 attempt_id: request.execution.attempt_id,
-                artifact_id,
+                artifact_id: scheduled_generated_artifact_id(request.execution.attempt_id),
                 output_digest: ContentDigest::from_bytes([8; 32]),
                 output_excerpt: "First artifact".to_owned(),
             },

@@ -61,6 +61,13 @@ extension Pod0NativeHostDispatcher {
                 in: facade,
                 completion: completion
             )
+        case .executeScheduledAgentTurn:
+            enqueueScheduledAgentObservation(
+                observation,
+                for: envelope,
+                in: facade,
+                completion: completion
+            )
         default:
             _ = facade.recordHostObservation(observation: observation)
             completion()
@@ -105,6 +112,13 @@ extension Pod0NativeHostDispatcher {
             acknowledgement.task.cancel()
         }
         acknowledgementTasks.removeAll()
+        for acknowledgement in scheduledAgentAcknowledgementTasks.values {
+            acknowledgement.cancel()
+        }
+        scheduledAgentAcknowledgementTasks.removeAll()
+        pendingScheduledAgentObservations.removeAll()
+        scheduledAgentObservationCompletions.removeAll()
+        retainedScheduledAgentObservationIDs.removeAll()
         retainedObservationIDs.removeAll()
         for acknowledgement in downloadAcknowledgementTasks.values {
             acknowledgement.cancel()

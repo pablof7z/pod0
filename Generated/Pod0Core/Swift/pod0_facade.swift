@@ -5889,6 +5889,30 @@ fileprivate struct FfiConverterOptionTypeLegacyTranscriptWorkflowCutoverFailure:
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeScheduledAgentExecutionObservation: FfiConverterRustBuffer {
+    typealias SwiftType = ScheduledAgentExecutionObservation?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeScheduledAgentExecutionObservation.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeScheduledAgentExecutionObservation.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceUInt32: FfiConverterRustBuffer {
     typealias SwiftType = [UInt32]
 
@@ -6473,6 +6497,19 @@ public func stageLegacyNoteImport(sourcePath: String, sourceBackupPath: String, 
     )
 })
 }
+/**
+ * Converts bounded raw provider text into canonical Rust-owned artifact
+ * evidence. Native callers cannot choose durable artifact identity or digest.
+ */
+public func qualifyScheduledAgentCompletion(execution: ScheduledAgentExecutionRequest, rawOutput: String) -> ScheduledAgentExecutionObservation?  {
+    return try!  FfiConverterOptionTypeScheduledAgentExecutionObservation.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_qualify_scheduled_agent_completion(
+        FfiConverterTypeScheduledAgentExecutionRequest_lower(execution),
+        FfiConverterString.lower(rawOutput),uniffiCallStatus
+    )
+})
+}
 public func commitStagedLegacyTranscriptImport(sourceDatabasePath: String, transcriptRootPath: String, targetPath: String, importId: CommandId, observedAtMilliseconds: Int64)throws  -> LegacyTranscriptImportReport  {
     return try  FfiConverterTypeLegacyTranscriptImportReport_lift(try rustCallWithError(FfiConverterTypeLegacyTranscriptMigrationError_lift) {
         uniffiCallStatus in
@@ -6672,6 +6709,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_func_stage_legacy_note_import() != 14097) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_qualify_scheduled_agent_completion() != 7711) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_func_commit_staged_legacy_transcript_import() != 8416) {

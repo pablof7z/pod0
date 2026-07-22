@@ -2,6 +2,7 @@ use pod0_domain::{
     ContentDigest, GeneratedArtifactId, ScheduledAttemptId, ScheduledTaskId, StateRevision,
     UnixTimestampMilliseconds,
 };
+use sha2::Digest as _;
 
 use super::*;
 
@@ -104,6 +105,45 @@ fn attempt_plan_uses_injected_time_and_stable_fences() {
         time(1_500 + SCHEDULED_AGENT_HOST_DEADLINE_MILLISECONDS)
     );
     assert_eq!(first.request.context, Vec::new());
+    assert_eq!(
+        scheduled_generated_artifact_id(first.request.attempt_id),
+        scheduled_generated_artifact_id(second.request.attempt_id)
+    );
+}
+
+#[test]
+fn raw_output_qualification_is_bounded_and_rust_owns_identity() {
+    let plan = started(1_500);
+    let qualified = qualify_scheduled_agent_completion(&plan.request, "Briefing ready").unwrap();
+    let ScheduledAgentExecutionObservation::Completed {
+        occurrence_id,
+        attempt_id,
+        artifact_id,
+        output_digest,
+        output_excerpt,
+    } = qualified
+    else {
+        panic!("completed")
+    };
+    assert_eq!(occurrence_id, plan.request.occurrence_id);
+    assert_eq!(attempt_id, plan.request.attempt_id);
+    assert_eq!(artifact_id, scheduled_generated_artifact_id(attempt_id));
+    assert_eq!(
+        output_digest,
+        ContentDigest::from_bytes(sha2::Sha256::digest(b"Briefing ready").into())
+    );
+    assert_eq!(output_excerpt, "Briefing ready");
+    assert_eq!(
+        qualify_scheduled_agent_completion(&plan.request, "  "),
+        None
+    );
+    assert_eq!(
+        qualify_scheduled_agent_completion(
+            &plan.request,
+            &"x".repeat(MAX_SCHEDULED_AGENT_OUTPUT_EXCERPT_BYTES + 1)
+        ),
+        None
+    );
 }
 
 #[test]
@@ -146,7 +186,7 @@ fn accepted_and_completed_observations_are_fenced_and_idempotent() {
     let completed = ScheduledAgentExecutionObservation::Completed {
         occurrence_id: state.occurrence_id,
         attempt_id,
-        artifact_id: GeneratedArtifactId::from_parts(2, 3),
+        artifact_id: scheduled_generated_artifact_id(attempt_id),
         output_digest: digest(8),
         output_excerpt: "Finished briefing".to_owned(),
     };
@@ -180,7 +220,7 @@ fn completion_advances_the_exact_occurrence_once_from_completion_time() {
     let completed = ScheduledAgentExecutionObservation::Completed {
         occurrence_id: occurrence.occurrence_id,
         attempt_id: occurrence.attempt_id.unwrap(),
-        artifact_id: GeneratedArtifactId::from_parts(1, 2),
+        artifact_id: scheduled_generated_artifact_id(occurrence.attempt_id.unwrap()),
         output_digest: digest(9),
         output_excerpt: "Done".to_owned(),
     };

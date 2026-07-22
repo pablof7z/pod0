@@ -20,13 +20,15 @@ extension Pod0NativeHostDispatcher {
         }
         for requestID in taskIDs {
             guard let active = activeTasks.removeValue(forKey: requestID) else { continue }
-            active.task.cancel()
-            finish(
-                active.envelope,
-                sequenceNumber: 0,
-                observation: .cancelled,
-                delivery: active.delivery
-            )
+            if !cancelScheduledAgentTask(active) {
+                active.task.cancel()
+                finish(
+                    active.envelope,
+                    sequenceNumber: 0,
+                    observation: .cancelled,
+                    delivery: active.delivery
+                )
+            }
         }
 
         let streamIDs = playbackStreams.compactMap { requestID, stream in
@@ -55,8 +57,10 @@ extension Pod0NativeHostDispatcher {
         if let active = activeTasks[requestID],
            active.envelope.cancellationId == cancellationID {
             activeTasks.removeValue(forKey: requestID)
-            active.task.cancel()
-            rememberCompletion(requestID)
+            if !cancelScheduledAgentTask(active) {
+                active.task.cancel()
+                rememberCompletion(requestID)
+            }
         }
         if let stream = playbackStreams[requestID],
            stream.envelope.cancellationId == cancellationID {

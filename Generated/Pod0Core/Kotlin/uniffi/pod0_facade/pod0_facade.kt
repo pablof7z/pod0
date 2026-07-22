@@ -63,6 +63,8 @@ import uniffi.pod0_application.FfiConverterTypeModelChapterObservation
 import uniffi.pod0_application.FfiConverterTypeProjectionEnvelope
 import uniffi.pod0_application.FfiConverterTypeProjectionRequest
 import uniffi.pod0_application.FfiConverterTypePublisherChapterObservation
+import uniffi.pod0_application.FfiConverterTypeScheduledAgentExecutionObservation
+import uniffi.pod0_application.FfiConverterTypeScheduledAgentExecutionRequest
 import uniffi.pod0_application.FfiConverterTypeTranscriptCapabilityObservation
 import uniffi.pod0_application.FfiConverterTypeTranscriptCapabilityRequest
 import uniffi.pod0_application.FfiConverterTypeTranscriptCapabilityValidation
@@ -81,6 +83,8 @@ import uniffi.pod0_application.ModelChapterObservation
 import uniffi.pod0_application.ProjectionEnvelope
 import uniffi.pod0_application.ProjectionRequest
 import uniffi.pod0_application.PublisherChapterObservation
+import uniffi.pod0_application.ScheduledAgentExecutionObservation
+import uniffi.pod0_application.ScheduledAgentExecutionRequest
 import uniffi.pod0_application.TranscriptCapabilityObservation
 import uniffi.pod0_application.TranscriptCapabilityRequest
 import uniffi.pod0_application.TranscriptCapabilityValidation
@@ -131,6 +135,8 @@ import uniffi.pod0_application.RustBuffer as RustBufferModelChapterObservation
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionRequest
 import uniffi.pod0_application.RustBuffer as RustBufferPublisherChapterObservation
+import uniffi.pod0_application.RustBuffer as RustBufferScheduledAgentExecutionObservation
+import uniffi.pod0_application.RustBuffer as RustBufferScheduledAgentExecutionRequest
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptCapabilityObservation
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptCapabilityRequest
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptCapabilityValidation
@@ -883,6 +889,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_func_stage_legacy_note_import(
     ): Int
+    external fun uniffi_pod0_facade_checksum_func_qualify_scheduled_agent_completion(
+    ): Int
     external fun uniffi_pod0_facade_checksum_func_commit_staged_legacy_transcript_import(
     ): Int
     external fun uniffi_pod0_facade_checksum_func_discard_staged_legacy_transcript_import(
@@ -1093,6 +1101,8 @@ internal object UniffiLib {
     external fun uniffi_pod0_facade_fn_func_read_staged_legacy_note_import(`targetPath`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_func_stage_legacy_note_import(`sourcePath`: RustBuffer.ByValue,`sourceBackupPath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`targetSchemaBackupPath`: RustBuffer.ByValue,`expectedPlan`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,`targetStoreId`: RustBufferCommandId.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_qualify_scheduled_agent_completion(`execution`: RustBufferScheduledAgentExecutionRequest.ByValue,`rawOutput`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_func_commit_staged_legacy_transcript_import(`sourceDatabasePath`: RustBuffer.ByValue,`transcriptRootPath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
@@ -1329,6 +1339,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_func_stage_legacy_note_import() != 14097) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_qualify_scheduled_agent_completion() != 7711) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_func_commit_staged_legacy_transcript_import() != 8416) {
@@ -6852,6 +6865,38 @@ public object FfiConverterOptionalTypeLegacyTranscriptWorkflowCutoverFailure: Ff
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeScheduledAgentExecutionObservation: FfiConverterRustBuffer<ScheduledAgentExecutionObservation?> {
+    override fun read(buf: ByteBuffer): ScheduledAgentExecutionObservation? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeScheduledAgentExecutionObservation.read(buf)
+    }
+
+    override fun allocationSize(value: ScheduledAgentExecutionObservation?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeScheduledAgentExecutionObservation.allocationSize(value)
+        }
+    }
+
+    override fun write(value: ScheduledAgentExecutionObservation?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeScheduledAgentExecutionObservation.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceUInt: FfiConverterRustBuffer<List<kotlin.UInt>> {
     override fun read(buf: ByteBuffer): List<kotlin.UInt> {
         val len = buf.getInt()
@@ -7097,6 +7142,10 @@ public object FfiConverterSequenceTypeLegacyTranscriptWorkflowCutoverCandidate: 
         }
     }
 }
+
+
+
+
 
 
 
@@ -7650,6 +7699,22 @@ public object FfiConverterSequenceTypeLegacyTranscriptWorkflowCutoverCandidate: 
         FfiConverterTypeCommandId.lower(`importId`),
         FfiConverterTypeCommandId.lower(`targetStoreId`),
         FfiConverterLong.lower(`observedAtMilliseconds`),_status)
+}
+    )
+    }
+
+
+        /**
+         * Converts bounded raw provider text into canonical Rust-owned artifact
+         * evidence. Native callers cannot choose durable artifact identity or digest.
+         */ fun `qualifyScheduledAgentCompletion`(`execution`: ScheduledAgentExecutionRequest, `rawOutput`: kotlin.String): ScheduledAgentExecutionObservation? {
+            return FfiConverterOptionalTypeScheduledAgentExecutionObservation.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_qualify_scheduled_agent_completion(
+
+
+        FfiConverterTypeScheduledAgentExecutionRequest.lower(`execution`),
+        FfiConverterString.lower(`rawOutput`),_status)
 }
     )
     }
