@@ -84,7 +84,23 @@ struct LegacyDownloadWorkflowBackup: Codable, Equatable {
         )
         let digest = SHA256.hash(data: try encoder.encode(seed))
         let value = digest.prefix(8).reduce(UInt64.zero) { ($0 << 8) | UInt64($1) }
-        return value == 0 ? 1 : value
+        return storageGeneration(value)
+    }
+
+    static func storageGeneration(_ value: UInt64) -> UInt64 {
+        max(value & UInt64(Int64.max), 1)
+    }
+
+    func normalizedForStorage() -> Self {
+        Self(
+            formatVersion: formatVersion,
+            sourceGeneration: Self.storageGeneration(sourceGeneration),
+            persistenceGeneration: persistenceGeneration,
+            jobs: jobs,
+            artifacts: artifacts,
+            tasks: tasks,
+            candidates: candidates
+        )
     }
 
     static func digest(_ data: Data?) -> String? {

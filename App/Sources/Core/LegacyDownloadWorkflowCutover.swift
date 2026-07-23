@@ -22,7 +22,9 @@ enum LegacyDownloadWorkflowCutover {
             }
             if FileManager.default.fileExists(atPath: backupURL.path) {
                 let backup = try LegacyDownloadWorkflowBackup.load(from: backupURL)
-                guard backup.sourceGeneration == generation,
+                guard LegacyDownloadWorkflowBackup.storageGeneration(
+                    backup.sourceGeneration
+                ) == generation,
                       try jobStore.retireLegacyDownloadWorkflows(matching: backup),
                       try jobStore.legacyDownloadWorkflowsAreRetired()
                 else { throw LegacyDownloadWorkflowCutoverError.verificationFailed }
@@ -50,14 +52,23 @@ enum LegacyDownloadWorkflowCutover {
                     )
                 }
             }
-            source = try LegacyDownloadWorkflowSnapshot.capture(
+            let captured = try LegacyDownloadWorkflowSnapshot.capture(
                 state: state,
                 jobStore: jobStore,
                 artifactRepository: artifactRepository,
                 tasks: retired.tasks,
                 producedResumeData: retired.resumeData
             )
-            try source.backup.publish(to: backupURL)
+            if FileManager.default.fileExists(atPath: backupURL.path) {
+                let existing = try LegacyDownloadWorkflowBackup.load(from: backupURL)
+                guard existing.normalizedForStorage() == captured.backup else {
+                    throw LegacyDownloadWorkflowBackupError.sourceChanged
+                }
+                source = try restoreSnapshot(backup: existing, state: state)
+            } else {
+                source = captured
+                try source.backup.publish(to: backupURL)
+            }
         }
 
         let staged = facade.stageLegacyDownloadCutover(
@@ -147,7 +158,9 @@ enum LegacyDownloadWorkflowCutover {
         }
         let resumeData = Dictionary(uniqueKeysWithValues: resumePairs)
         return LegacyDownloadWorkflowSnapshot(
-            sourceGeneration: backup.sourceGeneration,
+            sourceGeneration: LegacyDownloadWorkflowBackup.storageGeneration(
+                backup.sourceGeneration
+            ),
             candidates: candidates,
             resumeDataByEpisodeID: resumeData,
             backup: backup

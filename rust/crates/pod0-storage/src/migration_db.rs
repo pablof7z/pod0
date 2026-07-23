@@ -130,6 +130,8 @@ pub(crate) fn unfinished_migration(
         .map_err(|error| StorageError::sqlite("read unfinished migration", error))
 }
 
+include!("migration_db_failed.rs");
+
 pub(crate) fn reconcile_committed_journal(
     connection: &Connection,
     completed_at_ms: i64,

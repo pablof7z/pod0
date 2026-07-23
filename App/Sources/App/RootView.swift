@@ -27,7 +27,10 @@ struct RootView: View {
     @ViewBuilder
     var body: some View {
         if let reason = store.sharedLibraryUnavailableReason {
-            SharedCoreUnavailableView(reason: reason)
+            SharedCoreUnavailableView(
+                reason: reason,
+                stage: store.sharedLibraryUnavailableStage?.rawValue
+            )
         } else {
             ZStack(alignment: .leading) {
             tabBar

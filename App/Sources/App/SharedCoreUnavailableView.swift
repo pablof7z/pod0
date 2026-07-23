@@ -4,6 +4,7 @@ import SwiftUI
 /// domain state while the authoritative Rust store is unavailable.
 struct SharedCoreUnavailableView: View {
     let reason: String
+    let stage: String?
 
     var body: some View {
         ContentUnavailableView {
@@ -13,7 +14,7 @@ struct SharedCoreUnavailableView: View {
                 "Your existing data has been left untouched. Close and reopen Pod0 to retry recovery."
             )
         } actions: {
-            Text("Diagnostic: \(reason)")
+            Text("Diagnostic: \(reason)\(stage.map { " · \($0)" } ?? "")")
                 .font(.footnote.monospaced())
                 .foregroundStyle(.secondary)
                 .textSelection(.enabled)

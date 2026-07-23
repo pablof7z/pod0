@@ -6,8 +6,9 @@ use rusqlite::{Connection, TransactionBehavior};
 use crate::backup::{create_or_reuse_backup, verify_connection};
 use crate::migration_db::{
     active_migration, application_id, complete_journal, configure, enable_write_ahead_logging,
-    ensure_parent, fail_journal, open_connection, reconcile_committed_journal, record_backup,
-    start_journal, unfinished_migration, user_version, validate_open_database,
+    ensure_parent, fail_journal, failed_migration_status, open_connection,
+    reconcile_committed_journal, record_backup, start_journal, unfinished_migration, user_version,
+    validate_open_database,
 };
 use crate::model::{
     APPLICATION_ID, AccessMode, BlockedReason, CURRENT_SCHEMA_VERSION,
@@ -125,9 +126,12 @@ impl<C: MigrationClock> CoreStoreMigrator<C> {
                 migration_id = active.migration_id;
                 resumed = true;
             }
-            if let Some((from, to)) = unfinished_migration(&connection, "failed")? {
+            let (blocking_failure, retrying_legacy_backup_conflict) =
+                failed_migration_status(&connection, migration_id)?;
+            if let Some((from, to)) = blocking_failure {
                 return Err(StorageError::FailedMigration { from, to });
             }
+            resumed |= retrying_legacy_backup_conflict;
         }
 
         if target_version == from_version {

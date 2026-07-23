@@ -3,6 +3,34 @@ import XCTest
 @testable import Podcastr
 
 final class LegacyDownloadWorkflowCutoverTests: XCTestCase {
+    func testOversizedLegacyGenerationNormalizesWithoutChangingBackupEvidence() throws {
+        let oversized = UInt64(Int64.max) + 2
+        let backup = LegacyDownloadWorkflowBackup(
+            formatVersion: 1,
+            sourceGeneration: oversized,
+            persistenceGeneration: 139,
+            jobs: [],
+            artifacts: [],
+            tasks: [],
+            candidates: []
+        )
+        let original = backup
+        let normalized = backup.normalizedForStorage()
+
+        XCTAssertEqual(
+            normalized.sourceGeneration,
+            LegacyDownloadWorkflowBackup.storageGeneration(oversized)
+        )
+        XCTAssertGreaterThan(normalized.sourceGeneration, 0)
+        XCTAssertLessThanOrEqual(normalized.sourceGeneration, UInt64(Int64.max))
+        XCTAssertEqual(backup, original)
+        XCTAssertEqual(backup.sourceGeneration, oversized)
+        XCTAssertEqual(normalized.jobs, backup.jobs)
+        XCTAssertEqual(normalized.artifacts, backup.artifacts)
+        XCTAssertEqual(normalized.tasks, backup.tasks)
+        XCTAssertEqual(normalized.candidates, backup.candidates)
+    }
+
     func testLegacySourceStoreAcceptsOnlyVerifiedStagedOutput() throws {
         let root = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }

@@ -16,6 +16,7 @@ final class AppStateStore {
     let productSignals: any ProductSignalSink
     @ObservationIgnored private(set) var sharedLibrary: SharedLibraryClient?
     @ObservationIgnored private(set) var sharedLibraryUnavailableReason: String?
+    @ObservationIgnored private(set) var sharedLibraryUnavailableStage: SharedLibraryBootstrapStage?
     @ObservationIgnored private(set) var startupRecoveryRequired = false
     var recallConfigurationRevision: UInt64 = 0
     var transcriptReader: any TranscriptReading {
@@ -211,8 +212,9 @@ final class AppStateStore {
                     iCloudSettingsSync.shared.retireLegacyRecallConfiguration()
                 }
             }
-        case .authoritativeUnavailable(let reason, _):
+        case .authoritativeUnavailable(let reason, let stage):
             sharedLibraryUnavailableReason = reason
+            sharedLibraryUnavailableStage = stage
         }
         // The `state.didSet` above doesn't fire from inside `init` until all
         // stored properties are initialised, and even then it skips the very

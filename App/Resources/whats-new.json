@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-23T13:21:01Z",
+      "lines": [
+        "Pod0 can now safely finish upgrading a library that was paused by an older backup check."
+      ]
+    },
+    {
       "shipped_at": "2026-07-23T13:04:00Z",
       "lines": [
         "Usage history now keeps cost and performance facts without saving your prompts or replies."

@@ -41,14 +41,26 @@ enum SharedLibraryBootstrap {
         var stage = SharedLibraryBootstrapStage.storePreparation
         do {
             let observedAt = UnixTimestampMilliseconds(date: Date()).value
+            let targetSchemaVersion = sharedStoreSchemaVersion()
             let schemaBackup = persistence.sharedCoreSchemaBackupURL(
-                targetVersion: sharedStoreSchemaVersion()
+                targetVersion: targetSchemaVersion
             )
             let storeID = stableID("pod0-core-store:\(target.standardizedFileURL.path)")
+            let existingStoreBytes = try? target.resourceValues(
+                forKeys: [.fileSizeKey]
+            ).fileSize
+            let schemaMigrationID = if existingStoreBytes.map({ $0 > 0 }) == true {
+                stableID(
+                    "pod0-core-schema-migration:"
+                        + "\(target.standardizedFileURL.path):v\(targetSchemaVersion)"
+                )
+            } else {
+                storeID
+            }
             _ = try prepareSharedListeningStore(
                 targetPath: target.path,
                 schemaBackupPath: schemaBackup.path,
-                migrationId: storeID,
+                migrationId: schemaMigrationID,
                 observedAtMilliseconds: observedAt
             )
             stage = .listening

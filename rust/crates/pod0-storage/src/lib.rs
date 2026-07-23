@@ -144,6 +144,8 @@ mod publication_store_read;
 mod publication_store_tests;
 mod publication_store_write;
 mod recall_configuration_store;
+#[cfg(test)]
+mod recovery_legacy_backup_conflict_tests;
 mod retained_orphan_parent;
 mod scheduled_agent_cutover;
 mod scheduled_agent_cutover_model;
