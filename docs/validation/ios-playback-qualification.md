@@ -50,9 +50,8 @@ Validated on 2026-07-20 against an iPhone 17 Pro simulator running iOS 26.5:
   Debug and again with whole-module Release optimization. The Release test
   invocation used the test-only `ENABLE_TESTABILITY=YES` override required by
   the suite's `@testable import`; the shipping Release launch did not.
-- Debug and shipping Release builds installed, launched, and rendered the
-  first-launch What's New surface without a crash or shared-store bootstrap
-  error.
+- Debug and shipping Release builds installed and launched without a crash or
+  shared-store bootstrap error.
 - The locked Rust workspace passed formatting, Clippy with warnings denied,
   all 232 unit tests, dependency/facade/schema policies, license/source checks,
   and the configured security audit.

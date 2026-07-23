@@ -120,10 +120,6 @@ The "subscription list" sections on Home (`HomeSubscriptionListSection` / `HomeS
 - Feed refresh scheduler reads `state.subscriptions` (rows), joins to `state.podcasts` for the feed URL + etag/lastModified. Unfollowed podcasts never get polled.
 - Notifications: same. Only subscribed.
 
-### 11. Changelog
-
-- **`App/Resources/whats-new.json`**: `"Agent-added episodes now carry full podcast artwork and metadata — no more blank tiles."`
-
 ## Critical files
 
 | File | Change |
@@ -143,7 +139,6 @@ The "subscription list" sections on Home (`HomeSubscriptionListSection` / `HomeS
 | `App/Sources/Agent/AgentGeneratedPodcastService.swift` | Create `Podcast` (kind: `.synthetic`); no auto-subscription |
 | `App/Sources/Agent/AgentTTSComposer.swift` | Pass first-chapter art as episode `imageURL` |
 | All UI surfaces listed in §9 | Mechanical rename `subscription?.xxx` → `podcast?.xxx` |
-| `App/Resources/whats-new.json` | Changelog line |
 
 ## Out of scope (explicit follow-ups)
 
@@ -153,7 +148,7 @@ The "subscription list" sections on Home (`HomeSubscriptionListSection` / `HomeS
 
 ## Verification
 
-1. **Migration test** — load an existing AppState JSON (pre-split shape) and assert it round-trips into `(podcasts, subscriptions)` with episode FKs intact. Add a fixture-backed test next to `WhatsNewServiceTests` style.
+1. **Migration test** — load an existing AppState JSON (pre-split shape) and assert it round-trips into `(podcasts, subscriptions)` with episode FKs intact. Add a fixture-backed test near the other state migration tests.
 2. **Build** — `mcp__xcode__build_run_sim`.
 3. **Existing flows unchanged** — verify subscribed shows (Joe Rogan, Huberman, etc.) still render artwork and titles everywhere on Home/Library/Player.
 4. **External episode flow (with feed_url)** — agent calls `play_external_episode(audio_url, title, feed_url)` for a show the user does NOT follow:

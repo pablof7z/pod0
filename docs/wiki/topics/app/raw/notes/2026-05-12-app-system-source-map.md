@@ -17,7 +17,7 @@ verified: 2026-05-12
 - `docs/spec/PROJECT_CONTEXT.md` defines the vision: talk to all podcasts, retrieve remembered moments, generate TLDR briefings, use voice mode, and support Nostr-mediated agent communication.
 - `docs/architecture.md` documents the inherited single-store pattern: `AppState`, `AppStateStore`, SwiftUI views, direct store mutations, and App Group persistence.
 - `docs/features.md` captures inherited template systems: shake-to-feedback, agent loop, friends, anchors, persistence, and CI/CD.
-- `AGENTS.md` adds repo rules: user-facing iPhone commits must update `App/Resources/whats-new.json`; no serif fonts; prefer files below 300 lines and keep them under 500 lines.
+- `AGENTS.md` adds repo rules: no serif fonts; prefer files below 300 lines and keep them under 500 lines.
 
 ## Runtime Surfaces
 
@@ -57,4 +57,4 @@ verified: 2026-05-12
 
 - `Project.swift` defines the Tuist project, bundle ID `io.f7z.podcast`, App Group `group.com.podcastr.app`, iOS 26 deployment target, app/widget/test targets, and dependencies on `secp256k1.swift`, `SQLiteVec`, and Kingfisher.
 - CI scripts live in `ci_scripts/` and cover bootstrap, tests, signing assets, archive/upload, and cleanup.
-- The app carries a widget target, uses App Group entitlements, and updates user-visible change notes in `App/Resources/whats-new.json`.
+- The app carries a widget target and uses App Group entitlements.

@@ -37,7 +37,7 @@ Status: archived (promoted to GitHub epic #19)
 ## Constraints And Invariants
 
 - iOS process model: app can be suspended/killed at any await point; background execution only via bg URLSession events and (if added) BGTaskScheduler with short time budgets.
-- `AGENTS.md`: 300-line soft / 500-line hard file limit; whats-new.json entry for user-facing changes; no serif fonts (irrelevant here).
+- `AGENTS.md`: 300-line soft / 500-line hard file limit; no serif fonts (irrelevant here).
 - Existing durable substrate to build on: SQLite episode sidecar (WAL) + atomic JSON metadata file; App Group container shared with widget.
 - Downloads pipeline must not regress — it is the one already-durable pipeline.
 

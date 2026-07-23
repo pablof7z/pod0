@@ -20,7 +20,7 @@ Podcastr is a Tuist-based SwiftUI app with an app target, widget target, and uni
 
 - Generate the project with Tuist when project files are missing or stale.
 - `Project.swift` defines app name `Podcastr`, bundle ID `io.f7z.podcast`, widget bundle ID `io.f7z.podcast.widget`, App Group `group.com.podcastr.app`, deployment target iOS 26.0, and the main packages.
-- The app target includes `App/Sources/**`, `Assets.xcassets`, and `App/Resources/whats-new.json`.
+- The app target includes `App/Sources/**` and `Assets.xcassets`.
 - The widget target reads through the same App Group boundary.
 
 ## Verification
@@ -28,10 +28,6 @@ Podcastr is a Tuist-based SwiftUI app with an app target, widget target, and uni
 Use targeted tests when touching a narrow subsystem. The `AppTests/Sources/` directory is organized by behavior: RSS parsing, podcast search, playback queue, transcript parsing, RAG, wiki verification, agent tools, BYOK/NIP-46, persistence, downloads, settings encoding, OPML import/export, and more.
 
 For UI or runtime changes, build and launch the app on the requested simulator or device. For provider, transcription, RAG, or network behavior, verify the exact provider path being changed instead of assuming another provider's tests cover it.
-
-## Release Rules
-
-Every commit that ships a user-facing iPhone change must add an entry to `App/Resources/whats-new.json`. The entry id is the short SHA of the commit. Skip entries only for purely internal changes.
 
 CI and upload scripts live under `ci_scripts/`. Versioning and upload behavior are documented in `docs/features.md`; archive/upload logic should stay aligned with those scripts rather than being recreated ad hoc.
 
