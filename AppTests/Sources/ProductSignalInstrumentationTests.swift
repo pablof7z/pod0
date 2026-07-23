@@ -43,8 +43,8 @@ final class ProductSignalInstrumentationTests: XCTestCase {
 
     func testMeaningfulListeningConsumesRustCommittedThresholdOnce() async throws {
         let sink = RecordingProductSignalSink()
-        let fixture = makePlaybackFixture(position: 0, sink: sink)
-        defer { fixture.persistence.reset() }
+        let fixture = try makePlaybackFixture(position: 0, sink: sink)
+        defer { disposePlaybackFixture(fixture) }
 
         fixture.playback.seek(to: 299)
         fixture.playback.seek(to: 300)
@@ -57,8 +57,8 @@ final class ProductSignalInstrumentationTests: XCTestCase {
 
     func testPlayStartedWaitsForRustCommittedPlayingState() async throws {
         let sink = RecordingProductSignalSink()
-        let fixture = makePlaybackFixture(position: 0, sink: sink)
-        defer { fixture.persistence.reset() }
+        let fixture = try makePlaybackFixture(position: 0, sink: sink)
+        defer { disposePlaybackFixture(fixture) }
 
         await waitUntil(
             "Rust restore loads the native playback host",
@@ -124,8 +124,8 @@ final class ProductSignalInstrumentationTests: XCTestCase {
 
     func testPlaybackResumeAndTypedFailureAreObserved() async throws {
         let sink = RecordingProductSignalSink()
-        let fixture = makePlaybackFixture(position: 42, sink: sink)
-        defer { fixture.persistence.reset() }
+        let fixture = try makePlaybackFixture(position: 42, sink: sink)
+        defer { disposePlaybackFixture(fixture) }
 
         fixture.engine.setState(.failed(EngineError(
             failure: ProductFailure(code: .offline)
@@ -145,13 +145,17 @@ final class ProductSignalInstrumentationTests: XCTestCase {
     private func makePlaybackFixture(
         position: TimeInterval,
         sink: RecordingProductSignalSink
-    ) -> (
+    ) throws -> (
         persistence: Persistence,
+        mediaURL: URL,
         store: AppStateStore,
         engine: AudioEngine,
         playback: PlaybackState
     ) {
-        let persistence = Persistence(fileURL: AppStateTestSupport.uniqueTempFileURL())
+        let fileURL = AppStateTestSupport.uniqueTempFileURL()
+        let mediaURL = fileURL.deletingPathExtension().appendingPathExtension("m4a")
+        try SilentAudioWriter.writeSilence(durationSeconds: 2, to: mediaURL)
+        let persistence = Persistence(fileURL: fileURL)
         let podcast = Podcast(
             feedURL: URL(string: "https://signals.example/feed.xml")!,
             title: "Signal Show",
@@ -163,7 +167,7 @@ final class ProductSignalInstrumentationTests: XCTestCase {
             title: "Signal Episode",
             pubDate: Date(timeIntervalSince1970: 1_700_000_100),
             duration: 1_800,
-            enclosureURL: URL(string: "https://signals.example/episode.mp3")!,
+            enclosureURL: mediaURL,
             playbackPosition: position
         )
         var legacy = AppState()
@@ -184,7 +188,15 @@ final class ProductSignalInstrumentationTests: XCTestCase {
         let engine = AudioEngine()
         let playback = PlaybackState(engine: engine, productSignals: sink)
         store.sharedLibrary?.attachPlayback(playback, store: store)
-        return (persistence, store, engine, playback)
+        return (persistence, mediaURL, store, engine, playback)
+    }
+
+    private func disposePlaybackFixture(
+        _ fixture: (persistence: Persistence, mediaURL: URL, store: AppStateStore,
+                    engine: AudioEngine, playback: PlaybackState)
+    ) {
+        fixture.persistence.reset()
+        try? FileManager.default.removeItem(at: fixture.mediaURL)
     }
 
     private func feedResponse(url: String, guid: String) -> HostObservation {
