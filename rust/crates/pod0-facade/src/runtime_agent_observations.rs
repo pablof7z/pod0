@@ -2,6 +2,7 @@ use pod0_application::{
     AgentActionObservation, AgentActionOutcome, AgentAuthorizationObservation,
     AgentCapabilityOutcome, AgentModelObservation, AgentTurnStage, AgentWorkflowAcceptance,
     HostObservation, HostObservationEnvelope, HostObservationReceipt, HostObservationRejection,
+    parse_agent_tool_call,
 };
 use pod0_domain::{CommandId, HostRequestId};
 use pod0_storage::{AgentAuditKind, AgentStore, StorageError};
@@ -104,18 +105,34 @@ impl FacadeState {
                 turn_id,
                 model_fence_id,
                 assistant_text,
-                proposed_action,
-            } => (
-                state.observe_model(AgentModelObservation {
-                    turn_id: *turn_id,
-                    model_fence_id: *model_fence_id,
-                    assistant_text: assistant_text.clone(),
-                    proposed_action: proposed_action.clone(),
-                    observed_at: envelope.observed_at,
-                }),
-                AgentAuditKind::ModelObserved,
-                b"pod0:agent-model-observation:v1".as_slice(),
-            ),
+                proposed_tool_call,
+            } => {
+                let proposed_action = match proposed_tool_call {
+                    Some(call) => match parse_agent_tool_call(call) {
+                        Ok(action) => Some(action),
+                        Err(_) => {
+                            return fail_invalid_model_action(
+                                store,
+                                state,
+                                envelope,
+                                before.revision,
+                            );
+                        }
+                    },
+                    None => None,
+                };
+                (
+                    state.observe_model(AgentModelObservation {
+                        turn_id: *turn_id,
+                        model_fence_id: *model_fence_id,
+                        assistant_text: assistant_text.clone(),
+                        proposed_action,
+                        observed_at: envelope.observed_at,
+                    }),
+                    AgentAuditKind::ModelObserved,
+                    b"pod0:agent-model-observation:v2".as_slice(),
+                )
+            }
             HostObservation::AgentApprovalObserved {
                 proposal_id,
                 proposal_digest,
@@ -212,6 +229,28 @@ impl FacadeState {
             envelope.observed_at,
         )
     }
+}
+
+fn fail_invalid_model_action(
+    store: &AgentStore,
+    mut state: pod0_application::AgentTurnState,
+    envelope: &HostObservationEnvelope,
+    expected_revision: pod0_domain::StateRevision,
+) -> Result<pod0_application::AgentTurnState, StorageError> {
+    if state.fail_model(Some("invalid_tool_action".into()), envelope.observed_at)
+        != AgentWorkflowAcceptance::Updated
+    {
+        return Err(StorageError::AgentTurnConflict);
+    }
+    persist_agent_update(
+        store,
+        CommandId::from_bytes(envelope.request_id.into_bytes()),
+        b"pod0:agent-model-invalid-action:v1",
+        AgentAuditKind::ModelObserved,
+        expected_revision,
+        state,
+        envelope.observed_at,
+    )
 }
 
 fn map_capability_outcome(outcome: AgentCapabilityOutcome) -> AgentActionOutcome {

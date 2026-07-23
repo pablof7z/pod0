@@ -1,6 +1,7 @@
 use crate::{
     AgentCapabilityOutcome, HostObservation, HostRequest, MAX_AGENT_MESSAGE_BYTES,
-    MAX_AGENT_SAFE_DETAIL_BYTES,
+    MAX_AGENT_SAFE_DETAIL_BYTES, MAX_AGENT_TOOL_ARGUMENTS_BYTES, MAX_AGENT_TOOL_CALL_ID_BYTES,
+    MAX_AGENT_TOOL_NAME_BYTES,
 };
 
 pub(super) fn agent_observation_matches(
@@ -14,14 +15,14 @@ pub(super) fn agent_observation_matches(
                 turn_id,
                 model_fence_id,
                 assistant_text,
-                proposed_action,
+                proposed_tool_call,
             },
         ) => {
             *turn_id == execution.turn_id
                 && *model_fence_id == execution.model_fence_id
                 && assistant_text.len() <= execution.maximum_output_bytes as usize
                 && assistant_text.len() <= MAX_AGENT_MESSAGE_BYTES
-                && proposed_action.as_ref().is_none_or(action_is_bounded)
+                && proposed_tool_call.as_ref().is_none_or(tool_call_is_bounded)
         }
         (
             HostRequest::PresentAgentApproval { approval },
@@ -61,9 +62,12 @@ pub(super) fn agent_observation_matches(
     Some(matches)
 }
 
-fn action_is_bounded(action: &crate::AgentToolAction) -> bool {
-    serde_json::to_vec(action)
-        .is_ok_and(|bytes| bytes.len() <= crate::MAX_AGENT_ACTION_TEXT_BYTES + 16 * 1_024)
+fn tool_call_is_bounded(call: &crate::AgentModelToolCallObservation) -> bool {
+    !call.provider_call_id.is_empty()
+        && call.provider_call_id.len() <= MAX_AGENT_TOOL_CALL_ID_BYTES
+        && !call.tool_name.is_empty()
+        && call.tool_name.len() <= MAX_AGENT_TOOL_NAME_BYTES
+        && call.arguments_json.len() <= MAX_AGENT_TOOL_ARGUMENTS_BYTES
 }
 
 fn outcome_is_bounded(outcome: &AgentCapabilityOutcome) -> bool {

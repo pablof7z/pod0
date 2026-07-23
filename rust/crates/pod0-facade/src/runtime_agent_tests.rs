@@ -57,8 +57,10 @@ fn note_action_requires_exact_approval_and_commits_once_in_rust() {
             turn_id: execution.turn_id,
             model_fence_id: execution.model_fence_id,
             assistant_text: "I'll save that.".to_owned(),
-            proposed_action: Some(AgentToolAction::CreateNote {
-                text: "Architecture matters".to_owned(),
+            proposed_tool_call: Some(AgentModelToolCallObservation {
+                provider_call_id: "note-call".to_owned(),
+                tool_name: "create_note".to_owned(),
+                arguments_json: r#"{"text":"Architecture matters"}"#.to_owned(),
             }),
         },
     ));
@@ -164,11 +166,13 @@ fn native_action_is_fenced_and_restart_never_blindly_replays_it() {
             turn_id: execution.turn_id,
             model_fence_id: execution.model_fence_id,
             assistant_text: "Playing it.".to_owned(),
-            proposed_action: Some(AgentToolAction::PlayEpisode {
-                episode_id: fixture.episode_id,
-                start_milliseconds: None,
-                end_milliseconds: None,
-                placement: QueuePlacement::Next,
+            proposed_tool_call: Some(AgentModelToolCallObservation {
+                provider_call_id: "play-call".to_owned(),
+                tool_name: "play_episode".to_owned(),
+                arguments_json: format!(
+                    r#"{{"episode_id":"{}","queue_position":"next"}}"#,
+                    uuid_string(fixture.episode_id.into_bytes())
+                ),
             }),
         },
     ));
@@ -214,11 +218,13 @@ fn invalid_and_unavailable_actions_fail_before_any_capability_request() {
             turn_id: execution.turn_id,
             model_fence_id: execution.model_fence_id,
             assistant_text: String::new(),
-            proposed_action: Some(AgentToolAction::PlayEpisode {
-                episode_id: fixture.episode_id,
-                start_milliseconds: None,
-                end_milliseconds: None,
-                placement: QueuePlacement::Next,
+            proposed_tool_call: Some(AgentModelToolCallObservation {
+                provider_call_id: "unavailable-call".to_owned(),
+                tool_name: "play_episode".to_owned(),
+                arguments_json: format!(
+                    r#"{{"episode_id":"{}","queue_position":"next"}}"#,
+                    uuid_string(fixture.episode_id.into_bytes())
+                ),
             }),
         },
     ));
@@ -227,6 +233,21 @@ fn invalid_and_unavailable_actions_fail_before_any_capability_request() {
         AgentTurnStage::Failed
     );
     assert!(fixture.facade.next_host_requests(8).is_empty());
+}
+
+fn uuid_string(bytes: [u8; 16]) -> String {
+    let hex = bytes
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    format!(
+        "{}-{}-{}-{}-{}",
+        &hex[0..8],
+        &hex[8..12],
+        &hex[12..16],
+        &hex[16..20],
+        &hex[20..32]
+    )
 }
 
 trait ProjectionNotes {

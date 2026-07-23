@@ -5,8 +5,8 @@ use pod0_domain::{
 };
 
 use crate::{
-    AgentCapabilityOutcome, AgentToolAction, PlaybackLifecycleObservation, RecallEmbeddingVector,
-    RecallRerankObservation, RecallSpanEmbeddingObservation,
+    AgentCapabilityOutcome, AgentModelToolCallObservation, PlaybackLifecycleObservation,
+    RecallEmbeddingVector, RecallRerankObservation, RecallSpanEmbeddingObservation,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
@@ -111,7 +111,7 @@ pub enum HostObservation {
         turn_id: AgentTurnId,
         model_fence_id: AgentExecutionFenceId,
         assistant_text: String,
-        proposed_action: Option<AgentToolAction>,
+        proposed_tool_call: Option<AgentModelToolCallObservation>,
     },
     AgentApprovalObserved {
         turn_id: AgentTurnId,

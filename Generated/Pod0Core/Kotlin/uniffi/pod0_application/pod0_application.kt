@@ -1839,6 +1839,54 @@ public object FfiConverterTypeAgentModelExecutionRequest: FfiConverterRustBuffer
 
 
 
+/**
+ * Bounded, untrusted provider output. Native transports do not interpret
+ * tool arguments or construct an authorized domain action; the Rust kernel
+ * parses this observation against its closed action schema.
+ */
+data class AgentModelToolCallObservation (
+    val `providerCallId`: kotlin.String
+    ,
+    val `toolName`: kotlin.String
+    ,
+    val `argumentsJson`: kotlin.String
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentModelToolCallObservation: FfiConverterRustBuffer<AgentModelToolCallObservation> {
+    override fun read(buf: ByteBuffer): AgentModelToolCallObservation {
+        return AgentModelToolCallObservation(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentModelToolCallObservation) = (
+            FfiConverterString.allocationSize(value.`providerCallId`) +
+            FfiConverterString.allocationSize(value.`toolName`) +
+            FfiConverterString.allocationSize(value.`argumentsJson`)
+    )
+
+    override fun write(value: AgentModelToolCallObservation, buf: ByteBuffer) {
+            FfiConverterString.write(value.`providerCallId`, buf)
+            FfiConverterString.write(value.`toolName`, buf)
+            FfiConverterString.write(value.`argumentsJson`, buf)
+    }
+}
+
+
+
 data class AgentProposalProjection (
     val `proposalId`: AgentProposalId
     ,
@@ -14095,7 +14143,7 @@ sealed class HostObservation {
         val `turnId`: uniffi.pod0_domain.AgentTurnId,
         val `modelFenceId`: uniffi.pod0_domain.AgentExecutionFenceId,
         val `assistantText`: kotlin.String,
-        val `proposedAction`: uniffi.pod0_application.AgentToolAction?) : HostObservation()
+        val `proposedToolCall`: uniffi.pod0_application.AgentModelToolCallObservation?) : HostObservation()
 
     {
 
@@ -14273,7 +14321,7 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 FfiConverterTypeAgentTurnId.read(buf),
                 FfiConverterTypeAgentExecutionFenceId.read(buf),
                 FfiConverterString.read(buf),
-                FfiConverterOptionalTypeAgentToolAction.read(buf),
+                FfiConverterOptionalTypeAgentModelToolCallObservation.read(buf),
                 )
             18 -> HostObservation.AgentApprovalObserved(
                 FfiConverterTypeAgentTurnId.read(buf),
@@ -14463,7 +14511,7 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 + FfiConverterTypeAgentTurnId.allocationSize(value.`turnId`)
                 + FfiConverterTypeAgentExecutionFenceId.allocationSize(value.`modelFenceId`)
                 + FfiConverterString.allocationSize(value.`assistantText`)
-                + FfiConverterOptionalTypeAgentToolAction.allocationSize(value.`proposedAction`)
+                + FfiConverterOptionalTypeAgentModelToolCallObservation.allocationSize(value.`proposedToolCall`)
             )
         }
         is HostObservation.AgentApprovalObserved -> {
@@ -14648,7 +14696,7 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 FfiConverterTypeAgentTurnId.write(value.`turnId`, buf)
                 FfiConverterTypeAgentExecutionFenceId.write(value.`modelFenceId`, buf)
                 FfiConverterString.write(value.`assistantText`, buf)
-                FfiConverterOptionalTypeAgentToolAction.write(value.`proposedAction`, buf)
+                FfiConverterOptionalTypeAgentModelToolCallObservation.write(value.`proposedToolCall`, buf)
                 Unit
             }
             is HostObservation.AgentApprovalObserved -> {
@@ -23885,6 +23933,38 @@ public object FfiConverterOptionalTypeAgentCommitReceipt: FfiConverterRustBuffer
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeAgentModelToolCallObservation: FfiConverterRustBuffer<AgentModelToolCallObservation?> {
+    override fun read(buf: ByteBuffer): AgentModelToolCallObservation? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeAgentModelToolCallObservation.read(buf)
+    }
+
+    override fun allocationSize(value: AgentModelToolCallObservation?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeAgentModelToolCallObservation.allocationSize(value)
+        }
+    }
+
+    override fun write(value: AgentModelToolCallObservation?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeAgentModelToolCallObservation.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeAgentProposalProjection: FfiConverterRustBuffer<AgentProposalProjection?> {
     override fun read(buf: ByteBuffer): AgentProposalProjection? {
         if (buf.get().toInt() == 0) {
@@ -25059,38 +25139,6 @@ public object FfiConverterOptionalTypeUnixTimestampMilliseconds: FfiConverterRus
         } else {
             buf.put(1)
             FfiConverterTypeUnixTimestampMilliseconds.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterOptionalTypeAgentToolAction: FfiConverterRustBuffer<AgentToolAction?> {
-    override fun read(buf: ByteBuffer): AgentToolAction? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterTypeAgentToolAction.read(buf)
-    }
-
-    override fun allocationSize(value: AgentToolAction?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterTypeAgentToolAction.allocationSize(value)
-        }
-    }
-
-    override fun write(value: AgentToolAction?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterTypeAgentToolAction.write(value, buf)
         }
     }
 }

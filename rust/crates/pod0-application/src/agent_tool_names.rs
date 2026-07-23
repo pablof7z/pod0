@@ -127,3 +127,10 @@ pub fn agent_tool_wire_name(tool: AgentToolName) -> &'static str {
         .find_map(|(name, candidate)| (*candidate == tool).then_some(*name))
         .expect("every typed agent tool has a canonical wire name")
 }
+
+#[must_use]
+pub fn agent_tool_name_from_wire(value: &str) -> Option<AgentToolName> {
+    ALL_AGENT_TOOL_NAMES
+        .iter()
+        .find_map(|(name, tool)| (*name == value).then_some(*tool))
+}
