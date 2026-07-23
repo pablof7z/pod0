@@ -1,4 +1,5 @@
 import Foundation
+import Pod0Core
 import XCTest
 @testable import Podcastr
 
@@ -73,6 +74,55 @@ final class ProductSignalExpectationSink: ProductSignalSink, @unchecked Sendable
     }
 
     func deleteAll() async {}
+}
+
+@MainActor
+final class RecordingRecallPlaybackHost: CorePlaybackHosting {
+    private let played: XCTestExpectation
+    private(set) var episodeID: EpisodeId?
+    private(set) var positionMilliseconds: UInt64 = 0
+    private(set) var didPlay = false
+
+    init(played: XCTestExpectation) {
+        self.played = played
+    }
+
+    func execute(_ request: HostRequest) -> HostObservation {
+        switch request {
+        case .loadMedia(let episodeID, _, let startPositionMilliseconds):
+            self.episodeID = episodeID
+            positionMilliseconds = startPositionMilliseconds
+        case .seek(let episodeID, let positionMilliseconds, _, _):
+            self.episodeID = episodeID
+            self.positionMilliseconds = positionMilliseconds
+        case .play(let episodeID, _):
+            self.episodeID = episodeID
+            didPlay = true
+            played.fulfill()
+        case .pause(let episodeID), .stopPlayback(let episodeID):
+            self.episodeID = episodeID
+        case .observePlayback:
+            break
+        default:
+            return .failed(
+                code: .invalidResponse,
+                safeDetail: "Unexpected recall playback request"
+            )
+        }
+        return .playbackObserved(value: PlaybackLifecycleObservation(
+            episodeId: episodeID,
+            state: didPlay ? .playing : .prepared,
+            positionMilliseconds: positionMilliseconds,
+            durationMilliseconds: 300_000,
+            route: .builtIn,
+            interruption: .none,
+            ended: false
+        ))
+    }
+
+    func installObservationSink(
+        _ sink: @escaping (PlaybackLifecycleObservation) -> Void
+    ) {}
 }
 
 enum ProductSignalTestSupport {

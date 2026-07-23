@@ -127,15 +127,17 @@ final class ProductSignalInstrumentationTests: XCTestCase {
         let fixture = try makePlaybackFixture(position: 42, sink: sink)
         defer { disposePlaybackFixture(fixture) }
 
+        let restored = await waitForCount(1, sink: sink)
+        XCTAssertEqual(
+            restored.first { $0.name == .resumeAttempt }?.outcome,
+            .succeeded
+        )
+
         fixture.engine.setState(.failed(EngineError(
             failure: ProductFailure(code: .offline)
         )))
 
         let captured = await waitForCount(2, sink: sink)
-        XCTAssertEqual(
-            captured.first { $0.name == .resumeAttempt }?.outcome,
-            .succeeded
-        )
         XCTAssertEqual(
             captured.first { $0.name == .playbackError }?.errorClass,
             .offline

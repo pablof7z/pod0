@@ -144,28 +144,24 @@ final class RecallAnswerServiceTests: XCTestCase {
     func testEvidencePlaybackHandoffSeeksToExactCoreMoment() async throws {
         let made = AppStateTestSupport.makeIsolatedStore()
         defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
-        let mediaURL = made.fileURL
-            .deletingPathExtension()
-            .appendingPathExtension("m4a")
-        try SilentAudioWriter.writeSilence(durationSeconds: 65, to: mediaURL)
-        defer { try? FileManager.default.removeItem(at: mediaURL) }
         let podcast = Podcast(id: podcastID, title: "Practical Minds")
         let episode = try await made.store.upsertExternalEpisodeAndWait(
             podcastID: podcastID,
             feedURL: nil,
             podcastTitle: podcast.title,
-            audioURL: mediaURL,
+            audioURL: URL(string: "https://example.test/episode.mp3")!,
             title: "The Habit Loop",
             publishedAt: Date(timeIntervalSince1970: 1_700_000_000),
             imageURL: nil,
             duration: 300
         )
-        let committed = expectation(description: "Rust committed recall playback")
-        let playback = PlaybackState(productSignals: ProductSignalExpectationSink(
-            name: .playStarted,
-            expectation: committed
-        ))
-        try XCTUnwrap(made.store.sharedLibrary).attachPlayback(playback, store: made.store)
+        let played = expectation(description: "Rust requested recall playback")
+        let host = RecordingRecallPlaybackHost(played: played)
+        let client = try XCTUnwrap(made.store.sharedLibrary)
+        client.deferredPlaybackHost.attach(host)
+        client.playbackHostAttached = true
+        let playback = PlaybackState()
+        client.attachPlayback(playback, store: made.store)
         let evidence = RecallEvidence(
             spanID: "span",
             episodeID: episode.id,
@@ -198,10 +194,10 @@ final class RecallAnswerServiceTests: XCTestCase {
         )
 
         XCTAssertTrue(RecallPlaybackHandoff.open(evidence, store: made.store, playback: playback))
-        playback.pause()
-        await fulfillment(of: [committed], timeout: 5)
-        XCTAssertEqual(playback.episode?.id, episode.id)
-        XCTAssertEqual(playback.currentTime, 47.125, accuracy: 0.001)
+        await fulfillment(of: [played], timeout: 5)
+        XCTAssertEqual(host.episodeID?.uuid, episode.id)
+        XCTAssertEqual(host.positionMilliseconds, 47_125)
+        XCTAssertTrue(host.didPlay)
     }
 
     private func makeService(
