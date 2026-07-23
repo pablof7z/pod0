@@ -73,7 +73,7 @@ fun qualifyChapterContract(fixture: Map<String, String>) {
     )
 
     check(fixture["fixture_version"] == "1")
-    check(fixture["contract_version"]?.toUInt() == 41u)
+    check(fixture["contract_version"]?.toUInt() == 42u)
     check(fixture["unknown_future_field"] == "ignored-by-v1-readers")
     val qualified = projectChapterContract(
         request,

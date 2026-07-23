@@ -30,6 +30,10 @@ pub(super) fn playback_request_episode_id(
         | Request::ExecuteAgentCapability { .. }
         | Request::ScheduleCoreWake { .. }
         | Request::RemoveLegacyRecallIndexArtifacts
+        | Request::ProvisionNostrSignerCredential
+        | Request::RestoreNostrSignerCredential { .. }
+        | Request::SignNostrEvent { .. }
+        | Request::DeleteNostrSignerCredential { .. }
         | Request::Unsupported { .. } => None,
     }
 }

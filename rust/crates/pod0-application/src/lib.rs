@@ -116,6 +116,7 @@ mod scheduled_agent_observation_validation;
 mod scheduled_agent_policy;
 #[cfg(test)]
 mod scheduled_agent_tests;
+mod signer;
 mod transcript_contract;
 #[cfg(test)]
 mod transcript_contract_fixture_tests;
@@ -173,6 +174,7 @@ pub use scheduled_agent::*;
 pub use scheduled_agent_completion::*;
 pub use scheduled_agent_observation::*;
 pub use scheduled_agent_policy::*;
+pub use signer::*;
 pub use transcript_contract::*;
 pub use transcript_projection::*;
 pub use transcript_workflow::*;

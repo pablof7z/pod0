@@ -55,6 +55,7 @@ pub enum ProjectionScope {
     Publications {
         publication_id: Option<pod0_domain::PublicationId>,
     },
+    NostrSigner,
     Notes {
         scope: NoteProjectionScope,
     },
@@ -145,6 +146,9 @@ pub enum Projection {
     },
     Publications {
         value: crate::PublicationsProjection,
+    },
+    NostrSigner {
+        value: crate::SignerProjection,
     },
     Notes {
         value: NotesProjection,

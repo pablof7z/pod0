@@ -13,7 +13,8 @@ use pod0_domain::{
 };
 use pod0_recall_index::RecallIndex;
 use pod0_storage::{
-    AgentStore, EvidenceStore, LibraryStore, PublicationStore, ScheduledAgentStore, TranscriptStore,
+    AgentStore, EvidenceStore, LibraryStore, PublicationStore, ScheduledAgentStore, SignerStore,
+    TranscriptStore,
 };
 
 use crate::ProjectionSubscriber;
@@ -33,6 +34,7 @@ pub(super) struct FacadeStores {
     pub(super) scheduled_agent: Option<ScheduledAgentStore>,
     pub(super) agent: AgentStore,
     pub(super) publication: PublicationStore,
+    pub(super) signer: SignerStore,
 }
 
 pub(super) struct FacadeState {
@@ -47,6 +49,13 @@ pub(super) struct FacadeState {
     pub(super) scheduled_agent_store: Option<ScheduledAgentStore>,
     pub(super) agent_store: Option<AgentStore>,
     pub(super) publication_store: Option<PublicationStore>,
+    pub(super) signer_store: Option<SignerStore>,
+    pub(super) signer_account: Option<pod0_domain::SignerAccountRecord>,
+    pub(super) pending_signers:
+        BTreeMap<HostRequestId, crate::runtime_signer::PendingSignerRequest>,
+    pub(super) pending_signer_observations:
+        BTreeMap<HostRequestId, pod0_application::HostObservationEnvelope>,
+    pub(super) signer_waiters: BTreeMap<CommandId, crate::runtime_signer::SignerWaiter>,
     pub(super) pending_publications: VecDeque<pod0_application::Pod0PublicationDraft>,
     pub(super) recall_index: RecallIndex,
     pub(super) recall_configuration: pod0_domain::RecallConfiguration,
@@ -127,12 +136,14 @@ impl FacadeState {
             scheduled_agent: scheduled_agent_store,
             agent: agent_store,
             publication: publication_store,
+            signer: signer_store,
         } = stores;
         let _ = store.clear_session_sleep_timer()?;
         let _ = store.recover_download_artifacts()?;
         let listening = store.snapshot()?;
         let notes = store.note_snapshot()?;
         let clips = store.clip_snapshot()?;
+        let signer_account = signer_store.account()?;
         let recall_configuration = store.recall_configuration()?.unwrap_or_default();
         recall_index
             .activate_embedding_space(recall_configuration.embedding_space_id)
@@ -164,6 +175,8 @@ impl FacadeState {
             scheduled_agent_store,
             agent_store: Some(agent_store),
             publication_store: Some(publication_store),
+            signer_store: Some(signer_store),
+            signer_account,
             recall_index,
             recall_configuration,
             playback,
@@ -175,6 +188,7 @@ impl FacadeState {
         state.rehydrate_transcript_workflows()?;
         state.rehydrate_scheduled_agent_workflows()?;
         state.rehydrate_agent_turns()?;
+        state.rehydrate_nostr_signer()?;
         Ok(state)
     }
 

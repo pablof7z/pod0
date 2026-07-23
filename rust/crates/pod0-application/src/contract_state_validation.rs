@@ -5,6 +5,12 @@ use crate::contract_state_scheduled_agent_validation::scheduled_agent_observatio
 use crate::contract_state_transcript_validation::transcript_observation_matches;
 use crate::{HostObservation, HostRequest};
 
+mod chapter;
+mod recall;
+
+pub(super) use chapter::chapter_model_payload_is_bounded;
+pub(super) use recall::recall_payload_is_bounded;
+
 pub(super) fn observation_matches_request(
     request: &HostRequest,
     observation: &HostObservation,
@@ -145,141 +151,36 @@ pub(super) fn observation_matches_request(
             HostRequest::RemoveLegacyRecallIndexArtifacts,
             HostObservation::LegacyRecallIndexArtifactsRemoved { removed_file_count },
         ) => *removed_file_count <= 3,
+        (
+            HostRequest::ProvisionNostrSignerCredential,
+            HostObservation::NostrSignerCredentialReady { public_key_hex, .. },
+        ) => crate::valid_lower_hex(public_key_hex, 64),
+        (
+            HostRequest::RestoreNostrSignerCredential {
+                account_id: expected_account,
+                expected_author_hex,
+            },
+            HostObservation::NostrSignerCredentialReady {
+                account_id,
+                public_key_hex,
+            },
+        ) => {
+            expected_account == account_id
+                && expected_author_hex == public_key_hex
+                && crate::valid_lower_hex(public_key_hex, 64)
+        }
+        (HostRequest::SignNostrEvent { request }, HostObservation::NostrEventSigned { value }) => {
+            request.account_id == value.account_id
+                && request.event_id_hex == value.event_id_hex
+                && crate::signature_observation_is_valid(value)
+        }
+        (
+            HostRequest::DeleteNostrSignerCredential {
+                account_id: expected,
+            },
+            HostObservation::NostrSignerCredentialDeleted { account_id },
+        ) => expected == account_id,
         (HostRequest::Unsupported { .. }, HostObservation::Unsupported { .. }) => true,
         _ => false,
     }
-}
-
-pub(super) fn recall_payload_is_bounded(
-    request: &HostRequest,
-    observation: &HostObservation,
-) -> bool {
-    match (request, observation) {
-        (
-            HostRequest::EmbedRecallQuery {
-                maximum_dimensions, ..
-            },
-            HostObservation::RecallQueryEmbedded { embedding, .. },
-        ) => {
-            !embedding.values.is_empty()
-                && embedding.values.len() <= usize::from(*maximum_dimensions)
-                && embedding.values.len() <= crate::MAX_RECALL_EMBEDDING_DIMENSIONS
-        }
-        (
-            HostRequest::EmbedRecallSpans {
-                spans,
-                maximum_dimensions,
-                ..
-            },
-            HostObservation::RecallSpansEmbedded { embeddings, .. },
-        ) => bounded_span_embeddings(spans, embeddings, *maximum_dimensions),
-        (
-            HostRequest::RerankRecallCandidates { candidates, .. },
-            HostObservation::RecallCandidatesReranked { rankings, .. },
-        ) => rankings.len() <= candidates.len() && rankings.len() <= crate::MAX_RECALL_EVIDENCE,
-        (
-            HostRequest::FetchPublisherChapters {
-                maximum_response_bytes,
-                ..
-            },
-            HostObservation::PublisherChaptersFetched { bytes, .. },
-        ) => u64::try_from(bytes.len()).is_ok_and(|size| size <= *maximum_response_bytes),
-        (
-            HostRequest::ExecuteChapterModel { execution, .. },
-            HostObservation::ChapterModelCompleted { completion, .. },
-        ) => u64::try_from(completion.completion.len())
-            .is_ok_and(|size| size <= execution.maximum_completion_bytes),
-        (
-            HostRequest::RecoverChapterModelOperation {
-                maximum_completion_bytes,
-                ..
-            },
-            HostObservation::ChapterModelCompleted { completion, .. },
-        ) => u64::try_from(completion.completion.len())
-            .is_ok_and(|size| size <= *maximum_completion_bytes),
-        (
-            HostRequest::ExecuteTranscriptCapability { capability },
-            HostObservation::TranscriptCapabilityObserved { observation },
-        ) => transcript_observation_matches(capability, observation),
-        _ => true,
-    }
-}
-
-pub(super) fn chapter_model_payload_is_bounded(
-    request: &HostRequest,
-    observation: &HostObservation,
-) -> bool {
-    if !matches!(
-        request,
-        HostRequest::ExecuteChapterModel { .. } | HostRequest::RecoverChapterModelOperation { .. }
-    ) {
-        return true;
-    }
-    match observation {
-        HostObservation::ChapterModelProviderAccepted { update, .. } => {
-            !update.provider_operation_id.is_empty()
-                && update.provider_operation_id.len() <= 1_024
-                && update
-                    .provider_status
-                    .as_ref()
-                    .is_none_or(|value| value.len() <= 1_024)
-        }
-        HostObservation::ChapterModelCompleted { completion, .. } => {
-            !completion.completion.is_empty()
-                && !completion.provider.is_empty()
-                && completion.provider.len() <= 128
-                && !completion.model.is_empty()
-                && completion.model.len() <= 256
-                && completion
-                    .provider_operation_id
-                    .as_ref()
-                    .is_none_or(|value| !value.is_empty() && value.len() <= 1_024)
-                && completion
-                    .provider_status
-                    .as_ref()
-                    .is_none_or(|value| value.len() <= 1_024)
-        }
-        HostObservation::ChapterModelFailed {
-            safe_detail,
-            retry_after_milliseconds,
-            ..
-        } => {
-            safe_detail
-                .as_ref()
-                .is_none_or(|value| value.len() <= 16_384)
-                && retry_after_milliseconds.is_none_or(|value| value <= 86_400_000)
-        }
-        _ => true,
-    }
-}
-
-fn bounded_span_embeddings(
-    spans: &[crate::RecallEmbeddingInput],
-    embeddings: &[crate::RecallSpanEmbeddingObservation],
-    maximum_dimensions: u16,
-) -> bool {
-    use std::collections::BTreeSet;
-
-    let expected = spans
-        .iter()
-        .map(|span| span.span_id)
-        .collect::<BTreeSet<_>>();
-    let observed = embeddings
-        .iter()
-        .map(|embedding| embedding.span_id)
-        .collect::<BTreeSet<_>>();
-    !spans.is_empty()
-        && spans.len() <= crate::MAX_RECALL_EMBEDDING_BATCH
-        && spans.len() == embeddings.len()
-        && expected.len() == spans.len()
-        && observed.len() == embeddings.len()
-        && expected == observed
-        && spans.iter().all(|span| {
-            !span.text.is_empty() && span.text.len() <= crate::MAX_RECALL_EMBEDDING_TEXT_BYTES
-        })
-        && embeddings.iter().all(|embedding| {
-            !embedding.embedding.values.is_empty()
-                && embedding.embedding.values.len() <= usize::from(maximum_dimensions)
-                && embedding.embedding.values.len() <= crate::MAX_RECALL_EMBEDDING_DIMENSIONS
-        })
 }

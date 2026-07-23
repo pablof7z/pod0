@@ -13,7 +13,7 @@ final class SharedLibraryClient {
     let authoritativeChapterReader: SharedChapterReader
     let dispatcher: Pod0NativeHostDispatcher
     let agentStreamingState = CoreAgentStreamingState()
-    private let deferredPlaybackHost: DeferredPlaybackHost
+    let deferredPlaybackHost: DeferredPlaybackHost
     let deferredAgentHost: DeferredAgentHost
     let deferredRecallHost: DeferredRecallHost
     private var subscriber: SharedLibrarySubscriber?
@@ -25,15 +25,16 @@ final class SharedLibraryClient {
     private var clipsSubscriptionID: SubscriptionId?
     private var downloadsSubscriptionID: SubscriptionId?
     private var transcriptWorkflowSubscriptionID: SubscriptionId?
+    private var nostrSignerSubscriptionID: SubscriptionId?
     var scheduledAgentSubscriptionID: SubscriptionId?
     var waiters: [CommandId: Waiter] = [:]
     var lastLibraryRevision: UInt64 = 0
-    private var lastPlaybackRevision: UInt64 = 0
+    var lastPlaybackRevision: UInt64 = 0
     var lastChapterWorkflowRevision: UInt64 = 0
     var lastNotesRevision: UInt64 = 0
     var lastClipsRevision: UInt64 = 0
     weak var store: AppStateStore?
-    private weak var playbackState: PlaybackState?
+    weak var playbackState: PlaybackState?
     var cachedSnapshot: SharedLibrarySnapshot?
     var chapterScopeCounts: [UUID: Int] = [:]
     var chapterSnapshots: [UUID: SharedChapterSnapshot] = [:]
@@ -41,17 +42,19 @@ final class SharedLibraryClient {
     var announcedModelChapterVersions: [UUID: String] = [:]
     var cachedPublisherChapterWorkflows: [PublisherChapterWorkflowProjection] = []
     var playbackChapterEpisodeID: UUID?
-    private var cachedPlayback: PlaybackProjection?
-    private var cachedPlaybackRevision: UInt64 = 0
+    var cachedPlayback: PlaybackProjection?
+    var cachedPlaybackRevision: UInt64 = 0
     var cachedNotes: SharedNoteSnapshot?
     var cachedClips: SharedClipSnapshot?
     var lastDownloadsRevision: UInt64 = 0
     var cachedDownloadWorkflows: [UUID: DownloadWorkflowProjection] = [:]
     var lastTranscriptWorkflowRevision: UInt64 = 0
     var lastScheduledAgentRevision: UInt64 = 0
+    var lastNostrSignerRevision: UInt64 = 0
+    var cachedNostrSigner: SignerProjection?
     var cachedScheduledAgent: ScheduledAgentProjection?
     var announcedTranscriptWorkflowVersions: [UUID: String] = [:]
-    private var playbackHostAttached = false
+    var playbackHostAttached = false
     var evidenceRebuildTask: Task<Void, Never>?
     var evidenceUpdateTasks: [UUID: Task<Void, Never>] = [:]
     var recallWaiters: [RecallQueryId: SharedRecallWaiter] = [:]
@@ -139,6 +142,11 @@ final class SharedLibraryClient {
             subscriber: subscriber
         )
         subscribeToScheduledAgents(subscriber)
+        nostrSignerSubscriptionID = facade.subscribe(
+            request: ProjectionRequest(scope: .nostrSigner, offset: 0, maxItems: 20),
+            subscriber: subscriber
+        )
+        ensureNostrSigner()
         dispatcher.executePendingRequests(from: facade)
     }
 
@@ -155,37 +163,6 @@ final class SharedLibraryClient {
         store.applySharedClips(clips)
         publishScheduledAgents(to: store)
         publishRecallConfiguration(to: store)
-    }
-
-    func attachPlayback(_ playback: PlaybackState, store: AppStateStore) {
-        self.playbackState = playback
-        playback.attachSharedCore(self)
-        if !playbackHostAttached {
-            deferredPlaybackHost.attach(CorePlaybackHost(
-                engine: playback.engine,
-                resolveEpisode: { [weak store] id in store?.episode(id: id) }
-            ))
-            playbackHostAttached = true
-        }
-        if let cachedPlayback {
-            playback.applySharedPlayback(
-                cachedPlayback,
-                stateRevision: cachedPlaybackRevision
-            ) { [weak store] id in
-                store?.episode(id: id)
-            }
-        }
-        dispatchPlayback(.restore)
-    }
-
-    func dispatchPlayback(_ command: PlaybackCommand) {
-        facade.dispatch(command: CommandEnvelope(
-            commandId: CommandId(uuid: UUID()),
-            cancellationId: CancellationId(uuid: UUID()),
-            expectedRevision: nil,
-            command: .playback(command: command)
-        ))
-        dispatcher.executePendingRequests(from: facade)
     }
 
     private func receive(_ envelope: ProjectionEnvelope) {
@@ -211,36 +188,12 @@ final class SharedLibraryClient {
             receiveTranscriptWorkflows(revision: envelope.stateRevision.value)
         case .scheduledAgent(let projection):
             receiveScheduledAgents(projection, revision: envelope.stateRevision.value)
+        case .nostrSigner(let projection):
+            receiveNostrSigner(projection, revision: envelope.stateRevision.value)
         case .podcastDetail, .episodeDetail, .recall, .evidenceIndex, .transcript,
              .chapter, .agentConversations, .agentConversation, .publications, .unsupported:
             break
         }
-    }
-
-    private func receivePlayback(_ projection: PlaybackProjection, revision: UInt64) {
-        guard revision >= lastPlaybackRevision else { return }
-        lastPlaybackRevision = revision
-        cachedPlayback = projection
-        cachedPlaybackRevision = revision
-        let projectedEpisodeID = projection.current?.episodeId.uuid
-        if playbackChapterEpisodeID != projectedEpisodeID {
-            if let playbackChapterEpisodeID {
-                releaseChapterProjection(episodeID: playbackChapterEpisodeID)
-            }
-            playbackChapterEpisodeID = projectedEpisodeID
-            if let projectedEpisodeID {
-                retainChapterProjection(episodeID: projectedEpisodeID)
-            }
-        }
-        if let playbackState {
-            playbackState.applySharedPlayback(
-                projection,
-                stateRevision: revision
-            ) { [weak store] id in
-                store?.episode(id: id)
-            }
-        }
-        dispatcher.executePendingRequests(from: facade)
     }
 
     func shutdown() {
@@ -265,6 +218,9 @@ final class SharedLibraryClient {
             facade.unsubscribe(subscriptionId: transcriptWorkflowSubscriptionID)
         }
         unsubscribeFromScheduledAgents()
+        if let nostrSignerSubscriptionID {
+            facade.unsubscribe(subscriptionId: nostrSignerSubscriptionID)
+        }
         librarySubscriptionID = nil
         playbackSubscriptionID = nil
         chapterWorkflowSubscriptionID = nil
@@ -272,6 +228,8 @@ final class SharedLibraryClient {
         clipsSubscriptionID = nil
         downloadsSubscriptionID = nil
         transcriptWorkflowSubscriptionID = nil
+        nostrSignerSubscriptionID = nil
+        cachedNostrSigner = nil
         chapterScopeCounts.removeAll()
         chapterSnapshots.removeAll()
         announcedPublisherChapterEpisodeIDs.removeAll()

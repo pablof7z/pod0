@@ -2,7 +2,9 @@ use std::sync::mpsc;
 
 use pod0_application::PublicationStatusObservation;
 use pod0_domain::{PublicationFactKind, PublicationId};
-use pod0_nmp::{NmpRuntime, NmpRuntimeConfig, PublicationAdapterEvent, PublicationReattachment};
+use pod0_nmp::{
+    NmpAdapterEvent, NmpRuntime, NmpRuntimeConfig, PublicationAdapterEvent, PublicationReattachment,
+};
 
 use crate::{FacadeOpenError, Pod0Facade};
 
@@ -31,7 +33,16 @@ impl Pod0Facade {
                     let mut state = state
                         .lock()
                         .unwrap_or_else(std::sync::PoisonError::into_inner);
-                    if state.apply_publication_event(event) {
+                    let changed = match event {
+                        NmpAdapterEvent::Publication(event) => state.apply_publication_event(event),
+                        NmpAdapterEvent::SignerRequest(request) => {
+                            state.enqueue_native_signing_request(request)
+                        }
+                        NmpAdapterEvent::SignerCancelled { request_id } => {
+                            state.cancel_native_signing_request(request_id)
+                        }
+                    };
+                    if changed {
                         state.deliveries()
                     } else {
                         Vec::new()

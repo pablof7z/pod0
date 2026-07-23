@@ -8,6 +8,7 @@ publish.workspace = true
 
 [dependencies]
 nmp.workspace = true
+nostr.workspace = true
 pod0-application.workspace = true
 pod0-domain.workspace = true
 sha2.workspace = true
@@ -16,7 +17,6 @@ sha2.workspace = true
 path = "src/lib.rs"
 
 [dev-dependencies]
-nostr.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 tungstenite.workspace = true

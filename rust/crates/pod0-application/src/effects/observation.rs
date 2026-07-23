@@ -126,6 +126,16 @@ pub enum HostObservation {
         execution_fence_id: AgentExecutionFenceId,
         outcome: AgentCapabilityOutcome,
     },
+    NostrSignerCredentialReady {
+        account_id: pod0_domain::SignerAccountId,
+        public_key_hex: String,
+    },
+    NostrEventSigned {
+        value: crate::NostrSignatureObservation,
+    },
+    NostrSignerCredentialDeleted {
+        account_id: pod0_domain::SignerAccountId,
+    },
     CoreWakeReached {
         reason: crate::CoreWakeReason,
     },

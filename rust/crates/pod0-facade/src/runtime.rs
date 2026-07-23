@@ -10,10 +10,12 @@ use pod0_recall_index::{RECALL_INDEX_DIMENSIONS, RecallIndex, recall_index_path_
 use pod0_storage::{EvidenceStore, LibraryStore, TranscriptStore};
 use std::path::Path;
 
+use crate::ProjectionSubscriber;
 use crate::runtime_clock::SystemClock;
 use crate::runtime_recall_interrupts::RecallInterruptRegistry;
 use crate::runtime_state::{FacadeState, FacadeStores};
-use crate::{Pod0ApplicationApi, ProjectionSubscriber};
+
+mod api;
 
 #[derive(uniffi::Object)]
 pub struct Pod0Facade {
@@ -97,6 +99,7 @@ impl Pod0Facade {
         let agent_store = pod0_storage::AgentStore::open(path).map_err(FacadeOpenError::from)?;
         let publication_store =
             pod0_storage::PublicationStore::open(path).map_err(FacadeOpenError::from)?;
+        let signer_store = pod0_storage::SignerStore::open(path).map_err(FacadeOpenError::from)?;
         let recall_index = RecallIndex::open(
             &recall_index_path_for_core_store(path),
             RECALL_INDEX_DIMENSIONS,
@@ -110,6 +113,7 @@ impl Pod0Facade {
                 scheduled_agent: scheduled_agent_store,
                 agent: agent_store,
                 publication: publication_store,
+                signer: signer_store,
             },
             recall_index,
             clock,
@@ -144,6 +148,12 @@ impl Pod0Facade {
     }
 
     pub fn dispatch(&self, command: CommandEnvelope) {
+        let signer_sign_out = match command.command {
+            ApplicationCommand::SignOutNostrSigner {
+                expected_account_id,
+            } => Some(expected_account_id),
+            _ => None,
+        };
         let cancellation_id = cancellation_target(&command);
         if let Some(cancellation_id) = cancellation_id {
             self.recall_interrupts.signal(cancellation_id);
@@ -153,6 +163,9 @@ impl Pod0Facade {
             self.recall_interrupts.finish_signal(cancellation_id);
         }
         self.drive_pending_publications();
+        if let Some(account_id) = signer_sign_out {
+            self.detach_native_signer(account_id);
+        }
         if changed {
             self.notify_subscribers();
         }
@@ -232,6 +245,17 @@ impl Pod0Facade {
         &self,
         observation: HostObservationEnvelope,
     ) -> pod0_application::HostObservationReceipt {
+        let signer_result = {
+            let mut state = self.state();
+            state.record_signer_observation(observation.clone())
+        };
+        if let Some(result) = signer_result {
+            let changed = result.changed | self.apply_signer_runtime_action(result.action);
+            if changed {
+                self.notify_subscribers();
+            }
+            return result.receipt;
+        }
         let (changed, receipt) = self.state().record_host_observation(observation);
         if changed {
             self.notify_subscribers();
@@ -244,42 +268,5 @@ fn cancellation_target(command: &CommandEnvelope) -> Option<CancellationId> {
     match command.command {
         ApplicationCommand::CancelOperation { cancellation_id } => Some(cancellation_id),
         _ => None,
-    }
-}
-
-impl Pod0ApplicationApi for Pod0Facade {
-    fn dispatch(&self, command: CommandEnvelope) {
-        Self::dispatch(self, command);
-    }
-
-    fn snapshot(&self, request: ProjectionRequest) -> ProjectionEnvelope {
-        Self::snapshot(self, request)
-    }
-
-    fn subscribe(
-        &self,
-        request: ProjectionRequest,
-        subscriber: Arc<dyn ProjectionSubscriber>,
-    ) -> SubscriptionId {
-        Self::subscribe(self, request, subscriber)
-    }
-
-    fn unsubscribe(&self, subscription_id: SubscriptionId) {
-        Self::unsubscribe(self, subscription_id);
-    }
-
-    fn next_host_requests(&self, maximum_count: u16) -> Vec<HostRequestEnvelope> {
-        Self::next_host_requests(self, maximum_count)
-    }
-
-    fn next_host_cancellations(&self, maximum_count: u16) -> Vec<HostCancellationRequest> {
-        Self::next_host_cancellations(self, maximum_count)
-    }
-
-    fn record_host_observation(
-        &self,
-        observation: HostObservationEnvelope,
-    ) -> pod0_application::HostObservationReceipt {
-        Self::record_host_observation(self, observation)
     }
 }

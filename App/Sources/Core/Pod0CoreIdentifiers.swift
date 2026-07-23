@@ -170,6 +170,15 @@ extension HostRequestId {
     }
 }
 
+extension SignerAccountId {
+    init(uuid: UUID) {
+        let parts = uuid.coreIdentifierParts
+        self.init(high: parts.high, low: parts.low)
+    }
+
+    var uuid: UUID? { UUID(coreHigh: high, low: low) }
+}
+
 extension ConversationId {
     init(uuid: UUID) {
         let parts = uuid.coreIdentifierParts

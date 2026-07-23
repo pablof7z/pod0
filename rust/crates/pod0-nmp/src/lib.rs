@@ -3,15 +3,22 @@
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread::JoinHandle;
 
-use nmp::{
-    CorrelationToken, Durability, Engine, EngineConfig, Kind, PublicKey, ReceiptId,
-    ReceiptReattachment, Tag, Timestamp, UnsignedEvent, WriteIntent, WritePayload, WriteRouting,
-    WriteStatus,
-};
-use pod0_application::{Pod0PublicationDraft, PublicationStatusObservation};
-use pod0_domain::PublicationId;
+#[cfg(test)]
+use nmp::WriteStatus;
+use nmp::{Engine, EngineConfig, PublicKey, SignerRegistration};
+use pod0_application::NostrSignatureObservation;
+#[cfg(test)]
+use pod0_application::PublicationStatusObservation;
+use pod0_domain::{HostRequestId, SignerAccountId};
 
+mod publication;
+mod signer;
 mod status;
+pub use publication::{
+    PendingPublicationReceipt, PublicationAdapterEvent, PublicationReattachment,
+};
+pub use signer::{NativeSignerFailure, NativeSigningRequest};
+#[cfg(test)]
 use status::observations;
 
 #[derive(Clone, Debug)]
@@ -43,21 +50,10 @@ impl NmpRuntimeConfig {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PublicationAdapterEvent {
-    pub publication_id: PublicationId,
-    pub observation: PublicationStatusObservation,
-}
-
-pub struct PendingPublicationReceipt {
-    pub publication_id: PublicationId,
-    pub receipt_id: u64,
-    statuses: mpsc::Receiver<WriteStatus>,
-}
-
-pub enum PublicationReattachment {
-    Attached(PendingPublicationReceipt),
-    NotFound,
-    RetainedButUnreadable,
+pub enum NmpAdapterEvent {
+    Publication(PublicationAdapterEvent),
+    SignerRequest(NativeSigningRequest),
+    SignerCancelled { request_id: HostRequestId },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -65,20 +61,28 @@ pub enum NmpAdapterError {
     Engine,
     InvalidAuthor,
     InvalidCorrelation,
+    InvalidSignerPublicKey,
     InvalidTag,
     ObserverUnavailable,
 }
 
+struct InstalledNativeSigner {
+    account_id: SignerAccountId,
+    registration: SignerRegistration,
+    bridge: Arc<signer::NativeSignerBridge>,
+}
+
 pub struct NmpRuntime {
     engine: Arc<Engine>,
-    event_sender: mpsc::Sender<PublicationAdapterEvent>,
+    event_sender: mpsc::Sender<NmpAdapterEvent>,
     observers: Mutex<Vec<JoinHandle<()>>>,
+    signer: Mutex<Option<InstalledNativeSigner>>,
 }
 
 impl NmpRuntime {
     pub fn start(
         config: NmpRuntimeConfig,
-        event_sender: mpsc::Sender<PublicationAdapterEvent>,
+        event_sender: mpsc::Sender<NmpAdapterEvent>,
     ) -> Result<Self, NmpAdapterError> {
         let engine = Engine::new(EngineConfig {
             store_path: Some(config.store_path),
@@ -93,74 +97,103 @@ impl NmpRuntime {
             engine: Arc::new(engine),
             event_sender,
             observers: Mutex::new(Vec::new()),
+            signer: Mutex::new(None),
         })
     }
 
-    pub fn publish_tracked(
+    pub fn install_native_signer(
         &self,
-        draft: &Pod0PublicationDraft,
-    ) -> Result<PendingPublicationReceipt, NmpAdapterError> {
-        let stream = self
+        account_id: SignerAccountId,
+        public_key_hex: &str,
+    ) -> Result<(), NmpAdapterError> {
+        let mut slot = self
+            .signer
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let public_key = PublicKey::from_hex(public_key_hex)
+            .map_err(|_| NmpAdapterError::InvalidSignerPublicKey)?;
+        let bridge =
+            signer::NativeSignerBridge::new(account_id, public_key, self.event_sender.clone());
+        let registration = self
             .engine
-            .publish_tracked(write_intent(draft)?)
+            .add_signer(bridge.capability())
             .map_err(|_| NmpAdapterError::Engine)?;
-        Ok(PendingPublicationReceipt {
-            publication_id: draft.publication_id,
-            receipt_id: stream.id.0,
-            statuses: stream.statuses,
-        })
+        if self.engine.set_active_account(Some(public_key)).is_err() {
+            let _ = self.engine.remove_signer(registration);
+            bridge.disconnect();
+            return Err(NmpAdapterError::Engine);
+        }
+        let replacement = InstalledNativeSigner {
+            account_id,
+            registration,
+            bridge,
+        };
+        let old = slot.replace(replacement);
+        if let Some(old) = old {
+            let _ = self.engine.remove_signer(old.registration);
+            old.bridge.disconnect();
+        }
+        Ok(())
     }
 
-    pub fn reattach_receipt(
+    pub fn complete_native_signature(
         &self,
-        publication_id: PublicationId,
-        receipt_id: u64,
-    ) -> Result<PublicationReattachment, NmpAdapterError> {
-        self.convert_reattachment(
-            publication_id,
-            self.engine
-                .reattach_receipt(ReceiptId(receipt_id))
-                .map_err(|_| NmpAdapterError::Engine)?,
-        )
-    }
-
-    pub fn reattach_by_correlation(
-        &self,
-        publication_id: PublicationId,
-        correlation_token: &str,
-    ) -> Result<PublicationReattachment, NmpAdapterError> {
-        self.convert_reattachment(
-            publication_id,
-            self.engine
-                .reattach_by_correlation(correlation_token.to_owned())
-                .map_err(|_| NmpAdapterError::Engine)?,
-        )
-    }
-
-    pub fn attach(&self, receipt: PendingPublicationReceipt) {
-        let sender = self.event_sender.clone();
-        let handle = std::thread::spawn(move || {
-            while let Ok(status) = receipt.statuses.recv() {
-                for observation in observations(status) {
-                    if sender
-                        .send(PublicationAdapterEvent {
-                            publication_id: receipt.publication_id,
-                            observation,
-                        })
-                        .is_err()
-                    {
-                        return;
-                    }
-                }
-            }
-        });
-        self.observers
+        request_id: HostRequestId,
+        observation: NostrSignatureObservation,
+    ) -> bool {
+        self.signer
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .push(handle);
+            .as_ref()
+            .is_some_and(|signer| signer.bridge.complete(request_id, observation))
+    }
+
+    pub fn fail_native_signature(
+        &self,
+        request_id: HostRequestId,
+        failure: NativeSignerFailure,
+    ) -> bool {
+        self.signer
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .as_ref()
+            .is_some_and(|signer| signer.bridge.fail(request_id, failure))
+    }
+
+    pub fn remove_native_signer(
+        &self,
+        account_id: SignerAccountId,
+    ) -> Result<bool, NmpAdapterError> {
+        let mut slot = self
+            .signer
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if slot.as_ref().map(|signer| signer.account_id) != Some(account_id) {
+            return Ok(false);
+        }
+        self.engine
+            .set_active_account(None)
+            .map_err(|_| NmpAdapterError::Engine)?;
+        let signer = slot.take().expect("matching signer remains installed");
+        let removed = self
+            .engine
+            .remove_signer(signer.registration)
+            .map_err(|_| NmpAdapterError::Engine)?;
+        signer.bridge.disconnect();
+        Ok(removed)
     }
 
     pub fn shutdown(&self) {
+        if let Some(signer) = self
+            .signer
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .take()
+        {
+            let _ = self.engine.set_active_account(None);
+            let _ = self.engine.remove_signer(signer.registration);
+            signer.bridge.disconnect();
+        }
         self.engine.shutdown();
         let handles = std::mem::take(
             &mut *self
@@ -171,26 +204,6 @@ impl NmpRuntime {
         for handle in handles {
             let _ = handle.join();
         }
-    }
-
-    fn convert_reattachment(
-        &self,
-        publication_id: PublicationId,
-        value: ReceiptReattachment,
-    ) -> Result<PublicationReattachment, NmpAdapterError> {
-        Ok(match value {
-            ReceiptReattachment::Attached(id, statuses) => {
-                PublicationReattachment::Attached(PendingPublicationReceipt {
-                    publication_id,
-                    receipt_id: id.0,
-                    statuses,
-                })
-            }
-            ReceiptReattachment::NotFound => PublicationReattachment::NotFound,
-            ReceiptReattachment::RetainedButUnreadable => {
-                PublicationReattachment::RetainedButUnreadable
-            }
-        })
     }
 
     #[cfg(test)]
@@ -243,33 +256,6 @@ impl Drop for NmpRuntime {
     fn drop(&mut self) {
         self.shutdown();
     }
-}
-
-fn write_intent(draft: &Pod0PublicationDraft) -> Result<WriteIntent, NmpAdapterError> {
-    let author = PublicKey::from_hex(&draft.expected_author_hex)
-        .map_err(|_| NmpAdapterError::InvalidAuthor)?;
-    let correlation = CorrelationToken::try_from(draft.correlation_token.as_str())
-        .map_err(|_| NmpAdapterError::InvalidCorrelation)?;
-    let tags = draft
-        .tags
-        .iter()
-        .cloned()
-        .map(Tag::parse)
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|_| NmpAdapterError::InvalidTag)?;
-    Ok(WriteIntent {
-        payload: WritePayload::Unsigned(UnsignedEvent::new(
-            author,
-            Timestamp::from(draft.created_at_seconds),
-            Kind::from(draft.kind),
-            tags,
-            draft.content.clone(),
-        )),
-        durability: Durability::Durable,
-        routing: WriteRouting::AuthorOutbox,
-        identity_override: Some(author),
-        correlation: Some(correlation),
-    })
 }
 
 #[cfg(test)]

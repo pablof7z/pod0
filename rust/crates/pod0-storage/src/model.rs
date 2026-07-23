@@ -5,7 +5,7 @@ use pod0_domain::CommandId;
 
 pub const APPLICATION_ID: i64 = 0x504F_4430;
 pub const MIN_SUPPORTED_SCHEMA_VERSION: u32 = 0;
-pub const CURRENT_SCHEMA_VERSION: u32 = 25;
+pub const CURRENT_SCHEMA_VERSION: u32 = 26;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AccessMode {
@@ -177,6 +177,9 @@ pub enum StorageError {
     PublicationNotFound,
     PublicationConflict,
     InvalidPublication,
+    SignerNotFound,
+    SignerConflict,
+    InvalidSignerState,
     NewerEvidenceSchema {
         stored: u32,
         supported: u32,
@@ -254,6 +257,9 @@ impl StorageError {
             Self::PublicationNotFound => "publication_not_found",
             Self::PublicationConflict => "publication_conflict",
             Self::InvalidPublication => "invalid_publication",
+            Self::SignerNotFound => "signer_not_found",
+            Self::SignerConflict => "signer_conflict",
+            Self::InvalidSignerState => "invalid_signer_state",
             Self::NewerEvidenceSchema { .. } => "newer_evidence_schema",
             Self::Interrupted => "migration_interrupted",
         }

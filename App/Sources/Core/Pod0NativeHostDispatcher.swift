@@ -42,6 +42,7 @@ final class Pod0NativeHostDispatcher {
     let publisherChapterHost: any CorePublisherChapterHosting
     let chapterModelHost: any CoreChapterModelHosting
     let agentHost: any CoreAgentHosting
+    let nostrSignerHost: any CoreNostrSignerHosting
     let playbackHost: any CorePlaybackHosting
     private let maximumConcurrentTasks: Int
     let recallHost: any CoreRecallHosting
@@ -70,13 +71,13 @@ final class Pod0NativeHostDispatcher {
     var completedRequestIDs: Set<HostRequestId> = []
     var completionOrder: [HostRequestId] = []
     private var executionEnabled = false
-
     init(
         feedHost: any CoreFeedHosting,
         downloadHost: any CoreDownloadHosting = UnavailableCoreDownloadHost(),
         publisherChapterHost: any CorePublisherChapterHosting = CorePublisherChapterHost(),
         chapterModelHost: any CoreChapterModelHosting = CoreChapterModelHost(),
         agentHost: any CoreAgentHosting = UnavailableCoreAgentHost(),
+        nostrSignerHost: any CoreNostrSignerHosting = CoreNostrSignerHost(),
         playbackHost: any CorePlaybackHosting,
         recallHost: any CoreRecallHosting = UnavailableCoreRecallHost(),
         scheduledAgentHost: any CoreScheduledAgentHosting = CoreScheduledAgentHost(),
@@ -90,6 +91,7 @@ final class Pod0NativeHostDispatcher {
         self.publisherChapterHost = publisherChapterHost
         self.chapterModelHost = chapterModelHost
         self.agentHost = agentHost
+        self.nostrSignerHost = nostrSignerHost
         self.playbackHost = playbackHost
         self.recallHost = recallHost
         self.scheduledAgentHost = scheduledAgentHost
@@ -271,6 +273,9 @@ final class Pod0NativeHostDispatcher {
                 return
             }
             startAgentTask(envelope, delivery: delivery)
+        case .provisionNostrSignerCredential, .restoreNostrSignerCredential,
+             .signNostrEvent, .deleteNostrSignerCredential:
+            startNostrSignerTask(envelope, delivery: delivery)
         case .scheduleCoreWake(let wakeAt, let reason):
             startCoreWakeTask(
                 envelope,

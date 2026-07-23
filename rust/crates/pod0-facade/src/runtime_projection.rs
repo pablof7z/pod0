@@ -1,3 +1,5 @@
+use crate::runtime_projection_envelope::projection_envelope;
+use crate::runtime_state::{FacadeState, failure};
 use pod0_application::{
     EpisodeDetailProjection, LibraryProjection, NoteProjectionScope, NotesProjection,
     PlaybackAllowedActions, PlaybackItem, PlaybackProjection, PodcastDetailProjection, Projection,
@@ -5,10 +7,6 @@ use pod0_application::{
     UnsupportedProjection,
 };
 use pod0_domain::CompletionStatus;
-
-use crate::runtime_projection_envelope::projection_envelope;
-use crate::runtime_state::{FacadeState, failure};
-
 impl FacadeState {
     pub(super) fn snapshot(&self, request: ProjectionRequest) -> ProjectionEnvelope {
         let item_limit = request.bounded_max_items();
@@ -222,6 +220,9 @@ impl FacadeState {
             ProjectionScope::Publications { publication_id } => {
                 self.publication_projection(publication_id, &request)
             }
+            ProjectionScope::NostrSigner => Projection::NostrSigner {
+                value: self.signer_projection(),
+            },
             ProjectionScope::Notes { scope } => {
                 let mut notes = self.notes.notes.clone();
                 match scope {

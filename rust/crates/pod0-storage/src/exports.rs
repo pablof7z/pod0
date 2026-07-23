@@ -63,6 +63,7 @@ pub use crate::scheduled_agent_store::{
     ScheduledAgentStore, scheduled_agent_store_is_authoritative,
 };
 pub use crate::scheduled_agent_store_model::*;
+pub use crate::signer_store::SignerStore;
 pub use crate::transcript_import::{TranscriptImportClock, TranscriptImporter};
 pub use crate::transcript_import_model::{
     LegacyTranscriptSourceKind, TranscriptBackupEvidence, TranscriptImportEntrySummary,

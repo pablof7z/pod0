@@ -70,7 +70,10 @@ impl From<StorageError> for LegacyListeningMigrationError {
             | StorageError::PublicationCommandConflict
             | StorageError::PublicationNotFound
             | StorageError::PublicationConflict
-            | StorageError::InvalidPublication => Self::TargetBlocked,
+            | StorageError::InvalidPublication
+            | StorageError::SignerNotFound
+            | StorageError::SignerConflict
+            | StorageError::InvalidSignerState => Self::TargetBlocked,
             StorageError::Io { .. } | StorageError::Sqlite { .. } => Self::StorageUnavailable,
         }
     }

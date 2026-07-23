@@ -4466,6 +4466,111 @@ public object FfiConverterTypeScheduledTaskId: FfiConverterRustBuffer<ScheduledT
 
 
 
+data class SignerAccountId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSignerAccountId: FfiConverterRustBuffer<SignerAccountId> {
+    override fun read(buf: ByteBuffer): SignerAccountId {
+        return SignerAccountId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SignerAccountId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: SignerAccountId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+/**
+ * Durable product identity metadata. Secret material is never part of this
+ * record and remains in the platform secure-storage capability.
+ */
+data class SignerAccountRecord (
+    val `accountId`: SignerAccountId?
+    ,
+    val `credentialKind`: SignerCredentialKind
+    ,
+    val `expectedAuthorHex`: kotlin.String?
+    ,
+    val `revision`: StateRevision
+    ,
+    val `stage`: SignerStage
+    ,
+    val `updatedAt`: UnixTimestampMilliseconds
+    ,
+    val `safeDetail`: kotlin.String?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSignerAccountRecord: FfiConverterRustBuffer<SignerAccountRecord> {
+    override fun read(buf: ByteBuffer): SignerAccountRecord {
+        return SignerAccountRecord(
+            FfiConverterOptionalTypeSignerAccountId.read(buf),
+            FfiConverterTypeSignerCredentialKind.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterTypeSignerStage.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SignerAccountRecord) = (
+            FfiConverterOptionalTypeSignerAccountId.allocationSize(value.`accountId`) +
+            FfiConverterTypeSignerCredentialKind.allocationSize(value.`credentialKind`) +
+            FfiConverterOptionalString.allocationSize(value.`expectedAuthorHex`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`revision`) +
+            FfiConverterTypeSignerStage.allocationSize(value.`stage`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`updatedAt`) +
+            FfiConverterOptionalString.allocationSize(value.`safeDetail`)
+    )
+
+    override fun write(value: SignerAccountRecord, buf: ByteBuffer) {
+            FfiConverterOptionalTypeSignerAccountId.write(value.`accountId`, buf)
+            FfiConverterTypeSignerCredentialKind.write(value.`credentialKind`, buf)
+            FfiConverterOptionalString.write(value.`expectedAuthorHex`, buf)
+            FfiConverterTypeStateRevision.write(value.`revision`, buf)
+            FfiConverterTypeSignerStage.write(value.`stage`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`updatedAt`, buf)
+            FfiConverterOptionalString.write(value.`safeDetail`, buf)
+    }
+}
+
+
+
 data class SpeakerId (
     val `high`: kotlin.ULong
     ,
@@ -7793,6 +7898,133 @@ public object FfiConverterTypeRecallRerankProvider : FfiConverterRustBuffer<Reca
 
 
 
+sealed class SignerCredentialKind {
+
+    object LocalKeychain : SignerCredentialKind()
+
+
+    object RemoteNip46 : SignerCredentialKind()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : SignerCredentialKind()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSignerCredentialKind : FfiConverterRustBuffer<SignerCredentialKind>{
+    override fun read(buf: ByteBuffer): SignerCredentialKind {
+        return when(buf.getInt()) {
+            1 -> SignerCredentialKind.LocalKeychain
+            2 -> SignerCredentialKind.RemoteNip46
+            3 -> SignerCredentialKind.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: SignerCredentialKind): ULong = when(value) {
+        is SignerCredentialKind.LocalKeychain -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is SignerCredentialKind.RemoteNip46 -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is SignerCredentialKind.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: SignerCredentialKind, buf: ByteBuffer) {
+        when(value) {
+            is SignerCredentialKind.LocalKeychain -> {
+                buf.putInt(1)
+                Unit
+            }
+            is SignerCredentialKind.RemoteNip46 -> {
+                buf.putInt(2)
+                Unit
+            }
+            is SignerCredentialKind.Unsupported -> {
+                buf.putInt(3)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+
+enum class SignerStage {
+
+    PROVISIONING,
+    RESTORING,
+    READY,
+    UNAVAILABLE,
+    SIGNING_OUT,
+    FAILED;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSignerStage: FfiConverterRustBuffer<SignerStage> {
+    override fun read(buf: ByteBuffer) = try {
+
+        SignerStage.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: SignerStage) = 4UL
+
+    override fun write(value: SignerStage, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 sealed class TranscriptArtifactStatus {
 
     object Unavailable : TranscriptArtifactStatus()
@@ -8479,6 +8711,38 @@ public object FfiConverterOptionalTypePublisherTranscriptReference: FfiConverter
         } else {
             buf.put(1)
             FfiConverterTypePublisherTranscriptReference.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeSignerAccountId: FfiConverterRustBuffer<SignerAccountId?> {
+    override fun read(buf: ByteBuffer): SignerAccountId? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeSignerAccountId.read(buf)
+    }
+
+    override fun allocationSize(value: SignerAccountId?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeSignerAccountId.allocationSize(value)
+        }
+    }
+
+    override fun write(value: SignerAccountId?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeSignerAccountId.write(value, buf)
         }
     }
 }

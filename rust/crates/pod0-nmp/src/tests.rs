@@ -5,7 +5,10 @@ use std::time::Duration;
 use pod0_application::Pod0PublicationDraft;
 use pod0_domain::{PublicationFactKind, PublicationId};
 
-use super::{NmpRuntime, NmpRuntimeConfig, PublicationReattachment, WriteStatus, observations};
+use super::{
+    NmpAdapterEvent, NmpRuntime, NmpRuntimeConfig, PublicationAdapterEvent,
+    PublicationReattachment, WriteStatus, observations,
+};
 
 mod scripted_relay;
 use scripted_relay::{BoundRelay, relay_list_event};
@@ -33,6 +36,13 @@ fn config(path: String) -> NmpRuntimeConfig {
     }
 }
 
+fn publication(event: NmpAdapterEvent) -> PublicationAdapterEvent {
+    let NmpAdapterEvent::Publication(event) = event else {
+        panic!("publication adapter event expected");
+    };
+    event
+}
+
 #[test]
 fn missing_signer_retains_expected_author_and_receipt_replays_after_restart() {
     let directory = tempfile::tempdir().unwrap();
@@ -42,8 +52,8 @@ fn missing_signer_retains_expected_author_and_receipt_replays_after_restart() {
     let pending = runtime.publish_tracked(&draft()).unwrap();
     let receipt_id = pending.receipt_id;
     runtime.attach(pending);
-    let accepted = receiver.recv_timeout(Duration::from_secs(2)).unwrap();
-    let awaiting = receiver.recv_timeout(Duration::from_secs(2)).unwrap();
+    let accepted = publication(receiver.recv_timeout(Duration::from_secs(2)).unwrap());
+    let awaiting = publication(receiver.recv_timeout(Duration::from_secs(2)).unwrap());
     assert_eq!(accepted.observation.kind, PublicationFactKind::Accepted);
     assert_eq!(
         awaiting.observation.kind,
@@ -68,8 +78,8 @@ fn missing_signer_retains_expected_author_and_receipt_replays_after_restart() {
     assert_eq!(pending.receipt_id, receipt_id);
     reopened.attach(pending);
     let replayed = [
-        receiver.recv_timeout(Duration::from_secs(2)).unwrap(),
-        receiver.recv_timeout(Duration::from_secs(2)).unwrap(),
+        publication(receiver.recv_timeout(Duration::from_secs(2)).unwrap()),
+        publication(receiver.recv_timeout(Duration::from_secs(2)).unwrap()),
     ];
     assert_eq!(replayed[0].observation.kind, PublicationFactKind::Accepted);
     assert_eq!(
@@ -216,6 +226,7 @@ fn scripted_outcome(acknowledge: bool) -> super::PublicationStatusObservation {
         let Ok(event) = receiver.recv_timeout(Duration::from_secs(15)) else {
             break;
         };
+        let event = publication(event);
         observed.push((event.observation.kind, event.observation.route_id));
         if event.observation.kind == target {
             outcome = Some(event.observation);

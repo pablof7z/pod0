@@ -31,6 +31,7 @@ fn schema_14_through_current_preserves_and_adopts_current_publisher_chapters() {
         .execute_batch(
             "DROP TABLE pod0_publication_commands;
              DROP TABLE pod0_publication_facts;
+             DROP TABLE pod0_signer_state;
              DROP TABLE pod0_publications;
              DROP TABLE pod0_agent_generated_audio_artifacts;
              DROP TABLE pod0_agent_audit;
@@ -93,6 +94,7 @@ fn schema_15_to_current_preserves_publisher_state_and_adds_fenced_model_storage(
         .execute_batch(
             "DROP TABLE pod0_publication_commands;
              DROP TABLE pod0_publication_facts;
+             DROP TABLE pod0_signer_state;
              DROP TABLE pod0_publications;
              DROP TABLE pod0_agent_generated_audio_artifacts;
              DROP TABLE pod0_agent_audit;
@@ -134,7 +136,7 @@ fn schema_15_to_current_preserves_publisher_state_and_adds_fenced_model_storage(
         .unwrap();
     assert_eq!(
         report.applied_versions,
-        [16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
+        [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
     );
 
     let reopened = crate::LibraryStore::open_authoritative(&fixture.target).unwrap();

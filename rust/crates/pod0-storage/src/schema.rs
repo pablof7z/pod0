@@ -245,6 +245,9 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
     if version >= 25 {
         crate::schema_publications::validate_publication_schema(connection)?;
     }
+    if version >= 26 {
+        crate::schema_signer::validate_signer_schema(connection)?;
+    }
     if version >= 8 {
         crate::schema_notes::validate_notes_schema(connection)?;
     }

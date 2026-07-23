@@ -4945,6 +4945,138 @@ public func FfiConverterTypeScheduledTaskId_lower(_ value: ScheduledTaskId) -> R
 }
 
 
+public struct SignerAccountId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension SignerAccountId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSignerAccountId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SignerAccountId {
+        return
+            try SignerAccountId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SignerAccountId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSignerAccountId_lift(_ buf: RustBuffer) throws -> SignerAccountId {
+    return try FfiConverterTypeSignerAccountId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSignerAccountId_lower(_ value: SignerAccountId) -> RustBuffer {
+    return FfiConverterTypeSignerAccountId.lower(value)
+}
+
+
+/**
+ * Durable product identity metadata. Secret material is never part of this
+ * record and remains in the platform secure-storage capability.
+ */
+public struct SignerAccountRecord: Equatable, Hashable {
+    public let accountId: SignerAccountId?
+    public let credentialKind: SignerCredentialKind
+    public let expectedAuthorHex: String?
+    public let revision: StateRevision
+    public let stage: SignerStage
+    public let updatedAt: UnixTimestampMilliseconds
+    public let safeDetail: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(accountId: SignerAccountId?, credentialKind: SignerCredentialKind, expectedAuthorHex: String?, revision: StateRevision, stage: SignerStage, updatedAt: UnixTimestampMilliseconds, safeDetail: String?) {
+        self.accountId = accountId
+        self.credentialKind = credentialKind
+        self.expectedAuthorHex = expectedAuthorHex
+        self.revision = revision
+        self.stage = stage
+        self.updatedAt = updatedAt
+        self.safeDetail = safeDetail
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension SignerAccountRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSignerAccountRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SignerAccountRecord {
+        return
+            try SignerAccountRecord(
+                accountId: FfiConverterOptionTypeSignerAccountId.read(from: &buf),
+                credentialKind: FfiConverterTypeSignerCredentialKind.read(from: &buf),
+                expectedAuthorHex: FfiConverterOptionString.read(from: &buf),
+                revision: FfiConverterTypeStateRevision.read(from: &buf),
+                stage: FfiConverterTypeSignerStage.read(from: &buf),
+                updatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                safeDetail: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SignerAccountRecord, into buf: inout [UInt8]) {
+        FfiConverterOptionTypeSignerAccountId.write(value.accountId, into: &buf)
+        FfiConverterTypeSignerCredentialKind.write(value.credentialKind, into: &buf)
+        FfiConverterOptionString.write(value.expectedAuthorHex, into: &buf)
+        FfiConverterTypeStateRevision.write(value.revision, into: &buf)
+        FfiConverterTypeSignerStage.write(value.stage, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.updatedAt, into: &buf)
+        FfiConverterOptionString.write(value.safeDetail, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSignerAccountRecord_lift(_ buf: RustBuffer) throws -> SignerAccountRecord {
+    return try FfiConverterTypeSignerAccountRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSignerAccountRecord_lower(_ value: SignerAccountRecord) -> RustBuffer {
+    return FfiConverterTypeSignerAccountRecord.lower(value)
+}
+
+
 public struct SpeakerId: Equatable, Hashable {
     public let high: UInt64
     public let low: UInt64
@@ -8150,6 +8282,176 @@ public func FfiConverterTypeRecallRerankProvider_lower(_ value: RecallRerankProv
 
 
 
+public enum SignerCredentialKind: Equatable, Hashable {
+
+    case localKeychain
+    case remoteNip46
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension SignerCredentialKind: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSignerCredentialKind: FfiConverterRustBuffer {
+    typealias SwiftType = SignerCredentialKind
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SignerCredentialKind {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .localKeychain
+
+        case 2: return .remoteNip46
+
+        case 3: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: SignerCredentialKind, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .localKeychain:
+            writeInt(&buf, Int32(1))
+
+
+        case .remoteNip46:
+            writeInt(&buf, Int32(2))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSignerCredentialKind_lift(_ buf: RustBuffer) throws -> SignerCredentialKind {
+    return try FfiConverterTypeSignerCredentialKind.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSignerCredentialKind_lower(_ value: SignerCredentialKind) -> RustBuffer {
+    return FfiConverterTypeSignerCredentialKind.lower(value)
+}
+
+
+
+
+public enum SignerStage: Equatable, Hashable {
+
+    case provisioning
+    case restoring
+    case ready
+    case unavailable
+    case signingOut
+    case failed
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension SignerStage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSignerStage: FfiConverterRustBuffer {
+    typealias SwiftType = SignerStage
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SignerStage {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .provisioning
+
+        case 2: return .restoring
+
+        case 3: return .ready
+
+        case 4: return .unavailable
+
+        case 5: return .signingOut
+
+        case 6: return .failed
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: SignerStage, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .provisioning:
+            writeInt(&buf, Int32(1))
+
+
+        case .restoring:
+            writeInt(&buf, Int32(2))
+
+
+        case .ready:
+            writeInt(&buf, Int32(3))
+
+
+        case .unavailable:
+            writeInt(&buf, Int32(4))
+
+
+        case .signingOut:
+            writeInt(&buf, Int32(5))
+
+
+        case .failed:
+            writeInt(&buf, Int32(6))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSignerStage_lift(_ buf: RustBuffer) throws -> SignerStage {
+    return try FfiConverterTypeSignerStage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSignerStage_lower(_ value: SignerStage) -> RustBuffer {
+    return FfiConverterTypeSignerStage.lower(value)
+}
+
+
+
+
 public enum TranscriptArtifactStatus: Equatable, Hashable {
 
     case unavailable
@@ -8663,6 +8965,30 @@ fileprivate struct FfiConverterOptionTypePublisherTranscriptReference: FfiConver
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypePublisherTranscriptReference.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeSignerAccountId: FfiConverterRustBuffer {
+    typealias SwiftType = SignerAccountId?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeSignerAccountId.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeSignerAccountId.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }

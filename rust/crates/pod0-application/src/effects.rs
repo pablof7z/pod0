@@ -163,6 +163,17 @@ pub enum HostRequest {
     ExecuteAgentCapability {
         capability: crate::AgentCapabilityRequest,
     },
+    ProvisionNostrSignerCredential,
+    RestoreNostrSignerCredential {
+        account_id: pod0_domain::SignerAccountId,
+        expected_author_hex: String,
+    },
+    SignNostrEvent {
+        request: crate::NostrSigningRequest,
+    },
+    DeleteNostrSignerCredential {
+        account_id: pod0_domain::SignerAccountId,
+    },
     ScheduleCoreWake {
         wake_at: UnixTimestampMilliseconds,
         reason: crate::CoreWakeReason,

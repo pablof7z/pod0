@@ -22,7 +22,7 @@ final class TranscriptContractBindingFixtureTests: XCTestCase {
         )
 
         XCTAssertEqual(fixture["fixture_version"], "1")
-        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 41)
+        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 42)
         XCTAssertEqual(fixture["unknown_future_field"], "ignored-by-v1-readers")
         XCTAssertEqual(receipt.artifactId, artifactID)
         XCTAssertEqual(receipt.transcriptVersionId, versionID)

@@ -104,6 +104,7 @@ struct RootView: View {
                 }
                 .sheet(isPresented: $showSearch) { searchSheet }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                    store.sharedLibrary?.ensureNostrSigner()
                     Task { await workflows.reconcileAndDrain() }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .voiceModeRequested)) { _ in

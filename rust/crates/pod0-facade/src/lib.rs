@@ -1,9 +1,7 @@
 #![forbid(unsafe_code)]
-
 use pod0_application::{Clock, KernelApplication};
 mod facade_exports;
 pub use facade_exports::*;
-
 uniffi::setup_scaffolding!();
 
 mod chapter_migration;
@@ -151,6 +149,11 @@ mod runtime_recall_test_support;
 #[cfg(test)]
 mod runtime_recall_tests;
 mod runtime_scheduled_agent;
+mod runtime_signer;
+mod runtime_signer_observations;
+mod runtime_signer_runtime;
+#[cfg(test)]
+mod runtime_signer_tests;
 mod runtime_state;
 mod runtime_state_defaults;
 mod runtime_storage_commands;

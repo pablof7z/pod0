@@ -172,6 +172,13 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
         ApplicationCommand::PublishGeneratedEpisode { intent } => {
             hash_publication(&mut hash, intent)
         }
+        ApplicationCommand::EnsureNostrSigner => hash.update(b"ensure-nostr-signer\0"),
+        ApplicationCommand::SignOutNostrSigner {
+            expected_account_id,
+        } => {
+            hash.update(b"sign-out-nostr-signer\0");
+            hash.update(expected_account_id.into_bytes());
+        }
         ApplicationCommand::CommitChapter {
             expected_selection_revision,
             artifact,

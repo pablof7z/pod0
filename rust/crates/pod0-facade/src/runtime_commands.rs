@@ -1,7 +1,10 @@
 use crate::runtime_command_fingerprint::command_fingerprint;
 use crate::runtime_feed_state::FeedIntent;
 use crate::runtime_state::FacadeState;
-use pod0_application::{ApplicationCommand, CommandEnvelope, CoreFailureCode, OperationResult};
+use pod0_application::{ApplicationCommand, CommandEnvelope, CoreFailureCode};
+
+mod listening;
+
 impl FacadeState {
     pub(super) fn accept_command(&mut self, envelope: CommandEnvelope) -> bool {
         self.begin(&envelope);
@@ -38,26 +41,7 @@ impl FacadeState {
             ApplicationCommand::SetEpisodeStarred {
                 episode_id,
                 starred,
-            } => {
-                let result = self
-                    .store
-                    .as_ref()
-                    .ok_or(pod0_storage::StorageError::CutoverNotAuthoritative)
-                    .and_then(|store| {
-                        store.set_episode_starred(
-                            envelope.command_id,
-                            &fingerprint,
-                            episode_id,
-                            starred,
-                            self.now().value,
-                        )
-                    });
-                self.finish_storage_command(
-                    envelope.command_id,
-                    result,
-                    OperationResult::EpisodeUpdated { episode_id },
-                );
-            }
+            } => self.set_episode_starred(&envelope, &fingerprint, episode_id, starred),
             ApplicationCommand::RequestEpisodeDownload { episode_id, origin } => {
                 self.request_episode_download(&envelope, &fingerprint, episode_id, origin)
             }
@@ -165,6 +149,10 @@ impl FacadeState {
             ApplicationCommand::PublishGeneratedEpisode { intent } => {
                 self.pub_nmp(&envelope, &fingerprint, &intent)
             }
+            ApplicationCommand::EnsureNostrSigner => self.ensure_nostr_signer(&envelope),
+            ApplicationCommand::SignOutNostrSigner {
+                expected_account_id,
+            } => self.sign_out_nostr_signer(&envelope, expected_account_id),
             ApplicationCommand::CommitChapter {
                 expected_selection_revision,
                 artifact,

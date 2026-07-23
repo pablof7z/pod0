@@ -23,7 +23,9 @@ extension Pod0NativeHostDispatcher {
             }
         case .executeChapterModel, .recoverChapterModelOperation,
              .executeTranscriptCapability, .executeAgentModelTurn,
-             .presentAgentApproval, .executeAgentCapability, .scheduleCoreWake:
+             .presentAgentApproval, .executeAgentCapability, .scheduleCoreWake,
+             .provisionNostrSignerCredential, .restoreNostrSignerCredential,
+             .signNostrEvent, .deleteNostrSignerCredential:
             let recorder = durableObservationRecorder
             let persistForRelaunch = switch envelope.request {
             case .executeChapterModel, .recoverChapterModelOperation,
@@ -140,7 +142,14 @@ extension Pod0NativeHostDispatcher {
         switch receipt {
         case .persisted(_, let terminal): terminal
         case .acceptedTransient:
-            if case .scheduleCoreWake = request { true } else { false }
+            switch request {
+            case .scheduleCoreWake, .provisionNostrSignerCredential,
+                 .restoreNostrSignerCredential, .signNostrEvent,
+                 .deleteNostrSignerCredential:
+                true
+            default:
+                false
+            }
         case .rejected: true
         case .retainAndRetry: false
         }
