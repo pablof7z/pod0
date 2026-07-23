@@ -144,12 +144,17 @@ final class RecallAnswerServiceTests: XCTestCase {
     func testEvidencePlaybackHandoffSeeksToExactCoreMoment() async throws {
         let made = AppStateTestSupport.makeIsolatedStore()
         defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
+        let mediaURL = made.fileURL
+            .deletingPathExtension()
+            .appendingPathExtension("m4a")
+        try SilentAudioWriter.writeSilence(durationSeconds: 65, to: mediaURL)
+        defer { try? FileManager.default.removeItem(at: mediaURL) }
         let podcast = Podcast(id: podcastID, title: "Practical Minds")
         let episode = try await made.store.upsertExternalEpisodeAndWait(
             podcastID: podcastID,
             feedURL: nil,
             podcastTitle: podcast.title,
-            audioURL: URL(string: "https://example.com/episode.mp3")!,
+            audioURL: mediaURL,
             title: "The Habit Loop",
             publishedAt: Date(timeIntervalSince1970: 1_700_000_000),
             imageURL: nil,
@@ -193,9 +198,7 @@ final class RecallAnswerServiceTests: XCTestCase {
         )
 
         XCTAssertTrue(RecallPlaybackHandoff.open(evidence, store: made.store, playback: playback))
-        // Supply the native host observation explicitly; this contract test
-        // must not depend on DNS or AVPlayer timing for its fake remote URL.
-        playback.engine.setState(.playing)
+        playback.pause()
         await fulfillment(of: [committed], timeout: 5)
         XCTAssertEqual(playback.episode?.id, episode.id)
         XCTAssertEqual(playback.currentTime, 47.125, accuracy: 0.001)
