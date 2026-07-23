@@ -97,7 +97,7 @@ actor CoreNostrSignerHost: CoreNostrSignerHosting {
             try validate(credential)
             return ready(credential)
         }
-        let keyPair = try NostrKeyPair.generate()
+        let keyPair = try CoreNostrSignerKeyMaterial.generate()
         let credential = CoreNostrSignerCredential(
             accountID: UUID(),
             privateKeyHex: keyPair.privateKeyHex,
