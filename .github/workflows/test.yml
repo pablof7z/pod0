@@ -19,6 +19,9 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Verify pinned Apple toolchain
+        run: ./scripts/check_apple_release_inputs.sh --toolchain-only
+
       - name: Validate architecture
         run: python3 scripts/check_architecture.py --self-test
 
@@ -58,3 +61,13 @@ jobs:
 
       - name: Reconstruct workflow across process termination
         run: ./scripts/test-workflow-process-reconstruction.sh
+
+      - name: Create non-publishing release archive
+        run: ./ci_scripts/archive_without_upload.sh
+
+      - name: Upload non-publishing archive evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-archive-evidence-${{ github.sha }}
+          path: build/non-publishing/archive-evidence.txt
+          if-no-files-found: error

@@ -95,10 +95,15 @@ the iOS unit/integration suite.
 
 Requirements:
 
-- Xcode 26.4 or newer with an iOS 26 simulator runtime.
-- Tuist 4.x.
+- Xcode 26.6 (build 17F113) with an iOS 26 simulator runtime.
+- Tuist 4.200.5, pinned in `.tool-versions`.
 - Rust 1.93.0 through the committed `rust-toolchain.toml`.
 - An Apple Developer account for signed device/TestFlight builds.
+
+Bootstrap fails closed when the selected Xcode or Tuist version differs from
+the tracked release inputs. Swift packages resolve from the canonical
+`Config/SwiftPackages/Package.resolved`; generated lockfiles are materialized
+from that file and checked for drift.
 
 Generate the project:
 
@@ -151,15 +156,22 @@ Durable process-reconstruction qualification:
 ./scripts/test-workflow-process-reconstruction.sh
 ```
 
+Non-publishing release archive:
+
+```bash
+./ci_scripts/archive_without_upload.sh
+```
+
 Every user-facing iPhone change also updates
 `App/Resources/whats-new.json`. Repository-wide typography and file-length
 rules live in [AGENTS.md](AGENTS.md).
 
 ## Delivery
 
-Pushes to `master` run the test workflow and TestFlight workflow on the
-self-hosted macOS runner. TestFlight signing and App Store Connect secrets are
-managed by `ci_scripts/archive_and_upload.sh` and
+Pushes to `master` run the test workflow, including a non-publishing archive,
+on the self-hosted macOS runner. TestFlight is manual-only and requires an
+explicit upload confirmation. Signing and App Store Connect secrets are managed
+by `ci_scripts/archive_and_upload.sh` and
 `ci_scripts/set_github_secrets.sh`; do not store credentials in the repository.
 
 ## Screenshots

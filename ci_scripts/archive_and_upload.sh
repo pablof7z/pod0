@@ -59,6 +59,7 @@ ARCHIVE_PATH="${ARCHIVE_PATH:-$BUILD_ROOT/Podcastr.xcarchive}"
 EXPORT_PATH="${EXPORT_PATH:-$BUILD_ROOT/testflight-export}"
 EXPORT_OPTIONS_PLIST="${EXPORT_OPTIONS_PLIST:-$BUILD_ROOT/ExportOptions.plist}"
 DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-$BUILD_ROOT/DerivedData}"
+SOURCE_PACKAGES_PATH="${SOURCE_PACKAGES_PATH:-$PWD/.build/DerivedData/SourcePackages}"
 AUTH_KEY_DIR="$HOME/.appstoreconnect/private_keys"
 AUTH_KEY_PATH="$AUTH_KEY_DIR/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
 
@@ -153,6 +154,9 @@ xcodebuild \
   -destination "generic/platform=iOS" \
   -derivedDataPath "$DERIVED_DATA_PATH" \
   -archivePath "$ARCHIVE_PATH" \
+  -clonedSourcePackagesDirPath "$SOURCE_PACKAGES_PATH" \
+  -onlyUsePackageVersionsFromResolvedFile \
+  -disableAutomaticPackageResolution \
   -skipPackagePluginValidation \
   "DEVELOPMENT_TEAM=${APPLE_TEAM_ID}" \
   archive \

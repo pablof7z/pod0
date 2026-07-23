@@ -1,11 +1,13 @@
 name: TestFlight
 
 on:
-  push:
-    branches:
-      - master
   workflow_dispatch:
     inputs:
+      confirm_upload:
+        description: Confirm that this run may upload a qualified build to TestFlight
+        required: true
+        type: boolean
+        default: false
       marketing_version:
         description: Optional version override, for example 1.2.0
         required: false
@@ -36,6 +38,9 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Verify pinned Apple toolchain
+        run: ./scripts/check_apple_release_inputs.sh --toolchain-only
 
       - name: Validate architecture
         run: python3 scripts/check_architecture.py --self-test
@@ -71,6 +76,7 @@ jobs:
     name: Archive And Upload
     runs-on: self-hosted
     needs: test
+    if: ${{ inputs.confirm_upload }}
     timeout-minutes: 60
 
     steps:

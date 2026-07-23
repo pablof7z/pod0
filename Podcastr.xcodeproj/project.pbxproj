@@ -3974,7 +3974,7 @@
 				APP_BUNDLE_IDENTIFIER = io.f7z.podcast;
 				APP_GROUP_IDENTIFIER = group.com.podcastr.app;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
 				CFBundleDisplayName = Podcastr;
 				CODE_SIGN_ENTITLEMENTS = App/Resources/Podcastr.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
@@ -4100,7 +4100,7 @@
 				APP_BUNDLE_IDENTIFIER = io.f7z.podcast;
 				APP_GROUP_IDENTIFIER = group.com.podcastr.app;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
 				CFBundleDisplayName = Podcastr;
 				CODE_SIGN_ENTITLEMENTS = App/Resources/Podcastr.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
@@ -4468,16 +4468,16 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/GigaBitcoin/secp256k1.swift";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.23.1;
+				kind = exactVersion;
+				version = 0.23.1;
 			};
 		};
 		FD91E0E152391009482BC6AE /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/onevcat/Kingfisher";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 8.0.0;
+				kind = exactVersion;
+				version = 8.9.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

@@ -31,7 +31,7 @@ let project = Project(
     packages: [
         .remote(
             url: "https://github.com/GigaBitcoin/secp256k1.swift",
-            requirement: .upToNextMajor(from: "0.23.1")
+            requirement: .exact("0.23.1")
         ),
         // Kingfisher — memory + disk image cache. Backs `CachedAsyncImage`
         // so artwork URLs (subscription / episode covers, iTunes Search
@@ -39,7 +39,7 @@ let project = Project(
         // re-downloading every appearance like SwiftUI's stock `AsyncImage`.
         .remote(
             url: "https://github.com/onevcat/Kingfisher",
-            requirement: .upToNextMajor(from: "8.0.0")
+            requirement: .exact("8.9.0")
         ),
     ],
     settings: .settings(
@@ -102,6 +102,7 @@ let project = Project(
                     "GENERATE_INFOPLIST_FILE": "NO",
                     "OTHER_LDFLAGS": "$(inherited) -lsqlite3",
                     "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+                    "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "",
                     "TARGETED_DEVICE_FAMILY": "1,2",
                     "PROVISIONING_PROFILE_SPECIFIER": "$(CI_APP_PROFILE_SPECIFIER)",
                     "SWIFT_INCLUDE_PATHS": "$(SRCROOT)/App/Support",
