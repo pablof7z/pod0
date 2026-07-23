@@ -87,7 +87,6 @@ fn start_command(
             conversation_id,
             user_input: user_input.to_owned(),
             model_reference: "openrouter/test".to_owned(),
-            available_tools: vec![AgentToolName::CreateNote],
         },
     }
 }

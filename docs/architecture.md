@@ -21,7 +21,7 @@ configuration, indexing, and retrieval; publisher and model chapter workflows;
 scheduled-agent definitions, occurrences, and artifacts; interactive
 product-proof agent conversations, proposals, permissions, recall citations,
 model usage, generated audio provenance, and tracked NMP publication receipts.
-The facade contract is now version 44. It exposes bounded commands,
+The facade contract is now version 45. It exposes bounded commands,
 projections, domain events, and correlated host requests across those migrated
 domains. Exact integer milliseconds, stable identifiers, explicit revisions,
 effect fences, cancellation, and typed failure states prevent native adapters
@@ -211,11 +211,14 @@ Swift and Kotlin bindings. CI rejects drift from Rust metadata.
   UI status and actions use read-only Rust publisher/model projections. The
   compatibility bridge remains only for supported direct upgrades and is
   deleted under issue #114 after the two-release/90-day support gate.
-- Versions 27–44 extend the same typed, single-writer pattern through download
+- Versions 27–45 extend the same typed, single-writer pattern through download
   workflows, recall configuration/indexing/retrieval, scheduled agents,
   interactive conversations and permissions, model-usage evidence, generated
-  audio provenance, and tracked NMP publication. Swift retains only bounded
-  projections and exact native capability executors for those migrated domains.
+  audio provenance, and tracked NMP publication. Version 45 also makes the
+  product-proof agent catalog and provider-neutral tool definitions Rust-owned;
+  native code only encodes them for the selected model provider. Swift retains
+  only bounded projections and exact native capability executors for those
+  migrated domains.
 - Open views receive bounded, revisioned, screen-shaped projections.
 - Operation failure and cancellation appear in projection state, not thrown
   per-operation FFI results.

@@ -132,7 +132,7 @@ fn legacy_memory_cutover_preserves_compiled_provenance() {
 }
 
 #[test]
-fn approved_agent_record_memory_commits_through_rust_authority() {
+fn deferred_agent_record_memory_is_not_advertised_or_committed() {
     let fixture = PlaybackFixture::new();
     activate(&fixture.facade);
     let start = command(
@@ -141,7 +141,6 @@ fn approved_agent_record_memory_commits_through_rust_authority() {
             conversation_id: None,
             user_input: "Remember that I prefer primary sources".to_owned(),
             model_reference: "openrouter/test".to_owned(),
-            available_tools: vec![AgentToolName::RecordMemory],
         },
     );
     fixture.facade.dispatch(start);
@@ -163,22 +162,9 @@ fn approved_agent_record_memory_commits_through_rust_authority() {
             usage: None,
         },
     ));
-    let approval = fixture.facade.next_host_requests(8).remove(0);
-    let HostRequest::PresentAgentApproval { approval: request } = &approval.request else {
-        panic!("expected approval request");
-    };
-    fixture.facade.record_host_observation(agent_observation(
-        &approval,
-        HostObservation::AgentApprovalObserved {
-            turn_id: request.turn_id,
-            proposal_id: request.proposal.proposal_id,
-            proposal_digest: request.proposal.proposal_digest,
-            approved: true,
-        },
-    ));
+    assert!(fixture.facade.next_host_requests(8).is_empty());
     let memories = projection(&fixture.facade, MemoryProjectionScope::Active);
-    assert_eq!(memories.memories.len(), 1);
-    assert_eq!(memories.memories[0].content, "Prefers primary sources");
+    assert!(memories.memories.is_empty());
 }
 
 fn agent_observation(

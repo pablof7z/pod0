@@ -12,7 +12,6 @@ fn start_command(id: u64) -> CommandEnvelope {
             conversation_id: None,
             user_input: "Save architecture matters as a note".to_owned(),
             model_reference: "openrouter/test".to_owned(),
-            available_tools: vec![AgentToolName::CreateNote],
         },
     }
 }

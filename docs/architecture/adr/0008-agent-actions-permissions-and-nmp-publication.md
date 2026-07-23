@@ -26,9 +26,12 @@ The narrow product-proof agent path is now Rust-backed: active conversations,
 turn state, permissions, memory, scheduled state, model usage, generated audio
 provenance, and tracked NMP publication receipts have one durable Rust owner.
 The former Swift chat-session and tool-registry authorities are deleted.
-Issues #133 and #134 cover broader product-artifact commit families and native
+Facade contract v45 makes the live product-proof catalog, provider-neutral tool
+descriptions, argument shapes, required fields, and semantic bounds Rust-owned;
+native code only encodes the typed definitions for its model provider. Issues
+#133 and #134 cover broader product-artifact commit families and native
 capability/integration coverage, #137 requires physical-device signer
-qualification, and #138 owns the remaining rollback/provider-schema cleanup.
+qualification, and #138 owns the remaining rollback cleanup.
 
 ## Decision
 

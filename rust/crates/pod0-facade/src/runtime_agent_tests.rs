@@ -1,7 +1,7 @@
 use crate::runtime_playback_test_support::PlaybackFixture;
 use crate::*;
 
-fn start_command(id: u64, tools: Vec<AgentToolName>) -> CommandEnvelope {
+fn start_command(id: u64) -> CommandEnvelope {
     CommandEnvelope {
         command_id: CommandId::from_parts(101, id),
         cancellation_id: CancellationId::from_parts(102, id),
@@ -10,7 +10,6 @@ fn start_command(id: u64, tools: Vec<AgentToolName>) -> CommandEnvelope {
             conversation_id: None,
             user_input: "Save architecture matters as a note".to_owned(),
             model_reference: "openrouter/test".to_owned(),
-            available_tools: tools,
         },
     }
 }
@@ -45,7 +44,7 @@ fn turn(facade: &Pod0Facade, command_id: CommandId) -> AgentTurnProjection {
 #[test]
 fn note_action_requires_exact_approval_and_commits_once_in_rust() {
     let fixture = PlaybackFixture::new();
-    let start = start_command(1, vec![AgentToolName::CreateNote]);
+    let start = start_command(1);
     fixture.facade.dispatch(start.clone());
     let model = fixture.facade.next_host_requests(8).remove(0);
     let HostRequest::ExecuteAgentModelTurn { execution } = &model.request else {
@@ -139,7 +138,7 @@ fn note_action_requires_exact_approval_and_commits_once_in_rust() {
     let HostRequest::ExecuteAgentModelTurn { execution } = &continuation.request else {
         panic!("expected final model continuation");
     };
-    assert!(execution.available_tools.is_empty());
+    assert!(execution.tool_definitions.is_empty());
     assert!(execution.messages.iter().any(|message| {
         message.role == AgentMessageRole::Tool && message.content.contains("note_id")
     }));
@@ -186,7 +185,7 @@ fn note_action_requires_exact_approval_and_commits_once_in_rust() {
 #[test]
 fn native_action_is_fenced_and_restart_never_blindly_replays_it() {
     let fixture = PlaybackFixture::new();
-    let start = start_command(2, vec![AgentToolName::PlayEpisode]);
+    let start = start_command(2);
     fixture.facade.dispatch(start.clone());
     let model = fixture.facade.next_host_requests(8).remove(0);
     let HostRequest::ExecuteAgentModelTurn { execution } = &model.request else {
@@ -199,12 +198,9 @@ fn native_action_is_fenced_and_restart_never_blindly_replays_it() {
             model_fence_id: execution.model_fence_id,
             assistant_text: "Playing it.".to_owned(),
             proposed_tool_call: Some(AgentModelToolCallObservation {
-                provider_call_id: "play-call".to_owned(),
-                tool_name: "play_episode".to_owned(),
-                arguments_json: format!(
-                    r#"{{"episode_id":"{}","queue_position":"next"}}"#,
-                    uuid_string(fixture.episode_id.into_bytes())
-                ),
+                provider_call_id: "pause-call".to_owned(),
+                tool_name: "pause_playback".to_owned(),
+                arguments_json: "{}".to_owned(),
             }),
             usage: None,
         },
@@ -239,7 +235,7 @@ fn native_action_is_fenced_and_restart_never_blindly_replays_it() {
 #[test]
 fn invalid_and_unavailable_actions_fail_before_any_capability_request() {
     let fixture = PlaybackFixture::new();
-    let start = start_command(3, vec![AgentToolName::CreateNote]);
+    let start = start_command(3);
     fixture.facade.dispatch(start.clone());
     let model = fixture.facade.next_host_requests(8).remove(0);
     let HostRequest::ExecuteAgentModelTurn { execution } = &model.request else {

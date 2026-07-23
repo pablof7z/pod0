@@ -1258,6 +1258,29 @@ public object FfiConverterULong: FfiConverter<ULong, Long> {
 /**
  * @suppress
  */
+public object FfiConverterLong: FfiConverter<Long, Long> {
+    override fun lift(value: Long): Long {
+        return value
+    }
+
+    override fun read(buf: ByteBuffer): Long {
+        return buf.getLong()
+    }
+
+    override fun lower(value: Long): Long {
+        return value
+    }
+
+    override fun allocationSize(value: Long) = 8UL
+
+    override fun write(value: Long, buf: ByteBuffer) {
+        buf.putLong(value)
+    }
+}
+
+/**
+ * @suppress
+ */
 public object FfiConverterDouble: FfiConverter<Double, Double> {
     override fun lift(value: Double): Double {
         return value
@@ -2026,7 +2049,7 @@ data class AgentModelExecutionRequest (
     ,
     val `messages`: List<AgentMessageProjection>
     ,
-    val `availableTools`: List<AgentToolName>
+    val `toolDefinitions`: List<AgentToolDefinition>
     ,
     val `maximumOutputBytes`: kotlin.ULong
 
@@ -2050,7 +2073,7 @@ public object FfiConverterTypeAgentModelExecutionRequest: FfiConverterRustBuffer
             FfiConverterTypeAgentExecutionFenceId.read(buf),
             FfiConverterString.read(buf),
             FfiConverterSequenceTypeAgentMessageProjection.read(buf),
-            FfiConverterSequenceTypeAgentToolName.read(buf),
+            FfiConverterSequenceTypeAgentToolDefinition.read(buf),
             FfiConverterULong.read(buf),
         )
     }
@@ -2061,7 +2084,7 @@ public object FfiConverterTypeAgentModelExecutionRequest: FfiConverterRustBuffer
             FfiConverterTypeAgentExecutionFenceId.allocationSize(value.`modelFenceId`) +
             FfiConverterString.allocationSize(value.`modelReference`) +
             FfiConverterSequenceTypeAgentMessageProjection.allocationSize(value.`messages`) +
-            FfiConverterSequenceTypeAgentToolName.allocationSize(value.`availableTools`) +
+            FfiConverterSequenceTypeAgentToolDefinition.allocationSize(value.`toolDefinitions`) +
             FfiConverterULong.allocationSize(value.`maximumOutputBytes`)
     )
 
@@ -2071,7 +2094,7 @@ public object FfiConverterTypeAgentModelExecutionRequest: FfiConverterRustBuffer
             FfiConverterTypeAgentExecutionFenceId.write(value.`modelFenceId`, buf)
             FfiConverterString.write(value.`modelReference`, buf)
             FfiConverterSequenceTypeAgentMessageProjection.write(value.`messages`, buf)
-            FfiConverterSequenceTypeAgentToolName.write(value.`availableTools`, buf)
+            FfiConverterSequenceTypeAgentToolDefinition.write(value.`toolDefinitions`, buf)
             FfiConverterULong.write(value.`maximumOutputBytes`, buf)
     }
 }
@@ -2270,6 +2293,102 @@ public object FfiConverterTypeAgentProposalProjection: FfiConverterRustBuffer<Ag
             FfiConverterTypeStateRevision.write(value.`revision`, buf)
             FfiConverterTypeAgentToolAction.write(value.`action`, buf)
             FfiConverterTypeAgentAuthority.write(value.`requiredAuthority`, buf)
+    }
+}
+
+
+
+data class AgentToolDefinition (
+    val `tool`: AgentToolName
+    ,
+    val `wireName`: kotlin.String
+    ,
+    val `description`: kotlin.String
+    ,
+    val `parameters`: List<AgentToolParameterDefinition>
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentToolDefinition: FfiConverterRustBuffer<AgentToolDefinition> {
+    override fun read(buf: ByteBuffer): AgentToolDefinition {
+        return AgentToolDefinition(
+            FfiConverterTypeAgentToolName.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterSequenceTypeAgentToolParameterDefinition.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentToolDefinition) = (
+            FfiConverterTypeAgentToolName.allocationSize(value.`tool`) +
+            FfiConverterString.allocationSize(value.`wireName`) +
+            FfiConverterString.allocationSize(value.`description`) +
+            FfiConverterSequenceTypeAgentToolParameterDefinition.allocationSize(value.`parameters`)
+    )
+
+    override fun write(value: AgentToolDefinition, buf: ByteBuffer) {
+            FfiConverterTypeAgentToolName.write(value.`tool`, buf)
+            FfiConverterString.write(value.`wireName`, buf)
+            FfiConverterString.write(value.`description`, buf)
+            FfiConverterSequenceTypeAgentToolParameterDefinition.write(value.`parameters`, buf)
+    }
+}
+
+
+
+data class AgentToolParameterDefinition (
+    val `name`: kotlin.String
+    ,
+    val `description`: kotlin.String
+    ,
+    val `kind`: AgentToolParameterKind
+    ,
+    val `required`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentToolParameterDefinition: FfiConverterRustBuffer<AgentToolParameterDefinition> {
+    override fun read(buf: ByteBuffer): AgentToolParameterDefinition {
+        return AgentToolParameterDefinition(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeAgentToolParameterKind.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentToolParameterDefinition) = (
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterString.allocationSize(value.`description`) +
+            FfiConverterTypeAgentToolParameterKind.allocationSize(value.`kind`) +
+            FfiConverterBoolean.allocationSize(value.`required`)
+    )
+
+    override fun write(value: AgentToolParameterDefinition, buf: ByteBuffer) {
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterString.write(value.`description`, buf)
+            FfiConverterTypeAgentToolParameterKind.write(value.`kind`, buf)
+            FfiConverterBoolean.write(value.`required`, buf)
     }
 }
 
@@ -9349,6 +9468,111 @@ public object FfiConverterTypeAgentToolName: FfiConverterRustBuffer<AgentToolNam
 
 
 
+sealed class AgentToolParameterKind {
+
+    object Text : AgentToolParameterKind()
+
+
+    data class Integer(
+        val `minimum`: kotlin.Long,
+        val `maximum`: kotlin.Long) : AgentToolParameterKind()
+
+    {
+
+
+        companion object
+    }
+
+    data class DecimalPermille(
+        val `minimum`: kotlin.UShort,
+        val `maximum`: kotlin.UShort) : AgentToolParameterKind()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentToolParameterKind : FfiConverterRustBuffer<AgentToolParameterKind>{
+    override fun read(buf: ByteBuffer): AgentToolParameterKind {
+        return when(buf.getInt()) {
+            1 -> AgentToolParameterKind.Text
+            2 -> AgentToolParameterKind.Integer(
+                FfiConverterLong.read(buf),
+                FfiConverterLong.read(buf),
+                )
+            3 -> AgentToolParameterKind.DecimalPermille(
+                FfiConverterUShort.read(buf),
+                FfiConverterUShort.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: AgentToolParameterKind): ULong = when(value) {
+        is AgentToolParameterKind.Text -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is AgentToolParameterKind.Integer -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterLong.allocationSize(value.`minimum`)
+                + FfiConverterLong.allocationSize(value.`maximum`)
+            )
+        }
+        is AgentToolParameterKind.DecimalPermille -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUShort.allocationSize(value.`minimum`)
+                + FfiConverterUShort.allocationSize(value.`maximum`)
+            )
+        }
+    }
+
+    override fun write(value: AgentToolParameterKind, buf: ByteBuffer) {
+        when(value) {
+            is AgentToolParameterKind.Text -> {
+                buf.putInt(1)
+                Unit
+            }
+            is AgentToolParameterKind.Integer -> {
+                buf.putInt(2)
+                FfiConverterLong.write(value.`minimum`, buf)
+                FfiConverterLong.write(value.`maximum`, buf)
+                Unit
+            }
+            is AgentToolParameterKind.DecimalPermille -> {
+                buf.putInt(3)
+                FfiConverterUShort.write(value.`minimum`, buf)
+                FfiConverterUShort.write(value.`maximum`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 
 enum class AgentTurnStage {
 
@@ -9700,8 +9924,7 @@ sealed class ApplicationCommand {
     data class StartAgentTurn(
         val `conversationId`: uniffi.pod0_domain.ConversationId?,
         val `userInput`: kotlin.String,
-        val `modelReference`: kotlin.String,
-        val `availableTools`: List<uniffi.pod0_application.AgentToolName>) : ApplicationCommand()
+        val `modelReference`: kotlin.String) : ApplicationCommand()
 
     {
 
@@ -10099,7 +10322,6 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterOptionalTypeConversationId.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterString.read(buf),
-                FfiConverterSequenceTypeAgentToolName.read(buf),
                 )
             35 -> ApplicationCommand.PublishGeneratedEpisode(
                 FfiConverterTypePublicationIntent.read(buf),
@@ -10472,7 +10694,6 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 + FfiConverterOptionalTypeConversationId.allocationSize(value.`conversationId`)
                 + FfiConverterString.allocationSize(value.`userInput`)
                 + FfiConverterString.allocationSize(value.`modelReference`)
-                + FfiConverterSequenceTypeAgentToolName.allocationSize(value.`availableTools`)
             )
         }
         is ApplicationCommand.PublishGeneratedEpisode -> {
@@ -10878,7 +11099,6 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterOptionalTypeConversationId.write(value.`conversationId`, buf)
                 FfiConverterString.write(value.`userInput`, buf)
                 FfiConverterString.write(value.`modelReference`, buf)
-                FfiConverterSequenceTypeAgentToolName.write(value.`availableTools`, buf)
                 Unit
             }
             is ApplicationCommand.PublishGeneratedEpisode -> {
@@ -27242,6 +27462,62 @@ public object FfiConverterSequenceTypeAgentModelUsageProjection: FfiConverterRus
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeAgentToolDefinition: FfiConverterRustBuffer<List<AgentToolDefinition>> {
+    override fun read(buf: ByteBuffer): List<AgentToolDefinition> {
+        val len = buf.getInt()
+        return List<AgentToolDefinition>(len) {
+            FfiConverterTypeAgentToolDefinition.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<AgentToolDefinition>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeAgentToolDefinition.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<AgentToolDefinition>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeAgentToolDefinition.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeAgentToolParameterDefinition: FfiConverterRustBuffer<List<AgentToolParameterDefinition>> {
+    override fun read(buf: ByteBuffer): List<AgentToolParameterDefinition> {
+        val len = buf.getInt()
+        return List<AgentToolParameterDefinition>(len) {
+            FfiConverterTypeAgentToolParameterDefinition.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<AgentToolParameterDefinition>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeAgentToolParameterDefinition.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<AgentToolParameterDefinition>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeAgentToolParameterDefinition.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeAgentTurnProjection: FfiConverterRustBuffer<List<AgentTurnProjection>> {
     override fun read(buf: ByteBuffer): List<AgentTurnProjection> {
         val len = buf.getInt()
@@ -28184,34 +28460,6 @@ public object FfiConverterSequenceTypeAgentToolClass: FfiConverterRustBuffer<Lis
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeAgentToolClass.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeAgentToolName: FfiConverterRustBuffer<List<AgentToolName>> {
-    override fun read(buf: ByteBuffer): List<AgentToolName> {
-        val len = buf.getInt()
-        return List<AgentToolName>(len) {
-            FfiConverterTypeAgentToolName.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<AgentToolName>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeAgentToolName.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<AgentToolName>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeAgentToolName.write(it, buf)
         }
     }
 }

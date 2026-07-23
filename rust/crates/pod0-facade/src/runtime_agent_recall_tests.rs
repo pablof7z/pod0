@@ -60,7 +60,7 @@ fn transcript_query_returns_exact_evidence_then_finishes_conversationally() {
     let HostRequest::ExecuteAgentModelTurn { execution } = &continuation.request else {
         panic!("expected final model continuation");
     };
-    assert!(execution.available_tools.is_empty());
+    assert!(execution.tool_definitions.is_empty());
     let evidence = execution
         .messages
         .iter()
@@ -252,7 +252,6 @@ fn start_command(id: u64) -> CommandEnvelope {
             conversation_id: None,
             user_input: "What did this episode say?".to_owned(),
             model_reference: "openrouter/test".to_owned(),
-            available_tools: vec![AgentToolName::QueryTranscripts],
         },
     }
 }

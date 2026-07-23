@@ -3,7 +3,7 @@ use pod0_application::{
     AgentGeneratedAudioTarget, AgentMessageProjection, AgentModelExecutionRequest, AgentToolAction,
     AgentTurnState, HostCancellationRequest, HostRequest, HostRequestEnvelope,
     MAX_AGENT_GENERATED_AUDIO_BYTES, MAX_AGENT_MODEL_OUTPUT_BYTES, MAX_AGENT_PROJECTION_MESSAGES,
-    agent_generated_artifact_id,
+    agent_generated_artifact_id, agent_tool_definitions,
 };
 use pod0_domain::{AgentTurnId, CommandId, HostRequestId};
 
@@ -24,6 +24,14 @@ impl FacadeState {
             return false;
         };
         let messages = self.agent_model_messages(&projection);
+        let available_tools = if projection.commit.is_some() {
+            Vec::new()
+        } else {
+            state.available_tools().to_vec()
+        };
+        let Some(tool_definitions) = agent_tool_definitions(&available_tools) else {
+            return false;
+        };
         self.queue_agent_request(HostRequestEnvelope {
             request_id: model_request_id(projection.turn_id, model_fence_id),
             command_id,
@@ -37,11 +45,7 @@ impl FacadeState {
                     model_fence_id,
                     model_reference: state.model_reference().to_owned(),
                     messages,
-                    available_tools: if projection.commit.is_some() {
-                        Vec::new()
-                    } else {
-                        state.available_tools().to_vec()
-                    },
+                    tool_definitions,
                     maximum_output_bytes: MAX_AGENT_MODEL_OUTPUT_BYTES,
                 },
             },

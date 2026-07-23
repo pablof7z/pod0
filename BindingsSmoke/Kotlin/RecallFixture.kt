@@ -57,7 +57,7 @@ fun qualifyRecallProjection(fixture: Map<String, String>) {
     )
 
     check(fixture["fixture_version"] == "1")
-    check(fixture["contract_version"]?.toUInt() == 44u)
+    check(fixture["contract_version"]?.toUInt() == 45u)
     check(fixture["stage"] == "ready")
     check(projection.stage == RecallStage.Ready)
     check(projection.evidence.single().excerpt == fixture["excerpt"])

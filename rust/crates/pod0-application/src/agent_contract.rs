@@ -8,7 +8,7 @@ use pod0_domain::{
     ConversationId, EpisodeId, GeneratedArtifactId, PodcastId, ScheduledTaskId, StateRevision,
     UnixTimestampMilliseconds,
 };
-pub const AGENT_CONTRACT_VERSION: u32 = 1;
+pub const AGENT_CONTRACT_VERSION: u32 = 2;
 pub const MAX_AGENT_INPUT_BYTES: usize = 32 * 1_024;
 pub const MAX_AGENT_MESSAGE_BYTES: usize = 64 * 1_024;
 pub const MAX_AGENT_MODEL_REFERENCE_BYTES: usize = 256;
@@ -250,7 +250,7 @@ pub struct AgentModelExecutionRequest {
     pub model_fence_id: AgentExecutionFenceId,
     pub model_reference: String,
     pub messages: Vec<AgentMessageProjection>,
-    pub available_tools: Vec<AgentToolName>,
+    pub tool_definitions: Vec<crate::AgentToolDefinition>,
     pub maximum_output_bytes: u64,
 }
 

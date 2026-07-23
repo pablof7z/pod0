@@ -76,7 +76,7 @@ final class CoreAgentHost: CoreAgentHosting {
         guard let messages = Self.providerMessages(
             systemPrompt: systemPrompt(),
             messages: execution.messages
-        ), let tools = CoreAgentToolSchemas.schemas(for: execution.availableTools)
+        ), let tools = CoreAgentToolSchemas.schemas(for: execution.toolDefinitions)
         else {
             return .failed(
                 code: .invalidResponse,

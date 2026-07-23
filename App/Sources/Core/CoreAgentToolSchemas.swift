@@ -1,170 +1,52 @@
 import Foundation
 import Pod0Core
 
-/// Provider-format adapter for the bounded product-proof tool surface selected
-/// by Rust. Swift describes only the transport shape; Rust parses every call,
-/// authorizes durable actions, and remains the sole policy owner.
-///
-/// Issue #138 moves these provider-neutral definitions through the facade and
-/// deletes this temporary native adapter.
+/// Encodes Rust-owned, provider-neutral tool definitions into the JSON shape
+/// required by OpenRouter and Ollama. Swift does not choose tools, descriptions,
+/// argument names, required fields, or semantic bounds.
 @MainActor
 enum CoreAgentToolSchemas {
-    static func schemas(for tools: [AgentToolName]) -> [[String: Any]]? {
-        let result = tools.compactMap(schema)
-        return result.count == tools.count ? result : nil
-    }
-
-    static func wireName(_ tool: AgentToolName) -> String? {
-        switch tool {
-        case .createNote: "create_note"
-        case .listSubscriptions: "list_subscriptions"
-        case .listPodcasts: "list_podcasts"
-        case .listEpisodes: "list_episodes"
-        case .listInProgress: "list_in_progress"
-        case .listRecentUnplayed: "list_recent_unplayed"
-        case .searchEpisodes: "search_episodes"
-        case .queryTranscripts: "query_transcripts"
-        case .pausePlayback: "pause_playback"
-        case .setPlaybackRate: "set_playback_rate"
-        case .generateTtsEpisode: "generate_tts_episode"
-        default: nil
+    static func schemas(for definitions: [AgentToolDefinition]) -> [[String: Any]]? {
+        var tools = Set<AgentToolName>()
+        var wireNames = Set<String>()
+        var result: [[String: Any]] = []
+        result.reserveCapacity(definitions.count)
+        for definition in definitions {
+            guard tools.insert(definition.tool).inserted,
+                  wireNames.insert(definition.wireName).inserted,
+                  let schema = schema(definition)
+            else {
+                return nil
+            }
+            result.append(schema)
         }
+        return result
     }
 
-    private static func schema(_ toolName: AgentToolName) -> [String: Any]? {
-        switch toolName {
-        case .createNote:
-            tool(
-                name: "create_note",
-                description: "Save a note or reflection for the user.",
-                properties: [
-                    "text": stringProperty("The note content to save."),
-                ],
-                required: ["text"]
-            )
-        case .listSubscriptions:
-            noArgumentTool(
-                name: "list_subscriptions",
-                description: "List the podcasts the user currently subscribes to."
-            )
-        case .listPodcasts:
-            noArgumentTool(
-                name: "list_podcasts",
-                description: "List every podcast currently known to the user's library."
-            )
-        case .listEpisodes:
-            tool(
-                name: "list_episodes",
-                description: "List episodes for one podcast, newest first.",
-                properties: [
-                    "podcast_id": stringProperty(
-                        "Stable podcast UUID returned by another library tool."
-                    ),
-                ],
-                required: ["podcast_id"]
-            )
-        case .listInProgress:
-            noArgumentTool(
-                name: "list_in_progress",
-                description: "List episodes the user started but has not finished."
-            )
-        case .listRecentUnplayed:
-            noArgumentTool(
-                name: "list_recent_unplayed",
-                description: "List recently published episodes the user has not played."
-            )
-        case .searchEpisodes:
-            tool(
-                name: "search_episodes",
-                description: "Search episode metadata in the user's library for topical or fuzzy recall.",
-                properties: [
-                    "query": stringProperty("Natural-language search query."),
-                    "scope": stringProperty("Optional podcast UUID to constrain the search."),
-                    "limit": [
-                        "type": "integer",
-                        "description": "Maximum results from 1 through 25. Defaults to 10.",
-                        "minimum": 1,
-                        "maximum": 25,
-                    ],
-                ],
-                required: ["query"]
-            )
-        case .queryTranscripts:
-            tool(
-                name: "query_transcripts",
-                description: "Search prepared transcripts and return exact timestamped evidence.",
-                properties: [
-                    "query": stringProperty("Natural-language question to answer from transcripts."),
-                    "episode_id": stringProperty("Optional episode UUID to search within."),
-                    "podcast_id": stringProperty("Optional podcast UUID to search within."),
-                    "limit": [
-                        "type": "integer",
-                        "description": "Maximum evidence spans from 1 through 8. Defaults to 8.",
-                        "minimum": 1,
-                        "maximum": 8,
-                    ],
-                ],
-                required: ["query"]
-            )
-        case .pausePlayback:
-            noArgumentTool(
-                name: "pause_playback",
-                description: "Pause current podcast playback and persist the playhead."
-            )
-        case .setPlaybackRate:
-            tool(
-                name: "set_playback_rate",
-                description: "Set the active podcast playback speed.",
-                properties: [
-                    "rate": [
-                        "type": "number",
-                        "description": "Playback speed multiplier from 0.5 through 3.0.",
-                        "minimum": 0.5,
-                        "maximum": 3.0,
-                    ],
-                ],
-                required: ["rate"]
-            )
-        case .generateTtsEpisode:
-            tool(
-                name: "generate_tts_episode",
-                description: "Create a durable playable audio episode from an approved script.",
-                properties: [
-                    "podcast_id": stringProperty(
-                        "Optional stable synthetic podcast UUID returned by another tool."
-                    ),
-                    "title": stringProperty("Episode title shown in the library and player."),
-                    "script": stringProperty("Complete narration script to synthesize."),
-                    "voice_id": stringProperty(
-                        "Optional configured ElevenLabs voice ID."
-                    ),
-                ],
-                required: ["title", "script"]
-            )
-        default:
-            nil
+    private static func schema(_ definition: AgentToolDefinition) -> [String: Any]? {
+        guard !definition.wireName.isBlank,
+              !definition.description.isBlank
+        else {
+            return nil
         }
-    }
-
-    private static func stringProperty(_ description: String) -> [String: Any] {
-        ["type": "string", "description": description]
-    }
-
-    private static func noArgumentTool(name: String, description: String) -> [String: Any] {
-        tool(name: name, description: description, properties: [:], required: [])
-    }
-
-    private static func tool(
-        name: String,
-        description: String,
-        properties: [String: Any],
-        required: [String]
-    ) -> [String: Any] {
-        [
+        var properties: [String: Any] = [:]
+        var required: [String] = []
+        for parameter in definition.parameters {
+            guard properties[parameter.name] == nil,
+                  let property = property(parameter)
+            else {
+                return nil
+            }
+            properties[parameter.name] = property
+            if parameter.required {
+                required.append(parameter.name)
+            }
+        }
+        return [
             "type": "function",
             "function": [
-                "name": name,
-                "description": description,
+                "name": definition.wireName,
+                "description": definition.description,
                 "parameters": [
                     "type": "object",
                     "properties": properties,
@@ -173,5 +55,38 @@ enum CoreAgentToolSchemas {
                 ] as [String: Any],
             ] as [String: Any],
         ]
+    }
+
+    private static func property(
+        _ parameter: AgentToolParameterDefinition
+    ) -> [String: Any]? {
+        guard !parameter.name.isBlank,
+              !parameter.description.isBlank
+        else {
+            return nil
+        }
+        switch parameter.kind {
+        case .text:
+            return [
+                "type": "string",
+                "description": parameter.description,
+            ]
+        case .integer(let minimum, let maximum):
+            guard minimum <= maximum else { return nil }
+            return [
+                "type": "integer",
+                "description": parameter.description,
+                "minimum": minimum,
+                "maximum": maximum,
+            ]
+        case .decimalPermille(let minimum, let maximum):
+            guard minimum <= maximum else { return nil }
+            return [
+                "type": "number",
+                "description": parameter.description,
+                "minimum": Double(minimum) / 1_000,
+                "maximum": Double(maximum) / 1_000,
+            ]
+        }
     }
 }

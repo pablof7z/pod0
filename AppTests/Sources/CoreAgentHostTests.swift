@@ -69,7 +69,7 @@ final class CoreAgentHostTests: XCTestCase {
                 AgentMessageProjection(role: .tool, content: #"{"saved":true}"#),
                 AgentMessageProjection(role: .user, content: "Did that work?"),
             ],
-            availableTools: [.createNote],
+            toolDefinitions: [agentNoteDefinition()],
             maximumOutputBytes: 1_024
         )
 
@@ -99,7 +99,7 @@ final class CoreAgentHostTests: XCTestCase {
                 AgentMessageProjection(role: .user, content: "Save this"),
                 AgentMessageProjection(role: .tool, content: #"{"saved":true}"#),
             ],
-            availableTools: [],
+            toolDefinitions: [],
             maximumOutputBytes: 1_024
         )
 
@@ -223,7 +223,7 @@ final class CoreAgentHostTests: XCTestCase {
             modelFenceId: AgentExecutionFenceId(high: 5, low: 6),
             modelReference: "openrouter/test",
             messages: [AgentMessageProjection(role: .user, content: "Save a note")],
-            availableTools: [.createNote],
+            toolDefinitions: [agentNoteDefinition()],
             maximumOutputBytes: 1_024
         )
     }

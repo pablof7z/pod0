@@ -38,7 +38,6 @@ fn successful_native_action_queues_one_tool_free_final_answer() {
             conversation_id: None,
             user_input: "Pause playback".to_owned(),
             model_reference: "openrouter/test".to_owned(),
-            available_tools: vec![AgentToolName::PausePlayback],
         },
     };
     fixture.facade.dispatch(start.clone());
@@ -96,7 +95,7 @@ fn successful_native_action_queues_one_tool_free_final_answer() {
     let HostRequest::ExecuteAgentModelTurn { execution } = &continuation.request else {
         panic!("expected final model continuation");
     };
-    assert!(execution.available_tools.is_empty());
+    assert!(execution.tool_definitions.is_empty());
     assert!(execution.messages.iter().any(|message| {
         message.role == AgentMessageRole::Tool && message.content.contains("paused")
     }));

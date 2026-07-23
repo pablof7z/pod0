@@ -7,7 +7,6 @@ pub(super) fn hash_agent_command(hash: &mut Sha256, command: &ApplicationCommand
             conversation_id,
             user_input,
             model_reference,
-            available_tools,
         } => {
             hash.update(b"start-agent-turn\0");
             if let Some(conversation_id) = conversation_id {
@@ -19,11 +18,6 @@ pub(super) fn hash_agent_command(hash: &mut Sha256, command: &ApplicationCommand
             hash.update(user_input.as_bytes());
             hash.update([0]);
             hash.update(model_reference.as_bytes());
-            hash.update((available_tools.len() as u64).to_be_bytes());
-            for tool in available_tools {
-                hash.update(pod0_application::agent_tool_wire_name(*tool).as_bytes());
-                hash.update([0]);
-            }
         }
         ApplicationCommand::CancelAgentTurn {
             turn_id,

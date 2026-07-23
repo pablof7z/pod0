@@ -24,7 +24,6 @@ pub(crate) fn start(fixture: &PlaybackFixture, id: u64) -> (CommandEnvelope, Hos
             conversation_id: None,
             user_input: "Turn this into a short briefing".into(),
             model_reference: "openrouter/test".into(),
-            available_tools: vec![AgentToolName::GenerateTtsEpisode],
         },
     };
     fixture.facade.dispatch(command.clone());
@@ -129,7 +128,7 @@ fn generated_audio_evidence_atomically_commits_a_restart_safe_episode() {
     let HostRequest::ExecuteAgentModelTurn { execution } = &continuation.request else {
         panic!("expected final model continuation");
     };
-    assert!(execution.available_tools.is_empty());
+    assert!(execution.tool_definitions.is_empty());
     assert!(
         execution
             .messages

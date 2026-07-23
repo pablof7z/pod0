@@ -40,7 +40,7 @@ fun qualifyNoteProjection(fixture: Map<String, String>) {
     )
 
     check(fixture["fixture_version"] == "1")
-    check(fixture["contract_version"]?.toUInt() == 44u)
+    check(fixture["contract_version"]?.toUInt() == 45u)
     check(projection.notes.single().text == fixture["text"])
     check(projection.notes.single().evidence?.spanId == evidence.spanId)
 }

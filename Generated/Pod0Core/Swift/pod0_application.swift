@@ -545,6 +545,22 @@ fileprivate struct FfiConverterUInt64: FfiConverterPrimitive {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterInt64: FfiConverterPrimitive {
+    typealias FfiType = Int64
+    typealias SwiftType = Int64
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Int64 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: Int64, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterDouble: FfiConverterPrimitive {
     typealias FfiType = Double
     typealias SwiftType = Double
@@ -1445,18 +1461,18 @@ public struct AgentModelExecutionRequest: Equatable, Hashable {
     public let modelFenceId: AgentExecutionFenceId
     public let modelReference: String
     public let messages: [AgentMessageProjection]
-    public let availableTools: [AgentToolName]
+    public let toolDefinitions: [AgentToolDefinition]
     public let maximumOutputBytes: UInt64
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(conversationId: ConversationId, turnId: AgentTurnId, modelFenceId: AgentExecutionFenceId, modelReference: String, messages: [AgentMessageProjection], availableTools: [AgentToolName], maximumOutputBytes: UInt64) {
+    public init(conversationId: ConversationId, turnId: AgentTurnId, modelFenceId: AgentExecutionFenceId, modelReference: String, messages: [AgentMessageProjection], toolDefinitions: [AgentToolDefinition], maximumOutputBytes: UInt64) {
         self.conversationId = conversationId
         self.turnId = turnId
         self.modelFenceId = modelFenceId
         self.modelReference = modelReference
         self.messages = messages
-        self.availableTools = availableTools
+        self.toolDefinitions = toolDefinitions
         self.maximumOutputBytes = maximumOutputBytes
     }
 
@@ -1481,7 +1497,7 @@ public struct FfiConverterTypeAgentModelExecutionRequest: FfiConverterRustBuffer
                 modelFenceId: FfiConverterTypeAgentExecutionFenceId.read(from: &buf),
                 modelReference: FfiConverterString.read(from: &buf),
                 messages: FfiConverterSequenceTypeAgentMessageProjection.read(from: &buf),
-                availableTools: FfiConverterSequenceTypeAgentToolName.read(from: &buf),
+                toolDefinitions: FfiConverterSequenceTypeAgentToolDefinition.read(from: &buf),
                 maximumOutputBytes: FfiConverterUInt64.read(from: &buf)
         )
     }
@@ -1492,7 +1508,7 @@ public struct FfiConverterTypeAgentModelExecutionRequest: FfiConverterRustBuffer
         FfiConverterTypeAgentExecutionFenceId.write(value.modelFenceId, into: &buf)
         FfiConverterString.write(value.modelReference, into: &buf)
         FfiConverterSequenceTypeAgentMessageProjection.write(value.messages, into: &buf)
-        FfiConverterSequenceTypeAgentToolName.write(value.availableTools, into: &buf)
+        FfiConverterSequenceTypeAgentToolDefinition.write(value.toolDefinitions, into: &buf)
         FfiConverterUInt64.write(value.maximumOutputBytes, into: &buf)
     }
 }
@@ -1763,6 +1779,130 @@ public func FfiConverterTypeAgentProposalProjection_lift(_ buf: RustBuffer) thro
 #endif
 public func FfiConverterTypeAgentProposalProjection_lower(_ value: AgentProposalProjection) -> RustBuffer {
     return FfiConverterTypeAgentProposalProjection.lower(value)
+}
+
+
+public struct AgentToolDefinition: Equatable, Hashable {
+    public let tool: AgentToolName
+    public let wireName: String
+    public let description: String
+    public let parameters: [AgentToolParameterDefinition]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(tool: AgentToolName, wireName: String, description: String, parameters: [AgentToolParameterDefinition]) {
+        self.tool = tool
+        self.wireName = wireName
+        self.description = description
+        self.parameters = parameters
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentToolDefinition: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentToolDefinition: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentToolDefinition {
+        return
+            try AgentToolDefinition(
+                tool: FfiConverterTypeAgentToolName.read(from: &buf),
+                wireName: FfiConverterString.read(from: &buf),
+                description: FfiConverterString.read(from: &buf),
+                parameters: FfiConverterSequenceTypeAgentToolParameterDefinition.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentToolDefinition, into buf: inout [UInt8]) {
+        FfiConverterTypeAgentToolName.write(value.tool, into: &buf)
+        FfiConverterString.write(value.wireName, into: &buf)
+        FfiConverterString.write(value.description, into: &buf)
+        FfiConverterSequenceTypeAgentToolParameterDefinition.write(value.parameters, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentToolDefinition_lift(_ buf: RustBuffer) throws -> AgentToolDefinition {
+    return try FfiConverterTypeAgentToolDefinition.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentToolDefinition_lower(_ value: AgentToolDefinition) -> RustBuffer {
+    return FfiConverterTypeAgentToolDefinition.lower(value)
+}
+
+
+public struct AgentToolParameterDefinition: Equatable, Hashable {
+    public let name: String
+    public let description: String
+    public let kind: AgentToolParameterKind
+    public let required: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(name: String, description: String, kind: AgentToolParameterKind, required: Bool) {
+        self.name = name
+        self.description = description
+        self.kind = kind
+        self.required = required
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentToolParameterDefinition: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentToolParameterDefinition: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentToolParameterDefinition {
+        return
+            try AgentToolParameterDefinition(
+                name: FfiConverterString.read(from: &buf),
+                description: FfiConverterString.read(from: &buf),
+                kind: FfiConverterTypeAgentToolParameterKind.read(from: &buf),
+                required: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentToolParameterDefinition, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.description, into: &buf)
+        FfiConverterTypeAgentToolParameterKind.write(value.kind, into: &buf)
+        FfiConverterBool.write(value.required, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentToolParameterDefinition_lift(_ buf: RustBuffer) throws -> AgentToolParameterDefinition {
+    return try FfiConverterTypeAgentToolParameterDefinition.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentToolParameterDefinition_lower(_ value: AgentToolParameterDefinition) -> RustBuffer {
+    return FfiConverterTypeAgentToolParameterDefinition.lower(value)
 }
 
 
@@ -10176,6 +10316,87 @@ public func FfiConverterTypeAgentToolName_lower(_ value: AgentToolName) -> RustB
 
 
 
+public enum AgentToolParameterKind: Equatable, Hashable {
+
+    case text
+    case integer(minimum: Int64, maximum: Int64
+    )
+    case decimalPermille(minimum: UInt16, maximum: UInt16
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentToolParameterKind: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentToolParameterKind: FfiConverterRustBuffer {
+    typealias SwiftType = AgentToolParameterKind
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentToolParameterKind {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .text
+
+        case 2: return .integer(minimum: try FfiConverterInt64.read(from: &buf), maximum: try FfiConverterInt64.read(from: &buf)
+        )
+
+        case 3: return .decimalPermille(minimum: try FfiConverterUInt16.read(from: &buf), maximum: try FfiConverterUInt16.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AgentToolParameterKind, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .text:
+            writeInt(&buf, Int32(1))
+
+
+        case let .integer(minimum,maximum):
+            writeInt(&buf, Int32(2))
+            FfiConverterInt64.write(minimum, into: &buf)
+            FfiConverterInt64.write(maximum, into: &buf)
+
+
+        case let .decimalPermille(minimum,maximum):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt16.write(minimum, into: &buf)
+            FfiConverterUInt16.write(maximum, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentToolParameterKind_lift(_ buf: RustBuffer) throws -> AgentToolParameterKind {
+    return try FfiConverterTypeAgentToolParameterKind.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentToolParameterKind_lower(_ value: AgentToolParameterKind) -> RustBuffer {
+    return FfiConverterTypeAgentToolParameterKind.lower(value)
+}
+
+
+
+
 public enum AgentTurnStage: Equatable, Hashable {
 
     case awaitingModel
@@ -10377,7 +10598,7 @@ public enum ApplicationCommand: Equatable, Hashable {
     )
     case cancelScheduledRun(occurrenceId: ScheduledOccurrenceId, expectedWorkflowRevision: StateRevision
     )
-    case startAgentTurn(conversationId: ConversationId?, userInput: String, modelReference: String, availableTools: [AgentToolName]
+    case startAgentTurn(conversationId: ConversationId?, userInput: String, modelReference: String
     )
     case publishGeneratedEpisode(intent: PublicationIntent
     )
@@ -10545,7 +10766,7 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
         case 33: return .cancelScheduledRun(occurrenceId: try FfiConverterTypeScheduledOccurrenceId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 34: return .startAgentTurn(conversationId: try FfiConverterOptionTypeConversationId.read(from: &buf), userInput: try FfiConverterString.read(from: &buf), modelReference: try FfiConverterString.read(from: &buf), availableTools: try FfiConverterSequenceTypeAgentToolName.read(from: &buf)
+        case 34: return .startAgentTurn(conversationId: try FfiConverterOptionTypeConversationId.read(from: &buf), userInput: try FfiConverterString.read(from: &buf), modelReference: try FfiConverterString.read(from: &buf)
         )
 
         case 35: return .publishGeneratedEpisode(intent: try FfiConverterTypePublicationIntent.read(from: &buf)
@@ -10813,12 +11034,11 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
-        case let .startAgentTurn(conversationId,userInput,modelReference,availableTools):
+        case let .startAgentTurn(conversationId,userInput,modelReference):
             writeInt(&buf, Int32(34))
             FfiConverterOptionTypeConversationId.write(conversationId, into: &buf)
             FfiConverterString.write(userInput, into: &buf)
             FfiConverterString.write(modelReference, into: &buf)
-            FfiConverterSequenceTypeAgentToolName.write(availableTools, into: &buf)
 
 
         case let .publishGeneratedEpisode(intent):
@@ -21533,6 +21753,56 @@ fileprivate struct FfiConverterSequenceTypeAgentModelUsageProjection: FfiConvert
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeAgentToolDefinition: FfiConverterRustBuffer {
+    typealias SwiftType = [AgentToolDefinition]
+
+    public static func write(_ value: [AgentToolDefinition], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAgentToolDefinition.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AgentToolDefinition] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AgentToolDefinition]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAgentToolDefinition.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeAgentToolParameterDefinition: FfiConverterRustBuffer {
+    typealias SwiftType = [AgentToolParameterDefinition]
+
+    public static func write(_ value: [AgentToolParameterDefinition], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAgentToolParameterDefinition.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AgentToolParameterDefinition] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AgentToolParameterDefinition]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAgentToolParameterDefinition.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeAgentTurnProjection: FfiConverterRustBuffer {
     typealias SwiftType = [AgentTurnProjection]
 
@@ -22375,31 +22645,6 @@ fileprivate struct FfiConverterSequenceTypeAgentToolClass: FfiConverterRustBuffe
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeAgentToolClass.read(from: &buf))
-        }
-        return seq
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-fileprivate struct FfiConverterSequenceTypeAgentToolName: FfiConverterRustBuffer {
-    typealias SwiftType = [AgentToolName]
-
-    public static func write(_ value: [AgentToolName], into buf: inout [UInt8]) {
-        let len = Int32(value.count)
-        writeInt(&buf, len)
-        for item in value {
-            FfiConverterTypeAgentToolName.write(item, into: &buf)
-        }
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AgentToolName] {
-        let len: Int32 = try readInt(&buf)
-        var seq = [AgentToolName]()
-        seq.reserveCapacity(Int(len))
-        for _ in 0 ..< len {
-            seq.append(try FfiConverterTypeAgentToolName.read(from: &buf))
         }
         return seq
     }

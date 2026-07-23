@@ -17,8 +17,7 @@ final class SharedAgentConversationSessionTests: XCTestCase {
             .startAgentTurn(
                 conversationId: nil,
                 userInput: "What should I hear next?",
-                modelReference: "openrouter/test",
-                availableTools: SharedAgentConversationSession.productProofTools
+                modelReference: "openrouter/test"
             ),
         ])
         XCTAssertEqual(session.phase, .running)

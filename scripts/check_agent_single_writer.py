@@ -88,11 +88,28 @@ def validate(root: Path) -> list[str]:
     required = {
         "App/Sources/App/RootView.swift": "SharedAgentChatView(",
         "App/Sources/Features/AgentChat/AskAgentView.swift": "SharedAgentConversationSession",
-        "App/Sources/Core/CoreAgentToolSchemas.swift": "additionalProperties\": false",
+        "App/Sources/Core/CoreAgentToolSchemas.swift":
+            "schemas(for definitions: [AgentToolDefinition])",
+        "App/Sources/Core/CoreAgentHost.swift": "execution.toolDefinitions",
     }
     for path, marker in required.items():
         if marker not in (root / path).read_text(encoding="utf-8"):
             errors.append(f"{path}: missing shared-core chat marker {marker}")
+
+    session = (root / "App/Sources/Core/SharedAgentConversationSession.swift").read_text(
+        encoding="utf-8"
+    )
+    if "productProofTools" in session or "availableTools:" in session:
+        errors.append(
+            "SharedAgentConversationSession.swift: native tool-catalog ownership is forbidden"
+        )
+    encoder = (root / "App/Sources/Core/CoreAgentToolSchemas.swift").read_text(
+        encoding="utf-8"
+    )
+    if re.search(r'case\s+\.(createNote|recordMemory|queryTranscripts)', encoder):
+        errors.append(
+            "CoreAgentToolSchemas.swift: native provider-neutral tool policy is forbidden"
+        )
     return errors
 
 

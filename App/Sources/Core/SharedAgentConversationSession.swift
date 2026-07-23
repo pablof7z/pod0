@@ -13,20 +13,6 @@ final class SharedAgentConversationSession {
         case failed(String)
     }
 
-    static let productProofTools: [AgentToolName] = [
-        .createNote,
-        .listSubscriptions,
-        .listPodcasts,
-        .listEpisodes,
-        .listInProgress,
-        .listRecentUnplayed,
-        .searchEpisodes,
-        .queryTranscripts,
-        .pausePlayback,
-        .setPlaybackRate,
-        .generateTtsEpisode,
-    ]
-
     private let runtime: any SharedAgentConversationRuntime
     let streamingState: CoreAgentStreamingState
     private let modelReference: @MainActor () -> String
@@ -82,8 +68,7 @@ final class SharedAgentConversationSession {
             let result = try await runtime.execute(.startAgentTurn(
                 conversationId: conversationID,
                 userInput: input,
-                modelReference: modelReference(),
-                availableTools: Self.productProofTools
+                modelReference: modelReference()
             ))
             guard case .agentTurnStarted(let conversationID, _) = result else {
                 phase = .failed("The agent turn did not start")

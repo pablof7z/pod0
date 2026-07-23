@@ -165,7 +165,6 @@ fn malformed_or_conflicting_history_fails_closed() {
             conversation_id: Some(ConversationId::from_bytes([30; 16])),
             user_input: "Active turn".into(),
             model_reference: "openrouter/test".into(),
-            available_tools: vec![AgentToolName::CreateNote],
         },
     };
     fixture.facade.dispatch(active);

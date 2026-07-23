@@ -1,7 +1,7 @@
 use pod0_application::{
     AgentCapabilityExecutionMode, AgentExecutionKind, AgentTurnStage, AgentTurnStart,
     AgentTurnState, AgentWorkflowAcceptance, ApplicationCommand, CommandEnvelope, CoreFailureCode,
-    OperationResult, agent_tool_policy,
+    OperationResult, agent_tool_policy, product_proof_agent_tools,
 };
 use pod0_domain::{AgentTurnId, ConversationId, StateRevision, UnixTimestampMilliseconds};
 use pod0_storage::{AgentAuditKind, AgentCommandContext, AgentTurnMutation, StorageError};
@@ -27,14 +27,12 @@ impl FacadeState {
                 conversation_id,
                 user_input,
                 model_reference,
-                available_tools,
             } => self.start_agent_turn(
                 envelope,
                 fingerprint,
                 conversation_id,
                 user_input,
                 model_reference,
-                available_tools,
             ),
             ApplicationCommand::CancelAgentTurn {
                 turn_id,
@@ -44,7 +42,6 @@ impl FacadeState {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn start_agent_turn(
         &mut self,
         envelope: &CommandEnvelope,
@@ -52,7 +49,6 @@ impl FacadeState {
         conversation_id: Option<ConversationId>,
         user_input: String,
         model_reference: String,
-        available_tools: Vec<pod0_application::AgentToolName>,
     ) {
         let Some(store) = self.agent_store.clone() else {
             self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
@@ -79,7 +75,7 @@ impl FacadeState {
             model_fence_id: model_fence_id(turn_id),
             user_input,
             model_reference,
-            available_tools,
+            available_tools: product_proof_agent_tools(),
             cancellation_id: envelope.cancellation_id,
             observed_at: now,
         });
