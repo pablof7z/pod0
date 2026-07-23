@@ -80,12 +80,50 @@ final class CoreAgentHostTests: XCTestCase {
         XCTAssertEqual(presenter.lastRequest, request)
     }
 
+    func testCapabilityObservationEchoesExactRustExecutionFence() async {
+        let executor = StubCoreAgentCapabilityExecutor(
+            outcome: .succeeded(boundedResult: #"{"paused":true}"#)
+        )
+        let host = makeHost(
+            transport: StubCoreAgentModelTransport(result: AgentResult(
+                assistantMessage: [:],
+                toolCalls: []
+            )),
+            capability: executor
+        )
+        let request = AgentCapabilityRequest(
+            turnId: AgentTurnId(high: 1, low: 2),
+            proposalId: AgentProposalId(high: 3, low: 4),
+            proposalDigest: ContentDigest(word0: 5, word1: 6, word2: 7, word3: 8),
+            executionFenceId: AgentExecutionFenceId(high: 9, low: 10),
+            action: .noArguments(tool: .pausePlayback)
+        )
+
+        let observation = await host.execute(.executeAgentCapability(capability: request))
+
+        guard case .agentCapabilityObserved(
+            let turnID,
+            let proposalID,
+            let fenceID,
+            let outcome
+        ) = observation else {
+            return XCTFail("Expected capability observation")
+        }
+        XCTAssertEqual(turnID, request.turnId)
+        XCTAssertEqual(proposalID, request.proposalId)
+        XCTAssertEqual(fenceID, request.executionFenceId)
+        XCTAssertEqual(outcome, .succeeded(boundedResult: #"{"paused":true}"#))
+        XCTAssertEqual(executor.lastAction, request.action)
+    }
+
     private func makeHost(
         transport: StubCoreAgentModelTransport,
-        approval: (any CoreAgentApprovalPresenting)? = nil
+        approval: (any CoreAgentApprovalPresenting)? = nil,
+        capability: any CoreAgentCapabilityExecuting = UnavailableCoreAgentCapabilityExecutor()
     ) -> CoreAgentHost {
         CoreAgentHost(
             modelTransport: transport,
+            capabilityExecutor: capability,
             approvalPresenter: approval,
             systemPrompt: { "You are Pod0." },
             ollamaURL: { nil }
@@ -102,6 +140,21 @@ final class CoreAgentHostTests: XCTestCase {
             availableTools: [.createNote],
             maximumOutputBytes: 1_024
         )
+    }
+}
+
+@MainActor
+private final class StubCoreAgentCapabilityExecutor: CoreAgentCapabilityExecuting {
+    let outcome: AgentCapabilityOutcome
+    private(set) var lastAction: AgentToolAction?
+
+    init(outcome: AgentCapabilityOutcome) {
+        self.outcome = outcome
+    }
+
+    func execute(_ action: AgentToolAction) async -> AgentCapabilityOutcome {
+        lastAction = action
+        return outcome
     }
 }
 

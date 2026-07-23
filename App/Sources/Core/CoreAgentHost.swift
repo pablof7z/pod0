@@ -27,17 +27,20 @@ final class CoreAgentHost: CoreAgentHosting {
     typealias OllamaURL = @MainActor () -> URL?
 
     private let modelTransport: any CoreAgentModelTransporting
+    private let capabilityExecutor: any CoreAgentCapabilityExecuting
     private weak var approvalPresenter: (any CoreAgentApprovalPresenting)?
     private let systemPrompt: Prompt
     private let ollamaURL: OllamaURL
 
     init(
         modelTransport: any CoreAgentModelTransporting = LiveCoreAgentModelTransport(),
+        capabilityExecutor: any CoreAgentCapabilityExecuting = UnavailableCoreAgentCapabilityExecutor(),
         approvalPresenter: (any CoreAgentApprovalPresenting)?,
         systemPrompt: @escaping Prompt,
         ollamaURL: @escaping OllamaURL
     ) {
         self.modelTransport = modelTransport
+        self.capabilityExecutor = capabilityExecutor
         self.approvalPresenter = approvalPresenter
         self.systemPrompt = systemPrompt
         self.ollamaURL = ollamaURL
@@ -50,11 +53,12 @@ final class CoreAgentHost: CoreAgentHosting {
         case .presentAgentApproval(let approval):
             return await presentApproval(approval)
         case .executeAgentCapability(let capability):
+            let outcome = await capabilityExecutor.execute(capability.action)
             return .agentCapabilityObserved(
                 turnId: capability.turnId,
                 proposalId: capability.proposalId,
                 executionFenceId: capability.executionFenceId,
-                outcome: .failed(safeDetail: "Native agent capability is unavailable")
+                outcome: outcome
             )
         default:
             return .failed(

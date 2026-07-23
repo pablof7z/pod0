@@ -637,6 +637,7 @@
 		C562669822643B8A343010A5 /* ChapterObservationBindingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 711D944AE130150B3DD01EFE /* ChapterObservationBindingTests.swift */; };
 		C59F578811E5B30241D5F1CB /* ModelBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81EA3E7DD4188ADC39648130 /* ModelBadge.swift */; };
 		C5AA58BD50892E8C08B19CB6 /* EpisodeRowContextMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F05170A62BE6F9F92979643 /* EpisodeRowContextMenu.swift */; };
+		C5C50457C620AD5A27755832 /* CoreAgentCapabilityExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F9EC1E6E4A002383A419B29 /* CoreAgentCapabilityExecutor.swift */; };
 		C5DAC1B4CA4073E43693D2EF /* SharedChapterWorkflowSafetyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEDF8D3511D451228D131DF7 /* SharedChapterWorkflowSafetyTests.swift */; };
 		C5EB768649607C343D741CC0 /* Pod0NativeHostDispatcher+Agent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30349E08F0AD1AD779AD0E08 /* Pod0NativeHostDispatcher+Agent.swift */; };
 		C60DE59DAE164662CE7E818D /* DownloadState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D19840842AA448D8665CECFC /* DownloadState.swift */; };
@@ -731,6 +732,7 @@
 		E2DE2F86BC10C63E271C989C /* TuistAssets+Podcastr.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99DB1DA9B59A5E414FB49EA3 /* TuistAssets+Podcastr.swift */; };
 		E30450664C1BAF0DD295CF5A /* UserFacingFailurePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 242D93FAF9BC0F17E7C47BA2 /* UserFacingFailurePresentation.swift */; };
 		E33F8D59EDFA9805B638A1AA /* DeepLinkHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29F6076526CA3A2B32A3F8A7 /* DeepLinkHandlerTests.swift */; };
+		E3654EB8C97D30178A7358D4 /* CoreAgentCapabilityExecutorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 589A190D0A50806EC3304FCA /* CoreAgentCapabilityExecutorTests.swift */; };
 		E3A9200AF6532A700F4604CA /* PodcastSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CADB09C7101B2717B7FA6A8 /* PodcastSearchView.swift */; };
 		E3DB6B573F87B74928D1D203 /* ProviderConnectionSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 217583758124753E4CBB7A52 /* ProviderConnectionSection.swift */; };
 		E40E934C118BEF414B45A25E /* LiveCoreTranscriptTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D4C0A045A868CC28B7D38CA /* LiveCoreTranscriptTransport.swift */; };
@@ -1070,6 +1072,7 @@
 		2EEC639EF2351B03B72253FC /* RevealableAPIKeyField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevealableAPIKeyField.swift; sourceTree = "<group>"; };
 		2EEE6A9DF1C9108D30A7D128 /* AgentScheduledTasksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentScheduledTasksView.swift; sourceTree = "<group>"; };
 		2F430B8D16EC091AB532FD75 /* Pod0CoreBindingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pod0CoreBindingTests.swift; sourceTree = "<group>"; };
+		2F9EC1E6E4A002383A419B29 /* CoreAgentCapabilityExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAgentCapabilityExecutor.swift; sourceTree = "<group>"; };
 		30349E08F0AD1AD779AD0E08 /* Pod0NativeHostDispatcher+Agent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Pod0NativeHostDispatcher+Agent.swift"; sourceTree = "<group>"; };
 		309D206C26BE174476D056B9 /* OllamaModelCatalogService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaModelCatalogService.swift; sourceTree = "<group>"; };
 		31709CD314144D1DDCA75C08 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -1200,6 +1203,7 @@
 		577A23603D04D800B729C495 /* PlaybackState+Snapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlaybackState+Snapshot.swift"; sourceTree = "<group>"; };
 		586E4256D4FAA3BF343D3B1B /* AgentRunToolFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentRunToolFormatter.swift; sourceTree = "<group>"; };
 		587C7D9278E988FCED0A5663 /* AssemblyAICredentialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssemblyAICredentialStore.swift; sourceTree = "<group>"; };
+		589A190D0A50806EC3304FCA /* CoreAgentCapabilityExecutorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAgentCapabilityExecutorTests.swift; sourceTree = "<group>"; };
 		591B5B1E3073CAADDDED29D9 /* PodcastAgentKnowledgeSearchProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PodcastAgentKnowledgeSearchProtocol.swift; sourceTree = "<group>"; };
 		594015FB7933D206632E26C4 /* CategoryFeaturesChipStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryFeaturesChipStrip.swift; sourceTree = "<group>"; };
 		5989A7FE1D6926A396977DFD /* PlaybackSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackSettingsView.swift; sourceTree = "<group>"; };
@@ -1919,6 +1923,7 @@
 				834B41D0CDA5C98AB1725B95 /* ChapterObservationCapability.swift */,
 				231918694FAD88B827406518 /* ChapterObservationCapabilityAdapter.swift */,
 				7AF799CDBCF3560E4160BF3A /* ChapterObservationCapabilityAdapter+Mapping.swift */,
+				2F9EC1E6E4A002383A419B29 /* CoreAgentCapabilityExecutor.swift */,
 				CBFBD7C97AD11318F7D7298B /* CoreAgentHost.swift */,
 				D041D659AC348DD6ED98D38E /* CoreAgentToolSchemas.swift */,
 				09805DA88CD72BFA866FD03D /* CoreChapterModelHost.swift */,
@@ -2585,6 +2590,7 @@
 				BF29512CC6A834E9E5AA8E0E /* ChapterProviderStubProtocol.swift */,
 				60003BEB1AB04CE72BB8AD43 /* ChapterProviderTransportTests.swift */,
 				1DC81E15CEB87CE3CC38654E /* ClipBoundaryResolverTests.swift */,
+				589A190D0A50806EC3304FCA /* CoreAgentCapabilityExecutorTests.swift */,
 				6B61BDD7DD9E4A5331BD2499 /* CoreAgentHostTests.swift */,
 				8BD828FDEF84E961C24061E3 /* CoreChapterModelHostTests.swift */,
 				170DE053163CEAEBA5997AC7 /* CoreDownloadDispatcherTests.swift */,
@@ -3334,6 +3340,7 @@
 				CEC8D00470642C20C513B190 /* ChapterObservationCapability.swift in Sources */,
 				BA76470B3D216539D1CEE27F /* ChapterObservationCapabilityAdapter+Mapping.swift in Sources */,
 				8F6DD7A86EAA44C0F92A2460 /* ChapterObservationCapabilityAdapter.swift in Sources */,
+				C5C50457C620AD5A27755832 /* CoreAgentCapabilityExecutor.swift in Sources */,
 				CA49D57E79909DF47014457F /* CoreAgentHost.swift in Sources */,
 				B352BC8B3BB08FB958D2456F /* CoreAgentToolSchemas.swift in Sources */,
 				0F2FE081F4C9A9214DEFEBF3 /* CoreChapterModelHost.swift in Sources */,
@@ -3933,6 +3940,7 @@
 				1847A1379ABAD7CF2DEA35FF /* ChapterProviderStubProtocol.swift in Sources */,
 				6702423F47CDDAF7D5EC4AAB /* ChapterProviderTransportTests.swift in Sources */,
 				47E1B04FFE185D424B5C57A1 /* ClipBoundaryResolverTests.swift in Sources */,
+				E3654EB8C97D30178A7358D4 /* CoreAgentCapabilityExecutorTests.swift in Sources */,
 				BF65E257FA0D6F4C9AD58318 /* CoreAgentHostTests.swift in Sources */,
 				D8A3B3C8F627B3D56744D58C /* CoreChapterModelHostTests.swift in Sources */,
 				6390B4F58AAD4AD4BE4E75F2 /* CoreDownloadDispatcherTests.swift in Sources */,

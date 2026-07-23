@@ -8,6 +8,7 @@ extension RootView {
         store.sharedLibrary?.attachPlayback(playbackState, store: store)
         store.sharedLibrary?.attachAgent(
             approvalPresenter: approvalCoordinator,
+            playback: playbackState,
             store: store
         )
         playbackState.productSignals = store.productSignals
