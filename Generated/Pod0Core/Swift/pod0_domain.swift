@@ -2003,6 +2003,64 @@ public func FfiConverterTypeCommandId_lower(_ value: CommandId) -> RustBuffer {
 }
 
 
+public struct CompiledMemoryRecord: Equatable, Hashable {
+    public let text: String
+    public let compiledAt: UnixTimestampMilliseconds
+    public let sourceMemoryIds: [MemoryId]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(text: String, compiledAt: UnixTimestampMilliseconds, sourceMemoryIds: [MemoryId]) {
+        self.text = text
+        self.compiledAt = compiledAt
+        self.sourceMemoryIds = sourceMemoryIds
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CompiledMemoryRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCompiledMemoryRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CompiledMemoryRecord {
+        return
+            try CompiledMemoryRecord(
+                text: FfiConverterString.read(from: &buf),
+                compiledAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                sourceMemoryIds: FfiConverterSequenceTypeMemoryId.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CompiledMemoryRecord, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.text, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.compiledAt, into: &buf)
+        FfiConverterSequenceTypeMemoryId.write(value.sourceMemoryIds, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCompiledMemoryRecord_lift(_ buf: RustBuffer) throws -> CompiledMemoryRecord {
+    return try FfiConverterTypeCompiledMemoryRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCompiledMemoryRecord_lower(_ value: CompiledMemoryRecord) -> RustBuffer {
+    return FfiConverterTypeCompiledMemoryRecord.lower(value)
+}
+
+
 /**
  * Exact SHA-256 value represented without a stringly typed hex boundary.
  */
@@ -3197,6 +3255,184 @@ public func FfiConverterTypeListeningPlaybackPolicy_lift(_ buf: RustBuffer) thro
 #endif
 public func FfiConverterTypeListeningPlaybackPolicy_lower(_ value: ListeningPlaybackPolicy) -> RustBuffer {
     return FfiConverterTypeListeningPlaybackPolicy.lower(value)
+}
+
+
+public struct MemoryId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension MemoryId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeMemoryId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> MemoryId {
+        return
+            try MemoryId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: MemoryId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeMemoryId_lift(_ buf: RustBuffer) throws -> MemoryId {
+    return try FfiConverterTypeMemoryId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeMemoryId_lower(_ value: MemoryId) -> RustBuffer {
+    return FfiConverterTypeMemoryId.lower(value)
+}
+
+
+public struct MemoryRecord: Equatable, Hashable {
+    public let memoryId: MemoryId
+    public let revision: MemoryRevision
+    public let content: String
+    public let source: MemorySource
+    public let createdAt: UnixTimestampMilliseconds
+    public let updatedAt: UnixTimestampMilliseconds
+    public let deleted: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(memoryId: MemoryId, revision: MemoryRevision, content: String, source: MemorySource, createdAt: UnixTimestampMilliseconds, updatedAt: UnixTimestampMilliseconds, deleted: Bool) {
+        self.memoryId = memoryId
+        self.revision = revision
+        self.content = content
+        self.source = source
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.deleted = deleted
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension MemoryRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeMemoryRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> MemoryRecord {
+        return
+            try MemoryRecord(
+                memoryId: FfiConverterTypeMemoryId.read(from: &buf),
+                revision: FfiConverterTypeMemoryRevision.read(from: &buf),
+                content: FfiConverterString.read(from: &buf),
+                source: FfiConverterTypeMemorySource.read(from: &buf),
+                createdAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                updatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                deleted: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: MemoryRecord, into buf: inout [UInt8]) {
+        FfiConverterTypeMemoryId.write(value.memoryId, into: &buf)
+        FfiConverterTypeMemoryRevision.write(value.revision, into: &buf)
+        FfiConverterString.write(value.content, into: &buf)
+        FfiConverterTypeMemorySource.write(value.source, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.createdAt, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.updatedAt, into: &buf)
+        FfiConverterBool.write(value.deleted, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeMemoryRecord_lift(_ buf: RustBuffer) throws -> MemoryRecord {
+    return try FfiConverterTypeMemoryRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeMemoryRecord_lower(_ value: MemoryRecord) -> RustBuffer {
+    return FfiConverterTypeMemoryRecord.lower(value)
+}
+
+
+public struct MemoryRevision: Equatable, Hashable {
+    public let value: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(value: UInt64) {
+        self.value = value
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension MemoryRevision: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeMemoryRevision: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> MemoryRevision {
+        return
+            try MemoryRevision(
+                value: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: MemoryRevision, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.value, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeMemoryRevision_lift(_ buf: RustBuffer) throws -> MemoryRevision {
+    return try FfiConverterTypeMemoryRevision.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeMemoryRevision_lower(_ value: MemoryRevision) -> RustBuffer {
+    return FfiConverterTypeMemoryRevision.lower(value)
 }
 
 
@@ -6972,6 +7208,82 @@ public func FfiConverterTypeListeningDomainError_lower(_ value: ListeningDomainE
 
 
 
+public enum MemorySource: Equatable, Hashable {
+
+    case agent
+    case legacySwift
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension MemorySource: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeMemorySource: FfiConverterRustBuffer {
+    typealias SwiftType = MemorySource
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> MemorySource {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .agent
+
+        case 2: return .legacySwift
+
+        case 3: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: MemorySource, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .agent:
+            writeInt(&buf, Int32(1))
+
+
+        case .legacySwift:
+            writeInt(&buf, Int32(2))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeMemorySource_lift(_ buf: RustBuffer) throws -> MemorySource {
+    return try FfiConverterTypeMemorySource.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeMemorySource_lower(_ value: MemorySource) -> RustBuffer {
+    return FfiConverterTypeMemorySource.lower(value)
+}
+
+
+
+
 public enum NoteAuthor: Equatable, Hashable {
 
     case user
@@ -9234,6 +9546,31 @@ fileprivate struct FfiConverterSequenceTypeEpisodeRecord: FfiConverterRustBuffer
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeEpisodeRecord.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeMemoryId: FfiConverterRustBuffer {
+    typealias SwiftType = [MemoryId]
+
+    public static func write(_ value: [MemoryId], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeMemoryId.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [MemoryId] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [MemoryId]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeMemoryId.read(from: &buf))
         }
         return seq
     }

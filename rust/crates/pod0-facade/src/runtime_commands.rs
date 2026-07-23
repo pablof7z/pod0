@@ -42,38 +42,12 @@ impl FacadeState {
                 episode_id,
                 starred,
             } => self.set_episode_starred(&envelope, &fingerprint, episode_id, starred),
-            ApplicationCommand::RequestEpisodeDownload { episode_id, origin } => {
-                self.request_episode_download(&envelope, &fingerprint, episode_id, origin)
-            }
-            ApplicationCommand::ReportAutomaticDownloadCandidates {
-                podcast_id,
-                episode_ids,
-            } => self.report_automatic_download_candidates(
-                &envelope,
-                &fingerprint,
-                podcast_id,
-                episode_ids,
-            ),
-            ApplicationCommand::CancelEpisodeDownload {
-                episode_id,
-                expected_workflow_revision,
-            } => self.cancel_episode_download(
-                &envelope,
-                &fingerprint,
-                episode_id,
-                expected_workflow_revision,
-            ),
-            ApplicationCommand::RemoveEpisodeDownload {
-                episode_id,
-                expected_workflow_revision,
-            } => self.remove_episode_download(
-                &envelope,
-                &fingerprint,
-                episode_id,
-                expected_workflow_revision,
-            ),
-            ApplicationCommand::ObserveDownloadEnvironment { observation } => {
-                self.observe_download_environment(&envelope, &fingerprint, observation)
+            command @ (ApplicationCommand::RequestEpisodeDownload { .. }
+            | ApplicationCommand::ReportAutomaticDownloadCandidates { .. }
+            | ApplicationCommand::CancelEpisodeDownload { .. }
+            | ApplicationCommand::RemoveEpisodeDownload { .. }
+            | ApplicationCommand::ObserveDownloadEnvironment { .. }) => {
+                self.accept_download_command(&envelope, &fingerprint, command)
             }
             ApplicationCommand::ResetListeningData => self.reset_all(&envelope, &fingerprint),
             ApplicationCommand::CancelOperation { cancellation_id } => {
@@ -221,6 +195,34 @@ impl FacadeState {
             ApplicationCommand::ClearNotes {
                 expected_collection_revision,
             } => self.clear_notes(&envelope, &fingerprint, expected_collection_revision),
+            ApplicationCommand::CreateMemory { content } => {
+                self.create_memory(&envelope, &fingerprint, &content)
+            }
+            ApplicationCommand::UpdateMemory {
+                memory_id,
+                expected_memory_revision,
+                content,
+            } => self.update_memory(
+                &envelope,
+                &fingerprint,
+                memory_id,
+                expected_memory_revision,
+                &content,
+            ),
+            ApplicationCommand::SetMemoryDeleted {
+                memory_id,
+                expected_memory_revision,
+                deleted,
+            } => self.set_memory_deleted(
+                &envelope,
+                &fingerprint,
+                memory_id,
+                expected_memory_revision,
+                deleted,
+            ),
+            ApplicationCommand::ClearMemories {
+                expected_collection_revision,
+            } => self.clear_memories(&envelope, &fingerprint, expected_collection_revision),
             ApplicationCommand::CreateClip {
                 clip_id,
                 episode_id,
@@ -285,3 +287,5 @@ impl FacadeState {
         true
     }
 }
+
+include!("runtime_commands_download.rs");

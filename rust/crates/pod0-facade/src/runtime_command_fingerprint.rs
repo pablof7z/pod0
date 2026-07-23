@@ -32,47 +32,9 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
             hash.update(b"hydrate-metadata\0");
             hash.update(podcast_id.into_bytes());
         }
-        ApplicationCommand::UpsertSyntheticPodcast { podcast } => {
-            hash.update(b"synthetic-podcast\0");
-            match podcast.podcast_id {
-                Some(id) => {
-                    hash.update([1]);
-                    hash.update(id.into_bytes());
-                }
-                None => hash.update([0]),
-            }
-            hash.update(podcast.title.as_bytes());
-            hash.update([0]);
-            hash.update(podcast.author.as_bytes());
-            hash_optional(&mut hash, podcast.image_url.as_deref());
-            hash.update(podcast.description.as_bytes());
-            hash_optional(&mut hash, podcast.language.as_deref());
-            hash.update((podcast.categories.len() as u64).to_be_bytes());
-            for category in &podcast.categories {
-                hash.update(category.as_bytes());
-                hash.update([0]);
-            }
-        }
-        ApplicationCommand::UpsertExternalEpisode { episode } => {
-            hash.update(b"external-episode\0");
-            hash.update(episode.podcast_id.into_bytes());
-            hash_optional(&mut hash, episode.feed_url.as_deref());
-            hash.update(episode.podcast_title.as_bytes());
-            hash.update([0]);
-            hash.update(episode.audio_url.as_bytes());
-            hash.update([0]);
-            hash.update(episode.title.as_bytes());
-            hash.update([0]);
-            hash.update(episode.description.as_bytes());
-            hash.update(episode.published_at.value.to_be_bytes());
-            hash_optional(&mut hash, episode.enclosure_mime_type.as_deref());
-            hash_optional(&mut hash, episode.image_url.as_deref());
-            hash.update(
-                episode
-                    .duration_milliseconds
-                    .unwrap_or(u64::MAX)
-                    .to_be_bytes(),
-            );
+        ApplicationCommand::UpsertSyntheticPodcast { .. }
+        | ApplicationCommand::UpsertExternalEpisode { .. } => {
+            hash_podcast_upsert(&mut hash, command)
         }
         ApplicationCommand::Unsubscribe { podcast_id } => {
             hash.update(b"unsubscribe\0");
@@ -277,6 +239,38 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
             hash.update(b"clear-notes\0");
             hash.update(expected_collection_revision.value.to_be_bytes());
         }
+        ApplicationCommand::CreateMemory { content } => {
+            hash.update(b"create-memory\0");
+            hash.update(content.as_bytes());
+            hash.update([0]);
+        }
+        ApplicationCommand::UpdateMemory {
+            memory_id,
+            expected_memory_revision,
+            content,
+        } => {
+            hash.update(b"update-memory\0");
+            hash.update(memory_id.into_bytes());
+            hash.update(expected_memory_revision.value.to_be_bytes());
+            hash.update(content.as_bytes());
+            hash.update([0]);
+        }
+        ApplicationCommand::SetMemoryDeleted {
+            memory_id,
+            expected_memory_revision,
+            deleted,
+        } => {
+            hash.update(b"delete-memory\0");
+            hash.update(memory_id.into_bytes());
+            hash.update(expected_memory_revision.value.to_be_bytes());
+            hash.update([u8::from(*deleted)]);
+        }
+        ApplicationCommand::ClearMemories {
+            expected_collection_revision,
+        } => {
+            hash.update(b"clear-memories\0");
+            hash.update(expected_collection_revision.value.to_be_bytes());
+        }
         ApplicationCommand::CreateClip { .. }
         | ApplicationCommand::UpdateClip { .. }
         | ApplicationCommand::SetClipDeleted { .. }
@@ -287,3 +281,5 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
     }
     finish_command_hash(hash)
 }
+
+include!("runtime_command_fingerprint_podcast.rs");

@@ -81,7 +81,9 @@
         "App/Sources/Core/LegacyAgentHistoryBackup.swift",
         "App/Sources/Core/LegacyAgentHistoryCutover.swift",
         "App/Sources/Core/LegacyAgentHistoryMapper.swift",
-        "App/Sources/Core/LegacyChatHistorySource.swift"
+        "App/Sources/Core/LegacyChatHistorySource.swift",
+        "App/Sources/Core/LegacyAgentMemoryBackup.swift",
+        "App/Sources/Core/LegacyAgentMemoryCutover.swift"
       ]
     },
     {
@@ -142,6 +144,23 @@
         "App/Sources/Core/LegacyAgentHistoryMapper.swift",
         "App/Sources/Core/LegacyChatHistorySource.swift",
         "App/Sources/Features/Agent/ChatConversation.swift"
+      ]
+    },
+    {
+      "id": "temporary-agent-memory-cutover",
+      "classification": "temporary_swift",
+      "current_owner": "Swift one-shot memory metadata reader, immutable rollback manifest, and exact source retirement",
+      "target_owner": "Deleted after the issue #138 rollback support window closes",
+      "reason": "Existing native memory and compiled-memory records must survive the transition without retaining Swift as a durable writer.",
+      "boundary": "Back up and map the exact legacy snapshot into typed Rust inputs, retire exact matching metadata before Rust authority commits, and expose no restore or post-cutover native mutation path.",
+      "persisted_state": "Versioned integrity-checked rollback manifests only; Rust owns active memories, revisions, compiled provenance, and all post-cutover commands.",
+      "migration_issues": [138],
+      "deletion_target": "Remove the backup, cutover, and retirement adapters after supported installations are proven across the Rust memory authority marker; immutable rollback evidence may remain read-only.",
+      "priority": "highest",
+      "includes": [
+        "App/Sources/Core/LegacyAgentMemoryBackup.swift",
+        "App/Sources/Core/LegacyAgentMemoryCutover.swift",
+        "App/Sources/State/Persistence+SharedMemories.swift"
       ]
     },
     {
@@ -234,7 +253,7 @@
     {
       "id": "shared-domain-models",
       "classification": "shared_rust_now",
-      "current_owner": "Rust owns migrated listening, note, clip, and selected canonical transcript records; Swift retains presentation mappings, read-only legacy import values, and unmigrated Codable domains",
+      "current_owner": "Rust owns migrated listening, note, clip, memory, and selected canonical transcript records; Swift retains presentation mappings, read-only legacy import values, and unmigrated Codable domains",
       "target_owner": "Pod0 Rust domain crate",
       "reason": "Durable identities, settings, notes, clips, memory, and agent facts are cross-platform product state.",
       "boundary": "Stable IDs, versioned schemas, commands, and bounded projections.",
@@ -269,7 +288,10 @@
       "deletion_target": "Delete migrated AppState fields/mutation methods; retain only supported read-only import and native projection adapters.",
       "priority": "highest",
       "includes": ["App/Sources/State/"],
-      "excludes": ["App/Sources/State/Persistence+SharedScheduledAgents.swift"]
+      "excludes": [
+        "App/Sources/State/Persistence+SharedMemories.swift",
+        "App/Sources/State/Persistence+SharedScheduledAgents.swift"
+      ]
     },
     {
       "id": "shared-durable-workflows",

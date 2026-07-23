@@ -186,7 +186,12 @@ fn schema_13_imported_history_revalidates_and_activates_after_upgrade() {
     rusqlite::Connection::open(&fixture.target)
         .unwrap()
         .execute_batch(
-            "DROP TABLE pod0_agent_history_staged_turns;
+            "DROP TABLE pod0_compiled_memory_sources;
+             DROP TABLE pod0_compiled_memory;
+             DROP TABLE pod0_memories;
+             DROP TABLE pod0_memory_cutover_evidence;
+             DROP TABLE pod0_memory_state;
+             DROP TABLE pod0_agent_history_staged_turns;
              DROP TABLE pod0_agent_history_staged_conversations;
              DROP TABLE pod0_agent_history_cutover_evidence;
              DROP TABLE pod0_agent_conversation_metadata;
@@ -286,14 +291,4 @@ fn schema_13_imported_history_revalidates_and_activates_after_upgrade() {
     );
 }
 
-struct InterruptChapterStep;
-
-impl MigrationObserver for InterruptChapterStep {
-    fn reached(&self, boundary: MigrationBoundary) -> Result<(), StorageError> {
-        if boundary == (MigrationBoundary::BeforeStepCommit { target: 13 }) {
-            Err(StorageError::Interrupted)
-        } else {
-            Ok(())
-        }
-    }
-}
+include!("migration_chapter_test_observer.rs");

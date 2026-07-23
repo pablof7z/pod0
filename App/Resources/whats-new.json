@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-23T12:07:38Z",
+      "lines": [
+        "Agent memories now survive relaunches through Pod0's shared core."
+      ]
+    },
+    {
       "shipped_at": "2026-07-23T11:28:34Z",
       "lines": [
         "Pod0 now stops safely instead of replacing your data when startup recovery is needed."

@@ -29,6 +29,7 @@ pub(super) fn storage_failure(error: pod0_storage::StorageError) -> CoreFailureC
         pod0_storage::StorageError::EntityNotFound => CoreFailureCode::NotFound,
         pod0_storage::StorageError::CommandConflict => CoreFailureCode::InvalidCommand,
         pod0_storage::StorageError::RevisionConflict => CoreFailureCode::RevisionConflict,
+        pod0_storage::StorageError::InvalidMemory => CoreFailureCode::InvalidMemory,
         pod0_storage::StorageError::InvalidNote => CoreFailureCode::InvalidNote,
         pod0_storage::StorageError::InvalidClip => CoreFailureCode::InvalidClip,
         pod0_storage::StorageError::InvalidTranscriptArtifact => CoreFailureCode::InvalidTranscript,

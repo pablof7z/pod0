@@ -15,6 +15,7 @@ pub enum CoreFailureCode {
     StorageUnavailable,
     RevisionConflict,
     NotFound,
+    InvalidMemory,
     InvalidNote,
     InvalidClip,
     InvalidTranscript,

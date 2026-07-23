@@ -22,6 +22,8 @@ mod facade_contract_tests;
 mod kernel_probe_facade;
 mod listening_migration;
 mod listening_migration_error;
+mod memory_cutover;
+mod memory_cutover_types;
 mod model_chapter_cutover;
 #[cfg(test)]
 mod model_chapter_cutover_discard_tests;
@@ -119,6 +121,9 @@ mod runtime_feed_observations;
 mod runtime_feed_state;
 mod runtime_lifecycle;
 mod runtime_listening_commands;
+mod runtime_memory_commands;
+#[cfg(test)]
+mod runtime_memory_tests;
 mod runtime_note_commands;
 #[cfg(test)]
 mod runtime_note_evidence_tests;
@@ -235,6 +240,7 @@ pub use listening_migration::{
     read_staged_legacy_listening_import, shared_store_schema_version,
     stage_legacy_listening_import,
 };
+pub use memory_cutover_types::*;
 pub use model_chapter_cutover_types::{
     LegacyModelChapterCutoverCandidate, LegacyModelChapterCutoverDisposition,
     LegacyModelChapterCutoverFailure, LegacyModelChapterCutoverFailureCode,

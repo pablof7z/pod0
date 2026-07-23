@@ -5,7 +5,7 @@ use pod0_domain::CommandId;
 
 pub const APPLICATION_ID: i64 = 0x504F_4430;
 pub const MIN_SUPPORTED_SCHEMA_VERSION: u32 = 0;
-pub const CURRENT_SCHEMA_VERSION: u32 = 27;
+pub const CURRENT_SCHEMA_VERSION: u32 = 28;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AccessMode {
@@ -124,6 +124,7 @@ pub enum StorageError {
     CommandConflict,
     EntityNotFound,
     RevisionConflict,
+    InvalidMemory,
     InvalidNote,
     InvalidClip,
     InvalidTranscriptArtifact,
@@ -210,6 +211,7 @@ impl StorageError {
             Self::CommandConflict => "library_command_conflict",
             Self::EntityNotFound => "library_entity_not_found",
             Self::RevisionConflict => "revision_conflict",
+            Self::InvalidMemory => "invalid_memory",
             Self::InvalidNote => "invalid_note",
             Self::InvalidClip => "invalid_clip",
             Self::InvalidTranscriptArtifact => "invalid_transcript_artifact",
@@ -274,21 +276,7 @@ impl StorageError {
     }
 }
 
-impl fmt::Display for StorageError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(self.code())
-    }
-}
-
-impl std::error::Error for StorageError {}
-
-impl From<rusqlite::Error> for StorageError {
-    fn from(_: rusqlite::Error) -> Self {
-        Self::Sqlite {
-            operation: "decode listening projection",
-        }
-    }
-}
+include!("model_storage_error_traits.rs");
 
 pub(crate) fn command_id(bytes: &[u8]) -> Result<CommandId, StorageError> {
     let bytes: [u8; 16] = bytes.try_into().map_err(|_| StorageError::CorruptSchema {

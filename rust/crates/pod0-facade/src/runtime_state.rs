@@ -42,6 +42,7 @@ pub(super) struct FacadeState {
     pub(super) revision: StateRevision,
     pub(super) listening: ListeningDomainSnapshot,
     pub(super) notes: pod0_storage::NoteCollectionSnapshot,
+    pub(super) memories: pod0_storage::MemoryCollectionSnapshot,
     pub(super) clips: pod0_storage::ClipCollectionSnapshot,
     pub(super) store: Option<LibraryStore>,
     pub(super) evidence_store: Option<EvidenceStore>,
@@ -142,6 +143,7 @@ impl FacadeState {
         let _ = store.recover_download_artifacts()?;
         let listening = store.snapshot()?;
         let notes = store.note_snapshot()?;
+        let memories = store.memory_snapshot()?;
         let clips = store.clip_snapshot()?;
         let signer_account = signer_store.account()?;
         let recall_configuration = store.recall_configuration()?.unwrap_or_default();
@@ -164,10 +166,12 @@ impl FacadeState {
                     .revision
                     .value
                     .max(notes.revision.value)
+                    .max(memories.revision.value)
                     .max(clips.revision.value),
             ),
             listening,
             notes,
+            memories,
             clips,
             store: Some(store),
             evidence_store: Some(evidence_store),

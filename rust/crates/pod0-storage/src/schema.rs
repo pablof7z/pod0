@@ -251,6 +251,9 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
     if version >= 27 {
         crate::schema_agent::validate_agent_history_cutover_schema(connection)?;
     }
+    if version >= 28 {
+        crate::schema_memories::validate_memory_schema(connection)?;
+    }
     if version >= 8 {
         crate::schema_notes::validate_notes_schema(connection)?;
     }

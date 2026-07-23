@@ -223,44 +223,28 @@ impl FacadeState {
             ProjectionScope::NostrSigner => Projection::NostrSigner {
                 value: self.signer_projection(),
             },
-            ProjectionScope::Notes { scope } => {
-                let mut notes = self.notes.notes.clone();
+            ProjectionScope::Notes { scope } => self.notes_projection(scope, offset, item_limit),
+            ProjectionScope::Memories { scope } => {
+                let mut memories = self.memories.memories.clone();
                 match scope {
-                    NoteProjectionScope::All => {}
-                    NoteProjectionScope::Active => notes.retain(|note| !note.deleted),
-                    NoteProjectionScope::Episode { episode_id } => {
-                        notes.retain(|note| {
-                            !note.deleted
-                                && matches!(
-                                    note.target,
-                                    Some(pod0_domain::NoteTarget::Episode {
-                                        episode_id: id,
-                                        ..
-                                    }) if id == episode_id
-                                )
-                        });
-                        notes.sort_by_key(|note| {
-                            let position = match note.target {
-                                Some(pod0_domain::NoteTarget::Episode {
-                                    position_milliseconds,
-                                    ..
-                                }) => position_milliseconds,
-                                _ => u64::MAX,
-                            };
-                            (position, note.created_at.value, note.note_id)
-                        });
+                    pod0_application::MemoryProjectionScope::All => {}
+                    pod0_application::MemoryProjectionScope::Active => {
+                        memories.retain(|memory| !memory.deleted);
                     }
-                    NoteProjectionScope::Unsupported { .. } => notes.clear(),
+                    pod0_application::MemoryProjectionScope::Unsupported { .. } => {
+                        memories.clear();
+                    }
                 }
-                let mut value = NotesProjection {
+                let mut value = pod0_application::MemoriesProjection {
                     scope,
-                    collection_revision: self.notes.revision,
-                    notes,
+                    collection_revision: self.memories.revision,
+                    memories,
+                    compiled: self.memories.compiled.clone(),
                     operations: self.operations.clone(),
                     has_more: false,
                 };
                 value.enforce_bounds(offset, item_limit);
-                Projection::Notes { value }
+                Projection::Memories { value }
             }
             ProjectionScope::Clips { scope } => {
                 let mut clips = self.clips.clips.clone();
@@ -297,3 +281,5 @@ impl FacadeState {
         projection_envelope(self.revision, projection)
     }
 }
+
+include!("runtime_projection_notes.rs");

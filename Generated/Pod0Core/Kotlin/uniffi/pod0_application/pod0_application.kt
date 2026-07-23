@@ -51,6 +51,7 @@ import uniffi.pod0_domain.ClipRecord
 import uniffi.pod0_domain.ClipRevision
 import uniffi.pod0_domain.ClipSource
 import uniffi.pod0_domain.CommandId
+import uniffi.pod0_domain.CompiledMemoryRecord
 import uniffi.pod0_domain.CompletionStatus
 import uniffi.pod0_domain.ContentDigest
 import uniffi.pod0_domain.ConversationId
@@ -83,6 +84,7 @@ import uniffi.pod0_domain.FfiConverterTypeClipRecord
 import uniffi.pod0_domain.FfiConverterTypeClipRevision
 import uniffi.pod0_domain.FfiConverterTypeClipSource
 import uniffi.pod0_domain.FfiConverterTypeCommandId
+import uniffi.pod0_domain.FfiConverterTypeCompiledMemoryRecord
 import uniffi.pod0_domain.FfiConverterTypeCompletionStatus
 import uniffi.pod0_domain.FfiConverterTypeContentDigest
 import uniffi.pod0_domain.FfiConverterTypeConversationId
@@ -96,6 +98,9 @@ import uniffi.pod0_domain.FfiConverterTypeEvidenceGenerationId
 import uniffi.pod0_domain.FfiConverterTypeEvidenceSpanId
 import uniffi.pod0_domain.FfiConverterTypeGeneratedArtifactId
 import uniffi.pod0_domain.FfiConverterTypeHostRequestId
+import uniffi.pod0_domain.FfiConverterTypeMemoryId
+import uniffi.pod0_domain.FfiConverterTypeMemoryRecord
+import uniffi.pod0_domain.FfiConverterTypeMemoryRevision
 import uniffi.pod0_domain.FfiConverterTypeNoteAuthor
 import uniffi.pod0_domain.FfiConverterTypeNoteId
 import uniffi.pod0_domain.FfiConverterTypeNoteKind
@@ -138,6 +143,9 @@ import uniffi.pod0_domain.FfiConverterTypeTranscriptWorkflowId
 import uniffi.pod0_domain.FfiConverterTypeUnixTimestampMilliseconds
 import uniffi.pod0_domain.GeneratedArtifactId
 import uniffi.pod0_domain.HostRequestId
+import uniffi.pod0_domain.MemoryId
+import uniffi.pod0_domain.MemoryRecord
+import uniffi.pod0_domain.MemoryRevision
 import uniffi.pod0_domain.NoteAuthor
 import uniffi.pod0_domain.NoteId
 import uniffi.pod0_domain.NoteKind
@@ -199,6 +207,7 @@ import uniffi.pod0_domain.RustBuffer as RustBufferClipRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferClipRevision
 import uniffi.pod0_domain.RustBuffer as RustBufferClipSource
 import uniffi.pod0_domain.RustBuffer as RustBufferCommandId
+import uniffi.pod0_domain.RustBuffer as RustBufferCompiledMemoryRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferCompletionStatus
 import uniffi.pod0_domain.RustBuffer as RustBufferContentDigest
 import uniffi.pod0_domain.RustBuffer as RustBufferConversationId
@@ -212,6 +221,9 @@ import uniffi.pod0_domain.RustBuffer as RustBufferEvidenceGenerationId
 import uniffi.pod0_domain.RustBuffer as RustBufferEvidenceSpanId
 import uniffi.pod0_domain.RustBuffer as RustBufferGeneratedArtifactId
 import uniffi.pod0_domain.RustBuffer as RustBufferHostRequestId
+import uniffi.pod0_domain.RustBuffer as RustBufferMemoryId
+import uniffi.pod0_domain.RustBuffer as RustBufferMemoryRecord
+import uniffi.pod0_domain.RustBuffer as RustBufferMemoryRevision
 import uniffi.pod0_domain.RustBuffer as RustBufferNoteAuthor
 import uniffi.pod0_domain.RustBuffer as RustBufferNoteId
 import uniffi.pod0_domain.RustBuffer as RustBufferNoteKind
@@ -4554,6 +4566,64 @@ public object FfiConverterTypeLibraryProjection: FfiConverterRustBuffer<LibraryP
             FfiConverterSequenceTypePodcastRecord.write(value.`podcasts`, buf)
             FfiConverterSequenceTypePodcastSubscriptionRecord.write(value.`subscriptions`, buf)
             FfiConverterSequenceTypeEpisodeRecord.write(value.`episodes`, buf)
+            FfiConverterSequenceTypeOperationProjection.write(value.`operations`, buf)
+            FfiConverterBoolean.write(value.`hasMore`, buf)
+    }
+}
+
+
+
+data class MemoriesProjection (
+    val `scope`: MemoryProjectionScope
+    ,
+    val `collectionRevision`: StateRevision
+    ,
+    val `memories`: List<MemoryRecord>
+    ,
+    val `compiled`: CompiledMemoryRecord?
+    ,
+    val `operations`: List<OperationProjection>
+    ,
+    val `hasMore`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeMemoriesProjection: FfiConverterRustBuffer<MemoriesProjection> {
+    override fun read(buf: ByteBuffer): MemoriesProjection {
+        return MemoriesProjection(
+            FfiConverterTypeMemoryProjectionScope.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterSequenceTypeMemoryRecord.read(buf),
+            FfiConverterOptionalTypeCompiledMemoryRecord.read(buf),
+            FfiConverterSequenceTypeOperationProjection.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: MemoriesProjection) = (
+            FfiConverterTypeMemoryProjectionScope.allocationSize(value.`scope`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`collectionRevision`) +
+            FfiConverterSequenceTypeMemoryRecord.allocationSize(value.`memories`) +
+            FfiConverterOptionalTypeCompiledMemoryRecord.allocationSize(value.`compiled`) +
+            FfiConverterSequenceTypeOperationProjection.allocationSize(value.`operations`) +
+            FfiConverterBoolean.allocationSize(value.`hasMore`)
+    )
+
+    override fun write(value: MemoriesProjection, buf: ByteBuffer) {
+            FfiConverterTypeMemoryProjectionScope.write(value.`scope`, buf)
+            FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
+            FfiConverterSequenceTypeMemoryRecord.write(value.`memories`, buf)
+            FfiConverterOptionalTypeCompiledMemoryRecord.write(value.`compiled`, buf)
             FfiConverterSequenceTypeOperationProjection.write(value.`operations`, buf)
             FfiConverterBoolean.write(value.`hasMore`, buf)
     }
@@ -9785,6 +9855,46 @@ sealed class ApplicationCommand {
         companion object
     }
 
+    data class CreateMemory(
+        val `content`: kotlin.String) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class UpdateMemory(
+        val `memoryId`: uniffi.pod0_domain.MemoryId,
+        val `expectedMemoryRevision`: uniffi.pod0_domain.MemoryRevision,
+        val `content`: kotlin.String) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class SetMemoryDeleted(
+        val `memoryId`: uniffi.pod0_domain.MemoryId,
+        val `expectedMemoryRevision`: uniffi.pod0_domain.MemoryRevision,
+        val `deleted`: kotlin.Boolean) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class ClearMemories(
+        val `expectedCollectionRevision`: uniffi.pod0_domain.StateRevision) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
     data class CreateClip(
         val `clipId`: uniffi.pod0_domain.ClipId,
         val `episodeId`: uniffi.pod0_domain.EpisodeId,
@@ -10051,7 +10161,23 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
             49 -> ApplicationCommand.ClearNotes(
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            50 -> ApplicationCommand.CreateClip(
+            50 -> ApplicationCommand.CreateMemory(
+                FfiConverterString.read(buf),
+                )
+            51 -> ApplicationCommand.UpdateMemory(
+                FfiConverterTypeMemoryId.read(buf),
+                FfiConverterTypeMemoryRevision.read(buf),
+                FfiConverterString.read(buf),
+                )
+            52 -> ApplicationCommand.SetMemoryDeleted(
+                FfiConverterTypeMemoryId.read(buf),
+                FfiConverterTypeMemoryRevision.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            53 -> ApplicationCommand.ClearMemories(
+                FfiConverterTypeStateRevision.read(buf),
+                )
+            54 -> ApplicationCommand.CreateClip(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypePodcastId.read(buf),
@@ -10062,7 +10188,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterString.read(buf),
                 FfiConverterTypeClipSource.read(buf),
                 )
-            51 -> ApplicationCommand.UpdateClip(
+            55 -> ApplicationCommand.UpdateClip(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterULong.read(buf),
@@ -10071,18 +10197,18 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterOptionalTypeSpeakerId.read(buf),
                 FfiConverterString.read(buf),
                 )
-            52 -> ApplicationCommand.SetClipDeleted(
+            56 -> ApplicationCommand.SetClipDeleted(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
-            53 -> ApplicationCommand.ClearClips(
+            57 -> ApplicationCommand.ClearClips(
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            54 -> ApplicationCommand.CancelOperation(
+            58 -> ApplicationCommand.CancelOperation(
                 FfiConverterTypeCancellationId.read(buf),
                 )
-            55 -> ApplicationCommand.Unsupported(
+            59 -> ApplicationCommand.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -10470,6 +10596,38 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 + FfiConverterTypeStateRevision.allocationSize(value.`expectedCollectionRevision`)
             )
         }
+        is ApplicationCommand.CreateMemory -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`content`)
+            )
+        }
+        is ApplicationCommand.UpdateMemory -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeMemoryId.allocationSize(value.`memoryId`)
+                + FfiConverterTypeMemoryRevision.allocationSize(value.`expectedMemoryRevision`)
+                + FfiConverterString.allocationSize(value.`content`)
+            )
+        }
+        is ApplicationCommand.SetMemoryDeleted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeMemoryId.allocationSize(value.`memoryId`)
+                + FfiConverterTypeMemoryRevision.allocationSize(value.`expectedMemoryRevision`)
+                + FfiConverterBoolean.allocationSize(value.`deleted`)
+            )
+        }
+        is ApplicationCommand.ClearMemories -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeStateRevision.allocationSize(value.`expectedCollectionRevision`)
+            )
+        }
         is ApplicationCommand.CreateClip -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -10814,8 +10972,32 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterTypeStateRevision.write(value.`expectedCollectionRevision`, buf)
                 Unit
             }
-            is ApplicationCommand.CreateClip -> {
+            is ApplicationCommand.CreateMemory -> {
                 buf.putInt(50)
+                FfiConverterString.write(value.`content`, buf)
+                Unit
+            }
+            is ApplicationCommand.UpdateMemory -> {
+                buf.putInt(51)
+                FfiConverterTypeMemoryId.write(value.`memoryId`, buf)
+                FfiConverterTypeMemoryRevision.write(value.`expectedMemoryRevision`, buf)
+                FfiConverterString.write(value.`content`, buf)
+                Unit
+            }
+            is ApplicationCommand.SetMemoryDeleted -> {
+                buf.putInt(52)
+                FfiConverterTypeMemoryId.write(value.`memoryId`, buf)
+                FfiConverterTypeMemoryRevision.write(value.`expectedMemoryRevision`, buf)
+                FfiConverterBoolean.write(value.`deleted`, buf)
+                Unit
+            }
+            is ApplicationCommand.ClearMemories -> {
+                buf.putInt(53)
+                FfiConverterTypeStateRevision.write(value.`expectedCollectionRevision`, buf)
+                Unit
+            }
+            is ApplicationCommand.CreateClip -> {
+                buf.putInt(54)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
@@ -10828,7 +11010,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.UpdateClip -> {
-                buf.putInt(51)
+                buf.putInt(55)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`expectedClipRevision`, buf)
                 FfiConverterULong.write(value.`startMilliseconds`, buf)
@@ -10839,24 +11021,24 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.SetClipDeleted -> {
-                buf.putInt(52)
+                buf.putInt(56)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`expectedClipRevision`, buf)
                 FfiConverterBoolean.write(value.`deleted`, buf)
                 Unit
             }
             is ApplicationCommand.ClearClips -> {
-                buf.putInt(53)
+                buf.putInt(57)
                 FfiConverterTypeStateRevision.write(value.`expectedCollectionRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CancelOperation -> {
-                buf.putInt(54)
+                buf.putInt(58)
                 FfiConverterTypeCancellationId.write(value.`cancellationId`, buf)
                 Unit
             }
             is ApplicationCommand.Unsupported -> {
-                buf.putInt(55)
+                buf.putInt(59)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -12870,6 +13052,9 @@ sealed class CoreFailureCode {
     object NotFound : CoreFailureCode()
 
 
+    object InvalidMemory : CoreFailureCode()
+
+
     object InvalidNote : CoreFailureCode()
 
 
@@ -12926,15 +13111,16 @@ public object FfiConverterTypeCoreFailureCode : FfiConverterRustBuffer<CoreFailu
             5 -> CoreFailureCode.StorageUnavailable
             6 -> CoreFailureCode.RevisionConflict
             7 -> CoreFailureCode.NotFound
-            8 -> CoreFailureCode.InvalidNote
-            9 -> CoreFailureCode.InvalidClip
-            10 -> CoreFailureCode.InvalidTranscript
-            11 -> CoreFailureCode.InvalidChapter
-            12 -> CoreFailureCode.HostUnavailable
-            13 -> CoreFailureCode.Unauthorized
-            14 -> CoreFailureCode.HostRejected
-            15 -> CoreFailureCode.Cancelled
-            16 -> CoreFailureCode.Unsupported(
+            8 -> CoreFailureCode.InvalidMemory
+            9 -> CoreFailureCode.InvalidNote
+            10 -> CoreFailureCode.InvalidClip
+            11 -> CoreFailureCode.InvalidTranscript
+            12 -> CoreFailureCode.InvalidChapter
+            13 -> CoreFailureCode.HostUnavailable
+            14 -> CoreFailureCode.Unauthorized
+            15 -> CoreFailureCode.HostRejected
+            16 -> CoreFailureCode.Cancelled
+            17 -> CoreFailureCode.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -12979,6 +13165,12 @@ public object FfiConverterTypeCoreFailureCode : FfiConverterRustBuffer<CoreFailu
             )
         }
         is CoreFailureCode.NotFound -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CoreFailureCode.InvalidMemory -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
@@ -13071,40 +13263,44 @@ public object FfiConverterTypeCoreFailureCode : FfiConverterRustBuffer<CoreFailu
                 buf.putInt(7)
                 Unit
             }
-            is CoreFailureCode.InvalidNote -> {
+            is CoreFailureCode.InvalidMemory -> {
                 buf.putInt(8)
                 Unit
             }
-            is CoreFailureCode.InvalidClip -> {
+            is CoreFailureCode.InvalidNote -> {
                 buf.putInt(9)
                 Unit
             }
-            is CoreFailureCode.InvalidTranscript -> {
+            is CoreFailureCode.InvalidClip -> {
                 buf.putInt(10)
                 Unit
             }
-            is CoreFailureCode.InvalidChapter -> {
+            is CoreFailureCode.InvalidTranscript -> {
                 buf.putInt(11)
                 Unit
             }
-            is CoreFailureCode.HostUnavailable -> {
+            is CoreFailureCode.InvalidChapter -> {
                 buf.putInt(12)
                 Unit
             }
-            is CoreFailureCode.Unauthorized -> {
+            is CoreFailureCode.HostUnavailable -> {
                 buf.putInt(13)
                 Unit
             }
-            is CoreFailureCode.HostRejected -> {
+            is CoreFailureCode.Unauthorized -> {
                 buf.putInt(14)
                 Unit
             }
-            is CoreFailureCode.Cancelled -> {
+            is CoreFailureCode.HostRejected -> {
                 buf.putInt(15)
                 Unit
             }
-            is CoreFailureCode.Unsupported -> {
+            is CoreFailureCode.Cancelled -> {
                 buf.putInt(16)
+                Unit
+            }
+            is CoreFailureCode.Unsupported -> {
+                buf.putInt(17)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -16793,6 +16989,93 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
 
 
 
+sealed class MemoryProjectionScope {
+
+    object All : MemoryProjectionScope()
+
+
+    object Active : MemoryProjectionScope()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : MemoryProjectionScope()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeMemoryProjectionScope : FfiConverterRustBuffer<MemoryProjectionScope>{
+    override fun read(buf: ByteBuffer): MemoryProjectionScope {
+        return when(buf.getInt()) {
+            1 -> MemoryProjectionScope.All
+            2 -> MemoryProjectionScope.Active
+            3 -> MemoryProjectionScope.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: MemoryProjectionScope): ULong = when(value) {
+        is MemoryProjectionScope.All -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is MemoryProjectionScope.Active -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is MemoryProjectionScope.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: MemoryProjectionScope, buf: ByteBuffer) {
+        when(value) {
+            is MemoryProjectionScope.All -> {
+                buf.putInt(1)
+                Unit
+            }
+            is MemoryProjectionScope.Active -> {
+                buf.putInt(2)
+                Unit
+            }
+            is MemoryProjectionScope.Unsupported -> {
+                buf.putInt(3)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 sealed class ModelChapterWorkflowFailureCode {
 
     object MissingCredential : ModelChapterWorkflowFailureCode()
@@ -17844,6 +18127,37 @@ sealed class OperationResult {
     object NotesCleared : OperationResult()
 
 
+    data class MemoryCreated(
+        val `memoryId`: uniffi.pod0_domain.MemoryId,
+        val `memoryRevision`: uniffi.pod0_domain.MemoryRevision,
+        val `collectionRevision`: uniffi.pod0_domain.StateRevision) : OperationResult()
+
+    {
+
+
+        companion object
+    }
+
+    data class MemoryUpdated(
+        val `memoryId`: uniffi.pod0_domain.MemoryId,
+        val `memoryRevision`: uniffi.pod0_domain.MemoryRevision,
+        val `collectionRevision`: uniffi.pod0_domain.StateRevision) : OperationResult()
+
+    {
+
+
+        companion object
+    }
+
+    data class MemoriesCleared(
+        val `collectionRevision`: uniffi.pod0_domain.StateRevision) : OperationResult()
+
+    {
+
+
+        companion object
+    }
+
     data class ClipCreated(
         val `clipId`: uniffi.pod0_domain.ClipId,
         val `clipRevision`: uniffi.pod0_domain.ClipRevision,
@@ -17968,20 +18282,33 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
                 FfiConverterTypeNoteId.read(buf),
                 )
             22 -> OperationResult.NotesCleared
-            23 -> OperationResult.ClipCreated(
+            23 -> OperationResult.MemoryCreated(
+                FfiConverterTypeMemoryId.read(buf),
+                FfiConverterTypeMemoryRevision.read(buf),
+                FfiConverterTypeStateRevision.read(buf),
+                )
+            24 -> OperationResult.MemoryUpdated(
+                FfiConverterTypeMemoryId.read(buf),
+                FfiConverterTypeMemoryRevision.read(buf),
+                FfiConverterTypeStateRevision.read(buf),
+                )
+            25 -> OperationResult.MemoriesCleared(
+                FfiConverterTypeStateRevision.read(buf),
+                )
+            26 -> OperationResult.ClipCreated(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            24 -> OperationResult.ClipUpdated(
+            27 -> OperationResult.ClipUpdated(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            25 -> OperationResult.ClipsCleared(
+            28 -> OperationResult.ClipsCleared(
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            26 -> OperationResult.Unsupported(
+            29 -> OperationResult.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -18148,6 +18475,31 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
                 4UL
             )
         }
+        is OperationResult.MemoryCreated -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeMemoryId.allocationSize(value.`memoryId`)
+                + FfiConverterTypeMemoryRevision.allocationSize(value.`memoryRevision`)
+                + FfiConverterTypeStateRevision.allocationSize(value.`collectionRevision`)
+            )
+        }
+        is OperationResult.MemoryUpdated -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeMemoryId.allocationSize(value.`memoryId`)
+                + FfiConverterTypeMemoryRevision.allocationSize(value.`memoryRevision`)
+                + FfiConverterTypeStateRevision.allocationSize(value.`collectionRevision`)
+            )
+        }
+        is OperationResult.MemoriesCleared -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeStateRevision.allocationSize(value.`collectionRevision`)
+            )
+        }
         is OperationResult.ClipCreated -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -18299,27 +18651,46 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
                 buf.putInt(22)
                 Unit
             }
-            is OperationResult.ClipCreated -> {
+            is OperationResult.MemoryCreated -> {
                 buf.putInt(23)
+                FfiConverterTypeMemoryId.write(value.`memoryId`, buf)
+                FfiConverterTypeMemoryRevision.write(value.`memoryRevision`, buf)
+                FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
+                Unit
+            }
+            is OperationResult.MemoryUpdated -> {
+                buf.putInt(24)
+                FfiConverterTypeMemoryId.write(value.`memoryId`, buf)
+                FfiConverterTypeMemoryRevision.write(value.`memoryRevision`, buf)
+                FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
+                Unit
+            }
+            is OperationResult.MemoriesCleared -> {
+                buf.putInt(25)
+                FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
+                Unit
+            }
+            is OperationResult.ClipCreated -> {
+                buf.putInt(26)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`clipRevision`, buf)
                 FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
                 Unit
             }
             is OperationResult.ClipUpdated -> {
-                buf.putInt(24)
+                buf.putInt(27)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`clipRevision`, buf)
                 FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
                 Unit
             }
             is OperationResult.ClipsCleared -> {
-                buf.putInt(25)
+                buf.putInt(28)
                 FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
                 Unit
             }
             is OperationResult.Unsupported -> {
-                buf.putInt(26)
+                buf.putInt(29)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -19955,6 +20326,15 @@ sealed class Projection {
         companion object
     }
 
+    data class Memories(
+        val `value`: uniffi.pod0_application.MemoriesProjection) : Projection()
+
+    {
+
+
+        companion object
+    }
+
     data class Clips(
         val `value`: uniffi.pod0_application.ClipsProjection) : Projection()
 
@@ -20043,10 +20423,13 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
             18 -> Projection.Notes(
                 FfiConverterTypeNotesProjection.read(buf),
                 )
-            19 -> Projection.Clips(
+            19 -> Projection.Memories(
+                FfiConverterTypeMemoriesProjection.read(buf),
+                )
+            20 -> Projection.Clips(
                 FfiConverterTypeClipsProjection.read(buf),
                 )
-            20 -> Projection.Unsupported(
+            21 -> Projection.Unsupported(
                 FfiConverterTypeUnsupportedProjection.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -20180,6 +20563,13 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
                 + FfiConverterTypeNotesProjection.allocationSize(value.`value`)
             )
         }
+        is Projection.Memories -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeMemoriesProjection.allocationSize(value.`value`)
+            )
+        }
         is Projection.Clips -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -20288,13 +20678,18 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
                 FfiConverterTypeNotesProjection.write(value.`value`, buf)
                 Unit
             }
-            is Projection.Clips -> {
+            is Projection.Memories -> {
                 buf.putInt(19)
+                FfiConverterTypeMemoriesProjection.write(value.`value`, buf)
+                Unit
+            }
+            is Projection.Clips -> {
+                buf.putInt(20)
                 FfiConverterTypeClipsProjection.write(value.`value`, buf)
                 Unit
             }
             is Projection.Unsupported -> {
-                buf.putInt(20)
+                buf.putInt(21)
                 FfiConverterTypeUnsupportedProjection.write(value.`value`, buf)
                 Unit
             }
@@ -20442,6 +20837,15 @@ sealed class ProjectionScope {
         companion object
     }
 
+    data class Memories(
+        val `scope`: uniffi.pod0_application.MemoryProjectionScope) : ProjectionScope()
+
+    {
+
+
+        companion object
+    }
+
     data class Clips(
         val `scope`: uniffi.pod0_application.ClipProjectionScope) : ProjectionScope()
 
@@ -20522,10 +20926,13 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
             18 -> ProjectionScope.Notes(
                 FfiConverterTypeNoteProjectionScope.read(buf),
                 )
-            19 -> ProjectionScope.Clips(
+            19 -> ProjectionScope.Memories(
+                FfiConverterTypeMemoryProjectionScope.read(buf),
+                )
+            20 -> ProjectionScope.Clips(
                 FfiConverterTypeClipProjectionScope.read(buf),
                 )
-            20 -> ProjectionScope.Unsupported(
+            21 -> ProjectionScope.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -20656,6 +21063,13 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
                 + FfiConverterTypeNoteProjectionScope.allocationSize(value.`scope`)
             )
         }
+        is ProjectionScope.Memories -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeMemoryProjectionScope.allocationSize(value.`scope`)
+            )
+        }
         is ProjectionScope.Clips -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -20761,13 +21175,18 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
                 FfiConverterTypeNoteProjectionScope.write(value.`scope`, buf)
                 Unit
             }
-            is ProjectionScope.Clips -> {
+            is ProjectionScope.Memories -> {
                 buf.putInt(19)
+                FfiConverterTypeMemoryProjectionScope.write(value.`scope`, buf)
+                Unit
+            }
+            is ProjectionScope.Clips -> {
+                buf.putInt(20)
                 FfiConverterTypeClipProjectionScope.write(value.`scope`, buf)
                 Unit
             }
             is ProjectionScope.Unsupported -> {
-                buf.putInt(20)
+                buf.putInt(21)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -25795,6 +26214,38 @@ public object FfiConverterOptionalTypeChapterArtifactInput: FfiConverterRustBuff
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeCompiledMemoryRecord: FfiConverterRustBuffer<CompiledMemoryRecord?> {
+    override fun read(buf: ByteBuffer): CompiledMemoryRecord? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeCompiledMemoryRecord.read(buf)
+    }
+
+    override fun allocationSize(value: CompiledMemoryRecord?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeCompiledMemoryRecord.allocationSize(value)
+        }
+    }
+
+    override fun write(value: CompiledMemoryRecord?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeCompiledMemoryRecord.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeContentDigest: FfiConverterRustBuffer<ContentDigest?> {
     override fun read(buf: ByteBuffer): ContentDigest? {
         if (buf.get().toInt() == 0) {
@@ -27509,6 +27960,34 @@ public object FfiConverterSequenceTypeEpisodeRecord: FfiConverterRustBuffer<List
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeEpisodeRecord.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeMemoryRecord: FfiConverterRustBuffer<List<MemoryRecord>> {
+    override fun read(buf: ByteBuffer): List<MemoryRecord> {
+        val len = buf.getInt()
+        return List<MemoryRecord>(len) {
+            FfiConverterTypeMemoryRecord.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<MemoryRecord>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeMemoryRecord.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<MemoryRecord>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeMemoryRecord.write(it, buf)
         }
     }
 }

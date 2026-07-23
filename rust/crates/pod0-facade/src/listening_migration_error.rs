@@ -22,6 +22,7 @@ impl From<StorageError> for LegacyListeningMigrationError {
             | StorageError::CorruptSchema { .. }
             | StorageError::CutoverNotAuthoritative
             | StorageError::RevisionConflict
+            | StorageError::InvalidMemory
             | StorageError::InvalidNote
             | StorageError::InvalidClip
             | StorageError::InvalidTranscriptArtifact

@@ -22,6 +22,7 @@ final class SharedLibraryClient {
     private var chapterWorkflowSubscriptionID: SubscriptionId?
     var recallConfigurationSubscriptionID: SubscriptionId?
     private var notesSubscriptionID: SubscriptionId?
+    private var memoriesSubscriptionID: SubscriptionId?
     private var clipsSubscriptionID: SubscriptionId?
     private var downloadsSubscriptionID: SubscriptionId?
     private var transcriptWorkflowSubscriptionID: SubscriptionId?
@@ -32,6 +33,7 @@ final class SharedLibraryClient {
     var lastPlaybackRevision: UInt64 = 0
     var lastChapterWorkflowRevision: UInt64 = 0
     var lastNotesRevision: UInt64 = 0
+    var lastMemoriesRevision: UInt64 = 0
     var lastClipsRevision: UInt64 = 0
     weak var store: AppStateStore?
     weak var playbackState: PlaybackState?
@@ -45,6 +47,7 @@ final class SharedLibraryClient {
     var cachedPlayback: PlaybackProjection?
     var cachedPlaybackRevision: UInt64 = 0
     var cachedNotes: SharedNoteSnapshot?
+    var cachedMemories: SharedMemorySnapshot?
     var cachedClips: SharedClipSnapshot?
     var lastDownloadsRevision: UInt64 = 0
     var cachedDownloadWorkflows: [UUID: DownloadWorkflowProjection] = [:]
@@ -121,6 +124,10 @@ final class SharedLibraryClient {
             request: ProjectionRequest(scope: .notes(scope: .all), offset: 0, maxItems: 200),
             subscriber: subscriber
         )
+        memoriesSubscriptionID = facade.subscribe(
+            request: ProjectionRequest(scope: .memories(scope: .all), offset: 0, maxItems: 200),
+            subscriber: subscriber
+        )
         clipsSubscriptionID = facade.subscribe(
             request: ProjectionRequest(scope: .clips(scope: .active), offset: 0, maxItems: 200),
             subscriber: subscriber
@@ -158,6 +165,9 @@ final class SharedLibraryClient {
         let notes = loadNotePages(scope: .all)
         cachedNotes = notes
         store.applySharedNotes(notes)
+        let memories = loadMemoryPages(scope: .all)
+        cachedMemories = memories
+        store.applySharedMemories(memories)
         let clips = loadClipPages(scope: .active)
         cachedClips = clips
         store.applySharedClips(clips)
@@ -180,6 +190,8 @@ final class SharedLibraryClient {
             )
         case .notes:
             receiveNotes(revision: envelope.stateRevision.value)
+        case .memories:
+            receiveMemories(revision: envelope.stateRevision.value)
         case .clips:
             receiveClips(revision: envelope.stateRevision.value)
         case .downloads:
@@ -210,6 +222,9 @@ final class SharedLibraryClient {
             facade.unsubscribe(subscriptionId: chapterWorkflowSubscriptionID)
         }
         if let notesSubscriptionID { facade.unsubscribe(subscriptionId: notesSubscriptionID) }
+        if let memoriesSubscriptionID {
+            facade.unsubscribe(subscriptionId: memoriesSubscriptionID)
+        }
         if let clipsSubscriptionID { facade.unsubscribe(subscriptionId: clipsSubscriptionID) }
         if let downloadsSubscriptionID {
             facade.unsubscribe(subscriptionId: downloadsSubscriptionID)
@@ -225,6 +240,7 @@ final class SharedLibraryClient {
         playbackSubscriptionID = nil
         chapterWorkflowSubscriptionID = nil
         notesSubscriptionID = nil
+        memoriesSubscriptionID = nil
         clipsSubscriptionID = nil
         downloadsSubscriptionID = nil
         transcriptWorkflowSubscriptionID = nil

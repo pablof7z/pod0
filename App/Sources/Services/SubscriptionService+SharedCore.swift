@@ -14,7 +14,7 @@ extension SubscriptionService {
             case .malformedFeed: throw AddError.parse(error.localizedDescription)
             case .alreadySubscribed:
                 throw AddError.alreadySubscribed(title: "this podcast")
-            case .notFound, .unavailable, .cancelled, .invalidNote, .invalidClip,
+            case .notFound, .unavailable, .cancelled, .invalidMemory, .invalidNote, .invalidClip,
                  .invalidTranscript, .invalidChapter, .revisionConflict:
                 throw AddError.transport(error.localizedDescription)
             }

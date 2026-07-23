@@ -110,6 +110,7 @@ import uniffi.pod0_domain.FfiConverterTypeCommandId
 import uniffi.pod0_domain.FfiConverterTypeContentDigest
 import uniffi.pod0_domain.FfiConverterTypeEpisodeId
 import uniffi.pod0_domain.FfiConverterTypeListeningDomainSnapshot
+import uniffi.pod0_domain.FfiConverterTypeMemoryId
 import uniffi.pod0_domain.FfiConverterTypeNoteRecord
 import uniffi.pod0_domain.FfiConverterTypeScheduledTaskId
 import uniffi.pod0_domain.FfiConverterTypeSpeakerId
@@ -117,6 +118,7 @@ import uniffi.pod0_domain.FfiConverterTypeStateRevision
 import uniffi.pod0_domain.FfiConverterTypeSubscriptionId
 import uniffi.pod0_domain.FfiConverterTypeUnixTimestampMilliseconds
 import uniffi.pod0_domain.ListeningDomainSnapshot
+import uniffi.pod0_domain.MemoryId
 import uniffi.pod0_domain.NoteRecord
 import uniffi.pod0_domain.ScheduledTaskId
 import uniffi.pod0_domain.SpeakerId
@@ -163,6 +165,7 @@ import uniffi.pod0_domain.RustBuffer as RustBufferCommandId
 import uniffi.pod0_domain.RustBuffer as RustBufferContentDigest
 import uniffi.pod0_domain.RustBuffer as RustBufferEpisodeId
 import uniffi.pod0_domain.RustBuffer as RustBufferListeningDomainSnapshot
+import uniffi.pod0_domain.RustBuffer as RustBufferMemoryId
 import uniffi.pod0_domain.RustBuffer as RustBufferNoteRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferScheduledTaskId
 import uniffi.pod0_domain.RustBuffer as RustBufferSpeakerId
@@ -941,6 +944,18 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_download_cutover(
     ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_memory_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_memory_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_inspect_legacy_memory_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_memory_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_memory_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_memory_cutover(
+    ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_model_chapter_cutover(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_model_chapter_cutover(
@@ -1047,6 +1062,18 @@ internal object UniffiLib {
     external fun uniffi_pod0_facade_fn_method_pod0facade_download_cutover(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_download_cutover(`ptr`: Long,`sourceGeneration`: Long,`candidates`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_memory_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_memory_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_inspect_legacy_memory_cutover(`ptr`: Long,`backupDigest`: RustBufferContentDigest.ByValue,`backupByteCount`: Long,`memories`: RustBuffer.ByValue,`compiled`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_memory_cutover(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_memory_cutover(`ptr`: Long,`backupDigest`: RustBufferContentDigest.ByValue,`backupByteCount`: Long,`memories`: RustBuffer.ByValue,`compiled`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_verify_legacy_memory_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_model_chapter_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
@@ -1459,6 +1486,24 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_download_cutover() != 2411) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_memory_cutover() != 24077) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_memory_cutover() != 7750) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_inspect_legacy_memory_cutover() != 19541) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_memory_cutover() != 60138) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_memory_cutover() != 53120) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_memory_cutover() != 30698) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_model_chapter_cutover() != 7355) {
@@ -2037,6 +2082,18 @@ public interface Pod0FacadeInterface {
 
     fun `stageLegacyDownloadCutover`(`sourceGeneration`: kotlin.ULong, `candidates`: List<LegacyDownloadCutoverCandidate>): LegacyDownloadCutoverProjection
 
+    fun `commitLegacyMemoryCutover`(`sourceGeneration`: kotlin.ULong): LegacyMemoryCutoverProjection
+
+    fun `discardStagedLegacyMemoryCutover`(`sourceGeneration`: kotlin.ULong): LegacyMemoryCutoverProjection
+
+    fun `inspectLegacyMemoryCutover`(`backupDigest`: ContentDigest, `backupByteCount`: kotlin.ULong, `memories`: List<LegacyMemoryInput>, `compiled`: LegacyCompiledMemoryInput?): LegacyMemoryCutoverProjection
+
+    fun `memoryCutover`(): LegacyMemoryCutoverProjection
+
+    fun `stageLegacyMemoryCutover`(`backupDigest`: ContentDigest, `backupByteCount`: kotlin.ULong, `memories`: List<LegacyMemoryInput>, `compiled`: LegacyCompiledMemoryInput?): LegacyMemoryCutoverProjection
+
+    fun `verifyLegacyMemoryCutover`(`sourceGeneration`: kotlin.ULong): LegacyMemoryCutoverProjection
+
     fun `commitLegacyModelChapterCutover`(`sourceGeneration`: kotlin.ULong): LegacyModelChapterCutoverProjection
 
     fun `discardStagedLegacyModelChapterCutover`(`sourceGeneration`: kotlin.ULong): LegacyModelChapterCutoverProjection
@@ -2337,6 +2394,95 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
 
         FfiConverterULong.lower(`sourceGeneration`),
         FfiConverterSequenceTypeLegacyDownloadCutoverCandidate.lower(`candidates`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `commitLegacyMemoryCutover`(`sourceGeneration`: kotlin.ULong): LegacyMemoryCutoverProjection {
+            return FfiConverterTypeLegacyMemoryCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_memory_cutover(
+        it,
+
+        FfiConverterULong.lower(`sourceGeneration`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `discardStagedLegacyMemoryCutover`(`sourceGeneration`: kotlin.ULong): LegacyMemoryCutoverProjection {
+            return FfiConverterTypeLegacyMemoryCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_memory_cutover(
+        it,
+
+        FfiConverterULong.lower(`sourceGeneration`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `inspectLegacyMemoryCutover`(`backupDigest`: ContentDigest, `backupByteCount`: kotlin.ULong, `memories`: List<LegacyMemoryInput>, `compiled`: LegacyCompiledMemoryInput?): LegacyMemoryCutoverProjection {
+            return FfiConverterTypeLegacyMemoryCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_inspect_legacy_memory_cutover(
+        it,
+
+        FfiConverterTypeContentDigest.lower(`backupDigest`),
+        FfiConverterULong.lower(`backupByteCount`),
+        FfiConverterSequenceTypeLegacyMemoryInput.lower(`memories`),
+        FfiConverterOptionalTypeLegacyCompiledMemoryInput.lower(`compiled`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `memoryCutover`(): LegacyMemoryCutoverProjection {
+            return FfiConverterTypeLegacyMemoryCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_memory_cutover(
+        it,
+        _status)
+}
+    }
+    )
+    }
+
+
+    override fun `stageLegacyMemoryCutover`(`backupDigest`: ContentDigest, `backupByteCount`: kotlin.ULong, `memories`: List<LegacyMemoryInput>, `compiled`: LegacyCompiledMemoryInput?): LegacyMemoryCutoverProjection {
+            return FfiConverterTypeLegacyMemoryCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_memory_cutover(
+        it,
+
+        FfiConverterTypeContentDigest.lower(`backupDigest`),
+        FfiConverterULong.lower(`backupByteCount`),
+        FfiConverterSequenceTypeLegacyMemoryInput.lower(`memories`),
+        FfiConverterOptionalTypeLegacyCompiledMemoryInput.lower(`compiled`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `verifyLegacyMemoryCutover`(`sourceGeneration`: kotlin.ULong): LegacyMemoryCutoverProjection {
+            return FfiConverterTypeLegacyMemoryCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_verify_legacy_memory_cutover(
+        it,
+
+        FfiConverterULong.lower(`sourceGeneration`),_status)
 }
     }
     )
@@ -3776,6 +3922,49 @@ public object FfiConverterTypeLegacyClipImportVerification: FfiConverterRustBuff
 
 
 
+data class LegacyCompiledMemoryInput (
+    val `text`: kotlin.String
+    ,
+    val `compiledAt`: UnixTimestampMilliseconds
+    ,
+    val `sourceMemoryIds`: List<MemoryId>
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyCompiledMemoryInput: FfiConverterRustBuffer<LegacyCompiledMemoryInput> {
+    override fun read(buf: ByteBuffer): LegacyCompiledMemoryInput {
+        return LegacyCompiledMemoryInput(
+            FfiConverterString.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterSequenceTypeMemoryId.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyCompiledMemoryInput) = (
+            FfiConverterString.allocationSize(value.`text`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`compiledAt`) +
+            FfiConverterSequenceTypeMemoryId.allocationSize(value.`sourceMemoryIds`)
+    )
+
+    override fun write(value: LegacyCompiledMemoryInput, buf: ByteBuffer) {
+            FfiConverterString.write(value.`text`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`compiledAt`, buf)
+            FfiConverterSequenceTypeMemoryId.write(value.`sourceMemoryIds`, buf)
+    }
+}
+
+
+
 data class LegacyDownloadCutoverCandidate (
     val `episodeId`: EpisodeId
     ,
@@ -4117,6 +4306,127 @@ public object FfiConverterTypeLegacyListeningImportVerification: FfiConverterRus
     override fun write(value: LegacyListeningImportVerification, buf: ByteBuffer) {
             FfiConverterTypeLegacyListeningImportReport.write(value.`report`, buf)
             FfiConverterTypeListeningDomainSnapshot.write(value.`snapshot`, buf)
+    }
+}
+
+
+
+data class LegacyMemoryCutoverProjection (
+    val `stage`: LegacyMemoryCutoverStage
+    ,
+    val `sourceGeneration`: kotlin.ULong?
+    ,
+    val `sourceFingerprint`: ContentDigest?
+    ,
+    val `backupDigest`: ContentDigest?
+    ,
+    val `backupByteCount`: kotlin.ULong?
+    ,
+    val `memoryCount`: kotlin.UInt
+    ,
+    val `deletedCount`: kotlin.UInt
+    ,
+    val `compiledPresent`: kotlin.Boolean
+    ,
+    val `failure`: LegacyMemoryCutoverFailureCode?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyMemoryCutoverProjection: FfiConverterRustBuffer<LegacyMemoryCutoverProjection> {
+    override fun read(buf: ByteBuffer): LegacyMemoryCutoverProjection {
+        return LegacyMemoryCutoverProjection(
+            FfiConverterTypeLegacyMemoryCutoverStage.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterOptionalTypeContentDigest.read(buf),
+            FfiConverterOptionalTypeContentDigest.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalTypeLegacyMemoryCutoverFailureCode.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyMemoryCutoverProjection) = (
+            FfiConverterTypeLegacyMemoryCutoverStage.allocationSize(value.`stage`) +
+            FfiConverterOptionalULong.allocationSize(value.`sourceGeneration`) +
+            FfiConverterOptionalTypeContentDigest.allocationSize(value.`sourceFingerprint`) +
+            FfiConverterOptionalTypeContentDigest.allocationSize(value.`backupDigest`) +
+            FfiConverterOptionalULong.allocationSize(value.`backupByteCount`) +
+            FfiConverterUInt.allocationSize(value.`memoryCount`) +
+            FfiConverterUInt.allocationSize(value.`deletedCount`) +
+            FfiConverterBoolean.allocationSize(value.`compiledPresent`) +
+            FfiConverterOptionalTypeLegacyMemoryCutoverFailureCode.allocationSize(value.`failure`)
+    )
+
+    override fun write(value: LegacyMemoryCutoverProjection, buf: ByteBuffer) {
+            FfiConverterTypeLegacyMemoryCutoverStage.write(value.`stage`, buf)
+            FfiConverterOptionalULong.write(value.`sourceGeneration`, buf)
+            FfiConverterOptionalTypeContentDigest.write(value.`sourceFingerprint`, buf)
+            FfiConverterOptionalTypeContentDigest.write(value.`backupDigest`, buf)
+            FfiConverterOptionalULong.write(value.`backupByteCount`, buf)
+            FfiConverterUInt.write(value.`memoryCount`, buf)
+            FfiConverterUInt.write(value.`deletedCount`, buf)
+            FfiConverterBoolean.write(value.`compiledPresent`, buf)
+            FfiConverterOptionalTypeLegacyMemoryCutoverFailureCode.write(value.`failure`, buf)
+    }
+}
+
+
+
+data class LegacyMemoryInput (
+    val `memoryId`: MemoryId
+    ,
+    val `content`: kotlin.String
+    ,
+    val `createdAt`: UnixTimestampMilliseconds
+    ,
+    val `deleted`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyMemoryInput: FfiConverterRustBuffer<LegacyMemoryInput> {
+    override fun read(buf: ByteBuffer): LegacyMemoryInput {
+        return LegacyMemoryInput(
+            FfiConverterTypeMemoryId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyMemoryInput) = (
+            FfiConverterTypeMemoryId.allocationSize(value.`memoryId`) +
+            FfiConverterString.allocationSize(value.`content`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`createdAt`) +
+            FfiConverterBoolean.allocationSize(value.`deleted`)
+    )
+
+    override fun write(value: LegacyMemoryInput, buf: ByteBuffer) {
+            FfiConverterTypeMemoryId.write(value.`memoryId`, buf)
+            FfiConverterString.write(value.`content`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`createdAt`, buf)
+            FfiConverterBoolean.write(value.`deleted`, buf)
     }
 }
 
@@ -6066,6 +6376,82 @@ public object FfiConverterTypeLegacyListeningSourceKind: FfiConverterRustBuffer<
 
 
 
+
+enum class LegacyMemoryCutoverFailureCode {
+
+    INVALID_SOURCE,
+    CONFLICTING_CORE_STATE,
+    STORAGE_UNAVAILABLE;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyMemoryCutoverFailureCode: FfiConverterRustBuffer<LegacyMemoryCutoverFailureCode> {
+    override fun read(buf: ByteBuffer) = try {
+
+        LegacyMemoryCutoverFailureCode.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: LegacyMemoryCutoverFailureCode) = 4UL
+
+    override fun write(value: LegacyMemoryCutoverFailureCode, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+enum class LegacyMemoryCutoverStage {
+
+    NOT_STARTED,
+    STAGED,
+    VERIFIED,
+    AUTHORITATIVE,
+    BLOCKED;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyMemoryCutoverStage: FfiConverterRustBuffer<LegacyMemoryCutoverStage> {
+    override fun read(buf: ByteBuffer) = try {
+
+        LegacyMemoryCutoverStage.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: LegacyMemoryCutoverStage) = 4UL
+
+    override fun write(value: LegacyMemoryCutoverStage, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 sealed class LegacyModelChapterCutoverDisposition {
 
     data class Succeeded(
@@ -7854,6 +8240,38 @@ public object FfiConverterOptionalTypeLegacyChapterRollbackExportReport: FfiConv
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeLegacyCompiledMemoryInput: FfiConverterRustBuffer<LegacyCompiledMemoryInput?> {
+    override fun read(buf: ByteBuffer): LegacyCompiledMemoryInput? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeLegacyCompiledMemoryInput.read(buf)
+    }
+
+    override fun allocationSize(value: LegacyCompiledMemoryInput?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeLegacyCompiledMemoryInput.allocationSize(value)
+        }
+    }
+
+    override fun write(value: LegacyCompiledMemoryInput?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeLegacyCompiledMemoryInput.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeLegacyDownloadCutoverFailure: FfiConverterRustBuffer<LegacyDownloadCutoverFailure?> {
     override fun read(buf: ByteBuffer): LegacyDownloadCutoverFailure? {
         if (buf.get().toInt() == 0) {
@@ -8046,6 +8464,38 @@ public object FfiConverterOptionalTypeScheduledAgentExecutionObservation: FfiCon
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeLegacyMemoryCutoverFailureCode: FfiConverterRustBuffer<LegacyMemoryCutoverFailureCode?> {
+    override fun read(buf: ByteBuffer): LegacyMemoryCutoverFailureCode? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeLegacyMemoryCutoverFailureCode.read(buf)
+    }
+
+    override fun allocationSize(value: LegacyMemoryCutoverFailureCode?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeLegacyMemoryCutoverFailureCode.allocationSize(value)
+        }
+    }
+
+    override fun write(value: LegacyMemoryCutoverFailureCode?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeLegacyMemoryCutoverFailureCode.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceUInt: FfiConverterRustBuffer<List<kotlin.UInt>> {
     override fun read(buf: ByteBuffer): List<kotlin.UInt> {
         val len = buf.getInt()
@@ -8186,6 +8636,34 @@ public object FfiConverterSequenceTypeClipRecord: FfiConverterRustBuffer<List<Cl
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeMemoryId: FfiConverterRustBuffer<List<MemoryId>> {
+    override fun read(buf: ByteBuffer): List<MemoryId> {
+        val len = buf.getInt()
+        return List<MemoryId>(len) {
+            FfiConverterTypeMemoryId.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<MemoryId>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeMemoryId.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<MemoryId>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeMemoryId.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer<List<NoteRecord>> {
     override fun read(buf: ByteBuffer): List<NoteRecord> {
         val len = buf.getInt()
@@ -8232,6 +8710,34 @@ public object FfiConverterSequenceTypeLegacyDownloadCutoverCandidate: FfiConvert
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeLegacyDownloadCutoverCandidate.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeLegacyMemoryInput: FfiConverterRustBuffer<List<LegacyMemoryInput>> {
+    override fun read(buf: ByteBuffer): List<LegacyMemoryInput> {
+        val len = buf.getInt()
+        return List<LegacyMemoryInput>(len) {
+            FfiConverterTypeLegacyMemoryInput.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<LegacyMemoryInput>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeLegacyMemoryInput.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<LegacyMemoryInput>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeLegacyMemoryInput.write(it, buf)
         }
     }
 }
@@ -8375,6 +8881,8 @@ public object FfiConverterSequenceTypeLegacyTranscriptWorkflowCutoverCandidate: 
         }
     }
 }
+
+
 
 
 

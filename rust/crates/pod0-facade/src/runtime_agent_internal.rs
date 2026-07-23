@@ -2,7 +2,9 @@ use pod0_application::{
     AgentActionObservation, AgentActionOutcome, AgentToolAction, AgentToolName, AgentTurnState,
     AgentWorkflowAcceptance,
 };
-use pod0_domain::{ClipId, ClipSource, CommandId, CompletionStatus, NoteAuthor, NoteKind};
+use pod0_domain::{
+    ClipId, ClipSource, CommandId, CompletionStatus, MemorySource, NoteAuthor, NoteKind,
+};
 use pod0_storage::{AgentAuditKind, AgentStore, StorageError};
 use serde_json::json;
 use sha2::{Digest, Sha256};
@@ -111,6 +113,27 @@ impl FacadeState {
                     .map_err(|_| "agent_note_reload_failed")?;
                 Ok(json!({
                     "note_id": opaque_id_string(note_id.into_bytes()),
+                    "saved": true
+                })
+                .to_string())
+            }
+            AgentToolAction::RecordMemory { text } => {
+                let store = self.store.as_ref().ok_or("agent_store_unavailable")?;
+                let command_id = CommandId::from_bytes(proposal_id.into_bytes());
+                let fingerprint = commit_fingerprint("record-memory", proposal_id);
+                let (_, memory_id, _) = store
+                    .create_memory(
+                        command_id,
+                        &fingerprint,
+                        text,
+                        MemorySource::Agent,
+                        observed_at.value,
+                    )
+                    .map_err(|_| "agent_memory_commit_failed")?;
+                self.reload_memories()
+                    .map_err(|_| "agent_memory_reload_failed")?;
+                Ok(json!({
+                    "memory_id": opaque_id_string(memory_id.into_bytes()),
                     "saved": true
                 })
                 .to_string())
@@ -257,40 +280,4 @@ impl FacadeState {
     }
 }
 
-fn episode_json(episode: &pod0_domain::EpisodeRecord) -> serde_json::Value {
-    json!({
-        "episode_id": opaque_id_string(episode.episode_id.into_bytes()),
-        "podcast_id": opaque_id_string(episode.podcast_id.into_bytes()),
-        "title": episode.title,
-        "position_milliseconds": episode.listening.resume_position_milliseconds,
-        "completed": matches!(episode.listening.completion, CompletionStatus::Completed { .. })
-    })
-}
-
-fn commit_fingerprint(domain: &str, proposal_id: pod0_domain::AgentProposalId) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(b"pod0:agent-internal-commit:v1\0");
-    hasher.update(domain.as_bytes());
-    hasher.update([0]);
-    hasher.update(proposal_id.into_bytes());
-    hasher
-        .finalize()
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
-}
-
-fn opaque_id_string(bytes: [u8; 16]) -> String {
-    let hex = bytes
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect::<String>();
-    format!(
-        "{}-{}-{}-{}-{}",
-        &hex[0..8],
-        &hex[8..12],
-        &hex[12..16],
-        &hex[16..20],
-        &hex[20..32]
-    )
-}
+include!("runtime_agent_internal_helpers.rs");

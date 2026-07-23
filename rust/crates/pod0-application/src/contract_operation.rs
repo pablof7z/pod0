@@ -1,6 +1,7 @@
 use pod0_domain::{
     AgentTurnId, CancellationId, ClipId, ClipRevision, CommandId, ConversationId, EpisodeId,
-    EvidenceGenerationId, NoteId, PodcastId, RecallQueryId, StateRevision,
+    EvidenceGenerationId, MemoryId, MemoryRevision, NoteId, PodcastId, RecallQueryId,
+    StateRevision,
 };
 
 use crate::{ChapterCommitReceipt, CoreFailure, TranscriptCommitReceipt};
@@ -84,6 +85,19 @@ pub enum OperationResult {
         note_id: NoteId,
     },
     NotesCleared,
+    MemoryCreated {
+        memory_id: MemoryId,
+        memory_revision: MemoryRevision,
+        collection_revision: StateRevision,
+    },
+    MemoryUpdated {
+        memory_id: MemoryId,
+        memory_revision: MemoryRevision,
+        collection_revision: StateRevision,
+    },
+    MemoriesCleared {
+        collection_revision: StateRevision,
+    },
     ClipCreated {
         clip_id: ClipId,
         clip_revision: ClipRevision,

@@ -135,6 +135,10 @@ extension Persistence {
         episodeStore.fileURL.appendingPathExtension("agent-history-backups")
     }
 
+    var legacyAgentMemoryBackupRootURL: URL {
+        episodeStore.fileURL.appendingPathExtension("agent-memory-backups")
+    }
+
     var legacyRecallIndexURL: URL? {
         guard let support = try? FileManager.default.url(
             for: .applicationSupportDirectory,
@@ -171,7 +175,8 @@ extension Persistence {
             legacyTranscriptWorkflowBackupRootURL,
             legacyDownloadWorkflowBackupURL,
             legacyScheduledAgentWorkflowBackupRootURL,
-            legacyAgentHistoryBackupRootURL
+            legacyAgentHistoryBackupRootURL,
+            legacyAgentMemoryBackupRootURL
         ]
         urls.append(contentsOf: (1...32).map {
             sharedCoreSchemaBackupURL(targetVersion: UInt32($0))

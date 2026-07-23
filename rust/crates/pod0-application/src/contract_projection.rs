@@ -6,9 +6,9 @@ use pod0_domain::{
 use crate::{
     ChapterArtifactProjection, ChapterProjectionScope, ChapterWorkflowsProjection,
     ClipProjectionScope, ClipsProjection, DownloadWorkflowsProjection, EvidenceIndexProjection,
-    MAX_PROJECTION_ITEMS, NoteProjectionScope, NotesProjection, OperationProjection,
-    PlaybackProjection, RecallResultProjection, TranscriptProjection, TranscriptProjectionScope,
-    TranscriptWorkflowsProjection,
+    MAX_PROJECTION_ITEMS, MemoriesProjection, MemoryProjectionScope, NoteProjectionScope,
+    NotesProjection, OperationProjection, PlaybackProjection, RecallResultProjection,
+    TranscriptProjection, TranscriptProjectionScope, TranscriptWorkflowsProjection,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
@@ -58,6 +58,9 @@ pub enum ProjectionScope {
     NostrSigner,
     Notes {
         scope: NoteProjectionScope,
+    },
+    Memories {
+        scope: MemoryProjectionScope,
     },
     Clips {
         scope: ClipProjectionScope,
@@ -152,6 +155,9 @@ pub enum Projection {
     },
     Notes {
         value: NotesProjection,
+    },
+    Memories {
+        value: MemoriesProjection,
     },
     Clips {
         value: ClipsProjection,

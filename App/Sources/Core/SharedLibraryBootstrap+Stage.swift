@@ -19,4 +19,5 @@ enum SharedLibraryBootstrapStage: String {
     case transcriptWorkflowCutover
     case scheduledAgentWorkflowCutover
     case agentHistoryCutover
+    case agentMemoryCutover
 }

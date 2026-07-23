@@ -10,7 +10,7 @@ use crate::{
     TranscriptWorkflowConfiguration, TranscriptWorkflowOrigin,
 };
 
-pub const FACADE_CONTRACT_VERSION: u32 = 43;
+pub const FACADE_CONTRACT_VERSION: u32 = 44;
 pub const MAX_PROJECTION_ITEMS: u16 = 200;
 pub const MAX_OPERATION_ITEMS: usize = 32;
 pub const MAX_HOST_REQUEST_BATCH: u16 = 64;
@@ -230,6 +230,22 @@ pub enum ApplicationCommand {
         deleted: bool,
     },
     ClearNotes {
+        expected_collection_revision: StateRevision,
+    },
+    CreateMemory {
+        content: String,
+    },
+    UpdateMemory {
+        memory_id: pod0_domain::MemoryId,
+        expected_memory_revision: pod0_domain::MemoryRevision,
+        content: String,
+    },
+    SetMemoryDeleted {
+        memory_id: pod0_domain::MemoryId,
+        expected_memory_revision: pod0_domain::MemoryRevision,
+        deleted: bool,
+    },
+    ClearMemories {
         expected_collection_revision: StateRevision,
     },
     CreateClip {

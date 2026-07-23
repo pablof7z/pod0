@@ -38,6 +38,12 @@ impl LibraryStore {
         crate::note_store_read::read_note_snapshot(&connection)
     }
 
+    pub fn memory_snapshot(&self) -> Result<crate::MemoryCollectionSnapshot, StorageError> {
+        let connection = open_current(&self.path, true)?;
+        require_authoritative(&connection)?;
+        crate::memory_store_read::read_memory_snapshot(&connection)
+    }
+
     pub fn clip_snapshot(&self) -> Result<crate::ClipCollectionSnapshot, StorageError> {
         let connection = open_current(&self.path, true)?;
         require_authoritative(&connection)?;

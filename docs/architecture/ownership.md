@@ -38,8 +38,11 @@ already migrated. `current_owner`, `target_owner`, `migration_issues`, and
    authoritative after #97; remaining work migrates derived knowledge policy,
    not transcript selection back to Swift.
 3. Download intent and recovery: #115–#119; scheduled-agent workflow and
-   artifact ownership: #125–#130; remaining agent permissions, artifacts, and
-   Nostr publication: #131–#138 under #60.
+   artifact ownership: #125–#130; agent conversation and memory authority,
+   remaining permissions/artifacts, and Nostr publication: #131–#138 under
+   #60. Rust is authoritative for agent memories after the schema-v28 cutover;
+   Swift retains only bounded presentation projections and temporary rollback
+   compatibility.
 4. Native UI and platform capabilities remain native and converge on typed
    host/projection boundaries as their domains migrate.
 

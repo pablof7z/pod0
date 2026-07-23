@@ -45,6 +45,8 @@ pub use crate::library_store_playback::{
 };
 pub use crate::listening_import::{ListeningImportClock, ListeningImporter};
 pub use crate::listening_store::read_listening_import;
+pub use crate::memory_cutover_model::*;
+pub use crate::memory_store_model::MemoryCollectionSnapshot;
 pub use crate::migration::{CoreStoreMigrator, MigrationClock};
 pub use crate::model::{
     APPLICATION_ID, AccessMode, BackupEvidence, BlockedReason, CURRENT_SCHEMA_VERSION,

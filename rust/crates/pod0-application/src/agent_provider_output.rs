@@ -48,6 +48,9 @@ fn parse_action(
         CreateNote => Ok(AgentToolAction::CreateNote {
             text: required_text(args, "text")?,
         }),
+        RecordMemory => Ok(AgentToolAction::RecordMemory {
+            text: required_text(args, "text")?,
+        }),
         UseSkill => Ok(AgentToolAction::TextInput {
             tool,
             text: required_text(args, "skill_id")?,

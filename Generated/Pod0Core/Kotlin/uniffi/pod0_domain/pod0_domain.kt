@@ -2174,6 +2174,49 @@ public object FfiConverterTypeCommandId: FfiConverterRustBuffer<CommandId> {
 
 
 
+data class CompiledMemoryRecord (
+    val `text`: kotlin.String
+    ,
+    val `compiledAt`: UnixTimestampMilliseconds
+    ,
+    val `sourceMemoryIds`: List<MemoryId>
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCompiledMemoryRecord: FfiConverterRustBuffer<CompiledMemoryRecord> {
+    override fun read(buf: ByteBuffer): CompiledMemoryRecord {
+        return CompiledMemoryRecord(
+            FfiConverterString.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterSequenceTypeMemoryId.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: CompiledMemoryRecord) = (
+            FfiConverterString.allocationSize(value.`text`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`compiledAt`) +
+            FfiConverterSequenceTypeMemoryId.allocationSize(value.`sourceMemoryIds`)
+    )
+
+    override fun write(value: CompiledMemoryRecord, buf: ByteBuffer) {
+            FfiConverterString.write(value.`text`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`compiledAt`, buf)
+            FfiConverterSequenceTypeMemoryId.write(value.`sourceMemoryIds`, buf)
+    }
+}
+
+
+
 /**
  * Exact SHA-256 value represented without a stringly typed hex boundary.
  */
@@ -3097,6 +3140,140 @@ public object FfiConverterTypeListeningPlaybackPolicy: FfiConverterRustBuffer<Li
             FfiConverterBoolean.write(value.`autoMarkPlayedAtNaturalEnd`, buf)
             FfiConverterBoolean.write(value.`autoPlayNext`, buf)
             FfiConverterTypeStateRevision.write(value.`revision`, buf)
+    }
+}
+
+
+
+data class MemoryId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeMemoryId: FfiConverterRustBuffer<MemoryId> {
+    override fun read(buf: ByteBuffer): MemoryId {
+        return MemoryId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: MemoryId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: MemoryId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class MemoryRecord (
+    val `memoryId`: MemoryId
+    ,
+    val `revision`: MemoryRevision
+    ,
+    val `content`: kotlin.String
+    ,
+    val `source`: MemorySource
+    ,
+    val `createdAt`: UnixTimestampMilliseconds
+    ,
+    val `updatedAt`: UnixTimestampMilliseconds
+    ,
+    val `deleted`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeMemoryRecord: FfiConverterRustBuffer<MemoryRecord> {
+    override fun read(buf: ByteBuffer): MemoryRecord {
+        return MemoryRecord(
+            FfiConverterTypeMemoryId.read(buf),
+            FfiConverterTypeMemoryRevision.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeMemorySource.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: MemoryRecord) = (
+            FfiConverterTypeMemoryId.allocationSize(value.`memoryId`) +
+            FfiConverterTypeMemoryRevision.allocationSize(value.`revision`) +
+            FfiConverterString.allocationSize(value.`content`) +
+            FfiConverterTypeMemorySource.allocationSize(value.`source`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`createdAt`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`updatedAt`) +
+            FfiConverterBoolean.allocationSize(value.`deleted`)
+    )
+
+    override fun write(value: MemoryRecord, buf: ByteBuffer) {
+            FfiConverterTypeMemoryId.write(value.`memoryId`, buf)
+            FfiConverterTypeMemoryRevision.write(value.`revision`, buf)
+            FfiConverterString.write(value.`content`, buf)
+            FfiConverterTypeMemorySource.write(value.`source`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`createdAt`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`updatedAt`, buf)
+            FfiConverterBoolean.write(value.`deleted`, buf)
+    }
+}
+
+
+
+data class MemoryRevision (
+    val `value`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeMemoryRevision: FfiConverterRustBuffer<MemoryRevision> {
+    override fun read(buf: ByteBuffer): MemoryRevision {
+        return MemoryRevision(
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: MemoryRevision) = (
+            FfiConverterULong.allocationSize(value.`value`)
+    )
+
+    override fun write(value: MemoryRevision, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`value`, buf)
     }
 }
 
@@ -6604,6 +6781,93 @@ public object FfiConverterTypeListeningDomainError : FfiConverterRustBuffer<List
 
 
 
+sealed class MemorySource {
+
+    object Agent : MemorySource()
+
+
+    object LegacySwift : MemorySource()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : MemorySource()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeMemorySource : FfiConverterRustBuffer<MemorySource>{
+    override fun read(buf: ByteBuffer): MemorySource {
+        return when(buf.getInt()) {
+            1 -> MemorySource.Agent
+            2 -> MemorySource.LegacySwift
+            3 -> MemorySource.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: MemorySource): ULong = when(value) {
+        is MemorySource.Agent -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is MemorySource.LegacySwift -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is MemorySource.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: MemorySource, buf: ByteBuffer) {
+        when(value) {
+            is MemorySource.Agent -> {
+                buf.putInt(1)
+                Unit
+            }
+            is MemorySource.LegacySwift -> {
+                buf.putInt(2)
+                Unit
+            }
+            is MemorySource.Unsupported -> {
+                buf.putInt(3)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 sealed class NoteAuthor {
 
     object User : NoteAuthor()
@@ -9043,6 +9307,34 @@ public object FfiConverterSequenceTypeEpisodeRecord: FfiConverterRustBuffer<List
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeEpisodeRecord.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeMemoryId: FfiConverterRustBuffer<List<MemoryId>> {
+    override fun read(buf: ByteBuffer): List<MemoryId> {
+        val len = buf.getInt()
+        return List<MemoryId>(len) {
+            FfiConverterTypeMemoryId.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<MemoryId>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeMemoryId.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<MemoryId>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeMemoryId.write(it, buf)
         }
     }
 }

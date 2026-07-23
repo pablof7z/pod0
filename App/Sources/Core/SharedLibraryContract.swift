@@ -23,6 +23,7 @@ enum SharedLibraryError: Error, LocalizedError, Equatable {
     case notFound
     case unavailable
     case cancelled
+    case invalidMemory
     case invalidNote
     case invalidClip
     case invalidTranscript
@@ -36,6 +37,7 @@ enum SharedLibraryError: Error, LocalizedError, Equatable {
         case .alreadySubscribed: .alreadySubscribed
         case .notFound: .notFound
         case .cancelled: .cancelled
+        case .invalidMemory: .invalidMemory
         case .invalidNote: .invalidNote
         case .invalidClip: .invalidClip
         case .invalidTranscript: .invalidTranscript
@@ -53,6 +55,7 @@ enum SharedLibraryError: Error, LocalizedError, Equatable {
         case .notFound: "That item is no longer in your library."
         case .unavailable: "Your library is temporarily unavailable."
         case .cancelled: "The library request was cancelled."
+        case .invalidMemory: "That memory is empty or too large."
         case .invalidNote: "The note is empty or contains an invalid anchor."
         case .invalidClip: "That clip has invalid timestamps or transcript context."
         case .invalidTranscript: "That transcript contains invalid timing or provenance."

@@ -19,6 +19,15 @@ fn parses_product_proof_actions_inside_rust() {
     );
     assert_eq!(
         parse_agent_tool_call(&call(
+            "record_memory",
+            r#"{"text":"Prefers primary sources"}"#,
+        )),
+        Ok(AgentToolAction::RecordMemory {
+            text: "Prefers primary sources".into(),
+        })
+    );
+    assert_eq!(
+        parse_agent_tool_call(&call(
             "search_episodes",
             r#"{"query":"architecture","limit":5}"#,
         )),

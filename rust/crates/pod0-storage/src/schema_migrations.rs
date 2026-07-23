@@ -31,6 +31,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../../../schema/migrations/0025_nmp_publications.sql"),
     include_str!("../../../schema/migrations/0026_nostr_signer_state.sql"),
     include_str!("../../../schema/migrations/0027_agent_history_cutover.sql"),
+    include_str!("../../../schema/migrations/0028_agent_memories.sql"),
 ];
 
 pub(crate) fn migration_sql(version: u32) -> Option<&'static str> {

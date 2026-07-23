@@ -231,6 +231,13 @@ enum SharedLibraryBootstrap {
                 source: legacyChatHistory,
                 backupRoot: persistence.legacyAgentHistoryBackupRootURL
             )
+            stage = .agentMemoryCutover
+            try LegacyAgentMemoryCutover.run(
+                facade: facade,
+                persistence: persistence,
+                state: legacyState,
+                backupRoot: persistence.legacyAgentMemoryBackupRootURL
+            )
             let observationOutbox = try NativeHostObservationOutbox(
                 fileURL: persistence.nativeHostObservationOutboxURL
             )

@@ -22,6 +22,11 @@ impl Default for FacadeState {
                 revision: StateRevision::INITIAL,
                 notes: Vec::new(),
             },
+            memories: pod0_storage::MemoryCollectionSnapshot {
+                revision: StateRevision::INITIAL,
+                memories: Vec::new(),
+                compiled: None,
+            },
             clips: pod0_storage::ClipCollectionSnapshot {
                 revision: StateRevision::INITIAL,
                 clips: Vec::new(),

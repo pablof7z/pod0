@@ -645,6 +645,18 @@ public protocol Pod0FacadeProtocol: AnyObject, Sendable {
 
     func stageLegacyDownloadCutover(sourceGeneration: UInt64, candidates: [LegacyDownloadCutoverCandidate])  -> LegacyDownloadCutoverProjection
 
+    func commitLegacyMemoryCutover(sourceGeneration: UInt64)  -> LegacyMemoryCutoverProjection
+
+    func discardStagedLegacyMemoryCutover(sourceGeneration: UInt64)  -> LegacyMemoryCutoverProjection
+
+    func inspectLegacyMemoryCutover(backupDigest: ContentDigest, backupByteCount: UInt64, memories: [LegacyMemoryInput], compiled: LegacyCompiledMemoryInput?)  -> LegacyMemoryCutoverProjection
+
+    func memoryCutover()  -> LegacyMemoryCutoverProjection
+
+    func stageLegacyMemoryCutover(backupDigest: ContentDigest, backupByteCount: UInt64, memories: [LegacyMemoryInput], compiled: LegacyCompiledMemoryInput?)  -> LegacyMemoryCutoverProjection
+
+    func verifyLegacyMemoryCutover(sourceGeneration: UInt64)  -> LegacyMemoryCutoverProjection
+
     func commitLegacyModelChapterCutover(sourceGeneration: UInt64)  -> LegacyModelChapterCutoverProjection
 
     func discardStagedLegacyModelChapterCutover(sourceGeneration: UInt64)  -> LegacyModelChapterCutoverProjection
@@ -866,6 +878,71 @@ open func stageLegacyDownloadCutover(sourceGeneration: UInt64, candidates: [Lega
             self.uniffiCloneHandle(),
         FfiConverterUInt64.lower(sourceGeneration),
         FfiConverterSequenceTypeLegacyDownloadCutoverCandidate.lower(candidates),uniffiCallStatus
+    )
+})
+}
+
+open func commitLegacyMemoryCutover(sourceGeneration: UInt64) -> LegacyMemoryCutoverProjection  {
+    return try!  FfiConverterTypeLegacyMemoryCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_memory_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt64.lower(sourceGeneration),uniffiCallStatus
+    )
+})
+}
+
+open func discardStagedLegacyMemoryCutover(sourceGeneration: UInt64) -> LegacyMemoryCutoverProjection  {
+    return try!  FfiConverterTypeLegacyMemoryCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_memory_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt64.lower(sourceGeneration),uniffiCallStatus
+    )
+})
+}
+
+open func inspectLegacyMemoryCutover(backupDigest: ContentDigest, backupByteCount: UInt64, memories: [LegacyMemoryInput], compiled: LegacyCompiledMemoryInput?) -> LegacyMemoryCutoverProjection  {
+    return try!  FfiConverterTypeLegacyMemoryCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_inspect_legacy_memory_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeContentDigest_lower(backupDigest),
+        FfiConverterUInt64.lower(backupByteCount),
+        FfiConverterSequenceTypeLegacyMemoryInput.lower(memories),
+        FfiConverterOptionTypeLegacyCompiledMemoryInput.lower(compiled),uniffiCallStatus
+    )
+})
+}
+
+open func memoryCutover() -> LegacyMemoryCutoverProjection  {
+    return try!  FfiConverterTypeLegacyMemoryCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_memory_cutover(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+
+open func stageLegacyMemoryCutover(backupDigest: ContentDigest, backupByteCount: UInt64, memories: [LegacyMemoryInput], compiled: LegacyCompiledMemoryInput?) -> LegacyMemoryCutoverProjection  {
+    return try!  FfiConverterTypeLegacyMemoryCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_memory_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeContentDigest_lower(backupDigest),
+        FfiConverterUInt64.lower(backupByteCount),
+        FfiConverterSequenceTypeLegacyMemoryInput.lower(memories),
+        FfiConverterOptionTypeLegacyCompiledMemoryInput.lower(compiled),uniffiCallStatus
+    )
+})
+}
+
+open func verifyLegacyMemoryCutover(sourceGeneration: UInt64) -> LegacyMemoryCutoverProjection  {
+    return try!  FfiConverterTypeLegacyMemoryCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_verify_legacy_memory_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt64.lower(sourceGeneration),uniffiCallStatus
     )
 })
 }
@@ -2256,6 +2333,64 @@ public func FfiConverterTypeLegacyClipImportVerification_lower(_ value: LegacyCl
 }
 
 
+public struct LegacyCompiledMemoryInput: Equatable, Hashable {
+    public let text: String
+    public let compiledAt: UnixTimestampMilliseconds
+    public let sourceMemoryIds: [MemoryId]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(text: String, compiledAt: UnixTimestampMilliseconds, sourceMemoryIds: [MemoryId]) {
+        self.text = text
+        self.compiledAt = compiledAt
+        self.sourceMemoryIds = sourceMemoryIds
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyCompiledMemoryInput: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyCompiledMemoryInput: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyCompiledMemoryInput {
+        return
+            try LegacyCompiledMemoryInput(
+                text: FfiConverterString.read(from: &buf),
+                compiledAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                sourceMemoryIds: FfiConverterSequenceTypeMemoryId.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyCompiledMemoryInput, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.text, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.compiledAt, into: &buf)
+        FfiConverterSequenceTypeMemoryId.write(value.sourceMemoryIds, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyCompiledMemoryInput_lift(_ buf: RustBuffer) throws -> LegacyCompiledMemoryInput {
+    return try FfiConverterTypeLegacyCompiledMemoryInput.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyCompiledMemoryInput_lower(_ value: LegacyCompiledMemoryInput) -> RustBuffer {
+    return FfiConverterTypeLegacyCompiledMemoryInput.lower(value)
+}
+
+
 public struct LegacyDownloadCutoverCandidate: Equatable, Hashable {
     public let episodeId: EpisodeId
     public let origin: DownloadIntentOrigin
@@ -2695,6 +2830,150 @@ public func FfiConverterTypeLegacyListeningImportVerification_lift(_ buf: RustBu
 #endif
 public func FfiConverterTypeLegacyListeningImportVerification_lower(_ value: LegacyListeningImportVerification) -> RustBuffer {
     return FfiConverterTypeLegacyListeningImportVerification.lower(value)
+}
+
+
+public struct LegacyMemoryCutoverProjection: Equatable, Hashable {
+    public let stage: LegacyMemoryCutoverStage
+    public let sourceGeneration: UInt64?
+    public let sourceFingerprint: ContentDigest?
+    public let backupDigest: ContentDigest?
+    public let backupByteCount: UInt64?
+    public let memoryCount: UInt32
+    public let deletedCount: UInt32
+    public let compiledPresent: Bool
+    public let failure: LegacyMemoryCutoverFailureCode?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(stage: LegacyMemoryCutoverStage, sourceGeneration: UInt64?, sourceFingerprint: ContentDigest?, backupDigest: ContentDigest?, backupByteCount: UInt64?, memoryCount: UInt32, deletedCount: UInt32, compiledPresent: Bool, failure: LegacyMemoryCutoverFailureCode?) {
+        self.stage = stage
+        self.sourceGeneration = sourceGeneration
+        self.sourceFingerprint = sourceFingerprint
+        self.backupDigest = backupDigest
+        self.backupByteCount = backupByteCount
+        self.memoryCount = memoryCount
+        self.deletedCount = deletedCount
+        self.compiledPresent = compiledPresent
+        self.failure = failure
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyMemoryCutoverProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyMemoryCutoverProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyMemoryCutoverProjection {
+        return
+            try LegacyMemoryCutoverProjection(
+                stage: FfiConverterTypeLegacyMemoryCutoverStage.read(from: &buf),
+                sourceGeneration: FfiConverterOptionUInt64.read(from: &buf),
+                sourceFingerprint: FfiConverterOptionTypeContentDigest.read(from: &buf),
+                backupDigest: FfiConverterOptionTypeContentDigest.read(from: &buf),
+                backupByteCount: FfiConverterOptionUInt64.read(from: &buf),
+                memoryCount: FfiConverterUInt32.read(from: &buf),
+                deletedCount: FfiConverterUInt32.read(from: &buf),
+                compiledPresent: FfiConverterBool.read(from: &buf),
+                failure: FfiConverterOptionTypeLegacyMemoryCutoverFailureCode.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyMemoryCutoverProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyMemoryCutoverStage.write(value.stage, into: &buf)
+        FfiConverterOptionUInt64.write(value.sourceGeneration, into: &buf)
+        FfiConverterOptionTypeContentDigest.write(value.sourceFingerprint, into: &buf)
+        FfiConverterOptionTypeContentDigest.write(value.backupDigest, into: &buf)
+        FfiConverterOptionUInt64.write(value.backupByteCount, into: &buf)
+        FfiConverterUInt32.write(value.memoryCount, into: &buf)
+        FfiConverterUInt32.write(value.deletedCount, into: &buf)
+        FfiConverterBool.write(value.compiledPresent, into: &buf)
+        FfiConverterOptionTypeLegacyMemoryCutoverFailureCode.write(value.failure, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyMemoryCutoverProjection_lift(_ buf: RustBuffer) throws -> LegacyMemoryCutoverProjection {
+    return try FfiConverterTypeLegacyMemoryCutoverProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyMemoryCutoverProjection_lower(_ value: LegacyMemoryCutoverProjection) -> RustBuffer {
+    return FfiConverterTypeLegacyMemoryCutoverProjection.lower(value)
+}
+
+
+public struct LegacyMemoryInput: Equatable, Hashable {
+    public let memoryId: MemoryId
+    public let content: String
+    public let createdAt: UnixTimestampMilliseconds
+    public let deleted: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(memoryId: MemoryId, content: String, createdAt: UnixTimestampMilliseconds, deleted: Bool) {
+        self.memoryId = memoryId
+        self.content = content
+        self.createdAt = createdAt
+        self.deleted = deleted
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyMemoryInput: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyMemoryInput: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyMemoryInput {
+        return
+            try LegacyMemoryInput(
+                memoryId: FfiConverterTypeMemoryId.read(from: &buf),
+                content: FfiConverterString.read(from: &buf),
+                createdAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                deleted: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyMemoryInput, into buf: inout [UInt8]) {
+        FfiConverterTypeMemoryId.write(value.memoryId, into: &buf)
+        FfiConverterString.write(value.content, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.createdAt, into: &buf)
+        FfiConverterBool.write(value.deleted, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyMemoryInput_lift(_ buf: RustBuffer) throws -> LegacyMemoryInput {
+    return try FfiConverterTypeLegacyMemoryInput.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyMemoryInput_lower(_ value: LegacyMemoryInput) -> RustBuffer {
+    return FfiConverterTypeLegacyMemoryInput.lower(value)
 }
 
 
@@ -5207,6 +5486,166 @@ public func FfiConverterTypeLegacyListeningSourceKind_lower(_ value: LegacyListe
 
 
 
+public enum LegacyMemoryCutoverFailureCode: Equatable, Hashable {
+
+    case invalidSource
+    case conflictingCoreState
+    case storageUnavailable
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyMemoryCutoverFailureCode: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyMemoryCutoverFailureCode: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyMemoryCutoverFailureCode
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyMemoryCutoverFailureCode {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .invalidSource
+
+        case 2: return .conflictingCoreState
+
+        case 3: return .storageUnavailable
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyMemoryCutoverFailureCode, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .invalidSource:
+            writeInt(&buf, Int32(1))
+
+
+        case .conflictingCoreState:
+            writeInt(&buf, Int32(2))
+
+
+        case .storageUnavailable:
+            writeInt(&buf, Int32(3))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyMemoryCutoverFailureCode_lift(_ buf: RustBuffer) throws -> LegacyMemoryCutoverFailureCode {
+    return try FfiConverterTypeLegacyMemoryCutoverFailureCode.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyMemoryCutoverFailureCode_lower(_ value: LegacyMemoryCutoverFailureCode) -> RustBuffer {
+    return FfiConverterTypeLegacyMemoryCutoverFailureCode.lower(value)
+}
+
+
+
+
+public enum LegacyMemoryCutoverStage: Equatable, Hashable {
+
+    case notStarted
+    case staged
+    case verified
+    case authoritative
+    case blocked
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyMemoryCutoverStage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyMemoryCutoverStage: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyMemoryCutoverStage
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyMemoryCutoverStage {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .notStarted
+
+        case 2: return .staged
+
+        case 3: return .verified
+
+        case 4: return .authoritative
+
+        case 5: return .blocked
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyMemoryCutoverStage, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .notStarted:
+            writeInt(&buf, Int32(1))
+
+
+        case .staged:
+            writeInt(&buf, Int32(2))
+
+
+        case .verified:
+            writeInt(&buf, Int32(3))
+
+
+        case .authoritative:
+            writeInt(&buf, Int32(4))
+
+
+        case .blocked:
+            writeInt(&buf, Int32(5))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyMemoryCutoverStage_lift(_ buf: RustBuffer) throws -> LegacyMemoryCutoverStage {
+    return try FfiConverterTypeLegacyMemoryCutoverStage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyMemoryCutoverStage_lower(_ value: LegacyMemoryCutoverStage) -> RustBuffer {
+    return FfiConverterTypeLegacyMemoryCutoverStage.lower(value)
+}
+
+
+
+
 public enum LegacyModelChapterCutoverDisposition: Equatable, Hashable {
 
     case succeeded(artifactId: ChapterArtifactId, contentDigest: ContentDigest, integrityDigest: ContentDigest, selectionRevision: StateRevision
@@ -6872,6 +7311,30 @@ fileprivate struct FfiConverterOptionTypeLegacyChapterRollbackExportReport: FfiC
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeLegacyCompiledMemoryInput: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyCompiledMemoryInput?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeLegacyCompiledMemoryInput.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeLegacyCompiledMemoryInput.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeLegacyDownloadCutoverFailure: FfiConverterRustBuffer {
     typealias SwiftType = LegacyDownloadCutoverFailure?
 
@@ -7016,6 +7479,30 @@ fileprivate struct FfiConverterOptionTypeScheduledAgentExecutionObservation: Ffi
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeLegacyMemoryCutoverFailureCode: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyMemoryCutoverFailureCode?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeLegacyMemoryCutoverFailureCode.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeLegacyMemoryCutoverFailureCode.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceUInt32: FfiConverterRustBuffer {
     typealias SwiftType = [UInt32]
 
@@ -7141,6 +7628,31 @@ fileprivate struct FfiConverterSequenceTypeClipRecord: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeMemoryId: FfiConverterRustBuffer {
+    typealias SwiftType = [MemoryId]
+
+    public static func write(_ value: [MemoryId], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeMemoryId.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [MemoryId] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [MemoryId]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeMemoryId.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer {
     typealias SwiftType = [NoteRecord]
 
@@ -7183,6 +7695,31 @@ fileprivate struct FfiConverterSequenceTypeLegacyDownloadCutoverCandidate: FfiCo
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeLegacyDownloadCutoverCandidate.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeLegacyMemoryInput: FfiConverterRustBuffer {
+    typealias SwiftType = [LegacyMemoryInput]
+
+    public static func write(_ value: [LegacyMemoryInput], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeLegacyMemoryInput.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [LegacyMemoryInput] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [LegacyMemoryInput]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeLegacyMemoryInput.read(from: &buf))
         }
         return seq
     }
@@ -7947,6 +8484,24 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_download_cutover() != 2411) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_memory_cutover() != 24077) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_memory_cutover() != 7750) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_inspect_legacy_memory_cutover() != 19541) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_memory_cutover() != 60138) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_memory_cutover() != 53120) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_memory_cutover() != 30698) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_model_chapter_cutover() != 7355) {

@@ -105,6 +105,7 @@ mod knowledge_ranking;
 mod knowledge_ranking_tests;
 #[cfg(test)]
 mod knowledge_test_fixture;
+mod memory_contract;
 mod note_contract;
 mod publication;
 mod recall_contract;
@@ -169,6 +170,7 @@ pub use host_cancellation::*;
 pub use knowledge::*;
 pub use knowledge_chunking::*;
 pub use knowledge_ranking::*;
+pub use memory_contract::*;
 pub use note_contract::*;
 pub use publication::*;
 pub use recall_contract::*;
