@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-23T11:28:34Z",
+      "lines": [
+        "Pod0 now stops safely instead of replacing your data when startup recovery is needed."
+      ]
+    },
+    {
       "shipped_at": "2026-07-23T10:39:44Z",
       "lines": [
         "Your earlier Agent conversations now join the same durable history as new chats."

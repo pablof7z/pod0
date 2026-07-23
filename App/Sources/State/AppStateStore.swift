@@ -16,6 +16,7 @@ final class AppStateStore {
     let productSignals: any ProductSignalSink
     @ObservationIgnored private(set) var sharedLibrary: SharedLibraryClient?
     @ObservationIgnored private(set) var sharedLibraryUnavailableReason: String?
+    @ObservationIgnored private(set) var startupRecoveryRequired = false
     var recallConfigurationRevision: UInt64 = 0
     var transcriptReader: any TranscriptReading {
         sharedLibrary?.authoritativeTranscriptReader ?? UnavailableTranscriptReader.shared
@@ -41,6 +42,10 @@ final class AppStateStore {
 
     /// The only write gate for companion store extensions and test fixtures.
     func mutateState(_ mutation: (inout AppState) -> Void) {
+        guard !startupRecoveryRequired else {
+            Self.logger.error("Blocked native state mutation while startup recovery is required")
+            return
+        }
         var updated = state
         mutation(&updated)
         state = updated
@@ -125,6 +130,7 @@ final class AppStateStore {
         syncSettingsWithICloud = persistence === Persistence.shared
         self.productSignals = productSignals
         var loadedState: AppState
+        var startupLoadFailed = false
         do {
             let chapterAuthorityActive = FileManager.default.fileExists(
                 atPath: persistence.sharedCoreStoreURL.path
@@ -135,11 +141,25 @@ final class AppStateStore {
                 loadLegacyChapterAdjuncts: !chapterAuthorityActive
             )
         } catch {
-            Self.logger.error("Persistence.load failed: \(error, privacy: .public) — starting with empty state")
-            Task { await productSignals.record(.init(
-                name: .dataLossEvidence, outcome: .detected, errorClass: .corruptArtifact
-            )) }
+            Self.logger.error(
+                "Persistence.load failed; startup is blocked and persisted data is untouched"
+            )
+            startupLoadFailed = true
             loadedState = AppState()
+        }
+        if startupLoadFailed {
+            self.state = loadedState
+            startupRecoveryRequired = true
+            sharedLibraryUnavailableReason = "app_state_recovery_required"
+            Task {
+                await productSignals.record(.init(
+                    name: .dataLossEvidence,
+                    outcome: .detected,
+                    errorClass: .corruptArtifact
+                ))
+            }
+            recomputeEpisodeProjections()
+            return
         }
         Self.migrateLegacyOpenRouterSecretIfNeeded(in: &loadedState, persistence: persistence)
         // Strip synthetic external-playback podcasts written by an earlier
