@@ -167,10 +167,7 @@ final class Persistence: Sendable {
             do {
                 _ = try JobStore(fileURL: episodeStore.fileURL).ensureJobs(jobs)
                 saveCounter.withLock { $0 += 1 }
-                NotificationCenter.default.post(
-                    name: .persistenceDidCommitWorkflowJobs,
-                    object: self
-                )
+                publishWorkflowCommitIfNeeded(for: jobs)
                 return true
             } catch {
                 Self.logger.error("Persistence.save: stale snapshot job commit failed: \(error, privacy: .public)")
@@ -226,7 +223,7 @@ final class Persistence: Sendable {
 
         lastWrittenRevision.withLock { $0 = max($0, writeRevision) }
         saveCounter.withLock { $0 += 1 }
-        NotificationCenter.default.post(name: .persistenceDidCommitWorkflowJobs, object: self)
+        publishWorkflowCommitIfNeeded(for: jobs)
         Self.logger.info("Persistence.save: metadata bytes=\(metadata.count, privacy: .public)")
         return true
     }

@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-23T00:13:04Z",
+      "lines": [
+        "Podcast library updates now settle immediately without triggering repeated background work."
+      ]
+    },
+    {
       "shipped_at": "2026-07-22T21:28:45Z",
       "lines": [
         "Scheduled agents now preserve their tasks and recover safely across app relaunches, with reliable retry and cancel controls."

@@ -249,7 +249,6 @@ final class JobStoreCoordinatorTests: XCTestCase {
         let lanes: [(WorkJobKind, WorkResourceClass, Int)] = [
             (.feedDiscovery, .planning, 1),
             (.metadataIndex, .embedding, 4),
-            (.scheduledAgentRun, .scheduledAgent, 2),
             (.newEpisodeNotification, .notification, 5),
         ]
         var desired: [DesiredJob] = []

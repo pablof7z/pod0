@@ -6,12 +6,17 @@ extension SharedLibraryClient {
         lastLibraryRevision = envelope.stateRevision.value
         let previous = cachedSnapshot
         let snapshot = loadAllPages()
+        let readModelChanged = previous.map { !$0.hasSameReadModel(as: snapshot) } ?? true
         cachedSnapshot = snapshot
-        store?.applySharedLibrary(snapshot)
-        announcePublisherSourceChanges(previous: previous, current: snapshot)
+        if readModelChanged {
+            store?.applySharedLibrary(snapshot)
+            announcePublisherSourceChanges(previous: previous, current: snapshot)
+        }
         resolveWaiters(snapshot.operations)
         dispatcher.executePendingRequests(from: facade)
-        WorkflowRuntime.shared.wake()
+        if readModelChanged {
+            WorkflowRuntime.shared.wake()
+        }
     }
 
     func loadAllPages() -> SharedLibrarySnapshot {

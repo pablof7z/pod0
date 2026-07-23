@@ -16,8 +16,8 @@
   "baseline_issue": 68,
   "baseline_reason": "Existing 300-500 line source is visible soft-limit debt and may not grow; a decrease must ratchet the recorded ceiling down.",
   "soft_baseline": {
-    "App/Sources/State/Persistence.swift": 376,
-    "AppTests/Sources/JobStoreCoordinatorTests.swift": 469,
+    "App/Sources/State/Persistence.swift": 373,
+    "AppTests/Sources/JobStoreCoordinatorTests.swift": 468,
     "App/Sources/Domain/Settings.swift": 472,
     "App/Sources/Transcript/AssemblyAITranscriptClient.swift": 374,
     "App/Sources/Features/Settings/AI/LLMSettingsView.swift": 467,

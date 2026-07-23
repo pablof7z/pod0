@@ -658,6 +658,7 @@
 		CDB100884F7D6401D48E2D00 /* PlayerTranscriptSegmentLookupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 574940F418CB3142E21DDC23 /* PlayerTranscriptSegmentLookupTests.swift */; };
 		CE051C2D2065BA8CFCB1D18B /* SharedLibraryContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25206F18FE519CE42CB20453 /* SharedLibraryContract.swift */; };
 		CE299C1C9AB3D6D698FAD478 /* ShowDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00F1446278E2E9DDBE5DB5B9 /* ShowDetailView.swift */; };
+		CE4D46D0FF0EE385B4C2D588 /* PersistenceWorkflowNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FD6981186C8E44FBA86CEC4 /* PersistenceWorkflowNotificationTests.swift */; };
 		CE51DF28B0C5D31B1D29FF8E /* YouTubeAudioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82535EB946036E137F65771D /* YouTubeAudioService.swift */; };
 		CE94D022B0EC5DB5293B7FC5 /* Pod0NativeHostDispatcherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8BF1F2397F4EBFFE901336D /* Pod0NativeHostDispatcherTests.swift */; };
 		CEC8D00470642C20C513B190 /* ChapterObservationCapability.swift in Sources */ = {isa = PBXBuildFile; fileRef = 834B41D0CDA5C98AB1725B95 /* ChapterObservationCapability.swift */; };
@@ -1063,7 +1064,7 @@
 		31822DD58237A18EDF0122A4 /* AppStateStore+Subscriptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+Subscriptions.swift"; sourceTree = "<group>"; };
 		31927B4E3DA07C4DCFCB2216 /* AgentChatHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentChatHistoryView.swift; sourceTree = "<group>"; };
 		325AAE8B62A04BEFC34A5FB0 /* AppStateStore+Podcasts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+Podcasts.swift"; sourceTree = "<group>"; };
-		3266ABF27DC6701CC2EC309E /* Pod0CoreFFI.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = Pod0CoreFFI.xcframework; path = /Users/customer/Work/pod0/.build/pod0core/Pod0CoreFFI.xcframework; sourceTree = "<absolute>"; };
+		3266ABF27DC6701CC2EC309E /* Pod0CoreFFI.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = Pod0CoreFFI.xcframework; path = .build/pod0core/Pod0CoreFFI.xcframework; sourceTree = SOURCE_ROOT; };
 		32BA9F68161E0734342D5828 /* AgentPicksService+Cache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AgentPicksService+Cache.swift"; sourceTree = "<group>"; };
 		32D6DCC3AC57739150675344 /* AppTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTests.swift; sourceTree = "<group>"; };
 		340726ACF6BF802DE9AFEAA2 /* ArtifactRepository+SQLite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ArtifactRepository+SQLite.swift"; sourceTree = "<group>"; };
@@ -1106,6 +1107,7 @@
 		3F299D629CF7D03BC67BAFE4 /* Pod0NativeHostDispatcher+Feed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Pod0NativeHostDispatcher+Feed.swift"; sourceTree = "<group>"; };
 		3F85253D78B28686092A7D36 /* HomeAgentPickShimmerCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeAgentPickShimmerCard.swift; sourceTree = "<group>"; };
 		3FB5C8B3B5FECD3B9BA4DF35 /* SharedLibraryBootstrap+Transcripts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SharedLibraryBootstrap+Transcripts.swift"; sourceTree = "<group>"; };
+		3FD6981186C8E44FBA86CEC4 /* PersistenceWorkflowNotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceWorkflowNotificationTests.swift; sourceTree = "<group>"; };
 		3FEE9A7B2E816DA7D7D12662 /* ElevenLabsTTSPreviewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElevenLabsTTSPreviewService.swift; sourceTree = "<group>"; };
 		4049A801101833D0EAC89954 /* ElevenLabsTTSClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElevenLabsTTSClient.swift; sourceTree = "<group>"; };
 		406DDFE05B5B09CE544916D1 /* SavedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedView.swift; sourceTree = "<group>"; };
@@ -2607,6 +2609,7 @@
 				FDE4204B8EE4F82AE15FB6E0 /* OPMLExportTests.swift */,
 				107A4F56C8B628B04E067F78 /* OPMLImportTests.swift */,
 				2A29ADBE2A4052A77C0BA411 /* PersistenceDurabilityTests.swift */,
+				3FD6981186C8E44FBA86CEC4 /* PersistenceWorkflowNotificationTests.swift */,
 				EF9E66C5E53CB0271421BAAA /* PlaybackLifecycleQualificationTests.swift */,
 				D3B26E781D85D5AE64D68D81 /* PlaybackSleepTimerLabelTests.swift */,
 				7F319A8B26D1ABEED3F65F36 /* PlaybackStateAudioCallbackTests.swift */,
@@ -3943,6 +3946,7 @@
 				BBC61B0CFEA61C9CFCE9F636 /* OPMLExportTests.swift in Sources */,
 				641F2588DE631E18F6DCC548 /* OPMLImportTests.swift in Sources */,
 				9233C00D5F2FB69038566D40 /* PersistenceDurabilityTests.swift in Sources */,
+				CE4D46D0FF0EE385B4C2D588 /* PersistenceWorkflowNotificationTests.swift in Sources */,
 				DB10B5AD9F69EEF1856576D7 /* PlaybackLifecycleQualificationTests.swift in Sources */,
 				961A89E9FA7759A554D5113E /* PlaybackSleepTimerLabelTests.swift in Sources */,
 				04495CC569ED1DFDD14E35C1 /* PlaybackStateAudioCallbackTests.swift in Sources */,

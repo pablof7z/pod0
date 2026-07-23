@@ -7,6 +7,13 @@ struct SharedLibrarySnapshot {
     let episodes: [EpisodeRecord]
     let chaptersByEpisodeID: [UUID: SharedChapterSnapshot]
     let operations: [OperationProjection]
+
+    func hasSameReadModel(as other: SharedLibrarySnapshot) -> Bool {
+        podcasts == other.podcasts
+            && subscriptions == other.subscriptions
+            && episodes == other.episodes
+            && chaptersByEpisodeID == other.chaptersByEpisodeID
+    }
 }
 
 enum SharedLibraryError: Error, LocalizedError, Equatable {

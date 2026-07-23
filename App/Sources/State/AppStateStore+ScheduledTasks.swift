@@ -8,6 +8,7 @@ extension AppStateStore {
     /// Replaces the native read model from the typed Rust projection.
     /// Persistence strips this cache once shared scheduled authority is active.
     func applySharedScheduledTasks(_ tasks: [AgentScheduledTask]) {
+        guard state.agentScheduledTasks != tasks else { return }
         mutateState { $0.agentScheduledTasks = tasks }
     }
 
