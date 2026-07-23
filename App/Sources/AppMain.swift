@@ -13,6 +13,7 @@ struct PodcastrApp: App {
     @State private var askCoordinator = AgentAskCoordinator()
     @State private var approvalCoordinator = AgentApprovalCoordinator()
     @State private var workflows = WorkflowClient()
+    @State private var suspensionPersistence = AppSuspensionPersistenceCoordinator()
 
     // MARK: - What's-new sheet wiring
     //
@@ -42,6 +43,11 @@ struct PodcastrApp: App {
                 .task { await workflows.startAndReconcile() }
                 .onChange(of: scenePhase, initial: true) { _, phase in
                     Task { await ProductSignalStore.shared.setSessionActive(phase == .active) }
+                    if phase == .background {
+                        suspensionPersistence.persistForSuspension {
+                            await store.flushForSuspension()
+                        }
+                    }
                 }
                 .task {
                     // Seed a fresh install silently so the first launch

@@ -21,6 +21,18 @@ final class AppStateStartupRecoveryTests: XCTestCase {
         XCTAssertEqual(try persistence.episodeStore.loadGeneration(), 7)
 
         store.mutateState { $0.settings.hasCompletedOnboarding = true }
+        let blockedJob = DesiredJob(
+            idempotencyKey: "startup-recovery:blocked",
+            kind: .scheduledAgentRun,
+            subjectID: UUID(),
+            inputVersion: "startup-recovery:blocked",
+            occurrenceID: "startup-recovery:blocked",
+            resourceClass: .scheduledAgent
+        )
+        store.mutateState(ensuring: [blockedJob]) {
+            $0.settings.hasCompletedOnboarding = true
+        }
+        XCTAssertTrue(store.pendingAtomicJobs.isEmpty)
         XCTAssertEqual(try persistence.episodeStore.loadMetadata(), corrupt)
         XCTAssertEqual(try persistence.episodeStore.loadGeneration(), 7)
         XCTAssertThrowsError(try persistence.load())

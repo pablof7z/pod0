@@ -55,4 +55,14 @@ extension AppStateStore {
         mutateState { $0.settings = settings }
         if chapterModelChanged { WorkflowRuntime.shared.wake() }
     }
+
+    /// Captures the latest unmigrated native state and awaits its authoritative
+    /// SQLite commit before iOS suspends the process.
+    func flushForSuspension() async -> Bool {
+        guard !startupRecoveryRequired, sharedLibraryUnavailableReason == nil else {
+            Self.logger.error("Skipped suspension flush while persistence recovery is required")
+            return false
+        }
+        return await persistence.flush(state)
+    }
 }

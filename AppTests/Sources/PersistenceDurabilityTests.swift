@@ -33,9 +33,11 @@ final class PersistenceDurabilityTests: XCTestCase {
         var newest = stale
         newest.settings.hasCompletedOnboarding = true
 
-        await writer.enqueue(revision: 1, state: stale, jobs: [], persistence: persistence)
+        writer.accept(revision: 1, state: stale, jobs: [])
+        await writer.start(persistence: persistence)
         while !gate.hasEntered { await Task.yield() }
-        await writer.enqueue(revision: 2, state: newest, jobs: [], persistence: persistence)
+        writer.accept(revision: 2, state: newest, jobs: [])
+        await writer.start(persistence: persistence)
         gate.release()
 
         let written = await writer.waitUntilWritten(2)
@@ -43,59 +45,6 @@ final class PersistenceDurabilityTests: XCTestCase {
         let loaded = try Persistence(fileURL: url).load()
         XCTAssertTrue(loaded.settings.hasCompletedOnboarding)
         XCTAssertEqual(loaded.persistenceGeneration, 2)
-    }
-
-    func testSaveAllocatedRevisionsSurviveReversedProductionEnqueueOrder() async throws {
-        let url = AppStateTestSupport.uniqueTempFileURL()
-        defer { AppStateTestSupport.disposeIsolatedStore(at: url) }
-        let gate = RevisionEnqueueGate(blockingRevision: 1)
-        let persistence = Persistence(
-            fileURL: url,
-            writeMode: .background,
-            beforeBackgroundEnqueue: { revision in await gate.waitIfBlocked(revision) }
-        )
-        var first = AppState()
-        first.settings.hasCompletedOnboarding = false
-        var second = first
-        second.settings.hasCompletedOnboarding = true
-        let occurrence = DesiredJob(
-            idempotencyKey: "scheduled:reversed-save",
-            kind: .scheduledAgentRun,
-            subjectID: UUID(),
-            inputVersion: "scheduled:reversed-save",
-            occurrenceID: "scheduled:reversed-save",
-            resourceClass: .scheduledAgent
-        )
-
-        let firstRevision = persistence.save(first, ensuring: [occurrence])
-        XCTAssertEqual(firstRevision, 1)
-        while !(await gate.hasEntered) { await Task.yield() }
-        let secondRevision = persistence.save(second)
-        XCTAssertEqual(secondRevision, 2)
-        let wroteSecond = await persistence.waitUntilWritten(secondRevision)
-        XCTAssertTrue(wroteSecond)
-        await gate.release()
-        let jobStore = JobStore(fileURL: Persistence.episodeStoreURL(for: url))
-        var persistedOccurrence: WorkJob?
-        for _ in 0..<100 where persistedOccurrence == nil {
-            persistedOccurrence = try jobStore.job(
-                idempotencyKey: occurrence.idempotencyKey
-            )
-            if persistedOccurrence == nil {
-                try await Task.sleep(for: .milliseconds(5))
-            }
-        }
-
-        let loaded = try Persistence(fileURL: url).load()
-        XCTAssertTrue(loaded.settings.hasCompletedOnboarding)
-        XCTAssertEqual(loaded.persistenceGeneration, secondRevision)
-        XCTAssertEqual(persistedOccurrence?.state, .pending)
-        XCTAssertEqual(
-            try jobStore.allJobs().filter {
-                $0.idempotencyKey == occurrence.idempotencyKey
-            }.count,
-            1
-        )
     }
 
     func testBackgroundFlushAwaitsAuthoritativeRevision() async throws {
@@ -319,27 +268,6 @@ final class PersistenceDurabilityTests: XCTestCase {
 }
 
 private enum InjectedPersistenceFault: Error { case expected }
-
-private actor RevisionEnqueueGate {
-    let blockingRevision: UInt64
-    private(set) var hasEntered = false
-    private var continuation: CheckedContinuation<Void, Never>?
-
-    init(blockingRevision: UInt64) {
-        self.blockingRevision = blockingRevision
-    }
-
-    func waitIfBlocked(_ revision: UInt64) async {
-        guard revision == blockingRevision else { return }
-        hasEntered = true
-        await withCheckedContinuation { continuation = $0 }
-    }
-
-    func release() {
-        continuation?.resume()
-        continuation = nil
-    }
-}
 
 private final class PersistenceFaultGate: @unchecked Sendable {
     private let lock = NSLock()

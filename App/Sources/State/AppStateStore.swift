@@ -52,6 +52,10 @@ final class AppStateStore {
     }
 
     func mutateState(ensuring jobs: [DesiredJob], _ mutation: (inout AppState) -> Void) {
+        guard !startupRecoveryRequired else {
+            Self.logger.error("Blocked native job mutation while startup recovery is required")
+            return
+        }
         pendingAtomicJobs.append(contentsOf: jobs)
         mutateState(mutation)
     }

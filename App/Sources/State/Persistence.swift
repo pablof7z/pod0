@@ -42,7 +42,7 @@ final class Persistence: Sendable {
     let episodeStore: EpisodeSQLiteStore
     private let writeMode: WriteMode
     private let beforeBackgroundEnqueue: @Sendable (UInt64) async -> Void
-    private let backgroundWriter = PersistenceBackgroundWriter()
+    let backgroundWriter = PersistenceBackgroundWriter()
     let writeLock = NSLock()
     let revision = OSAllocatedUnfairLock<UInt64>(initialState: 0)
     let lastWrittenRevision = OSAllocatedUnfairLock<UInt64>(initialState: 0)
@@ -113,14 +113,10 @@ final class Persistence: Sendable {
         case .background:
             let writer = backgroundWriter
             let enqueueBarrier = beforeBackgroundEnqueue
-            Task.detached(priority: .utility) { [snapshot, writer] in
+            writer.accept(revision: nextRevision, state: snapshot, jobs: jobs)
+            Task.detached(priority: .utility) { [writer] in
                 await enqueueBarrier(nextRevision)
-                await writer.enqueue(
-                    revision: nextRevision,
-                    state: snapshot,
-                    jobs: jobs,
-                    persistence: self
-                )
+                await writer.start(persistence: self)
             }
         }
         return nextRevision
@@ -131,6 +127,7 @@ final class Persistence: Sendable {
         case .immediate:
             return lastWrittenRevision.withLock { $0 >= revision }
         case .background:
+            await backgroundWriter.start(persistence: self)
             return await backgroundWriter.waitUntilWritten(revision)
         }
     }
@@ -143,6 +140,7 @@ final class Persistence: Sendable {
         guard writeMode == .background else {
             return lastWrittenRevision.withLock { $0 >= flushRevision }
         }
+        await backgroundWriter.start(persistence: self)
         return await backgroundWriter.waitUntilWritten(flushRevision)
     }
 
