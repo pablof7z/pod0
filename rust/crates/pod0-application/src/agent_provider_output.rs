@@ -89,6 +89,12 @@ fn parse_action(
         SetSleepTimer => Ok(AgentToolAction::SetSleepTimer {
             duration_milliseconds: sleep_timer_duration(args)?,
         }),
+        GenerateTtsEpisode => Ok(AgentToolAction::GenerateTtsEpisode {
+            podcast_id: optional_opaque_id(args, "podcast_id", PodcastId::from_bytes)?,
+            title: required_text(args, "title")?,
+            script: required_text(args, "script")?,
+            voice_id: optional_text(args, "voice_id")?,
+        }),
         _ => Err(AgentProviderOutputError::UnsupportedTool),
     }
 }

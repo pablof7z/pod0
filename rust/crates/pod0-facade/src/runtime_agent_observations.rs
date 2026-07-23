@@ -1,14 +1,16 @@
 use pod0_application::{
     AgentActionObservation, AgentActionOutcome, AgentAuthorizationObservation,
-    AgentModelObservation, AgentTurnStage, AgentWorkflowAcceptance, HostObservation,
-    HostObservationEnvelope, HostObservationReceipt, HostObservationRejection,
+    AgentCapabilityOutcome, AgentModelObservation, AgentTurnStage, AgentWorkflowAcceptance,
+    HostObservation, HostObservationEnvelope, HostObservationReceipt, HostObservationRejection,
     parse_agent_tool_call,
 };
 use pod0_domain::{CommandId, HostRequestId};
 use pod0_storage::{AgentAuditKind, AgentStore, StorageError};
 
+use crate::runtime_agent_modules::generated_audio::commit_generated_audio_observation;
 use crate::runtime_agent_modules::identity::agent_authorization_id;
 use crate::runtime_agent_modules::identity::continuation_model_fence_id;
+use crate::runtime_agent_modules::observation_failure::fail_invalid_model_action;
 use crate::runtime_agent_modules::observation_values::{
     is_terminal, map_capability_outcome, rejected, retain,
 };
@@ -64,6 +66,16 @@ impl FacadeState {
             .and_then(|state| self.fold_agent_observation(&store, state, &envelope));
         match result {
             Ok(state) => {
+                if matches!(
+                    envelope.observation,
+                    HostObservation::AgentCapabilityObserved {
+                        outcome: AgentCapabilityOutcome::GeneratedAudioStaged { .. },
+                        ..
+                    }
+                ) && self.reload_listening().is_err()
+                {
+                    return retain(request_id);
+                }
                 let stage = state.projection().stage;
                 let next = match stage {
                     AgentTurnStage::AwaitingModel => {
@@ -108,6 +120,26 @@ impl FacadeState {
         mut state: pod0_application::AgentTurnState,
         envelope: &HostObservationEnvelope,
     ) -> Result<pod0_application::AgentTurnState, StorageError> {
+        if let HostObservation::AgentCapabilityObserved {
+            proposal_id,
+            execution_fence_id,
+            outcome: AgentCapabilityOutcome::GeneratedAudioStaged { .. },
+            ..
+        } = &envelope.observation
+        {
+            return commit_generated_audio_observation(
+                store,
+                state,
+                envelope.request_id,
+                *proposal_id,
+                *execution_fence_id,
+                match &envelope.observation {
+                    HostObservation::AgentCapabilityObserved { outcome, .. } => outcome,
+                    _ => unreachable!(),
+                },
+                envelope.observed_at,
+            );
+        }
         let before = state.projection();
         let (acceptance, audit_kind, fingerprint_domain) = match &envelope.observation {
             HostObservation::AgentModelCompleted {
@@ -173,16 +205,20 @@ impl FacadeState {
                 execution_fence_id,
                 outcome,
                 ..
-            } => (
-                state.observe_action(AgentActionObservation {
-                    proposal_id: *proposal_id,
-                    execution_fence_id: *execution_fence_id,
-                    outcome: map_capability_outcome(outcome.clone()),
-                    observed_at: envelope.observed_at,
-                }),
-                AgentAuditKind::ActionObserved,
-                b"pod0:agent-capability-observation:v1".as_slice(),
-            ),
+            } => {
+                let outcome = map_capability_outcome(outcome.clone())
+                    .ok_or(StorageError::AgentTurnConflict)?;
+                (
+                    state.observe_action(AgentActionObservation {
+                        proposal_id: *proposal_id,
+                        execution_fence_id: *execution_fence_id,
+                        outcome,
+                        observed_at: envelope.observed_at,
+                    }),
+                    AgentAuditKind::ActionObserved,
+                    b"pod0:agent-capability-observation:v1".as_slice(),
+                )
+            }
             HostObservation::Failed { safe_detail, .. }
                 if before.stage == AgentTurnStage::AwaitingModel =>
             {
@@ -252,26 +288,4 @@ impl FacadeState {
             envelope.observed_at,
         )
     }
-}
-
-fn fail_invalid_model_action(
-    store: &AgentStore,
-    mut state: pod0_application::AgentTurnState,
-    envelope: &HostObservationEnvelope,
-    expected_revision: pod0_domain::StateRevision,
-) -> Result<pod0_application::AgentTurnState, StorageError> {
-    if state.fail_model(Some("invalid_tool_action".into()), envelope.observed_at)
-        != AgentWorkflowAcceptance::Updated
-    {
-        return Err(StorageError::AgentTurnConflict);
-    }
-    persist_agent_update(
-        store,
-        CommandId::from_bytes(envelope.request_id.into_bytes()),
-        b"pod0:agent-model-invalid-action:v1",
-        AgentAuditKind::ModelObserved,
-        expected_revision,
-        state,
-        envelope.observed_at,
-    )
 }

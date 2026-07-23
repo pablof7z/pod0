@@ -22,12 +22,4 @@ extension AppStateStore {
             starred: starred
         ))
     }
-
-    /// Temporary agent-domain adjunct. Episode identity and durable library
-    /// metadata remain core-owned; issue #60 moves this provenance into Rust.
-    func setEpisodeGenerationSource(_ id: UUID, source: Episode.GenerationSource?) {
-        guard let idx = state.episodes.firstIndex(where: { $0.id == id }) else { return }
-        guard state.episodes[idx].generationSource != source else { return }
-        mutateState { $0.episodes[idx].generationSource = source }
-    }
 }

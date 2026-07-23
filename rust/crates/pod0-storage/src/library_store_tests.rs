@@ -282,5 +282,6 @@ fn refreshed_episode(podcast_id: PodcastId, guid: &str) -> EpisodeRecord {
         is_starred: false,
         download: DownloadArtifactStatus::Unavailable,
         transcript: TranscriptArtifactStatus::Unavailable,
+        generated_audio: None,
     }
 }

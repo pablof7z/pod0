@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+mod agent_generated_audio_store;
 mod agent_store;
 mod agent_store_codec;
 mod agent_store_history;

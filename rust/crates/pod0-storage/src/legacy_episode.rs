@@ -76,6 +76,7 @@ fn episode(payload: &[u8], index: u32) -> Result<EpisodeRecord, StorageError> {
         is_starred: raw.is_starred,
         download: download(raw.download_state.as_ref(), &episode_bytes, index)?,
         transcript: transcript(raw.transcript_state.as_ref(), &episode_bytes, index)?,
+        generated_audio: None,
     })
 }
 

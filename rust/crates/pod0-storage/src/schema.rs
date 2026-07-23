@@ -237,6 +237,11 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
     if version >= 23 {
         crate::schema_agent::validate_agent_schema(connection)?;
     }
+    if version >= 24 {
+        crate::agent_generated_audio_store::schema::validate_agent_generated_audio_schema(
+            connection,
+        )?;
+    }
     if version >= 8 {
         crate::schema_notes::validate_notes_schema(connection)?;
     }

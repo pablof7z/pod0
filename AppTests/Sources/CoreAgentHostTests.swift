@@ -182,6 +182,8 @@ final class CoreAgentHostTests: XCTestCase {
             proposalId: AgentProposalId(high: 3, low: 4),
             proposalDigest: ContentDigest(word0: 5, word1: 6, word2: 7, word3: 8),
             executionFenceId: AgentExecutionFenceId(high: 9, low: 10),
+            executionMode: .perform,
+            generatedAudioTarget: nil,
             action: .noArguments(tool: .pausePlayback)
         )
 
@@ -199,9 +201,8 @@ final class CoreAgentHostTests: XCTestCase {
         XCTAssertEqual(proposalID, request.proposalId)
         XCTAssertEqual(fenceID, request.executionFenceId)
         XCTAssertEqual(outcome, .succeeded(boundedResult: #"{"paused":true}"#))
-        XCTAssertEqual(executor.lastAction, request.action)
+        XCTAssertEqual(executor.lastRequest, request)
     }
-
     private func makeHost(
         transport: StubCoreAgentModelTransport,
         approval: (any CoreAgentApprovalPresenting)? = nil,
@@ -215,7 +216,6 @@ final class CoreAgentHostTests: XCTestCase {
             ollamaURL: { nil }
         )
     }
-
     private func modelRequest() -> AgentModelExecutionRequest {
         AgentModelExecutionRequest(
             conversationId: ConversationId(high: 1, low: 2),
@@ -232,14 +232,14 @@ final class CoreAgentHostTests: XCTestCase {
 @MainActor
 private final class StubCoreAgentCapabilityExecutor: CoreAgentCapabilityExecuting {
     let outcome: AgentCapabilityOutcome
-    private(set) var lastAction: AgentToolAction?
+    private(set) var lastRequest: AgentCapabilityRequest?
 
     init(outcome: AgentCapabilityOutcome) {
         self.outcome = outcome
     }
 
-    func execute(_ action: AgentToolAction) async -> AgentCapabilityOutcome {
-        lastAction = action
+    func execute(_ request: AgentCapabilityRequest) async -> AgentCapabilityOutcome {
+        lastRequest = request
         return outcome
     }
 }

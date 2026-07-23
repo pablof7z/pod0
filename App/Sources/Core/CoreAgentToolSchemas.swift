@@ -26,6 +26,7 @@ enum CoreAgentToolSchemas {
         case .queryTranscripts: "query_transcripts"
         case .pausePlayback: "pause_playback"
         case .setPlaybackRate: "set_playback_rate"
+        case .generateTtsEpisode: "generate_tts_episode"
         default: nil
         }
     }
@@ -123,6 +124,22 @@ enum CoreAgentToolSchemas {
                     ],
                 ],
                 required: ["rate"]
+            )
+        case .generateTtsEpisode:
+            tool(
+                name: "generate_tts_episode",
+                description: "Create a durable playable audio episode from an approved script.",
+                properties: [
+                    "podcast_id": stringProperty(
+                        "Optional stable synthetic podcast UUID returned by another tool."
+                    ),
+                    "title": stringProperty("Episode title shown in the library and player."),
+                    "script": stringProperty("Complete narration script to synthesize."),
+                    "voice_id": stringProperty(
+                        "Optional configured ElevenLabs voice ID."
+                    ),
+                ],
+                required: ["title", "script"]
             )
         default:
             nil

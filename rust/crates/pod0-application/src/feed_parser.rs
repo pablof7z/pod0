@@ -11,7 +11,6 @@ use crate::feed_parser_values::{
     attribute, duration, episode_id, milliseconds, name, nonempty, parse_date, transcript_format,
     transcript_rank,
 };
-
 pub(crate) struct ParsedRss {
     pub title: String,
     pub author: String,
@@ -259,6 +258,7 @@ impl<'a> Parser<'a> {
                 is_starred: false,
                 download: DownloadArtifactStatus::Unavailable,
                 transcript: TranscriptArtifactStatus::Unavailable,
+                generated_audio: None,
             });
         }
         self.in_item = false;

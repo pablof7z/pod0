@@ -1452,6 +1452,10 @@ data class AgentCapabilityRequest (
     ,
     val `executionFenceId`: AgentExecutionFenceId
     ,
+    val `executionMode`: AgentCapabilityExecutionMode
+    ,
+    val `generatedAudioTarget`: AgentGeneratedAudioTarget?
+    ,
     val `action`: AgentToolAction
 
 ){
@@ -1473,6 +1477,8 @@ public object FfiConverterTypeAgentCapabilityRequest: FfiConverterRustBuffer<Age
             FfiConverterTypeAgentProposalId.read(buf),
             FfiConverterTypeContentDigest.read(buf),
             FfiConverterTypeAgentExecutionFenceId.read(buf),
+            FfiConverterTypeAgentCapabilityExecutionMode.read(buf),
+            FfiConverterOptionalTypeAgentGeneratedAudioTarget.read(buf),
             FfiConverterTypeAgentToolAction.read(buf),
         )
     }
@@ -1482,6 +1488,8 @@ public object FfiConverterTypeAgentCapabilityRequest: FfiConverterRustBuffer<Age
             FfiConverterTypeAgentProposalId.allocationSize(value.`proposalId`) +
             FfiConverterTypeContentDigest.allocationSize(value.`proposalDigest`) +
             FfiConverterTypeAgentExecutionFenceId.allocationSize(value.`executionFenceId`) +
+            FfiConverterTypeAgentCapabilityExecutionMode.allocationSize(value.`executionMode`) +
+            FfiConverterOptionalTypeAgentGeneratedAudioTarget.allocationSize(value.`generatedAudioTarget`) +
             FfiConverterTypeAgentToolAction.allocationSize(value.`action`)
     )
 
@@ -1490,6 +1498,8 @@ public object FfiConverterTypeAgentCapabilityRequest: FfiConverterRustBuffer<Age
             FfiConverterTypeAgentProposalId.write(value.`proposalId`, buf)
             FfiConverterTypeContentDigest.write(value.`proposalDigest`, buf)
             FfiConverterTypeAgentExecutionFenceId.write(value.`executionFenceId`, buf)
+            FfiConverterTypeAgentCapabilityExecutionMode.write(value.`executionMode`, buf)
+            FfiConverterOptionalTypeAgentGeneratedAudioTarget.write(value.`generatedAudioTarget`, buf)
             FfiConverterTypeAgentToolAction.write(value.`action`, buf)
     }
 }
@@ -1839,6 +1849,102 @@ public object FfiConverterTypeAgentConversationsProjection: FfiConverterRustBuff
             FfiConverterSequenceTypeAgentConversationSummaryProjection.write(value.`conversations`, buf)
             FfiConverterBoolean.write(value.`hasMore`, buf)
             FfiConverterOptionalTypeCoreFailure.write(value.`failure`, buf)
+    }
+}
+
+
+
+data class AgentGeneratedAudioEvidence (
+    val `artifactId`: GeneratedArtifactId
+    ,
+    val `fileUrl`: kotlin.String
+    ,
+    val `mediaType`: kotlin.String
+    ,
+    val `byteCount`: kotlin.ULong
+    ,
+    val `contentDigest`: ContentDigest
+    ,
+    val `durationMilliseconds`: kotlin.ULong?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentGeneratedAudioEvidence: FfiConverterRustBuffer<AgentGeneratedAudioEvidence> {
+    override fun read(buf: ByteBuffer): AgentGeneratedAudioEvidence {
+        return AgentGeneratedAudioEvidence(
+            FfiConverterTypeGeneratedArtifactId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterOptionalULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentGeneratedAudioEvidence) = (
+            FfiConverterTypeGeneratedArtifactId.allocationSize(value.`artifactId`) +
+            FfiConverterString.allocationSize(value.`fileUrl`) +
+            FfiConverterString.allocationSize(value.`mediaType`) +
+            FfiConverterULong.allocationSize(value.`byteCount`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`contentDigest`) +
+            FfiConverterOptionalULong.allocationSize(value.`durationMilliseconds`)
+    )
+
+    override fun write(value: AgentGeneratedAudioEvidence, buf: ByteBuffer) {
+            FfiConverterTypeGeneratedArtifactId.write(value.`artifactId`, buf)
+            FfiConverterString.write(value.`fileUrl`, buf)
+            FfiConverterString.write(value.`mediaType`, buf)
+            FfiConverterULong.write(value.`byteCount`, buf)
+            FfiConverterTypeContentDigest.write(value.`contentDigest`, buf)
+            FfiConverterOptionalULong.write(value.`durationMilliseconds`, buf)
+    }
+}
+
+
+
+data class AgentGeneratedAudioTarget (
+    val `artifactId`: GeneratedArtifactId
+    ,
+    val `maximumBytes`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentGeneratedAudioTarget: FfiConverterRustBuffer<AgentGeneratedAudioTarget> {
+    override fun read(buf: ByteBuffer): AgentGeneratedAudioTarget {
+        return AgentGeneratedAudioTarget(
+            FfiConverterTypeGeneratedArtifactId.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentGeneratedAudioTarget) = (
+            FfiConverterTypeGeneratedArtifactId.allocationSize(value.`artifactId`) +
+            FfiConverterULong.allocationSize(value.`maximumBytes`)
+    )
+
+    override fun write(value: AgentGeneratedAudioTarget, buf: ByteBuffer) {
+            FfiConverterTypeGeneratedArtifactId.write(value.`artifactId`, buf)
+            FfiConverterULong.write(value.`maximumBytes`, buf)
     }
 }
 
@@ -7762,10 +7868,55 @@ public object FfiConverterTypeAgentAuthority: FfiConverterRustBuffer<AgentAuthor
 
 
 
+
+enum class AgentCapabilityExecutionMode {
+
+    PERFORM,
+    RECOVER_EXISTING;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentCapabilityExecutionMode: FfiConverterRustBuffer<AgentCapabilityExecutionMode> {
+    override fun read(buf: ByteBuffer) = try {
+
+        AgentCapabilityExecutionMode.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: AgentCapabilityExecutionMode) = 4UL
+
+    override fun write(value: AgentCapabilityExecutionMode, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 sealed class AgentCapabilityOutcome {
 
     data class Succeeded(
         val `boundedResult`: kotlin.String) : AgentCapabilityOutcome()
+
+    {
+
+
+        companion object
+    }
+
+    data class GeneratedAudioStaged(
+        val `evidence`: uniffi.pod0_application.AgentGeneratedAudioEvidence) : AgentCapabilityOutcome()
 
     {
 
@@ -7807,11 +7958,14 @@ public object FfiConverterTypeAgentCapabilityOutcome : FfiConverterRustBuffer<Ag
             1 -> AgentCapabilityOutcome.Succeeded(
                 FfiConverterString.read(buf),
                 )
-            2 -> AgentCapabilityOutcome.Failed(
+            2 -> AgentCapabilityOutcome.GeneratedAudioStaged(
+                FfiConverterTypeAgentGeneratedAudioEvidence.read(buf),
+                )
+            3 -> AgentCapabilityOutcome.Failed(
                 FfiConverterOptionalString.read(buf),
                 )
-            3 -> AgentCapabilityOutcome.Cancelled
-            4 -> AgentCapabilityOutcome.OutcomeAmbiguous
+            4 -> AgentCapabilityOutcome.Cancelled
+            5 -> AgentCapabilityOutcome.OutcomeAmbiguous
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
         }
     }
@@ -7822,6 +7976,13 @@ public object FfiConverterTypeAgentCapabilityOutcome : FfiConverterRustBuffer<Ag
             (
                 4UL
                 + FfiConverterString.allocationSize(value.`boundedResult`)
+            )
+        }
+        is AgentCapabilityOutcome.GeneratedAudioStaged -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeAgentGeneratedAudioEvidence.allocationSize(value.`evidence`)
             )
         }
         is AgentCapabilityOutcome.Failed -> {
@@ -7852,17 +8013,22 @@ public object FfiConverterTypeAgentCapabilityOutcome : FfiConverterRustBuffer<Ag
                 FfiConverterString.write(value.`boundedResult`, buf)
                 Unit
             }
-            is AgentCapabilityOutcome.Failed -> {
+            is AgentCapabilityOutcome.GeneratedAudioStaged -> {
                 buf.putInt(2)
+                FfiConverterTypeAgentGeneratedAudioEvidence.write(value.`evidence`, buf)
+                Unit
+            }
+            is AgentCapabilityOutcome.Failed -> {
+                buf.putInt(3)
                 FfiConverterOptionalString.write(value.`safeDetail`, buf)
                 Unit
             }
             is AgentCapabilityOutcome.Cancelled -> {
-                buf.putInt(3)
+                buf.putInt(4)
                 Unit
             }
             is AgentCapabilityOutcome.OutcomeAmbiguous -> {
-                buf.putInt(4)
+                buf.putInt(5)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
@@ -24209,6 +24375,38 @@ public object FfiConverterOptionalTypeAgentCommitReceipt: FfiConverterRustBuffer
         } else {
             buf.put(1)
             FfiConverterTypeAgentCommitReceipt.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeAgentGeneratedAudioTarget: FfiConverterRustBuffer<AgentGeneratedAudioTarget?> {
+    override fun read(buf: ByteBuffer): AgentGeneratedAudioTarget? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeAgentGeneratedAudioTarget.read(buf)
+    }
+
+    override fun allocationSize(value: AgentGeneratedAudioTarget?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeAgentGeneratedAudioTarget.allocationSize(value)
+        }
+    }
+
+    override fun write(value: AgentGeneratedAudioTarget?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeAgentGeneratedAudioTarget.write(value, buf)
         }
     }
 }

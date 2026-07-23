@@ -28,7 +28,7 @@ fn scheduled_agent_contract_is_typed_but_unavailable_before_storage_slice() {
         offset: 0,
         max_items: 20,
     });
-    assert_eq!(snapshot.contract_version, 39);
+    assert_eq!(snapshot.contract_version, 40);
     let Projection::ScheduledAgent { value } = snapshot.projection else {
         panic!("expected scheduled-agent projection");
     };

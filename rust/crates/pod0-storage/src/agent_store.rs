@@ -77,7 +77,7 @@ impl AgentStore {
         operation(&connection)
     }
 
-    fn write<T>(
+    pub(crate) fn write<T>(
         &self,
         operation: impl FnOnce(&Transaction<'_>) -> Result<T, StorageError>,
     ) -> Result<T, StorageError> {
@@ -94,7 +94,7 @@ impl AgentStore {
     }
 }
 
-fn persist(
+pub(crate) fn persist(
     transaction: &Transaction<'_>,
     context: AgentCommandContext,
     expected_revision: Option<pod0_domain::StateRevision>,
@@ -167,7 +167,7 @@ fn read_created_at(connection: &Connection, turn_id: AgentTurnId) -> Result<i64,
         .map_err(|error| StorageError::sqlite("read agent turn creation time", error))
 }
 
-fn command_receipt(
+pub(crate) fn command_receipt(
     connection: &Connection,
     context: AgentCommandContext,
     turn_id: AgentTurnId,

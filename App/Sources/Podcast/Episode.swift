@@ -205,7 +205,7 @@ struct Episode: Codable, Sendable, Identifiable, Hashable {
         // Rust owns durable readiness; decode the legacy key but never re-encode it.
         // Rust owns durable transcript provider selection; legacy value is decode-only.
         // Rust owns durable ad spans; the legacy key remains decode-only.
-        try c.encodeIfPresent(generationSource, forKey: .generationSource)
+        // Rust owns durable generated-audio provenance; legacy evidence is decode-only.
     }
 }
 

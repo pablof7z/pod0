@@ -2532,6 +2532,7 @@ public struct EpisodeRecord: Equatable, Hashable {
     public let isStarred: Bool
     public let download: DownloadArtifactStatus
     public let transcript: TranscriptArtifactStatus
+    public let generatedAudio: GeneratedAudioArtifactProvenance?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -2539,7 +2540,7 @@ public struct EpisodeRecord: Equatable, Hashable {
         /**
          * Publisher GUID or the deterministic Swift `synth::` fallback. Exact,
          * case-sensitive matching is scoped to the parent podcast.
-         */publisherGuid: String, title: String, description: String, publishedAt: UnixTimestampMilliseconds, durationMilliseconds: UInt64?, enclosureUrl: String, enclosureMimeType: String?, imageUrl: String?, feedMetadata: EpisodeFeedMetadata, listening: EpisodeListeningState, isStarred: Bool, download: DownloadArtifactStatus, transcript: TranscriptArtifactStatus) {
+         */publisherGuid: String, title: String, description: String, publishedAt: UnixTimestampMilliseconds, durationMilliseconds: UInt64?, enclosureUrl: String, enclosureMimeType: String?, imageUrl: String?, feedMetadata: EpisodeFeedMetadata, listening: EpisodeListeningState, isStarred: Bool, download: DownloadArtifactStatus, transcript: TranscriptArtifactStatus, generatedAudio: GeneratedAudioArtifactProvenance?) {
         self.episodeId = episodeId
         self.podcastId = podcastId
         self.publisherGuid = publisherGuid
@@ -2555,6 +2556,7 @@ public struct EpisodeRecord: Equatable, Hashable {
         self.isStarred = isStarred
         self.download = download
         self.transcript = transcript
+        self.generatedAudio = generatedAudio
     }
 
 
@@ -2587,7 +2589,8 @@ public struct FfiConverterTypeEpisodeRecord: FfiConverterRustBuffer {
                 listening: FfiConverterTypeEpisodeListeningState.read(from: &buf),
                 isStarred: FfiConverterBool.read(from: &buf),
                 download: FfiConverterTypeDownloadArtifactStatus.read(from: &buf),
-                transcript: FfiConverterTypeTranscriptArtifactStatus.read(from: &buf)
+                transcript: FfiConverterTypeTranscriptArtifactStatus.read(from: &buf),
+                generatedAudio: FfiConverterOptionTypeGeneratedAudioArtifactProvenance.read(from: &buf)
         )
     }
 
@@ -2607,6 +2610,7 @@ public struct FfiConverterTypeEpisodeRecord: FfiConverterRustBuffer {
         FfiConverterBool.write(value.isStarred, into: &buf)
         FfiConverterTypeDownloadArtifactStatus.write(value.download, into: &buf)
         FfiConverterTypeTranscriptArtifactStatus.write(value.transcript, into: &buf)
+        FfiConverterOptionTypeGeneratedAudioArtifactProvenance.write(value.generatedAudio, into: &buf)
     }
 }
 
@@ -2905,6 +2909,96 @@ public func FfiConverterTypeGeneratedArtifactId_lift(_ buf: RustBuffer) throws -
 #endif
 public func FfiConverterTypeGeneratedArtifactId_lower(_ value: GeneratedArtifactId) -> RustBuffer {
     return FfiConverterTypeGeneratedArtifactId.lower(value)
+}
+
+
+public struct GeneratedAudioArtifactProvenance: Equatable, Hashable {
+    public let artifactId: GeneratedArtifactId
+    public let conversationId: ConversationId
+    public let turnId: AgentTurnId
+    public let proposalId: AgentProposalId
+    public let commitId: AgentCommitId
+    public let mediaContentDigest: ContentDigest
+    public let scriptContentDigest: ContentDigest
+    public let mediaByteCount: UInt64
+    public let voiceId: String?
+    public let modelReference: String
+    public let committedAt: UnixTimestampMilliseconds
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(artifactId: GeneratedArtifactId, conversationId: ConversationId, turnId: AgentTurnId, proposalId: AgentProposalId, commitId: AgentCommitId, mediaContentDigest: ContentDigest, scriptContentDigest: ContentDigest, mediaByteCount: UInt64, voiceId: String?, modelReference: String, committedAt: UnixTimestampMilliseconds) {
+        self.artifactId = artifactId
+        self.conversationId = conversationId
+        self.turnId = turnId
+        self.proposalId = proposalId
+        self.commitId = commitId
+        self.mediaContentDigest = mediaContentDigest
+        self.scriptContentDigest = scriptContentDigest
+        self.mediaByteCount = mediaByteCount
+        self.voiceId = voiceId
+        self.modelReference = modelReference
+        self.committedAt = committedAt
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension GeneratedAudioArtifactProvenance: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeGeneratedAudioArtifactProvenance: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> GeneratedAudioArtifactProvenance {
+        return
+            try GeneratedAudioArtifactProvenance(
+                artifactId: FfiConverterTypeGeneratedArtifactId.read(from: &buf),
+                conversationId: FfiConverterTypeConversationId.read(from: &buf),
+                turnId: FfiConverterTypeAgentTurnId.read(from: &buf),
+                proposalId: FfiConverterTypeAgentProposalId.read(from: &buf),
+                commitId: FfiConverterTypeAgentCommitId.read(from: &buf),
+                mediaContentDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                scriptContentDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                mediaByteCount: FfiConverterUInt64.read(from: &buf),
+                voiceId: FfiConverterOptionString.read(from: &buf),
+                modelReference: FfiConverterString.read(from: &buf),
+                committedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: GeneratedAudioArtifactProvenance, into buf: inout [UInt8]) {
+        FfiConverterTypeGeneratedArtifactId.write(value.artifactId, into: &buf)
+        FfiConverterTypeConversationId.write(value.conversationId, into: &buf)
+        FfiConverterTypeAgentTurnId.write(value.turnId, into: &buf)
+        FfiConverterTypeAgentProposalId.write(value.proposalId, into: &buf)
+        FfiConverterTypeAgentCommitId.write(value.commitId, into: &buf)
+        FfiConverterTypeContentDigest.write(value.mediaContentDigest, into: &buf)
+        FfiConverterTypeContentDigest.write(value.scriptContentDigest, into: &buf)
+        FfiConverterUInt64.write(value.mediaByteCount, into: &buf)
+        FfiConverterOptionString.write(value.voiceId, into: &buf)
+        FfiConverterString.write(value.modelReference, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.committedAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeGeneratedAudioArtifactProvenance_lift(_ buf: RustBuffer) throws -> GeneratedAudioArtifactProvenance {
+    return try FfiConverterTypeGeneratedAudioArtifactProvenance.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeGeneratedAudioArtifactProvenance_lower(_ value: GeneratedAudioArtifactProvenance) -> RustBuffer {
+    return FfiConverterTypeGeneratedAudioArtifactProvenance.lower(value)
 }
 
 
@@ -7557,6 +7651,30 @@ fileprivate struct FfiConverterOptionTypeFeedIdentityV1: FfiConverterRustBuffer 
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeFeedIdentityV1.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeGeneratedAudioArtifactProvenance: FfiConverterRustBuffer {
+    typealias SwiftType = GeneratedAudioArtifactProvenance?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeGeneratedAudioArtifactProvenance.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeGeneratedAudioArtifactProvenance.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }

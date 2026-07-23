@@ -51,7 +51,7 @@ pub(super) fn agent_observation_matches(
             *turn_id == capability.turn_id
                 && *proposal_id == capability.proposal_id
                 && *execution_fence_id == capability.execution_fence_id
-                && outcome_is_bounded(outcome)
+                && outcome_is_bounded(capability, outcome)
         }
         (
             HostRequest::ExecuteAgentModelTurn { .. }
@@ -72,11 +72,18 @@ fn tool_call_is_bounded(call: &crate::AgentModelToolCallObservation) -> bool {
         && call.arguments_json.len() <= MAX_AGENT_TOOL_ARGUMENTS_BYTES
 }
 
-fn outcome_is_bounded(outcome: &AgentCapabilityOutcome) -> bool {
+fn outcome_is_bounded(
+    capability: &crate::AgentCapabilityRequest,
+    outcome: &AgentCapabilityOutcome,
+) -> bool {
     match outcome {
         AgentCapabilityOutcome::Succeeded { bounded_result } => {
-            bounded_result.len() <= MAX_AGENT_MESSAGE_BYTES
+            capability.generated_audio_target.is_none()
+                && bounded_result.len() <= MAX_AGENT_MESSAGE_BYTES
         }
+        AgentCapabilityOutcome::GeneratedAudioStaged { evidence } => capability
+            .generated_audio_target
+            .is_some_and(|target| crate::agent_generated_audio_evidence_is_valid(evidence, target)),
         AgentCapabilityOutcome::Failed { safe_detail } => safe_detail
             .as_ref()
             .is_none_or(|value| value.len() <= MAX_AGENT_SAFE_DETAIL_BYTES),

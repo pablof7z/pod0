@@ -73,5 +73,6 @@ fn episode(resume: u64, duration: u64) -> EpisodeRecord {
         is_starred: false,
         download: DownloadArtifactStatus::Unavailable,
         transcript: TranscriptArtifactStatus::Unavailable,
+        generated_audio: None,
     }
 }

@@ -1,3 +1,4 @@
+pub use crate::agent_generated_audio_store::AgentGeneratedAudioCommitInput;
 pub use crate::agent_store::AgentStore;
 pub use crate::agent_store_model::*;
 pub use crate::backup::{restore_backup_to_new_store, verify_backup};

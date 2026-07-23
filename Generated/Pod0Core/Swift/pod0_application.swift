@@ -772,15 +772,19 @@ public struct AgentCapabilityRequest: Equatable, Hashable {
     public let proposalId: AgentProposalId
     public let proposalDigest: ContentDigest
     public let executionFenceId: AgentExecutionFenceId
+    public let executionMode: AgentCapabilityExecutionMode
+    public let generatedAudioTarget: AgentGeneratedAudioTarget?
     public let action: AgentToolAction
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(turnId: AgentTurnId, proposalId: AgentProposalId, proposalDigest: ContentDigest, executionFenceId: AgentExecutionFenceId, action: AgentToolAction) {
+    public init(turnId: AgentTurnId, proposalId: AgentProposalId, proposalDigest: ContentDigest, executionFenceId: AgentExecutionFenceId, executionMode: AgentCapabilityExecutionMode, generatedAudioTarget: AgentGeneratedAudioTarget?, action: AgentToolAction) {
         self.turnId = turnId
         self.proposalId = proposalId
         self.proposalDigest = proposalDigest
         self.executionFenceId = executionFenceId
+        self.executionMode = executionMode
+        self.generatedAudioTarget = generatedAudioTarget
         self.action = action
     }
 
@@ -804,6 +808,8 @@ public struct FfiConverterTypeAgentCapabilityRequest: FfiConverterRustBuffer {
                 proposalId: FfiConverterTypeAgentProposalId.read(from: &buf),
                 proposalDigest: FfiConverterTypeContentDigest.read(from: &buf),
                 executionFenceId: FfiConverterTypeAgentExecutionFenceId.read(from: &buf),
+                executionMode: FfiConverterTypeAgentCapabilityExecutionMode.read(from: &buf),
+                generatedAudioTarget: FfiConverterOptionTypeAgentGeneratedAudioTarget.read(from: &buf),
                 action: FfiConverterTypeAgentToolAction.read(from: &buf)
         )
     }
@@ -813,6 +819,8 @@ public struct FfiConverterTypeAgentCapabilityRequest: FfiConverterRustBuffer {
         FfiConverterTypeAgentProposalId.write(value.proposalId, into: &buf)
         FfiConverterTypeContentDigest.write(value.proposalDigest, into: &buf)
         FfiConverterTypeAgentExecutionFenceId.write(value.executionFenceId, into: &buf)
+        FfiConverterTypeAgentCapabilityExecutionMode.write(value.executionMode, into: &buf)
+        FfiConverterOptionTypeAgentGeneratedAudioTarget.write(value.generatedAudioTarget, into: &buf)
         FfiConverterTypeAgentToolAction.write(value.action, into: &buf)
     }
 }
@@ -1250,6 +1258,130 @@ public func FfiConverterTypeAgentConversationsProjection_lift(_ buf: RustBuffer)
 #endif
 public func FfiConverterTypeAgentConversationsProjection_lower(_ value: AgentConversationsProjection) -> RustBuffer {
     return FfiConverterTypeAgentConversationsProjection.lower(value)
+}
+
+
+public struct AgentGeneratedAudioEvidence: Equatable, Hashable {
+    public let artifactId: GeneratedArtifactId
+    public let fileUrl: String
+    public let mediaType: String
+    public let byteCount: UInt64
+    public let contentDigest: ContentDigest
+    public let durationMilliseconds: UInt64?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(artifactId: GeneratedArtifactId, fileUrl: String, mediaType: String, byteCount: UInt64, contentDigest: ContentDigest, durationMilliseconds: UInt64?) {
+        self.artifactId = artifactId
+        self.fileUrl = fileUrl
+        self.mediaType = mediaType
+        self.byteCount = byteCount
+        self.contentDigest = contentDigest
+        self.durationMilliseconds = durationMilliseconds
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentGeneratedAudioEvidence: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentGeneratedAudioEvidence: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentGeneratedAudioEvidence {
+        return
+            try AgentGeneratedAudioEvidence(
+                artifactId: FfiConverterTypeGeneratedArtifactId.read(from: &buf),
+                fileUrl: FfiConverterString.read(from: &buf),
+                mediaType: FfiConverterString.read(from: &buf),
+                byteCount: FfiConverterUInt64.read(from: &buf),
+                contentDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                durationMilliseconds: FfiConverterOptionUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentGeneratedAudioEvidence, into buf: inout [UInt8]) {
+        FfiConverterTypeGeneratedArtifactId.write(value.artifactId, into: &buf)
+        FfiConverterString.write(value.fileUrl, into: &buf)
+        FfiConverterString.write(value.mediaType, into: &buf)
+        FfiConverterUInt64.write(value.byteCount, into: &buf)
+        FfiConverterTypeContentDigest.write(value.contentDigest, into: &buf)
+        FfiConverterOptionUInt64.write(value.durationMilliseconds, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentGeneratedAudioEvidence_lift(_ buf: RustBuffer) throws -> AgentGeneratedAudioEvidence {
+    return try FfiConverterTypeAgentGeneratedAudioEvidence.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentGeneratedAudioEvidence_lower(_ value: AgentGeneratedAudioEvidence) -> RustBuffer {
+    return FfiConverterTypeAgentGeneratedAudioEvidence.lower(value)
+}
+
+
+public struct AgentGeneratedAudioTarget: Equatable, Hashable {
+    public let artifactId: GeneratedArtifactId
+    public let maximumBytes: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(artifactId: GeneratedArtifactId, maximumBytes: UInt64) {
+        self.artifactId = artifactId
+        self.maximumBytes = maximumBytes
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentGeneratedAudioTarget: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentGeneratedAudioTarget: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentGeneratedAudioTarget {
+        return
+            try AgentGeneratedAudioTarget(
+                artifactId: FfiConverterTypeGeneratedArtifactId.read(from: &buf),
+                maximumBytes: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentGeneratedAudioTarget, into buf: inout [UInt8]) {
+        FfiConverterTypeGeneratedArtifactId.write(value.artifactId, into: &buf)
+        FfiConverterUInt64.write(value.maximumBytes, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentGeneratedAudioTarget_lift(_ buf: RustBuffer) throws -> AgentGeneratedAudioTarget {
+    return try FfiConverterTypeAgentGeneratedAudioTarget.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentGeneratedAudioTarget_lower(_ value: AgentGeneratedAudioTarget) -> RustBuffer {
+    return FfiConverterTypeAgentGeneratedAudioTarget.lower(value)
 }
 
 
@@ -8427,9 +8559,77 @@ public func FfiConverterTypeAgentAuthority_lower(_ value: AgentAuthority) -> Rus
 
 
 
+public enum AgentCapabilityExecutionMode: Equatable, Hashable {
+
+    case perform
+    case recoverExisting
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentCapabilityExecutionMode: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentCapabilityExecutionMode: FfiConverterRustBuffer {
+    typealias SwiftType = AgentCapabilityExecutionMode
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentCapabilityExecutionMode {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .perform
+
+        case 2: return .recoverExisting
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AgentCapabilityExecutionMode, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .perform:
+            writeInt(&buf, Int32(1))
+
+
+        case .recoverExisting:
+            writeInt(&buf, Int32(2))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentCapabilityExecutionMode_lift(_ buf: RustBuffer) throws -> AgentCapabilityExecutionMode {
+    return try FfiConverterTypeAgentCapabilityExecutionMode.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentCapabilityExecutionMode_lower(_ value: AgentCapabilityExecutionMode) -> RustBuffer {
+    return FfiConverterTypeAgentCapabilityExecutionMode.lower(value)
+}
+
+
+
+
 public enum AgentCapabilityOutcome: Equatable, Hashable {
 
     case succeeded(boundedResult: String
+    )
+    case generatedAudioStaged(evidence: AgentGeneratedAudioEvidence
     )
     case failed(safeDetail: String?
     )
@@ -8459,12 +8659,15 @@ public struct FfiConverterTypeAgentCapabilityOutcome: FfiConverterRustBuffer {
         case 1: return .succeeded(boundedResult: try FfiConverterString.read(from: &buf)
         )
 
-        case 2: return .failed(safeDetail: try FfiConverterOptionString.read(from: &buf)
+        case 2: return .generatedAudioStaged(evidence: try FfiConverterTypeAgentGeneratedAudioEvidence.read(from: &buf)
         )
 
-        case 3: return .cancelled
+        case 3: return .failed(safeDetail: try FfiConverterOptionString.read(from: &buf)
+        )
 
-        case 4: return .outcomeAmbiguous
+        case 4: return .cancelled
+
+        case 5: return .outcomeAmbiguous
 
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -8479,17 +8682,22 @@ public struct FfiConverterTypeAgentCapabilityOutcome: FfiConverterRustBuffer {
             FfiConverterString.write(boundedResult, into: &buf)
 
 
-        case let .failed(safeDetail):
+        case let .generatedAudioStaged(evidence):
             writeInt(&buf, Int32(2))
+            FfiConverterTypeAgentGeneratedAudioEvidence.write(evidence, into: &buf)
+
+
+        case let .failed(safeDetail):
+            writeInt(&buf, Int32(3))
             FfiConverterOptionString.write(safeDetail, into: &buf)
 
 
         case .cancelled:
-            writeInt(&buf, Int32(3))
+            writeInt(&buf, Int32(4))
 
 
         case .outcomeAmbiguous:
-            writeInt(&buf, Int32(4))
+            writeInt(&buf, Int32(5))
 
         }
     }
@@ -19158,6 +19366,30 @@ fileprivate struct FfiConverterOptionTypeAgentCommitReceipt: FfiConverterRustBuf
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeAgentCommitReceipt.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeAgentGeneratedAudioTarget: FfiConverterRustBuffer {
+    typealias SwiftType = AgentGeneratedAudioTarget?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeAgentGeneratedAudioTarget.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeAgentGeneratedAudioTarget.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }

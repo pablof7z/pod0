@@ -24,6 +24,7 @@ final class SharedAgentConversationSession {
         .queryTranscripts,
         .pausePlayback,
         .setPlaybackRate,
+        .generateTtsEpisode,
     ]
 
     private let runtime: any SharedAgentConversationRuntime

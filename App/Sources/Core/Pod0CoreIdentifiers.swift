@@ -125,6 +125,11 @@ extension AdSpanId {
     var uuid: UUID? { UUID(coreHigh: high, low: low) }
 }
 
+extension GeneratedArtifactId {
+    var uuid: UUID? { UUID(coreHigh: high, low: low) }
+    var stableString: String { coreIdentifier(high: high, low: low) }
+}
+
 extension ContentDigest {
     init?(hexadecimal: String) {
         guard hexadecimal.count == 64,

@@ -103,7 +103,7 @@ fun qualifyDownloadContract() {
                 20u.toUShort(),
             ),
         )
-        check(projection.contractVersion == 39u)
+        check(projection.contractVersion == 40u)
         val projected = projection.projection
         check(projected is Projection.Downloads)
         val downloads = projected.value

@@ -46,6 +46,18 @@ fn parses_product_proof_actions_inside_rust() {
             limit: 4,
         })
     );
+    assert_eq!(
+        parse_agent_tool_call(&call(
+            "generate_tts_episode",
+            r#"{"title":"Morning brief","script":"Here is your briefing.","voice_id":"voice-1"}"#,
+        )),
+        Ok(AgentToolAction::GenerateTtsEpisode {
+            podcast_id: None,
+            title: "Morning brief".into(),
+            script: "Here is your briefing.".into(),
+            voice_id: Some("voice-1".into()),
+        })
+    );
 }
 
 #[test]
@@ -60,7 +72,7 @@ fn rejects_unknown_malformed_and_not_yet_supported_actions() {
     );
     assert_eq!(
         parse_agent_tool_call(&call("generate_tts_episode", "{}")),
-        Err(AgentProviderOutputError::UnsupportedTool)
+        Err(AgentProviderOutputError::InvalidArguments)
     );
     assert_eq!(
         parse_agent_tool_call(&call(

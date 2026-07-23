@@ -116,7 +116,7 @@ pub(crate) fn upsert_podcast(
     Ok(())
 }
 
-fn upsert_episode(
+pub(crate) fn upsert_episode(
     transaction: &Transaction<'_>,
     episode: &EpisodeRecord,
 ) -> Result<(), StorageError> {

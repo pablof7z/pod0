@@ -1,7 +1,9 @@
 use pod0_application::{
-    AgentApprovalRequest, AgentCapabilityRequest, AgentMessageProjection,
-    AgentModelExecutionRequest, AgentTurnState, HostCancellationRequest, HostRequest,
-    HostRequestEnvelope, MAX_AGENT_MODEL_OUTPUT_BYTES, MAX_AGENT_PROJECTION_MESSAGES,
+    AgentApprovalRequest, AgentCapabilityExecutionMode, AgentCapabilityRequest,
+    AgentGeneratedAudioTarget, AgentMessageProjection, AgentModelExecutionRequest, AgentToolAction,
+    AgentTurnState, HostCancellationRequest, HostRequest, HostRequestEnvelope,
+    MAX_AGENT_GENERATED_AUDIO_BYTES, MAX_AGENT_MODEL_OUTPUT_BYTES, MAX_AGENT_PROJECTION_MESSAGES,
+    agent_generated_artifact_id,
 };
 use pod0_domain::{AgentTurnId, CommandId, HostRequestId};
 
@@ -104,6 +106,7 @@ impl FacadeState {
         &mut self,
         command_id: CommandId,
         state: &AgentTurnState,
+        execution_mode: AgentCapabilityExecutionMode,
     ) -> bool {
         let projection = state.projection();
         let (Some(proposal), Some(execution_fence_id)) =
@@ -111,6 +114,16 @@ impl FacadeState {
         else {
             return false;
         };
+        let generated_audio_target =
+            matches!(proposal.action, AgentToolAction::GenerateTtsEpisode { .. }).then(|| {
+                AgentGeneratedAudioTarget {
+                    artifact_id: agent_generated_artifact_id(
+                        proposal.proposal_id,
+                        proposal.proposal_digest,
+                    ),
+                    maximum_bytes: MAX_AGENT_GENERATED_AUDIO_BYTES,
+                }
+            });
         self.queue_agent_request(HostRequestEnvelope {
             request_id: capability_request_id(
                 projection.turn_id,
@@ -127,6 +140,8 @@ impl FacadeState {
                     proposal_id: proposal.proposal_id,
                     proposal_digest: proposal.proposal_digest,
                     execution_fence_id,
+                    execution_mode,
+                    generated_audio_target,
                     action: proposal.action,
                 },
             },

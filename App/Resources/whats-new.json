@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-23T05:46:22Z",
+      "lines": [
+        "Ask Pod0's Agent to turn a script into a playable episode that survives relaunches."
+      ]
+    },
+    {
       "shipped_at": "2026-07-23T04:25:54Z",
       "lines": [
         "Your shared-core Agent conversations now appear in history and survive relaunches."

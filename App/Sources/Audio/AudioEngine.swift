@@ -159,8 +159,11 @@ final class AudioEngine {
             // Agent-generated episodes live under agent-episodes/, not downloads/.
             // Recompute the path fresh so stale container-relative absolute URLs
             // (persisted from a previous launch) are never handed to AVPlayer.
-            if episode.enclosureURL.isFileURL,
-               let freshURL = try? AgentGeneratedPodcastService.audioFileURL(episodeID: episode.id),
+            if episode.generationSource != nil,
+               episode.enclosureURL.isFileURL,
+               let freshURL = try? CoreAgentGeneratedAudioFileStore.currentURL(
+                   for: episode.enclosureURL
+               ),
                FileManager.default.fileExists(atPath: freshURL.path) {
                 return freshURL
             }

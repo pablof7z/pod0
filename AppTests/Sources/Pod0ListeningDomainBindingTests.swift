@@ -220,7 +220,8 @@ final class Pod0ListeningDomainBindingTests: XCTestCase {
                 transcript: .available(
                     reference: reference("transcript_schema_version", "transcript_opaque_key"),
                     source: .publisher
-                )
+                ),
+                generatedAudio: nil
             )],
             playback: ListeningPlaybackPolicy(
                 activeEpisodeId: episodeID,

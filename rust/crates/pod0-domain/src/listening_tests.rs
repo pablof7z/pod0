@@ -110,6 +110,7 @@ pub(crate) fn golden_snapshot() -> ListeningDomainSnapshot {
                 reference: artifact("transcript_schema_version", "transcript_opaque_key"),
                 source: TranscriptSource::Publisher,
             },
+            generated_audio: None,
         }],
         playback: ListeningPlaybackPolicy {
             active_episode_id: Some(episode_id),

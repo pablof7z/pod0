@@ -2578,6 +2578,8 @@ data class EpisodeRecord (
     val `download`: DownloadArtifactStatus
     ,
     val `transcript`: TranscriptArtifactStatus
+    ,
+    val `generatedAudio`: GeneratedAudioArtifactProvenance?
 
 ){
 
@@ -2609,6 +2611,7 @@ public object FfiConverterTypeEpisodeRecord: FfiConverterRustBuffer<EpisodeRecor
             FfiConverterBoolean.read(buf),
             FfiConverterTypeDownloadArtifactStatus.read(buf),
             FfiConverterTypeTranscriptArtifactStatus.read(buf),
+            FfiConverterOptionalTypeGeneratedAudioArtifactProvenance.read(buf),
         )
     }
 
@@ -2627,7 +2630,8 @@ public object FfiConverterTypeEpisodeRecord: FfiConverterRustBuffer<EpisodeRecor
             FfiConverterTypeEpisodeListeningState.allocationSize(value.`listening`) +
             FfiConverterBoolean.allocationSize(value.`isStarred`) +
             FfiConverterTypeDownloadArtifactStatus.allocationSize(value.`download`) +
-            FfiConverterTypeTranscriptArtifactStatus.allocationSize(value.`transcript`)
+            FfiConverterTypeTranscriptArtifactStatus.allocationSize(value.`transcript`) +
+            FfiConverterOptionalTypeGeneratedAudioArtifactProvenance.allocationSize(value.`generatedAudio`)
     )
 
     override fun write(value: EpisodeRecord, buf: ByteBuffer) {
@@ -2646,6 +2650,7 @@ public object FfiConverterTypeEpisodeRecord: FfiConverterRustBuffer<EpisodeRecor
             FfiConverterBoolean.write(value.`isStarred`, buf)
             FfiConverterTypeDownloadArtifactStatus.write(value.`download`, buf)
             FfiConverterTypeTranscriptArtifactStatus.write(value.`transcript`, buf)
+            FfiConverterOptionalTypeGeneratedAudioArtifactProvenance.write(value.`generatedAudio`, buf)
     }
 }
 
@@ -2850,6 +2855,89 @@ public object FfiConverterTypeGeneratedArtifactId: FfiConverterRustBuffer<Genera
     override fun write(value: GeneratedArtifactId, buf: ByteBuffer) {
             FfiConverterULong.write(value.`high`, buf)
             FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class GeneratedAudioArtifactProvenance (
+    val `artifactId`: GeneratedArtifactId
+    ,
+    val `conversationId`: ConversationId
+    ,
+    val `turnId`: AgentTurnId
+    ,
+    val `proposalId`: AgentProposalId
+    ,
+    val `commitId`: AgentCommitId
+    ,
+    val `mediaContentDigest`: ContentDigest
+    ,
+    val `scriptContentDigest`: ContentDigest
+    ,
+    val `mediaByteCount`: kotlin.ULong
+    ,
+    val `voiceId`: kotlin.String?
+    ,
+    val `modelReference`: kotlin.String
+    ,
+    val `committedAt`: UnixTimestampMilliseconds
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeGeneratedAudioArtifactProvenance: FfiConverterRustBuffer<GeneratedAudioArtifactProvenance> {
+    override fun read(buf: ByteBuffer): GeneratedAudioArtifactProvenance {
+        return GeneratedAudioArtifactProvenance(
+            FfiConverterTypeGeneratedArtifactId.read(buf),
+            FfiConverterTypeConversationId.read(buf),
+            FfiConverterTypeAgentTurnId.read(buf),
+            FfiConverterTypeAgentProposalId.read(buf),
+            FfiConverterTypeAgentCommitId.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: GeneratedAudioArtifactProvenance) = (
+            FfiConverterTypeGeneratedArtifactId.allocationSize(value.`artifactId`) +
+            FfiConverterTypeConversationId.allocationSize(value.`conversationId`) +
+            FfiConverterTypeAgentTurnId.allocationSize(value.`turnId`) +
+            FfiConverterTypeAgentProposalId.allocationSize(value.`proposalId`) +
+            FfiConverterTypeAgentCommitId.allocationSize(value.`commitId`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`mediaContentDigest`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`scriptContentDigest`) +
+            FfiConverterULong.allocationSize(value.`mediaByteCount`) +
+            FfiConverterOptionalString.allocationSize(value.`voiceId`) +
+            FfiConverterString.allocationSize(value.`modelReference`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`committedAt`)
+    )
+
+    override fun write(value: GeneratedAudioArtifactProvenance, buf: ByteBuffer) {
+            FfiConverterTypeGeneratedArtifactId.write(value.`artifactId`, buf)
+            FfiConverterTypeConversationId.write(value.`conversationId`, buf)
+            FfiConverterTypeAgentTurnId.write(value.`turnId`, buf)
+            FfiConverterTypeAgentProposalId.write(value.`proposalId`, buf)
+            FfiConverterTypeAgentCommitId.write(value.`commitId`, buf)
+            FfiConverterTypeContentDigest.write(value.`mediaContentDigest`, buf)
+            FfiConverterTypeContentDigest.write(value.`scriptContentDigest`, buf)
+            FfiConverterULong.write(value.`mediaByteCount`, buf)
+            FfiConverterOptionalString.write(value.`voiceId`, buf)
+            FfiConverterString.write(value.`modelReference`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`committedAt`, buf)
     }
 }
 
@@ -7626,6 +7714,38 @@ public object FfiConverterOptionalTypeFeedIdentityV1: FfiConverterRustBuffer<Fee
         } else {
             buf.put(1)
             FfiConverterTypeFeedIdentityV1.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeGeneratedAudioArtifactProvenance: FfiConverterRustBuffer<GeneratedAudioArtifactProvenance?> {
+    override fun read(buf: ByteBuffer): GeneratedAudioArtifactProvenance? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeGeneratedAudioArtifactProvenance.read(buf)
+    }
+
+    override fun allocationSize(value: GeneratedAudioArtifactProvenance?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeGeneratedAudioArtifactProvenance.allocationSize(value)
+        }
+    }
+
+    override fun write(value: GeneratedAudioArtifactProvenance?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeGeneratedAudioArtifactProvenance.write(value, buf)
         }
     }
 }

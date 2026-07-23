@@ -16,6 +16,7 @@ final class CoreAgentToolSchemasTests: XCTestCase {
             .queryTranscripts,
             .pausePlayback,
             .setPlaybackRate,
+            .generateTtsEpisode,
         ]
 
         let schemas = try XCTUnwrap(CoreAgentToolSchemas.schemas(for: tools))
@@ -33,6 +34,7 @@ final class CoreAgentToolSchemasTests: XCTestCase {
                 "query_transcripts",
                 "pause_playback",
                 "set_playback_rate",
+                "generate_tts_episode",
             ]
         )
     }
@@ -44,6 +46,7 @@ final class CoreAgentToolSchemasTests: XCTestCase {
             .searchEpisodes,
             .queryTranscripts,
             .setPlaybackRate,
+            .generateTtsEpisode,
         ]))
         let schemasByName = Dictionary(uniqueKeysWithValues: schemas.compactMap { schema in
             Self.functionName(schema).map { ($0, schema) }
@@ -62,6 +65,10 @@ final class CoreAgentToolSchemasTests: XCTestCase {
         XCTAssertEqual(
             try Self.required(in: XCTUnwrap(schemasByName["set_playback_rate"])),
             ["rate"]
+        )
+        XCTAssertEqual(
+            try Self.required(in: XCTUnwrap(schemasByName["generate_tts_episode"])),
+            ["title", "script"]
         )
         for schema in schemas {
             XCTAssertEqual(try Self.parameters(in: schema)["additionalProperties"] as? Bool, false)

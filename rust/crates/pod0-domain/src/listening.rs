@@ -1,4 +1,7 @@
-use crate::{EpisodeId, PodcastId, QueueEntryId, StateRevision, UnixTimestampMilliseconds};
+use crate::{
+    AgentCommitId, AgentProposalId, AgentTurnId, ContentDigest, ConversationId, EpisodeId,
+    GeneratedArtifactId, PodcastId, QueueEntryId, StateRevision, UnixTimestampMilliseconds,
+};
 
 /// Versioned comparison identity matching the current Swift store exactly:
 /// lowercase the complete absolute URL without trimming a trailing slash.
@@ -128,6 +131,21 @@ pub struct EpisodeListeningState {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct GeneratedAudioArtifactProvenance {
+    pub artifact_id: GeneratedArtifactId,
+    pub conversation_id: ConversationId,
+    pub turn_id: AgentTurnId,
+    pub proposal_id: AgentProposalId,
+    pub commit_id: AgentCommitId,
+    pub media_content_digest: ContentDigest,
+    pub script_content_digest: ContentDigest,
+    pub media_byte_count: u64,
+    pub voice_id: Option<String>,
+    pub model_reference: String,
+    pub committed_at: UnixTimestampMilliseconds,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct EpisodeRecord {
     pub episode_id: EpisodeId,
     pub podcast_id: PodcastId,
@@ -146,6 +164,7 @@ pub struct EpisodeRecord {
     pub is_starred: bool,
     pub download: DownloadArtifactStatus,
     pub transcript: TranscriptArtifactStatus,
+    pub generated_audio: Option<GeneratedAudioArtifactProvenance>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]

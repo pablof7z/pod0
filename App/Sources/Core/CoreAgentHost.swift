@@ -57,7 +57,7 @@ final class CoreAgentHost: CoreAgentHosting {
         case .presentAgentApproval(let approval):
             return await presentApproval(approval)
         case .executeAgentCapability(let capability):
-            let outcome = await capabilityExecutor.execute(capability.action)
+            let outcome = await capabilityExecutor.execute(capability)
             return .agentCapabilityObserved(
                 turnId: capability.turnId,
                 proposalId: capability.proposalId,

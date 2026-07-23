@@ -183,7 +183,8 @@ final class SharedChapterWorkflowSafetyTests: XCTestCase {
             ),
             isStarred: false,
             download: .unavailable,
-            transcript: .unavailable
+            transcript: .unavailable,
+            generatedAudio: nil
         )
     }
 

@@ -1,4 +1,6 @@
-use pod0_domain::{AgentCommitId, AgentProposalId, AgentTurnId, ContentDigest, StateRevision};
+use pod0_domain::{
+    AgentCommitId, AgentProposalId, AgentTurnId, ContentDigest, GeneratedArtifactId, StateRevision,
+};
 use sha2::{Digest as _, Sha256};
 
 use crate::{ALL_AGENT_TOOL_NAMES, AgentToolAction, AgentToolName, QueuePlacement, RecallScope};
@@ -31,6 +33,27 @@ pub fn agent_commit_id(proposal_id: AgentProposalId, digest: ContentDigest) -> A
     let mut id = [0_u8; 16];
     id.copy_from_slice(&bytes[..16]);
     AgentCommitId::from_bytes(id)
+}
+
+pub fn agent_generated_artifact_id(
+    proposal_id: AgentProposalId,
+    digest: ContentDigest,
+) -> GeneratedArtifactId {
+    let mut hasher = Sha256::new();
+    hasher.update(b"pod0:agent-generated-artifact:v1\0");
+    hasher.update(proposal_id.into_bytes());
+    hasher.update(digest.into_bytes());
+    let bytes: [u8; 32] = hasher.finalize().into();
+    let mut id = [0_u8; 16];
+    id.copy_from_slice(&bytes[..16]);
+    GeneratedArtifactId::from_bytes(id)
+}
+
+pub fn agent_generated_script_digest(script: &str) -> ContentDigest {
+    let mut hasher = Sha256::new();
+    hasher.update(b"pod0:agent-generated-script:v1\0");
+    hash_text(&mut hasher, script);
+    ContentDigest::from_bytes(hasher.finalize().into())
 }
 
 fn hash_action(hasher: &mut Sha256, action: &AgentToolAction) {

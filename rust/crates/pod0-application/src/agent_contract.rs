@@ -1,13 +1,12 @@
+use crate::{
+    AgentCapabilityExecutionMode, AgentGeneratedAudioEvidence, AgentGeneratedAudioTarget,
+    AgentToolName, QueuePlacement, RecallEvidenceProjection, RecallScope, ScheduledTaskInput,
+};
 use pod0_domain::{
     AgentCommitId, AgentExecutionFenceId, AgentProposalId, AgentTurnId, ContentDigest,
     ConversationId, EpisodeId, GeneratedArtifactId, PodcastId, ScheduledTaskId, StateRevision,
     UnixTimestampMilliseconds,
 };
-
-use crate::{
-    AgentToolName, QueuePlacement, RecallEvidenceProjection, RecallScope, ScheduledTaskInput,
-};
-
 pub const AGENT_CONTRACT_VERSION: u32 = 1;
 pub const MAX_AGENT_INPUT_BYTES: usize = 32 * 1_024;
 pub const MAX_AGENT_MESSAGE_BYTES: usize = 64 * 1_024;
@@ -18,7 +17,6 @@ pub const MAX_AGENT_SAFE_DETAIL_BYTES: usize = 1_024;
 pub const MAX_AGENT_TOOLS_PER_TURN: usize = 46;
 pub const MAX_AGENT_MODEL_OUTPUT_BYTES: u64 = 256 * 1_024;
 pub const MAX_AGENT_RECALL_EVIDENCE: u16 = 8;
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum AgentAuthority {
     None,
@@ -280,13 +278,22 @@ pub struct AgentCapabilityRequest {
     pub proposal_id: AgentProposalId,
     pub proposal_digest: ContentDigest,
     pub execution_fence_id: AgentExecutionFenceId,
+    pub execution_mode: AgentCapabilityExecutionMode,
+    pub generated_audio_target: Option<AgentGeneratedAudioTarget>,
     pub action: AgentToolAction,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum AgentCapabilityOutcome {
-    Succeeded { bounded_result: String },
-    Failed { safe_detail: Option<String> },
+    Succeeded {
+        bounded_result: String,
+    },
+    GeneratedAudioStaged {
+        evidence: AgentGeneratedAudioEvidence,
+    },
+    Failed {
+        safe_detail: Option<String>,
+    },
     Cancelled,
     OutcomeAmbiguous,
 }

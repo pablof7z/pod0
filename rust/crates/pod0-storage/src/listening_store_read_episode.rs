@@ -1,6 +1,8 @@
 use pod0_domain::{
-    ArtifactReference, DownloadArtifactStatus, EpisodeId, EpisodeListeningState, EpisodeRecord,
-    PodcastId, TranscriptArtifactStatus, UnixTimestampMilliseconds,
+    AgentCommitId, AgentProposalId, AgentTurnId, ArtifactReference, ContentDigest, ConversationId,
+    DownloadArtifactStatus, EpisodeId, EpisodeListeningState, EpisodeRecord, GeneratedArtifactId,
+    GeneratedAudioArtifactProvenance, PodcastId, TranscriptArtifactStatus,
+    UnixTimestampMilliseconds,
 };
 use rusqlite::{Connection, Row};
 
@@ -18,9 +20,13 @@ pub(crate) fn read_episodes(connection: &Connection) -> Result<Vec<EpisodeRecord
          e.transcript_ref_key,e.transcript_source_code,e.transcript_source_wire_code,\
          m.publisher_transcript_url,m.publisher_transcript_media_type,\
          m.publisher_transcript_format_code,m.publisher_transcript_format_wire_code,\
-         m.chapters_url,m.persons_json,m.sound_bites_json \
+         m.chapters_url,m.persons_json,m.sound_bites_json,\
+         a.artifact_id,a.conversation_id,a.turn_id,a.proposal_id,a.commit_id,\
+         a.media_content_digest,a.script_content_digest,a.media_byte_count,a.voice_id,\
+         a.model_reference,a.committed_at_ms \
          FROM pod0_episodes e JOIN pod0_podcasts p ON p.podcast_id=e.podcast_id \
          LEFT JOIN pod0_episode_feed_metadata m ON m.episode_id=e.episode_id \
+         LEFT JOIN pod0_agent_generated_audio_artifacts a ON a.episode_id=e.episode_id \
          WHERE p.library_visible=1 \
          ORDER BY e.rowid",
     ).map_err(|error| StorageError::sqlite("prepare episode projection", error))?;
@@ -65,7 +71,46 @@ fn episode_from_row(row: &Row<'_>) -> Result<EpisodeRecord, StorageError> {
         is_starred: boolean(row.get(14)?)?,
         download: decode_download(row)?,
         transcript: decode_transcript(row)?,
+        generated_audio: decode_generated_audio(row)?,
     })
+}
+
+fn decode_generated_audio(
+    row: &Row<'_>,
+) -> Result<Option<GeneratedAudioArtifactProvenance>, StorageError> {
+    let Some(artifact_id) = optional_id(row, 33)? else {
+        return Ok(None);
+    };
+    Ok(Some(GeneratedAudioArtifactProvenance {
+        artifact_id: GeneratedArtifactId::from_bytes(artifact_id),
+        conversation_id: ConversationId::from_bytes(required_id(row, 34, "conversation ID")?),
+        turn_id: AgentTurnId::from_bytes(required_id(row, 35, "turn ID")?),
+        proposal_id: AgentProposalId::from_bytes(required_id(row, 36, "proposal ID")?),
+        commit_id: AgentCommitId::from_bytes(required_id(row, 37, "commit ID")?),
+        media_content_digest: ContentDigest::from_bytes(required_digest(
+            row,
+            38,
+            "media content digest",
+        )?),
+        script_content_digest: ContentDigest::from_bytes(required_digest(
+            row,
+            39,
+            "script content digest",
+        )?),
+        media_byte_count: unsigned(
+            row.get::<_, Option<i64>>(40)?
+                .ok_or_else(|| corrupt("media byte count"))?,
+            "media byte count",
+        )?,
+        voice_id: row.get(41)?,
+        model_reference: row
+            .get::<_, Option<String>>(42)?
+            .ok_or_else(|| corrupt("model reference"))?,
+        committed_at: UnixTimestampMilliseconds::new(
+            row.get::<_, Option<i64>>(43)?
+                .ok_or_else(|| corrupt("generated audio commit time"))?,
+        ),
+    }))
 }
 
 fn decode_download(row: &Row<'_>) -> Result<DownloadArtifactStatus, StorageError> {
@@ -121,6 +166,28 @@ fn id(row: &Row<'_>, index: usize) -> Result<[u8; 16], StorageError> {
     row.get::<_, Vec<u8>>(index)?
         .try_into()
         .map_err(|_| corrupt("stored ID length"))
+}
+fn optional_id(row: &Row<'_>, index: usize) -> Result<Option<[u8; 16]>, StorageError> {
+    row.get::<_, Option<Vec<u8>>>(index)?
+        .map(|value| value.try_into().map_err(|_| corrupt("stored ID length")))
+        .transpose()
+}
+fn required_id(
+    row: &Row<'_>,
+    index: usize,
+    detail: &'static str,
+) -> Result<[u8; 16], StorageError> {
+    optional_id(row, index)?.ok_or_else(|| corrupt(detail))
+}
+fn required_digest(
+    row: &Row<'_>,
+    index: usize,
+    detail: &'static str,
+) -> Result<[u8; 32], StorageError> {
+    row.get::<_, Option<Vec<u8>>>(index)?
+        .ok_or_else(|| corrupt(detail))?
+        .try_into()
+        .map_err(|_| corrupt(detail))
 }
 fn unsigned(value: i64, detail: &'static str) -> Result<u64, StorageError> {
     u64::try_from(value).map_err(|_| corrupt(detail))

@@ -102,7 +102,9 @@ extension EpisodeRecord {
             transcriptState: transcript.swiftValue,
             requestedTranscriptProvider: nil,
             adSegments: chapterProjection?.adSegments,
-            generationSource: adjunct?.generationSource
+            generationSource: generatedAudio
+                .flatMap(\.conversationId.uuid)
+                .map { .inAppChat(conversationID: $0) }
         )
     }
 
