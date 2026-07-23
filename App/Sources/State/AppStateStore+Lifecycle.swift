@@ -32,7 +32,9 @@ extension AppStateStore {
 
     static func migrateLegacyOpenRouterSecretIfNeeded(
         in state: inout AppState,
-        persistence: Persistence
+        persistence: Persistence,
+        saveCredential: (String) throws -> Void = OpenRouterCredentialStore.saveAPIKey,
+        readCredential: () throws -> String? = OpenRouterCredentialStore.apiKey
     ) {
         let legacyKey = state.settings.legacyOpenRouterAPIKey.trimmedOrEmpty
         guard !legacyKey.isEmpty else {
@@ -40,13 +42,17 @@ extension AppStateStore {
             return
         }
         do {
-            try OpenRouterCredentialStore.saveAPIKey(legacyKey)
+            try saveCredential(legacyKey)
+            guard try readCredential()?.trimmed == legacyKey else {
+                throw LegacyOpenRouterMigrationError.readBackMismatch
+            }
             state.settings.markOpenRouterManual()
+            persistence.save(state)
         } catch {
-            logger.error("Failed to migrate legacy OpenRouter key to keychain: \(error, privacy: .public)")
-            state.settings.clearOpenRouterCredential()
+            logger.error(
+                "Legacy OpenRouter key remains at its source because Keychain migration was not verified"
+            )
         }
-        persistence.save(state)
     }
 
     func updateSettings(_ settings: Settings) {
@@ -65,4 +71,8 @@ extension AppStateStore {
         }
         return await persistence.flush(state)
     }
+}
+
+private enum LegacyOpenRouterMigrationError: Error {
+    case readBackMismatch
 }

@@ -431,6 +431,7 @@
 		8703D8784FF4A37E0DE6C254 /* CoreNostrSignerHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E27A7CBC67C1F6851F9AA18 /* CoreNostrSignerHost.swift */; };
 		87B6D49DBAF7EADDD0FFB80B /* TranscriptKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02384F0D2237354AF64B2F85 /* TranscriptKind.swift */; };
 		8923D48AA4C8D98A7303AC8D /* AgentRunInspectionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F221E829C03E40A4E3EFD8C8 /* AgentRunInspectionViews.swift */; };
+		8973AF78EABCEFCE881B2F1C /* LegacyOpenRouterCredentialMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D7E79E8C65655C7A14380F4 /* LegacyOpenRouterCredentialMigrationTests.swift */; };
 		8985A61DF6EBB8C9E72E4776 /* LegacyChapterWorkflowTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E40D4967F4BCB148023CD349 /* LegacyChapterWorkflowTestSupport.swift */; };
 		898C82BA93DFAACF920E86F4 /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB34028F5B06CDE094BE03B4 /* Persistence.swift */; };
 		89C3987BA7AEE2354206E455 /* SharedLibraryBootstrap+Transcripts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FB5C8B3B5FECD3B9BA4DF35 /* SharedLibraryBootstrap+Transcripts.swift */; };
@@ -974,6 +975,7 @@
 		1C72EF4F71C0F0365B3281BA /* Pod0CoreIdentifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pod0CoreIdentifiers.swift; sourceTree = "<group>"; };
 		1CABA6E578A584BCF8870F83 /* SharedLibraryClient+LibraryProjection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SharedLibraryClient+LibraryProjection.swift"; sourceTree = "<group>"; };
 		1D1386F97DB5B9CB0890DF94 /* PlayerChaptersScrollView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerChaptersScrollView.swift; sourceTree = "<group>"; };
+		1D7E79E8C65655C7A14380F4 /* LegacyOpenRouterCredentialMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyOpenRouterCredentialMigrationTests.swift; sourceTree = "<group>"; };
 		1DC81E15CEB87CE3CC38654E /* ClipBoundaryResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipBoundaryResolverTests.swift; sourceTree = "<group>"; };
 		1DEA3E7D45541C096845343D /* AvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarView.swift; sourceTree = "<group>"; };
 		1E526EEE99DB36BC8B9EB926 /* EngineError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EngineError.swift; sourceTree = "<group>"; };
@@ -2582,6 +2584,7 @@
 				9EABA7C333ABB324F027E25D /* LegacyModelChapterWorkflowCompatibilityTests.swift */,
 				43B964D7FDC5F1D285AF2389 /* LegacyModelChapterWorkflowCutoverTests.swift */,
 				17C14BF8FACB9A41D8142B6A /* LegacyModelChapterWorkflowSnapshotTests.swift */,
+				1D7E79E8C65655C7A14380F4 /* LegacyOpenRouterCredentialMigrationTests.swift */,
 				E256806EE2E0049D102BDAD2 /* LegacyPublisherChapterWorkflowRetirementTests.swift */,
 				20C7AB35191AFA93D9E74B76 /* LegacyScheduledAgentWorkflowCutoverTests.swift */,
 				2D583BF913D9CA9CFB8C9458 /* LegacyScheduledAgentWorkflowMapperTests.swift */,
@@ -3843,6 +3846,7 @@
 				94F78F623F1C0AE9269C8AF4 /* LegacyModelChapterWorkflowCompatibilityTests.swift in Sources */,
 				D2166048A744428BC78782C0 /* LegacyModelChapterWorkflowCutoverTests.swift in Sources */,
 				55F965F6F2D3782509E4BE67 /* LegacyModelChapterWorkflowSnapshotTests.swift in Sources */,
+				8973AF78EABCEFCE881B2F1C /* LegacyOpenRouterCredentialMigrationTests.swift in Sources */,
 				40C442DD5820B29705C051DE /* LegacyPublisherChapterWorkflowRetirementTests.swift in Sources */,
 				CBB2F5738688F9070B12D1E4 /* LegacyScheduledAgentWorkflowCutoverTests.swift in Sources */,
 				C9EDDCE11470322EC1239A44 /* LegacyScheduledAgentWorkflowMapperTests.swift in Sources */,

@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-23T12:47:39Z",
+      "lines": [
+        "Existing OpenRouter credentials now stay recoverable if Keychain migration is interrupted."
+      ]
+    },
+    {
       "shipped_at": "2026-07-23T12:38:53Z",
       "lines": [
         "Private feed credentials and provider errors are now kept out of diagnostics."
