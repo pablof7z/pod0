@@ -6,6 +6,7 @@ import SwiftUI
 struct RootView: View {
     @Environment(AppStateStore.self) var store
     @Environment(AgentAskCoordinator.self) var askCoordinator
+    @Environment(AgentApprovalCoordinator.self) var approvalCoordinator
     @Environment(WorkflowClient.self) var workflows
     @State var selectedTab: RootTab = .home
     @State var showSettings = false
@@ -22,7 +23,6 @@ struct RootView: View {
     @Namespace var playerNamespace
 
     private let sidebarWidth: CGFloat = 300
-
     @ViewBuilder
     var body: some View {
         if let reason = store.sharedLibraryUnavailableReason {
@@ -141,6 +141,7 @@ struct RootView: View {
                     store: store
                 ))
                 .agentAskPresenter(coordinator: askCoordinator)
+                .agentApprovalPresenter(coordinator: approvalCoordinator)
                 .onOpenURL { handleDeepLink($0) }
                 .onReceive(
                     NotificationCenter.default.publisher(for: AppDelegate.shortcutURLNotification)
@@ -162,7 +163,6 @@ struct RootView: View {
     }
 
     // MARK: - Tab bar
-
     @ViewBuilder
     private var tabBar: some View {
         let base = TabView(selection: $selectedTab) {

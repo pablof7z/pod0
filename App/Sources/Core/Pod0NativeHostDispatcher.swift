@@ -41,6 +41,7 @@ final class Pod0NativeHostDispatcher {
     let downloadHost: any CoreDownloadHosting
     let publisherChapterHost: any CorePublisherChapterHosting
     let chapterModelHost: any CoreChapterModelHosting
+    let agentHost: any CoreAgentHosting
     let playbackHost: any CorePlaybackHosting
     private let maximumConcurrentTasks: Int
     let recallHost: any CoreRecallHosting
@@ -75,6 +76,7 @@ final class Pod0NativeHostDispatcher {
         downloadHost: any CoreDownloadHosting = UnavailableCoreDownloadHost(),
         publisherChapterHost: any CorePublisherChapterHosting = CorePublisherChapterHost(),
         chapterModelHost: any CoreChapterModelHosting = CoreChapterModelHost(),
+        agentHost: any CoreAgentHosting = UnavailableCoreAgentHost(),
         playbackHost: any CorePlaybackHosting,
         recallHost: any CoreRecallHosting = UnavailableCoreRecallHost(),
         scheduledAgentHost: any CoreScheduledAgentHosting = CoreScheduledAgentHost(),
@@ -87,6 +89,7 @@ final class Pod0NativeHostDispatcher {
         self.downloadHost = downloadHost
         self.publisherChapterHost = publisherChapterHost
         self.chapterModelHost = chapterModelHost
+        self.agentHost = agentHost
         self.playbackHost = playbackHost
         self.recallHost = recallHost
         self.scheduledAgentHost = scheduledAgentHost
@@ -253,6 +256,21 @@ final class Pod0NativeHostDispatcher {
                 execution: execution,
                 delivery: delivery
             )
+        case .executeAgentModelTurn, .presentAgentApproval, .executeAgentCapability:
+            guard observationOutbox != nil else {
+                finish(
+                    envelope,
+                    sequenceNumber: 0,
+                    observation: .failed(
+                        code: .platformFailure,
+                        safeDetail: "Durable agent observation staging is unavailable"
+                    ),
+                    delivery: delivery,
+                    remember: false
+                )
+                return
+            }
+            startAgentTask(envelope, delivery: delivery)
         case .scheduleCoreWake(let wakeAt, let reason):
             startCoreWakeTask(
                 envelope,

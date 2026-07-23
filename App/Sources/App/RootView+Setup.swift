@@ -6,6 +6,10 @@ extension RootView {
     /// Called from `.onAppear` after the live store and player exist.
     func setupPlaybackHandlers() {
         store.sharedLibrary?.attachPlayback(playbackState, store: store)
+        store.sharedLibrary?.attachAgent(
+            approvalPresenter: approvalCoordinator,
+            store: store
+        )
         playbackState.productSignals = store.productSignals
         playbackState.onEnsureDownloadEnqueued = { [store] id in
             store.sharedLibrary?.requestDownload(episodeID: id, origin: .playback)

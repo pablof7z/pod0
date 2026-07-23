@@ -22,11 +22,13 @@ extension Pod0NativeHostDispatcher {
                 completion()
             }
         case .executeChapterModel, .recoverChapterModelOperation,
-             .executeTranscriptCapability, .scheduleCoreWake:
+             .executeTranscriptCapability, .executeAgentModelTurn,
+             .presentAgentApproval, .executeAgentCapability, .scheduleCoreWake:
             let recorder = durableObservationRecorder
             let persistForRelaunch = switch envelope.request {
             case .executeChapterModel, .recoverChapterModelOperation,
-                 .executeTranscriptCapability: true
+                 .executeTranscriptCapability, .executeAgentModelTurn,
+                 .presentAgentApproval, .executeAgentCapability: true
             default: false
             }
             let task = Task { @MainActor [weak self] in
@@ -158,7 +160,8 @@ extension Pod0NativeHostDispatcher {
                 guard !Task.isCancelled else { return }
                 let persistForRelaunch = switch acknowledgement.envelope.request {
                 case .executeChapterModel, .recoverChapterModelOperation,
-                     .executeTranscriptCapability: true
+                     .executeTranscriptCapability, .executeAgentModelTurn,
+                     .presentAgentApproval, .executeAgentCapability: true
                 default: false
                 }
                 let receipt = await recorder.recordRetaining(

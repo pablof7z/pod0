@@ -13,6 +13,7 @@ final class SharedLibraryClient {
     let authoritativeChapterReader: SharedChapterReader
     let dispatcher: Pod0NativeHostDispatcher
     private let deferredPlaybackHost: DeferredPlaybackHost
+    let deferredAgentHost: DeferredAgentHost
     let deferredRecallHost: DeferredRecallHost
     private var subscriber: SharedLibrarySubscriber?
     private var librarySubscriptionID: SubscriptionId?
@@ -71,12 +72,15 @@ final class SharedLibraryClient {
         self.authoritativeTranscriptReader = SharedTranscriptReader(facade: facade)
         self.authoritativeChapterReader = SharedChapterReader(facade: facade)
         let playbackHost = DeferredPlaybackHost()
+        let agentHost = DeferredAgentHost()
         let recallHost = DeferredRecallHost()
         self.deferredPlaybackHost = playbackHost
+        self.deferredAgentHost = agentHost
         self.deferredRecallHost = recallHost
         self.dispatcher = Pod0NativeHostDispatcher(
             feedHost: feedHost,
             downloadHost: downloadHost,
+            agentHost: agentHost,
             playbackHost: playbackHost,
             recallHost: recallHost,
             observationOutbox: observationOutbox
@@ -283,17 +287,5 @@ final class SharedLibraryClient {
             waiter.continuation.resume(throwing: SharedLibraryError.cancelled)
         }
         waiters.removeAll()
-    }
-
-}
-final class SharedLibrarySubscriber: ProjectionSubscriber, @unchecked Sendable {
-    private let delivery: @Sendable (ProjectionEnvelope) -> Void
-
-    init(delivery: @escaping @Sendable (ProjectionEnvelope) -> Void) {
-        self.delivery = delivery
-    }
-
-    func receive(projection: ProjectionEnvelope) {
-        delivery(projection)
     }
 }
