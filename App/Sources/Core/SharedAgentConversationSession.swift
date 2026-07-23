@@ -34,6 +34,9 @@ final class SharedAgentConversationSession {
     private var subscriptionID: SubscriptionId?
     private var subscribedConversationID: ConversationId?
     private(set) var conversation: AgentConversationProjection?
+    private(set) var conversationSummaries: [AgentConversationSummaryProjection] = []
+    private(set) var conversationHistoryHasMore = false
+    private(set) var conversationHistoryFailure: CoreFailure?
     private(set) var stateRevision: UInt64 = 0
     private(set) var phase: Phase = .idle
 
@@ -48,6 +51,7 @@ final class SharedAgentConversationSession {
         self.streamingState = streamingState
         self.onConversationChanged = onConversationChanged
         self.modelReference = modelReference
+        refreshConversationHistory()
         if let resumeConversationID { subscribe(to: resumeConversationID) }
     }
 
@@ -108,6 +112,13 @@ final class SharedAgentConversationSession {
         subscribe(to: conversationID)
     }
 
+    func refreshConversationHistory() {
+        let projection = runtime.agentConversationHistory()
+        conversationSummaries = projection.conversations
+        conversationHistoryHasMore = projection.hasMore
+        conversationHistoryFailure = projection.failure
+    }
+
     func startNewConversation() {
         stopObserving()
         conversation = nil
@@ -159,6 +170,7 @@ final class SharedAgentConversationSession {
         } else {
             phase = .idle
         }
+        refreshConversationHistory()
         runtime.executePendingHostRequests()
     }
 }

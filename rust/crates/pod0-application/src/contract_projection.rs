@@ -48,6 +48,7 @@ pub enum ProjectionScope {
     ScheduledAgent {
         task_id: Option<pod0_domain::ScheduledTaskId>,
     },
+    AgentConversations,
     AgentConversation {
         conversation_id: pod0_domain::ConversationId,
     },
@@ -132,6 +133,9 @@ pub enum Projection {
     },
     ScheduledAgent {
         value: crate::ScheduledAgentProjection,
+    },
+    AgentConversations {
+        value: crate::AgentConversationsProjection,
     },
     AgentConversation {
         value: crate::AgentConversationProjection,

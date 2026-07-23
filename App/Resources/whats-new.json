@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-23T04:25:54Z",
+      "lines": [
+        "Your shared-core Agent conversations now appear in history and survive relaunches."
+      ]
+    },
+    {
       "shipped_at": "2026-07-23T03:42:25Z",
       "lines": [
         "Transcript answers in Agent now include tappable citations that play the exact moment."

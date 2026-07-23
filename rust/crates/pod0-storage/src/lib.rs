@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 mod agent_store;
 mod agent_store_codec;
+mod agent_store_history;
 mod agent_store_model;
 mod agent_store_recovery;
 #[cfg(test)]

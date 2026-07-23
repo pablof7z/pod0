@@ -1,4 +1,5 @@
 import Foundation
+import Pod0Core
 import SwiftUI
 
 /// Native SwiftUI shell over the Rust-owned durable conversation workflow.
@@ -36,8 +37,12 @@ struct SharedAgentChatView: View {
         .toolbar { toolbar }
         .sheet(isPresented: $showHistory) {
             AgentChatHistoryView(
-                currentID: legacyConversation?.id ?? UUID(),
-                onSelect: { legacyConversation = $0 },
+                sharedConversations: session.conversationSummaries,
+                sharedHasMore: session.conversationHistoryHasMore,
+                currentSharedID: legacyConversation == nil ? session.conversationID : nil,
+                currentLegacyID: legacyConversation?.id,
+                onSelectShared: openSharedConversation,
+                onSelectLegacy: { legacyConversation = $0 },
                 onNew: startNewConversation
             )
         }
@@ -72,10 +77,13 @@ struct SharedAgentChatView: View {
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
-            Button { showHistory = true } label: {
+            Button {
+                session.refreshConversationHistory()
+                showHistory = true
+            } label: {
                 Image(systemName: "clock.arrow.circlepath")
             }
-            .accessibilityLabel("Previous Swift conversations")
+            .accessibilityLabel("Conversation history")
         }
         ToolbarItem(placement: .primaryAction) {
             Button(action: startNewConversation) {
@@ -203,6 +211,11 @@ struct SharedAgentChatView: View {
         session.startNewConversation()
         draft = ""
         inputFocused = true
+    }
+
+    private func openSharedConversation(_ conversationID: ConversationId) {
+        legacyConversation = nil
+        session.openConversation(conversationID)
     }
 
     private func selectRequestedLegacyConversation() {

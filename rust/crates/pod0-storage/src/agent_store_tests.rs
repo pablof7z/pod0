@@ -61,15 +61,29 @@ fn context(value: u8, observed_at: i64) -> AgentCommandContext {
 }
 
 fn state(seed: u8) -> AgentTurnState {
+    state_for(
+        seed,
+        ConversationId::from_bytes([9; 16]),
+        "Save architecture matters as a note",
+        10,
+    )
+}
+
+fn state_for(
+    seed: u8,
+    conversation_id: ConversationId,
+    user_input: &str,
+    observed_at: i64,
+) -> AgentTurnState {
     AgentTurnState::start(AgentTurnStart {
-        conversation_id: ConversationId::from_bytes([9; 16]),
+        conversation_id,
         turn_id: AgentTurnId::from_bytes([seed; 16]),
         model_fence_id: AgentExecutionFenceId::from_bytes([seed + 1; 16]),
-        user_input: "Save architecture matters as a note".into(),
+        user_input: user_input.into(),
         model_reference: "openrouter/test".into(),
         available_tools: vec![pod0_application::AgentToolName::CreateNote],
         cancellation_id: pod0_domain::CancellationId::from_parts(9, seed.into()),
-        observed_at: UnixTimestampMilliseconds::new(10),
+        observed_at: UnixTimestampMilliseconds::new(observed_at),
     })
     .unwrap()
 }
@@ -197,4 +211,39 @@ fn conversation_page_is_bounded_and_reports_more() {
         .unwrap();
     assert_eq!(page.items.len(), 2);
     assert!(page.has_more);
+}
+
+#[test]
+fn conversation_index_is_bounded_ordered_and_survives_restart() {
+    let fixture = Fixture::new();
+    let older_id = ConversationId::from_bytes([31; 16]);
+    let newer_id = ConversationId::from_bytes([32; 16]);
+    fixture
+        .store
+        .start_turn(
+            context(31, 100),
+            &state_for(31, older_id, "Older question", 100),
+        )
+        .unwrap();
+    fixture
+        .store
+        .start_turn(
+            context(32, 200),
+            &state_for(32, newer_id, "Newest question", 200),
+        )
+        .unwrap();
+
+    let first_page = fixture.store.conversation_page(0, 1).unwrap();
+    assert_eq!(first_page.items.len(), 1);
+    assert!(first_page.has_more);
+    assert_eq!(first_page.items[0].conversation_id, newer_id);
+    assert_eq!(first_page.items[0].title, "Newest question");
+    assert_eq!(first_page.items[0].preview, "Newest question");
+    assert_eq!(first_page.items[0].turn_count, 1);
+
+    let reopened = AgentStore::open(&fixture.path).unwrap();
+    let second_page = reopened.conversation_page(1, 1).unwrap();
+    assert_eq!(second_page.items.len(), 1);
+    assert!(!second_page.has_more);
+    assert_eq!(second_page.items[0].conversation_id, older_id);
 }

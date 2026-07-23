@@ -84,6 +84,34 @@ final class SharedAgentConversationSessionTests: XCTestCase {
         XCTAssertEqual(changes, [resumedID, nil])
     }
 
+    func testLoadsAndRefreshesDurableConversationHistory() {
+        let runtime = StubSharedAgentConversationRuntime()
+        runtime.history = historyProjection(
+            id: ConversationId(high: 11, low: 12),
+            title: "What did they say about habits?"
+        )
+        let session = SharedAgentConversationSession(
+            runtime: runtime,
+            modelReference: { "openrouter/test" }
+        )
+
+        XCTAssertEqual(
+            session.conversationSummaries.map(\.title),
+            ["What did they say about habits?"]
+        )
+
+        runtime.history = historyProjection(
+            id: ConversationId(high: 21, low: 22),
+            title: "What should I hear next?"
+        )
+        session.refreshConversationHistory()
+
+        XCTAssertEqual(
+            session.conversationSummaries.map(\.conversationId),
+            [ConversationId(high: 21, low: 22)]
+        )
+    }
+
     private func conversation(
         stage: AgentTurnStage,
         revision: UInt64
@@ -113,6 +141,25 @@ final class SharedAgentConversationSessionTests: XCTestCase {
             failure: nil
         )
     }
+
+    private func historyProjection(
+        id: ConversationId,
+        title: String
+    ) -> AgentConversationsProjection {
+        AgentConversationsProjection(
+            conversations: [AgentConversationSummaryProjection(
+                conversationId: id,
+                title: title,
+                preview: "A durable answer",
+                turnCount: 1,
+                latestStage: .completed,
+                createdAt: UnixTimestampMilliseconds(value: 1_900_000_000_000),
+                updatedAt: UnixTimestampMilliseconds(value: 1_900_000_001_000)
+            )],
+            hasMore: false,
+            failure: nil
+        )
+    }
 }
 
 @MainActor
@@ -120,6 +167,15 @@ private final class StubSharedAgentConversationRuntime: SharedAgentConversationR
     private var subscriber: (any ProjectionSubscriber)?
     private(set) var commands: [ApplicationCommand] = []
     private(set) var subscribedConversationID: ConversationId?
+    var history = AgentConversationsProjection(
+        conversations: [],
+        hasMore: false,
+        failure: nil
+    )
+
+    func agentConversationHistory() -> AgentConversationsProjection {
+        history
+    }
 
     func execute(_ command: ApplicationCommand) async throws -> OperationResult? {
         commands.append(command)

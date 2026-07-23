@@ -1,4 +1,4 @@
-use pod0_application::{AgentTurnProjection, AgentTurnState};
+use pod0_application::{AgentConversationSummaryProjection, AgentTurnProjection, AgentTurnState};
 use pod0_domain::{AgentTurnId, CommandId, StateRevision, UnixTimestampMilliseconds};
 
 #[derive(Clone, Copy, Debug)]
@@ -42,6 +42,12 @@ pub enum AgentMutationOutcome {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AgentTurnPage {
     pub items: Vec<AgentTurnProjection>,
+    pub has_more: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AgentConversationPage {
+    pub items: Vec<AgentConversationSummaryProjection>,
     pub has_more: bool,
 }
 

@@ -6,6 +6,9 @@ mod context_tests;
 #[cfg(test)]
 #[path = "runtime_agent_continuation_tests.rs"]
 mod continuation_tests;
+#[cfg(test)]
+#[path = "runtime_agent_history_tests.rs"]
+mod history_tests;
 #[path = "runtime_agent_identity.rs"]
 pub(crate) mod identity;
 #[path = "runtime_agent_internal.rs"]

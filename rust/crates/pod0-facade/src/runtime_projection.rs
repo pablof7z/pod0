@@ -206,6 +206,9 @@ impl FacadeState {
             ProjectionScope::ScheduledAgent { task_id } => Projection::ScheduledAgent {
                 value: self.scheduled_agent_projection(task_id, request.offset, request.max_items),
             },
+            ProjectionScope::AgentConversations => Projection::AgentConversations {
+                value: self.agent_conversations_projection(request.offset, request.max_items),
+            },
             ProjectionScope::AgentConversation { conversation_id } => {
                 Projection::AgentConversation {
                     value: self.agent_conversation_projection(

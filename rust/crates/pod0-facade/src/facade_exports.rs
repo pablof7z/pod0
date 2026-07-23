@@ -1,7 +1,8 @@
 pub use pod0_application::{
     AdSpanProjection, AgentApprovalRequest, AgentAuthority, AgentCapabilityOutcome,
     AgentCapabilityRequest, AgentCommitReceipt, AgentComposedChapterItem,
-    AgentComposedChapterObservation, AgentConversationProjection, AgentExecutionKind,
+    AgentComposedChapterObservation, AgentConversationProjection,
+    AgentConversationSummaryProjection, AgentConversationsProjection, AgentExecutionKind,
     AgentMessageProjection, AgentMessageRole, AgentModelExecutionRequest,
     AgentModelToolCallObservation, AgentProposalProjection, AgentToolAction, AgentToolClass,
     AgentToolName, AgentToolPolicy, AgentTurnProjection, AgentTurnStage, ApplicationCommand,

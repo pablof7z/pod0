@@ -1738,6 +1738,112 @@ public object FfiConverterTypeAgentConversationProjection: FfiConverterRustBuffe
 
 
 
+data class AgentConversationSummaryProjection (
+    val `conversationId`: ConversationId
+    ,
+    val `title`: kotlin.String
+    ,
+    val `preview`: kotlin.String
+    ,
+    val `turnCount`: kotlin.UInt
+    ,
+    val `latestStage`: AgentTurnStage
+    ,
+    val `createdAt`: UnixTimestampMilliseconds
+    ,
+    val `updatedAt`: UnixTimestampMilliseconds
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentConversationSummaryProjection: FfiConverterRustBuffer<AgentConversationSummaryProjection> {
+    override fun read(buf: ByteBuffer): AgentConversationSummaryProjection {
+        return AgentConversationSummaryProjection(
+            FfiConverterTypeConversationId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterTypeAgentTurnStage.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentConversationSummaryProjection) = (
+            FfiConverterTypeConversationId.allocationSize(value.`conversationId`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterString.allocationSize(value.`preview`) +
+            FfiConverterUInt.allocationSize(value.`turnCount`) +
+            FfiConverterTypeAgentTurnStage.allocationSize(value.`latestStage`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`createdAt`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`updatedAt`)
+    )
+
+    override fun write(value: AgentConversationSummaryProjection, buf: ByteBuffer) {
+            FfiConverterTypeConversationId.write(value.`conversationId`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterString.write(value.`preview`, buf)
+            FfiConverterUInt.write(value.`turnCount`, buf)
+            FfiConverterTypeAgentTurnStage.write(value.`latestStage`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`createdAt`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`updatedAt`, buf)
+    }
+}
+
+
+
+data class AgentConversationsProjection (
+    val `conversations`: List<AgentConversationSummaryProjection>
+    ,
+    val `hasMore`: kotlin.Boolean
+    ,
+    val `failure`: CoreFailure?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentConversationsProjection: FfiConverterRustBuffer<AgentConversationsProjection> {
+    override fun read(buf: ByteBuffer): AgentConversationsProjection {
+        return AgentConversationsProjection(
+            FfiConverterSequenceTypeAgentConversationSummaryProjection.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalTypeCoreFailure.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentConversationsProjection) = (
+            FfiConverterSequenceTypeAgentConversationSummaryProjection.allocationSize(value.`conversations`) +
+            FfiConverterBoolean.allocationSize(value.`hasMore`) +
+            FfiConverterOptionalTypeCoreFailure.allocationSize(value.`failure`)
+    )
+
+    override fun write(value: AgentConversationsProjection, buf: ByteBuffer) {
+            FfiConverterSequenceTypeAgentConversationSummaryProjection.write(value.`conversations`, buf)
+            FfiConverterBoolean.write(value.`hasMore`, buf)
+            FfiConverterOptionalTypeCoreFailure.write(value.`failure`, buf)
+    }
+}
+
+
+
 data class AgentMessageProjection (
     val `role`: AgentMessageRole
     ,
@@ -18881,6 +18987,15 @@ sealed class Projection {
         companion object
     }
 
+    data class AgentConversations(
+        val `value`: uniffi.pod0_application.AgentConversationsProjection) : Projection()
+
+    {
+
+
+        companion object
+    }
+
     data class AgentConversation(
         val `value`: uniffi.pod0_application.AgentConversationProjection) : Projection()
 
@@ -18972,16 +19087,19 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
             13 -> Projection.ScheduledAgent(
                 FfiConverterTypeScheduledAgentProjection.read(buf),
                 )
-            14 -> Projection.AgentConversation(
+            14 -> Projection.AgentConversations(
+                FfiConverterTypeAgentConversationsProjection.read(buf),
+                )
+            15 -> Projection.AgentConversation(
                 FfiConverterTypeAgentConversationProjection.read(buf),
                 )
-            15 -> Projection.Notes(
+            16 -> Projection.Notes(
                 FfiConverterTypeNotesProjection.read(buf),
                 )
-            16 -> Projection.Clips(
+            17 -> Projection.Clips(
                 FfiConverterTypeClipsProjection.read(buf),
                 )
-            17 -> Projection.Unsupported(
+            18 -> Projection.Unsupported(
                 FfiConverterTypeUnsupportedProjection.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -19078,6 +19196,13 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
             (
                 4UL
                 + FfiConverterTypeScheduledAgentProjection.allocationSize(value.`value`)
+            )
+        }
+        is Projection.AgentConversations -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeAgentConversationsProjection.allocationSize(value.`value`)
             )
         }
         is Projection.AgentConversation -> {
@@ -19177,23 +19302,28 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
                 FfiConverterTypeScheduledAgentProjection.write(value.`value`, buf)
                 Unit
             }
-            is Projection.AgentConversation -> {
+            is Projection.AgentConversations -> {
                 buf.putInt(14)
+                FfiConverterTypeAgentConversationsProjection.write(value.`value`, buf)
+                Unit
+            }
+            is Projection.AgentConversation -> {
+                buf.putInt(15)
                 FfiConverterTypeAgentConversationProjection.write(value.`value`, buf)
                 Unit
             }
             is Projection.Notes -> {
-                buf.putInt(15)
+                buf.putInt(16)
                 FfiConverterTypeNotesProjection.write(value.`value`, buf)
                 Unit
             }
             is Projection.Clips -> {
-                buf.putInt(16)
+                buf.putInt(17)
                 FfiConverterTypeClipsProjection.write(value.`value`, buf)
                 Unit
             }
             is Projection.Unsupported -> {
-                buf.putInt(17)
+                buf.putInt(18)
                 FfiConverterTypeUnsupportedProjection.write(value.`value`, buf)
                 Unit
             }
@@ -19308,6 +19438,9 @@ sealed class ProjectionScope {
         companion object
     }
 
+    object AgentConversations : ProjectionScope()
+
+
     data class AgentConversation(
         val `conversationId`: uniffi.pod0_domain.ConversationId) : ProjectionScope()
 
@@ -19395,16 +19528,17 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
             13 -> ProjectionScope.ScheduledAgent(
                 FfiConverterOptionalTypeScheduledTaskId.read(buf),
                 )
-            14 -> ProjectionScope.AgentConversation(
+            14 -> ProjectionScope.AgentConversations
+            15 -> ProjectionScope.AgentConversation(
                 FfiConverterTypeConversationId.read(buf),
                 )
-            15 -> ProjectionScope.Notes(
+            16 -> ProjectionScope.Notes(
                 FfiConverterTypeNoteProjectionScope.read(buf),
                 )
-            16 -> ProjectionScope.Clips(
+            17 -> ProjectionScope.Clips(
                 FfiConverterTypeClipProjectionScope.read(buf),
                 )
-            17 -> ProjectionScope.Unsupported(
+            18 -> ProjectionScope.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -19500,6 +19634,12 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
             (
                 4UL
                 + FfiConverterOptionalTypeScheduledTaskId.allocationSize(value.`taskId`)
+            )
+        }
+        is ProjectionScope.AgentConversations -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
             )
         }
         is ProjectionScope.AgentConversation -> {
@@ -19598,23 +19738,27 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
                 FfiConverterOptionalTypeScheduledTaskId.write(value.`taskId`, buf)
                 Unit
             }
-            is ProjectionScope.AgentConversation -> {
+            is ProjectionScope.AgentConversations -> {
                 buf.putInt(14)
+                Unit
+            }
+            is ProjectionScope.AgentConversation -> {
+                buf.putInt(15)
                 FfiConverterTypeConversationId.write(value.`conversationId`, buf)
                 Unit
             }
             is ProjectionScope.Notes -> {
-                buf.putInt(15)
+                buf.putInt(16)
                 FfiConverterTypeNoteProjectionScope.write(value.`scope`, buf)
                 Unit
             }
             is ProjectionScope.Clips -> {
-                buf.putInt(16)
+                buf.putInt(17)
                 FfiConverterTypeClipProjectionScope.write(value.`scope`, buf)
                 Unit
             }
             is ProjectionScope.Unsupported -> {
-                buf.putInt(17)
+                buf.putInt(18)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -25416,6 +25560,34 @@ public object FfiConverterSequenceTypeAgentComposedChapterItem: FfiConverterRust
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeAgentComposedChapterItem.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeAgentConversationSummaryProjection: FfiConverterRustBuffer<List<AgentConversationSummaryProjection>> {
+    override fun read(buf: ByteBuffer): List<AgentConversationSummaryProjection> {
+        val len = buf.getInt()
+        return List<AgentConversationSummaryProjection>(len) {
+            FfiConverterTypeAgentConversationSummaryProjection.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<AgentConversationSummaryProjection>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeAgentConversationSummaryProjection.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<AgentConversationSummaryProjection>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeAgentConversationSummaryProjection.write(it, buf)
         }
     }
 }

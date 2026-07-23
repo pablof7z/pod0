@@ -6,6 +6,7 @@ uniffi::setup_scaffolding!();
 
 mod agent_action_hash;
 mod agent_contract;
+mod agent_history_contract;
 mod agent_policy;
 mod agent_policy_shape;
 mod agent_provider_output;
@@ -128,6 +129,7 @@ mod transcript_workflow_tests;
 
 pub use agent_action_hash::*;
 pub use agent_contract::*;
+pub use agent_history_contract::*;
 pub use agent_policy::*;
 pub use agent_provider_output::*;
 pub use agent_tool_names::*;

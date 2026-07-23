@@ -1121,6 +1121,138 @@ public func FfiConverterTypeAgentConversationProjection_lower(_ value: AgentConv
 }
 
 
+public struct AgentConversationSummaryProjection: Equatable, Hashable {
+    public let conversationId: ConversationId
+    public let title: String
+    public let preview: String
+    public let turnCount: UInt32
+    public let latestStage: AgentTurnStage
+    public let createdAt: UnixTimestampMilliseconds
+    public let updatedAt: UnixTimestampMilliseconds
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(conversationId: ConversationId, title: String, preview: String, turnCount: UInt32, latestStage: AgentTurnStage, createdAt: UnixTimestampMilliseconds, updatedAt: UnixTimestampMilliseconds) {
+        self.conversationId = conversationId
+        self.title = title
+        self.preview = preview
+        self.turnCount = turnCount
+        self.latestStage = latestStage
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentConversationSummaryProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentConversationSummaryProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentConversationSummaryProjection {
+        return
+            try AgentConversationSummaryProjection(
+                conversationId: FfiConverterTypeConversationId.read(from: &buf),
+                title: FfiConverterString.read(from: &buf),
+                preview: FfiConverterString.read(from: &buf),
+                turnCount: FfiConverterUInt32.read(from: &buf),
+                latestStage: FfiConverterTypeAgentTurnStage.read(from: &buf),
+                createdAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                updatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentConversationSummaryProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeConversationId.write(value.conversationId, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterString.write(value.preview, into: &buf)
+        FfiConverterUInt32.write(value.turnCount, into: &buf)
+        FfiConverterTypeAgentTurnStage.write(value.latestStage, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.createdAt, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.updatedAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentConversationSummaryProjection_lift(_ buf: RustBuffer) throws -> AgentConversationSummaryProjection {
+    return try FfiConverterTypeAgentConversationSummaryProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentConversationSummaryProjection_lower(_ value: AgentConversationSummaryProjection) -> RustBuffer {
+    return FfiConverterTypeAgentConversationSummaryProjection.lower(value)
+}
+
+
+public struct AgentConversationsProjection: Equatable, Hashable {
+    public let conversations: [AgentConversationSummaryProjection]
+    public let hasMore: Bool
+    public let failure: CoreFailure?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(conversations: [AgentConversationSummaryProjection], hasMore: Bool, failure: CoreFailure?) {
+        self.conversations = conversations
+        self.hasMore = hasMore
+        self.failure = failure
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentConversationsProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentConversationsProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentConversationsProjection {
+        return
+            try AgentConversationsProjection(
+                conversations: FfiConverterSequenceTypeAgentConversationSummaryProjection.read(from: &buf),
+                hasMore: FfiConverterBool.read(from: &buf),
+                failure: FfiConverterOptionTypeCoreFailure.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentConversationsProjection, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeAgentConversationSummaryProjection.write(value.conversations, into: &buf)
+        FfiConverterBool.write(value.hasMore, into: &buf)
+        FfiConverterOptionTypeCoreFailure.write(value.failure, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentConversationsProjection_lift(_ buf: RustBuffer) throws -> AgentConversationsProjection {
+    return try FfiConverterTypeAgentConversationsProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentConversationsProjection_lower(_ value: AgentConversationsProjection) -> RustBuffer {
+    return FfiConverterTypeAgentConversationsProjection.lower(value)
+}
+
+
 public struct AgentMessageProjection: Equatable, Hashable {
     public let role: AgentMessageRole
     public let content: String
@@ -15482,6 +15614,8 @@ public enum Projection: Equatable, Hashable {
     )
     case scheduledAgent(value: ScheduledAgentProjection
     )
+    case agentConversations(value: AgentConversationsProjection
+    )
     case agentConversation(value: AgentConversationProjection
     )
     case notes(value: NotesProjection
@@ -15550,16 +15684,19 @@ public struct FfiConverterTypeProjection: FfiConverterRustBuffer {
         case 13: return .scheduledAgent(value: try FfiConverterTypeScheduledAgentProjection.read(from: &buf)
         )
 
-        case 14: return .agentConversation(value: try FfiConverterTypeAgentConversationProjection.read(from: &buf)
+        case 14: return .agentConversations(value: try FfiConverterTypeAgentConversationsProjection.read(from: &buf)
         )
 
-        case 15: return .notes(value: try FfiConverterTypeNotesProjection.read(from: &buf)
+        case 15: return .agentConversation(value: try FfiConverterTypeAgentConversationProjection.read(from: &buf)
         )
 
-        case 16: return .clips(value: try FfiConverterTypeClipsProjection.read(from: &buf)
+        case 16: return .notes(value: try FfiConverterTypeNotesProjection.read(from: &buf)
         )
 
-        case 17: return .unsupported(value: try FfiConverterTypeUnsupportedProjection.read(from: &buf)
+        case 17: return .clips(value: try FfiConverterTypeClipsProjection.read(from: &buf)
+        )
+
+        case 18: return .unsupported(value: try FfiConverterTypeUnsupportedProjection.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -15635,23 +15772,28 @@ public struct FfiConverterTypeProjection: FfiConverterRustBuffer {
             FfiConverterTypeScheduledAgentProjection.write(value, into: &buf)
 
 
-        case let .agentConversation(value):
+        case let .agentConversations(value):
             writeInt(&buf, Int32(14))
+            FfiConverterTypeAgentConversationsProjection.write(value, into: &buf)
+
+
+        case let .agentConversation(value):
+            writeInt(&buf, Int32(15))
             FfiConverterTypeAgentConversationProjection.write(value, into: &buf)
 
 
         case let .notes(value):
-            writeInt(&buf, Int32(15))
+            writeInt(&buf, Int32(16))
             FfiConverterTypeNotesProjection.write(value, into: &buf)
 
 
         case let .clips(value):
-            writeInt(&buf, Int32(16))
+            writeInt(&buf, Int32(17))
             FfiConverterTypeClipsProjection.write(value, into: &buf)
 
 
         case let .unsupported(value):
-            writeInt(&buf, Int32(17))
+            writeInt(&buf, Int32(18))
             FfiConverterTypeUnsupportedProjection.write(value, into: &buf)
 
         }
@@ -15701,6 +15843,7 @@ public enum ProjectionScope: Equatable, Hashable {
     )
     case scheduledAgent(taskId: ScheduledTaskId?
     )
+    case agentConversations
     case agentConversation(conversationId: ConversationId
     )
     case notes(scope: NoteProjectionScope
@@ -15766,16 +15909,18 @@ public struct FfiConverterTypeProjectionScope: FfiConverterRustBuffer {
         case 13: return .scheduledAgent(taskId: try FfiConverterOptionTypeScheduledTaskId.read(from: &buf)
         )
 
-        case 14: return .agentConversation(conversationId: try FfiConverterTypeConversationId.read(from: &buf)
+        case 14: return .agentConversations
+
+        case 15: return .agentConversation(conversationId: try FfiConverterTypeConversationId.read(from: &buf)
         )
 
-        case 15: return .notes(scope: try FfiConverterTypeNoteProjectionScope.read(from: &buf)
+        case 16: return .notes(scope: try FfiConverterTypeNoteProjectionScope.read(from: &buf)
         )
 
-        case 16: return .clips(scope: try FfiConverterTypeClipProjectionScope.read(from: &buf)
+        case 17: return .clips(scope: try FfiConverterTypeClipProjectionScope.read(from: &buf)
         )
 
-        case 17: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 18: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -15850,23 +15995,27 @@ public struct FfiConverterTypeProjectionScope: FfiConverterRustBuffer {
             FfiConverterOptionTypeScheduledTaskId.write(taskId, into: &buf)
 
 
-        case let .agentConversation(conversationId):
+        case .agentConversations:
             writeInt(&buf, Int32(14))
+
+
+        case let .agentConversation(conversationId):
+            writeInt(&buf, Int32(15))
             FfiConverterTypeConversationId.write(conversationId, into: &buf)
 
 
         case let .notes(scope):
-            writeInt(&buf, Int32(15))
+            writeInt(&buf, Int32(16))
             FfiConverterTypeNoteProjectionScope.write(scope, into: &buf)
 
 
         case let .clips(scope):
-            writeInt(&buf, Int32(16))
+            writeInt(&buf, Int32(17))
             FfiConverterTypeClipProjectionScope.write(scope, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(17))
+            writeInt(&buf, Int32(18))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -19988,6 +20137,31 @@ fileprivate struct FfiConverterSequenceTypeAgentComposedChapterItem: FfiConverte
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeAgentComposedChapterItem.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeAgentConversationSummaryProjection: FfiConverterRustBuffer {
+    typealias SwiftType = [AgentConversationSummaryProjection]
+
+    public static func write(_ value: [AgentConversationSummaryProjection], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAgentConversationSummaryProjection.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AgentConversationSummaryProjection] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AgentConversationSummaryProjection]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAgentConversationSummaryProjection.read(from: &buf))
         }
         return seq
     }
