@@ -169,7 +169,7 @@ rules live in [AGENTS.md](AGENTS.md).
 ## Delivery
 
 Pushes to `master` run the test workflow, including a non-publishing archive,
-on the self-hosted macOS runner. TestFlight is manual-only and requires an
+on a GitHub-hosted `macos-26` runner. TestFlight is manual-only and requires an
 explicit upload confirmation. Signing and App Store Connect secrets are managed
 by `ci_scripts/archive_and_upload.sh` and
 `ci_scripts/set_github_secrets.sh`; do not store credentials in the repository.
