@@ -52,6 +52,39 @@ final class CoreAgentHostTests: XCTestCase {
         XCTAssertEqual(code, .invalidResponse)
     }
 
+    func testProviderAdapterPreservesPriorToolEvidenceWithoutForgingCallID() async {
+        let transport = StubCoreAgentModelTransport(result: AgentResult(
+            assistantMessage: ["role": "assistant", "content": "That note was saved."],
+            toolCalls: []
+        ))
+        let request = AgentModelExecutionRequest(
+            conversationId: ConversationId(high: 1, low: 2),
+            turnId: AgentTurnId(high: 3, low: 4),
+            modelFenceId: AgentExecutionFenceId(high: 5, low: 6),
+            modelReference: "openrouter/test",
+            messages: [
+                AgentMessageProjection(role: .user, content: "Save this"),
+                AgentMessageProjection(role: .assistant, content: "I'll save it."),
+                AgentMessageProjection(role: .tool, content: #"{"saved":true}"#),
+                AgentMessageProjection(role: .user, content: "Did that work?"),
+            ],
+            availableTools: [.createNote],
+            maximumOutputBytes: 1_024
+        )
+
+        _ = await makeHost(transport: transport).execute(.executeAgentModelTurn(execution: request))
+
+        XCTAssertEqual(
+            transport.lastMessages.compactMap { $0["role"] as? String },
+            ["system", "user", "assistant", "system", "user"]
+        )
+        XCTAssertEqual(
+            transport.lastMessages[3]["content"] as? String,
+            "Tool result:\n{\"saved\":true}"
+        )
+        XCTAssertNil(transport.lastMessages[3]["tool_call_id"])
+    }
+
     func testApprovalObservationEchoesExactRustProposalIdentity() async {
         let presenter = StubCoreAgentApprovalPresenter(approved: true)
         let host = makeHost(

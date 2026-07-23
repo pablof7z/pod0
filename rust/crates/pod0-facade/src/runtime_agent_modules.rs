@@ -1,5 +1,8 @@
 #[path = "runtime_agent_commands.rs"]
 pub(crate) mod commands;
+#[cfg(test)]
+#[path = "runtime_agent_context_tests.rs"]
+mod context_tests;
 #[path = "runtime_agent_identity.rs"]
 pub(crate) mod identity;
 #[path = "runtime_agent_internal.rs"]

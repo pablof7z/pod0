@@ -1,6 +1,7 @@
 use pod0_application::{
-    AgentApprovalRequest, AgentCapabilityRequest, AgentModelExecutionRequest, AgentTurnState,
-    HostCancellationRequest, HostRequest, HostRequestEnvelope, MAX_AGENT_MODEL_OUTPUT_BYTES,
+    AgentApprovalRequest, AgentCapabilityRequest, AgentMessageProjection,
+    AgentModelExecutionRequest, AgentTurnState, HostCancellationRequest, HostRequest,
+    HostRequestEnvelope, MAX_AGENT_MODEL_OUTPUT_BYTES, MAX_AGENT_PROJECTION_MESSAGES,
 };
 use pod0_domain::{AgentTurnId, CommandId, HostRequestId};
 
@@ -20,6 +21,7 @@ impl FacadeState {
         let Some(model_fence_id) = projection.execution_fence_id else {
             return false;
         };
+        let messages = self.agent_model_messages(&projection);
         self.queue_agent_request(HostRequestEnvelope {
             request_id: model_request_id(projection.turn_id, model_fence_id),
             command_id,
@@ -32,12 +34,38 @@ impl FacadeState {
                     turn_id: projection.turn_id,
                     model_fence_id,
                     model_reference: state.model_reference().to_owned(),
-                    messages: projection.messages,
+                    messages,
                     available_tools: state.available_tools().to_vec(),
                     maximum_output_bytes: MAX_AGENT_MODEL_OUTPUT_BYTES,
                 },
             },
         })
+    }
+
+    fn agent_model_messages(
+        &self,
+        current: &pod0_application::AgentTurnProjection,
+    ) -> Vec<AgentMessageProjection> {
+        let Some(store) = &self.agent_store else {
+            return current.messages.clone();
+        };
+        let Ok(mut page) = store.turn_page(
+            current.conversation_id,
+            0,
+            MAX_AGENT_PROJECTION_MESSAGES as u16,
+        ) else {
+            return current.messages.clone();
+        };
+        page.items.reverse();
+        let mut messages = page
+            .items
+            .into_iter()
+            .flat_map(|turn| turn.messages)
+            .collect::<Vec<_>>();
+        if messages.len() > MAX_AGENT_PROJECTION_MESSAGES {
+            messages.drain(..messages.len() - MAX_AGENT_PROJECTION_MESSAGES);
+        }
+        messages
     }
 
     pub(super) fn queue_agent_approval_request(

@@ -147,12 +147,22 @@ final class CoreAgentHost: CoreAgentHosting {
         var result: [[String: Any]] = [["role": "system", "content": systemPrompt]]
         for message in messages {
             let role: String
+            let content: String
             switch message.role {
-            case .user: role = "user"
-            case .assistant: role = "assistant"
-            case .tool: return nil
+            case .user:
+                role = "user"
+                content = message.content
+            case .assistant:
+                role = "assistant"
+                content = message.content
+            case .tool:
+                // The shared contract intentionally omits provider-specific
+                // tool-call ids. Preserve the evidence as bounded system
+                // context instead of inventing an OpenAI tool-call pairing.
+                role = "system"
+                content = "Tool result:\n\(message.content)"
             }
-            result.append(["role": role, "content": message.content])
+            result.append(["role": role, "content": content])
         }
         return result
     }

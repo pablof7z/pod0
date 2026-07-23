@@ -239,7 +239,7 @@ fn read_page(
     let sql_limit = i64::try_from(limit + 1).map_err(|_| StorageError::InvalidAgentState)?;
     let sql_offset = i64::from(offset);
     let mut statement = connection
-        .prepare("SELECT turn_id FROM pod0_agent_turns WHERE conversation_id=?1 ORDER BY updated_at_ms DESC,turn_id LIMIT ?2 OFFSET ?3")
+        .prepare("SELECT turn_id FROM pod0_agent_turns WHERE conversation_id=?1 ORDER BY created_at_ms DESC,rowid DESC LIMIT ?2 OFFSET ?3")
         .map_err(|error| StorageError::sqlite("prepare agent turn page", error))?;
     let rows = statement
         .query_map(
