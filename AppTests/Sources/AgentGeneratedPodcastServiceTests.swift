@@ -62,42 +62,6 @@ final class AgentGeneratedPodcastServiceTests: XCTestCase {
         XCTAssertNil(artifact)
     }
 
-    func testAgentOwnedPodcastLifecycleIsRustAuthoritative() async throws {
-        let made = AppStateTestSupport.makeIsolatedStore()
-        defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
-        let manager = LiveAgentOwnedPodcastManager(store: made.store)
-
-        let created = try await manager.createPodcast(
-            title: "Daily Brief",
-            description: "A private briefing.",
-            author: "Pod0",
-            imageURL: nil,
-            language: "en",
-            categories: ["News"]
-        )
-        let podcastID = try XCTUnwrap(UUID(uuidString: created.podcastID))
-        XCTAssertEqual(made.store.podcast(id: podcastID)?.title, "Daily Brief")
-
-        let updated = try await manager.updatePodcast(
-            podcastID: created.podcastID,
-            title: "Evening Brief",
-            description: "Updated",
-            author: nil,
-            imageURL: nil
-        )
-        XCTAssertEqual(updated.title, "Evening Brief")
-        XCTAssertEqual(made.store.podcast(id: podcastID)?.description, "Updated")
-
-        try await manager.deletePodcast(podcastID: created.podcastID)
-        XCTAssertNil(made.store.podcast(id: podcastID))
-        let relaunched = AppStateStore(
-            persistence: made.store.persistence,
-            sharedFeedHost: QueuedCoreFeedHost([]),
-            startSubscriptionRefresh: false
-        )
-        XCTAssertNil(relaunched.podcast(id: podcastID))
-    }
-
     func testGeneratedTranscriptCanAdoptTheCoreEpisodeIdentity() {
         let originalID = UUID()
         let coreID = UUID()

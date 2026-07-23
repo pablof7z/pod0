@@ -21,8 +21,6 @@ final class WorkflowRuntime {
             self?.wake()
         }
     }
-    var podcastDepsProvider: @MainActor @Sendable () -> PodcastAgentToolDeps? = { nil }
-
     private init() {}
 
     func attach(store: AppStateStore) {

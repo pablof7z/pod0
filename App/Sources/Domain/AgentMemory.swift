@@ -19,7 +19,7 @@ struct AgentMemory: Codable, Identifiable, Hashable, Sendable {
 // MARK: - Compiled Agent Memory
 
 /// LLM-consolidated summary of the active `AgentMemory` set. Regenerated
-/// by `AgentMemoryCompiler` after agent turns that recorded a memory.
+/// by the retired Swift agent before shared-core cutover.
 /// Idempotency guard: `sourceMemoryIDs` is the exact ordered set of active
 /// memory ids folded into this compile — if the current `agentMemories`
 /// id sequence (filtered to active, sorted by `createdAt`) matches, no

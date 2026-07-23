@@ -380,13 +380,13 @@
     {
       "id": "shared-agent-application-policy",
       "classification": "shared_rust_now",
-      "current_owner": "Rust owns interactive and scheduled turn state, permissions, fences, supported commits, and conversation durability; Swift retains temporary schemas, unsupported tools, artifacts, and run-log storage",
+      "current_owner": "Rust owns interactive and scheduled turn state, tool identity, permissions, fences, supported commits, and conversation durability; Swift retains a temporary provider-schema formatter plus artifact and run-log storage",
       "target_owner": "Pod0 Rust agent/application layer",
       "reason": "Tool validation, permission, durable commits, jobs, and generated artifact policy must be identical across platforms.",
       "boundary": "ADR-0008 and agent-tool-permissions.json require typed Rust proposals, durable grants, effect fences, commits, and bounded projections. Native presents conversations/approvals and returns raw observations for typed platform capabilities. pod0-nmp alone owns generic NMP engine, signing, routing, and receipt facts; the app facade accepts no relay selection.",
       "persisted_state": "Agent memories/activity, conversations, scheduled tasks, generated artifacts, and run logs.",
       "migration_issues": [60, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138],
-      "deletion_target": "Issues #130, #133, and #134 deleted scheduled and interactive chat-session authority. Issues #135-#138 migrate remaining artifacts, publication, signer, legacy schemas/tools, and run-log durability while retaining native conversation/approval presentation and exact typed platform capability executors.",
+      "deletion_target": "Issues #130, #133, and #134 deleted scheduled and interactive chat-session authority, including the unreachable Swift tool registry and adapters. Issues #135-#138 migrate remaining artifacts, publication, signer, provider-schema formatting, legacy archive, and run-log durability while retaining native conversation/approval presentation and exact typed platform capability executors.",
       "priority": "high",
       "includes": ["App/Sources/Agent/"]
     },
@@ -399,7 +399,7 @@
       "boundary": "Swift feature views render projections; AVFoundation and LLM/provider capabilities report raw results.",
       "persisted_state": "Rust owns playback resume/played state, selected canonical chapter artifacts, chapter sessions, skipped-ad state, and new interactive agent conversations and turns; legacy Swift conversations remain read-only migration evidence.",
       "migration_issues": [58, 60, 78, 80, 81, 82, 83, 103, 104, 125, 127, 129, 130, 131, 133, 134, 138],
-      "deletion_target": "Scheduled and interactive agent controller policy has been deleted. Issue #138 removes remaining legacy archive, schema, and unsupported tool policy after migration while retaining thin native view/capability adapters.",
+      "deletion_target": "Scheduled and interactive agent controller and unsupported-tool policy have been deleted. Issue #138 removes the remaining legacy archive and temporary provider-schema formatter after migration while retaining thin native view/capability adapters.",
       "priority": "highest",
       "includes": ["App/Sources/Features/Player/PlaybackState+Chapters.swift", "App/Sources/Features/Player/PlaybackState+HeadphoneGestures.swift", "App/Sources/Features/Agent/AgentLLMClient.swift", "App/Sources/Features/Agent/AgentOllamaClient.swift", "App/Sources/Features/Agent/AgentOpenRouterClient.swift", "App/Sources/Features/Agent/ChatConversation.swift", "App/Sources/Features/Agent/ChatMessage.swift"]
     },

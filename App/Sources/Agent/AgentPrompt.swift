@@ -2,11 +2,9 @@ import Foundation
 
 /// Builds the system prompt injected at position 0 of every agent run.
 ///
-/// Surfaces a compact podcast inventory (subscriptions, in-progress
-/// episodes, recent unplayed) so the agent can answer "what shows am I
-/// subscribed to" or "what was I listening to" without spending a tool call.
-/// Detailed drill-downs (transcripts, semantic search) still go through
-/// tools.
+/// Surfaces a compact podcast inventory (subscriptions, in-progress episodes,
+/// recent unplayed) and describes only the bounded tools the shared Rust turn
+/// currently authorizes.
 ///
 /// Includes recent notes and persisted memories the template ships with.
 enum AgentPrompt {
@@ -28,38 +26,20 @@ enum AgentPrompt {
         You are a helpful personal assistant embedded in a podcast-player iOS app.
         Today is \(Self.dateString).
         Help the user surface, recall, and reason about what they've been listening to.
-        Be concise and action-oriented. For specifics that aren't in this prompt
-        (transcripts, episode contents, semantic search), call your tools.
+        Be concise, action-oriented, and honest about available evidence.
 
-        You can play episodes the user is NOT subscribed to. When asked to play
-        a guest appearance, a one-off episode, or anything not in the library:
-        1. Use `search_podcast_directory` to find the feed URL + audio URL.
-        2. Use `play_episode(audio_url:, title:, feed_url:)` to start playing immediately.
-           ALWAYS pass feed_url when you have one — the app fetches the show's
-           real artwork and title from it. Only omit feed_url for raw audio
-           links where you genuinely don't know the source podcast.
-        3. Optionally offer `subscribe_podcast(feed_url)` so the user can follow the show.
-        For transcripts of external episodes, call `subscribe_podcast` first then
-        `download_and_transcribe(feed_url, audio_url)`.
+        Available tools can:
+        - save a note;
+        - list subscriptions, all known podcasts, one podcast's episodes,
+          in-progress episodes, or recent unplayed episodes;
+        - search episode titles and descriptions in the user's library;
+        - pause playback or change playback speed.
 
-        To browse an unfamiliar show's episodes BEFORE subscribing, call
-        `list_episodes` and pass either the `collection_id` (as `podcast_id`)
-        or the `feed_url` you got from `search_podcast_directory`. The app
-        captures the show's metadata + episodes without flipping the follow
-        bit. Only call `subscribe_podcast` when the user explicitly says they
-        want to follow the show.
-
-        You are running on a fast/cheap model by default. Before answering, judge
-        the request: simple lookups, one-tool answers, short factual replies →
-        just answer. If the task needs multi-step reasoning, planning, writing
-        code, careful synthesis, or you're not confident you can answer well →
-        call `upgrade_thinking` first (no arguments needed; a one-line reason
-        helps). Subsequent turns will run on a stronger model. Default to NOT
-        upgrading — only upgrade when you're genuinely unsure or the task is
-        clearly complex.
+        Use only tools exposed with the current request. `list_episodes` requires
+        a podcast_id returned by a library tool. Episode search does not inspect
+        transcript text. Never invent a quote, timestamp, transcript claim, or
+        completed action. When exact transcript evidence is unavailable, say so.
         """)
-
-        sections.append(Self.skillsCatalog())
 
         // Prompt the agent with the user's followed podcasts only. Synthetic
         // shows (Agent Generated, Unknown) don't carry user follow rows, so
@@ -119,7 +99,7 @@ enum AgentPrompt {
            !compiled.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
            !memories.isEmpty {
             // Prefer the compiled paragraph when available — it's the
-            // consolidated voice the `AgentMemoryCompiler` carries forward.
+            // Prefer the preserved compiled paragraph when it matches active memories.
             sections.append("## What You Know About the User\n\(compiled.text)")
         } else if !memories.isEmpty {
             let list = memories.map { "- \($0.content)" }.joined(separator: "\n")
@@ -127,22 +107,6 @@ enum AgentPrompt {
         }
 
         return sections.joined(separator: "\n\n")
-    }
-
-    /// Renders the `## Skills` section enumerating every registered skill.
-    /// The agent reads this list and calls `use_skill(skill_id:)` to opt in
-    /// to a skill's instructions and tools.
-    @MainActor
-    private static func skillsCatalog() -> String {
-        let lines = AgentSkillRegistry.all
-            .map { "- `\($0.id)` — \($0.summary)" }
-            .joined(separator: "\n")
-        return """
-        ## Skills
-        \(lines)
-
-        Call `use_skill(skill_id: "<id>")` to load any of these — you'll get its full instructions back and unlock its tools for the rest of the conversation. Default to NOT loading a skill unless the user's request matches one. Skill manuals are large; loading a skill you don't need wastes context.
-        """
     }
 
     private static func subscriptionTitlesByID(_ state: AppState) -> [UUID: String] {

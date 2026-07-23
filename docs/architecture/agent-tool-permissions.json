@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source_files": ["App/Sources/Agent/AgentTools.swift", "App/Sources/Agent/AgentTools+Podcast.swift"],
+  "source_files": ["rust/crates/pod0-application/src/agent_tool_names.rs"],
   "decision_issue": 132,
   "implementation_issues": [133, 134, 135, 136, 137, 138],
   "tools": [

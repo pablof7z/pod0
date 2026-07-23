@@ -16,12 +16,22 @@ FORBIDDEN_FILES = (
     "App/Sources/Features/Agent/AgentChatSession+Turns.swift",
     "App/Sources/Features/Agent/AgentChatView.swift",
     "App/Sources/Features/Agent/AgentChatTranscriptView.swift",
+    "App/Sources/Agent/AgentTools.swift",
+    "App/Sources/Agent/AgentToolSchema.swift",
+    "App/Sources/Agent/PodcastAgentToolDeps.swift",
+)
+
+FORBIDDEN_GLOBS = (
+    "App/Sources/Agent/AgentTools*.swift",
+    "App/Sources/Agent/AgentToolSchema*.swift",
+    "App/Sources/Agent/PodcastAgentToolDeps*.swift",
+    "App/Sources/Agent/PodcastAgentToolValues*.swift",
 )
 
 FORBIDDEN_CODE = (
     ("legacy-agent-session", re.compile(r"\bAgentChatSession\b")),
     ("legacy-agent-view", re.compile(r"\bAgentChatView\b")),
-    ("legacy-agent-dispatch", re.compile(r"\bAgentTools\s*\.\s*dispatch\s*\(")),
+    ("legacy-agent-tools", re.compile(r"\bAgentTools\b")),
 )
 
 
@@ -65,6 +75,11 @@ def scan_source(source: str) -> list[tuple[str, int]]:
 
 def validate(root: Path) -> list[str]:
     errors = [path for path in FORBIDDEN_FILES if (root / path).exists()]
+    for pattern in FORBIDDEN_GLOBS:
+        errors.extend(
+            f"{path.relative_to(root).as_posix()}: prohibited legacy agent policy file"
+            for path in root.glob(pattern)
+        )
     for path in sorted((root / "App/Sources").rglob("*.swift")):
         relative = path.relative_to(root).as_posix()
         for rule, line in scan_source(path.read_text(encoding="utf-8")):
@@ -73,6 +88,7 @@ def validate(root: Path) -> list[str]:
     required = {
         "App/Sources/App/RootView.swift": "SharedAgentChatView(",
         "App/Sources/Features/AgentChat/AskAgentView.swift": "SharedAgentConversationSession",
+        "App/Sources/Core/CoreAgentToolSchemas.swift": "additionalProperties\": false",
     }
     for path, marker in required.items():
         if marker not in (root / path).read_text(encoding="utf-8"):
@@ -82,7 +98,7 @@ def validate(root: Path) -> list[str]:
 
 def self_test() -> None:
     assert scan_source("let session: AgentChatSession") == [("legacy-agent-session", 1)]
-    assert scan_source("AgentTools.dispatch(name: name)") == [("legacy-agent-dispatch", 1)]
+    assert scan_source("AgentTools.dispatch(name: name)") == [("legacy-agent-tools", 1)]
     assert scan_source("// AgentChatSession\nlet shared = true") == []
     assert scan_source("SharedAgentChatView(session: session)") == []
 

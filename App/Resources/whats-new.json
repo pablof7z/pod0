@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-23T02:32:04Z",
+      "lines": [
+        "Agent answers now stay within the actions and podcast evidence the app can actually verify."
+      ]
+    },
+    {
       "shipped_at": "2026-07-23T02:07:35Z",
       "lines": [
         "Agent tool actions now finish with a clear conversational answer instead of stopping after the action runs."

@@ -2,12 +2,6 @@ import Foundation
 
 @MainActor
 extension WorkflowClient {
-    func configurePodcastDependencies(
-        _ provider: @escaping @MainActor @Sendable () -> PodcastAgentToolDeps?
-    ) {
-        WorkflowRuntime.shared.podcastDepsProvider = provider
-    }
-
     func startAndReconcile() async {
         WorkflowRuntime.shared.attach(client: self)
         await WorkflowRuntime.shared.startAndReconcile()

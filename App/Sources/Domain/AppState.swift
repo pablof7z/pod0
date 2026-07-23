@@ -22,7 +22,7 @@ struct AppState: Codable, Sendable {
     var notes: [Note] = []
     var agentMemories: [AgentMemory] = []
     /// LLM-consolidated paragraph summarizing the active `agentMemories`.
-    /// Produced by `AgentMemoryCompiler` after agent turns. When non-nil,
+    /// Preserved from the retired Swift agent. When non-nil,
     /// `AgentPrompt` injects this single paragraph in place of the raw
     /// memory bullets so the prompt stays compact as memories accumulate.
     var compiledMemory: CompiledAgentMemory?

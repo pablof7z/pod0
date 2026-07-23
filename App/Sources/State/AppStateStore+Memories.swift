@@ -38,10 +38,9 @@ extension AppStateStore {
         state.agentMemories.filter { !$0.deleted }
     }
 
-    /// Replaces the compiled-memory snapshot. Called by `AgentMemoryCompiler`
-    /// after a successful LLM compile, or with `nil` when the active memory
-    /// set has been emptied. The existing `state.didSet` persistence path
-    /// handles save.
+    /// Replaces the legacy compiled-memory snapshot while existing data remains
+    /// editable during shared-core migration. The existing `state.didSet`
+    /// persistence path handles save.
     func setCompiledMemory(_ compiled: CompiledAgentMemory?) {
         mutateState { $0.compiledMemory = compiled }
     }

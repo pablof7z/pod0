@@ -82,8 +82,8 @@ struct AgentTypingIndicator: View {
     /// Maps a raw tool name to a concise human-readable present-progressive label.
     private var toolStatusLabel: String? {
         switch toolName {
-        case AgentTools.Names.createNote:    return "Saving note…"
-        case AgentTools.Names.recordMemory:  return "Saving memory…"
+        case "create_note":                 return "Saving note…"
+        case "record_memory":               return "Saving memory…"
         default:
             guard let name = toolName else { return nil }
             // Fallback: prettify by replacing underscores with spaces and capitalising.

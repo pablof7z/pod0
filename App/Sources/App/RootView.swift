@@ -45,9 +45,6 @@ struct RootView: View {
                     }
                 }
                 .task {
-                    workflows.configurePodcastDependencies { [store, playbackState] in
-                        LivePodcastAgentToolDeps.make(store: store, playback: playbackState)
-                    }
                     await workflows.reconcileAndDrain()
                 }
                 .onAppear { setupPlaybackHandlers() }
