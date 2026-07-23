@@ -1550,6 +1550,7 @@ version = "0.1.0"
 dependencies = [
  "pod0-application",
  "pod0-domain",
+ "pod0-nmp",
  "pod0-recall-index",
  "pod0-storage",
  "rusqlite",
@@ -1564,6 +1565,13 @@ name = "pod0-nmp"
 version = "0.1.0"
 dependencies = [
  "nmp",
+ "nostr",
+ "pod0-application",
+ "pod0-domain",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "tungstenite",
 ]
 
 [[package]]

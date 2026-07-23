@@ -5,11 +5,12 @@ use crate::runtime_command_fingerprint_values::{
     finish_command_hash, hash_command_tail, hash_evidence_input, hash_note_author, hash_note_kind,
     hash_note_target, hash_optional, hash_policy,
 };
+use crate::runtime_cross_platform_fingerprint::{hash_publication, hash_recall_query};
 use crate::runtime_download_command_fingerprint::hash_download_command;
 use crate::runtime_playback_fingerprint::hash_playback;
 use crate::runtime_scheduled_agent::command_fingerprint::hash_scheduled_agent_command;
 use crate::runtime_transcript_workflow_fingerprint::hash_transcript_workflow_command;
-use pod0_application::{ApplicationCommand, RecallScope};
+use pod0_application::ApplicationCommand;
 use sha2::{Digest, Sha256};
 
 pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
@@ -121,28 +122,7 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
             hash.update(episode_id.into_bytes());
         }
         ApplicationCommand::Playback { command } => hash_playback(&mut hash, command),
-        ApplicationCommand::RecallQuery { query } => {
-            hash.update(b"recall-query\0");
-            hash.update(query.query_id.into_bytes());
-            hash.update(query.text.as_bytes());
-            hash.update([0]);
-            hash.update(query.limit.to_be_bytes());
-            match query.scope {
-                RecallScope::Library => hash.update([1]),
-                RecallScope::Podcast { podcast_id } => {
-                    hash.update([2]);
-                    hash.update(podcast_id.into_bytes());
-                }
-                RecallScope::Episode { episode_id } => {
-                    hash.update([3]);
-                    hash.update(episode_id.into_bytes());
-                }
-                RecallScope::Unsupported { wire_code } => {
-                    hash.update([255]);
-                    hash.update(wire_code.to_be_bytes());
-                }
-            }
-        }
+        ApplicationCommand::RecallQuery { query } => hash_recall_query(&mut hash, query),
         ApplicationCommand::ImportLegacyRecallConfiguration {
             configuration,
             source_generation,
@@ -188,6 +168,9 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
         }
         ApplicationCommand::StartAgentTurn { .. } | ApplicationCommand::CancelAgentTurn { .. } => {
             hash_agent_command(&mut hash, command)
+        }
+        ApplicationCommand::PublishGeneratedEpisode { intent } => {
+            hash_publication(&mut hash, intent)
         }
         ApplicationCommand::CommitChapter {
             expected_selection_revision,

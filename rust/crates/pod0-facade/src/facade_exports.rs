@@ -58,6 +58,11 @@ pub use pod0_application::{
     bounded_playback_observation_interval, download_attempt_id, download_input_version,
     download_intent_id, evaluate_download_admission,
 };
+pub use pod0_application::{
+    MAX_PUBLICATION_DETAIL_BYTES, MAX_PUBLICATION_FACTS, MAX_PUBLICATION_URL_BYTES,
+    POD0_PODCAST_EPISODE_KIND, POD0_PODCAST_SHOW_KIND, POD0_PUBLICATION_SCHEMA_VERSION,
+    PublicationsProjection,
+};
 pub use pod0_domain::{
     AdSpanEvaluation, AdSpanId, AdSpanInput, AgentAuthorizationId, AgentCommitId,
     AgentExecutionFenceId, AgentProposalId, AgentTurnId, ArtifactReference, AutoDownloadMode,
@@ -82,4 +87,9 @@ pub use pod0_domain::{
     TranscriptVersionId, UnixTimestampMilliseconds, make_feed_identity_v1,
     resolve_episode_identity_v1, resolve_legacy_parent_id, resolve_podcast_identity_v1,
     validate_listening_snapshot,
+};
+pub use pod0_domain::{
+    PublicationArtifactKind, PublicationFact, PublicationFactKind, PublicationId,
+    PublicationIntent, PublicationMediaEvidence, PublicationRecord, PublicationRouteId,
+    PublicationStage,
 };

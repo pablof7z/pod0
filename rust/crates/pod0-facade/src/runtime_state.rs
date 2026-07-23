@@ -12,7 +12,9 @@ use pod0_domain::{
     SubscriptionId,
 };
 use pod0_recall_index::RecallIndex;
-use pod0_storage::{AgentStore, EvidenceStore, LibraryStore, ScheduledAgentStore, TranscriptStore};
+use pod0_storage::{
+    AgentStore, EvidenceStore, LibraryStore, PublicationStore, ScheduledAgentStore, TranscriptStore,
+};
 
 use crate::ProjectionSubscriber;
 use crate::runtime_agent_modules::state::{PendingAgentRecallObservation, PendingAgentRequest};
@@ -23,6 +25,15 @@ use crate::runtime_playback_state::PlaybackRuntime;
 use crate::runtime_recall_cutover::PendingRecallCutover;
 use crate::runtime_recall_interrupts::{RecallInterruptLease, RecallInterruptRegistry};
 use crate::runtime_recall_state::{PendingRecall, RecallWorkflow};
+
+pub(super) struct FacadeStores {
+    pub(super) listening: LibraryStore,
+    pub(super) evidence: EvidenceStore,
+    pub(super) transcript: TranscriptStore,
+    pub(super) scheduled_agent: Option<ScheduledAgentStore>,
+    pub(super) agent: AgentStore,
+    pub(super) publication: PublicationStore,
+}
 
 pub(super) struct FacadeState {
     pub(super) clock: Arc<dyn Clock>,
@@ -35,6 +46,8 @@ pub(super) struct FacadeState {
     pub(super) transcript_store: Option<TranscriptStore>,
     pub(super) scheduled_agent_store: Option<ScheduledAgentStore>,
     pub(super) agent_store: Option<AgentStore>,
+    pub(super) publication_store: Option<PublicationStore>,
+    pub(super) pending_publications: VecDeque<pod0_application::Pod0PublicationDraft>,
     pub(super) recall_index: RecallIndex,
     pub(super) recall_configuration: pod0_domain::RecallConfiguration,
     pub(super) recall_interrupts: Arc<RecallInterruptRegistry>,
@@ -103,14 +116,18 @@ impl FacadeState {
     }
 
     pub(super) fn open(
-        store: LibraryStore,
-        evidence_store: EvidenceStore,
-        transcript_store: TranscriptStore,
-        scheduled_agent_store: Option<ScheduledAgentStore>,
-        agent_store: AgentStore,
+        stores: FacadeStores,
         mut recall_index: RecallIndex,
         clock: Arc<dyn Clock>,
     ) -> Result<Self, pod0_storage::StorageError> {
+        let FacadeStores {
+            listening: store,
+            evidence: evidence_store,
+            transcript: transcript_store,
+            scheduled_agent: scheduled_agent_store,
+            agent: agent_store,
+            publication: publication_store,
+        } = stores;
         let _ = store.clear_session_sleep_timer()?;
         let _ = store.recover_download_artifacts()?;
         let listening = store.snapshot()?;
@@ -146,6 +163,7 @@ impl FacadeState {
             transcript_store: Some(transcript_store),
             scheduled_agent_store,
             agent_store: Some(agent_store),
+            publication_store: Some(publication_store),
             recall_index,
             recall_configuration,
             playback,

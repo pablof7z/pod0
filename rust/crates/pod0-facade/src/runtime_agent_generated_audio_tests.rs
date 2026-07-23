@@ -1,7 +1,10 @@
 use crate::runtime_playback_test_support::PlaybackFixture;
 use crate::*;
 
-fn observe(request: &HostRequestEnvelope, observation: HostObservation) -> HostObservationEnvelope {
+pub(crate) fn observe(
+    request: &HostRequestEnvelope,
+    observation: HostObservation,
+) -> HostObservationEnvelope {
     HostObservationEnvelope {
         request_id: request.request_id,
         cancellation_id: request.cancellation_id,
@@ -12,7 +15,7 @@ fn observe(request: &HostRequestEnvelope, observation: HostObservation) -> HostO
     }
 }
 
-fn start(fixture: &PlaybackFixture, id: u64) -> (CommandEnvelope, HostRequestEnvelope) {
+pub(crate) fn start(fixture: &PlaybackFixture, id: u64) -> (CommandEnvelope, HostRequestEnvelope) {
     let command = CommandEnvelope {
         command_id: CommandId::from_parts(301, id),
         cancellation_id: CancellationId::from_parts(302, id),
@@ -59,7 +62,7 @@ fn start(fixture: &PlaybackFixture, id: u64) -> (CommandEnvelope, HostRequestEnv
     (command, fixture.facade.next_host_requests(8).remove(0))
 }
 
-fn generated_episode(facade: &Pod0Facade) -> EpisodeRecord {
+pub(crate) fn generated_episode(facade: &Pod0Facade) -> EpisodeRecord {
     let Projection::Library { value } = facade
         .snapshot(ProjectionRequest {
             scope: ProjectionScope::Library,

@@ -3700,6 +3700,366 @@ public object FfiConverterTypePodcastSubscriptionRecord: FfiConverterRustBuffer<
 
 
 
+data class PublicationFact (
+    val `sequence`: kotlin.ULong
+    ,
+    val `kind`: PublicationFactKind
+    ,
+    /**
+     * A stable digest of a relay URL. The URL itself never crosses the
+     * Pod0 application facade.
+     */
+    val `routeId`: PublicationRouteId?
+    ,
+    val `attempt`: kotlin.ULong?
+    ,
+    val `eventIdHex`: kotlin.String?
+    ,
+    val `observedAt`: UnixTimestampMilliseconds?
+    ,
+    val `detail`: kotlin.String?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePublicationFact: FfiConverterRustBuffer<PublicationFact> {
+    override fun read(buf: ByteBuffer): PublicationFact {
+        return PublicationFact(
+            FfiConverterULong.read(buf),
+            FfiConverterTypePublicationFactKind.read(buf),
+            FfiConverterOptionalTypePublicationRouteId.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PublicationFact) = (
+            FfiConverterULong.allocationSize(value.`sequence`) +
+            FfiConverterTypePublicationFactKind.allocationSize(value.`kind`) +
+            FfiConverterOptionalTypePublicationRouteId.allocationSize(value.`routeId`) +
+            FfiConverterOptionalULong.allocationSize(value.`attempt`) +
+            FfiConverterOptionalString.allocationSize(value.`eventIdHex`) +
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.allocationSize(value.`observedAt`) +
+            FfiConverterOptionalString.allocationSize(value.`detail`)
+    )
+
+    override fun write(value: PublicationFact, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`sequence`, buf)
+            FfiConverterTypePublicationFactKind.write(value.`kind`, buf)
+            FfiConverterOptionalTypePublicationRouteId.write(value.`routeId`, buf)
+            FfiConverterOptionalULong.write(value.`attempt`, buf)
+            FfiConverterOptionalString.write(value.`eventIdHex`, buf)
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.write(value.`observedAt`, buf)
+            FfiConverterOptionalString.write(value.`detail`, buf)
+    }
+}
+
+
+
+data class PublicationId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePublicationId: FfiConverterRustBuffer<PublicationId> {
+    override fun read(buf: ByteBuffer): PublicationId {
+        return PublicationId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PublicationId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: PublicationId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class PublicationIntent (
+    val `artifactId`: GeneratedArtifactId
+    ,
+    val `kind`: PublicationArtifactKind
+    ,
+    /**
+     * Lowercase 32-byte hexadecimal x-only public key.
+     */
+    val `expectedAuthorHex`: kotlin.String
+    ,
+    val `semanticRevision`: kotlin.UInt
+    ,
+    val `media`: PublicationMediaEvidence
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePublicationIntent: FfiConverterRustBuffer<PublicationIntent> {
+    override fun read(buf: ByteBuffer): PublicationIntent {
+        return PublicationIntent(
+            FfiConverterTypeGeneratedArtifactId.read(buf),
+            FfiConverterTypePublicationArtifactKind.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterTypePublicationMediaEvidence.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PublicationIntent) = (
+            FfiConverterTypeGeneratedArtifactId.allocationSize(value.`artifactId`) +
+            FfiConverterTypePublicationArtifactKind.allocationSize(value.`kind`) +
+            FfiConverterString.allocationSize(value.`expectedAuthorHex`) +
+            FfiConverterUInt.allocationSize(value.`semanticRevision`) +
+            FfiConverterTypePublicationMediaEvidence.allocationSize(value.`media`)
+    )
+
+    override fun write(value: PublicationIntent, buf: ByteBuffer) {
+            FfiConverterTypeGeneratedArtifactId.write(value.`artifactId`, buf)
+            FfiConverterTypePublicationArtifactKind.write(value.`kind`, buf)
+            FfiConverterString.write(value.`expectedAuthorHex`, buf)
+            FfiConverterUInt.write(value.`semanticRevision`, buf)
+            FfiConverterTypePublicationMediaEvidence.write(value.`media`, buf)
+    }
+}
+
+
+
+/**
+ * Public upload evidence is durable product state, not an NMP event cache.
+ * The shared core validates it against the committed generated artifact
+ * before composing an addressable podcast event.
+ */
+data class PublicationMediaEvidence (
+    val `publicUrl`: kotlin.String
+    ,
+    val `mediaType`: kotlin.String
+    ,
+    val `byteCount`: kotlin.ULong
+    ,
+    val `contentDigest`: ContentDigest
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePublicationMediaEvidence: FfiConverterRustBuffer<PublicationMediaEvidence> {
+    override fun read(buf: ByteBuffer): PublicationMediaEvidence {
+        return PublicationMediaEvidence(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PublicationMediaEvidence) = (
+            FfiConverterString.allocationSize(value.`publicUrl`) +
+            FfiConverterString.allocationSize(value.`mediaType`) +
+            FfiConverterULong.allocationSize(value.`byteCount`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`contentDigest`)
+    )
+
+    override fun write(value: PublicationMediaEvidence, buf: ByteBuffer) {
+            FfiConverterString.write(value.`publicUrl`, buf)
+            FfiConverterString.write(value.`mediaType`, buf)
+            FfiConverterULong.write(value.`byteCount`, buf)
+            FfiConverterTypeContentDigest.write(value.`contentDigest`, buf)
+    }
+}
+
+
+
+data class PublicationRecord (
+    val `publicationId`: PublicationId
+    ,
+    val `artifactId`: GeneratedArtifactId
+    ,
+    val `artifactKind`: PublicationArtifactKind
+    ,
+    val `episodeId`: EpisodeId
+    ,
+    val `podcastId`: PodcastId
+    ,
+    val `semanticRevision`: kotlin.UInt
+    ,
+    val `revision`: StateRevision
+    ,
+    val `expectedAuthorHex`: kotlin.String
+    ,
+    val `correlationToken`: kotlin.String
+    ,
+    val `media`: PublicationMediaEvidence
+    ,
+    val `receiptId`: kotlin.ULong?
+    ,
+    val `eventIdHex`: kotlin.String?
+    ,
+    val `stage`: PublicationStage
+    ,
+    val `preparedAt`: UnixTimestampMilliseconds
+    ,
+    val `updatedAt`: UnixTimestampMilliseconds
+    ,
+    val `facts`: List<PublicationFact>
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePublicationRecord: FfiConverterRustBuffer<PublicationRecord> {
+    override fun read(buf: ByteBuffer): PublicationRecord {
+        return PublicationRecord(
+            FfiConverterTypePublicationId.read(buf),
+            FfiConverterTypeGeneratedArtifactId.read(buf),
+            FfiConverterTypePublicationArtifactKind.read(buf),
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterTypePodcastId.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypePublicationMediaEvidence.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypePublicationStage.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterSequenceTypePublicationFact.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PublicationRecord) = (
+            FfiConverterTypePublicationId.allocationSize(value.`publicationId`) +
+            FfiConverterTypeGeneratedArtifactId.allocationSize(value.`artifactId`) +
+            FfiConverterTypePublicationArtifactKind.allocationSize(value.`artifactKind`) +
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterUInt.allocationSize(value.`semanticRevision`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`revision`) +
+            FfiConverterString.allocationSize(value.`expectedAuthorHex`) +
+            FfiConverterString.allocationSize(value.`correlationToken`) +
+            FfiConverterTypePublicationMediaEvidence.allocationSize(value.`media`) +
+            FfiConverterOptionalULong.allocationSize(value.`receiptId`) +
+            FfiConverterOptionalString.allocationSize(value.`eventIdHex`) +
+            FfiConverterTypePublicationStage.allocationSize(value.`stage`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`preparedAt`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`updatedAt`) +
+            FfiConverterSequenceTypePublicationFact.allocationSize(value.`facts`)
+    )
+
+    override fun write(value: PublicationRecord, buf: ByteBuffer) {
+            FfiConverterTypePublicationId.write(value.`publicationId`, buf)
+            FfiConverterTypeGeneratedArtifactId.write(value.`artifactId`, buf)
+            FfiConverterTypePublicationArtifactKind.write(value.`artifactKind`, buf)
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterUInt.write(value.`semanticRevision`, buf)
+            FfiConverterTypeStateRevision.write(value.`revision`, buf)
+            FfiConverterString.write(value.`expectedAuthorHex`, buf)
+            FfiConverterString.write(value.`correlationToken`, buf)
+            FfiConverterTypePublicationMediaEvidence.write(value.`media`, buf)
+            FfiConverterOptionalULong.write(value.`receiptId`, buf)
+            FfiConverterOptionalString.write(value.`eventIdHex`, buf)
+            FfiConverterTypePublicationStage.write(value.`stage`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`preparedAt`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`updatedAt`, buf)
+            FfiConverterSequenceTypePublicationFact.write(value.`facts`, buf)
+    }
+}
+
+
+
+data class PublicationRouteId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePublicationRouteId: FfiConverterRustBuffer<PublicationRouteId> {
+    override fun read(buf: ByteBuffer): PublicationRouteId {
+        return PublicationRouteId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PublicationRouteId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: PublicationRouteId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
 data class PublisherTranscriptReference (
     val `url`: kotlin.String
     ,
@@ -6848,6 +7208,187 @@ public object FfiConverterTypePodcastKind : FfiConverterRustBuffer<PodcastKind>{
 
 
 
+/**
+ * Product-level publication identity. It is stable across process restarts
+ * and distinct from NMP's store-issued receipt identity.
+ */
+sealed class PublicationArtifactKind {
+
+    object GeneratedPodcastEpisode : PublicationArtifactKind()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : PublicationArtifactKind()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePublicationArtifactKind : FfiConverterRustBuffer<PublicationArtifactKind>{
+    override fun read(buf: ByteBuffer): PublicationArtifactKind {
+        return when(buf.getInt()) {
+            1 -> PublicationArtifactKind.GeneratedPodcastEpisode
+            2 -> PublicationArtifactKind.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: PublicationArtifactKind): ULong = when(value) {
+        is PublicationArtifactKind.GeneratedPodcastEpisode -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PublicationArtifactKind.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: PublicationArtifactKind, buf: ByteBuffer) {
+        when(value) {
+            is PublicationArtifactKind.GeneratedPodcastEpisode -> {
+                buf.putInt(1)
+                Unit
+            }
+            is PublicationArtifactKind.Unsupported -> {
+                buf.putInt(2)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+/**
+ * Exact durable status facts remain distinct. No variant means globally
+ * synced or delivered; an acknowledgement is evidence for one opaque route.
+ */
+
+enum class PublicationFactKind {
+
+    ACCEPTED,
+    CANCELLED,
+    AWAITING_CAPABILITY,
+    SIGNED,
+    ROUTED,
+    AWAITING_RELAY,
+    AWAITING_AUTH,
+    RETRY_ELIGIBLE,
+    HANDOFF_AMBIGUOUS,
+    SENT,
+    ACKNOWLEDGED,
+    REJECTED,
+    GAVE_UP,
+    PERSISTENCE_BLOCKED,
+    ROUTE_PERSISTENCE_BLOCKED,
+    OUTCOME_UNKNOWN,
+    REPLACEABLE_CONFLICT,
+    FAILED,
+    REATTACHMENT_NOT_FOUND,
+    REATTACHMENT_UNREADABLE;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePublicationFactKind: FfiConverterRustBuffer<PublicationFactKind> {
+    override fun read(buf: ByteBuffer) = try {
+
+        PublicationFactKind.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: PublicationFactKind) = 4UL
+
+    override fun write(value: PublicationFactKind, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+enum class PublicationStage {
+
+    PREPARED,
+    AWAITING_CAPABILITY,
+    SIGNING,
+    ROUTED,
+    DELIVERING,
+    EVIDENCE_MIXED,
+    ACKNOWLEDGED,
+    REJECTED,
+    BLOCKED,
+    OUTCOME_UNKNOWN,
+    CANCELLED,
+    FAILED;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePublicationStage: FfiConverterRustBuffer<PublicationStage> {
+    override fun read(buf: ByteBuffer) = try {
+
+        PublicationStage.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: PublicationStage) = 4UL
+
+    override fun write(value: PublicationStage, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 sealed class PublisherTranscriptFormat {
 
     object Json : PublisherTranscriptFormat()
@@ -7884,6 +8425,38 @@ public object FfiConverterOptionalTypePodcastId: FfiConverterRustBuffer<PodcastI
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypePublicationRouteId: FfiConverterRustBuffer<PublicationRouteId?> {
+    override fun read(buf: ByteBuffer): PublicationRouteId? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypePublicationRouteId.read(buf)
+    }
+
+    override fun allocationSize(value: PublicationRouteId?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypePublicationRouteId.allocationSize(value)
+        }
+    }
+
+    override fun write(value: PublicationRouteId?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypePublicationRouteId.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypePublisherTranscriptReference: FfiConverterRustBuffer<PublisherTranscriptReference?> {
     override fun read(buf: ByteBuffer): PublisherTranscriptReference? {
         if (buf.get().toInt() == 0) {
@@ -8346,6 +8919,34 @@ public object FfiConverterSequenceTypePodcastSubscriptionRecord: FfiConverterRus
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypePodcastSubscriptionRecord.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypePublicationFact: FfiConverterRustBuffer<List<PublicationFact>> {
+    override fun read(buf: ByteBuffer): List<PublicationFact> {
+        val len = buf.getInt()
+        return List<PublicationFact>(len) {
+            FfiConverterTypePublicationFact.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<PublicationFact>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypePublicationFact.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<PublicationFact>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypePublicationFact.write(it, buf)
         }
     }
 }

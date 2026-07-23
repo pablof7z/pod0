@@ -3964,6 +3964,445 @@ public func FfiConverterTypePodcastSubscriptionRecord_lower(_ value: PodcastSubs
 }
 
 
+public struct PublicationFact: Equatable, Hashable {
+    public let sequence: UInt64
+    public let kind: PublicationFactKind
+    /**
+     * A stable digest of a relay URL. The URL itself never crosses the
+     * Pod0 application facade.
+     */
+    public let routeId: PublicationRouteId?
+    public let attempt: UInt64?
+    public let eventIdHex: String?
+    public let observedAt: UnixTimestampMilliseconds?
+    public let detail: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sequence: UInt64, kind: PublicationFactKind,
+        /**
+         * A stable digest of a relay URL. The URL itself never crosses the
+         * Pod0 application facade.
+         */routeId: PublicationRouteId?, attempt: UInt64?, eventIdHex: String?, observedAt: UnixTimestampMilliseconds?, detail: String?) {
+        self.sequence = sequence
+        self.kind = kind
+        self.routeId = routeId
+        self.attempt = attempt
+        self.eventIdHex = eventIdHex
+        self.observedAt = observedAt
+        self.detail = detail
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PublicationFact: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePublicationFact: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PublicationFact {
+        return
+            try PublicationFact(
+                sequence: FfiConverterUInt64.read(from: &buf),
+                kind: FfiConverterTypePublicationFactKind.read(from: &buf),
+                routeId: FfiConverterOptionTypePublicationRouteId.read(from: &buf),
+                attempt: FfiConverterOptionUInt64.read(from: &buf),
+                eventIdHex: FfiConverterOptionString.read(from: &buf),
+                observedAt: FfiConverterOptionTypeUnixTimestampMilliseconds.read(from: &buf),
+                detail: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PublicationFact, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.sequence, into: &buf)
+        FfiConverterTypePublicationFactKind.write(value.kind, into: &buf)
+        FfiConverterOptionTypePublicationRouteId.write(value.routeId, into: &buf)
+        FfiConverterOptionUInt64.write(value.attempt, into: &buf)
+        FfiConverterOptionString.write(value.eventIdHex, into: &buf)
+        FfiConverterOptionTypeUnixTimestampMilliseconds.write(value.observedAt, into: &buf)
+        FfiConverterOptionString.write(value.detail, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublicationFact_lift(_ buf: RustBuffer) throws -> PublicationFact {
+    return try FfiConverterTypePublicationFact.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublicationFact_lower(_ value: PublicationFact) -> RustBuffer {
+    return FfiConverterTypePublicationFact.lower(value)
+}
+
+
+public struct PublicationId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PublicationId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePublicationId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PublicationId {
+        return
+            try PublicationId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PublicationId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublicationId_lift(_ buf: RustBuffer) throws -> PublicationId {
+    return try FfiConverterTypePublicationId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublicationId_lower(_ value: PublicationId) -> RustBuffer {
+    return FfiConverterTypePublicationId.lower(value)
+}
+
+
+public struct PublicationIntent: Equatable, Hashable {
+    public let artifactId: GeneratedArtifactId
+    public let kind: PublicationArtifactKind
+    /**
+     * Lowercase 32-byte hexadecimal x-only public key.
+     */
+    public let expectedAuthorHex: String
+    public let semanticRevision: UInt32
+    public let media: PublicationMediaEvidence
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(artifactId: GeneratedArtifactId, kind: PublicationArtifactKind,
+        /**
+         * Lowercase 32-byte hexadecimal x-only public key.
+         */expectedAuthorHex: String, semanticRevision: UInt32, media: PublicationMediaEvidence) {
+        self.artifactId = artifactId
+        self.kind = kind
+        self.expectedAuthorHex = expectedAuthorHex
+        self.semanticRevision = semanticRevision
+        self.media = media
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PublicationIntent: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePublicationIntent: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PublicationIntent {
+        return
+            try PublicationIntent(
+                artifactId: FfiConverterTypeGeneratedArtifactId.read(from: &buf),
+                kind: FfiConverterTypePublicationArtifactKind.read(from: &buf),
+                expectedAuthorHex: FfiConverterString.read(from: &buf),
+                semanticRevision: FfiConverterUInt32.read(from: &buf),
+                media: FfiConverterTypePublicationMediaEvidence.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PublicationIntent, into buf: inout [UInt8]) {
+        FfiConverterTypeGeneratedArtifactId.write(value.artifactId, into: &buf)
+        FfiConverterTypePublicationArtifactKind.write(value.kind, into: &buf)
+        FfiConverterString.write(value.expectedAuthorHex, into: &buf)
+        FfiConverterUInt32.write(value.semanticRevision, into: &buf)
+        FfiConverterTypePublicationMediaEvidence.write(value.media, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublicationIntent_lift(_ buf: RustBuffer) throws -> PublicationIntent {
+    return try FfiConverterTypePublicationIntent.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublicationIntent_lower(_ value: PublicationIntent) -> RustBuffer {
+    return FfiConverterTypePublicationIntent.lower(value)
+}
+
+
+/**
+ * Public upload evidence is durable product state, not an NMP event cache.
+ * The shared core validates it against the committed generated artifact
+ * before composing an addressable podcast event.
+ */
+public struct PublicationMediaEvidence: Equatable, Hashable {
+    public let publicUrl: String
+    public let mediaType: String
+    public let byteCount: UInt64
+    public let contentDigest: ContentDigest
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(publicUrl: String, mediaType: String, byteCount: UInt64, contentDigest: ContentDigest) {
+        self.publicUrl = publicUrl
+        self.mediaType = mediaType
+        self.byteCount = byteCount
+        self.contentDigest = contentDigest
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PublicationMediaEvidence: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePublicationMediaEvidence: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PublicationMediaEvidence {
+        return
+            try PublicationMediaEvidence(
+                publicUrl: FfiConverterString.read(from: &buf),
+                mediaType: FfiConverterString.read(from: &buf),
+                byteCount: FfiConverterUInt64.read(from: &buf),
+                contentDigest: FfiConverterTypeContentDigest.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PublicationMediaEvidence, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.publicUrl, into: &buf)
+        FfiConverterString.write(value.mediaType, into: &buf)
+        FfiConverterUInt64.write(value.byteCount, into: &buf)
+        FfiConverterTypeContentDigest.write(value.contentDigest, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublicationMediaEvidence_lift(_ buf: RustBuffer) throws -> PublicationMediaEvidence {
+    return try FfiConverterTypePublicationMediaEvidence.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublicationMediaEvidence_lower(_ value: PublicationMediaEvidence) -> RustBuffer {
+    return FfiConverterTypePublicationMediaEvidence.lower(value)
+}
+
+
+public struct PublicationRecord: Equatable, Hashable {
+    public let publicationId: PublicationId
+    public let artifactId: GeneratedArtifactId
+    public let artifactKind: PublicationArtifactKind
+    public let episodeId: EpisodeId
+    public let podcastId: PodcastId
+    public let semanticRevision: UInt32
+    public let revision: StateRevision
+    public let expectedAuthorHex: String
+    public let correlationToken: String
+    public let media: PublicationMediaEvidence
+    public let receiptId: UInt64?
+    public let eventIdHex: String?
+    public let stage: PublicationStage
+    public let preparedAt: UnixTimestampMilliseconds
+    public let updatedAt: UnixTimestampMilliseconds
+    public let facts: [PublicationFact]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(publicationId: PublicationId, artifactId: GeneratedArtifactId, artifactKind: PublicationArtifactKind, episodeId: EpisodeId, podcastId: PodcastId, semanticRevision: UInt32, revision: StateRevision, expectedAuthorHex: String, correlationToken: String, media: PublicationMediaEvidence, receiptId: UInt64?, eventIdHex: String?, stage: PublicationStage, preparedAt: UnixTimestampMilliseconds, updatedAt: UnixTimestampMilliseconds, facts: [PublicationFact]) {
+        self.publicationId = publicationId
+        self.artifactId = artifactId
+        self.artifactKind = artifactKind
+        self.episodeId = episodeId
+        self.podcastId = podcastId
+        self.semanticRevision = semanticRevision
+        self.revision = revision
+        self.expectedAuthorHex = expectedAuthorHex
+        self.correlationToken = correlationToken
+        self.media = media
+        self.receiptId = receiptId
+        self.eventIdHex = eventIdHex
+        self.stage = stage
+        self.preparedAt = preparedAt
+        self.updatedAt = updatedAt
+        self.facts = facts
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PublicationRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePublicationRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PublicationRecord {
+        return
+            try PublicationRecord(
+                publicationId: FfiConverterTypePublicationId.read(from: &buf),
+                artifactId: FfiConverterTypeGeneratedArtifactId.read(from: &buf),
+                artifactKind: FfiConverterTypePublicationArtifactKind.read(from: &buf),
+                episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
+                podcastId: FfiConverterTypePodcastId.read(from: &buf),
+                semanticRevision: FfiConverterUInt32.read(from: &buf),
+                revision: FfiConverterTypeStateRevision.read(from: &buf),
+                expectedAuthorHex: FfiConverterString.read(from: &buf),
+                correlationToken: FfiConverterString.read(from: &buf),
+                media: FfiConverterTypePublicationMediaEvidence.read(from: &buf),
+                receiptId: FfiConverterOptionUInt64.read(from: &buf),
+                eventIdHex: FfiConverterOptionString.read(from: &buf),
+                stage: FfiConverterTypePublicationStage.read(from: &buf),
+                preparedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                updatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                facts: FfiConverterSequenceTypePublicationFact.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PublicationRecord, into buf: inout [UInt8]) {
+        FfiConverterTypePublicationId.write(value.publicationId, into: &buf)
+        FfiConverterTypeGeneratedArtifactId.write(value.artifactId, into: &buf)
+        FfiConverterTypePublicationArtifactKind.write(value.artifactKind, into: &buf)
+        FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
+        FfiConverterTypePodcastId.write(value.podcastId, into: &buf)
+        FfiConverterUInt32.write(value.semanticRevision, into: &buf)
+        FfiConverterTypeStateRevision.write(value.revision, into: &buf)
+        FfiConverterString.write(value.expectedAuthorHex, into: &buf)
+        FfiConverterString.write(value.correlationToken, into: &buf)
+        FfiConverterTypePublicationMediaEvidence.write(value.media, into: &buf)
+        FfiConverterOptionUInt64.write(value.receiptId, into: &buf)
+        FfiConverterOptionString.write(value.eventIdHex, into: &buf)
+        FfiConverterTypePublicationStage.write(value.stage, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.preparedAt, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.updatedAt, into: &buf)
+        FfiConverterSequenceTypePublicationFact.write(value.facts, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublicationRecord_lift(_ buf: RustBuffer) throws -> PublicationRecord {
+    return try FfiConverterTypePublicationRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublicationRecord_lower(_ value: PublicationRecord) -> RustBuffer {
+    return FfiConverterTypePublicationRecord.lower(value)
+}
+
+
+public struct PublicationRouteId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PublicationRouteId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePublicationRouteId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PublicationRouteId {
+        return
+            try PublicationRouteId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PublicationRouteId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublicationRouteId_lift(_ buf: RustBuffer) throws -> PublicationRouteId {
+    return try FfiConverterTypePublicationRouteId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublicationRouteId_lower(_ value: PublicationRouteId) -> RustBuffer {
+    return FfiConverterTypePublicationRouteId.lower(value)
+}
+
+
 public struct PublisherTranscriptReference: Equatable, Hashable {
     public let url: String
     public let mediaType: String?
@@ -6973,6 +7412,411 @@ public func FfiConverterTypePodcastKind_lower(_ value: PodcastKind) -> RustBuffe
 
 
 
+/**
+ * Product-level publication identity. It is stable across process restarts
+ * and distinct from NMP's store-issued receipt identity.
+ */
+
+public enum PublicationArtifactKind: Equatable, Hashable {
+
+    case generatedPodcastEpisode
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PublicationArtifactKind: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePublicationArtifactKind: FfiConverterRustBuffer {
+    typealias SwiftType = PublicationArtifactKind
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PublicationArtifactKind {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .generatedPodcastEpisode
+
+        case 2: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: PublicationArtifactKind, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .generatedPodcastEpisode:
+            writeInt(&buf, Int32(1))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(2))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublicationArtifactKind_lift(_ buf: RustBuffer) throws -> PublicationArtifactKind {
+    return try FfiConverterTypePublicationArtifactKind.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublicationArtifactKind_lower(_ value: PublicationArtifactKind) -> RustBuffer {
+    return FfiConverterTypePublicationArtifactKind.lower(value)
+}
+
+
+
+/**
+ * Exact durable status facts remain distinct. No variant means globally
+ * synced or delivered; an acknowledgement is evidence for one opaque route.
+ */
+
+public enum PublicationFactKind: Equatable, Hashable {
+
+    case accepted
+    case cancelled
+    case awaitingCapability
+    case signed
+    case routed
+    case awaitingRelay
+    case awaitingAuth
+    case retryEligible
+    case handoffAmbiguous
+    case sent
+    case acknowledged
+    case rejected
+    case gaveUp
+    case persistenceBlocked
+    case routePersistenceBlocked
+    case outcomeUnknown
+    case replaceableConflict
+    case failed
+    case reattachmentNotFound
+    case reattachmentUnreadable
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PublicationFactKind: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePublicationFactKind: FfiConverterRustBuffer {
+    typealias SwiftType = PublicationFactKind
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PublicationFactKind {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .accepted
+
+        case 2: return .cancelled
+
+        case 3: return .awaitingCapability
+
+        case 4: return .signed
+
+        case 5: return .routed
+
+        case 6: return .awaitingRelay
+
+        case 7: return .awaitingAuth
+
+        case 8: return .retryEligible
+
+        case 9: return .handoffAmbiguous
+
+        case 10: return .sent
+
+        case 11: return .acknowledged
+
+        case 12: return .rejected
+
+        case 13: return .gaveUp
+
+        case 14: return .persistenceBlocked
+
+        case 15: return .routePersistenceBlocked
+
+        case 16: return .outcomeUnknown
+
+        case 17: return .replaceableConflict
+
+        case 18: return .failed
+
+        case 19: return .reattachmentNotFound
+
+        case 20: return .reattachmentUnreadable
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: PublicationFactKind, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .accepted:
+            writeInt(&buf, Int32(1))
+
+
+        case .cancelled:
+            writeInt(&buf, Int32(2))
+
+
+        case .awaitingCapability:
+            writeInt(&buf, Int32(3))
+
+
+        case .signed:
+            writeInt(&buf, Int32(4))
+
+
+        case .routed:
+            writeInt(&buf, Int32(5))
+
+
+        case .awaitingRelay:
+            writeInt(&buf, Int32(6))
+
+
+        case .awaitingAuth:
+            writeInt(&buf, Int32(7))
+
+
+        case .retryEligible:
+            writeInt(&buf, Int32(8))
+
+
+        case .handoffAmbiguous:
+            writeInt(&buf, Int32(9))
+
+
+        case .sent:
+            writeInt(&buf, Int32(10))
+
+
+        case .acknowledged:
+            writeInt(&buf, Int32(11))
+
+
+        case .rejected:
+            writeInt(&buf, Int32(12))
+
+
+        case .gaveUp:
+            writeInt(&buf, Int32(13))
+
+
+        case .persistenceBlocked:
+            writeInt(&buf, Int32(14))
+
+
+        case .routePersistenceBlocked:
+            writeInt(&buf, Int32(15))
+
+
+        case .outcomeUnknown:
+            writeInt(&buf, Int32(16))
+
+
+        case .replaceableConflict:
+            writeInt(&buf, Int32(17))
+
+
+        case .failed:
+            writeInt(&buf, Int32(18))
+
+
+        case .reattachmentNotFound:
+            writeInt(&buf, Int32(19))
+
+
+        case .reattachmentUnreadable:
+            writeInt(&buf, Int32(20))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublicationFactKind_lift(_ buf: RustBuffer) throws -> PublicationFactKind {
+    return try FfiConverterTypePublicationFactKind.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublicationFactKind_lower(_ value: PublicationFactKind) -> RustBuffer {
+    return FfiConverterTypePublicationFactKind.lower(value)
+}
+
+
+
+
+public enum PublicationStage: Equatable, Hashable {
+
+    case prepared
+    case awaitingCapability
+    case signing
+    case routed
+    case delivering
+    case evidenceMixed
+    case acknowledged
+    case rejected
+    case blocked
+    case outcomeUnknown
+    case cancelled
+    case failed
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PublicationStage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePublicationStage: FfiConverterRustBuffer {
+    typealias SwiftType = PublicationStage
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PublicationStage {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .prepared
+
+        case 2: return .awaitingCapability
+
+        case 3: return .signing
+
+        case 4: return .routed
+
+        case 5: return .delivering
+
+        case 6: return .evidenceMixed
+
+        case 7: return .acknowledged
+
+        case 8: return .rejected
+
+        case 9: return .blocked
+
+        case 10: return .outcomeUnknown
+
+        case 11: return .cancelled
+
+        case 12: return .failed
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: PublicationStage, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .prepared:
+            writeInt(&buf, Int32(1))
+
+
+        case .awaitingCapability:
+            writeInt(&buf, Int32(2))
+
+
+        case .signing:
+            writeInt(&buf, Int32(3))
+
+
+        case .routed:
+            writeInt(&buf, Int32(4))
+
+
+        case .delivering:
+            writeInt(&buf, Int32(5))
+
+
+        case .evidenceMixed:
+            writeInt(&buf, Int32(6))
+
+
+        case .acknowledged:
+            writeInt(&buf, Int32(7))
+
+
+        case .rejected:
+            writeInt(&buf, Int32(8))
+
+
+        case .blocked:
+            writeInt(&buf, Int32(9))
+
+
+        case .outcomeUnknown:
+            writeInt(&buf, Int32(10))
+
+
+        case .cancelled:
+            writeInt(&buf, Int32(11))
+
+
+        case .failed:
+            writeInt(&buf, Int32(12))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublicationStage_lift(_ buf: RustBuffer) throws -> PublicationStage {
+    return try FfiConverterTypePublicationStage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePublicationStage_lower(_ value: PublicationStage) -> RustBuffer {
+    return FfiConverterTypePublicationStage.lower(value)
+}
+
+
+
 
 public enum PublisherTranscriptFormat: Equatable, Hashable {
 
@@ -7779,6 +8623,30 @@ fileprivate struct FfiConverterOptionTypePodcastId: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypePublicationRouteId: FfiConverterRustBuffer {
+    typealias SwiftType = PublicationRouteId?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypePublicationRouteId.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypePublicationRouteId.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypePublisherTranscriptReference: FfiConverterRustBuffer {
     typealias SwiftType = PublisherTranscriptReference?
 
@@ -8165,6 +9033,31 @@ fileprivate struct FfiConverterSequenceTypePodcastSubscriptionRecord: FfiConvert
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypePodcastSubscriptionRecord.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypePublicationFact: FfiConverterRustBuffer {
+    typealias SwiftType = [PublicationFact]
+
+    public static func write(_ value: [PublicationFact], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypePublicationFact.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [PublicationFact] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [PublicationFact]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypePublicationFact.read(from: &buf))
         }
         return seq
     }

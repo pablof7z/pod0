@@ -5,7 +5,7 @@ use pod0_domain::CommandId;
 
 pub const APPLICATION_ID: i64 = 0x504F_4430;
 pub const MIN_SUPPORTED_SCHEMA_VERSION: u32 = 0;
-pub const CURRENT_SCHEMA_VERSION: u32 = 24;
+pub const CURRENT_SCHEMA_VERSION: u32 = 25;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AccessMode {
@@ -173,6 +173,10 @@ pub enum StorageError {
     AgentTurnNotFound,
     AgentTurnConflict,
     InvalidAgentState,
+    PublicationCommandConflict,
+    PublicationNotFound,
+    PublicationConflict,
+    InvalidPublication,
     NewerEvidenceSchema {
         stored: u32,
         supported: u32,
@@ -246,6 +250,10 @@ impl StorageError {
             Self::AgentTurnNotFound => "agent_turn_not_found",
             Self::AgentTurnConflict => "agent_turn_conflict",
             Self::InvalidAgentState => "invalid_agent_state",
+            Self::PublicationCommandConflict => "publication_command_conflict",
+            Self::PublicationNotFound => "publication_not_found",
+            Self::PublicationConflict => "publication_conflict",
+            Self::InvalidPublication => "invalid_publication",
             Self::NewerEvidenceSchema { .. } => "newer_evidence_schema",
             Self::Interrupted => "migration_interrupted",
         }

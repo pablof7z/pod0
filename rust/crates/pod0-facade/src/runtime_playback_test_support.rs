@@ -15,7 +15,7 @@ pub(super) use crate::runtime_transcript_workflow_test_support::transcript_input
 use chapters::{install_chapter_fixture, install_empty_chapter_fixture};
 
 pub(super) struct PlaybackFixture {
-    _directory: tempfile::TempDir,
+    pub(super) _directory: tempfile::TempDir,
     pub(super) target: PathBuf,
     pub(super) facade: Arc<Pod0Facade>,
     pub(super) episode_id: EpisodeId,

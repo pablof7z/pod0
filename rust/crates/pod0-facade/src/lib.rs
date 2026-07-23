@@ -86,6 +86,7 @@ mod runtime_command_fingerprint;
 mod runtime_command_fingerprint_values;
 mod runtime_commands;
 mod runtime_core_wakes;
+mod runtime_cross_platform_fingerprint;
 mod runtime_deliveries;
 mod runtime_download_admission;
 #[cfg(test)]
@@ -113,6 +114,7 @@ mod runtime_failure;
 mod runtime_feed_commands;
 mod runtime_feed_observations;
 mod runtime_feed_state;
+mod runtime_lifecycle;
 mod runtime_listening_commands;
 mod runtime_note_commands;
 #[cfg(test)]
@@ -126,21 +128,14 @@ mod runtime_playback_commands;
 mod runtime_playback_fingerprint;
 mod runtime_playback_host;
 mod runtime_playback_observations;
-#[cfg(test)]
-mod runtime_playback_race_tests;
-#[cfg(test)]
-mod runtime_playback_recovery_tests;
 mod runtime_playback_state;
-#[cfg(test)]
-mod runtime_playback_test_support;
-#[cfg(test)]
-mod runtime_playback_tests;
 mod runtime_playback_transitions;
 mod runtime_projection;
+mod runtime_projection_envelope;
+mod runtime_publication;
+mod runtime_publication_adapter;
 mod runtime_recall_commands;
 mod runtime_recall_configuration;
-#[cfg(test)]
-mod runtime_recall_configuration_test_support;
 #[cfg(test)]
 mod runtime_recall_configuration_tests;
 mod runtime_recall_cutover;
@@ -196,6 +191,8 @@ mod transcript_workflow_cutover_rows;
 #[cfg(test)]
 mod transcript_workflow_cutover_tests;
 mod transcript_workflow_cutover_types;
+#[cfg(test)]
+include!("runtime_split_test_modules.rs");
 pub use chapter_migration::{
     LegacyChapterBackupEvidence, LegacyChapterImportPlan, LegacyChapterImportReport,
     LegacyChapterImportState, LegacyChapterImportVerification, LegacyChapterMigrationFailure,

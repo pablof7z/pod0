@@ -91,9 +91,7 @@ impl FacadeState {
             ApplicationCommand::ObserveDownloadEnvironment { observation } => {
                 self.observe_download_environment(&envelope, &fingerprint, observation)
             }
-            ApplicationCommand::ResetListeningData => {
-                self.reset_listening_data(&envelope, &fingerprint);
-            }
+            ApplicationCommand::ResetListeningData => self.reset_all(&envelope, &fingerprint),
             ApplicationCommand::CancelOperation { cancellation_id } => {
                 self.cancel_operation(cancellation_id);
                 self.succeed(envelope.command_id, None);
@@ -163,6 +161,9 @@ impl FacadeState {
             command @ (ApplicationCommand::StartAgentTurn { .. }
             | ApplicationCommand::CancelAgentTurn { .. }) => {
                 self.accept_agent_command(&envelope, command, &fingerprint)
+            }
+            ApplicationCommand::PublishGeneratedEpisode { intent } => {
+                self.pub_nmp(&envelope, &fingerprint, &intent)
             }
             ApplicationCommand::CommitChapter {
                 expected_selection_revision,
@@ -288,10 +289,9 @@ impl FacadeState {
             ApplicationCommand::ClearClips {
                 expected_collection_revision,
             } => self.clear_clips(&envelope, &fingerprint, expected_collection_revision),
-            ApplicationCommand::Unsupported { wire_code } => self.fail(
-                envelope.command_id,
-                CoreFailureCode::Unsupported { wire_code },
-            ),
+            ApplicationCommand::Unsupported { wire_code } => {
+                self.reject_unsupported(envelope.command_id, wire_code)
+            }
         }
         self.trim_operations();
         true

@@ -55,6 +55,7 @@ pub use crate::note_import_model::{
 };
 pub use crate::note_import_store::{commit_note_cutover, read_note_import};
 pub use crate::note_store_model::NoteCollectionSnapshot;
+pub use crate::publication_store::{PublicationPrepareOutcome, PublicationStore};
 pub use crate::recall_configuration_store::RecallConfigurationMutation;
 pub use crate::scheduled_agent_cutover::inspect_legacy_scheduled_agent_cutover;
 pub use crate::scheduled_agent_cutover_model::*;

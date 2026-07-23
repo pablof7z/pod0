@@ -126,6 +126,13 @@ mod note_legacy_backup;
 mod note_store_codec;
 mod note_store_model;
 mod note_store_read;
+mod publication_store;
+mod publication_store_codec;
+mod publication_store_observe;
+mod publication_store_read;
+#[cfg(test)]
+mod publication_store_tests;
+mod publication_store_write;
 mod recall_configuration_store;
 mod retained_orphan_parent;
 mod scheduled_agent_cutover;
@@ -156,6 +163,7 @@ mod schema_library;
 mod schema_migrations;
 mod schema_model_chapter_workflows;
 mod schema_notes;
+mod schema_publications;
 mod schema_scheduled_agent;
 mod schema_transcript_workflows;
 mod schema_transcripts;
@@ -190,110 +198,4 @@ pub(crate) use clip_import_model::InspectedClipSource;
 pub use exports::*;
 pub(crate) use note_import_model::InspectedNoteSource;
 #[cfg(test)]
-mod chapter_import_evidence_tests;
-#[cfg(test)]
-mod chapter_import_failure_tests;
-#[cfg(test)]
-mod chapter_import_recovery_tests;
-#[cfg(test)]
-mod chapter_import_source_tests;
-#[cfg(test)]
-mod chapter_import_test_support;
-#[cfg(test)]
-mod chapter_import_tests;
-#[cfg(test)]
-mod chapter_rollback_export_tests;
-#[cfg(test)]
-mod chapter_store_read_tests;
-#[cfg(test)]
-mod chapter_workflow_test_support;
-#[cfg(test)]
-mod chapter_workflow_tests;
-#[cfg(test)]
-mod clip_cutover_restart_tests;
-#[cfg(test)]
-mod clip_import_failure_tests;
-#[cfg(test)]
-mod clip_import_orphan_tests;
-#[cfg(test)]
-mod clip_import_tests;
-#[cfg(test)]
-mod download_store_artifact_tests;
-#[cfg(test)]
-mod download_store_cutover_recovery_tests;
-#[cfg(test)]
-mod download_store_cutover_tests;
-#[cfg(test)]
-mod download_store_lifecycle_tests;
-#[cfg(test)]
-mod download_store_test_support;
-#[cfg(test)]
-mod download_store_tests;
-#[cfg(test)]
-mod evidence_store_recovery_tests;
-#[cfg(test)]
-mod evidence_store_test_support;
-#[cfg(test)]
-mod evidence_store_tests;
-#[cfg(test)]
-mod library_store_playback_tests;
-#[cfg(test)]
-mod library_store_synthetic_tests;
-#[cfg(test)]
-mod library_store_tests;
-#[cfg(test)]
-mod listening_import_failure_tests;
-#[cfg(test)]
-mod listening_import_test_support;
-#[cfg(test)]
-mod listening_import_tests;
-#[cfg(test)]
-mod migration_chapter_tests;
-#[cfg(test)]
-mod migration_chapter_workflow_tests;
-#[cfg(test)]
-mod migration_scheduled_agent_tests;
-#[cfg(test)]
-mod migration_tests;
-#[cfg(test)]
-mod migration_transcript_history_tests;
-#[cfg(test)]
-mod note_import_tests;
-#[cfg(test)]
-mod recovery_test_support;
-#[cfg(test)]
-mod recovery_tests;
-#[cfg(test)]
-mod scheduled_agent_cutover_tests;
-#[cfg(test)]
-mod scheduled_agent_store_lifecycle_tests;
-#[cfg(test)]
-mod scheduled_agent_store_schema_tests;
-#[cfg(test)]
-mod scheduled_agent_store_test_support;
-#[cfg(test)]
-mod scheduled_agent_store_tests;
-#[cfg(test)]
-mod transcript_import_empty_tests;
-#[cfg(test)]
-mod transcript_import_evidence_tests;
-#[cfg(test)]
-mod transcript_import_failure_tests;
-#[cfg(test)]
-mod transcript_import_history_tests;
-#[cfg(test)]
-mod transcript_import_recovery_tests;
-#[cfg(test)]
-mod transcript_import_supersession_tests;
-#[cfg(test)]
-mod transcript_import_test_support;
-#[cfg(test)]
-mod transcript_import_tests;
-#[cfg(test)]
-mod transcript_rollback_export_tests;
-#[cfg(test)]
-mod transcript_store_recovery_tests;
-#[cfg(test)]
-mod transcript_store_test_support;
-#[cfg(test)]
-mod transcript_store_tests;
+include!("split_test_modules.rs");

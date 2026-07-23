@@ -10,7 +10,7 @@ use crate::{
     TranscriptWorkflowConfiguration, TranscriptWorkflowOrigin,
 };
 
-pub const FACADE_CONTRACT_VERSION: u32 = 40;
+pub const FACADE_CONTRACT_VERSION: u32 = 41;
 pub const MAX_PROJECTION_ITEMS: u16 = 200;
 pub const MAX_OPERATION_ITEMS: usize = 32;
 pub const MAX_HOST_REQUEST_BATCH: u16 = 64;
@@ -171,6 +171,9 @@ pub enum ApplicationCommand {
         user_input: String,
         model_reference: String,
         available_tools: Vec<crate::AgentToolName>,
+    },
+    PublishGeneratedEpisode {
+        intent: pod0_domain::PublicationIntent,
     },
     CancelAgentTurn {
         turn_id: pod0_domain::AgentTurnId,

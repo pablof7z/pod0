@@ -105,6 +105,7 @@ mod knowledge_ranking_tests;
 #[cfg(test)]
 mod knowledge_test_fixture;
 mod note_contract;
+mod publication;
 mod recall_contract;
 mod scheduled_agent;
 mod scheduled_agent_completion;
@@ -166,6 +167,7 @@ pub use knowledge::*;
 pub use knowledge_chunking::*;
 pub use knowledge_ranking::*;
 pub use note_contract::*;
+pub use publication::*;
 pub use recall_contract::*;
 pub use scheduled_agent::*;
 pub use scheduled_agent_completion::*;

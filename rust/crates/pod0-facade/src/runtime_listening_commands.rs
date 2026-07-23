@@ -4,7 +4,7 @@ use crate::runtime_playback_state::PlaybackRuntime;
 use crate::runtime_state::FacadeState;
 
 impl FacadeState {
-    pub(super) fn reset_listening_data(&mut self, envelope: &CommandEnvelope, fingerprint: &str) {
+    pub(super) fn reset_all(&mut self, envelope: &CommandEnvelope, fingerprint: &str) {
         let observation_request_id = self.playback.observation_request_id;
         let active_episode_id = self.listening.playback.active_episode_id;
         let result = self

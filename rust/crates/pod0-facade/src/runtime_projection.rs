@@ -6,6 +6,7 @@ use pod0_application::{
 };
 use pod0_domain::CompletionStatus;
 
+use crate::runtime_projection_envelope::projection_envelope;
 use crate::runtime_state::{FacadeState, failure};
 
 impl FacadeState {
@@ -218,6 +219,9 @@ impl FacadeState {
                     ),
                 }
             }
+            ProjectionScope::Publications { publication_id } => {
+                self.publication_projection(publication_id, &request)
+            }
             ProjectionScope::Notes { scope } => {
                 let mut notes = self.notes.notes.clone();
                 match scope {
@@ -289,10 +293,6 @@ impl FacadeState {
                 },
             },
         };
-        ProjectionEnvelope {
-            contract_version: pod0_application::FACADE_CONTRACT_VERSION,
-            state_revision: self.revision,
-            projection,
-        }
+        projection_envelope(self.revision, projection)
     }
 }

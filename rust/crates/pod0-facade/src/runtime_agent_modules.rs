@@ -10,7 +10,7 @@ mod continuation_tests;
 pub(crate) mod generated_audio;
 #[cfg(test)]
 #[path = "runtime_agent_generated_audio_tests.rs"]
-mod generated_audio_tests;
+pub(crate) mod generated_audio_tests;
 #[cfg(test)]
 #[path = "runtime_agent_history_tests.rs"]
 mod history_tests;

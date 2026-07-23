@@ -564,6 +564,7 @@
 		B5F1816FCEB62322DAA927E0 /* PlayerEditorialBackdrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB93580723F4582A8DA6D879 /* PlayerEditorialBackdrop.swift */; };
 		B62180BE4B52439F121BA233 /* OllamaSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E30B0ADA63732E117A3CDA25 /* OllamaSettingsView.swift */; };
 		B63F890B7E1E9984B5C157E9 /* PublisherTranscriptIngestor.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFB8577AF79B263080C60155 /* PublisherTranscriptIngestor.swift */; };
+		B6E6E1570F96B0766AC5AD5B /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A5DBDC26B6CA1118142E089C /* SystemConfiguration.framework */; };
 		B74F70DEFC8511D7C299FD32 /* SharedLibraryBootstrap+Clips.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F40ACC743FBEB970D090E1B /* SharedLibraryBootstrap+Clips.swift */; };
 		B7D797936C243F0FA021DAC3 /* PlayerTopBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB72321EF87500F216E1E78 /* PlayerTopBar.swift */; };
 		B7ED1073B810D1967652CCE2 /* CoreScheduledAgentHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17115BC5AD45846BD13CE385 /* CoreScheduledAgentHost.swift */; };
@@ -1021,7 +1022,7 @@
 		31822DD58237A18EDF0122A4 /* AppStateStore+Subscriptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+Subscriptions.swift"; sourceTree = "<group>"; };
 		31927B4E3DA07C4DCFCB2216 /* AgentChatHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentChatHistoryView.swift; sourceTree = "<group>"; };
 		325AAE8B62A04BEFC34A5FB0 /* AppStateStore+Podcasts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+Podcasts.swift"; sourceTree = "<group>"; };
-		3266ABF27DC6701CC2EC309E /* Pod0CoreFFI.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = Pod0CoreFFI.xcframework; path = /Users/customer/Work/pod0/.build/pod0core/Pod0CoreFFI.xcframework; sourceTree = "<absolute>"; };
+		3266ABF27DC6701CC2EC309E /* Pod0CoreFFI.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = Pod0CoreFFI.xcframework; path = .build/pod0core/Pod0CoreFFI.xcframework; sourceTree = SOURCE_ROOT; };
 		3287A4A390015E885F29B691 /* SharedLibrarySubscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedLibrarySubscriber.swift; sourceTree = "<group>"; };
 		32BA9F68161E0734342D5828 /* AgentPicksService+Cache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AgentPicksService+Cache.swift"; sourceTree = "<group>"; };
 		32D6DCC3AC57739150675344 /* AppTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTests.swift; sourceTree = "<group>"; };
@@ -1359,6 +1360,7 @@
 		A4FF46F18852A9C7F82E1A93 /* WorkflowSchemaMigrations+ChapterRetirement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkflowSchemaMigrations+ChapterRetirement.swift"; sourceTree = "<group>"; };
 		A504DF2340BE447873EA10A7 /* ArtifactRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactRepository.swift; sourceTree = "<group>"; };
 		A599C58590AD715714088934 /* WorkflowJobProjection+Transcripts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkflowJobProjection+Transcripts.swift"; sourceTree = "<group>"; };
+		A5DBDC26B6CA1118142E089C /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/SystemConfiguration.framework; sourceTree = DEVELOPER_DIR; };
 		A619964441015F750E5F983B /* CorePublisherChapterHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CorePublisherChapterHost.swift; sourceTree = "<group>"; };
 		A699AE940BFE2E70A06629CE /* ScribeRequestEncodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScribeRequestEncodingTests.swift; sourceTree = "<group>"; };
 		A6A1F5D29BDC0B8355BC7378 /* PodcastCategorizationPrompt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PodcastCategorizationPrompt.swift; sourceTree = "<group>"; };
@@ -1639,6 +1641,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B6E6E1570F96B0766AC5AD5B /* SystemConfiguration.framework in Frameworks */,
 				1208B592CE04E71BABA26C28 /* Pod0CoreFFI.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -2366,6 +2369,7 @@
 			isa = PBXGroup;
 			children = (
 				3266ABF27DC6701CC2EC309E /* Pod0CoreFFI.xcframework */,
+				A5DBDC26B6CA1118142E089C /* SystemConfiguration.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";

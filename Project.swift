@@ -64,6 +64,7 @@ let project = Project(
                 .xcframework(
                     path: .relativeToRoot(".build/pod0core/Pod0CoreFFI.xcframework")
                 ),
+                .sdk(name: "SystemConfiguration", type: .framework),
             ],
             settings: .settings(
                 base: [
