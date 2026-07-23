@@ -15,9 +15,20 @@ impl FacadeState {
     pub(super) fn execute_internal_agent_action(
         &mut self,
         agent_store: &AgentStore,
-        mut state: AgentTurnState,
+        state: AgentTurnState,
         observed_at: pod0_domain::UnixTimestampMilliseconds,
     ) -> Result<(), StorageError> {
+        if matches!(
+            state
+                .projection()
+                .proposal
+                .as_ref()
+                .map(|value| &value.action),
+            Some(AgentToolAction::QueryTranscripts { .. })
+        ) {
+            return self.execute_agent_recall_action(agent_store, state, observed_at);
+        }
+        let mut state = state;
         let before = state.projection();
         let proposal = before
             .proposal

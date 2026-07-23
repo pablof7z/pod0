@@ -40,6 +40,21 @@ pub fn validate_agent_action(action: &AgentToolAction) -> Result<(), AgentAction
                 Err(AgentActionValidationError::InvalidRange)
             }
         }
+        AgentToolAction::QueryTranscripts {
+            query,
+            scope,
+            limit,
+        } => {
+            validate_text(query, crate::MAX_RECALL_QUERY_BYTES)?;
+            if matches!(scope, crate::RecallScope::Unsupported { .. }) {
+                return Err(AgentActionValidationError::InvalidShape);
+            }
+            if (1..=crate::MAX_AGENT_RECALL_EVIDENCE).contains(limit) {
+                Ok(())
+            } else {
+                Err(AgentActionValidationError::InvalidRange)
+            }
+        }
         AgentToolAction::Episode { tool, .. } if episode_tool(*tool) => Ok(()),
         AgentToolAction::Podcast { tool, .. } if podcast_tool(*tool) => Ok(()),
         AgentToolAction::PlayEpisode {

@@ -31,6 +31,9 @@ impl FacadeState {
         if let Some(result) = self.retry_pending_agent_observation(request_id, &observation) {
             return result;
         }
+        if let Some(result) = self.retry_pending_agent_recall_observation(&observation) {
+            return result;
+        }
         if let Some(receipt) = self.replayed_model_completion_receipt(&observation) {
             return (false, receipt);
         }
@@ -193,8 +196,9 @@ impl FacadeState {
                 observation.observed_at.value,
             );
         } else if let Some(pending) = pending_recall {
-            self.pending_recalls.remove(&observation.request_id);
-            self.finish_recall_observation(pending, observation.observation);
+            if self.finish_recall_observation_for_agent(request_id, pending, observation) {
+                return (false, retain(request_id));
+            }
         } else if let Some(pending) = pending_evidence {
             self.pending_evidence_indexes
                 .remove(&observation.request_id);

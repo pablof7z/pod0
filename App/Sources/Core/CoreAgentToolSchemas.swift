@@ -23,6 +23,7 @@ enum CoreAgentToolSchemas {
         case .listInProgress: "list_in_progress"
         case .listRecentUnplayed: "list_recent_unplayed"
         case .searchEpisodes: "search_episodes"
+        case .queryTranscripts: "query_transcripts"
         case .pausePlayback: "pause_playback"
         case .setPlaybackRate: "set_playback_rate"
         default: nil
@@ -83,6 +84,23 @@ enum CoreAgentToolSchemas {
                         "description": "Maximum results from 1 through 25. Defaults to 10.",
                         "minimum": 1,
                         "maximum": 25,
+                    ],
+                ],
+                required: ["query"]
+            )
+        case .queryTranscripts:
+            tool(
+                name: "query_transcripts",
+                description: "Search prepared transcripts and return exact timestamped evidence.",
+                properties: [
+                    "query": stringProperty("Natural-language question to answer from transcripts."),
+                    "episode_id": stringProperty("Optional episode UUID to search within."),
+                    "podcast_id": stringProperty("Optional podcast UUID to search within."),
+                    "limit": [
+                        "type": "integer",
+                        "description": "Maximum evidence spans from 1 through 8. Defaults to 8.",
+                        "minimum": 1,
+                        "maximum": 8,
                     ],
                 ],
                 required: ["query"]

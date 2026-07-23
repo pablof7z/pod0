@@ -4,7 +4,7 @@ use pod0_domain::{
     UnixTimestampMilliseconds,
 };
 
-use crate::{AgentToolName, QueuePlacement, ScheduledTaskInput};
+use crate::{AgentToolName, QueuePlacement, RecallScope, ScheduledTaskInput};
 
 pub const AGENT_CONTRACT_VERSION: u32 = 1;
 pub const MAX_AGENT_INPUT_BYTES: usize = 32 * 1_024;
@@ -15,6 +15,7 @@ pub const MAX_AGENT_PROJECTION_MESSAGES: usize = 64;
 pub const MAX_AGENT_SAFE_DETAIL_BYTES: usize = 1_024;
 pub const MAX_AGENT_TOOLS_PER_TURN: usize = 46;
 pub const MAX_AGENT_MODEL_OUTPUT_BYTES: u64 = 256 * 1_024;
+pub const MAX_AGENT_RECALL_EVIDENCE: u16 = 8;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum AgentAuthority {
@@ -65,6 +66,11 @@ pub enum AgentToolAction {
         tool: AgentToolName,
         query: String,
         scope: Option<String>,
+        limit: u16,
+    },
+    QueryTranscripts {
+        query: String,
+        scope: RecallScope,
         limit: u16,
     },
     Episode {
@@ -155,6 +161,7 @@ impl AgentToolAction {
             | Self::Search { tool, .. }
             | Self::Episode { tool, .. }
             | Self::Podcast { tool, .. } => *tool,
+            Self::QueryTranscripts { .. } => AgentToolName::QueryTranscripts,
             Self::PlayEpisode { .. } => AgentToolName::PlayEpisode,
             Self::SetPlaybackRate { .. } => AgentToolName::SetPlaybackRate,
             Self::SetSleepTimer { .. } => AgentToolName::SetSleepTimer,

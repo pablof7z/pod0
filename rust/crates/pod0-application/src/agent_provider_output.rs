@@ -1,7 +1,9 @@
 use pod0_domain::{EpisodeId, PodcastId};
 use serde_json::{Map, Value};
 
-use crate::{AgentToolAction, AgentToolName, QueuePlacement, agent_tool_name_from_wire};
+use crate::{
+    AgentToolAction, AgentToolName, QueuePlacement, RecallScope, agent_tool_name_from_wire,
+};
 
 pub const MAX_AGENT_TOOL_CALL_ID_BYTES: usize = 512;
 pub const MAX_AGENT_TOOL_NAME_BYTES: usize = 128;
@@ -59,6 +61,11 @@ fn parse_action(
             scope: optional_text(args, "scope")?,
             limit: optional_u16(args, "limit")?.unwrap_or(10),
         }),
+        QueryTranscripts => Ok(AgentToolAction::QueryTranscripts {
+            query: required_text(args, "query")?,
+            scope: recall_scope(args)?,
+            limit: optional_u16(args, "limit")?.unwrap_or(8),
+        }),
         ListEpisodes => Ok(AgentToolAction::Podcast {
             tool,
             podcast_id: opaque_id(args, "podcast_id", PodcastId::from_bytes)?,
@@ -83,6 +90,17 @@ fn parse_action(
             duration_milliseconds: sleep_timer_duration(args)?,
         }),
         _ => Err(AgentProviderOutputError::UnsupportedTool),
+    }
+}
+
+fn recall_scope(args: &Map<String, Value>) -> Result<RecallScope, AgentProviderOutputError> {
+    let episode = optional_opaque_id(args, "episode_id", EpisodeId::from_bytes)?;
+    let podcast = optional_opaque_id(args, "podcast_id", PodcastId::from_bytes)?;
+    match (episode, podcast) {
+        (Some(episode_id), None) => Ok(RecallScope::Episode { episode_id }),
+        (None, Some(podcast_id)) => Ok(RecallScope::Podcast { podcast_id }),
+        (None, None) => Ok(RecallScope::Library),
+        (Some(_), Some(_)) => Err(AgentProviderOutputError::InvalidArguments),
     }
 }
 
@@ -155,6 +173,20 @@ fn opaque_id<T>(
     parse_uuid_bytes(&value)
         .map(constructor)
         .ok_or(AgentProviderOutputError::InvalidArguments)
+}
+
+fn optional_opaque_id<T>(
+    args: &Map<String, Value>,
+    name: &str,
+    constructor: impl FnOnce([u8; 16]) -> T,
+) -> Result<Option<T>, AgentProviderOutputError> {
+    match optional_text(args, name)? {
+        Some(value) => parse_uuid_bytes(&value)
+            .map(constructor)
+            .map(Some)
+            .ok_or(AgentProviderOutputError::InvalidArguments),
+        None => Ok(None),
+    }
 }
 
 fn parse_uuid_bytes(value: &str) -> Option<[u8; 16]> {

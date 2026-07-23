@@ -1,4 +1,5 @@
 use super::*;
+use pod0_domain::EpisodeId;
 
 fn call(name: &str, arguments_json: &str) -> AgentModelToolCallObservation {
     AgentModelToolCallObservation {
@@ -32,6 +33,19 @@ fn parses_product_proof_actions_inside_rust() {
         parse_agent_tool_call(&call("set_playback_rate", r#"{"rate":1.25}"#)),
         Ok(AgentToolAction::SetPlaybackRate { permille: 1_250 })
     );
+    assert_eq!(
+        parse_agent_tool_call(&call(
+            "query_transcripts",
+            r#"{"query":"habit cues","episode_id":"00000000-0000-0000-0000-000000000009","limit":4}"#,
+        )),
+        Ok(AgentToolAction::QueryTranscripts {
+            query: "habit cues".into(),
+            scope: RecallScope::Episode {
+                episode_id: EpisodeId::from_parts(0, 9),
+            },
+            limit: 4,
+        })
+    );
 }
 
 #[test]
@@ -47,5 +61,12 @@ fn rejects_unknown_malformed_and_not_yet_supported_actions() {
     assert_eq!(
         parse_agent_tool_call(&call("generate_tts_episode", "{}")),
         Err(AgentProviderOutputError::UnsupportedTool)
+    );
+    assert_eq!(
+        parse_agent_tool_call(&call(
+            "query_transcripts",
+            r#"{"query":"x","episode_id":"00000000-0000-0000-0000-000000000001","podcast_id":"00000000-0000-0000-0000-000000000002"}"#,
+        )),
+        Err(AgentProviderOutputError::InvalidArguments)
     );
 }

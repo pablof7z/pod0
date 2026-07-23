@@ -1,7 +1,7 @@
 use pod0_domain::{AgentCommitId, AgentProposalId, AgentTurnId, ContentDigest, StateRevision};
 use sha2::{Digest as _, Sha256};
 
-use crate::{ALL_AGENT_TOOL_NAMES, AgentToolAction, AgentToolName, QueuePlacement};
+use crate::{ALL_AGENT_TOOL_NAMES, AgentToolAction, AgentToolName, QueuePlacement, RecallScope};
 
 pub fn agent_proposal_identity(
     turn_id: AgentTurnId,
@@ -50,6 +50,15 @@ fn hash_action(hasher: &mut Sha256, action: &AgentToolAction) {
             hash_tool(h, *tool);
             hash_text(h, query);
             hash_optional_text(h, scope.as_deref());
+            h.update(limit.to_be_bytes());
+        }),
+        QueryTranscripts {
+            query,
+            scope,
+            limit,
+        } => fields(hasher, 23, |h| {
+            hash_text(h, query);
+            hash_recall_scope(h, *scope);
             h.update(limit.to_be_bytes());
         }),
         Episode { tool, episode_id } => fields(hasher, 4, |h| {
@@ -149,6 +158,24 @@ fn hash_action(hasher: &mut Sha256, action: &AgentToolAction) {
             h.update(podcast_id.into_bytes());
             hash_text(h, prompt);
         }),
+    }
+}
+
+fn hash_recall_scope(hasher: &mut Sha256, scope: RecallScope) {
+    match scope {
+        RecallScope::Library => hash_tag(hasher, 1),
+        RecallScope::Podcast { podcast_id } => {
+            hash_tag(hasher, 2);
+            hasher.update(podcast_id.into_bytes());
+        }
+        RecallScope::Episode { episode_id } => {
+            hash_tag(hasher, 3);
+            hasher.update(episode_id.into_bytes());
+        }
+        RecallScope::Unsupported { wire_code } => {
+            hash_tag(hasher, 4);
+            hash_tag(hasher, wire_code);
+        }
     }
 }
 

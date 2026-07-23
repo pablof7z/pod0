@@ -21,7 +21,7 @@ pub struct RecallQuery {
     pub limit: u16,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum RecallScope {
     Library,
     Podcast { podcast_id: PodcastId },

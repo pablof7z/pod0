@@ -15,7 +15,7 @@ use pod0_recall_index::RecallIndex;
 use pod0_storage::{AgentStore, EvidenceStore, LibraryStore, ScheduledAgentStore, TranscriptStore};
 
 use crate::ProjectionSubscriber;
-use crate::runtime_agent_modules::state::PendingAgentRequest;
+use crate::runtime_agent_modules::state::{PendingAgentRecallObservation, PendingAgentRequest};
 use crate::runtime_evidence_state::PendingEvidenceIndex;
 pub(super) use crate::runtime_failure::failure;
 use crate::runtime_feed_state::PendingFeed;
@@ -62,6 +62,9 @@ pub(super) struct FacadeState {
     pub(super) pending_agents: BTreeMap<HostRequestId, PendingAgentRequest>,
     pub(super) pending_agent_observations:
         BTreeMap<HostRequestId, pod0_application::HostObservationEnvelope>,
+    pub(super) pending_agent_recalls: BTreeMap<RecallQueryId, pod0_domain::AgentTurnId>,
+    pub(super) pending_agent_recall_observations:
+        BTreeMap<HostRequestId, PendingAgentRecallObservation>,
     pub(super) pending_core_wakes: BTreeMap<HostRequestId, CoreWakeReason>,
     pub(super) pending_evidence_indexes: BTreeMap<HostRequestId, PendingEvidenceIndex>,
     pub(super) pending_recall_cutovers: BTreeMap<HostRequestId, PendingRecallCutover>,

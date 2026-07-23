@@ -21,6 +21,7 @@ final class SharedAgentConversationSession {
         .listInProgress,
         .listRecentUnplayed,
         .searchEpisodes,
+        .queryTranscripts,
         .pausePlayback,
         .setPlaybackRate,
     ]

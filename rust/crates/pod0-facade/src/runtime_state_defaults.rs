@@ -51,6 +51,8 @@ impl Default for FacadeState {
             pending_scheduled_agent_observations: BTreeMap::new(),
             pending_agents: BTreeMap::new(),
             pending_agent_observations: BTreeMap::new(),
+            pending_agent_recalls: BTreeMap::new(),
+            pending_agent_recall_observations: BTreeMap::new(),
             pending_core_wakes: BTreeMap::new(),
             pending_evidence_indexes: BTreeMap::new(),
             pending_recall_cutovers: BTreeMap::new(),

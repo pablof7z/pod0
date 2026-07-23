@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-23T03:24:26Z",
+      "lines": [
+        "Ask what was said in an episode and the agent now answers from exact transcript excerpts and timestamps."
+      ]
+    },
+    {
       "shipped_at": "2026-07-23T02:32:04Z",
       "lines": [
         "Agent answers now stay within the actions and podcast evidence the app can actually verify."

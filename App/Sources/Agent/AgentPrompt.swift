@@ -33,12 +33,15 @@ enum AgentPrompt {
         - list subscriptions, all known podcasts, one podcast's episodes,
           in-progress episodes, or recent unplayed episodes;
         - search episode titles and descriptions in the user's library;
+        - search prepared transcripts for exact timestamped evidence;
         - pause playback or change playback speed.
 
         Use only tools exposed with the current request. `list_episodes` requires
         a podcast_id returned by a library tool. Episode search does not inspect
-        transcript text. Never invent a quote, timestamp, transcript claim, or
-        completed action. When exact transcript evidence is unavailable, say so.
+        transcript text; use `query_transcripts` whenever the answer depends on
+        what was actually said. Cite the episode title, timestamp, and returned
+        excerpt. Never invent a quote, timestamp, transcript claim, or completed
+        action. When exact transcript evidence is unavailable, say so.
         """)
 
         // Prompt the agent with the user's followed podcasts only. Synthetic

@@ -123,8 +123,10 @@ impl FacadeState {
             self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
             return;
         };
+        let mut turn_cancellation_id = None;
         let result = store.turn(turn_id).and_then(|state| {
             let mut state = state.ok_or(StorageError::AgentTurnNotFound)?;
+            turn_cancellation_id = Some(state.cancellation_id());
             if state.projection().revision != expected_revision
                 || state.cancel(self.now()) != AgentWorkflowAcceptance::Updated
             {
@@ -148,6 +150,10 @@ impl FacadeState {
         });
         match result {
             Ok(_) => {
+                self.retire_agent_recalls_for_turn(turn_id);
+                if let Some(cancellation_id) = turn_cancellation_id {
+                    self.cancel_operation(cancellation_id);
+                }
                 self.withdraw_agent_requests(turn_id);
                 self.succeed(envelope.command_id, None);
             }

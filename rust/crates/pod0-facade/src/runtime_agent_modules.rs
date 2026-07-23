@@ -20,6 +20,13 @@ pub(crate) mod persistence;
 pub(crate) mod projection;
 #[path = "runtime_agent_queue.rs"]
 pub(crate) mod queue;
+#[path = "runtime_agent_recall.rs"]
+pub(crate) mod recall;
+#[path = "runtime_agent_recall_observations.rs"]
+pub(crate) mod recall_observations;
+#[cfg(test)]
+#[path = "runtime_agent_recall_tests.rs"]
+mod recall_tests;
 #[path = "runtime_agent_state.rs"]
 pub(crate) mod state;
 #[cfg(test)]

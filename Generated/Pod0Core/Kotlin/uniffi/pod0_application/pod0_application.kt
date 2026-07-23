@@ -7770,6 +7770,17 @@ sealed class AgentToolAction {
         companion object
     }
 
+    data class QueryTranscripts(
+        val `query`: kotlin.String,
+        val `scope`: uniffi.pod0_application.RecallScope,
+        val `limit`: kotlin.UShort) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
     data class Episode(
         val `tool`: uniffi.pod0_application.AgentToolName,
         val `episodeId`: uniffi.pod0_domain.EpisodeId) : AgentToolAction()
@@ -7990,48 +8001,53 @@ public object FfiConverterTypeAgentToolAction : FfiConverterRustBuffer<AgentTool
                 FfiConverterOptionalString.read(buf),
                 FfiConverterUShort.read(buf),
                 )
-            4 -> AgentToolAction.Episode(
+            4 -> AgentToolAction.QueryTranscripts(
+                FfiConverterString.read(buf),
+                FfiConverterTypeRecallScope.read(buf),
+                FfiConverterUShort.read(buf),
+                )
+            5 -> AgentToolAction.Episode(
                 FfiConverterTypeAgentToolName.read(buf),
                 FfiConverterTypeEpisodeId.read(buf),
                 )
-            5 -> AgentToolAction.Podcast(
+            6 -> AgentToolAction.Podcast(
                 FfiConverterTypeAgentToolName.read(buf),
                 FfiConverterTypePodcastId.read(buf),
                 )
-            6 -> AgentToolAction.PlayEpisode(
+            7 -> AgentToolAction.PlayEpisode(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterOptionalULong.read(buf),
                 FfiConverterOptionalULong.read(buf),
                 FfiConverterTypeQueuePlacement.read(buf),
                 )
-            7 -> AgentToolAction.SetPlaybackRate(
+            8 -> AgentToolAction.SetPlaybackRate(
                 FfiConverterUShort.read(buf),
                 )
-            8 -> AgentToolAction.SetSleepTimer(
+            9 -> AgentToolAction.SetSleepTimer(
                 FfiConverterOptionalULong.read(buf),
                 )
-            9 -> AgentToolAction.CreateNote(
+            10 -> AgentToolAction.CreateNote(
                 FfiConverterString.read(buf),
                 )
-            10 -> AgentToolAction.RecordMemory(
+            11 -> AgentToolAction.RecordMemory(
                 FfiConverterString.read(buf),
                 )
-            11 -> AgentToolAction.Ask(
+            12 -> AgentToolAction.Ask(
                 FfiConverterString.read(buf),
                 FfiConverterOptionalString.read(buf),
                 )
-            12 -> AgentToolAction.ScheduleTask(
+            13 -> AgentToolAction.ScheduleTask(
                 FfiConverterTypeScheduledTaskInput.read(buf),
                 )
-            13 -> AgentToolAction.CancelScheduledTask(
+            14 -> AgentToolAction.CancelScheduledTask(
                 FfiConverterTypeScheduledTaskId.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            14 -> AgentToolAction.ChangePodcastCategory(
+            15 -> AgentToolAction.ChangePodcastCategory(
                 FfiConverterTypePodcastId.read(buf),
                 FfiConverterString.read(buf),
                 )
-            15 -> AgentToolAction.CreateClip(
+            16 -> AgentToolAction.CreateClip(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypePodcastId.read(buf),
                 FfiConverterULong.read(buf),
@@ -8039,31 +8055,31 @@ public object FfiConverterTypeAgentToolAction : FfiConverterRustBuffer<AgentTool
                 FfiConverterOptionalString.read(buf),
                 FfiConverterString.read(buf),
                 )
-            16 -> AgentToolAction.SubscribePodcast(
+            17 -> AgentToolAction.SubscribePodcast(
                 FfiConverterString.read(buf),
                 )
-            17 -> AgentToolAction.IngestYoutubeVideo(
+            18 -> AgentToolAction.IngestYoutubeVideo(
                 FfiConverterString.read(buf),
                 )
-            18 -> AgentToolAction.ConfigureAgentVoice(
+            19 -> AgentToolAction.ConfigureAgentVoice(
                 FfiConverterString.read(buf),
                 )
-            19 -> AgentToolAction.CreatePodcast(
+            20 -> AgentToolAction.CreatePodcast(
                 FfiConverterString.read(buf),
                 FfiConverterString.read(buf),
                 )
-            20 -> AgentToolAction.UpdatePodcast(
+            21 -> AgentToolAction.UpdatePodcast(
                 FfiConverterTypePodcastId.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterString.read(buf),
                 )
-            21 -> AgentToolAction.GenerateTtsEpisode(
+            22 -> AgentToolAction.GenerateTtsEpisode(
                 FfiConverterOptionalTypePodcastId.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterOptionalString.read(buf),
                 )
-            22 -> AgentToolAction.GeneratePodcastArtwork(
+            23 -> AgentToolAction.GeneratePodcastArtwork(
                 FfiConverterTypePodcastId.read(buf),
                 FfiConverterString.read(buf),
                 )
@@ -8094,6 +8110,15 @@ public object FfiConverterTypeAgentToolAction : FfiConverterRustBuffer<AgentTool
                 + FfiConverterTypeAgentToolName.allocationSize(value.`tool`)
                 + FfiConverterString.allocationSize(value.`query`)
                 + FfiConverterOptionalString.allocationSize(value.`scope`)
+                + FfiConverterUShort.allocationSize(value.`limit`)
+            )
+        }
+        is AgentToolAction.QueryTranscripts -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`query`)
+                + FfiConverterTypeRecallScope.allocationSize(value.`scope`)
                 + FfiConverterUShort.allocationSize(value.`limit`)
             )
         }
@@ -8273,20 +8298,27 @@ public object FfiConverterTypeAgentToolAction : FfiConverterRustBuffer<AgentTool
                 FfiConverterUShort.write(value.`limit`, buf)
                 Unit
             }
-            is AgentToolAction.Episode -> {
+            is AgentToolAction.QueryTranscripts -> {
                 buf.putInt(4)
+                FfiConverterString.write(value.`query`, buf)
+                FfiConverterTypeRecallScope.write(value.`scope`, buf)
+                FfiConverterUShort.write(value.`limit`, buf)
+                Unit
+            }
+            is AgentToolAction.Episode -> {
+                buf.putInt(5)
                 FfiConverterTypeAgentToolName.write(value.`tool`, buf)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 Unit
             }
             is AgentToolAction.Podcast -> {
-                buf.putInt(5)
+                buf.putInt(6)
                 FfiConverterTypeAgentToolName.write(value.`tool`, buf)
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
                 Unit
             }
             is AgentToolAction.PlayEpisode -> {
-                buf.putInt(6)
+                buf.putInt(7)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterOptionalULong.write(value.`startMilliseconds`, buf)
                 FfiConverterOptionalULong.write(value.`endMilliseconds`, buf)
@@ -8294,50 +8326,50 @@ public object FfiConverterTypeAgentToolAction : FfiConverterRustBuffer<AgentTool
                 Unit
             }
             is AgentToolAction.SetPlaybackRate -> {
-                buf.putInt(7)
+                buf.putInt(8)
                 FfiConverterUShort.write(value.`permille`, buf)
                 Unit
             }
             is AgentToolAction.SetSleepTimer -> {
-                buf.putInt(8)
+                buf.putInt(9)
                 FfiConverterOptionalULong.write(value.`durationMilliseconds`, buf)
                 Unit
             }
             is AgentToolAction.CreateNote -> {
-                buf.putInt(9)
-                FfiConverterString.write(value.`text`, buf)
-                Unit
-            }
-            is AgentToolAction.RecordMemory -> {
                 buf.putInt(10)
                 FfiConverterString.write(value.`text`, buf)
                 Unit
             }
-            is AgentToolAction.Ask -> {
+            is AgentToolAction.RecordMemory -> {
                 buf.putInt(11)
+                FfiConverterString.write(value.`text`, buf)
+                Unit
+            }
+            is AgentToolAction.Ask -> {
+                buf.putInt(12)
                 FfiConverterString.write(value.`question`, buf)
                 FfiConverterOptionalString.write(value.`context`, buf)
                 Unit
             }
             is AgentToolAction.ScheduleTask -> {
-                buf.putInt(12)
+                buf.putInt(13)
                 FfiConverterTypeScheduledTaskInput.write(value.`task`, buf)
                 Unit
             }
             is AgentToolAction.CancelScheduledTask -> {
-                buf.putInt(13)
+                buf.putInt(14)
                 FfiConverterTypeScheduledTaskId.write(value.`taskId`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedRevision`, buf)
                 Unit
             }
             is AgentToolAction.ChangePodcastCategory -> {
-                buf.putInt(14)
+                buf.putInt(15)
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
                 FfiConverterString.write(value.`category`, buf)
                 Unit
             }
             is AgentToolAction.CreateClip -> {
-                buf.putInt(15)
+                buf.putInt(16)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
                 FfiConverterULong.write(value.`startMilliseconds`, buf)
@@ -8347,35 +8379,35 @@ public object FfiConverterTypeAgentToolAction : FfiConverterRustBuffer<AgentTool
                 Unit
             }
             is AgentToolAction.SubscribePodcast -> {
-                buf.putInt(16)
+                buf.putInt(17)
                 FfiConverterString.write(value.`feedUrl`, buf)
                 Unit
             }
             is AgentToolAction.IngestYoutubeVideo -> {
-                buf.putInt(17)
+                buf.putInt(18)
                 FfiConverterString.write(value.`url`, buf)
                 Unit
             }
             is AgentToolAction.ConfigureAgentVoice -> {
-                buf.putInt(18)
+                buf.putInt(19)
                 FfiConverterString.write(value.`voiceId`, buf)
                 Unit
             }
             is AgentToolAction.CreatePodcast -> {
-                buf.putInt(19)
+                buf.putInt(20)
                 FfiConverterString.write(value.`title`, buf)
                 FfiConverterString.write(value.`description`, buf)
                 Unit
             }
             is AgentToolAction.UpdatePodcast -> {
-                buf.putInt(20)
+                buf.putInt(21)
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
                 FfiConverterString.write(value.`title`, buf)
                 FfiConverterString.write(value.`description`, buf)
                 Unit
             }
             is AgentToolAction.GenerateTtsEpisode -> {
-                buf.putInt(21)
+                buf.putInt(22)
                 FfiConverterOptionalTypePodcastId.write(value.`podcastId`, buf)
                 FfiConverterString.write(value.`title`, buf)
                 FfiConverterString.write(value.`script`, buf)
@@ -8383,7 +8415,7 @@ public object FfiConverterTypeAgentToolAction : FfiConverterRustBuffer<AgentTool
                 Unit
             }
             is AgentToolAction.GeneratePodcastArtwork -> {
-                buf.putInt(22)
+                buf.putInt(23)
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
                 FfiConverterString.write(value.`prompt`, buf)
                 Unit

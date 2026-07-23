@@ -13,6 +13,7 @@ final class CoreAgentToolSchemasTests: XCTestCase {
             .listInProgress,
             .listRecentUnplayed,
             .searchEpisodes,
+            .queryTranscripts,
             .pausePlayback,
             .setPlaybackRate,
         ]
@@ -29,6 +30,7 @@ final class CoreAgentToolSchemasTests: XCTestCase {
                 "list_in_progress",
                 "list_recent_unplayed",
                 "search_episodes",
+                "query_transcripts",
                 "pause_playback",
                 "set_playback_rate",
             ]
@@ -40,6 +42,7 @@ final class CoreAgentToolSchemasTests: XCTestCase {
             .createNote,
             .listEpisodes,
             .searchEpisodes,
+            .queryTranscripts,
             .setPlaybackRate,
         ]))
         let schemasByName = Dictionary(uniqueKeysWithValues: schemas.compactMap { schema in
@@ -53,6 +56,10 @@ final class CoreAgentToolSchemasTests: XCTestCase {
         )
         XCTAssertEqual(try Self.required(in: XCTUnwrap(schemasByName["search_episodes"])), ["query"])
         XCTAssertEqual(
+            try Self.required(in: XCTUnwrap(schemasByName["query_transcripts"])),
+            ["query"]
+        )
+        XCTAssertEqual(
             try Self.required(in: XCTUnwrap(schemasByName["set_playback_rate"])),
             ["rate"]
         )
@@ -62,8 +69,8 @@ final class CoreAgentToolSchemasTests: XCTestCase {
     }
 
     func testUnsupportedToolFailsTheWholeSchemaRequest() {
-        XCTAssertNil(CoreAgentToolSchemas.schemas(for: [.createNote, .queryTranscripts]))
-        XCTAssertNil(CoreAgentToolSchemas.wireName(.queryTranscripts))
+        XCTAssertNil(CoreAgentToolSchemas.schemas(for: [.createNote, .findSimilarEpisodes]))
+        XCTAssertNil(CoreAgentToolSchemas.wireName(.findSimilarEpisodes))
     }
 
     private static func functionName(_ schema: [String: Any]) -> String? {
