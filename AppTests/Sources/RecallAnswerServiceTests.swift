@@ -156,7 +156,7 @@ final class RecallAnswerServiceTests: XCTestCase {
             duration: 300
         )
         let played = expectation(description: "Rust requested recall playback")
-        let host = RecordingRecallPlaybackHost(played: played)
+        let host = RecordingPlaybackHost(played: played)
         let client = try XCTUnwrap(made.store.sharedLibrary)
         client.deferredPlaybackHost.attach(host)
         client.playbackHostAttached = true
