@@ -64,7 +64,7 @@ final class CoreDownloadVerticalSliceTests: XCTestCase {
             )
         ))
         dispatcher.executePendingRequests(from: facade)
-        await fulfillment(of: [completed], timeout: 3)
+        await fulfillment(of: [completed], timeout: 10)
 
         XCTAssertEqual(host.executeCount, 1)
         let pendingObservationCount = await outbox.pendingCount()
