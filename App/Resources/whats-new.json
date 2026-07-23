@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-23T23:21:27Z",
+      "lines": [
+        "Home is now focused on Continue Listening and your library, without the Featured section."
+      ]
+    },
+    {
       "shipped_at": "2026-07-23T13:21:01Z",
       "lines": [
         "Pod0 can now safely finish upgrading a library that was paused by an older backup check."

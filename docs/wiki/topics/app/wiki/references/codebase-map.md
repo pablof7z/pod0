@@ -25,7 +25,7 @@ Use this map before editing. Podcastr has many connected surfaces, and the faste
 
 ## Domain And State
 
-- `App/Sources/Domain/`: models such as `AppState`, `Settings`, `Episode`, `PodcastSubscription`, `Clip`, `Friend`, `AgentMemory`, `ThreadingTopic`, and related value types.
+- `App/Sources/Domain/`: models such as `AppState`, `Settings`, `Episode`, `PodcastSubscription`, `Clip`, `Friend`, `AgentMemory`, and related value types.
 - `App/Sources/State/AppStateStore.swift` plus extensions: mutations, projections, persistence side effects, iCloud settings sync, episodes, categories, clips, notes, Nostr state, agent activity.
 - `App/Sources/State/Persistence.swift`: App Group state persistence.
 - `App/Sources/State/EpisodeSQLiteStore.swift`: large episode storage support.

@@ -2,7 +2,7 @@ import SwiftUI
 
 // MARK: - HomeSubscriptionListSection
 
-/// The subscription surface beneath the featured rail. Renders as a vertical
+/// The primary Home subscription surface. Renders as a vertical
 /// list of followed podcasts, recency-sorted, honouring the active
 /// LibraryFilter + category filter the parent owns.
 ///
