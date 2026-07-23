@@ -39,6 +39,9 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Restore hosted CI caches
+        uses: ./.github/actions/cache-hosted-ci
+
       - name: Set up pinned hosted toolchain
         run: ./ci_scripts/setup_hosted_ci_runner.sh
 

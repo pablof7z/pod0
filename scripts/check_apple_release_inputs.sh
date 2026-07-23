@@ -65,6 +65,8 @@ if test.count("runs-on: macos-26") != 1:
     raise SystemExit("Test CI must use exactly one pinned macos-26 hosted runner.")
 if test.count("run: ./ci_scripts/setup_hosted_ci_runner.sh") != 1:
     raise SystemExit("Test CI must install the pinned hosted toolchain exactly once.")
+if test.count("uses: ./.github/actions/cache-hosted-ci") != 1:
+    raise SystemExit("Test CI must restore the bounded hosted-runner caches.")
 if "runs-on: self-hosted" in test:
     raise SystemExit("Ordinary Test CI must not depend on a repository runner.")
 
@@ -72,6 +74,8 @@ if testflight.count("runs-on: macos-26") != 2:
     raise SystemExit("TestFlight test and deploy jobs must use pinned macos-26 runners.")
 if testflight.count("setup_hosted_ci_runner.sh") != 2:
     raise SystemExit("Both TestFlight jobs must install the pinned hosted toolchain.")
+if testflight.count("uses: ./.github/actions/cache-hosted-ci") != 1:
+    raise SystemExit("The TestFlight qualification job must restore hosted-runner caches.")
 if "workflow_dispatch:" not in testflight or "\n  push:" in testflight:
     raise SystemExit("TestFlight must remain manual and must not run on push.")
 if "if: ${{ inputs.confirm_upload }}" not in testflight:

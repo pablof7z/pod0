@@ -1,0 +1,48 @@
+name: Cache hosted CI dependencies
+description: Restore bounded dependency and release-build caches for hosted Apple CI
+
+runs:
+  using: composite
+  steps:
+    - name: Cache pinned Cargo tools
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/cargo-audit
+          ~/.cargo/bin/cargo-deny
+          ~/.cargo/bin/cargo-ndk
+        key: pod0-cargo-tools-${{ runner.os }}-${{ runner.arch }}-deny-0.20.2-audit-0.22.2-ndk-4.1.2
+
+    - name: Cache Cargo dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: pod0-cargo-dependencies-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust/rust-toolchain.toml', 'rust/Cargo.lock') }}
+
+    - name: Cache cross-platform Rust release outputs
+      uses: actions/cache@v4
+      with:
+        path: |
+          rust/target/release
+          rust/target/aarch64-apple-ios/release
+          rust/target/aarch64-apple-ios-sim/release
+          rust/target/x86_64-apple-ios/release
+          rust/target/aarch64-linux-android/release
+          rust/target/x86_64-linux-android/release
+        key: pod0-rust-release-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust/rust-toolchain.toml', 'rust/Cargo.lock') }}-${{ hashFiles('rust/**/*.rs', 'rust/**/Cargo.toml', 'Generated/Pod0Core/**') }}
+        restore-keys: |
+          pod0-rust-release-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust/rust-toolchain.toml', 'rust/Cargo.lock') }}-
+
+    - name: Cache Kotlin binding tools
+      uses: actions/cache@v4
+      with:
+        path: .build/pod0-tools
+        key: pod0-kotlin-tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/check_kotlin_core_bindings.sh') }}
+
+    - name: Cache Swift package sources
+      uses: actions/cache@v4
+      with:
+        path: .build/DerivedData/SourcePackages
+        key: pod0-swift-packages-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Config/SwiftPackages/Package.resolved') }}
