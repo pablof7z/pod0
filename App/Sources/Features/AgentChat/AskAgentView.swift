@@ -1,8 +1,7 @@
 import SwiftUI
 
 /// Top-level "Ask" tab — hosts the AI agent chat as a full-screen surface.
-/// Wraps `AgentChatView` (formerly presented as a sheet) so it lives inline
-/// in the tab bar.
+/// The native surface renders typed projections from the shared Rust core.
 struct AskAgentView: View {
     @Environment(AppStateStore.self) private var store
     @State private var session: SharedAgentConversationSession?

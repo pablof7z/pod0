@@ -22,13 +22,6 @@
   ],
   "exceptions": [
     {
-      "file": "App/Sources/Features/Agent/AgentChatSession.swift",
-      "rules": ["chat-history-store-access"],
-      "issues": [60],
-      "reason": "Temporary Swift conversation owner behind the agent session boundary.",
-      "deletion_target": "Replace with shared conversation commands/projections and a native presentation adapter."
-    },
-    {
       "file": "App/Sources/Features/Agent/AgentChatHistoryView.swift",
       "rules": ["chat-history-store-access"],
       "issues": [60],

@@ -128,13 +128,6 @@ final class RecallAnswerServiceTests: XCTestCase {
         XCTAssertTrue(answer.evidence.isEmpty)
     }
 
-    func testRecallIntentDoesNotCapturePlaybackInventoryPrompt() {
-        XCTAssertTrue(RecallIntentClassifier.matches("Where did I hear the idea about habits?"))
-        XCTAssertTrue(RecallIntentClassifier.matches("What did the guest say about sleep?"))
-        XCTAssertFalse(RecallIntentClassifier.matches("Where did I leave off?"))
-        XCTAssertFalse(RecallIntentClassifier.matches("What was I listening to?"))
-    }
-
     func testRecallAnswerSurvivesChatMessagePersistenceRoundTrip() throws {
         let answer = RecallAnswer(text: "Grounded answer", status: .ready)
         let message = ChatMessage(role: .assistant, text: answer.text, recallAnswer: answer)

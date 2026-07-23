@@ -10,7 +10,7 @@ import Foundation
 
 extension Notification.Name {
     /// Posted by the player's transcript/chapter long-press to open the
-    /// agent chat sheet. `RootView` observes and presents `AgentChatView`.
+    /// agent chat sheet. `RootView` observes and presents the shared-core chat.
     static let askAgentRequested = Notification.Name("io.f7z.podcast.askAgentRequested")
     /// Posted when episode playback is initiated from a list row's play button.
     /// `RootView` observes and expands the full player sheet.

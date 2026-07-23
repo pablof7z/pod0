@@ -7,9 +7,8 @@ struct PodcastrApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var store = AppStateStore(productSignals: ProductSignalStore.shared)
-    /// Single global owner-consultation coordinator. Lives here (not on
-    /// `AgentChatSession`) so it can pop the same sheet even when the user is
-    /// on Home / Library / Clippings — i.e. while no chat session exists.
+    /// Single global owner-consultation coordinator. Lives here so it can pop
+    /// the same sheet even when the user is on Home / Library / Clippings.
     /// Mounted on `RootView` via `agentAskPresenter(coordinator:)`.
     @State private var askCoordinator = AgentAskCoordinator()
     @State private var approvalCoordinator = AgentApprovalCoordinator()

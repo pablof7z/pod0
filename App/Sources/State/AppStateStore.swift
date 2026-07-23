@@ -21,14 +21,14 @@ final class AppStateStore {
         sharedLibrary?.authoritativeTranscriptReader ?? UnavailableTranscriptReader.shared
     }
     /// Chapter the user long-pressed in `PlayerChaptersScrollView`. Drained
-    /// by `AgentChatSession.init` and prefilled into the composer; cleared
-    /// by the same call so a later sheet re-open starts blank. Carries no
+    /// by `SharedAgentChatView` and prefilled into the composer; cleared by
+    /// the same presentation so a later sheet re-open starts blank. Carries no
     /// transcript text — only the chapter title + time range; the agent
     /// fetches transcript context through its tool inventory.
     var pendingChapterAgentContext: ChapterAgentContext?
 
     /// Voice note the user recorded via the mic button in the player. Drained
-    /// by `AgentChatSession.init` and auto-sent to the agent. The context
+    /// by `SharedAgentChatView` and auto-sent to the agent. The context
     /// carries the timestamp anchor, the active chapter bounds, and the
     /// transcribed utterance; the agent decides what to do with it.
     var pendingVoiceNoteAgentContext: VoiceNoteAgentContext?

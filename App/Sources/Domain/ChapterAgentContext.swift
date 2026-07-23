@@ -10,7 +10,7 @@ import Foundation
 /// an answer; they never see the transcript text.
 ///
 /// Read-and-clear pattern via `AppStateStore.pendingChapterAgentContext`;
-/// `AgentChatSession` drains it on init and seeds the composer once.
+/// `SharedAgentChatView` drains it and seeds the composer once.
 struct ChapterAgentContext: Equatable, Identifiable {
     let id: UUID
     let episodeID: UUID

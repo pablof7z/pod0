@@ -1,13 +1,7 @@
 import Foundation
 
-/// One named conversation tracked by `ChatHistoryStore`. Each chat thread the
-/// user starts is persisted as a separate `ChatConversation` so they can pick
-/// up an older thread from the history sheet without losing context.
-///
-/// `title` is generated asynchronously by `AgentChatTitleGenerator` after the
-/// first assistant text reply lands; the empty string means "not yet
-/// generated" and the history UI falls back to a snippet of the first user
-/// message in that case.
+/// Legacy Swift conversation retained for read-only archive presentation and
+/// migration evidence. New interactive conversations are owned by Rust.
 struct ChatConversation: Identifiable, Codable, Equatable, Sendable {
     let id: UUID
     var title: String
