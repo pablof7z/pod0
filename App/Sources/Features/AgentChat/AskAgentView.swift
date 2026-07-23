@@ -5,21 +5,15 @@ import SwiftUI
 /// in the tab bar.
 struct AskAgentView: View {
     @Environment(AppStateStore.self) private var store
-    @Environment(PlaybackState.self) private var playback
-    @Environment(AgentAskCoordinator.self) private var askCoordinator
-    @State private var session: AgentChatSession?
+    @State private var session: SharedAgentConversationSession?
 
     var body: some View {
         if let session {
-            AgentChatView(session: session)
+            SharedAgentChatView(session: session, requestedLegacyConversationID: nil)
         } else {
             Color.clear
                 .onAppear {
-                    session = AgentChatSession(
-                        store: store,
-                        playback: playback,
-                        askCoordinator: askCoordinator
-                    )
+                    session = store.sharedLibrary?.makeAgentConversationSession()
                 }
         }
     }

@@ -64,6 +64,26 @@ final class SharedAgentConversationSessionTests: XCTestCase {
         XCTAssertEqual(session.stateRevision, 9)
     }
 
+    func testResumesPersistedConversationAndClearsPointerForNewConversation() {
+        let runtime = StubSharedAgentConversationRuntime()
+        let resumedID = ConversationId(high: 8, low: 9)
+        var changes: [ConversationId?] = []
+        let session = SharedAgentConversationSession(
+            runtime: runtime,
+            resumeConversationID: resumedID,
+            onConversationChanged: { changes.append($0) },
+            modelReference: { "openrouter/test" }
+        )
+
+        XCTAssertEqual(runtime.subscribedConversationID, resumedID)
+        XCTAssertEqual(changes, [resumedID])
+
+        session.startNewConversation()
+
+        XCTAssertNil(runtime.subscribedConversationID)
+        XCTAssertEqual(changes, [resumedID, nil])
+    }
+
     private func conversation(
         stage: AgentTurnStage,
         revision: UInt64
@@ -98,6 +118,7 @@ final class SharedAgentConversationSessionTests: XCTestCase {
 private final class StubSharedAgentConversationRuntime: SharedAgentConversationRuntime {
     private var subscriber: (any ProjectionSubscriber)?
     private(set) var commands: [ApplicationCommand] = []
+    private(set) var subscribedConversationID: ConversationId?
 
     func execute(_ command: ApplicationCommand) async throws -> OperationResult? {
         commands.append(command)
@@ -119,11 +140,13 @@ private final class StubSharedAgentConversationRuntime: SharedAgentConversationR
         subscriber: any ProjectionSubscriber
     ) -> SubscriptionId {
         self.subscriber = subscriber
+        subscribedConversationID = conversationID
         return SubscriptionId(high: conversationID.high, low: conversationID.low)
     }
 
     func unsubscribeAgentConversation(_ subscriptionID: SubscriptionId) {
         subscriber = nil
+        subscribedConversationID = nil
     }
 
     func executePendingHostRequests() {}

@@ -1,0 +1,219 @@
+import Foundation
+import SwiftUI
+
+/// Native SwiftUI shell over the Rust-owned durable conversation workflow.
+struct SharedAgentChatView: View {
+    let session: SharedAgentConversationSession
+    let requestedLegacyConversationID: UUID?
+    @Environment(AppStateStore.self) private var store
+    @State private var draft = ""
+    @State private var showHistory = false
+    @State private var legacyConversation: ChatConversation?
+    @FocusState private var inputFocused: Bool
+
+    var body: some View {
+        ZStack {
+            AppTheme.Gradients.agentChatBackground.ignoresSafeArea()
+            VStack(spacing: 0) {
+                if legacyConversation != nil { legacyBanner }
+                if visibleMessages.isEmpty {
+                    welcome
+                } else {
+                    SharedAgentChatTranscript(
+                        messages: visibleMessages,
+                        streamingContent: legacyConversation == nil
+                            ? session.streamingContent : nil,
+                        isRunning: legacyConversation == nil && session.phase == .running
+                    )
+                }
+                composer
+            }
+        }
+        .navigationTitle("Agent")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { toolbar }
+        .sheet(isPresented: $showHistory) {
+            AgentChatHistoryView(
+                currentID: legacyConversation?.id ?? UUID(),
+                onSelect: { legacyConversation = $0 },
+                onNew: startNewConversation
+            )
+        }
+        .onAppear {
+            selectRequestedLegacyConversation()
+            drainPendingContext()
+            inputFocused = hasCredential
+        }
+        .onChange(of: requestedLegacyConversationID) { _, _ in
+            selectRequestedLegacyConversation()
+        }
+        .onChange(of: session.phase) { _, phase in
+            switch phase {
+            case .idle: Haptics.success()
+            case .failed: Haptics.error()
+            case .running: break
+            }
+        }
+    }
+
+    private var visibleMessages: [ChatMessage] {
+        legacyConversation?.messages
+            ?? SharedAgentChatMessageMapper.messages(from: session.turns)
+    }
+
+    @ToolbarContentBuilder
+    private var toolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button { showHistory = true } label: {
+                Image(systemName: "clock.arrow.circlepath")
+            }
+            .accessibilityLabel("Previous Swift conversations")
+        }
+        ToolbarItem(placement: .primaryAction) {
+            Button(action: startNewConversation) {
+                Image(systemName: "square.and.pencil")
+            }
+            .accessibilityLabel("New conversation")
+        }
+        if !visibleMessages.isEmpty {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    if let url = AgentChatTranscriptExport.write(
+                        visibleMessages,
+                        batchSummaries: [:]
+                    ) {
+                        SystemShareSheet.present(items: [url])
+                    }
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                .accessibilityLabel("Export transcript")
+            }
+        }
+    }
+
+    private var legacyBanner: some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            Image(systemName: "archivebox")
+            Text("Archived Swift conversation — read only")
+                .font(AppTheme.Typography.caption)
+            Spacer()
+            Button("New chat", action: startNewConversation)
+                .font(AppTheme.Typography.caption)
+        }
+        .foregroundStyle(.secondary)
+        .padding(AppTheme.Spacing.md)
+        .background(.thinMaterial)
+    }
+
+    private var welcome: some View {
+        VStack(spacing: AppTheme.Spacing.md) {
+            Spacer()
+            Image(systemName: "sparkles")
+                .font(.system(size: 44, weight: .semibold))
+                .foregroundStyle(AppTheme.Gradients.agentAccent)
+            Text("What do you want to know?")
+                .font(AppTheme.Typography.title)
+            Text("Ask about your library, save a note, or control playback.")
+                .font(AppTheme.Typography.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            ForEach(Self.suggestions, id: \.self) { suggestion in
+                Button(suggestion) {
+                    draft = suggestion
+                    inputFocused = true
+                }
+                .buttonStyle(.glass)
+            }
+            Spacer()
+        }
+        .padding(AppTheme.Spacing.lg)
+    }
+
+    private var composer: some View {
+        VStack(spacing: AppTheme.Spacing.xs) {
+            if case .failed(let detail) = session.phase {
+                Text(detail)
+                    .font(AppTheme.Typography.caption)
+                    .foregroundStyle(AppTheme.Tint.warning)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            HStack(alignment: .bottom, spacing: AppTheme.Spacing.sm) {
+                TextField("Message your agent…", text: $draft, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .focused($inputFocused)
+                    .lineLimit(1...5)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .glassEffect(.regular, in: .rect(cornerRadius: 22))
+                    .disabled(!hasCredential || legacyConversation != nil)
+                Button {
+                    if session.phase == .running {
+                        Task { await session.cancelActiveTurn() }
+                    } else {
+                        send()
+                    }
+                } label: {
+                    Image(systemName: session.phase == .running ? "stop.fill" : "arrow.up")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 38, height: 38)
+                        .background(AppTheme.Gradients.agentAccent, in: .circle)
+                }
+                .buttonStyle(.pressable)
+                .disabled(session.phase != .running && !canSend)
+                .accessibilityLabel(session.phase == .running ? "Stop generating" : "Send message")
+            }
+        }
+        .padding(.horizontal, AppTheme.Spacing.md)
+        .padding(.vertical, AppTheme.Spacing.sm)
+        .background(.ultraThinMaterial)
+    }
+
+    private var canSend: Bool {
+        hasCredential && legacyConversation == nil && session.canSend && !draft.isBlank
+    }
+
+    private var hasCredential: Bool {
+        let reference = LLMModelReference(storedID: store.state.settings.agentInitialModel)
+        return LLMProviderCredentialResolver.hasAPIKey(for: reference.provider)
+    }
+
+    private func send() {
+        guard canSend else { return }
+        let input = draft
+        draft = ""
+        Task { await session.startTurn(input) }
+    }
+
+    private func startNewConversation() {
+        legacyConversation = nil
+        session.startNewConversation()
+        draft = ""
+        inputFocused = true
+    }
+
+    private func selectRequestedLegacyConversation() {
+        guard let requestedLegacyConversationID else { return }
+        legacyConversation = AgentChatHistoryView.archivedConversation(
+            id: requestedLegacyConversationID
+        )
+    }
+
+    private func drainPendingContext() {
+        if let voice = store.pendingVoiceNoteAgentContext {
+            store.pendingVoiceNoteAgentContext = nil
+            store.pendingChapterAgentContext = nil
+            Task { await session.startTurn(voice.prefilledDraft) }
+        } else if let chapter = store.pendingChapterAgentContext {
+            draft = chapter.prefilledDraft
+            store.pendingChapterAgentContext = nil
+        }
+    }
+
+    private static let suggestions = [
+        "What's new in my library?",
+        "What should I listen to next?",
+        "Save a note about what I'm hearing",
+    ]
+}

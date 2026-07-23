@@ -28,6 +28,7 @@ final class SharedAgentConversationSession {
     private let runtime: any SharedAgentConversationRuntime
     let streamingState: CoreAgentStreamingState
     private let modelReference: @MainActor () -> String
+    private let onConversationChanged: @MainActor (ConversationId?) -> Void
     private var subscriber: SharedAgentConversationSubscriber?
     private var subscriptionID: SubscriptionId?
     private var subscribedConversationID: ConversationId?
@@ -38,11 +39,15 @@ final class SharedAgentConversationSession {
     init(
         runtime: any SharedAgentConversationRuntime,
         streamingState: CoreAgentStreamingState = CoreAgentStreamingState(),
+        resumeConversationID: ConversationId? = nil,
+        onConversationChanged: @escaping @MainActor (ConversationId?) -> Void = { _ in },
         modelReference: @escaping @MainActor () -> String
     ) {
         self.runtime = runtime
         self.streamingState = streamingState
+        self.onConversationChanged = onConversationChanged
         self.modelReference = modelReference
+        if let resumeConversationID { subscribe(to: resumeConversationID) }
     }
 
     var conversationID: ConversationId? { conversation?.conversationId }
@@ -107,6 +112,7 @@ final class SharedAgentConversationSession {
         conversation = nil
         stateRevision = 0
         phase = .idle
+        onConversationChanged(nil)
     }
 
     func stopObserving() {
@@ -126,6 +132,7 @@ final class SharedAgentConversationSession {
         }
         self.subscriber = subscriber
         subscribedConversationID = conversationID
+        onConversationChanged(conversationID)
         subscriptionID = runtime.subscribeAgentConversation(
             conversationID,
             subscriber: subscriber

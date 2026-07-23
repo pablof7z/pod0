@@ -46,7 +46,6 @@
     "App/Sources/Features/Home/HomeView.swift": 343,
     "App/Sources/Features/Settings/StorageSettingsView.swift": 307,
     "App/Sources/Workflows/WorkflowSchemaMigrations.swift": 338,
-    "App/Sources/App/RootView.swift": 323,
     "App/Sources/Agent/AgentTools+PodcastInventory.swift": 337,
     "App/Sources/Features/Home/HomeRelatedSheet.swift": 323,
     "App/Sources/Workflows/JobStore+Recovery.swift": 316,

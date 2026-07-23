@@ -165,6 +165,23 @@ extension HostRequestId {
     }
 }
 
+extension ConversationId {
+    init(uuid: UUID) {
+        let parts = uuid.coreIdentifierParts
+        self.init(high: parts.high, low: parts.low)
+    }
+
+    var uuid: UUID? { UUID(coreHigh: high, low: low) }
+}
+
+extension AgentTurnId {
+    var uuid: UUID? { UUID(coreHigh: high, low: low) }
+
+    func messageUUID(at index: Int) -> UUID {
+        UUID(coreHigh: high, low: low &+ UInt64(index + 1))!
+    }
+}
+
 extension RecallQueryId {
     init(uuid: UUID) {
         let hexadecimal = uuid.uuidString.replacingOccurrences(of: "-", with: "")

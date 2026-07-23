@@ -11,6 +11,9 @@ extension RootView {
             playback: playbackState,
             store: store
         )
+        if agentSession == nil {
+            agentSession = store.sharedLibrary?.makeAgentConversationSession()
+        }
         playbackState.productSignals = store.productSignals
         playbackState.onEnsureDownloadEnqueued = { [store] id in
             store.sharedLibrary?.requestDownload(episodeID: id, origin: .playback)

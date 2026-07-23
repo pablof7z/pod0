@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-23T01:35:00Z",
+      "lines": [
+        "Agent conversations now resume safely after relaunches while the shared core preserves their history and actions."
+      ]
+    },
+    {
       "shipped_at": "2026-07-23T00:13:04Z",
       "lines": [
         "Podcast library updates now settle immediately without triggering repeated background work."

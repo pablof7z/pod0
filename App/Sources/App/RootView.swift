@@ -13,7 +13,8 @@ struct RootView: View {
     @State var showAgentChat = false
     @State var showSidebar = false
     @State var showSearch = false
-    @State var agentSession: AgentChatSession?
+    @State var agentSession: SharedAgentConversationSession?
+    @State var legacyAgentConversationID: UUID?
     @State var agentUnseenMessageCount: Int = 0
     @State var showVoiceMode = false
     @State var spotlightSheet: SpotlightIndexer.DeepLink?
@@ -65,7 +66,10 @@ struct RootView: View {
                 .sheet(isPresented: $showAgentChat) {
                     if let session = agentSession {
                         NavigationStack {
-                            AgentChatView(session: session)
+                            SharedAgentChatView(
+                                session: session,
+                                requestedLegacyConversationID: legacyAgentConversationID
+                            )
                                 .toolbar {
                                     ToolbarItem(placement: .topBarLeading) {
                                         Button("Done") {
@@ -124,17 +128,7 @@ struct RootView: View {
                 .onReceive(NotificationCenter.default.publisher(for: .openAgentChatConversation)) { note in
                     guard let convID = note.userInfo?["conversationID"] as? UUID else { return }
                     showFullPlayer = false
-                    if agentSession == nil {
-                        agentSession = AgentChatSession(
-                            store: store,
-                            playback: playbackState,
-                            askCoordinator: askCoordinator
-                        )
-                    }
-                    Task { @MainActor in
-                        await agentSession?.switchToConversation(convID)
-                        showAgentChat = true
-                    }
+                    openAgentChat(legacyConversationID: convID)
                 }
                 .modifier(PlayerNavSheets(
                     subscriptionID: $playerNavSubscriptionID,
@@ -226,24 +220,6 @@ struct RootView: View {
                 }
         }
         .environment(playbackState)
-    }
-
-    // MARK: - Helpers
-
-    var hasUnreadAgentMessages: Bool {
-        guard !showAgentChat, let session = agentSession else { return false }
-        return session.messages.count > agentUnseenMessageCount
-    }
-
-    func openAgentChat() {
-        if agentSession == nil {
-            agentSession = AgentChatSession(
-                store: store,
-                playback: playbackState,
-                askCoordinator: askCoordinator
-            )
-        }
-        showAgentChat = true
     }
 
     // MARK: - Toolbar

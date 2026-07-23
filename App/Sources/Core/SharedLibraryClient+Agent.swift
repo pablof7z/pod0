@@ -24,6 +24,10 @@ extension SharedLibraryClient {
         SharedAgentConversationSession(
             runtime: self,
             streamingState: agentStreamingState,
+            resumeConversationID: AgentConversationPointerStore().load(),
+            onConversationChanged: { conversationID in
+                AgentConversationPointerStore().save(conversationID)
+            },
             modelReference: { [weak store] in
                 store?.state.settings.agentInitialModel ?? ""
             }

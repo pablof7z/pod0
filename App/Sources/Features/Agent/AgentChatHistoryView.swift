@@ -6,7 +6,7 @@ import SwiftUI
 /// fresh conversation.
 struct AgentChatHistoryView: View {
 
-    let history: ChatHistoryStore
+    private let history: ChatHistoryStore
     /// Conversation currently shown in the chat sheet. Marked with a checkmark
     /// in the list so the user can orient themselves.
     let currentID: UUID
@@ -15,6 +15,22 @@ struct AgentChatHistoryView: View {
     let onSelect: (ChatConversation) -> Void
     /// Called when the user taps "New chat". Same dismissal contract as `onSelect`.
     let onNew: () -> Void
+
+    init(
+        history: ChatHistoryStore = .shared,
+        currentID: UUID,
+        onSelect: @escaping (ChatConversation) -> Void,
+        onNew: @escaping () -> Void
+    ) {
+        self.history = history
+        self.currentID = currentID
+        self.onSelect = onSelect
+        self.onNew = onNew
+    }
+
+    static func archivedConversation(id: UUID) -> ChatConversation? {
+        ChatHistoryStore.shared.conversation(id: id)
+    }
 
     @Environment(\.dismiss) private var dismiss
 
