@@ -18,6 +18,8 @@ final class Pod0NativeModelWorkflowIntegrationTests: XCTestCase {
         )
 
         dispatcher.activateExecution()
+        dispatcher.executePendingRequests(from: fixture.facade)
+        try await waitForObservationRecovery(in: dispatcher)
         ensure(fixture.facade, episodeID: fixture.episodeID, commandLow: 1)
         dispatcher.executePendingRequests(from: fixture.facade)
 
@@ -172,6 +174,20 @@ final class Pod0NativeModelWorkflowIntegrationTests: XCTestCase {
             sequenceNumber: 1,
             observedAt: UnixTimestampMilliseconds(date: Date()),
             observation: SuccessfulNativeModelHost.completion(for: request.request)
+        )
+    }
+
+    private func waitForObservationRecovery(
+        in dispatcher: Pod0NativeHostDispatcher
+    ) async throws {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: .seconds(10))
+        while !dispatcher.observationRecoveryReady, clock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertTrue(
+            dispatcher.observationRecoveryReady,
+            "Durable observation recovery did not become ready"
         )
     }
 
