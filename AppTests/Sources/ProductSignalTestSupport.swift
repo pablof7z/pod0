@@ -77,11 +77,12 @@ final class ProductSignalExpectationSink: ProductSignalSink, @unchecked Sendable
 }
 
 @MainActor
-final class RecordingRecallPlaybackHost: CorePlaybackHosting {
+final class RecordingPlaybackHost: CorePlaybackHosting {
     private let played: XCTestExpectation
     private(set) var episodeID: EpisodeId?
     private(set) var positionMilliseconds: UInt64 = 0
     private(set) var didPlay = false
+    private var state: PlaybackHostState = .idle
 
     init(played: XCTestExpectation) {
         self.played = played
@@ -92,15 +93,24 @@ final class RecordingRecallPlaybackHost: CorePlaybackHosting {
         case .loadMedia(let episodeID, _, let startPositionMilliseconds):
             self.episodeID = episodeID
             positionMilliseconds = startPositionMilliseconds
+            didPlay = false
+            state = .prepared
         case .seek(let episodeID, let positionMilliseconds, _, _):
             self.episodeID = episodeID
             self.positionMilliseconds = positionMilliseconds
         case .play(let episodeID, _):
             self.episodeID = episodeID
             didPlay = true
+            state = .playing
             played.fulfill()
-        case .pause(let episodeID), .stopPlayback(let episodeID):
+        case .pause(let episodeID):
             self.episodeID = episodeID
+            state = .paused
+        case .stopPlayback(let episodeID):
+            self.episodeID = episodeID
+            state = .idle
+        case .setRate, .armNativeTimer, .cancelNativeTimer:
+            break
         case .observePlayback:
             break
         default:
@@ -111,7 +121,7 @@ final class RecordingRecallPlaybackHost: CorePlaybackHosting {
         }
         return .playbackObserved(value: PlaybackLifecycleObservation(
             episodeId: episodeID,
-            state: didPlay ? .playing : .prepared,
+            state: state,
             positionMilliseconds: positionMilliseconds,
             durationMilliseconds: 300_000,
             route: .builtIn,

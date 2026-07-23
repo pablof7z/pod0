@@ -57,14 +57,21 @@ final class ProductSignalInstrumentationTests: XCTestCase {
 
     func testPlayStartedWaitsForRustCommittedPlayingState() async throws {
         let sink = RecordingProductSignalSink()
-        let fixture = try makePlaybackFixture(position: 0, sink: sink)
+        let played = expectation(description: "Rust requested native playback")
+        let host = RecordingPlaybackHost(played: played)
+        let fixture = try makePlaybackFixture(
+            position: 0,
+            sink: sink,
+            playbackHost: host
+        )
         defer { disposePlaybackFixture(fixture) }
 
         await waitUntil(
-            "Rust restore loads the native playback host",
-            condition: { fixture.engine.episode != nil }
+            "Rust restore projects the current episode",
+            condition: { fixture.playback.episode != nil }
         )
         fixture.playback.play()
+        await fulfillment(of: [played], timeout: 5)
 
         let captured = await waitForCount(1, sink: sink)
         XCTAssertEqual(captured.filter { $0.name == .playStarted }.count, 1)
@@ -146,7 +153,8 @@ final class ProductSignalInstrumentationTests: XCTestCase {
 
     private func makePlaybackFixture(
         position: TimeInterval,
-        sink: RecordingProductSignalSink
+        sink: RecordingProductSignalSink,
+        playbackHost: (any CorePlaybackHosting)? = nil
     ) throws -> (
         persistence: Persistence,
         mediaURL: URL,
@@ -189,6 +197,10 @@ final class ProductSignalInstrumentationTests: XCTestCase {
         )
         let engine = AudioEngine()
         let playback = PlaybackState(engine: engine, productSignals: sink)
+        if let playbackHost {
+            store.sharedLibrary?.deferredPlaybackHost.attach(playbackHost)
+            store.sharedLibrary?.playbackHostAttached = true
+        }
         store.sharedLibrary?.attachPlayback(playback, store: store)
         return (persistence, mediaURL, store, engine, playback)
     }
