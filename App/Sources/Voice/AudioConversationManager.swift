@@ -89,10 +89,8 @@ final class AudioConversationManager {
 
     // MARK: - Public configuration
 
-    /// Inject the integration adapter. The Voice tab calls this after the
-    /// app has constructed `AgentChatSession` so the manager can submit
-    /// utterances. If left `nil` the manager uses `StubVoiceTurnDelegate`
-    /// implicitly via `effectiveDelegate()`.
+    /// Inject the typed shared-agent adapter before accepting utterances.
+    /// A missing adapter fails closed rather than inventing a local reply.
     func setTurnDelegate(_ delegate: VoiceTurnDelegate) {
         self.turnDelegate = delegate
     }
@@ -237,7 +235,10 @@ final class AudioConversationManager {
         liveAgentText = ""
         liveAgentCaptionID = nil
 
-        let delegate = effectiveDelegate()
+        guard let delegate = turnDelegate else {
+            state = .error(VoiceError.agentFailed("Voice agent unavailable"))
+            return
+        }
         let stream = delegate.submitUtterance(trimmed)
 
         var finalText: String?
@@ -361,14 +362,6 @@ final class AudioConversationManager {
     }
 
     // MARK: - Helpers
-
-    private func effectiveDelegate() -> VoiceTurnDelegate {
-        if let turnDelegate { return turnDelegate }
-        // Stash a stub on first use so subsequent calls reuse it.
-        let stub = StubVoiceTurnDelegate()
-        self.turnDelegate = stub
-        return stub
-    }
 
     private func cancelAll() {
         listeningTask?.cancel()

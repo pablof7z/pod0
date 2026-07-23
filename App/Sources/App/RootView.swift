@@ -17,7 +17,6 @@ struct RootView: View {
     @State var agentSession: SharedAgentConversationSession?
     @State var requestedAgentConversationID: ConversationId?
     @State var agentUnseenMessageCount: Int = 0
-    @State var showVoiceMode = false
     @State var spotlightSheet: SpotlightIndexer.DeepLink?
     @State var playbackState = PlaybackState()
     @State var showFullPlayer = false
@@ -97,19 +96,10 @@ struct RootView: View {
                 ) {
                     OnboardingView()
                 }
-                .fullScreenCover(isPresented: $showVoiceMode) {
-                    VoiceView(onSwitchToText: {
-                        showVoiceMode = false
-                        openAgentChat()
-                    })
-                }
                 .sheet(isPresented: $showSearch) { searchSheet }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                     store.sharedLibrary?.ensureNostrSigner()
                     Task { await workflows.reconcileAndDrain() }
-                }
-                .onReceive(NotificationCenter.default.publisher(for: .voiceModeRequested)) { _ in
-                    showVoiceMode = true
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .askAgentRequested)) { _ in
                     showFullPlayer = false
