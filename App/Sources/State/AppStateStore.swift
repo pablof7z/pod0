@@ -11,7 +11,6 @@ import os.log
 @MainActor
 @Observable
 final class AppStateStore {
-
     nonisolated static let logger = Logger.app("AppStateStore")
     let productSignals: any ProductSignalSink
     @ObservationIgnored private(set) var sharedLibrary: SharedLibraryClient?
@@ -19,28 +18,22 @@ final class AppStateStore {
     @ObservationIgnored private(set) var sharedLibraryUnavailableStage: SharedLibraryBootstrapStage?
     @ObservationIgnored private(set) var startupRecoveryRequired = false
     var recallConfigurationRevision: UInt64 = 0
-    var transcriptReader: any TranscriptReading {
-        sharedLibrary?.authoritativeTranscriptReader ?? UnavailableTranscriptReader.shared
-    }
     /// Chapter the user long-pressed in `PlayerChaptersScrollView`. Drained
     /// by `SharedAgentChatView` and prefilled into the composer; cleared by
     /// the same presentation so a later sheet re-open starts blank. Carries no
     /// transcript text — only the chapter title + time range; the agent
     /// fetches transcript context through its tool inventory.
     var pendingChapterAgentContext: ChapterAgentContext?
-
     /// Voice note the user recorded via the mic button in the player. Drained
     /// by `SharedAgentChatView` and auto-sent to the agent. The context
     /// carries the timestamp anchor, the active chapter bounds, and the
     /// transcribed utterance; the agent decides what to do with it.
     var pendingVoiceNoteAgentContext: VoiceNoteAgentContext?
-
     private(set) var state: AppState {
         didSet {
             handleStateDidSet(previousEpisodes: oldValue.episodes)
         }
     }
-
     /// The only write gate for companion store extensions and test fixtures.
     func mutateState(_ mutation: (inout AppState) -> Void) {
         guard !startupRecoveryRequired else {
@@ -52,13 +45,18 @@ final class AppStateStore {
         state = updated
     }
 
-    func mutateState(ensuring jobs: [DesiredJob], _ mutation: (inout AppState) -> Void) {
+    /// Replaces a bounded Rust projection without turning the native read
+    /// model into a second durable writer.
+    func mutateProjectionState(_ mutation: (inout AppState) -> Void) {
         guard !startupRecoveryRequired else {
-            Self.logger.error("Blocked native job mutation while startup recovery is required")
+            Self.logger.error("Blocked native projection mutation while startup recovery is required")
             return
         }
-        pendingAtomicJobs.append(contentsOf: jobs)
-        mutateState(mutation)
+        projectionMutationDepth += 1
+        defer { projectionMutationDepth -= 1 }
+        var updated = state
+        mutation(&updated)
+        state = updated
     }
 
     // MARK: - Episode projections (cache)
@@ -115,6 +113,10 @@ final class AppStateStore {
     private var iCloudObserver: NSObjectProtocol?
 
     var mutationBatchDepth = 0
+    /// Non-zero while Rust-owned durable state is replacing a native read
+    /// model. Projection updates rebuild derived caches but must not flow back
+    /// into Swift persistence, iCloud, or widget side effects.
+    var projectionMutationDepth = 0
     var deferredStateSideEffects = false
     var pendingAtomicJobs: [DesiredJob] = []
     var deferredEpisodeProjectionRebuild = false
@@ -195,6 +197,9 @@ final class AppStateStore {
             iCloudSettingsSync.shared.start(mergingInto: &loadedState.settings)
         }
         self.state = loadedState
+        let needsNativeProjectionRetirement = Self.hasMigratedNativeState(loadedState)
+        let needsRecallConfigurationRetirement =
+            loadedState.settings.legacyRecallConfigurationSeed != nil
         let feedHost: any CoreFeedHosting = sharedFeedHost ?? CoreFeedHost()
         switch SharedLibraryBootstrap.run(
             persistence: persistence,
@@ -206,11 +211,15 @@ final class AppStateStore {
         case .ready(let client):
             sharedLibrary = client
             client.attach(store: self)
-            if state.settings.legacyRecallConfigurationSeed != nil {
+            if needsRecallConfigurationRetirement {
                 mutateState { $0.settings.retireLegacyRecallConfiguration() }
                 if syncSettingsWithICloud {
                     iCloudSettingsSync.shared.retireLegacyRecallConfiguration()
                 }
+            } else if needsNativeProjectionRetirement {
+                // One explicit cutover cleanup replaces the former accidental
+                // burst of projection-triggered native writes.
+                persistence.save(state)
             }
         case .authoritativeUnavailable(let reason, let stage):
             sharedLibraryUnavailableReason = reason

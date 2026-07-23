@@ -9,7 +9,7 @@ extension AppStateStore {
     /// Persistence strips this cache once shared scheduled authority is active.
     func applySharedScheduledTasks(_ tasks: [AgentScheduledTask]) {
         guard state.agentScheduledTasks != tasks else { return }
-        mutateState { $0.agentScheduledTasks = tasks }
+        mutateProjectionState { $0.agentScheduledTasks = tasks }
     }
 
     @discardableResult

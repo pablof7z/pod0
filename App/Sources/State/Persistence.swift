@@ -48,8 +48,7 @@ final class Persistence: Sendable {
     let lastWrittenRevision = OSAllocatedUnfairLock<UInt64>(initialState: 0)
     let episodeSnapshot = OSAllocatedUnfairLock<EpisodeSQLiteSnapshot?>(initialState: nil)
     private let lastEpisodeWriteSummaryLock = OSAllocatedUnfairLock<EpisodeWriteSummary>(initialState: .none)
-    let sharedArtifactAuthority = OSAllocatedUnfairLock<(notes: Bool, clips: Bool, scheduledAgents: Bool, memories: Bool)>(initialState: (false, false, false, false))
-
+    let sharedArtifactAuthority = OSAllocatedUnfairLock<SharedArtifactAuthority>(initialState: .init())
     /// Successful disk-write count used by persistence regression tests.
     private let saveCounter = OSAllocatedUnfairLock<Int>(initialState: 0)
 
@@ -150,7 +149,8 @@ final class Persistence: Sendable {
         revision writeRevision: UInt64,
         ensuring jobs: [DesiredJob] = []
     ) -> Bool {
-        writeLock.withLock {
+        revision.withLock { $0 = max($0, writeRevision) }
+        return writeLock.withLock {
             writeLocked(state, revision: writeRevision, ensuring: jobs)
         }
     }
@@ -181,12 +181,13 @@ final class Persistence: Sendable {
             Self.logger.error("Persistence.save: encode failed: \(error, privacy: .public)")
             return false
         }
-        let snapshot = EpisodeSQLiteStore.snapshot(for: state.episodes)
+        let persistedEpisodes = episodesForNativePersistence(from: state)
+        let snapshot = EpisodeSQLiteStore.snapshot(for: persistedEpisodes)
         let previousSnapshot = episodeSnapshot.withLock { $0 }
         if previousSnapshot?.signature != snapshot.signature {
             do {
                 let summary = try writeEpisodes(
-                    state.episodes,
+                    persistedEpisodes,
                     snapshot: snapshot,
                     previousSnapshot: previousSnapshot,
                     generation: writeRevision,
@@ -233,12 +234,11 @@ final class Persistence: Sendable {
         episodeSnapshot.withLock { $0 = nil }
         revision.withLock { $0 = 0 }
         lastWrittenRevision.withLock { $0 = 0 }
-        sharedArtifactAuthority.withLock { $0 = (false, false, false, false) }
+        sharedArtifactAuthority.withLock { $0 = .init() }
         resetEpisodeWriteSummary()
     }
 
     // MARK: - Static helpers
-
     static let logger = Logger.app("Persistence")
     /// Prior-art `UserDefaults` key the file backend migrates from on first
     /// run. Kept as a string constant (not exposed) so the migration path

@@ -5,6 +5,15 @@ import WidgetKit
 
 extension AppStateStore {
 
+    func mutateState(ensuring jobs: [DesiredJob], _ mutation: (inout AppState) -> Void) {
+        guard !startupRecoveryRequired else {
+            Self.logger.error("Blocked native job mutation while startup recovery is required")
+            return
+        }
+        pendingAtomicJobs.append(contentsOf: jobs)
+        mutateState(mutation)
+    }
+
     /// Central `state.didSet` handler. Most mutations should persist and
     /// refresh derived indexes immediately, but import/refresh flows can wrap
     /// many state edits in `performMutationBatch` so the expensive work runs
@@ -13,6 +22,7 @@ extension AppStateStore {
         if Self.episodesFingerprintChanged(previousEpisodes, state.episodes) {
             markEpisodeProjectionsDirty()
         }
+        guard projectionMutationDepth == 0 else { return }
         markStateSideEffectsDirty()
     }
 

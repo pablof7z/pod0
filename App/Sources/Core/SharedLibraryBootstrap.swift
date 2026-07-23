@@ -262,6 +262,7 @@ enum SharedLibraryBootstrap {
                 observationOutbox: observationOutbox
             )
             client.start()
+            persistence.activateSharedListeningAuthority()
             logger.info("Shared Rust library is authoritative at \(target.path, privacy: .public)")
             return .ready(client)
         } catch {

@@ -21,7 +21,7 @@ extension AppStateStore {
             return episode.id
         }
         performMutationBatch {
-            mutateState {
+            mutateProjectionState {
                 $0.podcasts = projectedPodcasts
                 $0.subscriptions = projection.subscriptions.map(\.swiftValue)
                 $0.episodes = projectedEpisodes
@@ -41,12 +41,12 @@ extension AppStateStore {
     /// the only production assignment to `AppState.notes`; Persistence strips
     /// it from metadata once shared note authority is active.
     func applySharedNotes(_ projection: SharedNoteSnapshot) {
-        mutateState { $0.notes = projection.notes }
+        mutateProjectionState { $0.notes = projection.notes }
     }
 
     /// The sole production assignment to the replaceable native memory read model.
     func applySharedMemories(_ projection: SharedMemorySnapshot) {
-        mutateState {
+        mutateProjectionState {
             $0.agentMemories = projection.memories
             $0.compiledMemory = projection.compiled
         }
@@ -54,7 +54,7 @@ extension AppStateStore {
 
     /// The sole production assignment to the replaceable native clip read model.
     func applySharedClips(_ projection: SharedClipSnapshot) {
-        mutateState { $0.clips = projection.clips }
+        mutateProjectionState { $0.clips = projection.clips }
     }
 
     /// Applies one bounded Rust chapter projection to the replaceable native
@@ -63,7 +63,7 @@ extension AppStateStore {
         guard let episodeID = projection.summary.episodeId.uuid,
               let index = state.episodes.firstIndex(where: { $0.id == episodeID })
         else { return }
-        mutateState {
+        mutateProjectionState {
             $0.episodes[index].chapters = projection.chapters.isEmpty
                 ? nil
                 : projection.chapters
@@ -77,7 +77,7 @@ extension AppStateStore {
         }
         guard state.episodes[index].chapters != nil
                 || state.episodes[index].adSegments != nil else { return }
-        mutateState {
+        mutateProjectionState {
             $0.episodes[index].chapters = nil
             $0.episodes[index].adSegments = nil
         }
