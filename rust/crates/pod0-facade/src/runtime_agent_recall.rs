@@ -104,12 +104,19 @@ impl FacadeState {
             .execution_fence_id
             .ok_or(StorageError::InvalidAgentState)?;
         let result = self.agent_recall_result(query_id)?;
+        let recall_evidence = self
+            .recalls
+            .get(&query_id)
+            .ok_or(StorageError::InvalidAgentState)?
+            .evidence
+            .clone();
         if state.observe_action(AgentActionObservation {
             proposal_id: proposal.proposal_id,
             execution_fence_id: fence,
             outcome: AgentActionOutcome::Succeeded {
                 bounded_result: result,
                 artifact_id: None,
+                recall_evidence,
             },
             observed_at,
         }) != AgentWorkflowAcceptance::Updated

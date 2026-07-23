@@ -4,6 +4,7 @@ struct SharedAgentChatTranscript: View {
     let messages: [ChatMessage]
     let streamingContent: String?
     let isRunning: Bool
+    var onOpenRecallEvidence: (RecallEvidence) -> Void = { _ in }
     @State private var scrolledMessageID: AnyHashable?
 
     var body: some View {
@@ -13,7 +14,8 @@ struct SharedAgentChatTranscript: View {
                     ForEach(messages) { message in
                         AgentChatBubble(
                             message: message,
-                            batchFirstSummary: batchSummary(for: message)
+                            batchFirstSummary: batchSummary(for: message),
+                            onOpenRecallEvidence: onOpenRecallEvidence
                         )
                         .id(message.id)
                     }

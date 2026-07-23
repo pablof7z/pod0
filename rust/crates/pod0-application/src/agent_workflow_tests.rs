@@ -11,6 +11,14 @@ fn at(value: i64) -> UnixTimestampMilliseconds {
     UnixTimestampMilliseconds::new(value)
 }
 
+fn success(result: &str) -> AgentActionOutcome {
+    AgentActionOutcome::Succeeded {
+        bounded_result: result.into(),
+        artifact_id: None,
+        recall_evidence: Vec::new(),
+    }
+}
+
 fn turn() -> AgentTurnState {
     AgentTurnState::start(AgentTurnStart {
         conversation_id: id(1, ConversationId::from_bytes),
@@ -114,10 +122,7 @@ fn stale_fences_and_duplicate_observations_cannot_repeat_a_commit() {
     let stale = AgentActionObservation {
         proposal_id: proposal.proposal_id,
         execution_fence_id: id(7, AgentExecutionFenceId::from_bytes),
-        outcome: AgentActionOutcome::Succeeded {
-            bounded_result: "saved".into(),
-            artifact_id: None,
-        },
+        outcome: success("saved"),
         observed_at: at(50),
     };
     assert_eq!(state.observe_action(stale), AgentWorkflowAcceptance::Stale);
@@ -126,10 +131,7 @@ fn stale_fences_and_duplicate_observations_cannot_repeat_a_commit() {
         ..AgentActionObservation {
             proposal_id: proposal.proposal_id,
             execution_fence_id: fence,
-            outcome: AgentActionOutcome::Succeeded {
-                bounded_result: "saved".into(),
-                artifact_id: None,
-            },
+            outcome: success("saved"),
             observed_at: at(50),
         }
     };
@@ -162,10 +164,7 @@ fn committed_action_continues_once_for_a_final_answer_without_more_tools() {
     state.observe_action(AgentActionObservation {
         proposal_id: proposal.proposal_id,
         execution_fence_id: action_fence,
-        outcome: AgentActionOutcome::Succeeded {
-            bounded_result: r#"{"saved":true}"#.into(),
-            artifact_id: None,
-        },
+        outcome: success(r#"{"saved":true}"#),
         observed_at: at(50),
     });
     let model_fence = id(8, AgentExecutionFenceId::from_bytes);
@@ -210,10 +209,7 @@ fn post_commit_continuation_rejects_a_second_tool_action() {
     state.observe_action(AgentActionObservation {
         proposal_id: proposal.proposal_id,
         execution_fence_id: action_fence,
-        outcome: AgentActionOutcome::Succeeded {
-            bounded_result: "saved".into(),
-            artifact_id: None,
-        },
+        outcome: success("saved"),
         observed_at: at(50),
     });
     let model_fence = id(8, AgentExecutionFenceId::from_bytes);

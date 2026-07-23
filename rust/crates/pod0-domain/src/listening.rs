@@ -83,7 +83,7 @@ pub enum DownloadArtifactStatus {
     },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum TranscriptSource {
     Publisher,
     Scribe,

@@ -6,6 +6,7 @@ struct SharedAgentChatView: View {
     let session: SharedAgentConversationSession
     let requestedLegacyConversationID: UUID?
     @Environment(AppStateStore.self) private var store
+    @Environment(PlaybackState.self) private var playback
     @State private var draft = ""
     @State private var showHistory = false
     @State private var legacyConversation: ChatConversation?
@@ -23,7 +24,8 @@ struct SharedAgentChatView: View {
                         messages: visibleMessages,
                         streamingContent: legacyConversation == nil
                             ? session.streamingContent : nil,
-                        isRunning: legacyConversation == nil && session.phase == .running
+                        isRunning: legacyConversation == nil && session.phase == .running,
+                        onOpenRecallEvidence: openRecallEvidence
                     )
                 }
                 composer
@@ -57,8 +59,14 @@ struct SharedAgentChatView: View {
     }
 
     private var visibleMessages: [ChatMessage] {
-        legacyConversation?.messages
-            ?? SharedAgentChatMessageMapper.messages(from: session.turns)
+        if let legacyConversation { return legacyConversation.messages }
+        return SharedAgentChatMessageMapper.messages(from: session.turns) { episodeID in
+            guard let episode = store.episode(id: episodeID) else { return nil }
+            return RecallEvidenceMetadata(
+                episodeTitle: episode.title,
+                podcastTitle: store.podcast(id: episode.podcastID)?.title ?? "Unknown podcast"
+            )
+        }
     }
 
     @ToolbarContentBuilder
@@ -184,6 +192,10 @@ struct SharedAgentChatView: View {
         let input = draft
         draft = ""
         Task { await session.startTurn(input) }
+    }
+
+    private func openRecallEvidence(_ evidence: RecallEvidence) {
+        _ = RecallPlaybackHandoff.open(evidence, store: store, playback: playback)
     }
 
     private func startNewConversation() {

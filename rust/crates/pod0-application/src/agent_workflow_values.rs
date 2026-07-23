@@ -60,6 +60,8 @@ pub enum AgentActionOutcome {
     Succeeded {
         bounded_result: String,
         artifact_id: Option<GeneratedArtifactId>,
+        #[serde(default)]
+        recall_evidence: Vec<crate::RecallEvidenceProjection>,
     },
     Failed {
         safe_detail: Option<String>,

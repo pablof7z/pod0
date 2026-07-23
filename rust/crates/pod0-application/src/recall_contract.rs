@@ -94,7 +94,7 @@ impl RecallResultProjection {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct RecallEvidenceProjection {
     pub episode_id: EpisodeId,
     pub podcast_id: PodcastId,
@@ -114,7 +114,9 @@ pub struct RecallEvidenceProjection {
     pub score: RecallScoreProjection,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record,
+)]
 pub struct RecallScoreProjection {
     pub vector_rrf_units: u64,
     pub lexical_rrf_units: u64,

@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-23T03:42:25Z",
+      "lines": [
+        "Transcript answers in Agent now include tappable citations that play the exact moment."
+      ]
+    },
+    {
       "shipped_at": "2026-07-23T03:24:26Z",
       "lines": [
         "Ask what was said in an episode and the agent now answers from exact transcript excerpts and timestamps."

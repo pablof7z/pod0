@@ -1446,6 +1446,7 @@ public struct AgentTurnProjection: Equatable, Hashable {
     public let revision: StateRevision
     public let stage: AgentTurnStage
     public let messages: [AgentMessageProjection]
+    public let recallEvidence: [RecallEvidenceProjection]
     public let proposal: AgentProposalProjection?
     public let executionFenceId: AgentExecutionFenceId?
     public let commit: AgentCommitReceipt?
@@ -1454,12 +1455,13 @@ public struct AgentTurnProjection: Equatable, Hashable {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(conversationId: ConversationId, turnId: AgentTurnId, revision: StateRevision, stage: AgentTurnStage, messages: [AgentMessageProjection], proposal: AgentProposalProjection?, executionFenceId: AgentExecutionFenceId?, commit: AgentCommitReceipt?, safeFailure: String?, updatedAt: UnixTimestampMilliseconds) {
+    public init(conversationId: ConversationId, turnId: AgentTurnId, revision: StateRevision, stage: AgentTurnStage, messages: [AgentMessageProjection], recallEvidence: [RecallEvidenceProjection], proposal: AgentProposalProjection?, executionFenceId: AgentExecutionFenceId?, commit: AgentCommitReceipt?, safeFailure: String?, updatedAt: UnixTimestampMilliseconds) {
         self.conversationId = conversationId
         self.turnId = turnId
         self.revision = revision
         self.stage = stage
         self.messages = messages
+        self.recallEvidence = recallEvidence
         self.proposal = proposal
         self.executionFenceId = executionFenceId
         self.commit = commit
@@ -1488,6 +1490,7 @@ public struct FfiConverterTypeAgentTurnProjection: FfiConverterRustBuffer {
                 revision: FfiConverterTypeStateRevision.read(from: &buf),
                 stage: FfiConverterTypeAgentTurnStage.read(from: &buf),
                 messages: FfiConverterSequenceTypeAgentMessageProjection.read(from: &buf),
+                recallEvidence: FfiConverterSequenceTypeRecallEvidenceProjection.read(from: &buf),
                 proposal: FfiConverterOptionTypeAgentProposalProjection.read(from: &buf),
                 executionFenceId: FfiConverterOptionTypeAgentExecutionFenceId.read(from: &buf),
                 commit: FfiConverterOptionTypeAgentCommitReceipt.read(from: &buf),
@@ -1502,6 +1505,7 @@ public struct FfiConverterTypeAgentTurnProjection: FfiConverterRustBuffer {
         FfiConverterTypeStateRevision.write(value.revision, into: &buf)
         FfiConverterTypeAgentTurnStage.write(value.stage, into: &buf)
         FfiConverterSequenceTypeAgentMessageProjection.write(value.messages, into: &buf)
+        FfiConverterSequenceTypeRecallEvidenceProjection.write(value.recallEvidence, into: &buf)
         FfiConverterOptionTypeAgentProposalProjection.write(value.proposal, into: &buf)
         FfiConverterOptionTypeAgentExecutionFenceId.write(value.executionFenceId, into: &buf)
         FfiConverterOptionTypeAgentCommitReceipt.write(value.commit, into: &buf)

@@ -74,7 +74,7 @@ impl ContentDigest {
 
 /// Provenance facts copied from the selected transcript artifact. The source
 /// payload digest protects identity without leaking a URL or provider body.
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct TranscriptProvenance {
     pub source: TranscriptSource,
     pub provider: Option<String>,

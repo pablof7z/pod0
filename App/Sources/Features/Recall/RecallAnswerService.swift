@@ -67,8 +67,10 @@ struct RecallAnswerService {
     private func makeAnswer(_ projection: RecallResultProjection) -> RecallAnswer {
         switch projection.stage {
         case .ready:
-            let evidence = projection.evidence.compactMap(makeEvidence)
-            guard evidence.count == projection.evidence.count, let first = evidence.first else {
+            guard let evidence = RecallEvidenceProjectionMapper.evidence(
+                from: projection.evidence,
+                metadata: metadata
+            ), let first = evidence.first else {
                 return unavailable("Transcript evidence could not be displayed safely.")
             }
             return RecallAnswer(text: first.excerpt, evidence: evidence, status: .ready)
@@ -119,7 +121,43 @@ struct RecallAnswerService {
         }
     }
 
-    private func makeEvidence(_ item: RecallEvidenceProjection) -> RecallEvidence? {
+    private func unavailable(_ text: String) -> RecallAnswer {
+        RecallAnswer(text: text, status: .unavailable)
+    }
+
+    private func record(_ observation: ProductSignalObservation) {
+        Task { await productSignals.record(observation) }
+    }
+
+    private static func signalOutcome(_ status: RecallAnswer.Status) -> ProductSignalOutcome {
+        switch status {
+        case .ready: .grounded
+        case .cancelled: .cancelled
+        case .indexing, .transcriptMissing, .indexMissing, .noEvidence: .noEvidence
+        case .indexUnavailable, .providerUnavailable, .corruptArtifact, .interrupted, .unavailable:
+            .failed
+        }
+    }
+}
+
+@MainActor
+enum RecallEvidenceProjectionMapper {
+    typealias MetadataResolver = @MainActor (UUID) -> RecallEvidenceMetadata?
+
+    static func evidence(
+        from projections: [RecallEvidenceProjection],
+        metadata: MetadataResolver
+    ) -> [RecallEvidence]? {
+        let evidence = projections.compactMap { item in
+            makeEvidence(item, metadata: metadata)
+        }
+        return evidence.count == projections.count ? evidence : nil
+    }
+
+    private static func makeEvidence(
+        _ item: RecallEvidenceProjection,
+        metadata: MetadataResolver
+    ) -> RecallEvidence? {
         guard let episodeID = item.episodeId.uuid,
               let podcastID = item.podcastId.uuid,
               let resolved = metadata(episodeID),
@@ -155,24 +193,6 @@ struct RecallAnswerService {
                 rerankRank: item.score.rerankRank
             )
         )
-    }
-
-    private func unavailable(_ text: String) -> RecallAnswer {
-        RecallAnswer(text: text, status: .unavailable)
-    }
-
-    private func record(_ observation: ProductSignalObservation) {
-        Task { await productSignals.record(observation) }
-    }
-
-    private static func signalOutcome(_ status: RecallAnswer.Status) -> ProductSignalOutcome {
-        switch status {
-        case .ready: .grounded
-        case .cancelled: .cancelled
-        case .indexing, .transcriptMissing, .indexMissing, .noEvidence: .noEvidence
-        case .indexUnavailable, .providerUnavailable, .corruptArtifact, .interrupted, .unavailable:
-            .failed
-        }
     }
 }
 

@@ -9,6 +9,7 @@ pub(super) fn map_capability_outcome(outcome: AgentCapabilityOutcome) -> AgentAc
         AgentCapabilityOutcome::Succeeded { bounded_result } => AgentActionOutcome::Succeeded {
             bounded_result,
             artifact_id: None,
+            recall_evidence: Vec::new(),
         },
         AgentCapabilityOutcome::Failed { safe_detail } => {
             AgentActionOutcome::Failed { safe_detail }

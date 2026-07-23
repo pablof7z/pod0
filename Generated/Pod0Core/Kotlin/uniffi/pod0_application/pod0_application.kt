@@ -1999,6 +1999,8 @@ data class AgentTurnProjection (
     ,
     val `messages`: List<AgentMessageProjection>
     ,
+    val `recallEvidence`: List<RecallEvidenceProjection>
+    ,
     val `proposal`: AgentProposalProjection?
     ,
     val `executionFenceId`: AgentExecutionFenceId?
@@ -2029,6 +2031,7 @@ public object FfiConverterTypeAgentTurnProjection: FfiConverterRustBuffer<AgentT
             FfiConverterTypeStateRevision.read(buf),
             FfiConverterTypeAgentTurnStage.read(buf),
             FfiConverterSequenceTypeAgentMessageProjection.read(buf),
+            FfiConverterSequenceTypeRecallEvidenceProjection.read(buf),
             FfiConverterOptionalTypeAgentProposalProjection.read(buf),
             FfiConverterOptionalTypeAgentExecutionFenceId.read(buf),
             FfiConverterOptionalTypeAgentCommitReceipt.read(buf),
@@ -2043,6 +2046,7 @@ public object FfiConverterTypeAgentTurnProjection: FfiConverterRustBuffer<AgentT
             FfiConverterTypeStateRevision.allocationSize(value.`revision`) +
             FfiConverterTypeAgentTurnStage.allocationSize(value.`stage`) +
             FfiConverterSequenceTypeAgentMessageProjection.allocationSize(value.`messages`) +
+            FfiConverterSequenceTypeRecallEvidenceProjection.allocationSize(value.`recallEvidence`) +
             FfiConverterOptionalTypeAgentProposalProjection.allocationSize(value.`proposal`) +
             FfiConverterOptionalTypeAgentExecutionFenceId.allocationSize(value.`executionFenceId`) +
             FfiConverterOptionalTypeAgentCommitReceipt.allocationSize(value.`commit`) +
@@ -2056,6 +2060,7 @@ public object FfiConverterTypeAgentTurnProjection: FfiConverterRustBuffer<AgentT
             FfiConverterTypeStateRevision.write(value.`revision`, buf)
             FfiConverterTypeAgentTurnStage.write(value.`stage`, buf)
             FfiConverterSequenceTypeAgentMessageProjection.write(value.`messages`, buf)
+            FfiConverterSequenceTypeRecallEvidenceProjection.write(value.`recallEvidence`, buf)
             FfiConverterOptionalTypeAgentProposalProjection.write(value.`proposal`, buf)
             FfiConverterOptionalTypeAgentExecutionFenceId.write(value.`executionFenceId`, buf)
             FfiConverterOptionalTypeAgentCommitReceipt.write(value.`commit`, buf)

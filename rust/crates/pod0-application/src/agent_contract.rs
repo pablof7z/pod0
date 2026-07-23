@@ -4,7 +4,9 @@ use pod0_domain::{
     UnixTimestampMilliseconds,
 };
 
-use crate::{AgentToolName, QueuePlacement, RecallScope, ScheduledTaskInput};
+use crate::{
+    AgentToolName, QueuePlacement, RecallEvidenceProjection, RecallScope, ScheduledTaskInput,
+};
 
 pub const AGENT_CONTRACT_VERSION: u32 = 1;
 pub const MAX_AGENT_INPUT_BYTES: usize = 32 * 1_024;
@@ -236,20 +238,13 @@ pub struct AgentTurnProjection {
     pub revision: StateRevision,
     pub stage: AgentTurnStage,
     pub messages: Vec<AgentMessageProjection>,
+    #[serde(default)]
+    pub recall_evidence: Vec<RecallEvidenceProjection>,
     pub proposal: Option<AgentProposalProjection>,
     pub execution_fence_id: Option<AgentExecutionFenceId>,
     pub commit: Option<AgentCommitReceipt>,
     pub safe_failure: Option<String>,
     pub updated_at: UnixTimestampMilliseconds,
-}
-
-impl AgentTurnProjection {
-    pub fn enforce_bounds(&mut self, requested_items: usize) {
-        let limit = requested_items.clamp(1, MAX_AGENT_PROJECTION_MESSAGES);
-        if self.messages.len() > limit {
-            self.messages.drain(..self.messages.len() - limit);
-        }
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]

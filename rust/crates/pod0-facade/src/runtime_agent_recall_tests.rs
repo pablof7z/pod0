@@ -77,18 +77,17 @@ fn transcript_query_returns_exact_evidence_then_finishes_conversationally() {
         HostObservation::AgentModelCompleted {
             turn_id: execution.turn_id,
             model_fence_id: execution.model_fence_id,
-            assistant_text:
-                "At 0:10, the episode explains that small daily cues make habits easier to repeat."
-                    .to_owned(),
+            assistant_text: "At 0:10, the episode says daily cues make habits repeatable."
+                .to_owned(),
             proposed_tool_call: None,
         },
     ));
-    assert_eq!(
-        turn(&fixture.base.facade, start.command_id).stage,
-        AgentTurnStage::Completed
-    );
+    let completed = turn(&fixture.base.facade, start.command_id);
+    assert_eq!(completed.stage, AgentTurnStage::Completed);
+    assert_eq!(completed.recall_evidence.len(), 2);
+    assert_eq!(completed.recall_evidence[0].start_milliseconds, 10_000);
+    assert!(completed.recall_evidence[0].excerpt.contains("daily cues"));
 }
-
 #[test]
 fn transcript_query_reissues_safe_read_only_work_after_restart() {
     let fixture = RecallFixture::new(true);

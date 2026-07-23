@@ -13,6 +13,8 @@ mod agent_provider_output;
 mod agent_provider_output_tests;
 mod agent_tool_names;
 mod agent_workflow;
+#[cfg(test)]
+mod agent_workflow_compatibility_tests;
 mod agent_workflow_continuation;
 mod agent_workflow_recovery;
 #[cfg(test)]

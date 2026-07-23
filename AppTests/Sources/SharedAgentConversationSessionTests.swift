@@ -102,6 +102,7 @@ final class SharedAgentConversationSessionTests: XCTestCase {
                         content: "Try the architecture episode."
                     ),
                 ],
+                recallEvidence: [],
                 proposal: nil,
                 executionFenceId: nil,
                 commit: nil,

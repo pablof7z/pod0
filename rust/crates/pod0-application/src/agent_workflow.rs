@@ -38,6 +38,7 @@ impl AgentTurnState {
                     role: AgentMessageRole::User,
                     content: input.user_input,
                 }],
+                recall_evidence: Vec::new(),
                 proposal: None,
                 execution_fence_id: Some(input.model_fence_id),
                 commit: None,
@@ -196,11 +197,14 @@ impl AgentTurnState {
             AgentActionOutcome::Succeeded {
                 bounded_result,
                 artifact_id,
+                mut recall_evidence,
             } => {
                 if bounded_result.len() > MAX_AGENT_MESSAGE_BYTES {
                     self.fail("tool_result_too_large", observation.observed_at);
                     return AgentWorkflowAcceptance::Rejected;
                 }
+                recall_evidence.truncate(usize::from(crate::MAX_AGENT_RECALL_EVIDENCE));
+                self.projection.recall_evidence = recall_evidence;
                 self.projection.messages.push(AgentMessageProjection {
                     role: AgentMessageRole::Tool,
                     content: bounded_result,
@@ -264,35 +268,5 @@ impl AgentTurnState {
         self.projection.execution_fence_id = None;
         self.advance(AgentTurnStage::Failed, observed_at);
         AgentWorkflowAcceptance::Updated
-    }
-
-    pub fn mark_outcome_ambiguous(
-        &mut self,
-        observed_at: UnixTimestampMilliseconds,
-    ) -> AgentWorkflowAcceptance {
-        if !matches!(
-            self.projection.stage,
-            AgentTurnStage::AwaitingModel | AgentTurnStage::Executing
-        ) {
-            return AgentWorkflowAcceptance::Rejected;
-        }
-        self.advance(AgentTurnStage::OutcomeAmbiguous, observed_at);
-        AgentWorkflowAcceptance::Updated
-    }
-
-    pub(super) fn advance(
-        &mut self,
-        stage: AgentTurnStage,
-        observed_at: UnixTimestampMilliseconds,
-    ) {
-        self.projection.revision = StateRevision::new(self.projection.revision.value + 1);
-        self.projection.stage = stage;
-        self.projection.updated_at = observed_at;
-    }
-
-    fn fail(&mut self, code: &str, observed_at: UnixTimestampMilliseconds) {
-        self.projection.safe_failure = Some(code.to_owned());
-        self.projection.execution_fence_id = None;
-        self.advance(AgentTurnStage::Failed, observed_at);
     }
 }

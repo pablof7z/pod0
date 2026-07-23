@@ -45,6 +45,7 @@ impl FacadeState {
             Ok(result) => AgentActionOutcome::Succeeded {
                 bounded_result: result,
                 artifact_id: None,
+                recall_evidence: Vec::new(),
             },
             Err(error) => AgentActionOutcome::Failed {
                 safe_detail: Some(error.to_owned()),
