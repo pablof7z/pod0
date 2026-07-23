@@ -1,5 +1,9 @@
 # Template Architecture and Extension Plan
 
+> **Historical planning record.** This pre-Rust template audit is retained for
+> provenance only. It must not be used as a current implementation or ownership
+> map; see [`docs/architecture.md`](../../architecture.md).
+
 A deep read of every Swift file under `App/Sources/` plus the build, CI, and entitlement scaffolding, distilled into the architecture we inherit and the surgical work we will do to turn it into a podcast player with a knowledge-grounded embedded agent.
 
 The task brief was written from the original template README. The actual codebase has evolved well past the README. This report reconciles the two and recommends a concrete extension shape. The most important corrections up front:

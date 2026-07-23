@@ -7,8 +7,8 @@
 
 ## Context
 
-The interactive agent currently receives model-authored JSON, parses it into
-`[String: Any]`, and lets Swift dispatch 46 tools. Those tools span private
+At decision time, the interactive agent received model-authored JSON, parsed it
+into `[String: Any]`, and let Swift dispatch 46 tools. Those tools span private
 reads, durable writes, playback, paid provider requests, destructive deletion,
 artifact generation, and public upload. Prompts and skill activation provide
 advisory gating, but no single durable authority, proposal, commit, or recovery
@@ -19,6 +19,16 @@ This is cross-platform, security-sensitive product policy. Native code must
 still present conversations and approvals and execute platform primitives, but
 model output, an enabled skill, or a native callback cannot authorize or commit
 durable action.
+
+## Implementation status
+
+The narrow product-proof agent path is now Rust-backed: active conversations,
+turn state, permissions, memory, scheduled state, model usage, generated audio
+provenance, and tracked NMP publication receipts have one durable Rust owner.
+The former Swift chat-session and tool-registry authorities are deleted.
+Issues #133 and #134 cover broader product-artifact commit families and native
+capability/integration coverage, #137 requires physical-device signer
+qualification, and #138 owns the remaining rollback/provider-schema cleanup.
 
 ## Decision
 

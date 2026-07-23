@@ -25,6 +25,7 @@ def main() -> int:
     args = parser.parse_args()
     scripts = Path(__file__).resolve().parent
     checks = [
+        (scripts / "check_architecture_docs.py", True),
         (scripts / "check_architecture_ownership.py", False),
         (scripts / "check_listening_single_writer.py", True),
         (scripts / "check_ui_storage_boundary.py", True),

@@ -1,5 +1,11 @@
 # Product Spec: Design and Architecture
 
+> **Historical planning record.** This document preserves the original product
+> and visual direction; it is not a current implementation or ownership map.
+> Current architecture is documented in
+> [`docs/architecture.md`](../../architecture.md) and
+> [`docs/architecture/ownership.json`](../../architecture/ownership.json).
+
 > Part of the Podcastr product spec. Start at [PRODUCT_SPEC.md](../PRODUCT_SPEC.md).
 
 ## 6. Liquid Glass Design System (Visual + Motion + Haptics + Sound)

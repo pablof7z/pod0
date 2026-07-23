@@ -14,57 +14,55 @@ linked into iOS as `Pod0Core` and has a runtime smoke test; the Kotlin API has a
 JVM compile/runtime smoke test. `pod0-storage` provides versioned,
 transactional core-schema migrations, verified backup/restore-to-staging, a
 restart journal, typed read-only failure states, and verified staged imports of
-the legacy Swift listening library, notes, clips, and selected transcripts. The
-Rust store is authoritative for podcasts, subscriptions, episode listening
-facts, active playback, queue, resume, completion, rate, playback preferences,
-session sleep mode, notes, saved clips with immutable transcript provenance,
-and selected canonical transcripts and chapters/ad spans. Publisher chapter
-acquisition and model chapter generation are Rust-owned durable workflows with
-persisted request, retry, cancellation, recovery, and selected-artifact state.
-The facade contract is now version 25 and includes an additive canonical
-transcript-artifact contract: exact integer milliseconds, full word and speaker
-records, deterministic semantic/version/artifact identities, unknown-source
-preservation, replay fingerprints, and separately bounded summary, speaker,
-segment, and word projections. Its pure contract projection represents invalid
-input as rejection state rather than an FFI exception. At startup the iOS shell
-verifies and stages the issue #95 legacy transcript import, commits selected
-artifacts and the authority marker in one Rust transaction, and only then opens
-the application facade. The version-12 facade accepts typed native transcript
-observations and exposes bounded transcript projections. The issue #97 cutover
-removed Swift transcript persistence, readiness mutation, workflow artifact
-ownership, and the temporary shadow path.
-Cancellable native host adapters now
-execute typed feed requests through URLSession and playback requests through
-AVFoundation, returning correlated bounded observations through the generated
-contract. Swift renders shared library/playback projections and retains adjunct
-state only for domains that have not migrated. There is no Android product
-project. The NMP adapter remains isolated from the facade while the security
-hold in issue #85 is active.
+the legacy Swift listening library, notes, clips, and selected transcripts.
+The Rust store is authoritative for listening/library/playback; transcripts,
+chapters, notes, and clips; download desired state and recovery; recall
+configuration, indexing, and retrieval; publisher and model chapter workflows;
+scheduled-agent definitions, occurrences, and artifacts; interactive
+product-proof agent conversations, proposals, permissions, recall citations,
+model usage, generated audio provenance, and tracked NMP publication receipts.
+The facade contract is now version 44. It exposes bounded commands,
+projections, domain events, and correlated host requests across those migrated
+domains. Exact integer milliseconds, stable identifiers, explicit revisions,
+effect fences, cancellation, and typed failure states prevent native adapters
+from becoming a second policy or persistence owner.
+
+Cancellable native host adapters execute URLSession/provider primitives,
+AVFoundation playback, Keychain/security prompts, platform files,
+notifications, speech, and other Apple capabilities. Swift renders Rust
+projections and retains durable authority only for explicitly unmigrated
+categories, threading records, agent activity/local diagnostic adjuncts, and
+supported rollback evidence. Pod0-specific Nostr publication semantics and
+receipts are Rust-owned over the exactly pinned generic NMP dependency. There
+is no Android product project; Kotlin binding smoke tests and Android-compatible
+Rust builds are readiness checks only.
 
 ### Application state
 
 `AppStateStore` is the `@MainActor @Observable` owner for unmigrated Swift
-domains and a projection adapter for the migrated listening, notes, and clips slices. Views and
-agent adapters call typed methods; migrated library/playback methods dispatch
-to the shared facade, and direct `mutateState` calls outside
-`App/Sources/State` are rejected by tests.
+domains and a projection adapter for migrated slices. Views and native adapters
+call typed methods; migrated commands dispatch to the shared facade, and direct
+`mutateState` calls outside `App/Sources/State` are rejected by tests.
 
-`AppState` currently contains replaceable podcast, episode, note, and clip projections plus
-settings, agent memory/activity, categories, threading records, scheduled tasks,
-and the last-played episode. This is migration input, not the final
-cross-platform schema.
+`AppState` contains replaceable projections for podcasts, subscriptions,
+episodes, notes, clips, memories, and scheduled tasks. Those projections are
+not written back as native durable authority. Swift remains authoritative for
+settings, categories/category settings, threading records, agent activity and
+local diagnostic adjuncts, plus explicitly retained compatibility evidence.
 
 ### Persistence topology
 
-`pod0-core.sqlite` is authoritative for the migrated listening, notes, clips,
-and selected-transcript slices.
+`pod0-core.sqlite` is authoritative for migrated library/listening, playback,
+notes, clips, transcripts, chapters, downloads, recall, scheduled-agent,
+interactive-agent, generated-artifact, and publication-receipt state.
 `Persistence` remains SQLite-authoritative for unmigrated and adjunct Swift
 state. Normal reads and writes do not compare a JSON store.
 
 - `persistence_metadata` stores a JSON-encoded `AppState` metadata snapshot
-  without migrated episode, note, or clip authority plus a monotonic generation.
-- `episodes` stores one versioned JSON payload per episode with stable local ID
-  and sort order.
+  stripped of every migrated projection after its verified authority marker,
+  plus a monotonic generation.
+- Legacy native episode rows are migration evidence only and are cleared by the
+  verified listening cutover; they are never a concurrent live authority.
 - Workflow schema metadata, jobs, and artifact records share the authoritative
   SQLite transaction boundary where atomic state/job creation is required.
 - Download, staged workflow artifact, and vector-index files are derived or
@@ -77,9 +75,10 @@ state. Normal reads and writes do not compare a JSON store.
   settings. The widget reads a bounded app-group snapshot.
 
 Swift state writes use monotonic revisions and a serialized background writer.
+Projection updates never trigger native persistence, iCloud, widget, or
+indexing side effects. A verified cutover performs one explicit cleanup write.
 Shared playback observations are coalesced to one second and Rust commits the
-first position, semantic boundaries, and a maximum 30-second cadence without
-rewriting the Swift metadata snapshot.
+first position, semantic boundaries, and a maximum 30-second cadence.
 
 ### Durable workflows
 
@@ -212,6 +211,11 @@ Swift and Kotlin bindings. CI rejects drift from Rust metadata.
   UI status and actions use read-only Rust publisher/model projections. The
   compatibility bridge remains only for supported direct upgrades and is
   deleted under issue #114 after the two-release/90-day support gate.
+- Versions 27–44 extend the same typed, single-writer pattern through download
+  workflows, recall configuration/indexing/retrieval, scheduled agents,
+  interactive conversations and permissions, model-usage evidence, generated
+  audio provenance, and tracked NMP publication. Swift retains only bounded
+  projections and exact native capability executors for those migrated domains.
 - Open views receive bounded, revisioned, screen-shaped projections.
 - Operation failure and cancellation appear in projection state, not thrown
   per-operation FFI results.
@@ -239,6 +243,8 @@ dependency graph is in the [roadmap](../Plans/2026-07-18-ios-first-rust-nmp-road
 
 ## Enforcement
 
+- `scripts/check_architecture_docs.py` rejects facade-version drift, duplicate
+  ownership keys, stale current-authority claims, and unmarked historical plans.
 - `scripts/check_architecture_ownership.py` covers every production Swift file.
 - `scripts/check_ui_storage_boundary.py` rejects new presentation-to-repository
   access and tracks exact temporary exceptions with deletion issues.
