@@ -88,8 +88,9 @@ struct SubscriptionService {
         do {
             try await SubscriptionRefreshService().refresh(live.id, store: store)
         } catch {
+            let endpoint = PrivacySafeDiagnostics.endpoint(live.feedURL)
             Self.logger.error(
-                "refresh failed for \(live.feedURL?.absoluteString ?? "(no feed)", privacy: .public): \(error.localizedDescription, privacy: .public)"
+                "refresh failed for \(endpoint, privacy: .public): \(error.localizedDescription, privacy: .public)"
             )
         }
     }

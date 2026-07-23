@@ -62,9 +62,10 @@ struct ImageGenerationService: ImageGenerating {
             throw ImageGenerationError.invalidResponse
         }
         guard (200..<300).contains(http.statusCode) else {
-            let reason = String(data: responseData, encoding: .utf8) ?? "HTTP \(http.statusCode)"
-            Self.logger.error("Chat image generation failed (\(http.statusCode, privacy: .public)): \(reason, privacy: .public)")
-            throw ImageGenerationError.serverError(reason)
+            Self.logger.error(
+                "Chat image generation failed status=\(http.statusCode, privacy: .public) response_bytes=\(responseData.count, privacy: .public)"
+            )
+            throw ImageGenerationError.serverError(statusCode: http.statusCode)
         }
 
         return try await extractImageFromChatResponse(responseData)
@@ -119,9 +120,10 @@ struct ImageGenerationService: ImageGenerating {
             throw ImageGenerationError.invalidResponse
         }
         guard (200..<300).contains(http.statusCode) else {
-            let reason = String(data: responseData, encoding: .utf8) ?? "HTTP \(http.statusCode)"
-            Self.logger.error("Image generation failed (\(http.statusCode, privacy: .public)): \(reason, privacy: .public)")
-            throw ImageGenerationError.serverError(reason)
+            Self.logger.error(
+                "Image generation failed status=\(http.statusCode, privacy: .public) response_bytes=\(responseData.count, privacy: .public)"
+            )
+            throw ImageGenerationError.serverError(statusCode: http.statusCode)
         }
 
         guard let json = try JSONSerialization.jsonObject(with: responseData) as? [String: Any],
@@ -161,14 +163,15 @@ struct ImageGenerationService: ImageGenerating {
 enum ImageGenerationError: LocalizedError {
     case noAPIKey
     case invalidResponse
-    case serverError(String)
+    case serverError(statusCode: Int)
     case malformedResponse
 
     var errorDescription: String? {
         switch self {
         case .noAPIKey: return "No OpenRouter API key configured."
         case .invalidResponse: return "Image generation server did not respond."
-        case .serverError(let msg): return "Image generation failed: \(msg)"
+        case .serverError(let statusCode):
+            return "Image generation failed (HTTP \(statusCode))."
         case .malformedResponse: return "Image generation returned unexpected data."
         }
     }

@@ -227,8 +227,9 @@ struct OnboardingSubscribePage: View {
             }
             onSubscribed(added)
         } catch let addError as SubscriptionService.AddError {
+            let endpoint = PrivacySafeDiagnostics.endpoint(suggestion.feed)
             Self.logger.error(
-                "Failed to subscribe to \(suggestion.title, privacy: .public) (\(suggestion.feed, privacy: .public)): \(addError.localizedDescription, privacy: .public)"
+                "Failed to subscribe to \(suggestion.title, privacy: .public) at \(endpoint, privacy: .public): \(addError.localizedDescription, privacy: .public)"
             )
             errorMessage = addError.localizedDescription
             Haptics.warning()
@@ -254,8 +255,9 @@ struct OnboardingSubscribePage: View {
             feedURL = ""
             onSubscribed(added)
         } catch let addError as SubscriptionService.AddError {
+            let endpoint = PrivacySafeDiagnostics.endpoint(trimmed)
             Self.logger.error(
-                "Failed to subscribe to typed URL \(trimmed, privacy: .public): \(addError.localizedDescription, privacy: .public)"
+                "Failed to subscribe to typed endpoint \(endpoint, privacy: .public): \(addError.localizedDescription, privacy: .public)"
             )
             errorMessage = addError.localizedDescription
             Haptics.warning()

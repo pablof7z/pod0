@@ -24,7 +24,7 @@
     "App/Sources/Transcript/ElevenLabsScribeClient.swift": 440,
     "App/Sources/Podcast/Episode.swift": 409,
     "App/Sources/Features/Player/PlayerView.swift": 422,
-    "App/Sources/Features/Library/DiscoverSearchForm.swift": 425,
+    "App/Sources/Features/Library/DiscoverSearchForm.swift": 424,
     "App/Sources/Features/Library/OPMLImportSheet.swift": 411,
     "App/Sources/Features/Player/MiniPlayerView.swift": 404,
     "AppTests/Sources/PersistenceDurabilityTests.swift": 325,

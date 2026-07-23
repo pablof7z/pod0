@@ -354,9 +354,7 @@ struct DiscoverSearchForm: View {
             expandedErrorIDs = expandedErrorIDs.filter { fetchedIDs.contains($0) }
         } catch {
             guard !Task.isCancelled else { return }
-            Self.logger.error(
-                "iTunes search failed for term \(term, privacy: .public)"
-            )
+            Self.logger.error("iTunes search failed")
             self.searchError = UserFacingFailurePresenter.make(error: error, canRetry: true).message
             results = []
         }
@@ -409,8 +407,9 @@ struct DiscoverSearchForm: View {
                 Haptics.light()
                 return
             }
+            let endpoint = PrivacySafeDiagnostics.endpoint(feedURL)
             Self.logger.error(
-                "Failed to subscribe to \(result.collectionName, privacy: .public) at \(feedURL.absoluteString, privacy: .public): \(addError.localizedDescription, privacy: .public)"
+                "Failed to subscribe to \(result.collectionName, privacy: .public) at \(endpoint, privacy: .public): \(addError.localizedDescription, privacy: .public)"
             )
             rowErrors[result.collectionId] = addError.localizedDescription
             Haptics.warning()
