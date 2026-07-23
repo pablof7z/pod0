@@ -91,6 +91,7 @@ final class SharedAgentChatMessageMapperTests: XCTestCase {
             stage: stage,
             messages: messages,
             recallEvidence: recallEvidence,
+            modelUsage: [],
             proposal: nil,
             executionFenceId: nil,
             commit: nil,

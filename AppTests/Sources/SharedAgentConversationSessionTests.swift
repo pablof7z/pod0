@@ -131,6 +131,7 @@ final class SharedAgentConversationSessionTests: XCTestCase {
                     ),
                 ],
                 recallEvidence: [],
+                modelUsage: [],
                 proposal: nil,
                 executionFenceId: nil,
                 commit: nil,

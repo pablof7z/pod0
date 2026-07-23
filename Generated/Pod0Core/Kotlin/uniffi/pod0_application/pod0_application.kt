@@ -1993,6 +1993,102 @@ public object FfiConverterTypeAgentModelToolCallObservation: FfiConverterRustBuf
 
 
 
+data class AgentModelUsageObservation (
+    val `promptTokens`: kotlin.ULong
+    ,
+    val `completionTokens`: kotlin.ULong
+    ,
+    val `cachedPromptTokens`: kotlin.ULong?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentModelUsageObservation: FfiConverterRustBuffer<AgentModelUsageObservation> {
+    override fun read(buf: ByteBuffer): AgentModelUsageObservation {
+        return AgentModelUsageObservation(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterOptionalULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentModelUsageObservation) = (
+            FfiConverterULong.allocationSize(value.`promptTokens`) +
+            FfiConverterULong.allocationSize(value.`completionTokens`) +
+            FfiConverterOptionalULong.allocationSize(value.`cachedPromptTokens`)
+    )
+
+    override fun write(value: AgentModelUsageObservation, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`promptTokens`, buf)
+            FfiConverterULong.write(value.`completionTokens`, buf)
+            FfiConverterOptionalULong.write(value.`cachedPromptTokens`, buf)
+    }
+}
+
+
+
+data class AgentModelUsageProjection (
+    val `modelReference`: kotlin.String
+    ,
+    val `promptTokens`: kotlin.ULong
+    ,
+    val `completionTokens`: kotlin.ULong
+    ,
+    val `cachedPromptTokens`: kotlin.ULong?
+    ,
+    val `observedAt`: UnixTimestampMilliseconds
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentModelUsageProjection: FfiConverterRustBuffer<AgentModelUsageProjection> {
+    override fun read(buf: ByteBuffer): AgentModelUsageProjection {
+        return AgentModelUsageProjection(
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentModelUsageProjection) = (
+            FfiConverterString.allocationSize(value.`modelReference`) +
+            FfiConverterULong.allocationSize(value.`promptTokens`) +
+            FfiConverterULong.allocationSize(value.`completionTokens`) +
+            FfiConverterOptionalULong.allocationSize(value.`cachedPromptTokens`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`observedAt`)
+    )
+
+    override fun write(value: AgentModelUsageProjection, buf: ByteBuffer) {
+            FfiConverterString.write(value.`modelReference`, buf)
+            FfiConverterULong.write(value.`promptTokens`, buf)
+            FfiConverterULong.write(value.`completionTokens`, buf)
+            FfiConverterOptionalULong.write(value.`cachedPromptTokens`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`observedAt`, buf)
+    }
+}
+
+
+
 data class AgentProposalProjection (
     val `proposalId`: AgentProposalId
     ,
@@ -2107,6 +2203,8 @@ data class AgentTurnProjection (
     ,
     val `recallEvidence`: List<RecallEvidenceProjection>
     ,
+    val `modelUsage`: List<AgentModelUsageProjection>
+    ,
     val `proposal`: AgentProposalProjection?
     ,
     val `executionFenceId`: AgentExecutionFenceId?
@@ -2138,6 +2236,7 @@ public object FfiConverterTypeAgentTurnProjection: FfiConverterRustBuffer<AgentT
             FfiConverterTypeAgentTurnStage.read(buf),
             FfiConverterSequenceTypeAgentMessageProjection.read(buf),
             FfiConverterSequenceTypeRecallEvidenceProjection.read(buf),
+            FfiConverterSequenceTypeAgentModelUsageProjection.read(buf),
             FfiConverterOptionalTypeAgentProposalProjection.read(buf),
             FfiConverterOptionalTypeAgentExecutionFenceId.read(buf),
             FfiConverterOptionalTypeAgentCommitReceipt.read(buf),
@@ -2153,6 +2252,7 @@ public object FfiConverterTypeAgentTurnProjection: FfiConverterRustBuffer<AgentT
             FfiConverterTypeAgentTurnStage.allocationSize(value.`stage`) +
             FfiConverterSequenceTypeAgentMessageProjection.allocationSize(value.`messages`) +
             FfiConverterSequenceTypeRecallEvidenceProjection.allocationSize(value.`recallEvidence`) +
+            FfiConverterSequenceTypeAgentModelUsageProjection.allocationSize(value.`modelUsage`) +
             FfiConverterOptionalTypeAgentProposalProjection.allocationSize(value.`proposal`) +
             FfiConverterOptionalTypeAgentExecutionFenceId.allocationSize(value.`executionFenceId`) +
             FfiConverterOptionalTypeAgentCommitReceipt.allocationSize(value.`commit`) +
@@ -2167,6 +2267,7 @@ public object FfiConverterTypeAgentTurnProjection: FfiConverterRustBuffer<AgentT
             FfiConverterTypeAgentTurnStage.write(value.`stage`, buf)
             FfiConverterSequenceTypeAgentMessageProjection.write(value.`messages`, buf)
             FfiConverterSequenceTypeRecallEvidenceProjection.write(value.`recallEvidence`, buf)
+            FfiConverterSequenceTypeAgentModelUsageProjection.write(value.`modelUsage`, buf)
             FfiConverterOptionalTypeAgentProposalProjection.write(value.`proposal`, buf)
             FfiConverterOptionalTypeAgentExecutionFenceId.write(value.`executionFenceId`, buf)
             FfiConverterOptionalTypeAgentCommitReceipt.write(value.`commit`, buf)
@@ -14286,7 +14387,8 @@ sealed class HostObservation {
         val `turnId`: uniffi.pod0_domain.AgentTurnId,
         val `modelFenceId`: uniffi.pod0_domain.AgentExecutionFenceId,
         val `assistantText`: kotlin.String,
-        val `proposedToolCall`: uniffi.pod0_application.AgentModelToolCallObservation?) : HostObservation()
+        val `proposedToolCall`: uniffi.pod0_application.AgentModelToolCallObservation?,
+        val `usage`: uniffi.pod0_application.AgentModelUsageObservation?) : HostObservation()
 
     {
 
@@ -14465,6 +14567,7 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 FfiConverterTypeAgentExecutionFenceId.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterOptionalTypeAgentModelToolCallObservation.read(buf),
+                FfiConverterOptionalTypeAgentModelUsageObservation.read(buf),
                 )
             18 -> HostObservation.AgentApprovalObserved(
                 FfiConverterTypeAgentTurnId.read(buf),
@@ -14655,6 +14758,7 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 + FfiConverterTypeAgentExecutionFenceId.allocationSize(value.`modelFenceId`)
                 + FfiConverterString.allocationSize(value.`assistantText`)
                 + FfiConverterOptionalTypeAgentModelToolCallObservation.allocationSize(value.`proposedToolCall`)
+                + FfiConverterOptionalTypeAgentModelUsageObservation.allocationSize(value.`usage`)
             )
         }
         is HostObservation.AgentApprovalObserved -> {
@@ -14840,6 +14944,7 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 FfiConverterTypeAgentExecutionFenceId.write(value.`modelFenceId`, buf)
                 FfiConverterString.write(value.`assistantText`, buf)
                 FfiConverterOptionalTypeAgentModelToolCallObservation.write(value.`proposedToolCall`, buf)
+                FfiConverterOptionalTypeAgentModelUsageObservation.write(value.`usage`, buf)
                 Unit
             }
             is HostObservation.AgentApprovalObserved -> {
@@ -24146,6 +24251,38 @@ public object FfiConverterOptionalTypeAgentModelToolCallObservation: FfiConverte
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeAgentModelUsageObservation: FfiConverterRustBuffer<AgentModelUsageObservation?> {
+    override fun read(buf: ByteBuffer): AgentModelUsageObservation? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeAgentModelUsageObservation.read(buf)
+    }
+
+    override fun allocationSize(value: AgentModelUsageObservation?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeAgentModelUsageObservation.allocationSize(value)
+        }
+    }
+
+    override fun write(value: AgentModelUsageObservation?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeAgentModelUsageObservation.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeAgentProposalProjection: FfiConverterRustBuffer<AgentProposalProjection?> {
     override fun read(buf: ByteBuffer): AgentProposalProjection? {
         if (buf.get().toInt() == 0) {
@@ -25616,6 +25753,34 @@ public object FfiConverterSequenceTypeAgentMessageProjection: FfiConverterRustBu
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeAgentMessageProjection.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeAgentModelUsageProjection: FfiConverterRustBuffer<List<AgentModelUsageProjection>> {
+    override fun read(buf: ByteBuffer): List<AgentModelUsageProjection> {
+        val len = buf.getInt()
+        return List<AgentModelUsageProjection>(len) {
+            FfiConverterTypeAgentModelUsageProjection.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<AgentModelUsageProjection>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeAgentModelUsageProjection.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<AgentModelUsageProjection>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeAgentModelUsageProjection.write(it, buf)
         }
     }
 }

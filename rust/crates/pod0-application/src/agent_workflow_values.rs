@@ -34,6 +34,8 @@ pub struct AgentModelObservation {
     pub model_fence_id: AgentExecutionFenceId,
     pub assistant_text: String,
     pub proposed_action: Option<AgentToolAction>,
+    #[serde(default)]
+    pub usage: Option<crate::AgentModelUsageObservation>,
     pub observed_at: UnixTimestampMilliseconds,
 }
 

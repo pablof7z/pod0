@@ -62,6 +62,7 @@ fn note_action_requires_exact_approval_and_commits_once_in_rust() {
                 tool_name: "create_note".to_owned(),
                 arguments_json: r#"{"text":"Architecture matters"}"#.to_owned(),
             }),
+            usage: None,
         },
     ));
     assert!(matches!(receipt, HostObservationReceipt::Persisted { .. }));
@@ -149,6 +150,7 @@ fn note_action_requires_exact_approval_and_commits_once_in_rust() {
             model_fence_id: execution.model_fence_id,
             assistant_text: "Saved that note.".to_owned(),
             proposed_tool_call: None,
+            usage: None,
         },
     ));
     assert_eq!(
@@ -204,6 +206,7 @@ fn native_action_is_fenced_and_restart_never_blindly_replays_it() {
                     uuid_string(fixture.episode_id.into_bytes())
                 ),
             }),
+            usage: None,
         },
     ));
     let approval = fixture.facade.next_host_requests(8).remove(0);
@@ -256,6 +259,7 @@ fn invalid_and_unavailable_actions_fail_before_any_capability_request() {
                     uuid_string(fixture.episode_id.into_bytes())
                 ),
             }),
+            usage: None,
         },
     ));
     assert_eq!(

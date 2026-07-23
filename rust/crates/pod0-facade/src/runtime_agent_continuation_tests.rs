@@ -57,6 +57,7 @@ fn successful_native_action_queues_one_tool_free_final_answer() {
                 tool_name: "pause_playback".to_owned(),
                 arguments_json: "{}".to_owned(),
             }),
+            usage: None,
         },
     ));
     let approval = fixture.facade.next_host_requests(8).remove(0);

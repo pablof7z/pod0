@@ -7,11 +7,14 @@ uniffi::setup_scaffolding!();
 mod agent_action_hash;
 mod agent_contract;
 mod agent_history_contract;
+#[cfg(test)]
+mod agent_model_usage_tests;
 mod agent_policy;
 mod agent_policy_shape;
 mod agent_provider_output;
 #[cfg(test)]
 mod agent_provider_output_tests;
+mod agent_run_contract;
 mod agent_tool_names;
 mod agent_workflow;
 #[cfg(test)]
@@ -132,6 +135,7 @@ pub use agent_contract::*;
 pub use agent_history_contract::*;
 pub use agent_policy::*;
 pub use agent_provider_output::*;
+pub use agent_run_contract::*;
 pub use agent_tool_names::*;
 pub use agent_workflow_values::*;
 pub use chapter_contract::*;

@@ -39,6 +39,7 @@ impl AgentTurnState {
                     content: input.user_input,
                 }],
                 recall_evidence: Vec::new(),
+                model_usage: Vec::new(),
                 proposal: None,
                 execution_fence_id: Some(input.model_fence_id),
                 commit: None,
@@ -65,6 +66,9 @@ impl AgentTurnState {
         }
         if observation.assistant_text.len() > MAX_AGENT_MESSAGE_BYTES
             || observation.assistant_text.trim().is_empty() && observation.proposed_action.is_none()
+            || observation
+                .usage
+                .is_some_and(|usage| !crate::agent_model_usage_is_valid(usage))
         {
             self.fail("invalid_model_output", observation.observed_at);
             return AgentWorkflowAcceptance::Rejected;
@@ -74,6 +78,20 @@ impl AgentTurnState {
                 role: AgentMessageRole::Assistant,
                 content: observation.assistant_text,
             });
+        }
+        if let Some(usage) = observation.usage {
+            self.projection
+                .model_usage
+                .push(crate::AgentModelUsageProjection {
+                    model_reference: self.model_reference.clone(),
+                    prompt_tokens: usage.prompt_tokens,
+                    completion_tokens: usage.completion_tokens,
+                    cached_prompt_tokens: usage.cached_prompt_tokens,
+                    observed_at: observation.observed_at,
+                });
+            self.projection
+                .model_usage
+                .truncate(crate::MAX_AGENT_MODEL_USAGE_ENTRIES);
         }
         let Some(action) = observation.proposed_action else {
             self.advance(AgentTurnStage::Completed, observation.observed_at);

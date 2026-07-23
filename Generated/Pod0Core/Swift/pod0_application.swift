@@ -1444,6 +1444,130 @@ public func FfiConverterTypeAgentModelToolCallObservation_lower(_ value: AgentMo
 }
 
 
+public struct AgentModelUsageObservation: Equatable, Hashable {
+    public let promptTokens: UInt64
+    public let completionTokens: UInt64
+    public let cachedPromptTokens: UInt64?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(promptTokens: UInt64, completionTokens: UInt64, cachedPromptTokens: UInt64?) {
+        self.promptTokens = promptTokens
+        self.completionTokens = completionTokens
+        self.cachedPromptTokens = cachedPromptTokens
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentModelUsageObservation: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentModelUsageObservation: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentModelUsageObservation {
+        return
+            try AgentModelUsageObservation(
+                promptTokens: FfiConverterUInt64.read(from: &buf),
+                completionTokens: FfiConverterUInt64.read(from: &buf),
+                cachedPromptTokens: FfiConverterOptionUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentModelUsageObservation, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.promptTokens, into: &buf)
+        FfiConverterUInt64.write(value.completionTokens, into: &buf)
+        FfiConverterOptionUInt64.write(value.cachedPromptTokens, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentModelUsageObservation_lift(_ buf: RustBuffer) throws -> AgentModelUsageObservation {
+    return try FfiConverterTypeAgentModelUsageObservation.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentModelUsageObservation_lower(_ value: AgentModelUsageObservation) -> RustBuffer {
+    return FfiConverterTypeAgentModelUsageObservation.lower(value)
+}
+
+
+public struct AgentModelUsageProjection: Equatable, Hashable {
+    public let modelReference: String
+    public let promptTokens: UInt64
+    public let completionTokens: UInt64
+    public let cachedPromptTokens: UInt64?
+    public let observedAt: UnixTimestampMilliseconds
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(modelReference: String, promptTokens: UInt64, completionTokens: UInt64, cachedPromptTokens: UInt64?, observedAt: UnixTimestampMilliseconds) {
+        self.modelReference = modelReference
+        self.promptTokens = promptTokens
+        self.completionTokens = completionTokens
+        self.cachedPromptTokens = cachedPromptTokens
+        self.observedAt = observedAt
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentModelUsageProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentModelUsageProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentModelUsageProjection {
+        return
+            try AgentModelUsageProjection(
+                modelReference: FfiConverterString.read(from: &buf),
+                promptTokens: FfiConverterUInt64.read(from: &buf),
+                completionTokens: FfiConverterUInt64.read(from: &buf),
+                cachedPromptTokens: FfiConverterOptionUInt64.read(from: &buf),
+                observedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentModelUsageProjection, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.modelReference, into: &buf)
+        FfiConverterUInt64.write(value.promptTokens, into: &buf)
+        FfiConverterUInt64.write(value.completionTokens, into: &buf)
+        FfiConverterOptionUInt64.write(value.cachedPromptTokens, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.observedAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentModelUsageProjection_lift(_ buf: RustBuffer) throws -> AgentModelUsageProjection {
+    return try FfiConverterTypeAgentModelUsageProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentModelUsageProjection_lower(_ value: AgentModelUsageProjection) -> RustBuffer {
+    return FfiConverterTypeAgentModelUsageProjection.lower(value)
+}
+
+
 public struct AgentProposalProjection: Equatable, Hashable {
     public let proposalId: AgentProposalId
     public let proposalDigest: ContentDigest
@@ -1579,6 +1703,7 @@ public struct AgentTurnProjection: Equatable, Hashable {
     public let stage: AgentTurnStage
     public let messages: [AgentMessageProjection]
     public let recallEvidence: [RecallEvidenceProjection]
+    public let modelUsage: [AgentModelUsageProjection]
     public let proposal: AgentProposalProjection?
     public let executionFenceId: AgentExecutionFenceId?
     public let commit: AgentCommitReceipt?
@@ -1587,13 +1712,14 @@ public struct AgentTurnProjection: Equatable, Hashable {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(conversationId: ConversationId, turnId: AgentTurnId, revision: StateRevision, stage: AgentTurnStage, messages: [AgentMessageProjection], recallEvidence: [RecallEvidenceProjection], proposal: AgentProposalProjection?, executionFenceId: AgentExecutionFenceId?, commit: AgentCommitReceipt?, safeFailure: String?, updatedAt: UnixTimestampMilliseconds) {
+    public init(conversationId: ConversationId, turnId: AgentTurnId, revision: StateRevision, stage: AgentTurnStage, messages: [AgentMessageProjection], recallEvidence: [RecallEvidenceProjection], modelUsage: [AgentModelUsageProjection], proposal: AgentProposalProjection?, executionFenceId: AgentExecutionFenceId?, commit: AgentCommitReceipt?, safeFailure: String?, updatedAt: UnixTimestampMilliseconds) {
         self.conversationId = conversationId
         self.turnId = turnId
         self.revision = revision
         self.stage = stage
         self.messages = messages
         self.recallEvidence = recallEvidence
+        self.modelUsage = modelUsage
         self.proposal = proposal
         self.executionFenceId = executionFenceId
         self.commit = commit
@@ -1623,6 +1749,7 @@ public struct FfiConverterTypeAgentTurnProjection: FfiConverterRustBuffer {
                 stage: FfiConverterTypeAgentTurnStage.read(from: &buf),
                 messages: FfiConverterSequenceTypeAgentMessageProjection.read(from: &buf),
                 recallEvidence: FfiConverterSequenceTypeRecallEvidenceProjection.read(from: &buf),
+                modelUsage: FfiConverterSequenceTypeAgentModelUsageProjection.read(from: &buf),
                 proposal: FfiConverterOptionTypeAgentProposalProjection.read(from: &buf),
                 executionFenceId: FfiConverterOptionTypeAgentExecutionFenceId.read(from: &buf),
                 commit: FfiConverterOptionTypeAgentCommitReceipt.read(from: &buf),
@@ -1638,6 +1765,7 @@ public struct FfiConverterTypeAgentTurnProjection: FfiConverterRustBuffer {
         FfiConverterTypeAgentTurnStage.write(value.stage, into: &buf)
         FfiConverterSequenceTypeAgentMessageProjection.write(value.messages, into: &buf)
         FfiConverterSequenceTypeRecallEvidenceProjection.write(value.recallEvidence, into: &buf)
+        FfiConverterSequenceTypeAgentModelUsageProjection.write(value.modelUsage, into: &buf)
         FfiConverterOptionTypeAgentProposalProjection.write(value.proposal, into: &buf)
         FfiConverterOptionTypeAgentExecutionFenceId.write(value.executionFenceId, into: &buf)
         FfiConverterOptionTypeAgentCommitReceipt.write(value.commit, into: &buf)
@@ -12876,7 +13004,7 @@ public enum HostObservation: Equatable, Hashable {
     )
     case scheduledAgentExecutionObserved(observation: ScheduledAgentExecutionObservation
     )
-    case agentModelCompleted(turnId: AgentTurnId, modelFenceId: AgentExecutionFenceId, assistantText: String, proposedToolCall: AgentModelToolCallObservation?
+    case agentModelCompleted(turnId: AgentTurnId, modelFenceId: AgentExecutionFenceId, assistantText: String, proposedToolCall: AgentModelToolCallObservation?, usage: AgentModelUsageObservation?
     )
     case agentApprovalObserved(turnId: AgentTurnId, proposalId: AgentProposalId, proposalDigest: ContentDigest, approved: Bool
     )
@@ -12960,7 +13088,7 @@ public struct FfiConverterTypeHostObservation: FfiConverterRustBuffer {
         case 16: return .scheduledAgentExecutionObserved(observation: try FfiConverterTypeScheduledAgentExecutionObservation.read(from: &buf)
         )
 
-        case 17: return .agentModelCompleted(turnId: try FfiConverterTypeAgentTurnId.read(from: &buf), modelFenceId: try FfiConverterTypeAgentExecutionFenceId.read(from: &buf), assistantText: try FfiConverterString.read(from: &buf), proposedToolCall: try FfiConverterOptionTypeAgentModelToolCallObservation.read(from: &buf)
+        case 17: return .agentModelCompleted(turnId: try FfiConverterTypeAgentTurnId.read(from: &buf), modelFenceId: try FfiConverterTypeAgentExecutionFenceId.read(from: &buf), assistantText: try FfiConverterString.read(from: &buf), proposedToolCall: try FfiConverterOptionTypeAgentModelToolCallObservation.read(from: &buf), usage: try FfiConverterOptionTypeAgentModelUsageObservation.read(from: &buf)
         )
 
         case 18: return .agentApprovalObserved(turnId: try FfiConverterTypeAgentTurnId.read(from: &buf), proposalId: try FfiConverterTypeAgentProposalId.read(from: &buf), proposalDigest: try FfiConverterTypeContentDigest.read(from: &buf), approved: try FfiConverterBool.read(from: &buf)
@@ -13109,12 +13237,13 @@ public struct FfiConverterTypeHostObservation: FfiConverterRustBuffer {
             FfiConverterTypeScheduledAgentExecutionObservation.write(observation, into: &buf)
 
 
-        case let .agentModelCompleted(turnId,modelFenceId,assistantText,proposedToolCall):
+        case let .agentModelCompleted(turnId,modelFenceId,assistantText,proposedToolCall,usage):
             writeInt(&buf, Int32(17))
             FfiConverterTypeAgentTurnId.write(turnId, into: &buf)
             FfiConverterTypeAgentExecutionFenceId.write(modelFenceId, into: &buf)
             FfiConverterString.write(assistantText, into: &buf)
             FfiConverterOptionTypeAgentModelToolCallObservation.write(proposedToolCall, into: &buf)
+            FfiConverterOptionTypeAgentModelUsageObservation.write(usage, into: &buf)
 
 
         case let .agentApprovalObserved(turnId,proposalId,proposalDigest,approved):
@@ -19061,6 +19190,30 @@ fileprivate struct FfiConverterOptionTypeAgentModelToolCallObservation: FfiConve
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeAgentModelUsageObservation: FfiConverterRustBuffer {
+    typealias SwiftType = AgentModelUsageObservation?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeAgentModelUsageObservation.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeAgentModelUsageObservation.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeAgentProposalProjection: FfiConverterRustBuffer {
     typealias SwiftType = AgentProposalProjection?
 
@@ -20187,6 +20340,31 @@ fileprivate struct FfiConverterSequenceTypeAgentMessageProjection: FfiConverterR
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeAgentMessageProjection.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeAgentModelUsageProjection: FfiConverterRustBuffer {
+    typealias SwiftType = [AgentModelUsageProjection]
+
+    public static func write(_ value: [AgentModelUsageProjection], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAgentModelUsageProjection.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AgentModelUsageProjection] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AgentModelUsageProjection]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAgentModelUsageProjection.read(from: &buf))
         }
         return seq
     }

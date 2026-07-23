@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
 use pod0_application::{
-    AgentModelObservation, AgentToolAction, AgentTurnStart, AgentTurnState, AgentWorkflowAcceptance,
+    AgentModelObservation, AgentModelUsageObservation, AgentToolAction, AgentTurnStart,
+    AgentTurnState, AgentWorkflowAcceptance,
 };
 use pod0_domain::{
     AgentExecutionFenceId, AgentTurnId, CommandId, ConversationId, StateRevision,
@@ -121,6 +122,11 @@ fn persisted_turn_rehydrates_after_process_restart() {
             proposed_action: Some(AgentToolAction::CreateNote {
                 text: "Architecture matters".into(),
             }),
+            usage: Some(AgentModelUsageObservation {
+                prompt_tokens: 80,
+                completion_tokens: 12,
+                cached_prompt_tokens: Some(20),
+            }),
             observed_at: UnixTimestampMilliseconds::new(20),
         }),
         AgentWorkflowAcceptance::Updated
@@ -138,6 +144,8 @@ fn persisted_turn_rehydrates_after_process_restart() {
         .unwrap();
     let reopened = AgentStore::open(&fixture.path).unwrap();
     let recovered = reopened.turn(state.projection().turn_id).unwrap().unwrap();
+    assert_eq!(recovered.projection().model_usage.len(), 1);
+    assert_eq!(recovered.projection().model_usage[0].prompt_tokens, 80);
     assert_eq!(recovered, state);
     assert!(recovered.is_valid_for_recovery());
 }

@@ -24,10 +24,10 @@ fn transcript_query_returns_exact_evidence_then_finishes_conversationally() {
                     uuid_string(fixture.base.episode_id.into_bytes())
                 ),
             }),
+            usage: None,
         },
     ));
     approve_next(&fixture);
-
     let embed = fixture.base.facade.next_host_requests(1).remove(0);
     let HostRequest::EmbedRecallQuery { query_id, text, .. } = &embed.request else {
         panic!("expected shared recall embedding request");
@@ -56,7 +56,6 @@ fn transcript_query_returns_exact_evidence_then_finishes_conversationally() {
             safe_detail: None,
         },
     );
-
     let continuation = fixture.base.facade.next_host_requests(1).remove(0);
     let HostRequest::ExecuteAgentModelTurn { execution } = &continuation.request else {
         panic!("expected final model continuation");
@@ -80,6 +79,7 @@ fn transcript_query_returns_exact_evidence_then_finishes_conversationally() {
             assistant_text: "At 0:10, the episode says daily cues make habits repeatable."
                 .to_owned(),
             proposed_tool_call: None,
+            usage: None,
         },
     ));
     let completed = turn(&fixture.base.facade, start.command_id);
@@ -222,6 +222,7 @@ fn propose_query(fixture: &RecallFixture) {
                     uuid_string(fixture.base.episode_id.into_bytes())
                 ),
             }),
+            usage: None,
         },
     ));
 }

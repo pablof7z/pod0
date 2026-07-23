@@ -240,6 +240,8 @@ pub struct AgentTurnProjection {
     pub messages: Vec<AgentMessageProjection>,
     #[serde(default)]
     pub recall_evidence: Vec<RecallEvidenceProjection>,
+    #[serde(default)]
+    pub model_usage: Vec<crate::AgentModelUsageProjection>,
     pub proposal: Option<AgentProposalProjection>,
     pub execution_fence_id: Option<AgentExecutionFenceId>,
     pub commit: Option<AgentCommitReceipt>,

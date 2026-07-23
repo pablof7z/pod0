@@ -129,7 +129,8 @@ final class CoreAgentHost: CoreAgentHosting {
                         toolName: $0.name,
                         argumentsJson: $0.arguments
                     )
-                }
+                },
+                usage: Self.usage(from: result.tokensUsed)
             )
         } catch is CancellationError {
             streamingState.clear(turnID: execution.turnId)
@@ -144,6 +145,24 @@ final class CoreAgentHost: CoreAgentHosting {
                 safeDetail: "Agent model provider request failed"
             )
         }
+    }
+
+    private static func usage(from usage: AgentTokenUsage?) -> AgentModelUsageObservation? {
+        guard let usage,
+              (0...1_000_000_000).contains(usage.promptTokens),
+              (0...1_000_000_000).contains(usage.completionTokens)
+        else {
+            return nil
+        }
+        if let cached = usage.cachedTokens,
+           !(0...usage.promptTokens).contains(cached) {
+            return nil
+        }
+        return AgentModelUsageObservation(
+            promptTokens: UInt64(usage.promptTokens),
+            completionTokens: UInt64(usage.completionTokens),
+            cachedPromptTokens: usage.cachedTokens.map(UInt64.init)
+        )
     }
 
     private func presentApproval(_ approval: AgentApprovalRequest) async -> HostObservation {

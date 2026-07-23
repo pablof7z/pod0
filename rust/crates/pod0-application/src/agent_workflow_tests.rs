@@ -42,6 +42,7 @@ fn propose_note(state: &mut AgentTurnState) -> AgentProposalProjection {
             proposed_action: Some(AgentToolAction::CreateNote {
                 text: "Architecture matters".into()
             }),
+            usage: None,
             observed_at: at(20),
         }),
         AgentWorkflowAcceptance::Updated
@@ -62,6 +63,7 @@ fn invalid_action_fails_before_authorization_or_execution() {
             scope: None,
             limit: 1,
         }),
+        usage: None,
         observed_at: at(20),
     });
     assert_eq!(result, AgentWorkflowAcceptance::Rejected);
@@ -181,6 +183,7 @@ fn committed_action_continues_once_for_a_final_answer_without_more_tools() {
             model_fence_id: model_fence,
             assistant_text: "Saved that note.".into(),
             proposed_action: None,
+            usage: None,
             observed_at: at(60),
         }),
         AgentWorkflowAcceptance::Updated
@@ -223,6 +226,7 @@ fn post_commit_continuation_rejects_a_second_tool_action() {
             proposed_action: Some(AgentToolAction::CreateNote {
                 text: "second write".into(),
             }),
+            usage: None,
             observed_at: at(60),
         }),
         AgentWorkflowAcceptance::Rejected

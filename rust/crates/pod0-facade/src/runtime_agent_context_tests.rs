@@ -20,6 +20,11 @@ fn follow_up_turn_model_request_contains_bounded_conversation_context() {
             model_fence_id: first_execution.model_fence_id,
             assistant_text: "Architecture matters because boundaries preserve options.".to_owned(),
             proposed_tool_call: None,
+            usage: Some(AgentModelUsageObservation {
+                prompt_tokens: 120,
+                completion_tokens: 18,
+                cached_prompt_tokens: Some(40),
+            }),
         },
     ));
     let conversation_id = ConversationId::from_bytes(first.command_id.into_bytes());
@@ -65,6 +70,8 @@ fn follow_up_turn_model_request_contains_bounded_conversation_context() {
     assert_eq!(value.turns.len(), 2);
     assert_eq!(value.turns[0].messages.len(), 1);
     assert_eq!(value.turns[0].messages[0].content, "What did you just say?");
+    assert_eq!(value.turns[1].model_usage.len(), 1);
+    assert_eq!(value.turns[1].model_usage[0].prompt_tokens, 120);
 }
 
 fn start_command(

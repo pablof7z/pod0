@@ -112,6 +112,7 @@ pub enum HostObservation {
         model_fence_id: AgentExecutionFenceId,
         assistant_text: String,
         proposed_tool_call: Option<AgentModelToolCallObservation>,
+        usage: Option<crate::AgentModelUsageObservation>,
     },
     AgentApprovalObserved {
         turn_id: AgentTurnId,

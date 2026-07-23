@@ -5,7 +5,7 @@ use pod0_domain::{
 use crate::*;
 
 #[test]
-fn older_persisted_turns_and_action_results_default_typed_recall_evidence() {
+fn older_persisted_turns_and_action_results_default_new_evidence_fields() {
     let state = AgentTurnState::start(AgentTurnStart {
         conversation_id: ConversationId::from_parts(1, 1),
         turn_id: AgentTurnId::from_parts(1, 2),
@@ -22,8 +22,13 @@ fn older_persisted_turns_and_action_results_default_typed_recall_evidence() {
         .as_object_mut()
         .unwrap()
         .remove("recall_evidence");
+    state_json["projection"]
+        .as_object_mut()
+        .unwrap()
+        .remove("model_usage");
     let restored: AgentTurnState = serde_json::from_value(state_json).unwrap();
     assert!(restored.projection().recall_evidence.is_empty());
+    assert!(restored.projection().model_usage.is_empty());
 
     let outcome = AgentActionOutcome::Succeeded {
         bounded_result: "saved".into(),

@@ -1,7 +1,6 @@
 import Pod0Core
 import XCTest
 @testable import Podcastr
-
 @MainActor
 final class CoreAgentHostTests: XCTestCase {
     func testModelCompletionReturnsBoundedRawToolCallWithoutNativeParsing() async throws {
@@ -11,17 +10,18 @@ final class CoreAgentHostTests: XCTestCase {
                 id: "call-1",
                 name: "create_note",
                 arguments: #"{"text":"Architecture matters"}"#
-            )]
+            )],
+            tokensUsed: AgentTokenUsage(promptTokens: 120, completionTokens: 24, cachedTokens: 40)
         ))
         let host = makeHost(transport: transport)
-
         let observation = await host.execute(.executeAgentModelTurn(execution: modelRequest()))
 
         guard case .agentModelCompleted(
             let turnID,
             let fenceID,
             let text,
-            let call
+            let call,
+            let usage
         ) = observation else {
             return XCTFail("Expected raw model completion")
         }
@@ -31,6 +31,9 @@ final class CoreAgentHostTests: XCTestCase {
         XCTAssertEqual(call?.providerCallId, "call-1")
         XCTAssertEqual(call?.toolName, "create_note")
         XCTAssertEqual(call?.argumentsJson, #"{"text":"Architecture matters"}"#)
+        XCTAssertEqual(usage?.promptTokens, 120)
+        XCTAssertEqual(usage?.completionTokens, 24)
+        XCTAssertEqual(usage?.cachedPromptTokens, 40)
         XCTAssertEqual(transport.lastTools.count, 1)
         XCTAssertEqual(transport.lastMessages.first?["role"] as? String, "system")
     }
@@ -104,14 +107,13 @@ final class CoreAgentHostTests: XCTestCase {
             .executeAgentModelTurn(execution: request)
         )
 
-        guard case .agentModelCompleted(_, _, let text, let call) = observation else {
+        guard case .agentModelCompleted(_, _, let text, let call, _) = observation else {
             return XCTFail("Expected final model completion")
         }
         XCTAssertEqual(text, "Saved that note.")
         XCTAssertNil(call)
         XCTAssertTrue(transport.lastTools.isEmpty)
     }
-
     func testStreamingPresentationIsBoundedAndRetainedUntilProjectionArrives() async {
         let streaming = CoreAgentStreamingState()
         let transport = StubCoreAgentModelTransport(
@@ -137,7 +139,6 @@ final class CoreAgentHostTests: XCTestCase {
         streaming.clear(turnID: AgentTurnId(high: 3, low: 4))
         XCTAssertNil(streaming.content)
     }
-
     func testApprovalObservationEchoesExactRustProposalIdentity() async {
         let presenter = StubCoreAgentApprovalPresenter(approved: true)
         let host = makeHost(
@@ -165,7 +166,6 @@ final class CoreAgentHostTests: XCTestCase {
         XCTAssertEqual(digest, request.proposal.proposalDigest)
         XCTAssertEqual(presenter.lastRequest, request)
     }
-
     func testCapabilityObservationEchoesExactRustExecutionFence() async {
         let executor = StubCoreAgentCapabilityExecutor(
             outcome: .succeeded(boundedResult: #"{"paused":true}"#)

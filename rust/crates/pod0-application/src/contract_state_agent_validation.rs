@@ -16,6 +16,7 @@ pub(super) fn agent_observation_matches(
                 model_fence_id,
                 assistant_text,
                 proposed_tool_call,
+                usage,
             },
         ) => {
             *turn_id == execution.turn_id
@@ -23,6 +24,7 @@ pub(super) fn agent_observation_matches(
                 && assistant_text.len() <= execution.maximum_output_bytes as usize
                 && assistant_text.len() <= MAX_AGENT_MESSAGE_BYTES
                 && proposed_tool_call.as_ref().is_none_or(tool_call_is_bounded)
+                && usage.is_none_or(crate::agent_model_usage_is_valid)
         }
         (
             HostRequest::PresentAgentApproval { approval },

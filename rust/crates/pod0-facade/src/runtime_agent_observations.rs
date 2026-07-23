@@ -115,6 +115,7 @@ impl FacadeState {
                 model_fence_id,
                 assistant_text,
                 proposed_tool_call,
+                usage,
             } => {
                 let proposed_action = match proposed_tool_call {
                     Some(call) => match parse_agent_tool_call(call) {
@@ -136,6 +137,7 @@ impl FacadeState {
                         model_fence_id: *model_fence_id,
                         assistant_text: assistant_text.clone(),
                         proposed_action,
+                        usage: *usage,
                         observed_at: envelope.observed_at,
                     }),
                     AgentAuditKind::ModelObserved,
