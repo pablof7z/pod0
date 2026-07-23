@@ -55,3 +55,6 @@ jobs:
 
       - name: Build and test
         run: ./ci_scripts/run_tests.sh
+
+      - name: Reconstruct workflow across process termination
+        run: ./scripts/test-workflow-process-reconstruction.sh

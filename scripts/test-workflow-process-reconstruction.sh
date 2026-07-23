@@ -1,11 +1,32 @@
 #!/bin/zsh
 set -euo pipefail
 
-simulator_id="${1:-F19BC699-69BF-4C1A-BCA7-381575E5DAA6}"
-app_path="$(xcodebuildmcp simulator get-app-path --workspace-path Podcastr.xcworkspace --scheme Podcastr --simulator-id "$simulator_id" --platform 'iOS Simulator' --output json | jq -r '.data.artifacts.appPath')"
-bundle_id="$(plutil -extract CFBundleIdentifier raw "$app_path/Info.plist")"
+simulator_id="${1:-}"
+if [[ -z "$simulator_id" ]]; then
+  simulator_id="$(xcrun simctl list devices booted --json | jq -r '
+    [.devices[][] | select(.state == "Booted")][0].udid // empty
+  ')"
+fi
+if [[ -z "$simulator_id" ]]; then
+  echo "No booted iOS simulator is available for process reconstruction." >&2
+  exit 1
+fi
 
-xcrun simctl install "$simulator_id" "$app_path"
+bundle_id="${APP_BUNDLE_ID:-io.f7z.podcast}"
+app_path="$(xcrun simctl get_app_container "$simulator_id" "$bundle_id" app 2>/dev/null || true)"
+if [[ -z "$app_path" ]]; then
+  if ! command -v xcodebuildmcp >/dev/null; then
+    echo "Pod0 is not installed and xcodebuildmcp is unavailable to locate the build." >&2
+    exit 1
+  fi
+  app_path="$(xcodebuildmcp simulator get-app-path \
+    --workspace-path Podcastr.xcworkspace \
+    --scheme Podcastr \
+    --simulator-id "$simulator_id" \
+    --platform 'iOS Simulator' \
+    --output json | jq -r '.data.artifacts.appPath')"
+  xcrun simctl install "$simulator_id" "$app_path"
+fi
 container="$(xcrun simctl get_app_container "$simulator_id" "$bundle_id" data)"
 marker_dir="$container/Library/Application Support/podcastr/workflow-harness"
 
