@@ -51,8 +51,37 @@ if [[ "$actual_tuist" != "$expected_tuist" ]]; then
   exit 1
 fi
 
+python3 - "$REPO_ROOT/.github/workflows/test.yml" \
+  "$REPO_ROOT/.github/workflows/testflight.yml" <<'PY'
+import pathlib
+import sys
+
+test_path = pathlib.Path(sys.argv[1])
+testflight_path = pathlib.Path(sys.argv[2])
+test = test_path.read_text()
+testflight = testflight_path.read_text()
+
+if test.count("runs-on: macos-26") != 1:
+    raise SystemExit("Test CI must use exactly one pinned macos-26 hosted runner.")
+if test.count("run: ./ci_scripts/setup_hosted_ci_runner.sh") != 1:
+    raise SystemExit("Test CI must install the pinned hosted toolchain exactly once.")
+if "runs-on: self-hosted" in test:
+    raise SystemExit("Ordinary Test CI must not depend on a repository runner.")
+
+if testflight.count("runs-on: macos-26") != 2:
+    raise SystemExit("TestFlight test and deploy jobs must use pinned macos-26 runners.")
+if testflight.count("setup_hosted_ci_runner.sh") != 2:
+    raise SystemExit("Both TestFlight jobs must install the pinned hosted toolchain.")
+if "workflow_dispatch:" not in testflight or "\n  push:" in testflight:
+    raise SystemExit("TestFlight must remain manual and must not run on push.")
+if "if: ${{ inputs.confirm_upload }}" not in testflight:
+    raise SystemExit("TestFlight deploy must require explicit upload confirmation.")
+if "runs-on: self-hosted" in testflight:
+    raise SystemExit("TestFlight must not depend on a repository runner.")
+PY
+
 if [[ "$MODE" == "--toolchain-only" ]]; then
-  echo "Apple toolchain inputs match the tracked release versions."
+  echo "Apple toolchain and hosted-runner inputs match the tracked release versions."
   exit 0
 fi
 

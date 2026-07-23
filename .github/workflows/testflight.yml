@@ -32,12 +32,15 @@ env:
 jobs:
   test:
     name: Build and Test
-    runs-on: self-hosted
-    timeout-minutes: 60
+    runs-on: macos-26
+    timeout-minutes: 120
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Set up pinned hosted toolchain
+        run: ./ci_scripts/setup_hosted_ci_runner.sh
 
       - name: Verify pinned Apple toolchain
         run: ./scripts/check_apple_release_inputs.sh --toolchain-only
@@ -74,7 +77,7 @@ jobs:
 
   deploy:
     name: Archive And Upload
-    runs-on: self-hosted
+    runs-on: macos-26
     needs: test
     if: ${{ inputs.confirm_upload }}
     timeout-minutes: 60
@@ -82,6 +85,9 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Set up pinned hosted toolchain
+        run: ./ci_scripts/setup_hosted_ci_runner.sh --apple-only
 
       - name: Show toolchain versions
         run: |
