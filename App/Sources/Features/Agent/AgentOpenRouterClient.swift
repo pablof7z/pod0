@@ -98,7 +98,6 @@ enum AgentOpenRouterClient {
         let body = requestBody(messages: messages, tools: tools, model: model)
         let bodyData = try JSONSerialization.data(withJSONObject: body)
         request.httpBody = bodyData
-        let requestPayloadJSON = String(data: bodyData, encoding: .utf8)
 
         let start = Date()
         let (bytes, response) = try await URLSession.shared.bytes(for: request)
@@ -161,16 +160,11 @@ enum AgentOpenRouterClient {
             toolCalls: baseResult.toolCalls,
             tokensUsed: tokensUsed
         )
-        let preview = (result.assistantMessage["content"] as? String)?.isEmpty == false
-            ? result.assistantMessage["content"] as? String
-            : "tool_calls: \(result.toolCalls.map(\.name).joined(separator: ", "))"
         CostLedger.shared.log(
             feature: feature,
             model: capturedModel,
             usage: capturedUsage,
-            latencyMs: latencyMs,
-            requestPayloadJSON: requestPayloadJSON,
-            responseContentPreview: preview
+            latencyMs: latencyMs
         )
 
         return result

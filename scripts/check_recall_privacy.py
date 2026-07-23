@@ -14,7 +14,8 @@ PROVIDER_FILES = (
     "App/Sources/Knowledge/RerankerClient.swift",
 )
 FORBIDDEN = (
-    "requestPayloadJSON = String(data: bodyData",
+    "requestPayloadJSON",
+    "responseContentPreview",
     "String(data: data, encoding:",
     "apiKey, privacy:",
     "text, privacy:",
@@ -28,22 +29,18 @@ def evaluate(sources: dict[str, str]) -> list[str]:
         for token in FORBIDDEN:
             if token in source:
                 errors.append(f"{path}: forbidden recall diagnostic token {token!r}")
-    for path in PROVIDER_FILES[:2]:
-        source = sources.get(path, "")
-        if "requestPayloadJSON: nil" not in source:
-            errors.append(f"{path}: embedding usage must explicitly omit request content")
     return errors
 
 
 def self_test() -> None:
     safe = {
-        path: "requestPayloadJSON: nil" if path != PROVIDER_FILES[2] else "status only"
+        path: "CostLedger.shared.log" if path != PROVIDER_FILES[2] else "status only"
         for path in PROVIDER_FILES
     }
     assert not evaluate(safe)
     unsafe = dict(safe)
-    unsafe[PROVIDER_FILES[0]] += "\nString(data: data, encoding: .utf8)"
-    assert any("String(data" in error for error in evaluate(unsafe))
+    unsafe[PROVIDER_FILES[0]] += "\nrequestPayloadJSON: privateContent"
+    assert any("requestPayloadJSON" in error for error in evaluate(unsafe))
 
 
 def main() -> int:

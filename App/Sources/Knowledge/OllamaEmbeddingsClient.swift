@@ -92,16 +92,13 @@ struct OllamaEmbeddingsClient: EmbeddingsClient {
 
         let promptTokens = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])
             .flatMap { $0["prompt_eval_count"] as? Int } ?? 0
-        let preview = "embed: \(batch.count) input(s)"
         Task { @MainActor in
             CostLedger.shared.logOllama(
                 feature: CostFeature.embeddingsOllama,
                 model: model,
                 promptTokens: promptTokens,
                 completionTokens: 0,
-                latencyMs: latencyMs,
-                requestPayloadJSON: nil,
-                responseContentPreview: preview
+                latencyMs: latencyMs
             )
         }
 

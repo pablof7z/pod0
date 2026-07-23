@@ -164,7 +164,6 @@ struct UtilityLLMClient: Sendable {
         ]
         let bodyData = try JSONSerialization.data(withJSONObject: body)
         request.httpBody = bodyData
-        let requestPayloadJSON = String(data: bodyData, encoding: .utf8)
 
         let start = Date()
         let (data, response) = try await urlSession.data(for: request)
@@ -196,9 +195,7 @@ struct UtilityLLMClient: Sendable {
                     feature: feature,
                     model: modelUsed,
                     usage: usage,
-                    latencyMs: latencyMs,
-                    requestPayloadJSON: requestPayloadJSON,
-                    responseContentPreview: content
+                    latencyMs: latencyMs
                 )
             }
         }
@@ -230,7 +227,6 @@ struct UtilityLLMClient: Sendable {
         ]
         let bodyData = try JSONSerialization.data(withJSONObject: body)
         request.httpBody = bodyData
-        let requestPayloadJSON = String(data: bodyData, encoding: .utf8)
 
         let start = Date()
         let (data, response) = try await urlSession.data(for: request)
@@ -261,9 +257,7 @@ struct UtilityLLMClient: Sendable {
                 model: modelUsed,
                 promptTokens: promptTokens,
                 completionTokens: completionTokens,
-                latencyMs: latencyMs,
-                requestPayloadJSON: requestPayloadJSON,
-                responseContentPreview: content
+                latencyMs: latencyMs
             )
         }
 

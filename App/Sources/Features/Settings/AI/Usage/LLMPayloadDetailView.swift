@@ -11,12 +11,6 @@ struct LLMPayloadDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 headerSection
-                if let payloadJSON = record.requestPayloadJSON {
-                    payloadSection(title: "Request", content: payloadJSON)
-                }
-                if let response = record.responseContentPreview {
-                    payloadSection(title: "Response", content: response)
-                }
                 metadataSection
                 Color.clear.frame(height: 24)
             }
@@ -30,21 +24,10 @@ struct LLMPayloadDetailView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button { copyAll() } label: {
-                        Label("Copy full JSON", systemImage: "doc.on.doc")
+                        Label("Copy metadata JSON", systemImage: "doc.on.doc")
                     }
-                    if let payload = record.requestPayloadJSON {
-                        Button { copy(formatJSON(payload), label: "Copied request") } label: {
-                            Label("Copy request only", systemImage: "arrow.up.doc")
-                        }
-                    }
-                    if let response = record.responseContentPreview {
-                        Button { copy(formatJSON(response), label: "Copied response") } label: {
-                            Label("Copy response only", systemImage: "arrow.down.doc")
-                        }
-                    }
-                    Divider()
                     Button { shareItem = ShareItem(text: exportText()) } label: {
-                        Label("Share…", systemImage: "square.and.arrow.up")
+                        Label("Share metadata…", systemImage: "square.and.arrow.up")
                     }
                 } label: {
                     Image(systemName: "square.and.arrow.up")
@@ -90,23 +73,6 @@ struct LLMPayloadDetailView: View {
         .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color(.secondarySystemBackground)))
     }
 
-    private func payloadSection(title: String, content: String) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            sectionLabel(title)
-            Text(formatJSON(content))
-                .font(.system(.caption2, design: .monospaced))
-                .foregroundStyle(.primary)
-                .textSelection(.enabled)
-                .lineLimit(.max)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
-                .background(Color(.tertiarySystemBackground))
-                .cornerRadius(8)
-        }
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color(.secondarySystemBackground)))
-    }
-
     private var metadataSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionLabel("Metadata")
@@ -143,15 +109,6 @@ struct LLMPayloadDetailView: View {
         }
     }
 
-    private func formatJSON(_ str: String) -> String {
-        guard let data = str.data(using: .utf8),
-              let obj = try? JSONSerialization.jsonObject(with: data),
-              let pretty = try? JSONSerialization.data(withJSONObject: obj, options: [.prettyPrinted, .sortedKeys]),
-              let formatted = String(data: pretty, encoding: .utf8)
-        else { return str }
-        return formatted
-    }
-
     // MARK: - Export
 
     private func copyAll() {
@@ -174,7 +131,7 @@ struct LLMPayloadDetailView: View {
     }
 
     private func exportText() -> String {
-        var dict: [String: Any] = [
+        let dict: [String: Any] = [
             "id": record.id.uuidString,
             "at": ISO8601DateFormatter().string(from: record.at),
             "feature": record.feature,
@@ -187,19 +144,12 @@ struct LLMPayloadDetailView: View {
             "costUSD": record.costUSD,
             "latencyMs": record.latencyMs,
         ]
-        if let req = record.requestPayloadJSON { dict["request"] = decodeJSONOrString(req) }
-        if let resp = record.responseContentPreview { dict["response"] = decodeJSONOrString(resp) }
         guard JSONSerialization.isValidJSONObject(dict),
               let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]),
               let str = String(data: data, encoding: .utf8) else { return String(describing: dict) }
         return str
     }
 
-    private func decodeJSONOrString(_ s: String) -> Any {
-        guard let data = s.data(using: .utf8),
-              let obj = try? JSONSerialization.jsonObject(with: data) else { return s }
-        return obj
-    }
 }
 
 // MARK: - Share helpers

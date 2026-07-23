@@ -137,15 +137,12 @@ struct OpenRouterEmbeddingsClient: EmbeddingsClient {
             // `JSONSerialization.data` + `JSONDecoder` round-trip per
             // batch. One typed parse is enough.
             let modelUsed = decoded.model ?? model
-            let preview = "embed: \(batch.count) input(s)"
             Task { @MainActor in
                 CostLedger.shared.log(
                     feature: CostFeature.embeddingsOpenRouter,
                     model: modelUsed,
                     usage: usage,
-                    latencyMs: latencyMs,
-                    requestPayloadJSON: nil,
-                    responseContentPreview: preview
+                    latencyMs: latencyMs
                 )
             }
         }

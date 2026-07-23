@@ -26,7 +26,6 @@ enum AgentOllamaClient {
         let body = requestBody(messages: messages, tools: tools, model: model)
         let bodyData = try JSONSerialization.data(withJSONObject: body)
         request.httpBody = bodyData
-        let requestPayloadJSON = String(data: bodyData, encoding: .utf8)
 
         let start = Date()
         let (bytes, response) = try await URLSession.shared.bytes(for: request)
@@ -77,17 +76,12 @@ enum AgentOllamaClient {
                 cachedTokens: nil
             )
         )
-        let preview = content.isEmpty
-            ? "tool_calls: \(agentResult.toolCalls.map(\.name).joined(separator: ", "))"
-            : String(content.prefix(500))
         CostLedger.shared.logOllama(
             feature: feature,
             model: capturedModel,
             promptTokens: promptTokens,
             completionTokens: completionTokens,
-            latencyMs: latencyMs,
-            requestPayloadJSON: requestPayloadJSON,
-            responseContentPreview: preview
+            latencyMs: latencyMs
         )
 
         return agentResult

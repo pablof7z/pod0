@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-23T13:04:00Z",
+      "lines": [
+        "Usage history now keeps cost and performance facts without saving your prompts or replies."
+      ]
+    },
+    {
       "shipped_at": "2026-07-23T12:52:37Z",
       "lines": [
         "The unfinished voice-agent shortcut is paused until it can use your real Pod0 Agent."

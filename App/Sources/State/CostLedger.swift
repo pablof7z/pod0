@@ -1,161 +1,63 @@
 import Combine
 import Foundation
+import os.log
 
-enum CostFeature {
-    static let agentChat = "agent.chat"
-    static let agentChatTitle = "agent.chat.title"
-    static let episodeSummary = "episode.summary"
-    static let embeddingsOpenRouter = "embeddings.openrouter"
-    static let embeddingsOllama = "embeddings.ollama"
-    static let categorizationRecompute = "categorization.recompute"
-    /// AssemblyAI pre-recorded transcription. Cost reported in the poll
-    /// response's `usage.cost` field.
-    static let sttAssemblyAI = "stt.assemblyai"
-    /// ElevenLabs Scribe transcription. No cost field in the response; we log
-    /// `costUSD = 0` and rely on the user's ElevenLabs dashboard for billing.
-    static let sttScribe = "stt.scribe"
-    /// OpenRouter Whisper transcription. Cost field would arrive via OpenRouter
-    /// usage but the current text-only Whisper response doesn't expose it.
-    /// Records `costUSD = 0` and the audio duration from the verbose response.
-    static let sttOpenRouterWhisper = "stt.openrouter.whisper"
-
-    static func displayName(for feature: String) -> String {
-        switch feature {
-        case agentChat:              return "Agent chat"
-        case agentChatTitle:         return "Agent chat title"
-        case episodeSummary:         return "Episode summary"
-        case embeddingsOpenRouter:   return "Embeddings (OpenRouter)"
-        case embeddingsOllama:       return "Embeddings (Ollama)"
-        case categorizationRecompute: return "Categorization"
-        case sttAssemblyAI:          return "STT (AssemblyAI)"
-        case sttScribe:              return "STT (Scribe)"
-        case sttOpenRouterWhisper:   return "STT (Whisper)"
-        default:                     return feature
-        }
-    }
-}
-
-struct UsageRecord: Codable, Hashable, Identifiable, Sendable {
-    var id: UUID
-    var at: Date
-    var feature: String
-    var model: String
-    var promptTokens: Int
-    var completionTokens: Int
-    var cachedTokens: Int
-    var reasoningTokens: Int
-    var costUSD: Double
-    var latencyMs: Int
-    var requestPayloadJSON: String?
-    var responseContentPreview: String?
-    /// Audio duration (seconds) for STT records. Nil for token-shaped records
-    /// (LLM calls, embeddings). Codable-back-compat via `decodeIfPresent`.
-    var audioDurationSeconds: Double?
-
-    private enum CodingKeys: String, CodingKey {
-        case id, at, feature, model
-        case promptTokens, completionTokens, cachedTokens, reasoningTokens
-        case costUSD, latencyMs
-        case requestPayloadJSON, responseContentPreview
-        case audioDurationSeconds
-    }
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.id = try c.decode(UUID.self, forKey: .id)
-        self.at = try c.decode(Date.self, forKey: .at)
-        self.feature = try c.decode(String.self, forKey: .feature)
-        self.model = try c.decode(String.self, forKey: .model)
-        self.promptTokens = try c.decode(Int.self, forKey: .promptTokens)
-        self.completionTokens = try c.decode(Int.self, forKey: .completionTokens)
-        self.cachedTokens = try c.decode(Int.self, forKey: .cachedTokens)
-        self.reasoningTokens = try c.decode(Int.self, forKey: .reasoningTokens)
-        self.costUSD = try c.decode(Double.self, forKey: .costUSD)
-        self.latencyMs = try c.decode(Int.self, forKey: .latencyMs)
-        self.requestPayloadJSON = try c.decodeIfPresent(String.self, forKey: .requestPayloadJSON)
-        self.responseContentPreview = try c.decodeIfPresent(String.self, forKey: .responseContentPreview)
-        self.audioDurationSeconds = try c.decodeIfPresent(Double.self, forKey: .audioDurationSeconds)
-    }
-
-    init(
-        id: UUID,
-        at: Date,
-        feature: String,
-        model: String,
-        promptTokens: Int,
-        completionTokens: Int,
-        cachedTokens: Int,
-        reasoningTokens: Int,
-        costUSD: Double,
-        latencyMs: Int,
-        requestPayloadJSON: String? = nil,
-        responseContentPreview: String? = nil,
-        audioDurationSeconds: Double? = nil
-    ) {
-        self.id = id
-        self.at = at
-        self.feature = feature
-        self.model = model
-        self.promptTokens = promptTokens
-        self.completionTokens = completionTokens
-        self.cachedTokens = cachedTokens
-        self.reasoningTokens = reasoningTokens
-        self.costUSD = costUSD
-        self.latencyMs = latencyMs
-        self.requestPayloadJSON = requestPayloadJSON
-        self.responseContentPreview = responseContentPreview
-        self.audioDurationSeconds = audioDurationSeconds
-    }
-}
-
-struct OpenRouterUsagePayload: Decodable, Sendable {
-    struct PromptDetails: Decodable, Sendable {
-        let cached_tokens: Int?
-        let cache_write_tokens: Int?
-        let audio_tokens: Int?
-    }
-
-    struct CompletionDetails: Decodable, Sendable {
-        let reasoning_tokens: Int?
-    }
-
-    let prompt_tokens: Int?
-    let completion_tokens: Int?
-    let total_tokens: Int?
-    let cost: Double?
-    let prompt_tokens_details: PromptDetails?
-    let completion_tokens_details: CompletionDetails?
+enum UsageLedgerPersistenceStatus: Equatable {
+    case ready
+    case unavailable
 }
 
 @MainActor
 final class CostLedger: ObservableObject {
     static let shared = CostLedger()
+    static let maximumRecordCount = 500
+    static let retentionDays = 90
 
     @Published private(set) var records: [UsageRecord]
+    @Published private(set) var persistenceStatus: UsageLedgerPersistenceStatus
 
     private let directoryURL: URL
     private let fileURL: URL
+    private let now: () -> Date
+    private static let logger = Logger.app("CostLedger")
 
-    private init() {
+    private convenience init() {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
-        directoryURL = base.appendingPathComponent("UsageLedger", isDirectory: true)
-        fileURL = directoryURL.appendingPathComponent("ledger.json")
-        try? FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
-        records = Self.load(from: fileURL)
+        self.init(fileURL: base
+            .appendingPathComponent("UsageLedger", isDirectory: true)
+            .appendingPathComponent("ledger.json"))
+    }
+
+    init(fileURL: URL, now: @escaping () -> Date = Date.init) {
+        self.fileURL = fileURL
+        directoryURL = fileURL.deletingLastPathComponent()
+        self.now = now
+        do {
+            try FileManager.default.createDirectory(
+                at: directoryURL,
+                withIntermediateDirectories: true
+            )
+            let loaded = try Self.load(from: fileURL)
+            records = Self.retained(loaded, now: now())
+            persistenceStatus = .ready
+            if records != loaded { save() }
+        } catch {
+            records = []
+            persistenceStatus = .unavailable
+            Self.logger.error("Usage ledger load failed; source preserved until explicit reset")
+        }
     }
 
     func log(
         feature: String,
         model: String,
         usage: OpenRouterUsagePayload?,
-        latencyMs: Int,
-        requestPayloadJSON: String? = nil,
-        responseContentPreview: String? = nil
+        latencyMs: Int
     ) {
-        let record = UsageRecord(
+        append(UsageRecord(
             id: UUID(),
-            at: Date(),
+            at: now(),
             feature: feature,
             model: model,
             promptTokens: usage?.prompt_tokens ?? 0,
@@ -163,12 +65,8 @@ final class CostLedger: ObservableObject {
             cachedTokens: usage?.prompt_tokens_details?.cached_tokens ?? 0,
             reasoningTokens: usage?.completion_tokens_details?.reasoning_tokens ?? 0,
             costUSD: usage?.cost ?? 0,
-            latencyMs: latencyMs,
-            requestPayloadJSON: requestPayloadJSON,
-            responseContentPreview: responseContentPreview
-        )
-        records.insert(record, at: 0)
-        save()
+            latencyMs: latencyMs
+        ))
     }
 
     func logOllama(
@@ -176,13 +74,11 @@ final class CostLedger: ObservableObject {
         model: String,
         promptTokens: Int,
         completionTokens: Int,
-        latencyMs: Int,
-        requestPayloadJSON: String? = nil,
-        responseContentPreview: String? = nil
+        latencyMs: Int
     ) {
-        let record = UsageRecord(
+        append(UsageRecord(
             id: UUID(),
-            at: Date(),
+            at: now(),
             feature: feature,
             model: model,
             promptTokens: promptTokens,
@@ -190,12 +86,8 @@ final class CostLedger: ObservableObject {
             cachedTokens: 0,
             reasoningTokens: 0,
             costUSD: 0,
-            latencyMs: latencyMs,
-            requestPayloadJSON: requestPayloadJSON,
-            responseContentPreview: responseContentPreview
-        )
-        records.insert(record, at: 0)
-        save()
+            latencyMs: latencyMs
+        ))
     }
 
     /// STT-shaped record: audio duration in seconds + optional cost. Use this
@@ -210,13 +102,11 @@ final class CostLedger: ObservableObject {
         audioDurationSeconds: Double?,
         latencyMs: Int,
         promptTokens: Int = 0,
-        completionTokens: Int = 0,
-        requestPayloadJSON: String? = nil,
-        responseContentPreview: String? = nil
+        completionTokens: Int = 0
     ) {
-        let record = UsageRecord(
+        append(UsageRecord(
             id: UUID(),
-            at: Date(),
+            at: now(),
             feature: feature,
             model: model,
             promptTokens: promptTokens,
@@ -225,22 +115,35 @@ final class CostLedger: ObservableObject {
             reasoningTokens: 0,
             costUSD: costUSD,
             latencyMs: latencyMs,
-            requestPayloadJSON: requestPayloadJSON,
-            responseContentPreview: responseContentPreview,
             audioDurationSeconds: audioDurationSeconds
-        )
-        records.insert(record, at: 0)
-        save()
+        ))
     }
 
     func clear() {
         records = []
+        persistenceStatus = .ready
+        save()
+    }
+
+    private func append(_ record: UsageRecord) {
+        guard persistenceStatus == .ready else { return }
+        records.insert(record, at: 0)
+        records = Self.retained(records, now: now())
         save()
     }
 
     private func save() {
-        guard let data = try? Self.encoder.encode(records) else { return }
-        try? data.write(to: fileURL, options: [.atomic])
+        do {
+            let data = try Self.encoder.encode(records)
+            try data.write(
+                to: fileURL,
+                options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]
+            )
+            persistenceStatus = .ready
+        } catch {
+            persistenceStatus = .unavailable
+            Self.logger.error("Usage ledger save failed")
+        }
     }
 
     /// Configured once. `save()` runs on every cost-log (every LLM
@@ -254,10 +157,20 @@ final class CostLedger: ObservableObject {
         return e
     }()
 
-    private static func load(from url: URL) -> [UsageRecord] {
-        guard let data = try? Data(contentsOf: url) else { return [] }
+    private static func load(from url: URL) throws -> [UsageRecord] {
+        guard FileManager.default.fileExists(atPath: url.path) else { return [] }
+        let data = try Data(contentsOf: url)
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        return (try? decoder.decode([UsageRecord].self, from: data)) ?? []
+        return try decoder.decode([UsageRecord].self, from: data)
+    }
+
+    private static func retained(_ records: [UsageRecord], now: Date) -> [UsageRecord] {
+        let cutoff = now.addingTimeInterval(-Double(retentionDays) * 86_400)
+        return records
+            .filter { $0.at >= cutoff }
+            .sorted { $0.at > $1.at }
+            .prefix(maximumRecordCount)
+            .map(\.withoutContent)
     }
 }

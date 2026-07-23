@@ -8,7 +8,9 @@ struct UsageCostSettingsView: View {
 
     var body: some View {
         Group {
-            if ledger.records.isEmpty {
+            if ledger.persistenceStatus == .unavailable {
+                unavailable
+            } else if ledger.records.isEmpty {
                 empty
             } else {
                 scroll
@@ -51,6 +53,18 @@ struct UsageCostSettingsView: View {
             Label("No usage yet", systemImage: "dollarsign.circle")
         } description: {
             Text("Cost and token counts will appear here after the next AI call.")
+        }
+    }
+
+    private var unavailable: some View {
+        ContentUnavailableView {
+            Label("Usage history unavailable", systemImage: "exclamationmark.lock")
+        } description: {
+            Text("Pod0 preserved the existing file because it could not be read or updated.")
+        } actions: {
+            Button("Reset usage history", role: .destructive) {
+                confirmClear = true
+            }
         }
     }
 
