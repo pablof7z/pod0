@@ -4,7 +4,7 @@ use pod0_application::{
     bounded_agent_summary_text,
 };
 use pod0_domain::{AgentTurnId, ConversationId, UnixTimestampMilliseconds};
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, OptionalExtension, params};
 
 use crate::agent_store::read_turn;
 use crate::{AgentConversationPage, AgentStore, StorageError};
@@ -64,11 +64,24 @@ fn summary(
     let conversation_id = decode_conversation_id(conversation)?;
     let first = boundary_turn(connection, conversation_id, true)?;
     let latest = boundary_turn(connection, conversation_id, false)?;
-    let title = first
-        .messages
-        .iter()
-        .find(|message| message.role == AgentMessageRole::User)
-        .map_or("", |message| message.content.trim());
+    let stored_title: Option<String> = connection
+        .query_row(
+            "SELECT title FROM pod0_agent_conversation_metadata WHERE conversation_id=?1",
+            [conversation_id.into_bytes().as_slice()],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|error| StorageError::sqlite("read agent conversation metadata", error))?;
+    let title = stored_title
+        .as_deref()
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| {
+            first
+                .messages
+                .iter()
+                .find(|message| message.role == AgentMessageRole::User)
+                .map_or("", |message| message.content.trim())
+        });
     let preview = latest
         .messages
         .iter()

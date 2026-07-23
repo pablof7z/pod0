@@ -8,6 +8,7 @@ mod agent_action_hash;
 mod agent_contract;
 mod agent_generated_audio;
 mod agent_history_contract;
+mod agent_history_import;
 #[cfg(test)]
 mod agent_model_usage_tests;
 mod agent_policy;
@@ -137,6 +138,7 @@ pub use agent_action_hash::*;
 pub use agent_contract::*;
 pub use agent_generated_audio::*;
 pub use agent_history_contract::*;
+pub use agent_history_import::*;
 pub use agent_policy::*;
 pub use agent_provider_output::*;
 pub use agent_run_contract::*;

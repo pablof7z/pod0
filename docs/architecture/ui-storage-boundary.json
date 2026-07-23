@@ -20,13 +20,5 @@
     {"id": "sqlite-call", "regex": "\\bsqlite3_[A-Za-z0-9_]+\\s*\\("},
     {"id": "direct-state-field-assignment", "regex": "\\b(store|appStateStore)\\.state\\.[A-Za-z_][A-Za-z0-9_]*\\s*="}
   ],
-  "exceptions": [
-    {
-      "file": "App/Sources/Features/Agent/AgentChatHistoryView.swift",
-      "rules": ["chat-history-store-access"],
-      "issues": [60],
-      "reason": "Current native history view receives the temporary Swift repository directly.",
-      "deletion_target": "Consume a bounded shared conversation-history projection."
-    }
-  ]
+  "exceptions": []
 }

@@ -1,4 +1,5 @@
 import CoreSpotlight
+import Pod0Core
 import SwiftUI
 
 /// The root view of the app. Hosts the main tab bar (hidden), onboarding gate,
@@ -14,7 +15,7 @@ struct RootView: View {
     @State var showSidebar = false
     @State var showSearch = false
     @State var agentSession: SharedAgentConversationSession?
-    @State var legacyAgentConversationID: UUID?
+    @State var requestedAgentConversationID: ConversationId?
     @State var agentUnseenMessageCount: Int = 0
     @State var showVoiceMode = false
     @State var spotlightSheet: SpotlightIndexer.DeepLink?
@@ -65,7 +66,7 @@ struct RootView: View {
                         NavigationStack {
                             SharedAgentChatView(
                                 session: session,
-                                requestedLegacyConversationID: legacyAgentConversationID
+                                requestedConversationID: requestedAgentConversationID
                             )
                                 .toolbar {
                                     ToolbarItem(placement: .topBarLeading) {
@@ -126,7 +127,7 @@ struct RootView: View {
                 .onReceive(NotificationCenter.default.publisher(for: .openAgentChatConversation)) { note in
                     guard let convID = note.userInfo?["conversationID"] as? UUID else { return }
                     showFullPlayer = false
-                    openAgentChat(legacyConversationID: convID)
+                    openAgentChat(conversationID: ConversationId(uuid: convID))
                 }
                 .modifier(PlayerNavSheets(
                     subscriptionID: $playerNavSubscriptionID,

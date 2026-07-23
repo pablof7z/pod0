@@ -1,9 +1,13 @@
 #![forbid(unsafe_code)]
-use pod0_application::{Clock, KernelApplication};
 mod facade_exports;
 pub use facade_exports::*;
 uniffi::setup_scaffolding!();
 
+mod agent_history_cutover;
+mod agent_history_cutover_mapping;
+#[cfg(test)]
+mod agent_history_cutover_tests;
+mod agent_history_cutover_types;
 mod chapter_migration;
 mod chapter_migration_mapping;
 #[cfg(test)]
@@ -15,6 +19,7 @@ mod download_cutover;
 mod download_cutover_types;
 #[cfg(test)]
 mod facade_contract_tests;
+mod kernel_probe_facade;
 mod listening_migration;
 mod listening_migration_error;
 mod model_chapter_cutover;
@@ -196,6 +201,7 @@ mod transcript_workflow_cutover_tests;
 mod transcript_workflow_cutover_types;
 #[cfg(test)]
 include!("runtime_split_test_modules.rs");
+pub use agent_history_cutover_types::*;
 pub use chapter_migration::{
     LegacyChapterBackupEvidence, LegacyChapterImportPlan, LegacyChapterImportReport,
     LegacyChapterImportState, LegacyChapterImportVerification, LegacyChapterMigrationFailure,
@@ -220,6 +226,7 @@ pub use download_cutover_types::{
     LegacyDownloadCutoverCandidate, LegacyDownloadCutoverDisposition, LegacyDownloadCutoverFailure,
     LegacyDownloadCutoverFailureCode, LegacyDownloadCutoverProjection, LegacyDownloadCutoverStage,
 };
+pub use kernel_probe_facade::KernelProbeFacade;
 pub use listening_migration::{
     LegacyListeningBackupEvidence, LegacyListeningImportPlan, LegacyListeningImportReport,
     LegacyListeningImportVerification, LegacyListeningMigrationError, LegacyListeningSourceKind,
@@ -277,23 +284,4 @@ pub trait Pod0ApplicationApi: Send + Sync {
         &self,
         observation: HostObservationEnvelope,
     ) -> HostObservationReceipt;
-}
-
-/// An internal deterministic probe retained for injected-time characterization.
-pub struct KernelProbeFacade<C> {
-    application: KernelApplication<C>,
-}
-
-impl<C: Clock> KernelProbeFacade<C> {
-    #[must_use]
-    pub const fn new(clock: C) -> Self {
-        Self {
-            application: KernelApplication::new(clock),
-        }
-    }
-
-    #[must_use]
-    pub fn dispatch_probe(&self, command: KernelProbeCommand) -> KernelProbeProjection {
-        self.application.dispatch_probe(command)
-    }
 }

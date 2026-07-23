@@ -4334,6 +4334,188 @@ public func FfiConverterTypeHostRequestEnvelope_lower(_ value: HostRequestEnvelo
 }
 
 
+public struct LegacyAgentHistoryConversationInput: Equatable, Hashable {
+    public let conversationId: ConversationId
+    public let title: String
+    public let createdAt: UnixTimestampMilliseconds
+    public let updatedAt: UnixTimestampMilliseconds
+    public let turns: [LegacyAgentHistoryTurnInput]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(conversationId: ConversationId, title: String, createdAt: UnixTimestampMilliseconds, updatedAt: UnixTimestampMilliseconds, turns: [LegacyAgentHistoryTurnInput]) {
+        self.conversationId = conversationId
+        self.title = title
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.turns = turns
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyAgentHistoryConversationInput: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyAgentHistoryConversationInput: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyAgentHistoryConversationInput {
+        return
+            try LegacyAgentHistoryConversationInput(
+                conversationId: FfiConverterTypeConversationId.read(from: &buf),
+                title: FfiConverterString.read(from: &buf),
+                createdAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                updatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                turns: FfiConverterSequenceTypeLegacyAgentHistoryTurnInput.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyAgentHistoryConversationInput, into buf: inout [UInt8]) {
+        FfiConverterTypeConversationId.write(value.conversationId, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.createdAt, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.updatedAt, into: &buf)
+        FfiConverterSequenceTypeLegacyAgentHistoryTurnInput.write(value.turns, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyAgentHistoryConversationInput_lift(_ buf: RustBuffer) throws -> LegacyAgentHistoryConversationInput {
+    return try FfiConverterTypeLegacyAgentHistoryConversationInput.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyAgentHistoryConversationInput_lower(_ value: LegacyAgentHistoryConversationInput) -> RustBuffer {
+    return FfiConverterTypeLegacyAgentHistoryConversationInput.lower(value)
+}
+
+
+public struct LegacyAgentHistoryMessageInput: Equatable, Hashable {
+    public let role: AgentMessageRole
+    public let content: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(role: AgentMessageRole, content: String) {
+        self.role = role
+        self.content = content
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyAgentHistoryMessageInput: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyAgentHistoryMessageInput: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyAgentHistoryMessageInput {
+        return
+            try LegacyAgentHistoryMessageInput(
+                role: FfiConverterTypeAgentMessageRole.read(from: &buf),
+                content: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyAgentHistoryMessageInput, into buf: inout [UInt8]) {
+        FfiConverterTypeAgentMessageRole.write(value.role, into: &buf)
+        FfiConverterString.write(value.content, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyAgentHistoryMessageInput_lift(_ buf: RustBuffer) throws -> LegacyAgentHistoryMessageInput {
+    return try FfiConverterTypeLegacyAgentHistoryMessageInput.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyAgentHistoryMessageInput_lower(_ value: LegacyAgentHistoryMessageInput) -> RustBuffer {
+    return FfiConverterTypeLegacyAgentHistoryMessageInput.lower(value)
+}
+
+
+public struct LegacyAgentHistoryTurnInput: Equatable, Hashable {
+    public let turnId: AgentTurnId
+    public let createdAt: UnixTimestampMilliseconds
+    public let updatedAt: UnixTimestampMilliseconds
+    public let messages: [LegacyAgentHistoryMessageInput]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(turnId: AgentTurnId, createdAt: UnixTimestampMilliseconds, updatedAt: UnixTimestampMilliseconds, messages: [LegacyAgentHistoryMessageInput]) {
+        self.turnId = turnId
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.messages = messages
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyAgentHistoryTurnInput: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyAgentHistoryTurnInput: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyAgentHistoryTurnInput {
+        return
+            try LegacyAgentHistoryTurnInput(
+                turnId: FfiConverterTypeAgentTurnId.read(from: &buf),
+                createdAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                updatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                messages: FfiConverterSequenceTypeLegacyAgentHistoryMessageInput.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyAgentHistoryTurnInput, into buf: inout [UInt8]) {
+        FfiConverterTypeAgentTurnId.write(value.turnId, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.createdAt, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.updatedAt, into: &buf)
+        FfiConverterSequenceTypeLegacyAgentHistoryMessageInput.write(value.messages, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyAgentHistoryTurnInput_lift(_ buf: RustBuffer) throws -> LegacyAgentHistoryTurnInput {
+    return try FfiConverterTypeLegacyAgentHistoryTurnInput.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyAgentHistoryTurnInput_lower(_ value: LegacyAgentHistoryTurnInput) -> RustBuffer {
+    return FfiConverterTypeLegacyAgentHistoryTurnInput.lower(value)
+}
+
+
 public struct LibraryProjection: Equatable, Hashable {
     public let podcasts: [PodcastRecord]
     public let subscriptions: [PodcastSubscriptionRecord]
@@ -9066,6 +9248,7 @@ public enum AgentMessageRole: Equatable, Hashable {
     case user
     case assistant
     case tool
+    case error
 
 
 
@@ -9093,6 +9276,8 @@ public struct FfiConverterTypeAgentMessageRole: FfiConverterRustBuffer {
 
         case 3: return .tool
 
+        case 4: return .error
+
         default: throw UniffiInternalError.unexpectedEnumCase
         }
     }
@@ -9111,6 +9296,10 @@ public struct FfiConverterTypeAgentMessageRole: FfiConverterRustBuffer {
 
         case .tool:
             writeInt(&buf, Int32(3))
+
+
+        case .error:
+            writeInt(&buf, Int32(4))
 
         }
     }
@@ -21186,6 +21375,56 @@ fileprivate struct FfiConverterSequenceTypeEvidenceIndexSpanProjection: FfiConve
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeEvidenceIndexSpanProjection.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeLegacyAgentHistoryMessageInput: FfiConverterRustBuffer {
+    typealias SwiftType = [LegacyAgentHistoryMessageInput]
+
+    public static func write(_ value: [LegacyAgentHistoryMessageInput], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeLegacyAgentHistoryMessageInput.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [LegacyAgentHistoryMessageInput] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [LegacyAgentHistoryMessageInput]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeLegacyAgentHistoryMessageInput.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeLegacyAgentHistoryTurnInput: FfiConverterRustBuffer {
+    typealias SwiftType = [LegacyAgentHistoryTurnInput]
+
+    public static func write(_ value: [LegacyAgentHistoryTurnInput], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeLegacyAgentHistoryTurnInput.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [LegacyAgentHistoryTurnInput] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [LegacyAgentHistoryTurnInput]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeLegacyAgentHistoryTurnInput.read(from: &buf))
         }
         return seq
     }

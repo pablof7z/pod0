@@ -190,9 +190,7 @@ final class LegacyModelChapterWorkflowCutoverTests: XCTestCase {
             )
             XCTAssertEqual(staged.stage, .staged)
             XCTAssertEqual(staged.adoptedAmbiguous, 1)
-            XCTAssertTrue(try XCTUnwrap(interruptedFacade).nextHostRequests(
-                maximumCount: 64
-            ).isEmpty)
+            assertNoChapterModelRequests(try XCTUnwrap(interruptedFacade))
             interruptedFacade = nil
             return PreparedCutover(fixture: fixture, jobs: jobs, snapshot: snapshot)
         } catch {
@@ -232,7 +230,22 @@ final class LegacyModelChapterWorkflowCutoverTests: XCTestCase {
             return XCTFail("Expected chapter workflow projection", file: file, line: line)
         }
         XCTAssertEqual(projection.model.first?.stage, .ambiguous, file: file, line: line)
-        XCTAssertTrue(client.facade.nextHostRequests(maximumCount: 64).isEmpty, file: file, line: line)
+        assertNoChapterModelRequests(client.facade, file: file, line: line)
+    }
+
+    private func assertNoChapterModelRequests(
+        _ facade: Pod0Facade,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let pendingRequests = facade.nextHostRequests(maximumCount: 64)
+        let modelRequests = pendingRequests.filter { envelope in
+            switch envelope.request {
+            case .executeChapterModel, .recoverChapterModelOperation: true
+            default: false
+            }
+        }
+        XCTAssertTrue(modelRequests.isEmpty, "\(modelRequests)", file: file, line: line)
     }
 
     private func resetModelAuthority(at fileURL: URL) throws {
@@ -281,7 +294,6 @@ final class LegacyModelChapterWorkflowCutoverTests: XCTestCase {
     }
 
     private enum TestFailure: Error {
-        case bootstrapFailed(String)
-        case modelPlanUnavailable
+        case bootstrapFailed(String), modelPlanUnavailable
     }
 }

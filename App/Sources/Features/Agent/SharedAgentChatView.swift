@@ -5,27 +5,24 @@ import SwiftUI
 /// Native SwiftUI shell over the Rust-owned durable conversation workflow.
 struct SharedAgentChatView: View {
     let session: SharedAgentConversationSession
-    let requestedLegacyConversationID: UUID?
+    let requestedConversationID: ConversationId?
     @Environment(AppStateStore.self) private var store
     @Environment(PlaybackState.self) private var playback
     @State private var draft = ""
     @State private var showHistory = false
-    @State private var legacyConversation: ChatConversation?
     @FocusState private var inputFocused: Bool
 
     var body: some View {
         ZStack {
             AppTheme.Gradients.agentChatBackground.ignoresSafeArea()
             VStack(spacing: 0) {
-                if legacyConversation != nil { legacyBanner }
                 if visibleMessages.isEmpty {
                     welcome
                 } else {
                     SharedAgentChatTranscript(
                         messages: visibleMessages,
-                        streamingContent: legacyConversation == nil
-                            ? session.streamingContent : nil,
-                        isRunning: legacyConversation == nil && session.phase == .running,
+                        streamingContent: session.streamingContent,
+                        isRunning: session.phase == .running,
                         onOpenRecallEvidence: openRecallEvidence
                     )
                 }
@@ -37,22 +34,20 @@ struct SharedAgentChatView: View {
         .toolbar { toolbar }
         .sheet(isPresented: $showHistory) {
             AgentChatHistoryView(
-                sharedConversations: session.conversationSummaries,
-                sharedHasMore: session.conversationHistoryHasMore,
-                currentSharedID: legacyConversation == nil ? session.conversationID : nil,
-                currentLegacyID: legacyConversation?.id,
-                onSelectShared: openSharedConversation,
-                onSelectLegacy: { legacyConversation = $0 },
+                conversations: session.conversationSummaries,
+                hasMore: session.conversationHistoryHasMore,
+                currentID: session.conversationID,
+                onSelect: openConversation,
                 onNew: startNewConversation
             )
         }
         .onAppear {
-            selectRequestedLegacyConversation()
+            selectRequestedConversation()
             drainPendingContext()
             inputFocused = hasCredential
         }
-        .onChange(of: requestedLegacyConversationID) { _, _ in
-            selectRequestedLegacyConversation()
+        .onChange(of: requestedConversationID) { _, _ in
+            selectRequestedConversation()
         }
         .onChange(of: session.phase) { _, phase in
             switch phase {
@@ -64,7 +59,6 @@ struct SharedAgentChatView: View {
     }
 
     private var visibleMessages: [ChatMessage] {
-        if let legacyConversation { return legacyConversation.messages }
         return SharedAgentChatMessageMapper.messages(from: session.turns) { episodeID in
             guard let episode = store.episode(id: episodeID) else { return nil }
             return RecallEvidenceMetadata(
@@ -108,20 +102,6 @@ struct SharedAgentChatView: View {
         }
     }
 
-    private var legacyBanner: some View {
-        HStack(spacing: AppTheme.Spacing.sm) {
-            Image(systemName: "archivebox")
-            Text("Archived Swift conversation — read only")
-                .font(AppTheme.Typography.caption)
-            Spacer()
-            Button("New chat", action: startNewConversation)
-                .font(AppTheme.Typography.caption)
-        }
-        .foregroundStyle(.secondary)
-        .padding(AppTheme.Spacing.md)
-        .background(.thinMaterial)
-    }
-
     private var welcome: some View {
         VStack(spacing: AppTheme.Spacing.md) {
             Spacer()
@@ -162,7 +142,7 @@ struct SharedAgentChatView: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .glassEffect(.regular, in: .rect(cornerRadius: 22))
-                    .disabled(!hasCredential || legacyConversation != nil)
+                    .disabled(!hasCredential)
                 Button {
                     if session.phase == .running {
                         Task { await session.cancelActiveTurn() }
@@ -187,7 +167,7 @@ struct SharedAgentChatView: View {
     }
 
     private var canSend: Bool {
-        hasCredential && legacyConversation == nil && session.canSend && !draft.isBlank
+        hasCredential && session.canSend && !draft.isBlank
     }
 
     private var hasCredential: Bool {
@@ -207,22 +187,18 @@ struct SharedAgentChatView: View {
     }
 
     private func startNewConversation() {
-        legacyConversation = nil
         session.startNewConversation()
         draft = ""
         inputFocused = true
     }
 
-    private func openSharedConversation(_ conversationID: ConversationId) {
-        legacyConversation = nil
+    private func openConversation(_ conversationID: ConversationId) {
         session.openConversation(conversationID)
     }
 
-    private func selectRequestedLegacyConversation() {
-        guard let requestedLegacyConversationID else { return }
-        legacyConversation = AgentChatHistoryView.archivedConversation(
-            id: requestedLegacyConversationID
-        )
+    private func selectRequestedConversation() {
+        guard let requestedConversationID else { return }
+        session.openConversation(requestedConversationID)
     }
 
     private func drainPendingContext() {

@@ -59,6 +59,7 @@ import uniffi.pod0_application.FfiConverterTypeHostCancellationRequest
 import uniffi.pod0_application.FfiConverterTypeHostObservationEnvelope
 import uniffi.pod0_application.FfiConverterTypeHostObservationReceipt
 import uniffi.pod0_application.FfiConverterTypeHostRequestEnvelope
+import uniffi.pod0_application.FfiConverterTypeLegacyAgentHistoryConversationInput
 import uniffi.pod0_application.FfiConverterTypeModelChapterObservation
 import uniffi.pod0_application.FfiConverterTypeProjectionEnvelope
 import uniffi.pod0_application.FfiConverterTypeProjectionRequest
@@ -80,6 +81,7 @@ import uniffi.pod0_application.HostCancellationRequest
 import uniffi.pod0_application.HostObservationEnvelope
 import uniffi.pod0_application.HostObservationReceipt
 import uniffi.pod0_application.HostRequestEnvelope
+import uniffi.pod0_application.LegacyAgentHistoryConversationInput
 import uniffi.pod0_application.ModelChapterObservation
 import uniffi.pod0_application.ProjectionEnvelope
 import uniffi.pod0_application.ProjectionRequest
@@ -137,6 +139,7 @@ import uniffi.pod0_application.RustBuffer as RustBufferHostCancellationRequest
 import uniffi.pod0_application.RustBuffer as RustBufferHostObservationEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferHostObservationReceipt
 import uniffi.pod0_application.RustBuffer as RustBufferHostRequestEnvelope
+import uniffi.pod0_application.RustBuffer as RustBufferLegacyAgentHistoryConversationInput
 import uniffi.pod0_application.RustBuffer as RustBufferModelChapterObservation
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionRequest
@@ -918,6 +921,18 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_method_projectionsubscriber_receive(
     ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_agent_history_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_agent_history_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_agent_history_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_inspect_legacy_agent_history_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_agent_history_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_agent_history_cutover(
+    ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_download_cutover(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_download_cutover(
@@ -1013,6 +1028,18 @@ internal object UniffiLib {
     ): Long
     external fun uniffi_pod0_facade_fn_constructor_pod0facade_open(`storePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): Long
+    external fun uniffi_pod0_facade_fn_method_pod0facade_agent_history_cutover(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_agent_history_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_agent_history_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_inspect_legacy_agent_history_cutover(`ptr`: Long,`backupDigest`: RustBufferContentDigest.ByValue,`backupByteCount`: Long,`conversations`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_agent_history_cutover(`ptr`: Long,`backupDigest`: RustBufferContentDigest.ByValue,`backupByteCount`: Long,`conversations`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_verify_legacy_agent_history_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_download_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_download_cutover(`ptr`: Long,`sourceGeneration`: Long,`candidates`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1402,6 +1429,24 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_projectionsubscriber_receive() != 23861) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_agent_history_cutover() != 19319) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_agent_history_cutover() != 37961) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_agent_history_cutover() != 21650) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_inspect_legacy_agent_history_cutover() != 65000) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_agent_history_cutover() != 25481) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_agent_history_cutover() != 46685) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_download_cutover() != 39705) {
@@ -1972,6 +2017,18 @@ public object FfiConverterByteArray: FfiConverterRustBuffer<ByteArray> {
 
 public interface Pod0FacadeInterface {
 
+    fun `agentHistoryCutover`(): LegacyAgentHistoryCutoverProjection
+
+    fun `commitLegacyAgentHistoryCutover`(`sourceGeneration`: kotlin.ULong): LegacyAgentHistoryCutoverProjection
+
+    fun `discardStagedLegacyAgentHistoryCutover`(`sourceGeneration`: kotlin.ULong): LegacyAgentHistoryCutoverProjection
+
+    fun `inspectLegacyAgentHistoryCutover`(`backupDigest`: ContentDigest, `backupByteCount`: kotlin.ULong, `conversations`: List<LegacyAgentHistoryConversationInput>): LegacyAgentHistoryCutoverProjection
+
+    fun `stageLegacyAgentHistoryCutover`(`backupDigest`: ContentDigest, `backupByteCount`: kotlin.ULong, `conversations`: List<LegacyAgentHistoryConversationInput>): LegacyAgentHistoryCutoverProjection
+
+    fun `verifyLegacyAgentHistoryCutover`(`sourceGeneration`: kotlin.ULong): LegacyAgentHistoryCutoverProjection
+
     fun `commitLegacyDownloadCutover`(`sourceGeneration`: kotlin.ULong): LegacyDownloadCutoverProjection
 
     fun `discardStagedLegacyDownloadCutover`(`sourceGeneration`: kotlin.ULong, `candidates`: List<LegacyDownloadCutoverCandidate>): LegacyDownloadCutoverProjection
@@ -2141,6 +2198,93 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
             UniffiLib.uniffi_pod0_facade_fn_clone_pod0facade(handle, status)
         }
     }
+
+    override fun `agentHistoryCutover`(): LegacyAgentHistoryCutoverProjection {
+            return FfiConverterTypeLegacyAgentHistoryCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_agent_history_cutover(
+        it,
+        _status)
+}
+    }
+    )
+    }
+
+
+    override fun `commitLegacyAgentHistoryCutover`(`sourceGeneration`: kotlin.ULong): LegacyAgentHistoryCutoverProjection {
+            return FfiConverterTypeLegacyAgentHistoryCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_agent_history_cutover(
+        it,
+
+        FfiConverterULong.lower(`sourceGeneration`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `discardStagedLegacyAgentHistoryCutover`(`sourceGeneration`: kotlin.ULong): LegacyAgentHistoryCutoverProjection {
+            return FfiConverterTypeLegacyAgentHistoryCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_agent_history_cutover(
+        it,
+
+        FfiConverterULong.lower(`sourceGeneration`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `inspectLegacyAgentHistoryCutover`(`backupDigest`: ContentDigest, `backupByteCount`: kotlin.ULong, `conversations`: List<LegacyAgentHistoryConversationInput>): LegacyAgentHistoryCutoverProjection {
+            return FfiConverterTypeLegacyAgentHistoryCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_inspect_legacy_agent_history_cutover(
+        it,
+
+        FfiConverterTypeContentDigest.lower(`backupDigest`),
+        FfiConverterULong.lower(`backupByteCount`),
+        FfiConverterSequenceTypeLegacyAgentHistoryConversationInput.lower(`conversations`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `stageLegacyAgentHistoryCutover`(`backupDigest`: ContentDigest, `backupByteCount`: kotlin.ULong, `conversations`: List<LegacyAgentHistoryConversationInput>): LegacyAgentHistoryCutoverProjection {
+            return FfiConverterTypeLegacyAgentHistoryCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_agent_history_cutover(
+        it,
+
+        FfiConverterTypeContentDigest.lower(`backupDigest`),
+        FfiConverterULong.lower(`backupByteCount`),
+        FfiConverterSequenceTypeLegacyAgentHistoryConversationInput.lower(`conversations`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `verifyLegacyAgentHistoryCutover`(`sourceGeneration`: kotlin.ULong): LegacyAgentHistoryCutoverProjection {
+            return FfiConverterTypeLegacyAgentHistoryCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_verify_legacy_agent_history_cutover(
+        it,
+
+        FfiConverterULong.lower(`sourceGeneration`),_status)
+}
+    }
+    )
+    }
+
 
     override fun `commitLegacyDownloadCutover`(`sourceGeneration`: kotlin.ULong): LegacyDownloadCutoverProjection {
             return FfiConverterTypeLegacyDownloadCutoverProjection.lift(
@@ -2898,6 +3042,117 @@ public object FfiConverterTypeProjectionSubscriber: FfiConverter<ProjectionSubsc
 
     override fun write(value: ProjectionSubscriber, buf: ByteBuffer) {
         buf.putLong(lower(value))
+    }
+}
+
+
+
+data class LegacyAgentHistoryCutoverFailure (
+    val `code`: LegacyAgentHistoryCutoverFailureCode
+    ,
+    val `diagnosticCode`: kotlin.String
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyAgentHistoryCutoverFailure: FfiConverterRustBuffer<LegacyAgentHistoryCutoverFailure> {
+    override fun read(buf: ByteBuffer): LegacyAgentHistoryCutoverFailure {
+        return LegacyAgentHistoryCutoverFailure(
+            FfiConverterTypeLegacyAgentHistoryCutoverFailureCode.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyAgentHistoryCutoverFailure) = (
+            FfiConverterTypeLegacyAgentHistoryCutoverFailureCode.allocationSize(value.`code`) +
+            FfiConverterString.allocationSize(value.`diagnosticCode`)
+    )
+
+    override fun write(value: LegacyAgentHistoryCutoverFailure, buf: ByteBuffer) {
+            FfiConverterTypeLegacyAgentHistoryCutoverFailureCode.write(value.`code`, buf)
+            FfiConverterString.write(value.`diagnosticCode`, buf)
+    }
+}
+
+
+
+data class LegacyAgentHistoryCutoverProjection (
+    val `stage`: LegacyAgentHistoryCutoverStage
+    ,
+    val `sourceGeneration`: kotlin.ULong?
+    ,
+    val `sourceFingerprint`: ContentDigest?
+    ,
+    val `backupDigest`: ContentDigest?
+    ,
+    val `backupByteCount`: kotlin.ULong?
+    ,
+    val `conversationCount`: kotlin.UInt
+    ,
+    val `turnCount`: kotlin.UInt
+    ,
+    val `messageCount`: kotlin.UInt
+    ,
+    val `failure`: LegacyAgentHistoryCutoverFailure?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyAgentHistoryCutoverProjection: FfiConverterRustBuffer<LegacyAgentHistoryCutoverProjection> {
+    override fun read(buf: ByteBuffer): LegacyAgentHistoryCutoverProjection {
+        return LegacyAgentHistoryCutoverProjection(
+            FfiConverterTypeLegacyAgentHistoryCutoverStage.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterOptionalTypeContentDigest.read(buf),
+            FfiConverterOptionalTypeContentDigest.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterOptionalTypeLegacyAgentHistoryCutoverFailure.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyAgentHistoryCutoverProjection) = (
+            FfiConverterTypeLegacyAgentHistoryCutoverStage.allocationSize(value.`stage`) +
+            FfiConverterOptionalULong.allocationSize(value.`sourceGeneration`) +
+            FfiConverterOptionalTypeContentDigest.allocationSize(value.`sourceFingerprint`) +
+            FfiConverterOptionalTypeContentDigest.allocationSize(value.`backupDigest`) +
+            FfiConverterOptionalULong.allocationSize(value.`backupByteCount`) +
+            FfiConverterUInt.allocationSize(value.`conversationCount`) +
+            FfiConverterUInt.allocationSize(value.`turnCount`) +
+            FfiConverterUInt.allocationSize(value.`messageCount`) +
+            FfiConverterOptionalTypeLegacyAgentHistoryCutoverFailure.allocationSize(value.`failure`)
+    )
+
+    override fun write(value: LegacyAgentHistoryCutoverProjection, buf: ByteBuffer) {
+            FfiConverterTypeLegacyAgentHistoryCutoverStage.write(value.`stage`, buf)
+            FfiConverterOptionalULong.write(value.`sourceGeneration`, buf)
+            FfiConverterOptionalTypeContentDigest.write(value.`sourceFingerprint`, buf)
+            FfiConverterOptionalTypeContentDigest.write(value.`backupDigest`, buf)
+            FfiConverterOptionalULong.write(value.`backupByteCount`, buf)
+            FfiConverterUInt.write(value.`conversationCount`, buf)
+            FfiConverterUInt.write(value.`turnCount`, buf)
+            FfiConverterUInt.write(value.`messageCount`, buf)
+            FfiConverterOptionalTypeLegacyAgentHistoryCutoverFailure.write(value.`failure`, buf)
     }
 }
 
@@ -5053,6 +5308,82 @@ public object FfiConverterTypeFacadeOpenError : FfiConverterRustBuffer<FacadeOpe
     }
 
 }
+
+
+
+
+enum class LegacyAgentHistoryCutoverFailureCode {
+
+    INVALID_SOURCE,
+    CONFLICTING_CORE_STATE,
+    STORAGE_UNAVAILABLE;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyAgentHistoryCutoverFailureCode: FfiConverterRustBuffer<LegacyAgentHistoryCutoverFailureCode> {
+    override fun read(buf: ByteBuffer) = try {
+
+        LegacyAgentHistoryCutoverFailureCode.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: LegacyAgentHistoryCutoverFailureCode) = 4UL
+
+    override fun write(value: LegacyAgentHistoryCutoverFailureCode, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+enum class LegacyAgentHistoryCutoverStage {
+
+    NOT_STARTED,
+    STAGED,
+    VERIFIED,
+    AUTHORITATIVE,
+    BLOCKED;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyAgentHistoryCutoverStage: FfiConverterRustBuffer<LegacyAgentHistoryCutoverStage> {
+    override fun read(buf: ByteBuffer) = try {
+
+        LegacyAgentHistoryCutoverStage.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: LegacyAgentHistoryCutoverStage) = 4UL
+
+    override fun write(value: LegacyAgentHistoryCutoverStage, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
 
 
 
@@ -7331,6 +7662,38 @@ public object FfiConverterOptionalTypeUnixTimestampMilliseconds: FfiConverterRus
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeLegacyAgentHistoryCutoverFailure: FfiConverterRustBuffer<LegacyAgentHistoryCutoverFailure?> {
+    override fun read(buf: ByteBuffer): LegacyAgentHistoryCutoverFailure? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeLegacyAgentHistoryCutoverFailure.read(buf)
+    }
+
+    override fun allocationSize(value: LegacyAgentHistoryCutoverFailure?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeLegacyAgentHistoryCutoverFailure.allocationSize(value)
+        }
+    }
+
+    override fun write(value: LegacyAgentHistoryCutoverFailure?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeLegacyAgentHistoryCutoverFailure.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeLegacyChapterImportPlan: FfiConverterRustBuffer<LegacyChapterImportPlan?> {
     override fun read(buf: ByteBuffer): LegacyChapterImportPlan? {
         if (buf.get().toInt() == 0) {
@@ -7767,6 +8130,34 @@ public object FfiConverterSequenceTypeHostRequestEnvelope: FfiConverterRustBuffe
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeLegacyAgentHistoryConversationInput: FfiConverterRustBuffer<List<LegacyAgentHistoryConversationInput>> {
+    override fun read(buf: ByteBuffer): List<LegacyAgentHistoryConversationInput> {
+        val len = buf.getInt()
+        return List<LegacyAgentHistoryConversationInput>(len) {
+            FfiConverterTypeLegacyAgentHistoryConversationInput.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<LegacyAgentHistoryConversationInput>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeLegacyAgentHistoryConversationInput.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<LegacyAgentHistoryConversationInput>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeLegacyAgentHistoryConversationInput.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeClipRecord: FfiConverterRustBuffer<List<ClipRecord>> {
     override fun read(buf: ByteBuffer): List<ClipRecord> {
         val len = buf.getInt()
@@ -7984,6 +8375,8 @@ public object FfiConverterSequenceTypeLegacyTranscriptWorkflowCutoverCandidate: 
         }
     }
 }
+
+
 
 
 

@@ -4369,6 +4369,145 @@ public object FfiConverterTypeHostRequestEnvelope: FfiConverterRustBuffer<HostRe
 
 
 
+data class LegacyAgentHistoryConversationInput (
+    val `conversationId`: ConversationId
+    ,
+    val `title`: kotlin.String
+    ,
+    val `createdAt`: UnixTimestampMilliseconds
+    ,
+    val `updatedAt`: UnixTimestampMilliseconds
+    ,
+    val `turns`: List<LegacyAgentHistoryTurnInput>
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyAgentHistoryConversationInput: FfiConverterRustBuffer<LegacyAgentHistoryConversationInput> {
+    override fun read(buf: ByteBuffer): LegacyAgentHistoryConversationInput {
+        return LegacyAgentHistoryConversationInput(
+            FfiConverterTypeConversationId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterSequenceTypeLegacyAgentHistoryTurnInput.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyAgentHistoryConversationInput) = (
+            FfiConverterTypeConversationId.allocationSize(value.`conversationId`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`createdAt`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`updatedAt`) +
+            FfiConverterSequenceTypeLegacyAgentHistoryTurnInput.allocationSize(value.`turns`)
+    )
+
+    override fun write(value: LegacyAgentHistoryConversationInput, buf: ByteBuffer) {
+            FfiConverterTypeConversationId.write(value.`conversationId`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`createdAt`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`updatedAt`, buf)
+            FfiConverterSequenceTypeLegacyAgentHistoryTurnInput.write(value.`turns`, buf)
+    }
+}
+
+
+
+data class LegacyAgentHistoryMessageInput (
+    val `role`: AgentMessageRole
+    ,
+    val `content`: kotlin.String
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyAgentHistoryMessageInput: FfiConverterRustBuffer<LegacyAgentHistoryMessageInput> {
+    override fun read(buf: ByteBuffer): LegacyAgentHistoryMessageInput {
+        return LegacyAgentHistoryMessageInput(
+            FfiConverterTypeAgentMessageRole.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyAgentHistoryMessageInput) = (
+            FfiConverterTypeAgentMessageRole.allocationSize(value.`role`) +
+            FfiConverterString.allocationSize(value.`content`)
+    )
+
+    override fun write(value: LegacyAgentHistoryMessageInput, buf: ByteBuffer) {
+            FfiConverterTypeAgentMessageRole.write(value.`role`, buf)
+            FfiConverterString.write(value.`content`, buf)
+    }
+}
+
+
+
+data class LegacyAgentHistoryTurnInput (
+    val `turnId`: AgentTurnId
+    ,
+    val `createdAt`: UnixTimestampMilliseconds
+    ,
+    val `updatedAt`: UnixTimestampMilliseconds
+    ,
+    val `messages`: List<LegacyAgentHistoryMessageInput>
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyAgentHistoryTurnInput: FfiConverterRustBuffer<LegacyAgentHistoryTurnInput> {
+    override fun read(buf: ByteBuffer): LegacyAgentHistoryTurnInput {
+        return LegacyAgentHistoryTurnInput(
+            FfiConverterTypeAgentTurnId.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterSequenceTypeLegacyAgentHistoryMessageInput.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyAgentHistoryTurnInput) = (
+            FfiConverterTypeAgentTurnId.allocationSize(value.`turnId`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`createdAt`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`updatedAt`) +
+            FfiConverterSequenceTypeLegacyAgentHistoryMessageInput.allocationSize(value.`messages`)
+    )
+
+    override fun write(value: LegacyAgentHistoryTurnInput, buf: ByteBuffer) {
+            FfiConverterTypeAgentTurnId.write(value.`turnId`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`createdAt`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`updatedAt`, buf)
+            FfiConverterSequenceTypeLegacyAgentHistoryMessageInput.write(value.`messages`, buf)
+    }
+}
+
+
+
 data class LibraryProjection (
     val `podcasts`: List<PodcastRecord>
     ,
@@ -8295,7 +8434,8 @@ enum class AgentMessageRole {
 
     USER,
     ASSISTANT,
-    TOOL;
+    TOOL,
+    ERROR;
 
 
 
@@ -26781,6 +26921,62 @@ public object FfiConverterSequenceTypeEvidenceIndexSpanProjection: FfiConverterR
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeEvidenceIndexSpanProjection.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeLegacyAgentHistoryMessageInput: FfiConverterRustBuffer<List<LegacyAgentHistoryMessageInput>> {
+    override fun read(buf: ByteBuffer): List<LegacyAgentHistoryMessageInput> {
+        val len = buf.getInt()
+        return List<LegacyAgentHistoryMessageInput>(len) {
+            FfiConverterTypeLegacyAgentHistoryMessageInput.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<LegacyAgentHistoryMessageInput>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeLegacyAgentHistoryMessageInput.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<LegacyAgentHistoryMessageInput>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeLegacyAgentHistoryMessageInput.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeLegacyAgentHistoryTurnInput: FfiConverterRustBuffer<List<LegacyAgentHistoryTurnInput>> {
+    override fun read(buf: ByteBuffer): List<LegacyAgentHistoryTurnInput> {
+        val len = buf.getInt()
+        return List<LegacyAgentHistoryTurnInput>(len) {
+            FfiConverterTypeLegacyAgentHistoryTurnInput.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<LegacyAgentHistoryTurnInput>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeLegacyAgentHistoryTurnInput.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<LegacyAgentHistoryTurnInput>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeLegacyAgentHistoryTurnInput.write(it, buf)
         }
     }
 }

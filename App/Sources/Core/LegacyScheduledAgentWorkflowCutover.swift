@@ -12,7 +12,7 @@ enum LegacyScheduledAgentWorkflowCutover {
         persistence: Persistence,
         state: AppState,
         jobStore: JobStore,
-        history: ChatHistoryStore = .shared,
+        history: LegacyChatHistorySource,
         backupRoot: URL
     ) throws {
         var report = facade.scheduledAgentCutover()

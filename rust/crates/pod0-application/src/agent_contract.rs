@@ -1,6 +1,7 @@
 use crate::{
     AgentCapabilityExecutionMode, AgentGeneratedAudioEvidence, AgentGeneratedAudioTarget,
-    AgentToolName, QueuePlacement, RecallEvidenceProjection, RecallScope, ScheduledTaskInput,
+    AgentMessageProjection, AgentToolName, QueuePlacement, RecallEvidenceProjection, RecallScope,
+    ScheduledTaskInput,
 };
 use pod0_domain::{
     AgentCommitId, AgentExecutionFenceId, AgentProposalId, AgentTurnId, ContentDigest,
@@ -197,19 +198,6 @@ pub enum AgentTurnStage {
     Blocked,
     OutcomeAmbiguous,
     Failed,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
-pub enum AgentMessageRole {
-    User,
-    Assistant,
-    Tool,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
-pub struct AgentMessageProjection {
-    pub role: AgentMessageRole,
-    pub content: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]

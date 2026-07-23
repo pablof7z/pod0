@@ -13,8 +13,8 @@ struct ChatConversation: Identifiable, Codable, Equatable, Sendable {
     /// Defaults to empty so every new conversation starts lean.
     var enabledSkills: Set<String>
     /// True for conversations created by a durable scheduled occurrence.
-    /// Excluded from `ChatHistoryStore.mostRecent` so background work doesn't
-    /// hijack the auto-resume path when the user opens the chat sheet.
+    /// Distinguished during the one-shot legacy migration so background
+    /// output is imported by the scheduled-workflow cutover.
     var isScheduledTask: Bool
     /// Canonical identity for at-least-once scheduled output deduplication.
     var occurrenceID: String?

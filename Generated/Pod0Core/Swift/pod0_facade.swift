@@ -625,6 +625,18 @@ fileprivate struct FfiConverterData: FfiConverterRustBuffer {
 
 public protocol Pod0FacadeProtocol: AnyObject, Sendable {
 
+    func agentHistoryCutover()  -> LegacyAgentHistoryCutoverProjection
+
+    func commitLegacyAgentHistoryCutover(sourceGeneration: UInt64)  -> LegacyAgentHistoryCutoverProjection
+
+    func discardStagedLegacyAgentHistoryCutover(sourceGeneration: UInt64)  -> LegacyAgentHistoryCutoverProjection
+
+    func inspectLegacyAgentHistoryCutover(backupDigest: ContentDigest, backupByteCount: UInt64, conversations: [LegacyAgentHistoryConversationInput])  -> LegacyAgentHistoryCutoverProjection
+
+    func stageLegacyAgentHistoryCutover(backupDigest: ContentDigest, backupByteCount: UInt64, conversations: [LegacyAgentHistoryConversationInput])  -> LegacyAgentHistoryCutoverProjection
+
+    func verifyLegacyAgentHistoryCutover(sourceGeneration: UInt64)  -> LegacyAgentHistoryCutoverProjection
+
     func commitLegacyDownloadCutover(sourceGeneration: UInt64)  -> LegacyDownloadCutoverProjection
 
     func discardStagedLegacyDownloadCutover(sourceGeneration: UInt64, candidates: [LegacyDownloadCutoverCandidate])  -> LegacyDownloadCutoverProjection
@@ -753,6 +765,69 @@ public static func `open`(storePath: String)throws  -> Pod0Facade  {
 }
 
 
+
+open func agentHistoryCutover() -> LegacyAgentHistoryCutoverProjection  {
+    return try!  FfiConverterTypeLegacyAgentHistoryCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_agent_history_cutover(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+
+open func commitLegacyAgentHistoryCutover(sourceGeneration: UInt64) -> LegacyAgentHistoryCutoverProjection  {
+    return try!  FfiConverterTypeLegacyAgentHistoryCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_agent_history_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt64.lower(sourceGeneration),uniffiCallStatus
+    )
+})
+}
+
+open func discardStagedLegacyAgentHistoryCutover(sourceGeneration: UInt64) -> LegacyAgentHistoryCutoverProjection  {
+    return try!  FfiConverterTypeLegacyAgentHistoryCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_agent_history_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt64.lower(sourceGeneration),uniffiCallStatus
+    )
+})
+}
+
+open func inspectLegacyAgentHistoryCutover(backupDigest: ContentDigest, backupByteCount: UInt64, conversations: [LegacyAgentHistoryConversationInput]) -> LegacyAgentHistoryCutoverProjection  {
+    return try!  FfiConverterTypeLegacyAgentHistoryCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_inspect_legacy_agent_history_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeContentDigest_lower(backupDigest),
+        FfiConverterUInt64.lower(backupByteCount),
+        FfiConverterSequenceTypeLegacyAgentHistoryConversationInput.lower(conversations),uniffiCallStatus
+    )
+})
+}
+
+open func stageLegacyAgentHistoryCutover(backupDigest: ContentDigest, backupByteCount: UInt64, conversations: [LegacyAgentHistoryConversationInput]) -> LegacyAgentHistoryCutoverProjection  {
+    return try!  FfiConverterTypeLegacyAgentHistoryCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_agent_history_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeContentDigest_lower(backupDigest),
+        FfiConverterUInt64.lower(backupByteCount),
+        FfiConverterSequenceTypeLegacyAgentHistoryConversationInput.lower(conversations),uniffiCallStatus
+    )
+})
+}
+
+open func verifyLegacyAgentHistoryCutover(sourceGeneration: UInt64) -> LegacyAgentHistoryCutoverProjection  {
+    return try!  FfiConverterTypeLegacyAgentHistoryCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_verify_legacy_agent_history_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt64.lower(sourceGeneration),uniffiCallStatus
+    )
+})
+}
 
 open func commitLegacyDownloadCutover(sourceGeneration: UInt64) -> LegacyDownloadCutoverProjection  {
     return try!  FfiConverterTypeLegacyDownloadCutoverProjection_lift(try! rustCall() {
@@ -1289,6 +1364,142 @@ public func FfiConverterTypeProjectionSubscriber_lower(_ value: ProjectionSubscr
 }
 
 
+
+
+public struct LegacyAgentHistoryCutoverFailure: Equatable, Hashable {
+    public let code: LegacyAgentHistoryCutoverFailureCode
+    public let diagnosticCode: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(code: LegacyAgentHistoryCutoverFailureCode, diagnosticCode: String) {
+        self.code = code
+        self.diagnosticCode = diagnosticCode
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyAgentHistoryCutoverFailure: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyAgentHistoryCutoverFailure: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyAgentHistoryCutoverFailure {
+        return
+            try LegacyAgentHistoryCutoverFailure(
+                code: FfiConverterTypeLegacyAgentHistoryCutoverFailureCode.read(from: &buf),
+                diagnosticCode: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyAgentHistoryCutoverFailure, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyAgentHistoryCutoverFailureCode.write(value.code, into: &buf)
+        FfiConverterString.write(value.diagnosticCode, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyAgentHistoryCutoverFailure_lift(_ buf: RustBuffer) throws -> LegacyAgentHistoryCutoverFailure {
+    return try FfiConverterTypeLegacyAgentHistoryCutoverFailure.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyAgentHistoryCutoverFailure_lower(_ value: LegacyAgentHistoryCutoverFailure) -> RustBuffer {
+    return FfiConverterTypeLegacyAgentHistoryCutoverFailure.lower(value)
+}
+
+
+public struct LegacyAgentHistoryCutoverProjection: Equatable, Hashable {
+    public let stage: LegacyAgentHistoryCutoverStage
+    public let sourceGeneration: UInt64?
+    public let sourceFingerprint: ContentDigest?
+    public let backupDigest: ContentDigest?
+    public let backupByteCount: UInt64?
+    public let conversationCount: UInt32
+    public let turnCount: UInt32
+    public let messageCount: UInt32
+    public let failure: LegacyAgentHistoryCutoverFailure?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(stage: LegacyAgentHistoryCutoverStage, sourceGeneration: UInt64?, sourceFingerprint: ContentDigest?, backupDigest: ContentDigest?, backupByteCount: UInt64?, conversationCount: UInt32, turnCount: UInt32, messageCount: UInt32, failure: LegacyAgentHistoryCutoverFailure?) {
+        self.stage = stage
+        self.sourceGeneration = sourceGeneration
+        self.sourceFingerprint = sourceFingerprint
+        self.backupDigest = backupDigest
+        self.backupByteCount = backupByteCount
+        self.conversationCount = conversationCount
+        self.turnCount = turnCount
+        self.messageCount = messageCount
+        self.failure = failure
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyAgentHistoryCutoverProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyAgentHistoryCutoverProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyAgentHistoryCutoverProjection {
+        return
+            try LegacyAgentHistoryCutoverProjection(
+                stage: FfiConverterTypeLegacyAgentHistoryCutoverStage.read(from: &buf),
+                sourceGeneration: FfiConverterOptionUInt64.read(from: &buf),
+                sourceFingerprint: FfiConverterOptionTypeContentDigest.read(from: &buf),
+                backupDigest: FfiConverterOptionTypeContentDigest.read(from: &buf),
+                backupByteCount: FfiConverterOptionUInt64.read(from: &buf),
+                conversationCount: FfiConverterUInt32.read(from: &buf),
+                turnCount: FfiConverterUInt32.read(from: &buf),
+                messageCount: FfiConverterUInt32.read(from: &buf),
+                failure: FfiConverterOptionTypeLegacyAgentHistoryCutoverFailure.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyAgentHistoryCutoverProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyAgentHistoryCutoverStage.write(value.stage, into: &buf)
+        FfiConverterOptionUInt64.write(value.sourceGeneration, into: &buf)
+        FfiConverterOptionTypeContentDigest.write(value.sourceFingerprint, into: &buf)
+        FfiConverterOptionTypeContentDigest.write(value.backupDigest, into: &buf)
+        FfiConverterOptionUInt64.write(value.backupByteCount, into: &buf)
+        FfiConverterUInt32.write(value.conversationCount, into: &buf)
+        FfiConverterUInt32.write(value.turnCount, into: &buf)
+        FfiConverterUInt32.write(value.messageCount, into: &buf)
+        FfiConverterOptionTypeLegacyAgentHistoryCutoverFailure.write(value.failure, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyAgentHistoryCutoverProjection_lift(_ buf: RustBuffer) throws -> LegacyAgentHistoryCutoverProjection {
+    return try FfiConverterTypeLegacyAgentHistoryCutoverProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyAgentHistoryCutoverProjection_lower(_ value: LegacyAgentHistoryCutoverProjection) -> RustBuffer {
+    return FfiConverterTypeLegacyAgentHistoryCutoverProjection.lower(value)
+}
 
 
 public struct LegacyChapterBackupEvidence: Equatable, Hashable {
@@ -3949,6 +4160,166 @@ public func FfiConverterTypeFacadeOpenError_lower(_ value: FacadeOpenError) -> R
 
 
 
+public enum LegacyAgentHistoryCutoverFailureCode: Equatable, Hashable {
+
+    case invalidSource
+    case conflictingCoreState
+    case storageUnavailable
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyAgentHistoryCutoverFailureCode: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyAgentHistoryCutoverFailureCode: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyAgentHistoryCutoverFailureCode
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyAgentHistoryCutoverFailureCode {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .invalidSource
+
+        case 2: return .conflictingCoreState
+
+        case 3: return .storageUnavailable
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyAgentHistoryCutoverFailureCode, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .invalidSource:
+            writeInt(&buf, Int32(1))
+
+
+        case .conflictingCoreState:
+            writeInt(&buf, Int32(2))
+
+
+        case .storageUnavailable:
+            writeInt(&buf, Int32(3))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyAgentHistoryCutoverFailureCode_lift(_ buf: RustBuffer) throws -> LegacyAgentHistoryCutoverFailureCode {
+    return try FfiConverterTypeLegacyAgentHistoryCutoverFailureCode.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyAgentHistoryCutoverFailureCode_lower(_ value: LegacyAgentHistoryCutoverFailureCode) -> RustBuffer {
+    return FfiConverterTypeLegacyAgentHistoryCutoverFailureCode.lower(value)
+}
+
+
+
+
+public enum LegacyAgentHistoryCutoverStage: Equatable, Hashable {
+
+    case notStarted
+    case staged
+    case verified
+    case authoritative
+    case blocked
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyAgentHistoryCutoverStage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyAgentHistoryCutoverStage: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyAgentHistoryCutoverStage
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyAgentHistoryCutoverStage {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .notStarted
+
+        case 2: return .staged
+
+        case 3: return .verified
+
+        case 4: return .authoritative
+
+        case 5: return .blocked
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyAgentHistoryCutoverStage, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .notStarted:
+            writeInt(&buf, Int32(1))
+
+
+        case .staged:
+            writeInt(&buf, Int32(2))
+
+
+        case .verified:
+            writeInt(&buf, Int32(3))
+
+
+        case .authoritative:
+            writeInt(&buf, Int32(4))
+
+
+        case .blocked:
+            writeInt(&buf, Int32(5))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyAgentHistoryCutoverStage_lift(_ buf: RustBuffer) throws -> LegacyAgentHistoryCutoverStage {
+    return try FfiConverterTypeLegacyAgentHistoryCutoverStage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyAgentHistoryCutoverStage_lower(_ value: LegacyAgentHistoryCutoverStage) -> RustBuffer {
+    return FfiConverterTypeLegacyAgentHistoryCutoverStage.lower(value)
+}
+
+
+
+
 public enum LegacyChapterImportState: Equatable, Hashable {
 
     case staged
@@ -6357,6 +6728,30 @@ fileprivate struct FfiConverterOptionTypeUnixTimestampMilliseconds: FfiConverter
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeLegacyAgentHistoryCutoverFailure: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyAgentHistoryCutoverFailure?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeLegacyAgentHistoryCutoverFailure.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeLegacyAgentHistoryCutoverFailure.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeLegacyChapterImportPlan: FfiConverterRustBuffer {
     typealias SwiftType = LegacyChapterImportPlan?
 
@@ -6688,6 +7083,31 @@ fileprivate struct FfiConverterSequenceTypeHostRequestEnvelope: FfiConverterRust
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeHostRequestEnvelope.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeLegacyAgentHistoryConversationInput: FfiConverterRustBuffer {
+    typealias SwiftType = [LegacyAgentHistoryConversationInput]
+
+    public static func write(_ value: [LegacyAgentHistoryConversationInput], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeLegacyAgentHistoryConversationInput.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [LegacyAgentHistoryConversationInput] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [LegacyAgentHistoryConversationInput]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeLegacyAgentHistoryConversationInput.read(from: &buf))
         }
         return seq
     }
@@ -7497,6 +7917,24 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_projectionsubscriber_receive() != 23861) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_agent_history_cutover() != 19319) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_agent_history_cutover() != 37961) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_agent_history_cutover() != 21650) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_inspect_legacy_agent_history_cutover() != 65000) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_agent_history_cutover() != 25481) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_agent_history_cutover() != 46685) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_download_cutover() != 39705) {

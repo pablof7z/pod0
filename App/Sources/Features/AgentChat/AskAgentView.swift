@@ -8,7 +8,7 @@ struct AskAgentView: View {
 
     var body: some View {
         if let session {
-            SharedAgentChatView(session: session, requestedLegacyConversationID: nil)
+            SharedAgentChatView(session: session, requestedConversationID: nil)
         } else {
             Color.clear
                 .onAppear {

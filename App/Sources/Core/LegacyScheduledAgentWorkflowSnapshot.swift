@@ -12,7 +12,7 @@ struct LegacyScheduledAgentWorkflowSnapshot {
     static func capture(
         state: AppState,
         jobStore: JobStore,
-        history: ChatHistoryStore = .shared
+        history: LegacyChatHistorySource
     ) throws -> Self {
         let backup = LegacyScheduledAgentWorkflowBackup(
             formatVersion: 1,

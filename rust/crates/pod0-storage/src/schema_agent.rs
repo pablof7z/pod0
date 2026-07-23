@@ -42,3 +42,55 @@ pub(crate) fn validate_agent_schema(connection: &Connection) -> Result<(), Stora
         ],
     )
 }
+
+pub(crate) fn validate_agent_history_cutover_schema(
+    connection: &Connection,
+) -> Result<(), StorageError> {
+    require_columns(
+        connection,
+        "pod0_agent_history_cutover_evidence",
+        &[
+            "backup_byte_count",
+            "backup_digest",
+            "committed_at_ms",
+            "conversation_count",
+            "message_count",
+            "singleton",
+            "source_fingerprint",
+            "source_generation",
+            "staged_at_ms",
+            "state",
+            "turn_count",
+            "verified_at_ms",
+        ],
+    )?;
+    require_columns(
+        connection,
+        "pod0_agent_history_staged_conversations",
+        &["conversation_id", "created_at_ms", "title", "updated_at_ms"],
+    )?;
+    require_columns(
+        connection,
+        "pod0_agent_history_staged_turns",
+        &[
+            "conversation_id",
+            "created_at_ms",
+            "state_digest",
+            "state_json",
+            "state_schema_version",
+            "turn_id",
+            "updated_at_ms",
+        ],
+    )?;
+    require_columns(
+        connection,
+        "pod0_agent_conversation_metadata",
+        &[
+            "conversation_id",
+            "created_at_ms",
+            "source",
+            "title",
+            "updated_at_ms",
+        ],
+    )
+}

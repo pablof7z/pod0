@@ -11,7 +11,7 @@ extension AppStateStore {
     /// When the log exceeds this cap, `recordAgentActivity` evicts the oldest
     /// entries first — preferring fully-undone batches so active undo state is
     /// preserved as long as possible. Mirrors the 100-message cap in
-    /// `ChatHistoryStore`.
+    /// the former Swift chat-history cap.
     private static let maxActivityEntries = 200
 
     /// Age threshold (in seconds) after which entries are pruned at app launch.

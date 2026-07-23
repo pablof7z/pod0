@@ -17,11 +17,9 @@ symbols and exact-file exceptions. Every exception has an owning GitHub issue
 and deletion target. A new exception is architecture work and must not be added
 solely to make CI green.
 
-The current exceptions expose a real migration seam rather than approved final
-architecture: direct `ChatHistoryStore` use. Issue #60 removes it through
-observable projections and typed commands. Transcript, recall, and search no
-longer carry exceptions: they consume typed shared-core projections, and UI
-access to their capability stores is prohibited.
+There are no current UI exceptions. Conversation history, transcript, recall,
+and search consume typed shared-core projections; UI access to their former
+durable stores remains prohibited.
 
 Generated UniFFI bindings are not presentation code and will live outside the
 scanned feature roots. Hand-authored native adapters remain subject to the

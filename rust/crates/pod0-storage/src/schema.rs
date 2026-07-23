@@ -248,6 +248,9 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
     if version >= 26 {
         crate::schema_signer::validate_signer_schema(connection)?;
     }
+    if version >= 27 {
+        crate::schema_agent::validate_agent_history_cutover_schema(connection)?;
+    }
     if version >= 8 {
         crate::schema_notes::validate_notes_schema(connection)?;
     }

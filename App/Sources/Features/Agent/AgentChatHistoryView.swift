@@ -1,49 +1,20 @@
-import SwiftUI
 import Pod0Core
+import SwiftUI
 
-/// History picker for Rust-owned conversations plus the read-only Swift
-/// archive retained for migration evidence.
+/// History picker for Rust-owned durable conversations.
 struct AgentChatHistoryView: View {
-
-    private let history: ChatHistoryStore
-    let sharedConversations: [AgentConversationSummaryProjection]
-    let sharedHasMore: Bool
-    let currentSharedID: ConversationId?
-    let currentLegacyID: UUID?
-    let onSelectShared: (ConversationId) -> Void
-    let onSelectLegacy: (ChatConversation) -> Void
+    let conversations: [AgentConversationSummaryProjection]
+    let hasMore: Bool
+    let currentID: ConversationId?
+    let onSelect: (ConversationId) -> Void
     let onNew: () -> Void
-
-    init(
-        history: ChatHistoryStore = .shared,
-        sharedConversations: [AgentConversationSummaryProjection],
-        sharedHasMore: Bool,
-        currentSharedID: ConversationId?,
-        currentLegacyID: UUID?,
-        onSelectShared: @escaping (ConversationId) -> Void,
-        onSelectLegacy: @escaping (ChatConversation) -> Void,
-        onNew: @escaping () -> Void
-    ) {
-        self.history = history
-        self.sharedConversations = sharedConversations
-        self.sharedHasMore = sharedHasMore
-        self.currentSharedID = currentSharedID
-        self.currentLegacyID = currentLegacyID
-        self.onSelectShared = onSelectShared
-        self.onSelectLegacy = onSelectLegacy
-        self.onNew = onNew
-    }
-
-    static func archivedConversation(id: UUID) -> ChatConversation? {
-        ChatHistoryStore.shared.conversation(id: id)
-    }
 
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             Group {
-                if sharedConversations.isEmpty && history.conversations.isEmpty {
+                if conversations.isEmpty {
                     emptyState
                 } else {
                     list
@@ -73,49 +44,26 @@ struct AgentChatHistoryView: View {
 
     private var list: some View {
         List {
-            if !sharedConversations.isEmpty {
-                Section("Conversations") {
-                    ForEach(sharedConversations, id: \.conversationId) { summary in
-                        sharedRow(summary)
-                            .contentShape(.rect)
-                            .onTapGesture {
-                                Haptics.selection()
-                                onSelectShared(summary.conversationId)
-                                dismiss()
-                            }
-                    }
-                    if sharedHasMore {
-                        Text("Showing the 500 most recent conversations. Older history remains stored.")
-                            .font(AppTheme.Typography.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-            if !history.conversations.isEmpty {
-                Section("Archived from earlier versions") {
-                    ForEach(history.conversations) { conversation in
-                        legacyRow(conversation)
-                            .contentShape(.rect)
-                            .onTapGesture {
-                                Haptics.selection()
-                                onSelectLegacy(conversation)
-                                dismiss()
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    Haptics.warning()
-                                    history.delete(conversation.id)
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
+            Section("Conversations") {
+                ForEach(conversations, id: \.conversationId) { summary in
+                    row(summary)
+                        .contentShape(.rect)
+                        .onTapGesture {
+                            Haptics.selection()
+                            onSelect(summary.conversationId)
+                            dismiss()
                         }
-                    }
+                }
+                if hasMore {
+                    Text("Showing the 500 most recent conversations. Older history remains stored.")
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
     }
 
-    private func sharedRow(_ summary: AgentConversationSummaryProjection) -> some View {
+    private func row(_ summary: AgentConversationSummaryProjection) -> some View {
         HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(summary.title.isBlank ? "New conversation" : summary.title)
@@ -133,29 +81,7 @@ struct AgentChatHistoryView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
-            if summary.conversationId == currentSharedID {
-                Image(systemName: "checkmark")
-                    .font(AppTheme.Typography.caption)
-                    .foregroundStyle(AppTheme.Tint.agentSurface)
-                    .accessibilityLabel("Current conversation")
-            }
-        }
-        .padding(.vertical, 2)
-    }
-
-    private func legacyRow(_ conversation: ChatConversation) -> some View {
-        HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(rowTitle(for: conversation))
-                    .font(AppTheme.Typography.callout)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                Text(relativeTimestamp(conversation.updatedAt))
-                    .font(AppTheme.Typography.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 0)
-            if conversation.id == currentLegacyID {
+            if summary.conversationId == currentID {
                 Image(systemName: "checkmark")
                     .font(AppTheme.Typography.caption)
                     .foregroundStyle(AppTheme.Tint.agentSurface)
@@ -177,20 +103,10 @@ struct AgentChatHistoryView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func rowTitle(for convo: ChatConversation) -> String {
-        let title = convo.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !title.isEmpty { return title }
-        let snippet = convo.firstUserSnippet.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !snippet.isEmpty {
-            return String(snippet.prefix(60))
-        }
-        return "New conversation"
-    }
-
     private static let relativeFormatter: RelativeDateTimeFormatter = {
-        let f = RelativeDateTimeFormatter()
-        f.unitsStyle = .abbreviated
-        return f
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter
     }()
 
     private func relativeTimestamp(_ date: Date) -> String {

@@ -48,6 +48,7 @@ enum SharedAgentChatMessageMapper {
         case .user: .user
         case .assistant: .assistant
         case .tool: .toolBatch(batchID: id, count: 1)
+        case .error: .error
         }
     }
 }

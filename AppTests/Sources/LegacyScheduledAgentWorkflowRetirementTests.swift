@@ -9,7 +9,7 @@ final class LegacyScheduledAgentWorkflowRetirementTests: XCTestCase {
         defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
         let historyURL = made.fileURL.appendingPathExtension("history.json")
         defer { try? FileManager.default.removeItem(at: historyURL) }
-        let history = ChatHistoryStore(fileURL: historyURL)
+        let history = try LegacyChatHistorySource(fileURL: historyURL)
         let snapshot = try LegacyScheduledAgentWorkflowSnapshot.capture(
             state: made.state,
             jobStore: made.jobStore,
@@ -37,7 +37,7 @@ final class LegacyScheduledAgentWorkflowRetirementTests: XCTestCase {
         let snapshot = try LegacyScheduledAgentWorkflowSnapshot.capture(
             state: made.state,
             jobStore: made.jobStore,
-            history: ChatHistoryStore(fileURL: historyURL)
+            history: try LegacyChatHistorySource(fileURL: historyURL)
         )
         _ = try made.jobStore.ensureJob(DesiredJob(
             idempotencyKey: "late-scheduled-source",

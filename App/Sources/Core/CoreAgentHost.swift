@@ -203,6 +203,9 @@ final class CoreAgentHost: CoreAgentHosting {
                 // context instead of inventing an OpenAI tool-call pairing.
                 role = "system"
                 content = "Tool result:\n\(message.content)"
+            case .error:
+                role = "system"
+                content = "Prior agent error:\n\(message.content)"
             }
             result.append(["role": role, "content": content])
         }

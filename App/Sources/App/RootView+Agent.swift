@@ -1,4 +1,5 @@
 import Foundation
+import Pod0Core
 
 extension RootView {
     var hasUnreadAgentMessages: Bool {
@@ -6,12 +7,12 @@ extension RootView {
         return session.messages.count > agentUnseenMessageCount
     }
 
-    func openAgentChat(legacyConversationID: UUID? = nil) {
+    func openAgentChat(conversationID: ConversationId? = nil) {
         if agentSession == nil {
             agentSession = store.sharedLibrary?.makeAgentConversationSession()
         }
         guard agentSession != nil else { return }
-        self.legacyAgentConversationID = legacyConversationID
+        requestedAgentConversationID = conversationID
         showAgentChat = true
     }
 }

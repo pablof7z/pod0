@@ -6,6 +6,20 @@ pub const MAX_AGENT_CONVERSATION_SUMMARIES: u16 = 100;
 pub const MAX_AGENT_CONVERSATION_TITLE_BYTES: usize = 256;
 pub const MAX_AGENT_CONVERSATION_PREVIEW_BYTES: usize = 512;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
+pub enum AgentMessageRole {
+    User,
+    Assistant,
+    Tool,
+    Error,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
+pub struct AgentMessageProjection {
+    pub role: AgentMessageRole,
+    pub content: String,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct AgentConversationSummaryProjection {
     pub conversation_id: ConversationId,

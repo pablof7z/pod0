@@ -1,5 +1,9 @@
 #![forbid(unsafe_code)]
 mod agent_generated_audio_store;
+mod agent_history_cutover;
+mod agent_history_cutover_model;
+mod agent_history_cutover_read;
+mod agent_history_cutover_validation;
 mod agent_store;
 mod agent_store_codec;
 mod agent_store_history;
