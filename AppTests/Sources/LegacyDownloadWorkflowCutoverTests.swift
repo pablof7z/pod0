@@ -3,6 +3,43 @@ import XCTest
 @testable import Podcastr
 
 final class LegacyDownloadWorkflowCutoverTests: XCTestCase {
+    @MainActor
+    func testBootstrapCanReplayAfterLegacyDownloadRowsAreRetired() throws {
+        let fixture = SharedTranscriptRecoveryTestSupport.makeFixture()
+        defer { SharedTranscriptRecoveryTestSupport.dispose(fixture) }
+        let state = try fixture.persistence.load()
+        let episode = try XCTUnwrap(state.episodes.first)
+        let jobStore = JobStore(fileURL: fixture.persistence.episodeStore.fileURL)
+        _ = try jobStore.ensureJob(DesiredJob(
+            idempotencyKey: "legacy-download-replay",
+            kind: .download,
+            subjectID: episode.id,
+            inputVersion: DesiredStatePlanner.audioVersion(episode),
+            resourceClass: .download
+        ), notBefore: .distantPast)
+
+        let first = SharedLibraryBootstrap.run(
+            persistence: fixture.persistence,
+            legacyState: state,
+            feedHost: QueuedCoreFeedHost([])
+        )
+        guard case .ready(let firstClient) = first else {
+            return XCTFail("Expected initial bootstrap to succeed")
+        }
+        firstClient.shutdown()
+        XCTAssertTrue(try jobStore.legacyDownloadWorkflowsAreRetired())
+
+        let replay = SharedLibraryBootstrap.run(
+            persistence: fixture.persistence,
+            legacyState: try fixture.persistence.load(),
+            feedHost: QueuedCoreFeedHost([])
+        )
+        guard case .ready(let replayClient) = replay else {
+            return XCTFail("Expected authoritative bootstrap replay to succeed")
+        }
+        replayClient.shutdown()
+    }
+
     func testOversizedLegacyGenerationNormalizesWithoutChangingBackupEvidence() throws {
         let oversized = UInt64(Int64.max) + 2
         let backup = LegacyDownloadWorkflowBackup(

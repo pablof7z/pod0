@@ -15,7 +15,6 @@ final class AppStateStore {
     let productSignals: any ProductSignalSink
     @ObservationIgnored private(set) var sharedLibrary: SharedLibraryClient?
     @ObservationIgnored private(set) var sharedLibraryUnavailableReason: String?
-    @ObservationIgnored private(set) var sharedLibraryUnavailableStage: SharedLibraryBootstrapStage?
     @ObservationIgnored private(set) var startupRecoveryRequired = false
     var recallConfigurationRevision: UInt64 = 0
     /// Chapter the user long-pressed in `PlayerChaptersScrollView`. Drained
@@ -221,9 +220,8 @@ final class AppStateStore {
                 // burst of projection-triggered native writes.
                 persistence.save(state)
             }
-        case .authoritativeUnavailable(let reason, let stage):
+        case .authoritativeUnavailable(let reason, _):
             sharedLibraryUnavailableReason = reason
-            sharedLibraryUnavailableStage = stage
         }
         // The `state.didSet` above doesn't fire from inside `init` until all
         // stored properties are initialised, and even then it skips the very

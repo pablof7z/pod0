@@ -26,11 +26,8 @@ struct RootView: View {
     private let sidebarWidth: CGFloat = 300
     @ViewBuilder
     var body: some View {
-        if let reason = store.sharedLibraryUnavailableReason {
-            SharedCoreUnavailableView(
-                reason: reason,
-                stage: store.sharedLibraryUnavailableStage?.rawValue
-            )
+        if store.sharedLibraryUnavailableReason != nil {
+            SharedCoreUnavailableView()
         } else {
             ZStack(alignment: .leading) {
             tabBar

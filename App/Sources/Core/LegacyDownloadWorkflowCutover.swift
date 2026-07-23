@@ -24,10 +24,13 @@ enum LegacyDownloadWorkflowCutover {
                 let backup = try LegacyDownloadWorkflowBackup.load(from: backupURL)
                 guard LegacyDownloadWorkflowBackup.storageGeneration(
                     backup.sourceGeneration
-                ) == generation,
-                      try jobStore.retireLegacyDownloadWorkflows(matching: backup),
-                      try jobStore.legacyDownloadWorkflowsAreRetired()
+                ) == generation
                 else { throw LegacyDownloadWorkflowCutoverError.verificationFailed }
+                if try !jobStore.legacyDownloadWorkflowsAreRetired() {
+                    guard try jobStore.retireLegacyDownloadWorkflows(matching: backup),
+                          try jobStore.legacyDownloadWorkflowsAreRetired()
+                    else { throw LegacyDownloadWorkflowCutoverError.verificationFailed }
+                }
             } else if try !jobStore.legacyDownloadWorkflowsAreRetired() {
                 throw LegacyDownloadWorkflowCutoverError.verificationFailed
             }

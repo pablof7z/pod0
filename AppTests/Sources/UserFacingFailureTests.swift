@@ -134,6 +134,19 @@ final class UserFacingFailureTests: XCTestCase {
         XCTAssertTrue(violations.isEmpty, violations.joined(separator: "\n"))
     }
 
+    func testRecoverySurfaceDoesNotRenderInternalDiagnostics() throws {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("App/Sources/App/SharedCoreUnavailableView.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+
+        XCTAssertFalse(source.contains("Diagnostic:"))
+        XCTAssertFalse(source.contains("reason:"))
+        XCTAssertFalse(source.contains("stage:"))
+    }
+
     private func makeProjection(errorClass: JobErrorClass) -> WorkflowJobProjection {
         let now = Date()
         return WorkflowJobProjection(job: WorkJob(
