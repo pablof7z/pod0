@@ -79,6 +79,13 @@ impl AgentTurnState {
             self.projection.execution_fence_id = None;
             return AgentWorkflowAcceptance::Updated;
         };
+        if self.projection.commit.is_some() {
+            self.fail(
+                "additional_tool_action_unavailable",
+                observation.observed_at,
+            );
+            return AgentWorkflowAcceptance::Rejected;
+        }
         if validate_agent_action(&action).is_err() {
             self.fail("invalid_tool_action", observation.observed_at);
             return AgentWorkflowAcceptance::Rejected;
@@ -273,7 +280,11 @@ impl AgentTurnState {
         AgentWorkflowAcceptance::Updated
     }
 
-    fn advance(&mut self, stage: AgentTurnStage, observed_at: UnixTimestampMilliseconds) {
+    pub(super) fn advance(
+        &mut self,
+        stage: AgentTurnStage,
+        observed_at: UnixTimestampMilliseconds,
+    ) {
         self.projection.revision = StateRevision::new(self.projection.revision.value + 1);
         self.projection.stage = stage;
         self.projection.updated_at = observed_at;

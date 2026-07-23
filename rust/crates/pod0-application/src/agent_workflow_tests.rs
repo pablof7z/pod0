@@ -146,6 +146,95 @@ fn stale_fences_and_duplicate_observations_cannot_repeat_a_commit() {
 }
 
 #[test]
+fn committed_action_continues_once_for_a_final_answer_without_more_tools() {
+    let mut state = turn();
+    let proposal = propose_note(&mut state);
+    state.authorize(AgentAuthorizationObservation {
+        proposal_id: proposal.proposal_id,
+        proposal_digest: proposal.proposal_digest,
+        authority: AgentAuthority::DurableTurnGrant,
+        authorization_id: id(4, AgentAuthorizationId::from_bytes),
+        approved: true,
+        observed_at: at(30),
+    });
+    let action_fence = id(6, AgentExecutionFenceId::from_bytes);
+    state.begin_execution(action_fence, at(40));
+    state.observe_action(AgentActionObservation {
+        proposal_id: proposal.proposal_id,
+        execution_fence_id: action_fence,
+        outcome: AgentActionOutcome::Succeeded {
+            bounded_result: r#"{"saved":true}"#.into(),
+            artifact_id: None,
+        },
+        observed_at: at(50),
+    });
+    let model_fence = id(8, AgentExecutionFenceId::from_bytes);
+
+    assert_eq!(
+        state.continue_after_commit(model_fence, at(51)),
+        AgentWorkflowAcceptance::Updated
+    );
+    assert_eq!(state.projection().stage, AgentTurnStage::AwaitingModel);
+    assert!(state.projection().commit.is_some());
+    assert_eq!(
+        state.observe_model(AgentModelObservation {
+            turn_id: id(2, AgentTurnId::from_bytes),
+            model_fence_id: model_fence,
+            assistant_text: "Saved that note.".into(),
+            proposed_action: None,
+            observed_at: at(60),
+        }),
+        AgentWorkflowAcceptance::Updated
+    );
+    assert_eq!(state.projection().stage, AgentTurnStage::Completed);
+    assert_eq!(
+        state.projection().messages.last().unwrap().content,
+        "Saved that note."
+    );
+}
+
+#[test]
+fn post_commit_continuation_rejects_a_second_tool_action() {
+    let mut state = turn();
+    let proposal = propose_note(&mut state);
+    state.authorize(AgentAuthorizationObservation {
+        proposal_id: proposal.proposal_id,
+        proposal_digest: proposal.proposal_digest,
+        authority: AgentAuthority::DurableTurnGrant,
+        authorization_id: id(4, AgentAuthorizationId::from_bytes),
+        approved: true,
+        observed_at: at(30),
+    });
+    let action_fence = id(6, AgentExecutionFenceId::from_bytes);
+    state.begin_execution(action_fence, at(40));
+    state.observe_action(AgentActionObservation {
+        proposal_id: proposal.proposal_id,
+        execution_fence_id: action_fence,
+        outcome: AgentActionOutcome::Succeeded {
+            bounded_result: "saved".into(),
+            artifact_id: None,
+        },
+        observed_at: at(50),
+    });
+    let model_fence = id(8, AgentExecutionFenceId::from_bytes);
+    state.continue_after_commit(model_fence, at(51));
+
+    assert_eq!(
+        state.observe_model(AgentModelObservation {
+            turn_id: id(2, AgentTurnId::from_bytes),
+            model_fence_id: model_fence,
+            assistant_text: String::new(),
+            proposed_action: Some(AgentToolAction::CreateNote {
+                text: "second write".into(),
+            }),
+            observed_at: at(60),
+        }),
+        AgentWorkflowAcceptance::Rejected
+    );
+    assert_eq!(state.projection().stage, AgentTurnStage::Failed);
+}
+
+#[test]
 fn cancellation_and_provider_failure_are_explicit_states() {
     let mut cancelled = turn();
     assert_eq!(cancelled.cancel(at(12)), AgentWorkflowAcceptance::Updated);

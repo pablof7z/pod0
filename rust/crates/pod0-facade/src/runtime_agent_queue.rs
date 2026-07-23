@@ -35,7 +35,11 @@ impl FacadeState {
                     model_fence_id,
                     model_reference: state.model_reference().to_owned(),
                     messages,
-                    available_tools: state.available_tools().to_vec(),
+                    available_tools: if projection.commit.is_some() {
+                        Vec::new()
+                    } else {
+                        state.available_tools().to_vec()
+                    },
                     maximum_output_bytes: MAX_AGENT_MODEL_OUTPUT_BYTES,
                 },
             },

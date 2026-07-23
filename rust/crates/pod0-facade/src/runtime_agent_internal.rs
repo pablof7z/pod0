@@ -7,7 +7,7 @@ use pod0_storage::{AgentAuditKind, AgentStore, StorageError};
 use serde_json::json;
 use sha2::{Digest, Sha256};
 
-use crate::runtime_agent_modules::identity::agent_command_id;
+use crate::runtime_agent_modules::identity::{agent_command_id, continuation_model_fence_id};
 use crate::runtime_agent_modules::persistence::persist_agent_update;
 use crate::runtime_state::FacadeState;
 
@@ -48,8 +48,15 @@ impl FacadeState {
         {
             return Err(StorageError::AgentTurnConflict);
         }
+        let continuation_fence =
+            continuation_model_fence_id(before.turn_id, state.projection().revision);
+        if state.continue_after_commit(continuation_fence, observed_at)
+            != AgentWorkflowAcceptance::Updated
+        {
+            return Err(StorageError::AgentTurnConflict);
+        }
         let command_id = agent_command_id(b"internal-action-result", before.turn_id);
-        let _ = persist_agent_update(
+        let state = persist_agent_update(
             agent_store,
             command_id,
             b"pod0:agent-internal-action-result:v1",
@@ -58,6 +65,7 @@ impl FacadeState {
             state,
             observed_at,
         )?;
+        let _ = self.queue_agent_model_request(command_id, &state);
         Ok(())
     }
 

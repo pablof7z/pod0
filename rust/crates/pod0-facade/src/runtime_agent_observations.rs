@@ -1,13 +1,17 @@
 use pod0_application::{
     AgentActionObservation, AgentActionOutcome, AgentAuthorizationObservation,
-    AgentCapabilityOutcome, AgentModelObservation, AgentTurnStage, AgentWorkflowAcceptance,
-    HostObservation, HostObservationEnvelope, HostObservationReceipt, HostObservationRejection,
+    AgentModelObservation, AgentTurnStage, AgentWorkflowAcceptance, HostObservation,
+    HostObservationEnvelope, HostObservationReceipt, HostObservationRejection,
     parse_agent_tool_call,
 };
 use pod0_domain::{CommandId, HostRequestId};
 use pod0_storage::{AgentAuditKind, AgentStore, StorageError};
 
 use crate::runtime_agent_modules::identity::agent_authorization_id;
+use crate::runtime_agent_modules::identity::continuation_model_fence_id;
+use crate::runtime_agent_modules::observation_values::{
+    is_terminal, map_capability_outcome, rejected, retain,
+};
 use crate::runtime_agent_modules::persistence::persist_agent_update;
 use crate::runtime_state::FacadeState;
 
@@ -62,6 +66,11 @@ impl FacadeState {
             Ok(state) => {
                 let stage = state.projection().stage;
                 let next = match stage {
+                    AgentTurnStage::AwaitingModel => {
+                        let command_id = CommandId::from_bytes(request_id.into_bytes());
+                        let _ = self.queue_agent_model_request(command_id, &state);
+                        Ok(())
+                    }
                     AgentTurnStage::ApprovalRequired => {
                         self.queue_agent_approval_request(
                             CommandId::from_bytes(request_id.into_bytes()),
@@ -219,6 +228,18 @@ impl FacadeState {
                 return Err(StorageError::AgentTurnConflict);
             }
         }
+        if acceptance == AgentWorkflowAcceptance::Updated
+            && state.projection().stage == AgentTurnStage::Committed
+        {
+            let projection = state.projection();
+            let continuation_fence =
+                continuation_model_fence_id(projection.turn_id, projection.revision);
+            if state.continue_after_commit(continuation_fence, envelope.observed_at)
+                != AgentWorkflowAcceptance::Updated
+            {
+                return Err(StorageError::AgentTurnConflict);
+            }
+        }
         persist_agent_update(
             store,
             CommandId::from_bytes(envelope.request_id.into_bytes()),
@@ -251,39 +272,4 @@ fn fail_invalid_model_action(
         state,
         envelope.observed_at,
     )
-}
-
-fn map_capability_outcome(outcome: AgentCapabilityOutcome) -> AgentActionOutcome {
-    match outcome {
-        AgentCapabilityOutcome::Succeeded { bounded_result } => AgentActionOutcome::Succeeded {
-            bounded_result,
-            artifact_id: None,
-        },
-        AgentCapabilityOutcome::Failed { safe_detail } => {
-            AgentActionOutcome::Failed { safe_detail }
-        }
-        AgentCapabilityOutcome::Cancelled => AgentActionOutcome::Cancelled,
-        AgentCapabilityOutcome::OutcomeAmbiguous => AgentActionOutcome::OutcomeAmbiguous,
-    }
-}
-
-fn is_terminal(stage: AgentTurnStage) -> bool {
-    matches!(
-        stage,
-        AgentTurnStage::Committed
-            | AgentTurnStage::Completed
-            | AgentTurnStage::Denied
-            | AgentTurnStage::Cancelled
-            | AgentTurnStage::Blocked
-            | AgentTurnStage::OutcomeAmbiguous
-            | AgentTurnStage::Failed
-    )
-}
-
-fn retain(request_id: HostRequestId) -> HostObservationReceipt {
-    HostObservationReceipt::RetainAndRetry { request_id }
-}
-
-fn rejected(request_id: HostRequestId, reason: HostObservationRejection) -> HostObservationReceipt {
-    HostObservationReceipt::Rejected { request_id, reason }
 }

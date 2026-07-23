@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-23T02:07:35Z",
+      "lines": [
+        "Agent tool actions now finish with a clear conversational answer instead of stopping after the action runs."
+      ]
+    },
+    {
       "shipped_at": "2026-07-23T01:35:00Z",
       "lines": [
         "Agent conversations now resume safely after relaunches while the shared core preserves their history and actions."

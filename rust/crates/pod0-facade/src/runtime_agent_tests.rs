@@ -116,7 +116,7 @@ fn note_action_requires_exact_approval_and_commits_once_in_rust() {
     ));
     assert_eq!(
         turn(&fixture.facade, start.command_id).stage,
-        AgentTurnStage::Committed
+        AgentTurnStage::AwaitingModel
     );
     let Projection::Notes { value } = fixture
         .facade
@@ -133,6 +133,36 @@ fn note_action_requires_exact_approval_and_commits_once_in_rust() {
     };
     assert_eq!(value.notes.len(), 1);
     assert_eq!(value.notes[0].text, "Architecture matters");
+
+    let continuation = fixture.facade.next_host_requests(8).remove(0);
+    let HostRequest::ExecuteAgentModelTurn { execution } = &continuation.request else {
+        panic!("expected final model continuation");
+    };
+    assert!(execution.available_tools.is_empty());
+    assert!(execution.messages.iter().any(|message| {
+        message.role == AgentMessageRole::Tool && message.content.contains("note_id")
+    }));
+    fixture.facade.record_host_observation(observe(
+        &continuation,
+        HostObservation::AgentModelCompleted {
+            turn_id: execution.turn_id,
+            model_fence_id: execution.model_fence_id,
+            assistant_text: "Saved that note.".to_owned(),
+            proposed_tool_call: None,
+        },
+    ));
+    assert_eq!(
+        turn(&fixture.facade, start.command_id).stage,
+        AgentTurnStage::Completed
+    );
+    assert_eq!(
+        turn(&fixture.facade, start.command_id)
+            .messages
+            .last()
+            .unwrap()
+            .content,
+        "Saved that note."
+    );
 
     let _ = fixture.facade.record_host_observation(approved);
     let Projection::Notes { value } = fixture

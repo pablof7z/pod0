@@ -34,7 +34,6 @@ final class CoreAgentHostTests: XCTestCase {
         XCTAssertEqual(transport.lastTools.count, 1)
         XCTAssertEqual(transport.lastMessages.first?["role"] as? String, "system")
     }
-
     func testMultipleToolCallsFailBeforeCrossingFacade() async {
         let transport = StubCoreAgentModelTransport(result: AgentResult(
             assistantMessage: ["role": "assistant"],
@@ -51,7 +50,6 @@ final class CoreAgentHostTests: XCTestCase {
         }
         XCTAssertEqual(code, .invalidResponse)
     }
-
     func testProviderAdapterPreservesPriorToolEvidenceWithoutForgingCallID() async {
         let transport = StubCoreAgentModelTransport(result: AgentResult(
             assistantMessage: ["role": "assistant", "content": "That note was saved."],
@@ -83,6 +81,35 @@ final class CoreAgentHostTests: XCTestCase {
             "Tool result:\n{\"saved\":true}"
         )
         XCTAssertNil(transport.lastMessages[3]["tool_call_id"])
+    }
+    func testFinalAnswerContinuationCrossesNativeHostWithoutToolSchemas() async {
+        let transport = StubCoreAgentModelTransport(result: AgentResult(
+            assistantMessage: ["role": "assistant", "content": "Saved that note."],
+            toolCalls: []
+        ))
+        let request = AgentModelExecutionRequest(
+            conversationId: ConversationId(high: 1, low: 2),
+            turnId: AgentTurnId(high: 3, low: 4),
+            modelFenceId: AgentExecutionFenceId(high: 5, low: 6),
+            modelReference: "openrouter/test",
+            messages: [
+                AgentMessageProjection(role: .user, content: "Save this"),
+                AgentMessageProjection(role: .tool, content: #"{"saved":true}"#),
+            ],
+            availableTools: [],
+            maximumOutputBytes: 1_024
+        )
+
+        let observation = await makeHost(transport: transport).execute(
+            .executeAgentModelTurn(execution: request)
+        )
+
+        guard case .agentModelCompleted(_, _, let text, let call) = observation else {
+            return XCTFail("Expected final model completion")
+        }
+        XCTAssertEqual(text, "Saved that note.")
+        XCTAssertNil(call)
+        XCTAssertTrue(transport.lastTools.isEmpty)
     }
 
     func testStreamingPresentationIsBoundedAndRetainedUntilProjectionArrives() async {

@@ -1,6 +1,6 @@
 use pod0_domain::{
     AgentAuthorizationId, AgentExecutionFenceId, AgentProposalId, AgentTurnId, CommandId,
-    ContentDigest, HostRequestId,
+    ContentDigest, HostRequestId, StateRevision,
 };
 use sha2::{Digest, Sha256};
 
@@ -33,6 +33,16 @@ pub(super) fn model_fence_id(turn_id: AgentTurnId) -> AgentExecutionFenceId {
     AgentExecutionFenceId::from_bytes(derived(
         b"pod0:agent-model-fence:v1",
         &[&turn_id.into_bytes()],
+    ))
+}
+
+pub(super) fn continuation_model_fence_id(
+    turn_id: AgentTurnId,
+    revision: StateRevision,
+) -> AgentExecutionFenceId {
+    AgentExecutionFenceId::from_bytes(derived(
+        b"pod0:agent-continuation-model-fence:v1",
+        &[&turn_id.into_bytes(), &revision.value.to_be_bytes()],
     ))
 }
 

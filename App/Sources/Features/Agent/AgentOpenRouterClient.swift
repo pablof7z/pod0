@@ -95,14 +95,7 @@ enum AgentOpenRouterClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = NetworkConstants.requestTimeout
 
-        let body: [String: Any] = [
-            "model": model,
-            "messages": messages,
-            "tools": tools,
-            "stream": true,
-            "stream_options": ["include_usage": true],
-            "usage": ["include": true],
-        ]
+        let body = requestBody(messages: messages, tools: tools, model: model)
         let bodyData = try JSONSerialization.data(withJSONObject: body)
         request.httpBody = bodyData
         let requestPayloadJSON = String(data: bodyData, encoding: .utf8)
@@ -181,6 +174,22 @@ enum AgentOpenRouterClient {
         )
 
         return result
+    }
+
+    static func requestBody(
+        messages: [[String: Any]],
+        tools: [[String: Any]],
+        model: String
+    ) -> [String: Any] {
+        var body: [String: Any] = [
+            "model": model,
+            "messages": messages,
+            "stream": true,
+            "stream_options": ["include_usage": true],
+            "usage": ["include": true],
+        ]
+        if !tools.isEmpty { body["tools"] = tools }
+        return body
     }
 
 }

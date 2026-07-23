@@ -3,10 +3,15 @@ pub(crate) mod commands;
 #[cfg(test)]
 #[path = "runtime_agent_context_tests.rs"]
 mod context_tests;
+#[cfg(test)]
+#[path = "runtime_agent_continuation_tests.rs"]
+mod continuation_tests;
 #[path = "runtime_agent_identity.rs"]
 pub(crate) mod identity;
 #[path = "runtime_agent_internal.rs"]
 pub(crate) mod internal;
+#[path = "runtime_agent_observation_values.rs"]
+pub(crate) mod observation_values;
 #[path = "runtime_agent_observations.rs"]
 pub(crate) mod observations;
 #[path = "runtime_agent_persistence.rs"]
