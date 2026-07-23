@@ -8,6 +8,7 @@ extension SharedLibraryClient {
     ) {
         deferredAgentHost.attach(CoreAgentHost(
             capabilityExecutor: LiveCoreAgentCapabilityExecutor(engine: playback.engine),
+            streamingState: agentStreamingState,
             approvalPresenter: approvalPresenter,
             systemPrompt: { [weak store] in
                 guard let store else { return "" }
@@ -17,5 +18,15 @@ extension SharedLibraryClient {
                 store.flatMap { URL(string: $0.state.settings.ollamaChatURL) }
             }
         ))
+    }
+
+    func makeAgentConversationSession() -> SharedAgentConversationSession {
+        SharedAgentConversationSession(
+            runtime: self,
+            streamingState: agentStreamingState,
+            modelReference: { [weak store] in
+                store?.state.settings.agentInitialModel ?? ""
+            }
+        )
     }
 }

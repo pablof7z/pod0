@@ -26,6 +26,7 @@ final class SharedAgentConversationSession {
     ]
 
     private let runtime: any SharedAgentConversationRuntime
+    let streamingState: CoreAgentStreamingState
     private let modelReference: @MainActor () -> String
     private var subscriber: SharedAgentConversationSubscriber?
     private var subscriptionID: SubscriptionId?
@@ -36,9 +37,11 @@ final class SharedAgentConversationSession {
 
     init(
         runtime: any SharedAgentConversationRuntime,
+        streamingState: CoreAgentStreamingState = CoreAgentStreamingState(),
         modelReference: @escaping @MainActor () -> String
     ) {
         self.runtime = runtime
+        self.streamingState = streamingState
         self.modelReference = modelReference
     }
 
@@ -57,6 +60,8 @@ final class SharedAgentConversationSession {
     var canSend: Bool {
         activeTurn == nil && phase != .running
     }
+
+    var streamingContent: String? { streamingState.content }
 
     func startTurn(_ userInput: String) async {
         let input = userInput.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -133,6 +138,9 @@ final class SharedAgentConversationSession {
               conversation.conversationId == subscribedConversationID else { return }
         stateRevision = envelope.stateRevision.value
         self.conversation = conversation
+        for turn in conversation.turns where turn.stage.isTerminal {
+            streamingState.clear(turnID: turn.turnId)
+        }
         if conversation.failure != nil {
             phase = .failed("The agent conversation is unavailable")
         } else if conversation.turns.contains(where: { !$0.stage.isTerminal }) {

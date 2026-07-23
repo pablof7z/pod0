@@ -12,6 +12,7 @@ final class SharedLibraryClient {
     let authoritativeTranscriptReader: SharedTranscriptReader
     let authoritativeChapterReader: SharedChapterReader
     let dispatcher: Pod0NativeHostDispatcher
+    let agentStreamingState = CoreAgentStreamingState()
     private let deferredPlaybackHost: DeferredPlaybackHost
     let deferredAgentHost: DeferredAgentHost
     let deferredRecallHost: DeferredRecallHost

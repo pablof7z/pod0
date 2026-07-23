@@ -12,7 +12,8 @@ protocol CoreAgentModelTransporting: AnyObject {
         messages: [[String: Any]],
         tools: [[String: Any]],
         model: String,
-        ollamaChatURL: URL?
+        ollamaChatURL: URL?,
+        onPartialContent: @escaping (String) -> Void
     ) async throws -> AgentResult
 }
 
@@ -28,6 +29,7 @@ final class CoreAgentHost: CoreAgentHosting {
 
     private let modelTransport: any CoreAgentModelTransporting
     private let capabilityExecutor: any CoreAgentCapabilityExecuting
+    private let streamingState: CoreAgentStreamingState
     private weak var approvalPresenter: (any CoreAgentApprovalPresenting)?
     private let systemPrompt: Prompt
     private let ollamaURL: OllamaURL
@@ -35,12 +37,14 @@ final class CoreAgentHost: CoreAgentHosting {
     init(
         modelTransport: any CoreAgentModelTransporting = LiveCoreAgentModelTransport(),
         capabilityExecutor: any CoreAgentCapabilityExecuting = UnavailableCoreAgentCapabilityExecutor(),
+        streamingState: CoreAgentStreamingState = CoreAgentStreamingState(),
         approvalPresenter: (any CoreAgentApprovalPresenting)?,
         systemPrompt: @escaping Prompt,
         ollamaURL: @escaping OllamaURL
     ) {
         self.modelTransport = modelTransport
         self.capabilityExecutor = capabilityExecutor
+        self.streamingState = streamingState
         self.approvalPresenter = approvalPresenter
         self.systemPrompt = systemPrompt
         self.ollamaURL = ollamaURL
@@ -79,12 +83,28 @@ final class CoreAgentHost: CoreAgentHosting {
                 safeDetail: "Agent model request uses an unsupported contract"
             )
         }
+        streamingState.begin(
+            turnID: execution.turnId,
+            fenceID: execution.modelFenceId,
+            maximumBytes: execution.maximumOutputBytes
+        )
         do {
             let result = try await modelTransport.complete(
                 messages: messages,
                 tools: tools,
                 model: execution.modelReference,
-                ollamaChatURL: ollamaURL()
+                ollamaChatURL: ollamaURL(),
+                onPartialContent: { [streamingState] content in
+                    streamingState.update(
+                        turnID: execution.turnId,
+                        fenceID: execution.modelFenceId,
+                        content: content
+                    )
+                }
+            )
+            streamingState.finish(
+                turnID: execution.turnId,
+                fenceID: execution.modelFenceId
             )
             guard result.toolCalls.count <= 1 else {
                 return .failed(
@@ -112,10 +132,13 @@ final class CoreAgentHost: CoreAgentHosting {
                 }
             )
         } catch is CancellationError {
+            streamingState.clear(turnID: execution.turnId)
             return .cancelled
         } catch let error as AgentError {
+            streamingState.clear(turnID: execution.turnId)
             return Self.failure(for: error)
         } catch {
+            streamingState.clear(turnID: execution.turnId)
             return .failed(
                 code: .providerUnavailable,
                 safeDetail: "Agent model provider request failed"
@@ -193,14 +216,15 @@ final class LiveCoreAgentModelTransport: CoreAgentModelTransporting {
         messages: [[String: Any]],
         tools: [[String: Any]],
         model: String,
-        ollamaChatURL: URL?
+        ollamaChatURL: URL?,
+        onPartialContent: @escaping (String) -> Void
     ) async throws -> AgentResult {
         try await AgentLLMClient.streamCompletion(
             messages: messages,
             tools: tools,
             model: model,
             ollamaChatURL: ollamaChatURL,
-            onPartialContent: { _ in }
+            onPartialContent: onPartialContent
         )
     }
 }

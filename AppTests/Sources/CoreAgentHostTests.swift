@@ -85,6 +85,32 @@ final class CoreAgentHostTests: XCTestCase {
         XCTAssertNil(transport.lastMessages[3]["tool_call_id"])
     }
 
+    func testStreamingPresentationIsBoundedAndRetainedUntilProjectionArrives() async {
+        let streaming = CoreAgentStreamingState()
+        let transport = StubCoreAgentModelTransport(
+            result: AgentResult(
+                assistantMessage: ["role": "assistant", "content": "Complete response"],
+                toolCalls: []
+            ),
+            partialContent: "Partial response"
+        )
+        let host = CoreAgentHost(
+            modelTransport: transport,
+            streamingState: streaming,
+            approvalPresenter: nil,
+            systemPrompt: { "You are Pod0." },
+            ollamaURL: { nil }
+        )
+
+        _ = await host.execute(.executeAgentModelTurn(execution: modelRequest()))
+
+        XCTAssertEqual(streaming.turnID, AgentTurnId(high: 3, low: 4))
+        XCTAssertEqual(streaming.content, "Partial response")
+        XCTAssertFalse(streaming.isActive)
+        streaming.clear(turnID: AgentTurnId(high: 3, low: 4))
+        XCTAssertNil(streaming.content)
+    }
+
     func testApprovalObservationEchoesExactRustProposalIdentity() async {
         let presenter = StubCoreAgentApprovalPresenter(approved: true)
         let host = makeHost(
@@ -194,21 +220,25 @@ private final class StubCoreAgentCapabilityExecutor: CoreAgentCapabilityExecutin
 @MainActor
 private final class StubCoreAgentModelTransport: CoreAgentModelTransporting {
     let result: AgentResult
+    let partialContent: String?
     private(set) var lastMessages: [[String: Any]] = []
     private(set) var lastTools: [[String: Any]] = []
 
-    init(result: AgentResult) {
+    init(result: AgentResult, partialContent: String? = nil) {
         self.result = result
+        self.partialContent = partialContent
     }
 
     func complete(
         messages: [[String: Any]],
         tools: [[String: Any]],
         model _: String,
-        ollamaChatURL _: URL?
+        ollamaChatURL _: URL?,
+        onPartialContent: @escaping (String) -> Void
     ) async throws -> AgentResult {
         lastMessages = messages
         lastTools = tools
+        if let partialContent { onPartialContent(partialContent) }
         return result
     }
 }
