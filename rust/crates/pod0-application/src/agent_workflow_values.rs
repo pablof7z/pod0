@@ -1,9 +1,9 @@
 use pod0_domain::{
-    AgentAuthorizationId, AgentExecutionFenceId, AgentProposalId, AgentTurnId, ContentDigest,
-    ConversationId, GeneratedArtifactId, UnixTimestampMilliseconds,
+    AgentAuthorizationId, AgentExecutionFenceId, AgentProposalId, AgentTurnId, CancellationId,
+    ContentDigest, ConversationId, GeneratedArtifactId, UnixTimestampMilliseconds,
 };
 
-use crate::{AgentAuthority, AgentToolAction, AgentTurnProjection};
+use crate::{AgentAuthority, AgentToolAction, AgentToolName, AgentTurnProjection};
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct AgentTurnState {
@@ -12,6 +12,8 @@ pub struct AgentTurnState {
     pub(super) authorization_id: Option<AgentAuthorizationId>,
     pub(super) action_observation: Option<AgentActionObservation>,
     pub(super) model_reference: String,
+    pub(super) available_tools: Vec<AgentToolName>,
+    pub(super) cancellation_id: CancellationId,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -21,6 +23,8 @@ pub struct AgentTurnStart {
     pub model_fence_id: AgentExecutionFenceId,
     pub user_input: String,
     pub model_reference: String,
+    pub available_tools: Vec<AgentToolName>,
+    pub cancellation_id: CancellationId,
     pub observed_at: UnixTimestampMilliseconds,
 }
 
@@ -76,4 +80,5 @@ pub enum AgentWorkflowAcceptance {
 pub enum AgentTurnStartError {
     InvalidInput,
     InvalidModelReference,
+    InvalidAvailableTools,
 }

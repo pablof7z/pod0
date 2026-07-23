@@ -67,6 +67,8 @@ fn state(seed: u8) -> AgentTurnState {
         model_fence_id: AgentExecutionFenceId::from_bytes([seed + 1; 16]),
         user_input: "Save architecture matters as a note".into(),
         model_reference: "openrouter/test".into(),
+        available_tools: vec![pod0_application::AgentToolName::CreateNote],
+        cancellation_id: pod0_domain::CancellationId::from_parts(9, seed.into()),
         observed_at: UnixTimestampMilliseconds::new(10),
     })
     .unwrap()

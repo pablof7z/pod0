@@ -10,7 +10,7 @@ use crate::{
     TranscriptWorkflowConfiguration, TranscriptWorkflowOrigin,
 };
 
-pub const FACADE_CONTRACT_VERSION: u32 = 38;
+pub const FACADE_CONTRACT_VERSION: u32 = 39;
 pub const MAX_PROJECTION_ITEMS: u16 = 200;
 pub const MAX_OPERATION_ITEMS: usize = 32;
 pub const MAX_HOST_REQUEST_BATCH: u16 = 64;
@@ -165,6 +165,16 @@ pub enum ApplicationCommand {
     CancelScheduledRun {
         occurrence_id: pod0_domain::ScheduledOccurrenceId,
         expected_workflow_revision: StateRevision,
+    },
+    StartAgentTurn {
+        conversation_id: Option<pod0_domain::ConversationId>,
+        user_input: String,
+        model_reference: String,
+        available_tools: Vec<crate::AgentToolName>,
+    },
+    CancelAgentTurn {
+        turn_id: pod0_domain::AgentTurnId,
+        expected_turn_revision: StateRevision,
     },
     CommitChapter {
         expected_selection_revision: StateRevision,

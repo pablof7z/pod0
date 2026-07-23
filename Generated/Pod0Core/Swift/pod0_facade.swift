@@ -7535,7 +7535,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_pod0_facade_checksum_method_pod0facade_plan_chapter_model_request() != 53024) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_record_host_observation() != 26676) {
+    if (uniffi_pod0_facade_checksum_method_pod0facade_record_host_observation() != 28085) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_snapshot() != 17086) {

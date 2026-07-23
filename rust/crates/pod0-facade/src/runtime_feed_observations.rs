@@ -55,6 +55,9 @@ impl FacadeState {
             | HostObservation::DownloadArtifactRemoved { .. }
             | HostObservation::TranscriptCapabilityObserved { .. }
             | HostObservation::ScheduledAgentExecutionObserved { .. }
+            | HostObservation::AgentModelCompleted { .. }
+            | HostObservation::AgentApprovalObserved { .. }
+            | HostObservation::AgentCapabilityObserved { .. }
             | HostObservation::CoreWakeReached { .. }
             | HostObservation::LegacyRecallIndexArtifactsRemoved { .. } => {
                 self.fail(pending.command_id, CoreFailureCode::InvalidCommand)

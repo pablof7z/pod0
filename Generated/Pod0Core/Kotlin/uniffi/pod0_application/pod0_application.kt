@@ -32,6 +32,10 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.ConcurrentHashMap
 import uniffi.pod0_domain.AdSpanEvaluation
 import uniffi.pod0_domain.AdSpanId
+import uniffi.pod0_domain.AgentCommitId
+import uniffi.pod0_domain.AgentExecutionFenceId
+import uniffi.pod0_domain.AgentProposalId
+import uniffi.pod0_domain.AgentTurnId
 import uniffi.pod0_domain.AutoDownloadPolicy
 import uniffi.pod0_domain.CancellationId
 import uniffi.pod0_domain.ChapterAdKind
@@ -49,6 +53,7 @@ import uniffi.pod0_domain.ClipSource
 import uniffi.pod0_domain.CommandId
 import uniffi.pod0_domain.CompletionStatus
 import uniffi.pod0_domain.ContentDigest
+import uniffi.pod0_domain.ConversationId
 import uniffi.pod0_domain.DomainEventId
 import uniffi.pod0_domain.DownloadAttemptId
 import uniffi.pod0_domain.DownloadIntentId
@@ -59,6 +64,10 @@ import uniffi.pod0_domain.EvidenceGenerationId
 import uniffi.pod0_domain.EvidenceSpanId
 import uniffi.pod0_domain.FfiConverterTypeAdSpanEvaluation
 import uniffi.pod0_domain.FfiConverterTypeAdSpanId
+import uniffi.pod0_domain.FfiConverterTypeAgentCommitId
+import uniffi.pod0_domain.FfiConverterTypeAgentExecutionFenceId
+import uniffi.pod0_domain.FfiConverterTypeAgentProposalId
+import uniffi.pod0_domain.FfiConverterTypeAgentTurnId
 import uniffi.pod0_domain.FfiConverterTypeAutoDownloadPolicy
 import uniffi.pod0_domain.FfiConverterTypeCancellationId
 import uniffi.pod0_domain.FfiConverterTypeChapterAdKind
@@ -76,6 +85,7 @@ import uniffi.pod0_domain.FfiConverterTypeClipSource
 import uniffi.pod0_domain.FfiConverterTypeCommandId
 import uniffi.pod0_domain.FfiConverterTypeCompletionStatus
 import uniffi.pod0_domain.FfiConverterTypeContentDigest
+import uniffi.pod0_domain.FfiConverterTypeConversationId
 import uniffi.pod0_domain.FfiConverterTypeDomainEventId
 import uniffi.pod0_domain.FfiConverterTypeDownloadAttemptId
 import uniffi.pod0_domain.FfiConverterTypeDownloadIntentId
@@ -160,6 +170,10 @@ import uniffi.pod0_domain.TranscriptWorkflowId
 import uniffi.pod0_domain.UnixTimestampMilliseconds
 import uniffi.pod0_domain.RustBuffer as RustBufferAdSpanEvaluation
 import uniffi.pod0_domain.RustBuffer as RustBufferAdSpanId
+import uniffi.pod0_domain.RustBuffer as RustBufferAgentCommitId
+import uniffi.pod0_domain.RustBuffer as RustBufferAgentExecutionFenceId
+import uniffi.pod0_domain.RustBuffer as RustBufferAgentProposalId
+import uniffi.pod0_domain.RustBuffer as RustBufferAgentTurnId
 import uniffi.pod0_domain.RustBuffer as RustBufferAutoDownloadPolicy
 import uniffi.pod0_domain.RustBuffer as RustBufferCancellationId
 import uniffi.pod0_domain.RustBuffer as RustBufferChapterAdKind
@@ -177,6 +191,7 @@ import uniffi.pod0_domain.RustBuffer as RustBufferClipSource
 import uniffi.pod0_domain.RustBuffer as RustBufferCommandId
 import uniffi.pod0_domain.RustBuffer as RustBufferCompletionStatus
 import uniffi.pod0_domain.RustBuffer as RustBufferContentDigest
+import uniffi.pod0_domain.RustBuffer as RustBufferConversationId
 import uniffi.pod0_domain.RustBuffer as RustBufferDomainEventId
 import uniffi.pod0_domain.RustBuffer as RustBufferDownloadAttemptId
 import uniffi.pod0_domain.RustBuffer as RustBufferDownloadIntentId
@@ -1390,6 +1405,145 @@ public object FfiConverterTypeAdSpanProjection: FfiConverterRustBuffer<AdSpanPro
 
 
 
+data class AgentApprovalRequest (
+    val `turnId`: AgentTurnId
+    ,
+    val `proposal`: AgentProposalProjection
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentApprovalRequest: FfiConverterRustBuffer<AgentApprovalRequest> {
+    override fun read(buf: ByteBuffer): AgentApprovalRequest {
+        return AgentApprovalRequest(
+            FfiConverterTypeAgentTurnId.read(buf),
+            FfiConverterTypeAgentProposalProjection.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentApprovalRequest) = (
+            FfiConverterTypeAgentTurnId.allocationSize(value.`turnId`) +
+            FfiConverterTypeAgentProposalProjection.allocationSize(value.`proposal`)
+    )
+
+    override fun write(value: AgentApprovalRequest, buf: ByteBuffer) {
+            FfiConverterTypeAgentTurnId.write(value.`turnId`, buf)
+            FfiConverterTypeAgentProposalProjection.write(value.`proposal`, buf)
+    }
+}
+
+
+
+data class AgentCapabilityRequest (
+    val `turnId`: AgentTurnId
+    ,
+    val `proposalId`: AgentProposalId
+    ,
+    val `proposalDigest`: ContentDigest
+    ,
+    val `executionFenceId`: AgentExecutionFenceId
+    ,
+    val `action`: AgentToolAction
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentCapabilityRequest: FfiConverterRustBuffer<AgentCapabilityRequest> {
+    override fun read(buf: ByteBuffer): AgentCapabilityRequest {
+        return AgentCapabilityRequest(
+            FfiConverterTypeAgentTurnId.read(buf),
+            FfiConverterTypeAgentProposalId.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterTypeAgentExecutionFenceId.read(buf),
+            FfiConverterTypeAgentToolAction.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentCapabilityRequest) = (
+            FfiConverterTypeAgentTurnId.allocationSize(value.`turnId`) +
+            FfiConverterTypeAgentProposalId.allocationSize(value.`proposalId`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`proposalDigest`) +
+            FfiConverterTypeAgentExecutionFenceId.allocationSize(value.`executionFenceId`) +
+            FfiConverterTypeAgentToolAction.allocationSize(value.`action`)
+    )
+
+    override fun write(value: AgentCapabilityRequest, buf: ByteBuffer) {
+            FfiConverterTypeAgentTurnId.write(value.`turnId`, buf)
+            FfiConverterTypeAgentProposalId.write(value.`proposalId`, buf)
+            FfiConverterTypeContentDigest.write(value.`proposalDigest`, buf)
+            FfiConverterTypeAgentExecutionFenceId.write(value.`executionFenceId`, buf)
+            FfiConverterTypeAgentToolAction.write(value.`action`, buf)
+    }
+}
+
+
+
+data class AgentCommitReceipt (
+    val `commitId`: AgentCommitId
+    ,
+    val `proposalId`: AgentProposalId
+    ,
+    val `artifactId`: GeneratedArtifactId?
+    ,
+    val `committedAt`: UnixTimestampMilliseconds
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentCommitReceipt: FfiConverterRustBuffer<AgentCommitReceipt> {
+    override fun read(buf: ByteBuffer): AgentCommitReceipt {
+        return AgentCommitReceipt(
+            FfiConverterTypeAgentCommitId.read(buf),
+            FfiConverterTypeAgentProposalId.read(buf),
+            FfiConverterOptionalTypeGeneratedArtifactId.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentCommitReceipt) = (
+            FfiConverterTypeAgentCommitId.allocationSize(value.`commitId`) +
+            FfiConverterTypeAgentProposalId.allocationSize(value.`proposalId`) +
+            FfiConverterOptionalTypeGeneratedArtifactId.allocationSize(value.`artifactId`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`committedAt`)
+    )
+
+    override fun write(value: AgentCommitReceipt, buf: ByteBuffer) {
+            FfiConverterTypeAgentCommitId.write(value.`commitId`, buf)
+            FfiConverterTypeAgentProposalId.write(value.`proposalId`, buf)
+            FfiConverterOptionalTypeGeneratedArtifactId.write(value.`artifactId`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`committedAt`, buf)
+    }
+}
+
+
+
 data class AgentComposedChapterItem (
     val `startSeconds`: kotlin.Double
     ,
@@ -1531,6 +1685,334 @@ public object FfiConverterTypeAgentComposedChapterObservation: FfiConverterRustB
             FfiConverterTypeUnixTimestampMilliseconds.write(value.`generatedAt`, buf)
             FfiConverterOptionalULong.write(value.`durationMilliseconds`, buf)
             FfiConverterSequenceTypeAgentComposedChapterItem.write(value.`items`, buf)
+    }
+}
+
+
+
+data class AgentConversationProjection (
+    val `conversationId`: ConversationId
+    ,
+    val `turns`: List<AgentTurnProjection>
+    ,
+    val `hasMore`: kotlin.Boolean
+    ,
+    val `failure`: CoreFailure?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentConversationProjection: FfiConverterRustBuffer<AgentConversationProjection> {
+    override fun read(buf: ByteBuffer): AgentConversationProjection {
+        return AgentConversationProjection(
+            FfiConverterTypeConversationId.read(buf),
+            FfiConverterSequenceTypeAgentTurnProjection.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalTypeCoreFailure.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentConversationProjection) = (
+            FfiConverterTypeConversationId.allocationSize(value.`conversationId`) +
+            FfiConverterSequenceTypeAgentTurnProjection.allocationSize(value.`turns`) +
+            FfiConverterBoolean.allocationSize(value.`hasMore`) +
+            FfiConverterOptionalTypeCoreFailure.allocationSize(value.`failure`)
+    )
+
+    override fun write(value: AgentConversationProjection, buf: ByteBuffer) {
+            FfiConverterTypeConversationId.write(value.`conversationId`, buf)
+            FfiConverterSequenceTypeAgentTurnProjection.write(value.`turns`, buf)
+            FfiConverterBoolean.write(value.`hasMore`, buf)
+            FfiConverterOptionalTypeCoreFailure.write(value.`failure`, buf)
+    }
+}
+
+
+
+data class AgentMessageProjection (
+    val `role`: AgentMessageRole
+    ,
+    val `content`: kotlin.String
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentMessageProjection: FfiConverterRustBuffer<AgentMessageProjection> {
+    override fun read(buf: ByteBuffer): AgentMessageProjection {
+        return AgentMessageProjection(
+            FfiConverterTypeAgentMessageRole.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentMessageProjection) = (
+            FfiConverterTypeAgentMessageRole.allocationSize(value.`role`) +
+            FfiConverterString.allocationSize(value.`content`)
+    )
+
+    override fun write(value: AgentMessageProjection, buf: ByteBuffer) {
+            FfiConverterTypeAgentMessageRole.write(value.`role`, buf)
+            FfiConverterString.write(value.`content`, buf)
+    }
+}
+
+
+
+data class AgentModelExecutionRequest (
+    val `conversationId`: ConversationId
+    ,
+    val `turnId`: AgentTurnId
+    ,
+    val `modelFenceId`: AgentExecutionFenceId
+    ,
+    val `modelReference`: kotlin.String
+    ,
+    val `messages`: List<AgentMessageProjection>
+    ,
+    val `availableTools`: List<AgentToolName>
+    ,
+    val `maximumOutputBytes`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentModelExecutionRequest: FfiConverterRustBuffer<AgentModelExecutionRequest> {
+    override fun read(buf: ByteBuffer): AgentModelExecutionRequest {
+        return AgentModelExecutionRequest(
+            FfiConverterTypeConversationId.read(buf),
+            FfiConverterTypeAgentTurnId.read(buf),
+            FfiConverterTypeAgentExecutionFenceId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterSequenceTypeAgentMessageProjection.read(buf),
+            FfiConverterSequenceTypeAgentToolName.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentModelExecutionRequest) = (
+            FfiConverterTypeConversationId.allocationSize(value.`conversationId`) +
+            FfiConverterTypeAgentTurnId.allocationSize(value.`turnId`) +
+            FfiConverterTypeAgentExecutionFenceId.allocationSize(value.`modelFenceId`) +
+            FfiConverterString.allocationSize(value.`modelReference`) +
+            FfiConverterSequenceTypeAgentMessageProjection.allocationSize(value.`messages`) +
+            FfiConverterSequenceTypeAgentToolName.allocationSize(value.`availableTools`) +
+            FfiConverterULong.allocationSize(value.`maximumOutputBytes`)
+    )
+
+    override fun write(value: AgentModelExecutionRequest, buf: ByteBuffer) {
+            FfiConverterTypeConversationId.write(value.`conversationId`, buf)
+            FfiConverterTypeAgentTurnId.write(value.`turnId`, buf)
+            FfiConverterTypeAgentExecutionFenceId.write(value.`modelFenceId`, buf)
+            FfiConverterString.write(value.`modelReference`, buf)
+            FfiConverterSequenceTypeAgentMessageProjection.write(value.`messages`, buf)
+            FfiConverterSequenceTypeAgentToolName.write(value.`availableTools`, buf)
+            FfiConverterULong.write(value.`maximumOutputBytes`, buf)
+    }
+}
+
+
+
+data class AgentProposalProjection (
+    val `proposalId`: AgentProposalId
+    ,
+    val `proposalDigest`: ContentDigest
+    ,
+    val `revision`: StateRevision
+    ,
+    val `action`: AgentToolAction
+    ,
+    val `requiredAuthority`: AgentAuthority
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentProposalProjection: FfiConverterRustBuffer<AgentProposalProjection> {
+    override fun read(buf: ByteBuffer): AgentProposalProjection {
+        return AgentProposalProjection(
+            FfiConverterTypeAgentProposalId.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterTypeAgentToolAction.read(buf),
+            FfiConverterTypeAgentAuthority.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentProposalProjection) = (
+            FfiConverterTypeAgentProposalId.allocationSize(value.`proposalId`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`proposalDigest`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`revision`) +
+            FfiConverterTypeAgentToolAction.allocationSize(value.`action`) +
+            FfiConverterTypeAgentAuthority.allocationSize(value.`requiredAuthority`)
+    )
+
+    override fun write(value: AgentProposalProjection, buf: ByteBuffer) {
+            FfiConverterTypeAgentProposalId.write(value.`proposalId`, buf)
+            FfiConverterTypeContentDigest.write(value.`proposalDigest`, buf)
+            FfiConverterTypeStateRevision.write(value.`revision`, buf)
+            FfiConverterTypeAgentToolAction.write(value.`action`, buf)
+            FfiConverterTypeAgentAuthority.write(value.`requiredAuthority`, buf)
+    }
+}
+
+
+
+data class AgentToolPolicy (
+    val `tool`: AgentToolName
+    ,
+    val `classes`: List<AgentToolClass>
+    ,
+    val `authority`: AgentAuthority
+    ,
+    val `execution`: AgentExecutionKind
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentToolPolicy: FfiConverterRustBuffer<AgentToolPolicy> {
+    override fun read(buf: ByteBuffer): AgentToolPolicy {
+        return AgentToolPolicy(
+            FfiConverterTypeAgentToolName.read(buf),
+            FfiConverterSequenceTypeAgentToolClass.read(buf),
+            FfiConverterTypeAgentAuthority.read(buf),
+            FfiConverterTypeAgentExecutionKind.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentToolPolicy) = (
+            FfiConverterTypeAgentToolName.allocationSize(value.`tool`) +
+            FfiConverterSequenceTypeAgentToolClass.allocationSize(value.`classes`) +
+            FfiConverterTypeAgentAuthority.allocationSize(value.`authority`) +
+            FfiConverterTypeAgentExecutionKind.allocationSize(value.`execution`)
+    )
+
+    override fun write(value: AgentToolPolicy, buf: ByteBuffer) {
+            FfiConverterTypeAgentToolName.write(value.`tool`, buf)
+            FfiConverterSequenceTypeAgentToolClass.write(value.`classes`, buf)
+            FfiConverterTypeAgentAuthority.write(value.`authority`, buf)
+            FfiConverterTypeAgentExecutionKind.write(value.`execution`, buf)
+    }
+}
+
+
+
+data class AgentTurnProjection (
+    val `conversationId`: ConversationId
+    ,
+    val `turnId`: AgentTurnId
+    ,
+    val `revision`: StateRevision
+    ,
+    val `stage`: AgentTurnStage
+    ,
+    val `messages`: List<AgentMessageProjection>
+    ,
+    val `proposal`: AgentProposalProjection?
+    ,
+    val `executionFenceId`: AgentExecutionFenceId?
+    ,
+    val `commit`: AgentCommitReceipt?
+    ,
+    val `safeFailure`: kotlin.String?
+    ,
+    val `updatedAt`: UnixTimestampMilliseconds
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentTurnProjection: FfiConverterRustBuffer<AgentTurnProjection> {
+    override fun read(buf: ByteBuffer): AgentTurnProjection {
+        return AgentTurnProjection(
+            FfiConverterTypeConversationId.read(buf),
+            FfiConverterTypeAgentTurnId.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterTypeAgentTurnStage.read(buf),
+            FfiConverterSequenceTypeAgentMessageProjection.read(buf),
+            FfiConverterOptionalTypeAgentProposalProjection.read(buf),
+            FfiConverterOptionalTypeAgentExecutionFenceId.read(buf),
+            FfiConverterOptionalTypeAgentCommitReceipt.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentTurnProjection) = (
+            FfiConverterTypeConversationId.allocationSize(value.`conversationId`) +
+            FfiConverterTypeAgentTurnId.allocationSize(value.`turnId`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`revision`) +
+            FfiConverterTypeAgentTurnStage.allocationSize(value.`stage`) +
+            FfiConverterSequenceTypeAgentMessageProjection.allocationSize(value.`messages`) +
+            FfiConverterOptionalTypeAgentProposalProjection.allocationSize(value.`proposal`) +
+            FfiConverterOptionalTypeAgentExecutionFenceId.allocationSize(value.`executionFenceId`) +
+            FfiConverterOptionalTypeAgentCommitReceipt.allocationSize(value.`commit`) +
+            FfiConverterOptionalString.allocationSize(value.`safeFailure`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`updatedAt`)
+    )
+
+    override fun write(value: AgentTurnProjection, buf: ByteBuffer) {
+            FfiConverterTypeConversationId.write(value.`conversationId`, buf)
+            FfiConverterTypeAgentTurnId.write(value.`turnId`, buf)
+            FfiConverterTypeStateRevision.write(value.`revision`, buf)
+            FfiConverterTypeAgentTurnStage.write(value.`stage`, buf)
+            FfiConverterSequenceTypeAgentMessageProjection.write(value.`messages`, buf)
+            FfiConverterOptionalTypeAgentProposalProjection.write(value.`proposal`, buf)
+            FfiConverterOptionalTypeAgentExecutionFenceId.write(value.`executionFenceId`, buf)
+            FfiConverterOptionalTypeAgentCommitReceipt.write(value.`commit`, buf)
+            FfiConverterOptionalString.write(value.`safeFailure`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`updatedAt`, buf)
     }
 }
 
@@ -6982,6 +7464,1057 @@ public object FfiConverterTypeUnsupportedProjection: FfiConverterRustBuffer<Unsu
 
 
 
+
+enum class AgentAuthority {
+
+    NONE,
+    DURABLE_TURN_GRANT,
+    DURABLE_SCOPED_GRANT,
+    ONE_SHOT_APPROVAL;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentAuthority: FfiConverterRustBuffer<AgentAuthority> {
+    override fun read(buf: ByteBuffer) = try {
+
+        AgentAuthority.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: AgentAuthority) = 4UL
+
+    override fun write(value: AgentAuthority, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+sealed class AgentCapabilityOutcome {
+
+    data class Succeeded(
+        val `boundedResult`: kotlin.String) : AgentCapabilityOutcome()
+
+    {
+
+
+        companion object
+    }
+
+    data class Failed(
+        val `safeDetail`: kotlin.String?) : AgentCapabilityOutcome()
+
+    {
+
+
+        companion object
+    }
+
+    object Cancelled : AgentCapabilityOutcome()
+
+
+    object OutcomeAmbiguous : AgentCapabilityOutcome()
+
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentCapabilityOutcome : FfiConverterRustBuffer<AgentCapabilityOutcome>{
+    override fun read(buf: ByteBuffer): AgentCapabilityOutcome {
+        return when(buf.getInt()) {
+            1 -> AgentCapabilityOutcome.Succeeded(
+                FfiConverterString.read(buf),
+                )
+            2 -> AgentCapabilityOutcome.Failed(
+                FfiConverterOptionalString.read(buf),
+                )
+            3 -> AgentCapabilityOutcome.Cancelled
+            4 -> AgentCapabilityOutcome.OutcomeAmbiguous
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: AgentCapabilityOutcome): ULong = when(value) {
+        is AgentCapabilityOutcome.Succeeded -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`boundedResult`)
+            )
+        }
+        is AgentCapabilityOutcome.Failed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterOptionalString.allocationSize(value.`safeDetail`)
+            )
+        }
+        is AgentCapabilityOutcome.Cancelled -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is AgentCapabilityOutcome.OutcomeAmbiguous -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: AgentCapabilityOutcome, buf: ByteBuffer) {
+        when(value) {
+            is AgentCapabilityOutcome.Succeeded -> {
+                buf.putInt(1)
+                FfiConverterString.write(value.`boundedResult`, buf)
+                Unit
+            }
+            is AgentCapabilityOutcome.Failed -> {
+                buf.putInt(2)
+                FfiConverterOptionalString.write(value.`safeDetail`, buf)
+                Unit
+            }
+            is AgentCapabilityOutcome.Cancelled -> {
+                buf.putInt(3)
+                Unit
+            }
+            is AgentCapabilityOutcome.OutcomeAmbiguous -> {
+                buf.putInt(4)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+
+enum class AgentExecutionKind {
+
+    RUST_COMMIT,
+    RUST_PROJECTION,
+    NATIVE_CAPABILITY,
+    NATIVE_CONVERSATION_PRESENTATION,
+    NATIVE_CAPABILITY_AND_NMP_PUBLICATION;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentExecutionKind: FfiConverterRustBuffer<AgentExecutionKind> {
+    override fun read(buf: ByteBuffer) = try {
+
+        AgentExecutionKind.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: AgentExecutionKind) = 4UL
+
+    override fun write(value: AgentExecutionKind, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+enum class AgentMessageRole {
+
+    USER,
+    ASSISTANT,
+    TOOL;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentMessageRole: FfiConverterRustBuffer<AgentMessageRole> {
+    override fun read(buf: ByteBuffer) = try {
+
+        AgentMessageRole.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: AgentMessageRole) = 4UL
+
+    override fun write(value: AgentMessageRole, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+sealed class AgentToolAction {
+
+    data class NoArguments(
+        val `tool`: uniffi.pod0_application.AgentToolName) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+    data class TextInput(
+        val `tool`: uniffi.pod0_application.AgentToolName,
+        val `text`: kotlin.String) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+    data class Search(
+        val `tool`: uniffi.pod0_application.AgentToolName,
+        val `query`: kotlin.String,
+        val `scope`: kotlin.String?,
+        val `limit`: kotlin.UShort) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+    data class Episode(
+        val `tool`: uniffi.pod0_application.AgentToolName,
+        val `episodeId`: uniffi.pod0_domain.EpisodeId) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+    data class Podcast(
+        val `tool`: uniffi.pod0_application.AgentToolName,
+        val `podcastId`: uniffi.pod0_domain.PodcastId) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+    data class PlayEpisode(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `startMilliseconds`: kotlin.ULong?,
+        val `endMilliseconds`: kotlin.ULong?,
+        val `placement`: uniffi.pod0_application.QueuePlacement) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+    data class SetPlaybackRate(
+        val `permille`: kotlin.UShort) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+    data class SetSleepTimer(
+        val `durationMilliseconds`: kotlin.ULong?) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+    data class CreateNote(
+        val `text`: kotlin.String) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+    data class RecordMemory(
+        val `text`: kotlin.String) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+    data class Ask(
+        val `question`: kotlin.String,
+        val `context`: kotlin.String?) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+    data class ScheduleTask(
+        val `task`: uniffi.pod0_application.ScheduledTaskInput) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+    data class CancelScheduledTask(
+        val `taskId`: uniffi.pod0_domain.ScheduledTaskId,
+        val `expectedRevision`: uniffi.pod0_domain.StateRevision) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+    data class ChangePodcastCategory(
+        val `podcastId`: uniffi.pod0_domain.PodcastId,
+        val `category`: kotlin.String) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+    data class CreateClip(
+        val `episodeId`: uniffi.pod0_domain.EpisodeId,
+        val `podcastId`: uniffi.pod0_domain.PodcastId,
+        val `startMilliseconds`: kotlin.ULong,
+        val `endMilliseconds`: kotlin.ULong,
+        val `caption`: kotlin.String?,
+        val `frozenTranscriptText`: kotlin.String) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+    data class SubscribePodcast(
+        val `feedUrl`: kotlin.String) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+    data class IngestYoutubeVideo(
+        val `url`: kotlin.String) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+    data class ConfigureAgentVoice(
+        val `voiceId`: kotlin.String) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+    data class CreatePodcast(
+        val `title`: kotlin.String,
+        val `description`: kotlin.String) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+    data class UpdatePodcast(
+        val `podcastId`: uniffi.pod0_domain.PodcastId,
+        val `title`: kotlin.String,
+        val `description`: kotlin.String) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+    data class GenerateTtsEpisode(
+        val `podcastId`: uniffi.pod0_domain.PodcastId?,
+        val `title`: kotlin.String,
+        val `script`: kotlin.String,
+        val `voiceId`: kotlin.String?) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+    data class GeneratePodcastArtwork(
+        val `podcastId`: uniffi.pod0_domain.PodcastId,
+        val `prompt`: kotlin.String) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentToolAction : FfiConverterRustBuffer<AgentToolAction>{
+    override fun read(buf: ByteBuffer): AgentToolAction {
+        return when(buf.getInt()) {
+            1 -> AgentToolAction.NoArguments(
+                FfiConverterTypeAgentToolName.read(buf),
+                )
+            2 -> AgentToolAction.TextInput(
+                FfiConverterTypeAgentToolName.read(buf),
+                FfiConverterString.read(buf),
+                )
+            3 -> AgentToolAction.Search(
+                FfiConverterTypeAgentToolName.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                FfiConverterUShort.read(buf),
+                )
+            4 -> AgentToolAction.Episode(
+                FfiConverterTypeAgentToolName.read(buf),
+                FfiConverterTypeEpisodeId.read(buf),
+                )
+            5 -> AgentToolAction.Podcast(
+                FfiConverterTypeAgentToolName.read(buf),
+                FfiConverterTypePodcastId.read(buf),
+                )
+            6 -> AgentToolAction.PlayEpisode(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterOptionalULong.read(buf),
+                FfiConverterOptionalULong.read(buf),
+                FfiConverterTypeQueuePlacement.read(buf),
+                )
+            7 -> AgentToolAction.SetPlaybackRate(
+                FfiConverterUShort.read(buf),
+                )
+            8 -> AgentToolAction.SetSleepTimer(
+                FfiConverterOptionalULong.read(buf),
+                )
+            9 -> AgentToolAction.CreateNote(
+                FfiConverterString.read(buf),
+                )
+            10 -> AgentToolAction.RecordMemory(
+                FfiConverterString.read(buf),
+                )
+            11 -> AgentToolAction.Ask(
+                FfiConverterString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                )
+            12 -> AgentToolAction.ScheduleTask(
+                FfiConverterTypeScheduledTaskInput.read(buf),
+                )
+            13 -> AgentToolAction.CancelScheduledTask(
+                FfiConverterTypeScheduledTaskId.read(buf),
+                FfiConverterTypeStateRevision.read(buf),
+                )
+            14 -> AgentToolAction.ChangePodcastCategory(
+                FfiConverterTypePodcastId.read(buf),
+                FfiConverterString.read(buf),
+                )
+            15 -> AgentToolAction.CreateClip(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypePodcastId.read(buf),
+                FfiConverterULong.read(buf),
+                FfiConverterULong.read(buf),
+                FfiConverterOptionalString.read(buf),
+                FfiConverterString.read(buf),
+                )
+            16 -> AgentToolAction.SubscribePodcast(
+                FfiConverterString.read(buf),
+                )
+            17 -> AgentToolAction.IngestYoutubeVideo(
+                FfiConverterString.read(buf),
+                )
+            18 -> AgentToolAction.ConfigureAgentVoice(
+                FfiConverterString.read(buf),
+                )
+            19 -> AgentToolAction.CreatePodcast(
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                )
+            20 -> AgentToolAction.UpdatePodcast(
+                FfiConverterTypePodcastId.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                )
+            21 -> AgentToolAction.GenerateTtsEpisode(
+                FfiConverterOptionalTypePodcastId.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                )
+            22 -> AgentToolAction.GeneratePodcastArtwork(
+                FfiConverterTypePodcastId.read(buf),
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: AgentToolAction): ULong = when(value) {
+        is AgentToolAction.NoArguments -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeAgentToolName.allocationSize(value.`tool`)
+            )
+        }
+        is AgentToolAction.TextInput -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeAgentToolName.allocationSize(value.`tool`)
+                + FfiConverterString.allocationSize(value.`text`)
+            )
+        }
+        is AgentToolAction.Search -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeAgentToolName.allocationSize(value.`tool`)
+                + FfiConverterString.allocationSize(value.`query`)
+                + FfiConverterOptionalString.allocationSize(value.`scope`)
+                + FfiConverterUShort.allocationSize(value.`limit`)
+            )
+        }
+        is AgentToolAction.Episode -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeAgentToolName.allocationSize(value.`tool`)
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+            )
+        }
+        is AgentToolAction.Podcast -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeAgentToolName.allocationSize(value.`tool`)
+                + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
+            )
+        }
+        is AgentToolAction.PlayEpisode -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterOptionalULong.allocationSize(value.`startMilliseconds`)
+                + FfiConverterOptionalULong.allocationSize(value.`endMilliseconds`)
+                + FfiConverterTypeQueuePlacement.allocationSize(value.`placement`)
+            )
+        }
+        is AgentToolAction.SetPlaybackRate -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUShort.allocationSize(value.`permille`)
+            )
+        }
+        is AgentToolAction.SetSleepTimer -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterOptionalULong.allocationSize(value.`durationMilliseconds`)
+            )
+        }
+        is AgentToolAction.CreateNote -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`text`)
+            )
+        }
+        is AgentToolAction.RecordMemory -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`text`)
+            )
+        }
+        is AgentToolAction.Ask -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`question`)
+                + FfiConverterOptionalString.allocationSize(value.`context`)
+            )
+        }
+        is AgentToolAction.ScheduleTask -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeScheduledTaskInput.allocationSize(value.`task`)
+            )
+        }
+        is AgentToolAction.CancelScheduledTask -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeScheduledTaskId.allocationSize(value.`taskId`)
+                + FfiConverterTypeStateRevision.allocationSize(value.`expectedRevision`)
+            )
+        }
+        is AgentToolAction.ChangePodcastCategory -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
+                + FfiConverterString.allocationSize(value.`category`)
+            )
+        }
+        is AgentToolAction.CreateClip -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
+                + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
+                + FfiConverterULong.allocationSize(value.`startMilliseconds`)
+                + FfiConverterULong.allocationSize(value.`endMilliseconds`)
+                + FfiConverterOptionalString.allocationSize(value.`caption`)
+                + FfiConverterString.allocationSize(value.`frozenTranscriptText`)
+            )
+        }
+        is AgentToolAction.SubscribePodcast -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`feedUrl`)
+            )
+        }
+        is AgentToolAction.IngestYoutubeVideo -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`url`)
+            )
+        }
+        is AgentToolAction.ConfigureAgentVoice -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`voiceId`)
+            )
+        }
+        is AgentToolAction.CreatePodcast -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`title`)
+                + FfiConverterString.allocationSize(value.`description`)
+            )
+        }
+        is AgentToolAction.UpdatePodcast -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
+                + FfiConverterString.allocationSize(value.`title`)
+                + FfiConverterString.allocationSize(value.`description`)
+            )
+        }
+        is AgentToolAction.GenerateTtsEpisode -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterOptionalTypePodcastId.allocationSize(value.`podcastId`)
+                + FfiConverterString.allocationSize(value.`title`)
+                + FfiConverterString.allocationSize(value.`script`)
+                + FfiConverterOptionalString.allocationSize(value.`voiceId`)
+            )
+        }
+        is AgentToolAction.GeneratePodcastArtwork -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
+                + FfiConverterString.allocationSize(value.`prompt`)
+            )
+        }
+    }
+
+    override fun write(value: AgentToolAction, buf: ByteBuffer) {
+        when(value) {
+            is AgentToolAction.NoArguments -> {
+                buf.putInt(1)
+                FfiConverterTypeAgentToolName.write(value.`tool`, buf)
+                Unit
+            }
+            is AgentToolAction.TextInput -> {
+                buf.putInt(2)
+                FfiConverterTypeAgentToolName.write(value.`tool`, buf)
+                FfiConverterString.write(value.`text`, buf)
+                Unit
+            }
+            is AgentToolAction.Search -> {
+                buf.putInt(3)
+                FfiConverterTypeAgentToolName.write(value.`tool`, buf)
+                FfiConverterString.write(value.`query`, buf)
+                FfiConverterOptionalString.write(value.`scope`, buf)
+                FfiConverterUShort.write(value.`limit`, buf)
+                Unit
+            }
+            is AgentToolAction.Episode -> {
+                buf.putInt(4)
+                FfiConverterTypeAgentToolName.write(value.`tool`, buf)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                Unit
+            }
+            is AgentToolAction.Podcast -> {
+                buf.putInt(5)
+                FfiConverterTypeAgentToolName.write(value.`tool`, buf)
+                FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+                Unit
+            }
+            is AgentToolAction.PlayEpisode -> {
+                buf.putInt(6)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterOptionalULong.write(value.`startMilliseconds`, buf)
+                FfiConverterOptionalULong.write(value.`endMilliseconds`, buf)
+                FfiConverterTypeQueuePlacement.write(value.`placement`, buf)
+                Unit
+            }
+            is AgentToolAction.SetPlaybackRate -> {
+                buf.putInt(7)
+                FfiConverterUShort.write(value.`permille`, buf)
+                Unit
+            }
+            is AgentToolAction.SetSleepTimer -> {
+                buf.putInt(8)
+                FfiConverterOptionalULong.write(value.`durationMilliseconds`, buf)
+                Unit
+            }
+            is AgentToolAction.CreateNote -> {
+                buf.putInt(9)
+                FfiConverterString.write(value.`text`, buf)
+                Unit
+            }
+            is AgentToolAction.RecordMemory -> {
+                buf.putInt(10)
+                FfiConverterString.write(value.`text`, buf)
+                Unit
+            }
+            is AgentToolAction.Ask -> {
+                buf.putInt(11)
+                FfiConverterString.write(value.`question`, buf)
+                FfiConverterOptionalString.write(value.`context`, buf)
+                Unit
+            }
+            is AgentToolAction.ScheduleTask -> {
+                buf.putInt(12)
+                FfiConverterTypeScheduledTaskInput.write(value.`task`, buf)
+                Unit
+            }
+            is AgentToolAction.CancelScheduledTask -> {
+                buf.putInt(13)
+                FfiConverterTypeScheduledTaskId.write(value.`taskId`, buf)
+                FfiConverterTypeStateRevision.write(value.`expectedRevision`, buf)
+                Unit
+            }
+            is AgentToolAction.ChangePodcastCategory -> {
+                buf.putInt(14)
+                FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+                FfiConverterString.write(value.`category`, buf)
+                Unit
+            }
+            is AgentToolAction.CreateClip -> {
+                buf.putInt(15)
+                FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+                FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+                FfiConverterULong.write(value.`startMilliseconds`, buf)
+                FfiConverterULong.write(value.`endMilliseconds`, buf)
+                FfiConverterOptionalString.write(value.`caption`, buf)
+                FfiConverterString.write(value.`frozenTranscriptText`, buf)
+                Unit
+            }
+            is AgentToolAction.SubscribePodcast -> {
+                buf.putInt(16)
+                FfiConverterString.write(value.`feedUrl`, buf)
+                Unit
+            }
+            is AgentToolAction.IngestYoutubeVideo -> {
+                buf.putInt(17)
+                FfiConverterString.write(value.`url`, buf)
+                Unit
+            }
+            is AgentToolAction.ConfigureAgentVoice -> {
+                buf.putInt(18)
+                FfiConverterString.write(value.`voiceId`, buf)
+                Unit
+            }
+            is AgentToolAction.CreatePodcast -> {
+                buf.putInt(19)
+                FfiConverterString.write(value.`title`, buf)
+                FfiConverterString.write(value.`description`, buf)
+                Unit
+            }
+            is AgentToolAction.UpdatePodcast -> {
+                buf.putInt(20)
+                FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+                FfiConverterString.write(value.`title`, buf)
+                FfiConverterString.write(value.`description`, buf)
+                Unit
+            }
+            is AgentToolAction.GenerateTtsEpisode -> {
+                buf.putInt(21)
+                FfiConverterOptionalTypePodcastId.write(value.`podcastId`, buf)
+                FfiConverterString.write(value.`title`, buf)
+                FfiConverterString.write(value.`script`, buf)
+                FfiConverterOptionalString.write(value.`voiceId`, buf)
+                Unit
+            }
+            is AgentToolAction.GeneratePodcastArtwork -> {
+                buf.putInt(22)
+                FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+                FfiConverterString.write(value.`prompt`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+
+enum class AgentToolClass {
+
+    READ_ONLY,
+    REVERSIBLE_WRITE,
+    EXTERNAL_SIDE_EFFECT,
+    DESTRUCTIVE_WRITE,
+    SECRET_BEARING,
+    PUBLICATION,
+    SESSION_LOCAL;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentToolClass: FfiConverterRustBuffer<AgentToolClass> {
+    override fun read(buf: ByteBuffer) = try {
+
+        AgentToolClass.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: AgentToolClass) = 4UL
+
+    override fun write(value: AgentToolClass, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+enum class AgentToolName {
+
+    CREATE_NOTE,
+    RECORD_MEMORY,
+    UPGRADE_THINKING,
+    USE_SKILL,
+    ASK,
+    SCHEDULE_TASK,
+    CANCEL_SCHEDULED_TASK,
+    LIST_SCHEDULED_TASKS,
+    LIST_CONVERSATIONS,
+    SEARCH_CONVERSATIONS,
+    PLAY_EPISODE,
+    PAUSE_PLAYBACK,
+    SET_PLAYBACK_RATE,
+    SET_SLEEP_TIMER,
+    SEARCH_EPISODES,
+    QUERY_TRANSCRIPTS,
+    PERPLEXITY_SEARCH,
+    SUMMARIZE_EPISODE,
+    FIND_SIMILAR_EPISODES,
+    MARK_EPISODE_PLAYED,
+    MARK_EPISODE_UNPLAYED,
+    DOWNLOAD_EPISODE,
+    REQUEST_TRANSCRIPTION,
+    REFRESH_FEED,
+    LIST_SUBSCRIPTIONS,
+    LIST_PODCASTS,
+    LIST_CATEGORIES,
+    CHANGE_PODCAST_CATEGORY,
+    LIST_EPISODES,
+    LIST_IN_PROGRESS,
+    LIST_RECENT_UNPLAYED,
+    CREATE_CLIP,
+    DOWNLOAD_AND_TRANSCRIBE,
+    GENERATE_TTS_EPISODE,
+    CONFIGURE_AGENT_VOICE,
+    LIST_AVAILABLE_VOICES,
+    SEARCH_PODCAST_DIRECTORY,
+    SUBSCRIBE_PODCAST,
+    DELETE_PODCAST,
+    INGEST_YOUTUBE_VIDEO,
+    SEARCH_YOUTUBE,
+    CREATE_PODCAST,
+    UPDATE_PODCAST,
+    DELETE_MY_PODCAST,
+    LIST_MY_PODCASTS,
+    GENERATE_PODCAST_ARTWORK;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentToolName: FfiConverterRustBuffer<AgentToolName> {
+    override fun read(buf: ByteBuffer) = try {
+
+        AgentToolName.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: AgentToolName) = 4UL
+
+    override fun write(value: AgentToolName, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+enum class AgentTurnStage {
+
+    AWAITING_MODEL,
+    APPROVAL_REQUIRED,
+    AUTHORIZED,
+    EXECUTING,
+    COMMIT_PENDING,
+    COMMITTED,
+    COMPLETED,
+    DENIED,
+    CANCELLED,
+    BLOCKED,
+    OUTCOME_AMBIGUOUS,
+    FAILED;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentTurnStage: FfiConverterRustBuffer<AgentTurnStage> {
+    override fun read(buf: ByteBuffer) = try {
+
+        AgentTurnStage.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: AgentTurnStage) = 4UL
+
+    override fun write(value: AgentTurnStage, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 sealed class ApplicationCommand {
 
     data class SubscribeToFeed(
@@ -7277,6 +8810,28 @@ sealed class ApplicationCommand {
     data class CancelScheduledRun(
         val `occurrenceId`: uniffi.pod0_domain.ScheduledOccurrenceId,
         val `expectedWorkflowRevision`: uniffi.pod0_domain.StateRevision) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class StartAgentTurn(
+        val `conversationId`: uniffi.pod0_domain.ConversationId?,
+        val `userInput`: kotlin.String,
+        val `modelReference`: kotlin.String,
+        val `availableTools`: List<uniffi.pod0_application.AgentToolName>) : ApplicationCommand()
+
+    {
+
+
+        companion object
+    }
+
+    data class CancelAgentTurn(
+        val `turnId`: uniffi.pod0_domain.AgentTurnId,
+        val `expectedTurnRevision`: uniffi.pod0_domain.StateRevision) : ApplicationCommand()
 
     {
 
@@ -7599,56 +9154,66 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterTypeScheduledOccurrenceId.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            34 -> ApplicationCommand.CommitChapter(
+            34 -> ApplicationCommand.StartAgentTurn(
+                FfiConverterOptionalTypeConversationId.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterSequenceTypeAgentToolName.read(buf),
+                )
+            35 -> ApplicationCommand.CancelAgentTurn(
+                FfiConverterTypeAgentTurnId.read(buf),
+                FfiConverterTypeStateRevision.read(buf),
+                )
+            36 -> ApplicationCommand.CommitChapter(
                 FfiConverterTypeStateRevision.read(buf),
                 FfiConverterTypeChapterArtifactInput.read(buf),
                 )
-            35 -> ApplicationCommand.EnsurePublisherChapters(
+            37 -> ApplicationCommand.EnsurePublisherChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 )
-            36 -> ApplicationCommand.RetryPublisherChapters(
-                FfiConverterTypeEpisodeId.read(buf),
-                FfiConverterTypeStateRevision.read(buf),
-                )
-            37 -> ApplicationCommand.CancelPublisherChapters(
+            38 -> ApplicationCommand.RetryPublisherChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            38 -> ApplicationCommand.EnsureModelChapters(
+            39 -> ApplicationCommand.CancelPublisherChapters(
+                FfiConverterTypeEpisodeId.read(buf),
+                FfiConverterTypeStateRevision.read(buf),
+                )
+            40 -> ApplicationCommand.EnsureModelChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterString.read(buf),
                 )
-            39 -> ApplicationCommand.RetryModelChapters(
+            41 -> ApplicationCommand.RetryModelChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            40 -> ApplicationCommand.CancelModelChapters(
+            42 -> ApplicationCommand.CancelModelChapters(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            41 -> ApplicationCommand.CreateNote(
+            43 -> ApplicationCommand.CreateNote(
                 FfiConverterString.read(buf),
                 FfiConverterTypeNoteKind.read(buf),
                 FfiConverterTypeNoteAuthor.read(buf),
                 FfiConverterOptionalTypeNoteTarget.read(buf),
                 )
-            42 -> ApplicationCommand.UpdateNote(
+            44 -> ApplicationCommand.UpdateNote(
                 FfiConverterTypeNoteId.read(buf),
                 FfiConverterTypeNoteRevision.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterTypeNoteKind.read(buf),
                 FfiConverterOptionalTypeNoteTarget.read(buf),
                 )
-            43 -> ApplicationCommand.SetNoteDeleted(
+            45 -> ApplicationCommand.SetNoteDeleted(
                 FfiConverterTypeNoteId.read(buf),
                 FfiConverterTypeNoteRevision.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
-            44 -> ApplicationCommand.ClearNotes(
+            46 -> ApplicationCommand.ClearNotes(
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            45 -> ApplicationCommand.CreateClip(
+            47 -> ApplicationCommand.CreateClip(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypePodcastId.read(buf),
@@ -7659,7 +9224,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterString.read(buf),
                 FfiConverterTypeClipSource.read(buf),
                 )
-            46 -> ApplicationCommand.UpdateClip(
+            48 -> ApplicationCommand.UpdateClip(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterULong.read(buf),
@@ -7668,18 +9233,18 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterOptionalTypeSpeakerId.read(buf),
                 FfiConverterString.read(buf),
                 )
-            47 -> ApplicationCommand.SetClipDeleted(
+            49 -> ApplicationCommand.SetClipDeleted(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
-            48 -> ApplicationCommand.ClearClips(
+            50 -> ApplicationCommand.ClearClips(
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            49 -> ApplicationCommand.CancelOperation(
+            51 -> ApplicationCommand.CancelOperation(
                 FfiConverterTypeCancellationId.read(buf),
                 )
-            50 -> ApplicationCommand.Unsupported(
+            52 -> ApplicationCommand.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -7934,6 +9499,24 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 4UL
                 + FfiConverterTypeScheduledOccurrenceId.allocationSize(value.`occurrenceId`)
                 + FfiConverterTypeStateRevision.allocationSize(value.`expectedWorkflowRevision`)
+            )
+        }
+        is ApplicationCommand.StartAgentTurn -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterOptionalTypeConversationId.allocationSize(value.`conversationId`)
+                + FfiConverterString.allocationSize(value.`userInput`)
+                + FfiConverterString.allocationSize(value.`modelReference`)
+                + FfiConverterSequenceTypeAgentToolName.allocationSize(value.`availableTools`)
+            )
+        }
+        is ApplicationCommand.CancelAgentTurn -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeAgentTurnId.allocationSize(value.`turnId`)
+                + FfiConverterTypeStateRevision.allocationSize(value.`expectedTurnRevision`)
             )
         }
         is ApplicationCommand.CommitChapter -> {
@@ -8274,50 +9857,64 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
-            is ApplicationCommand.CommitChapter -> {
+            is ApplicationCommand.StartAgentTurn -> {
                 buf.putInt(34)
+                FfiConverterOptionalTypeConversationId.write(value.`conversationId`, buf)
+                FfiConverterString.write(value.`userInput`, buf)
+                FfiConverterString.write(value.`modelReference`, buf)
+                FfiConverterSequenceTypeAgentToolName.write(value.`availableTools`, buf)
+                Unit
+            }
+            is ApplicationCommand.CancelAgentTurn -> {
+                buf.putInt(35)
+                FfiConverterTypeAgentTurnId.write(value.`turnId`, buf)
+                FfiConverterTypeStateRevision.write(value.`expectedTurnRevision`, buf)
+                Unit
+            }
+            is ApplicationCommand.CommitChapter -> {
+                buf.putInt(36)
                 FfiConverterTypeStateRevision.write(value.`expectedSelectionRevision`, buf)
                 FfiConverterTypeChapterArtifactInput.write(value.`artifact`, buf)
                 Unit
             }
             is ApplicationCommand.EnsurePublisherChapters -> {
-                buf.putInt(35)
+                buf.putInt(37)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 Unit
             }
             is ApplicationCommand.RetryPublisherChapters -> {
-                buf.putInt(36)
+                buf.putInt(38)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CancelPublisherChapters -> {
-                buf.putInt(37)
+                buf.putInt(39)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
             is ApplicationCommand.EnsureModelChapters -> {
-                buf.putInt(38)
+                buf.putInt(40)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterString.write(value.`configuredModel`, buf)
                 Unit
             }
             is ApplicationCommand.RetryModelChapters -> {
-                buf.putInt(39)
+                buf.putInt(41)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterString.write(value.`configuredModel`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CancelModelChapters -> {
-                buf.putInt(40)
+                buf.putInt(42)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypeStateRevision.write(value.`expectedWorkflowRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CreateNote -> {
-                buf.putInt(41)
+                buf.putInt(43)
                 FfiConverterString.write(value.`text`, buf)
                 FfiConverterTypeNoteKind.write(value.`kind`, buf)
                 FfiConverterTypeNoteAuthor.write(value.`author`, buf)
@@ -8325,7 +9922,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.UpdateNote -> {
-                buf.putInt(42)
+                buf.putInt(44)
                 FfiConverterTypeNoteId.write(value.`noteId`, buf)
                 FfiConverterTypeNoteRevision.write(value.`expectedNoteRevision`, buf)
                 FfiConverterString.write(value.`text`, buf)
@@ -8334,19 +9931,19 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.SetNoteDeleted -> {
-                buf.putInt(43)
+                buf.putInt(45)
                 FfiConverterTypeNoteId.write(value.`noteId`, buf)
                 FfiConverterTypeNoteRevision.write(value.`expectedNoteRevision`, buf)
                 FfiConverterBoolean.write(value.`deleted`, buf)
                 Unit
             }
             is ApplicationCommand.ClearNotes -> {
-                buf.putInt(44)
+                buf.putInt(46)
                 FfiConverterTypeStateRevision.write(value.`expectedCollectionRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CreateClip -> {
-                buf.putInt(45)
+                buf.putInt(47)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
@@ -8359,7 +9956,7 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.UpdateClip -> {
-                buf.putInt(46)
+                buf.putInt(48)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`expectedClipRevision`, buf)
                 FfiConverterULong.write(value.`startMilliseconds`, buf)
@@ -8370,24 +9967,24 @@ public object FfiConverterTypeApplicationCommand : FfiConverterRustBuffer<Applic
                 Unit
             }
             is ApplicationCommand.SetClipDeleted -> {
-                buf.putInt(47)
+                buf.putInt(49)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`expectedClipRevision`, buf)
                 FfiConverterBoolean.write(value.`deleted`, buf)
                 Unit
             }
             is ApplicationCommand.ClearClips -> {
-                buf.putInt(48)
+                buf.putInt(50)
                 FfiConverterTypeStateRevision.write(value.`expectedCollectionRevision`, buf)
                 Unit
             }
             is ApplicationCommand.CancelOperation -> {
-                buf.putInt(49)
+                buf.putInt(51)
                 FfiConverterTypeCancellationId.write(value.`cancellationId`, buf)
                 Unit
             }
             is ApplicationCommand.Unsupported -> {
-                buf.putInt(50)
+                buf.putInt(52)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -12494,6 +14091,42 @@ sealed class HostObservation {
         companion object
     }
 
+    data class AgentModelCompleted(
+        val `turnId`: uniffi.pod0_domain.AgentTurnId,
+        val `modelFenceId`: uniffi.pod0_domain.AgentExecutionFenceId,
+        val `assistantText`: kotlin.String,
+        val `proposedAction`: uniffi.pod0_application.AgentToolAction?) : HostObservation()
+
+    {
+
+
+        companion object
+    }
+
+    data class AgentApprovalObserved(
+        val `turnId`: uniffi.pod0_domain.AgentTurnId,
+        val `proposalId`: uniffi.pod0_domain.AgentProposalId,
+        val `proposalDigest`: uniffi.pod0_domain.ContentDigest,
+        val `approved`: kotlin.Boolean) : HostObservation()
+
+    {
+
+
+        companion object
+    }
+
+    data class AgentCapabilityObserved(
+        val `turnId`: uniffi.pod0_domain.AgentTurnId,
+        val `proposalId`: uniffi.pod0_domain.AgentProposalId,
+        val `executionFenceId`: uniffi.pod0_domain.AgentExecutionFenceId,
+        val `outcome`: uniffi.pod0_application.AgentCapabilityOutcome) : HostObservation()
+
+    {
+
+
+        companion object
+    }
+
     data class CoreWakeReached(
         val `reason`: uniffi.pod0_application.CoreWakeReason) : HostObservation()
 
@@ -12636,18 +14269,36 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
             16 -> HostObservation.ScheduledAgentExecutionObserved(
                 FfiConverterTypeScheduledAgentExecutionObservation.read(buf),
                 )
-            17 -> HostObservation.CoreWakeReached(
+            17 -> HostObservation.AgentModelCompleted(
+                FfiConverterTypeAgentTurnId.read(buf),
+                FfiConverterTypeAgentExecutionFenceId.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterOptionalTypeAgentToolAction.read(buf),
+                )
+            18 -> HostObservation.AgentApprovalObserved(
+                FfiConverterTypeAgentTurnId.read(buf),
+                FfiConverterTypeAgentProposalId.read(buf),
+                FfiConverterTypeContentDigest.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            19 -> HostObservation.AgentCapabilityObserved(
+                FfiConverterTypeAgentTurnId.read(buf),
+                FfiConverterTypeAgentProposalId.read(buf),
+                FfiConverterTypeAgentExecutionFenceId.read(buf),
+                FfiConverterTypeAgentCapabilityOutcome.read(buf),
+                )
+            20 -> HostObservation.CoreWakeReached(
                 FfiConverterTypeCoreWakeReason.read(buf),
                 )
-            18 -> HostObservation.LegacyRecallIndexArtifactsRemoved(
+            21 -> HostObservation.LegacyRecallIndexArtifactsRemoved(
                 FfiConverterUByte.read(buf),
                 )
-            19 -> HostObservation.Failed(
+            22 -> HostObservation.Failed(
                 FfiConverterTypeHostFailureCode.read(buf),
                 FfiConverterOptionalString.read(buf),
                 )
-            20 -> HostObservation.Cancelled
-            21 -> HostObservation.Unsupported(
+            23 -> HostObservation.Cancelled
+            24 -> HostObservation.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -12803,6 +14454,36 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
             (
                 4UL
                 + FfiConverterTypeScheduledAgentExecutionObservation.allocationSize(value.`observation`)
+            )
+        }
+        is HostObservation.AgentModelCompleted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeAgentTurnId.allocationSize(value.`turnId`)
+                + FfiConverterTypeAgentExecutionFenceId.allocationSize(value.`modelFenceId`)
+                + FfiConverterString.allocationSize(value.`assistantText`)
+                + FfiConverterOptionalTypeAgentToolAction.allocationSize(value.`proposedAction`)
+            )
+        }
+        is HostObservation.AgentApprovalObserved -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeAgentTurnId.allocationSize(value.`turnId`)
+                + FfiConverterTypeAgentProposalId.allocationSize(value.`proposalId`)
+                + FfiConverterTypeContentDigest.allocationSize(value.`proposalDigest`)
+                + FfiConverterBoolean.allocationSize(value.`approved`)
+            )
+        }
+        is HostObservation.AgentCapabilityObserved -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeAgentTurnId.allocationSize(value.`turnId`)
+                + FfiConverterTypeAgentProposalId.allocationSize(value.`proposalId`)
+                + FfiConverterTypeAgentExecutionFenceId.allocationSize(value.`executionFenceId`)
+                + FfiConverterTypeAgentCapabilityOutcome.allocationSize(value.`outcome`)
             )
         }
         is HostObservation.CoreWakeReached -> {
@@ -12962,28 +14643,52 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 FfiConverterTypeScheduledAgentExecutionObservation.write(value.`observation`, buf)
                 Unit
             }
-            is HostObservation.CoreWakeReached -> {
+            is HostObservation.AgentModelCompleted -> {
                 buf.putInt(17)
+                FfiConverterTypeAgentTurnId.write(value.`turnId`, buf)
+                FfiConverterTypeAgentExecutionFenceId.write(value.`modelFenceId`, buf)
+                FfiConverterString.write(value.`assistantText`, buf)
+                FfiConverterOptionalTypeAgentToolAction.write(value.`proposedAction`, buf)
+                Unit
+            }
+            is HostObservation.AgentApprovalObserved -> {
+                buf.putInt(18)
+                FfiConverterTypeAgentTurnId.write(value.`turnId`, buf)
+                FfiConverterTypeAgentProposalId.write(value.`proposalId`, buf)
+                FfiConverterTypeContentDigest.write(value.`proposalDigest`, buf)
+                FfiConverterBoolean.write(value.`approved`, buf)
+                Unit
+            }
+            is HostObservation.AgentCapabilityObserved -> {
+                buf.putInt(19)
+                FfiConverterTypeAgentTurnId.write(value.`turnId`, buf)
+                FfiConverterTypeAgentProposalId.write(value.`proposalId`, buf)
+                FfiConverterTypeAgentExecutionFenceId.write(value.`executionFenceId`, buf)
+                FfiConverterTypeAgentCapabilityOutcome.write(value.`outcome`, buf)
+                Unit
+            }
+            is HostObservation.CoreWakeReached -> {
+                buf.putInt(20)
                 FfiConverterTypeCoreWakeReason.write(value.`reason`, buf)
                 Unit
             }
             is HostObservation.LegacyRecallIndexArtifactsRemoved -> {
-                buf.putInt(18)
+                buf.putInt(21)
                 FfiConverterUByte.write(value.`removedFileCount`, buf)
                 Unit
             }
             is HostObservation.Failed -> {
-                buf.putInt(19)
+                buf.putInt(22)
                 FfiConverterTypeHostFailureCode.write(value.`code`, buf)
                 FfiConverterOptionalString.write(value.`safeDetail`, buf)
                 Unit
             }
             is HostObservation.Cancelled -> {
-                buf.putInt(20)
+                buf.putInt(23)
                 Unit
             }
             is HostObservation.Unsupported -> {
-                buf.putInt(21)
+                buf.putInt(24)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -13419,6 +15124,33 @@ sealed class HostRequest {
         companion object
     }
 
+    data class ExecuteAgentModelTurn(
+        val `execution`: uniffi.pod0_application.AgentModelExecutionRequest) : HostRequest()
+
+    {
+
+
+        companion object
+    }
+
+    data class PresentAgentApproval(
+        val `approval`: uniffi.pod0_application.AgentApprovalRequest) : HostRequest()
+
+    {
+
+
+        companion object
+    }
+
+    data class ExecuteAgentCapability(
+        val `capability`: uniffi.pod0_application.AgentCapabilityRequest) : HostRequest()
+
+    {
+
+
+        companion object
+    }
+
     data class ScheduleCoreWake(
         val `wakeAt`: uniffi.pod0_domain.UnixTimestampMilliseconds,
         val `reason`: uniffi.pod0_application.CoreWakeReason) : HostRequest()
@@ -13567,12 +15299,21 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
             21 -> HostRequest.ExecuteScheduledAgentTurn(
                 FfiConverterTypeScheduledAgentExecutionRequest.read(buf),
                 )
-            22 -> HostRequest.ScheduleCoreWake(
+            22 -> HostRequest.ExecuteAgentModelTurn(
+                FfiConverterTypeAgentModelExecutionRequest.read(buf),
+                )
+            23 -> HostRequest.PresentAgentApproval(
+                FfiConverterTypeAgentApprovalRequest.read(buf),
+                )
+            24 -> HostRequest.ExecuteAgentCapability(
+                FfiConverterTypeAgentCapabilityRequest.read(buf),
+                )
+            25 -> HostRequest.ScheduleCoreWake(
                 FfiConverterTypeUnixTimestampMilliseconds.read(buf),
                 FfiConverterTypeCoreWakeReason.read(buf),
                 )
-            23 -> HostRequest.RemoveLegacyRecallIndexArtifacts
-            24 -> HostRequest.Unsupported(
+            26 -> HostRequest.RemoveLegacyRecallIndexArtifacts
+            27 -> HostRequest.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -13774,6 +15515,27 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 + FfiConverterTypeScheduledAgentExecutionRequest.allocationSize(value.`execution`)
             )
         }
+        is HostRequest.ExecuteAgentModelTurn -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeAgentModelExecutionRequest.allocationSize(value.`execution`)
+            )
+        }
+        is HostRequest.PresentAgentApproval -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeAgentApprovalRequest.allocationSize(value.`approval`)
+            )
+        }
+        is HostRequest.ExecuteAgentCapability -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeAgentCapabilityRequest.allocationSize(value.`capability`)
+            )
+        }
         is HostRequest.ScheduleCoreWake -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -13951,18 +15713,33 @@ public object FfiConverterTypeHostRequest : FfiConverterRustBuffer<HostRequest>{
                 FfiConverterTypeScheduledAgentExecutionRequest.write(value.`execution`, buf)
                 Unit
             }
-            is HostRequest.ScheduleCoreWake -> {
+            is HostRequest.ExecuteAgentModelTurn -> {
                 buf.putInt(22)
+                FfiConverterTypeAgentModelExecutionRequest.write(value.`execution`, buf)
+                Unit
+            }
+            is HostRequest.PresentAgentApproval -> {
+                buf.putInt(23)
+                FfiConverterTypeAgentApprovalRequest.write(value.`approval`, buf)
+                Unit
+            }
+            is HostRequest.ExecuteAgentCapability -> {
+                buf.putInt(24)
+                FfiConverterTypeAgentCapabilityRequest.write(value.`capability`, buf)
+                Unit
+            }
+            is HostRequest.ScheduleCoreWake -> {
+                buf.putInt(25)
                 FfiConverterTypeUnixTimestampMilliseconds.write(value.`wakeAt`, buf)
                 FfiConverterTypeCoreWakeReason.write(value.`reason`, buf)
                 Unit
             }
             is HostRequest.RemoveLegacyRecallIndexArtifacts -> {
-                buf.putInt(23)
+                buf.putInt(26)
                 Unit
             }
             is HostRequest.Unsupported -> {
-                buf.putInt(24)
+                buf.putInt(27)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -14898,6 +16675,16 @@ sealed class OperationResult {
     object QueueUpdated : OperationResult()
 
 
+    data class AgentTurnStarted(
+        val `conversationId`: uniffi.pod0_domain.ConversationId,
+        val `turnId`: uniffi.pod0_domain.AgentTurnId) : OperationResult()
+
+    {
+
+
+        companion object
+    }
+
     data class RecallFinished(
         val `queryId`: uniffi.pod0_domain.RecallQueryId,
         val `evidenceCount`: kotlin.UShort) : OperationResult()
@@ -15065,54 +16852,58 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
                 FfiConverterOptionalTypeEpisodeId.read(buf),
                 )
             8 -> OperationResult.QueueUpdated
-            9 -> OperationResult.RecallFinished(
+            9 -> OperationResult.AgentTurnStarted(
+                FfiConverterTypeConversationId.read(buf),
+                FfiConverterTypeAgentTurnId.read(buf),
+                )
+            10 -> OperationResult.RecallFinished(
                 FfiConverterTypeRecallQueryId.read(buf),
                 FfiConverterUShort.read(buf),
                 )
-            10 -> OperationResult.EvidenceRebuilt(
+            11 -> OperationResult.EvidenceRebuilt(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypeEvidenceGenerationId.read(buf),
                 FfiConverterUInt.read(buf),
                 )
-            11 -> OperationResult.RecallIndexCutoverCommitted(
+            12 -> OperationResult.RecallIndexCutoverCommitted(
                 FfiConverterUInt.read(buf),
                 FfiConverterUByte.read(buf),
                 )
-            12 -> OperationResult.RecallConfigurationImported(
+            13 -> OperationResult.RecallConfigurationImported(
                 FfiConverterBoolean.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            13 -> OperationResult.RecallConfigurationUpdated(
+            14 -> OperationResult.RecallConfigurationUpdated(
                 FfiConverterTypeStateRevision.read(buf),
                 FfiConverterUInt.read(buf),
                 )
-            14 -> OperationResult.TranscriptCommitted(
+            15 -> OperationResult.TranscriptCommitted(
                 FfiConverterTypeTranscriptCommitReceipt.read(buf),
                 )
-            15 -> OperationResult.ChapterCommitted(
+            16 -> OperationResult.ChapterCommitted(
                 FfiConverterTypeChapterCommitReceipt.read(buf),
                 )
-            16 -> OperationResult.NoteCreated(
+            17 -> OperationResult.NoteCreated(
                 FfiConverterTypeNoteId.read(buf),
                 )
-            17 -> OperationResult.NoteUpdated(
+            18 -> OperationResult.NoteUpdated(
                 FfiConverterTypeNoteId.read(buf),
                 )
-            18 -> OperationResult.NotesCleared
-            19 -> OperationResult.ClipCreated(
+            19 -> OperationResult.NotesCleared
+            20 -> OperationResult.ClipCreated(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            20 -> OperationResult.ClipUpdated(
+            21 -> OperationResult.ClipUpdated(
                 FfiConverterTypeClipId.read(buf),
                 FfiConverterTypeClipRevision.read(buf),
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            21 -> OperationResult.ClipsCleared(
+            22 -> OperationResult.ClipsCleared(
                 FfiConverterTypeStateRevision.read(buf),
                 )
-            22 -> OperationResult.Unsupported(
+            23 -> OperationResult.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -15173,6 +16964,14 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
+            )
+        }
+        is OperationResult.AgentTurnStarted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeConversationId.allocationSize(value.`conversationId`)
+                + FfiConverterTypeAgentTurnId.allocationSize(value.`turnId`)
             )
         }
         is OperationResult.RecallFinished -> {
@@ -15325,82 +17124,88 @@ public object FfiConverterTypeOperationResult : FfiConverterRustBuffer<Operation
                 buf.putInt(8)
                 Unit
             }
-            is OperationResult.RecallFinished -> {
+            is OperationResult.AgentTurnStarted -> {
                 buf.putInt(9)
+                FfiConverterTypeConversationId.write(value.`conversationId`, buf)
+                FfiConverterTypeAgentTurnId.write(value.`turnId`, buf)
+                Unit
+            }
+            is OperationResult.RecallFinished -> {
+                buf.putInt(10)
                 FfiConverterTypeRecallQueryId.write(value.`queryId`, buf)
                 FfiConverterUShort.write(value.`evidenceCount`, buf)
                 Unit
             }
             is OperationResult.EvidenceRebuilt -> {
-                buf.putInt(10)
+                buf.putInt(11)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypeEvidenceGenerationId.write(value.`generationId`, buf)
                 FfiConverterUInt.write(value.`spanCount`, buf)
                 Unit
             }
             is OperationResult.RecallIndexCutoverCommitted -> {
-                buf.putInt(11)
+                buf.putInt(12)
                 FfiConverterUInt.write(value.`schemaVersion`, buf)
                 FfiConverterUByte.write(value.`removedLegacyFileCount`, buf)
                 Unit
             }
             is OperationResult.RecallConfigurationImported -> {
-                buf.putInt(12)
+                buf.putInt(13)
                 FfiConverterBoolean.write(value.`imported`, buf)
                 FfiConverterTypeStateRevision.write(value.`revision`, buf)
                 Unit
             }
             is OperationResult.RecallConfigurationUpdated -> {
-                buf.putInt(13)
+                buf.putInt(14)
                 FfiConverterTypeStateRevision.write(value.`revision`, buf)
                 FfiConverterUInt.write(value.`reindexedEpisodeCount`, buf)
                 Unit
             }
             is OperationResult.TranscriptCommitted -> {
-                buf.putInt(14)
+                buf.putInt(15)
                 FfiConverterTypeTranscriptCommitReceipt.write(value.`receipt`, buf)
                 Unit
             }
             is OperationResult.ChapterCommitted -> {
-                buf.putInt(15)
+                buf.putInt(16)
                 FfiConverterTypeChapterCommitReceipt.write(value.`receipt`, buf)
                 Unit
             }
             is OperationResult.NoteCreated -> {
-                buf.putInt(16)
-                FfiConverterTypeNoteId.write(value.`noteId`, buf)
-                Unit
-            }
-            is OperationResult.NoteUpdated -> {
                 buf.putInt(17)
                 FfiConverterTypeNoteId.write(value.`noteId`, buf)
                 Unit
             }
-            is OperationResult.NotesCleared -> {
+            is OperationResult.NoteUpdated -> {
                 buf.putInt(18)
+                FfiConverterTypeNoteId.write(value.`noteId`, buf)
+                Unit
+            }
+            is OperationResult.NotesCleared -> {
+                buf.putInt(19)
                 Unit
             }
             is OperationResult.ClipCreated -> {
-                buf.putInt(19)
-                FfiConverterTypeClipId.write(value.`clipId`, buf)
-                FfiConverterTypeClipRevision.write(value.`clipRevision`, buf)
-                FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
-                Unit
-            }
-            is OperationResult.ClipUpdated -> {
                 buf.putInt(20)
                 FfiConverterTypeClipId.write(value.`clipId`, buf)
                 FfiConverterTypeClipRevision.write(value.`clipRevision`, buf)
                 FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
                 Unit
             }
-            is OperationResult.ClipsCleared -> {
+            is OperationResult.ClipUpdated -> {
                 buf.putInt(21)
+                FfiConverterTypeClipId.write(value.`clipId`, buf)
+                FfiConverterTypeClipRevision.write(value.`clipRevision`, buf)
+                FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
+                Unit
+            }
+            is OperationResult.ClipsCleared -> {
+                buf.putInt(22)
                 FfiConverterTypeStateRevision.write(value.`collectionRevision`, buf)
                 Unit
             }
             is OperationResult.Unsupported -> {
-                buf.putInt(22)
+                buf.putInt(23)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -16991,6 +18796,15 @@ sealed class Projection {
         companion object
     }
 
+    data class AgentConversation(
+        val `value`: uniffi.pod0_application.AgentConversationProjection) : Projection()
+
+    {
+
+
+        companion object
+    }
+
     data class Notes(
         val `value`: uniffi.pod0_application.NotesProjection) : Projection()
 
@@ -17073,13 +18887,16 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
             13 -> Projection.ScheduledAgent(
                 FfiConverterTypeScheduledAgentProjection.read(buf),
                 )
-            14 -> Projection.Notes(
+            14 -> Projection.AgentConversation(
+                FfiConverterTypeAgentConversationProjection.read(buf),
+                )
+            15 -> Projection.Notes(
                 FfiConverterTypeNotesProjection.read(buf),
                 )
-            15 -> Projection.Clips(
+            16 -> Projection.Clips(
                 FfiConverterTypeClipsProjection.read(buf),
                 )
-            16 -> Projection.Unsupported(
+            17 -> Projection.Unsupported(
                 FfiConverterTypeUnsupportedProjection.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -17178,6 +18995,13 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
                 + FfiConverterTypeScheduledAgentProjection.allocationSize(value.`value`)
             )
         }
+        is Projection.AgentConversation -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeAgentConversationProjection.allocationSize(value.`value`)
+            )
+        }
         is Projection.Notes -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -17268,18 +19092,23 @@ public object FfiConverterTypeProjection : FfiConverterRustBuffer<Projection>{
                 FfiConverterTypeScheduledAgentProjection.write(value.`value`, buf)
                 Unit
             }
-            is Projection.Notes -> {
+            is Projection.AgentConversation -> {
                 buf.putInt(14)
+                FfiConverterTypeAgentConversationProjection.write(value.`value`, buf)
+                Unit
+            }
+            is Projection.Notes -> {
+                buf.putInt(15)
                 FfiConverterTypeNotesProjection.write(value.`value`, buf)
                 Unit
             }
             is Projection.Clips -> {
-                buf.putInt(15)
+                buf.putInt(16)
                 FfiConverterTypeClipsProjection.write(value.`value`, buf)
                 Unit
             }
             is Projection.Unsupported -> {
-                buf.putInt(16)
+                buf.putInt(17)
                 FfiConverterTypeUnsupportedProjection.write(value.`value`, buf)
                 Unit
             }
@@ -17394,6 +19223,15 @@ sealed class ProjectionScope {
         companion object
     }
 
+    data class AgentConversation(
+        val `conversationId`: uniffi.pod0_domain.ConversationId) : ProjectionScope()
+
+    {
+
+
+        companion object
+    }
+
     data class Notes(
         val `scope`: uniffi.pod0_application.NoteProjectionScope) : ProjectionScope()
 
@@ -17472,13 +19310,16 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
             13 -> ProjectionScope.ScheduledAgent(
                 FfiConverterOptionalTypeScheduledTaskId.read(buf),
                 )
-            14 -> ProjectionScope.Notes(
+            14 -> ProjectionScope.AgentConversation(
+                FfiConverterTypeConversationId.read(buf),
+                )
+            15 -> ProjectionScope.Notes(
                 FfiConverterTypeNoteProjectionScope.read(buf),
                 )
-            15 -> ProjectionScope.Clips(
+            16 -> ProjectionScope.Clips(
                 FfiConverterTypeClipProjectionScope.read(buf),
                 )
-            16 -> ProjectionScope.Unsupported(
+            17 -> ProjectionScope.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -17576,6 +19417,13 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
                 + FfiConverterOptionalTypeScheduledTaskId.allocationSize(value.`taskId`)
             )
         }
+        is ProjectionScope.AgentConversation -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeConversationId.allocationSize(value.`conversationId`)
+            )
+        }
         is ProjectionScope.Notes -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -17665,18 +19513,23 @@ public object FfiConverterTypeProjectionScope : FfiConverterRustBuffer<Projectio
                 FfiConverterOptionalTypeScheduledTaskId.write(value.`taskId`, buf)
                 Unit
             }
-            is ProjectionScope.Notes -> {
+            is ProjectionScope.AgentConversation -> {
                 buf.putInt(14)
+                FfiConverterTypeConversationId.write(value.`conversationId`, buf)
+                Unit
+            }
+            is ProjectionScope.Notes -> {
+                buf.putInt(15)
                 FfiConverterTypeNoteProjectionScope.write(value.`scope`, buf)
                 Unit
             }
             is ProjectionScope.Clips -> {
-                buf.putInt(15)
+                buf.putInt(16)
                 FfiConverterTypeClipProjectionScope.write(value.`scope`, buf)
                 Unit
             }
             is ProjectionScope.Unsupported -> {
-                buf.putInt(16)
+                buf.putInt(17)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -22000,6 +23853,70 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeAgentCommitReceipt: FfiConverterRustBuffer<AgentCommitReceipt?> {
+    override fun read(buf: ByteBuffer): AgentCommitReceipt? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeAgentCommitReceipt.read(buf)
+    }
+
+    override fun allocationSize(value: AgentCommitReceipt?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeAgentCommitReceipt.allocationSize(value)
+        }
+    }
+
+    override fun write(value: AgentCommitReceipt?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeAgentCommitReceipt.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeAgentProposalProjection: FfiConverterRustBuffer<AgentProposalProjection?> {
+    override fun read(buf: ByteBuffer): AgentProposalProjection? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeAgentProposalProjection.read(buf)
+    }
+
+    override fun allocationSize(value: AgentProposalProjection?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeAgentProposalProjection.allocationSize(value)
+        }
+    }
+
+    override fun write(value: AgentProposalProjection?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeAgentProposalProjection.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeChapterModelTranscriptInput: FfiConverterRustBuffer<ChapterModelTranscriptInput?> {
     override fun read(buf: ByteBuffer): ChapterModelTranscriptInput? {
         if (buf.get().toInt() == 0) {
@@ -22448,6 +24365,38 @@ public object FfiConverterOptionalTypeTranscriptWorkflowRequest: FfiConverterRus
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeAgentExecutionFenceId: FfiConverterRustBuffer<AgentExecutionFenceId?> {
+    override fun read(buf: ByteBuffer): AgentExecutionFenceId? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeAgentExecutionFenceId.read(buf)
+    }
+
+    override fun allocationSize(value: AgentExecutionFenceId?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeAgentExecutionFenceId.allocationSize(value)
+        }
+    }
+
+    override fun write(value: AgentExecutionFenceId?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeAgentExecutionFenceId.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeChapterArtifactId: FfiConverterRustBuffer<ChapterArtifactId?> {
     override fun read(buf: ByteBuffer): ChapterArtifactId? {
         if (buf.get().toInt() == 0) {
@@ -22534,6 +24483,38 @@ public object FfiConverterOptionalTypeContentDigest: FfiConverterRustBuffer<Cont
         } else {
             buf.put(1)
             FfiConverterTypeContentDigest.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeConversationId: FfiConverterRustBuffer<ConversationId?> {
+    override fun read(buf: ByteBuffer): ConversationId? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeConversationId.read(buf)
+    }
+
+    override fun allocationSize(value: ConversationId?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeConversationId.allocationSize(value)
+        }
+    }
+
+    override fun write(value: ConversationId?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeConversationId.write(value, buf)
         }
     }
 }
@@ -23088,6 +25069,38 @@ public object FfiConverterOptionalTypeUnixTimestampMilliseconds: FfiConverterRus
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeAgentToolAction: FfiConverterRustBuffer<AgentToolAction?> {
+    override fun read(buf: ByteBuffer): AgentToolAction? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeAgentToolAction.read(buf)
+    }
+
+    override fun allocationSize(value: AgentToolAction?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeAgentToolAction.allocationSize(value)
+        }
+    }
+
+    override fun write(value: AgentToolAction?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeAgentToolAction.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeModelChapterWorkflowMode: FfiConverterRustBuffer<ModelChapterWorkflowMode?> {
     override fun read(buf: ByteBuffer): ModelChapterWorkflowMode? {
         if (buf.get().toInt() == 0) {
@@ -23318,6 +25331,62 @@ public object FfiConverterSequenceTypeAgentComposedChapterItem: FfiConverterRust
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeAgentComposedChapterItem.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeAgentMessageProjection: FfiConverterRustBuffer<List<AgentMessageProjection>> {
+    override fun read(buf: ByteBuffer): List<AgentMessageProjection> {
+        val len = buf.getInt()
+        return List<AgentMessageProjection>(len) {
+            FfiConverterTypeAgentMessageProjection.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<AgentMessageProjection>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeAgentMessageProjection.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<AgentMessageProjection>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeAgentMessageProjection.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeAgentTurnProjection: FfiConverterRustBuffer<List<AgentTurnProjection>> {
+    override fun read(buf: ByteBuffer): List<AgentTurnProjection> {
+        val len = buf.getInt()
+        return List<AgentTurnProjection>(len) {
+            FfiConverterTypeAgentTurnProjection.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<AgentTurnProjection>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeAgentTurnProjection.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<AgentTurnProjection>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeAgentTurnProjection.write(it, buf)
         }
     }
 }
@@ -24102,6 +26171,62 @@ public object FfiConverterSequenceTypeQueueEntryId: FfiConverterRustBuffer<List<
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeQueueEntryId.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeAgentToolClass: FfiConverterRustBuffer<List<AgentToolClass>> {
+    override fun read(buf: ByteBuffer): List<AgentToolClass> {
+        val len = buf.getInt()
+        return List<AgentToolClass>(len) {
+            FfiConverterTypeAgentToolClass.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<AgentToolClass>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeAgentToolClass.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<AgentToolClass>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeAgentToolClass.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeAgentToolName: FfiConverterRustBuffer<List<AgentToolName>> {
+    override fun read(buf: ByteBuffer): List<AgentToolName> {
+        val len = buf.getInt()
+        return List<AgentToolName>(len) {
+            FfiConverterTypeAgentToolName.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<AgentToolName>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeAgentToolName.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<AgentToolName>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeAgentToolName.write(it, buf)
         }
     }
 }

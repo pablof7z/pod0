@@ -13,6 +13,8 @@ pub const MAX_AGENT_MODEL_REFERENCE_BYTES: usize = 256;
 pub const MAX_AGENT_ACTION_TEXT_BYTES: usize = 64 * 1_024;
 pub const MAX_AGENT_PROJECTION_MESSAGES: usize = 64;
 pub const MAX_AGENT_SAFE_DETAIL_BYTES: usize = 1_024;
+pub const MAX_AGENT_TOOLS_PER_TURN: usize = 46;
+pub const MAX_AGENT_MODEL_OUTPUT_BYTES: u64 = 256 * 1_024;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum AgentAuthority {
@@ -33,11 +35,21 @@ pub enum AgentToolClass {
     SessionLocal,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
+pub enum AgentExecutionKind {
+    RustCommit,
+    RustProjection,
+    NativeCapability,
+    NativeConversationPresentation,
+    NativeCapabilityAndNmpPublication,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct AgentToolPolicy {
     pub tool: AgentToolName,
     pub classes: Vec<AgentToolClass>,
     pub authority: AgentAuthority,
+    pub execution: AgentExecutionKind,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
@@ -231,4 +243,46 @@ impl AgentTurnProjection {
             self.messages.drain(..self.messages.len() - limit);
         }
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct AgentConversationProjection {
+    pub conversation_id: ConversationId,
+    pub turns: Vec<AgentTurnProjection>,
+    pub has_more: bool,
+    pub failure: Option<crate::CoreFailure>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct AgentModelExecutionRequest {
+    pub conversation_id: ConversationId,
+    pub turn_id: AgentTurnId,
+    pub model_fence_id: AgentExecutionFenceId,
+    pub model_reference: String,
+    pub messages: Vec<AgentMessageProjection>,
+    pub available_tools: Vec<AgentToolName>,
+    pub maximum_output_bytes: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct AgentApprovalRequest {
+    pub turn_id: AgentTurnId,
+    pub proposal: AgentProposalProjection,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct AgentCapabilityRequest {
+    pub turn_id: AgentTurnId,
+    pub proposal_id: AgentProposalId,
+    pub proposal_digest: ContentDigest,
+    pub execution_fence_id: AgentExecutionFenceId,
+    pub action: AgentToolAction,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum AgentCapabilityOutcome {
+    Succeeded { bounded_result: String },
+    Failed { safe_detail: Option<String> },
+    Cancelled,
+    OutcomeAmbiguous,
 }

@@ -1,9 +1,7 @@
-use pod0_application::{ApplicationCommand, CommandEnvelope, CoreFailureCode, OperationResult};
-
 use crate::runtime_command_fingerprint::command_fingerprint;
 use crate::runtime_feed_state::FeedIntent;
 use crate::runtime_state::FacadeState;
-
+use pod0_application::{ApplicationCommand, CommandEnvelope, CoreFailureCode, OperationResult};
 impl FacadeState {
     pub(super) fn accept_command(&mut self, envelope: CommandEnvelope) -> bool {
         self.begin(&envelope);
@@ -161,6 +159,10 @@ impl FacadeState {
             | ApplicationCommand::RetryScheduledRun { .. }
             | ApplicationCommand::CancelScheduledRun { .. }) => {
                 self.accept_scheduled_agent_command(&envelope, command)
+            }
+            command @ (ApplicationCommand::StartAgentTurn { .. }
+            | ApplicationCommand::CancelAgentTurn { .. }) => {
+                self.accept_agent_command(&envelope, command, &fingerprint)
             }
             ApplicationCommand::CommitChapter {
                 expected_selection_revision,

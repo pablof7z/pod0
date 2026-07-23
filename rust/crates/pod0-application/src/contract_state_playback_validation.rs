@@ -25,6 +25,9 @@ pub(super) fn playback_request_episode_id(
         | Request::RemoveEpisodeDownloadArtifact { .. }
         | Request::ExecuteTranscriptCapability { .. }
         | Request::ExecuteScheduledAgentTurn { .. }
+        | Request::ExecuteAgentModelTurn { .. }
+        | Request::PresentAgentApproval { .. }
+        | Request::ExecuteAgentCapability { .. }
         | Request::ScheduleCoreWake { .. }
         | Request::RemoveLegacyRecallIndexArtifacts
         | Request::Unsupported { .. } => None,

@@ -119,3 +119,11 @@ pub const ALL_AGENT_TOOL_NAMES: &[(&str, AgentToolName)] = &[
         AgentToolName::GeneratePodcastArtwork,
     ),
 ];
+
+#[must_use]
+pub fn agent_tool_wire_name(tool: AgentToolName) -> &'static str {
+    ALL_AGENT_TOOL_NAMES
+        .iter()
+        .find_map(|(name, candidate)| (*candidate == tool).then_some(*name))
+        .expect("every typed agent tool has a canonical wire name")
+}

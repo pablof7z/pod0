@@ -1,7 +1,5 @@
 #![forbid(unsafe_code)]
 
-use std::sync::Arc;
-
 use pod0_application::{Clock, KernelApplication};
 mod facade_exports;
 pub use facade_exports::*;
@@ -31,6 +29,8 @@ mod model_chapter_cutover_tests;
 mod model_chapter_cutover_types;
 mod note_migration;
 mod runtime;
+mod runtime_agent_command_fingerprint;
+mod runtime_agent_modules;
 mod runtime_artifact_command_fingerprint;
 mod runtime_cancellation;
 #[cfg(test)]
@@ -267,7 +267,7 @@ pub trait Pod0ApplicationApi: Send + Sync {
     fn subscribe(
         &self,
         request: ProjectionRequest,
-        subscriber: Arc<dyn ProjectionSubscriber>,
+        subscriber: std::sync::Arc<dyn ProjectionSubscriber>,
     ) -> SubscriptionId;
     fn unsubscribe(&self, subscription_id: SubscriptionId);
     fn next_host_requests(&self, maximum_count: u16) -> Vec<HostRequestEnvelope>;

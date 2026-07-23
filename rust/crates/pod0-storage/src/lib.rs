@@ -2,6 +2,7 @@
 mod agent_store;
 mod agent_store_codec;
 mod agent_store_model;
+mod agent_store_recovery;
 #[cfg(test)]
 mod agent_store_tests;
 mod backup;

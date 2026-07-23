@@ -206,6 +206,15 @@ impl FacadeState {
             ProjectionScope::ScheduledAgent { task_id } => Projection::ScheduledAgent {
                 value: self.scheduled_agent_projection(task_id, request.offset, request.max_items),
             },
+            ProjectionScope::AgentConversation { conversation_id } => {
+                Projection::AgentConversation {
+                    value: self.agent_conversation_projection(
+                        conversation_id,
+                        request.offset,
+                        request.max_items,
+                    ),
+                }
+            }
             ProjectionScope::Notes { scope } => {
                 let mut notes = self.notes.notes.clone();
                 match scope {

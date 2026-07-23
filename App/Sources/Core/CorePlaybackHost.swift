@@ -76,7 +76,8 @@ final class CorePlaybackHost: CorePlaybackHosting {
             return .failed(code: .invalidResponse, safeDetail: "HTTP request sent to player")
         case .executeChapterModel, .recoverChapterModelOperation,
              .executeTranscriptCapability, .executeScheduledAgentTurn,
-             .scheduleCoreWake:
+             .executeAgentModelTurn, .presentAgentApproval,
+             .executeAgentCapability, .scheduleCoreWake:
             return .failed(code: .invalidResponse, safeDetail: "Core request sent to player")
         case .startEpisodeDownload, .cancelEpisodeDownload,
              .removeEpisodeDownloadArtifact:

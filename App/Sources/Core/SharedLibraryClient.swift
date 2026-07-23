@@ -207,7 +207,7 @@ final class SharedLibraryClient {
         case .scheduledAgent(let projection):
             receiveScheduledAgents(projection, revision: envelope.stateRevision.value)
         case .podcastDetail, .episodeDetail, .recall, .evidenceIndex, .transcript,
-             .chapter, .unsupported:
+             .chapter, .agentConversation, .unsupported:
             break
         }
     }

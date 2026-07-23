@@ -18,6 +18,8 @@ fn turn() -> AgentTurnState {
         model_fence_id: id(3, AgentExecutionFenceId::from_bytes),
         user_input: "Create a note saying architecture matters".into(),
         model_reference: "openrouter/test".into(),
+        available_tools: vec![AgentToolName::CreateNote],
+        cancellation_id: pod0_domain::CancellationId::from_parts(1, 2),
         observed_at: at(10),
     })
     .unwrap()

@@ -28,6 +28,9 @@ impl FacadeState {
         {
             return result;
         }
+        if let Some(result) = self.retry_pending_agent_observation(request_id, &observation) {
+            return result;
+        }
         if let Some(receipt) = self.replayed_model_completion_receipt(&observation) {
             return (false, receipt);
         }
@@ -98,6 +101,7 @@ impl FacadeState {
         let pending_wake = self.pending_core_wakes.contains_key(&request_id);
         let pending_download = self.pending_downloads.contains_key(&request_id);
         let pending_scheduled_agent = self.pending_scheduled_agents.contains_key(&request_id);
+        let pending_agent = self.pending_agents.contains_key(&request_id);
         let acceptance = self.host_requests.accept_observation(&observation);
         if acceptance == ObservationAcceptance::PayloadTooLarge
             && let Some(record) = pending_model
@@ -131,6 +135,9 @@ impl FacadeState {
                 },
             );
         };
+        if pending_agent {
+            return self.accept_agent_observation(observation);
+        }
         if pending_scheduled_agent {
             let retained = observation.clone();
             let receipt = self.persist_scheduled_agent_observation(observation);
@@ -237,6 +244,9 @@ impl FacadeState {
                 | HostObservation::DownloadArtifactRemoved { .. }
                 | HostObservation::TranscriptCapabilityObserved { .. }
                 | HostObservation::ScheduledAgentExecutionObserved { .. }
+                | HostObservation::AgentModelCompleted { .. }
+                | HostObservation::AgentApprovalObserved { .. }
+                | HostObservation::AgentCapabilityObserved { .. }
                 | HostObservation::CoreWakeReached { .. }
                 | HostObservation::LegacyRecallIndexArtifactsRemoved { .. } => {
                     self.fail(command_id, CoreFailureCode::InvalidCommand)

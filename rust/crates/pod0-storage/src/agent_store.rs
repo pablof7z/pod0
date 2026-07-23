@@ -69,7 +69,7 @@ impl AgentStore {
         })
     }
 
-    fn read<T>(
+    pub(crate) fn read<T>(
         &self,
         operation: impl FnOnce(&Connection) -> Result<T, StorageError>,
     ) -> Result<T, StorageError> {
@@ -118,11 +118,11 @@ fn persist(
     let (state_json, state_digest) = encode_state(state)?;
     let stored_revision =
         i64::try_from(projection.revision.value).map_err(|_| StorageError::InvalidAgentState)?;
-    let created_at = current
-        .as_ref()
-        .map_or(projection.updated_at.value, |value| {
-            value.projection().updated_at.value
-        });
+    let created_at = if current.is_some() {
+        read_created_at(transaction, projection.turn_id)?
+    } else {
+        projection.updated_at.value
+    };
     transaction
         .execute(
             "INSERT INTO pod0_agent_turns(turn_id,conversation_id,state_revision,stage,state_schema_version,state_json,state_digest,created_at_ms,updated_at_ms) \
@@ -157,6 +157,16 @@ fn persist(
     Ok(AgentMutationOutcome::Applied(state.clone()))
 }
 
+fn read_created_at(connection: &Connection, turn_id: AgentTurnId) -> Result<i64, StorageError> {
+    connection
+        .query_row(
+            "SELECT created_at_ms FROM pod0_agent_turns WHERE turn_id=?1",
+            [turn_id.into_bytes().as_slice()],
+            |row| row.get(0),
+        )
+        .map_err(|error| StorageError::sqlite("read agent turn creation time", error))
+}
+
 fn command_receipt(
     connection: &Connection,
     context: AgentCommandContext,
@@ -182,7 +192,7 @@ fn command_receipt(
     }
 }
 
-fn read_turn(
+pub(crate) fn read_turn(
     connection: &Connection,
     turn_id: AgentTurnId,
 ) -> Result<Option<AgentTurnState>, StorageError> {

@@ -5,15 +5,14 @@ use pod0_domain::{
     UnixTimestampMilliseconds,
 };
 
-use crate::{
-    RecallEmbeddingInput, RecallEmbeddingVector, RecallRerankDocument, RecallRerankObservation,
-    RecallSpanEmbeddingObservation,
-};
+use crate::{RecallEmbeddingInput, RecallRerankDocument};
 
 mod domain_event;
+mod observation;
 mod playback;
 
 pub use domain_event::*;
+pub use observation::*;
 pub use playback::*;
 
 pub const MAX_FEED_RESPONSE_BYTES: u64 = 8 * 1_024 * 1_024;
@@ -155,6 +154,15 @@ pub enum HostRequest {
     ExecuteScheduledAgentTurn {
         execution: crate::ScheduledAgentExecutionRequest,
     },
+    ExecuteAgentModelTurn {
+        execution: crate::AgentModelExecutionRequest,
+    },
+    PresentAgentApproval {
+        approval: crate::AgentApprovalRequest,
+    },
+    ExecuteAgentCapability {
+        capability: crate::AgentCapabilityRequest,
+    },
     ScheduleCoreWake {
         wake_at: UnixTimestampMilliseconds,
         reason: crate::CoreWakeReason,
@@ -163,133 +171,4 @@ pub enum HostRequest {
     Unsupported {
         wire_code: u32,
     },
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
-pub struct HostObservationEnvelope {
-    pub request_id: HostRequestId,
-    pub cancellation_id: CancellationId,
-    pub observed_request_revision: StateRevision,
-    pub sequence_number: u64,
-    pub observed_at: UnixTimestampMilliseconds,
-    pub observation: HostObservation,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
-pub enum HostObservation {
-    FeedBytesFetched {
-        bytes: Vec<u8>,
-        entity_tag: Option<String>,
-        last_modified: Option<String>,
-        response_url: String,
-        http_status: u16,
-    },
-    FeedNotModified {
-        entity_tag: Option<String>,
-        last_modified: Option<String>,
-        response_url: String,
-    },
-    PlaybackObserved {
-        value: PlaybackLifecycleObservation,
-    },
-    RecallQueryEmbedded {
-        query_id: RecallQueryId,
-        embedding: RecallEmbeddingVector,
-    },
-    RecallSpansEmbedded {
-        episode_id: EpisodeId,
-        generation_id: EvidenceGenerationId,
-        embeddings: Vec<RecallSpanEmbeddingObservation>,
-    },
-    RecallCandidatesReranked {
-        query_id: RecallQueryId,
-        rankings: Vec<RecallRerankObservation>,
-    },
-    PublisherChaptersFetched {
-        episode_id: EpisodeId,
-        bytes: Vec<u8>,
-        content_type: String,
-        response_url: String,
-        entity_tag: Option<String>,
-        last_modified: Option<String>,
-        http_status: u16,
-    },
-    ChapterModelProviderAccepted {
-        episode_id: EpisodeId,
-        generation: u64,
-        submission_fence_id: ChapterModelSubmissionFenceId,
-        update: crate::ChapterModelProviderUpdate,
-    },
-    ChapterModelCompleted {
-        episode_id: EpisodeId,
-        generation: u64,
-        submission_fence_id: ChapterModelSubmissionFenceId,
-        completion: crate::ChapterModelCompletionObservation,
-    },
-    ChapterModelFailed {
-        episode_id: EpisodeId,
-        generation: u64,
-        submission_fence_id: ChapterModelSubmissionFenceId,
-        code: crate::ChapterModelHostFailureCode,
-        safe_detail: Option<String>,
-        retry_after_milliseconds: Option<u64>,
-    },
-    DownloadAccepted {
-        episode_id: EpisodeId,
-        intent_id: DownloadIntentId,
-        attempt_id: DownloadAttemptId,
-        external_task_key: String,
-        resume_key: Option<String>,
-    },
-    DownloadStaged {
-        episode_id: EpisodeId,
-        intent_id: DownloadIntentId,
-        attempt_id: DownloadAttemptId,
-        staged_file_path: String,
-        byte_count: u64,
-    },
-    DownloadCancelled {
-        episode_id: EpisodeId,
-        intent_id: DownloadIntentId,
-        attempt_id: DownloadAttemptId,
-    },
-    DownloadArtifactRemoved {
-        episode_id: EpisodeId,
-        artifact_key: String,
-    },
-    TranscriptCapabilityObserved {
-        observation: crate::TranscriptCapabilityObservation,
-    },
-    ScheduledAgentExecutionObserved {
-        observation: crate::ScheduledAgentExecutionObservation,
-    },
-    CoreWakeReached {
-        reason: crate::CoreWakeReason,
-    },
-    LegacyRecallIndexArtifactsRemoved {
-        removed_file_count: u8,
-    },
-    Failed {
-        code: HostFailureCode,
-        safe_detail: Option<String>,
-    },
-    Cancelled,
-    Unsupported {
-        wire_code: u32,
-    },
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
-pub enum HostFailureCode {
-    Offline,
-    TimedOut,
-    PermissionDenied,
-    InvalidResponse,
-    ResponseTooLarge,
-    MediaUnavailable,
-    ProviderUnavailable,
-    Unauthorized,
-    IndexUnavailable,
-    PlatformFailure,
-    Unsupported { wire_code: u32 },
 }

@@ -62,7 +62,11 @@ impl From<StorageError> for LegacyListeningMigrationError {
             | StorageError::ScheduledAgentWorkflowConflict
             | StorageError::ScheduledAgentTaskNotFound
             | StorageError::ScheduledAgentWorkflowNotFound
-            | StorageError::StaleScheduledAgentAttempt => Self::TargetBlocked,
+            | StorageError::StaleScheduledAgentAttempt
+            | StorageError::AgentCommandConflict
+            | StorageError::AgentTurnNotFound
+            | StorageError::AgentTurnConflict
+            | StorageError::InvalidAgentState => Self::TargetBlocked,
             StorageError::Io { .. } | StorageError::Sqlite { .. } => Self::StorageUnavailable,
         }
     }

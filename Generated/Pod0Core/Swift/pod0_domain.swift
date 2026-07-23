@@ -709,6 +709,276 @@ public func FfiConverterTypeAdSpanInput_lower(_ value: AdSpanInput) -> RustBuffe
 }
 
 
+public struct AgentAuthorizationId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentAuthorizationId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentAuthorizationId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentAuthorizationId {
+        return
+            try AgentAuthorizationId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentAuthorizationId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentAuthorizationId_lift(_ buf: RustBuffer) throws -> AgentAuthorizationId {
+    return try FfiConverterTypeAgentAuthorizationId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentAuthorizationId_lower(_ value: AgentAuthorizationId) -> RustBuffer {
+    return FfiConverterTypeAgentAuthorizationId.lower(value)
+}
+
+
+public struct AgentCommitId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentCommitId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentCommitId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentCommitId {
+        return
+            try AgentCommitId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentCommitId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentCommitId_lift(_ buf: RustBuffer) throws -> AgentCommitId {
+    return try FfiConverterTypeAgentCommitId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentCommitId_lower(_ value: AgentCommitId) -> RustBuffer {
+    return FfiConverterTypeAgentCommitId.lower(value)
+}
+
+
+public struct AgentExecutionFenceId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentExecutionFenceId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentExecutionFenceId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentExecutionFenceId {
+        return
+            try AgentExecutionFenceId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentExecutionFenceId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentExecutionFenceId_lift(_ buf: RustBuffer) throws -> AgentExecutionFenceId {
+    return try FfiConverterTypeAgentExecutionFenceId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentExecutionFenceId_lower(_ value: AgentExecutionFenceId) -> RustBuffer {
+    return FfiConverterTypeAgentExecutionFenceId.lower(value)
+}
+
+
+public struct AgentProposalId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentProposalId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentProposalId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentProposalId {
+        return
+            try AgentProposalId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentProposalId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentProposalId_lift(_ buf: RustBuffer) throws -> AgentProposalId {
+    return try FfiConverterTypeAgentProposalId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentProposalId_lower(_ value: AgentProposalId) -> RustBuffer {
+    return FfiConverterTypeAgentProposalId.lower(value)
+}
+
+
+public struct AgentTurnId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentTurnId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentTurnId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentTurnId {
+        return
+            try AgentTurnId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentTurnId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentTurnId_lift(_ buf: RustBuffer) throws -> AgentTurnId {
+    return try FfiConverterTypeAgentTurnId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentTurnId_lower(_ value: AgentTurnId) -> RustBuffer {
+    return FfiConverterTypeAgentTurnId.lower(value)
+}
+
+
 /**
  * Opaque durable artifact identity. Payloads and host file URLs do not cross
  * this domain boundary; their owning workflow resolves this versioned key.
@@ -1795,6 +2065,60 @@ public func FfiConverterTypeContentDigest_lift(_ buf: RustBuffer) throws -> Cont
 #endif
 public func FfiConverterTypeContentDigest_lower(_ value: ContentDigest) -> RustBuffer {
     return FfiConverterTypeContentDigest.lower(value)
+}
+
+
+public struct ConversationId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ConversationId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeConversationId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ConversationId {
+        return
+            try ConversationId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ConversationId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeConversationId_lift(_ buf: RustBuffer) throws -> ConversationId {
+    return try FfiConverterTypeConversationId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeConversationId_lower(_ value: ConversationId) -> RustBuffer {
+    return FfiConverterTypeConversationId.lower(value)
 }
 
 

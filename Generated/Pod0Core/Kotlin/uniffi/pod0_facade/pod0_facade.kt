@@ -1440,7 +1440,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_plan_chapter_model_request() != 53024) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_host_observation() != 26676) {
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_host_observation() != 28085) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_snapshot() != 17086) {

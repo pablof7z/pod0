@@ -713,6 +713,188 @@ public func FfiConverterTypeAdSpanProjection_lower(_ value: AdSpanProjection) ->
 }
 
 
+public struct AgentApprovalRequest: Equatable, Hashable {
+    public let turnId: AgentTurnId
+    public let proposal: AgentProposalProjection
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(turnId: AgentTurnId, proposal: AgentProposalProjection) {
+        self.turnId = turnId
+        self.proposal = proposal
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentApprovalRequest: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentApprovalRequest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentApprovalRequest {
+        return
+            try AgentApprovalRequest(
+                turnId: FfiConverterTypeAgentTurnId.read(from: &buf),
+                proposal: FfiConverterTypeAgentProposalProjection.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentApprovalRequest, into buf: inout [UInt8]) {
+        FfiConverterTypeAgentTurnId.write(value.turnId, into: &buf)
+        FfiConverterTypeAgentProposalProjection.write(value.proposal, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentApprovalRequest_lift(_ buf: RustBuffer) throws -> AgentApprovalRequest {
+    return try FfiConverterTypeAgentApprovalRequest.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentApprovalRequest_lower(_ value: AgentApprovalRequest) -> RustBuffer {
+    return FfiConverterTypeAgentApprovalRequest.lower(value)
+}
+
+
+public struct AgentCapabilityRequest: Equatable, Hashable {
+    public let turnId: AgentTurnId
+    public let proposalId: AgentProposalId
+    public let proposalDigest: ContentDigest
+    public let executionFenceId: AgentExecutionFenceId
+    public let action: AgentToolAction
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(turnId: AgentTurnId, proposalId: AgentProposalId, proposalDigest: ContentDigest, executionFenceId: AgentExecutionFenceId, action: AgentToolAction) {
+        self.turnId = turnId
+        self.proposalId = proposalId
+        self.proposalDigest = proposalDigest
+        self.executionFenceId = executionFenceId
+        self.action = action
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentCapabilityRequest: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentCapabilityRequest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentCapabilityRequest {
+        return
+            try AgentCapabilityRequest(
+                turnId: FfiConverterTypeAgentTurnId.read(from: &buf),
+                proposalId: FfiConverterTypeAgentProposalId.read(from: &buf),
+                proposalDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                executionFenceId: FfiConverterTypeAgentExecutionFenceId.read(from: &buf),
+                action: FfiConverterTypeAgentToolAction.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentCapabilityRequest, into buf: inout [UInt8]) {
+        FfiConverterTypeAgentTurnId.write(value.turnId, into: &buf)
+        FfiConverterTypeAgentProposalId.write(value.proposalId, into: &buf)
+        FfiConverterTypeContentDigest.write(value.proposalDigest, into: &buf)
+        FfiConverterTypeAgentExecutionFenceId.write(value.executionFenceId, into: &buf)
+        FfiConverterTypeAgentToolAction.write(value.action, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentCapabilityRequest_lift(_ buf: RustBuffer) throws -> AgentCapabilityRequest {
+    return try FfiConverterTypeAgentCapabilityRequest.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentCapabilityRequest_lower(_ value: AgentCapabilityRequest) -> RustBuffer {
+    return FfiConverterTypeAgentCapabilityRequest.lower(value)
+}
+
+
+public struct AgentCommitReceipt: Equatable, Hashable {
+    public let commitId: AgentCommitId
+    public let proposalId: AgentProposalId
+    public let artifactId: GeneratedArtifactId?
+    public let committedAt: UnixTimestampMilliseconds
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(commitId: AgentCommitId, proposalId: AgentProposalId, artifactId: GeneratedArtifactId?, committedAt: UnixTimestampMilliseconds) {
+        self.commitId = commitId
+        self.proposalId = proposalId
+        self.artifactId = artifactId
+        self.committedAt = committedAt
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentCommitReceipt: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentCommitReceipt: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentCommitReceipt {
+        return
+            try AgentCommitReceipt(
+                commitId: FfiConverterTypeAgentCommitId.read(from: &buf),
+                proposalId: FfiConverterTypeAgentProposalId.read(from: &buf),
+                artifactId: FfiConverterOptionTypeGeneratedArtifactId.read(from: &buf),
+                committedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentCommitReceipt, into buf: inout [UInt8]) {
+        FfiConverterTypeAgentCommitId.write(value.commitId, into: &buf)
+        FfiConverterTypeAgentProposalId.write(value.proposalId, into: &buf)
+        FfiConverterOptionTypeGeneratedArtifactId.write(value.artifactId, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.committedAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentCommitReceipt_lift(_ buf: RustBuffer) throws -> AgentCommitReceipt {
+    return try FfiConverterTypeAgentCommitReceipt.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentCommitReceipt_lower(_ value: AgentCommitReceipt) -> RustBuffer {
+    return FfiConverterTypeAgentCommitReceipt.lower(value)
+}
+
+
 public struct AgentComposedChapterItem: Equatable, Hashable {
     public let startSeconds: Double
     public let endSeconds: Double
@@ -874,6 +1056,410 @@ public func FfiConverterTypeAgentComposedChapterObservation_lift(_ buf: RustBuff
 #endif
 public func FfiConverterTypeAgentComposedChapterObservation_lower(_ value: AgentComposedChapterObservation) -> RustBuffer {
     return FfiConverterTypeAgentComposedChapterObservation.lower(value)
+}
+
+
+public struct AgentConversationProjection: Equatable, Hashable {
+    public let conversationId: ConversationId
+    public let turns: [AgentTurnProjection]
+    public let hasMore: Bool
+    public let failure: CoreFailure?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(conversationId: ConversationId, turns: [AgentTurnProjection], hasMore: Bool, failure: CoreFailure?) {
+        self.conversationId = conversationId
+        self.turns = turns
+        self.hasMore = hasMore
+        self.failure = failure
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentConversationProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentConversationProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentConversationProjection {
+        return
+            try AgentConversationProjection(
+                conversationId: FfiConverterTypeConversationId.read(from: &buf),
+                turns: FfiConverterSequenceTypeAgentTurnProjection.read(from: &buf),
+                hasMore: FfiConverterBool.read(from: &buf),
+                failure: FfiConverterOptionTypeCoreFailure.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentConversationProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeConversationId.write(value.conversationId, into: &buf)
+        FfiConverterSequenceTypeAgentTurnProjection.write(value.turns, into: &buf)
+        FfiConverterBool.write(value.hasMore, into: &buf)
+        FfiConverterOptionTypeCoreFailure.write(value.failure, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentConversationProjection_lift(_ buf: RustBuffer) throws -> AgentConversationProjection {
+    return try FfiConverterTypeAgentConversationProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentConversationProjection_lower(_ value: AgentConversationProjection) -> RustBuffer {
+    return FfiConverterTypeAgentConversationProjection.lower(value)
+}
+
+
+public struct AgentMessageProjection: Equatable, Hashable {
+    public let role: AgentMessageRole
+    public let content: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(role: AgentMessageRole, content: String) {
+        self.role = role
+        self.content = content
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentMessageProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentMessageProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentMessageProjection {
+        return
+            try AgentMessageProjection(
+                role: FfiConverterTypeAgentMessageRole.read(from: &buf),
+                content: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentMessageProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeAgentMessageRole.write(value.role, into: &buf)
+        FfiConverterString.write(value.content, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentMessageProjection_lift(_ buf: RustBuffer) throws -> AgentMessageProjection {
+    return try FfiConverterTypeAgentMessageProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentMessageProjection_lower(_ value: AgentMessageProjection) -> RustBuffer {
+    return FfiConverterTypeAgentMessageProjection.lower(value)
+}
+
+
+public struct AgentModelExecutionRequest: Equatable, Hashable {
+    public let conversationId: ConversationId
+    public let turnId: AgentTurnId
+    public let modelFenceId: AgentExecutionFenceId
+    public let modelReference: String
+    public let messages: [AgentMessageProjection]
+    public let availableTools: [AgentToolName]
+    public let maximumOutputBytes: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(conversationId: ConversationId, turnId: AgentTurnId, modelFenceId: AgentExecutionFenceId, modelReference: String, messages: [AgentMessageProjection], availableTools: [AgentToolName], maximumOutputBytes: UInt64) {
+        self.conversationId = conversationId
+        self.turnId = turnId
+        self.modelFenceId = modelFenceId
+        self.modelReference = modelReference
+        self.messages = messages
+        self.availableTools = availableTools
+        self.maximumOutputBytes = maximumOutputBytes
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentModelExecutionRequest: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentModelExecutionRequest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentModelExecutionRequest {
+        return
+            try AgentModelExecutionRequest(
+                conversationId: FfiConverterTypeConversationId.read(from: &buf),
+                turnId: FfiConverterTypeAgentTurnId.read(from: &buf),
+                modelFenceId: FfiConverterTypeAgentExecutionFenceId.read(from: &buf),
+                modelReference: FfiConverterString.read(from: &buf),
+                messages: FfiConverterSequenceTypeAgentMessageProjection.read(from: &buf),
+                availableTools: FfiConverterSequenceTypeAgentToolName.read(from: &buf),
+                maximumOutputBytes: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentModelExecutionRequest, into buf: inout [UInt8]) {
+        FfiConverterTypeConversationId.write(value.conversationId, into: &buf)
+        FfiConverterTypeAgentTurnId.write(value.turnId, into: &buf)
+        FfiConverterTypeAgentExecutionFenceId.write(value.modelFenceId, into: &buf)
+        FfiConverterString.write(value.modelReference, into: &buf)
+        FfiConverterSequenceTypeAgentMessageProjection.write(value.messages, into: &buf)
+        FfiConverterSequenceTypeAgentToolName.write(value.availableTools, into: &buf)
+        FfiConverterUInt64.write(value.maximumOutputBytes, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentModelExecutionRequest_lift(_ buf: RustBuffer) throws -> AgentModelExecutionRequest {
+    return try FfiConverterTypeAgentModelExecutionRequest.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentModelExecutionRequest_lower(_ value: AgentModelExecutionRequest) -> RustBuffer {
+    return FfiConverterTypeAgentModelExecutionRequest.lower(value)
+}
+
+
+public struct AgentProposalProjection: Equatable, Hashable {
+    public let proposalId: AgentProposalId
+    public let proposalDigest: ContentDigest
+    public let revision: StateRevision
+    public let action: AgentToolAction
+    public let requiredAuthority: AgentAuthority
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(proposalId: AgentProposalId, proposalDigest: ContentDigest, revision: StateRevision, action: AgentToolAction, requiredAuthority: AgentAuthority) {
+        self.proposalId = proposalId
+        self.proposalDigest = proposalDigest
+        self.revision = revision
+        self.action = action
+        self.requiredAuthority = requiredAuthority
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentProposalProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentProposalProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentProposalProjection {
+        return
+            try AgentProposalProjection(
+                proposalId: FfiConverterTypeAgentProposalId.read(from: &buf),
+                proposalDigest: FfiConverterTypeContentDigest.read(from: &buf),
+                revision: FfiConverterTypeStateRevision.read(from: &buf),
+                action: FfiConverterTypeAgentToolAction.read(from: &buf),
+                requiredAuthority: FfiConverterTypeAgentAuthority.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentProposalProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeAgentProposalId.write(value.proposalId, into: &buf)
+        FfiConverterTypeContentDigest.write(value.proposalDigest, into: &buf)
+        FfiConverterTypeStateRevision.write(value.revision, into: &buf)
+        FfiConverterTypeAgentToolAction.write(value.action, into: &buf)
+        FfiConverterTypeAgentAuthority.write(value.requiredAuthority, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentProposalProjection_lift(_ buf: RustBuffer) throws -> AgentProposalProjection {
+    return try FfiConverterTypeAgentProposalProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentProposalProjection_lower(_ value: AgentProposalProjection) -> RustBuffer {
+    return FfiConverterTypeAgentProposalProjection.lower(value)
+}
+
+
+public struct AgentToolPolicy: Equatable, Hashable {
+    public let tool: AgentToolName
+    public let classes: [AgentToolClass]
+    public let authority: AgentAuthority
+    public let execution: AgentExecutionKind
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(tool: AgentToolName, classes: [AgentToolClass], authority: AgentAuthority, execution: AgentExecutionKind) {
+        self.tool = tool
+        self.classes = classes
+        self.authority = authority
+        self.execution = execution
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentToolPolicy: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentToolPolicy: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentToolPolicy {
+        return
+            try AgentToolPolicy(
+                tool: FfiConverterTypeAgentToolName.read(from: &buf),
+                classes: FfiConverterSequenceTypeAgentToolClass.read(from: &buf),
+                authority: FfiConverterTypeAgentAuthority.read(from: &buf),
+                execution: FfiConverterTypeAgentExecutionKind.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentToolPolicy, into buf: inout [UInt8]) {
+        FfiConverterTypeAgentToolName.write(value.tool, into: &buf)
+        FfiConverterSequenceTypeAgentToolClass.write(value.classes, into: &buf)
+        FfiConverterTypeAgentAuthority.write(value.authority, into: &buf)
+        FfiConverterTypeAgentExecutionKind.write(value.execution, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentToolPolicy_lift(_ buf: RustBuffer) throws -> AgentToolPolicy {
+    return try FfiConverterTypeAgentToolPolicy.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentToolPolicy_lower(_ value: AgentToolPolicy) -> RustBuffer {
+    return FfiConverterTypeAgentToolPolicy.lower(value)
+}
+
+
+public struct AgentTurnProjection: Equatable, Hashable {
+    public let conversationId: ConversationId
+    public let turnId: AgentTurnId
+    public let revision: StateRevision
+    public let stage: AgentTurnStage
+    public let messages: [AgentMessageProjection]
+    public let proposal: AgentProposalProjection?
+    public let executionFenceId: AgentExecutionFenceId?
+    public let commit: AgentCommitReceipt?
+    public let safeFailure: String?
+    public let updatedAt: UnixTimestampMilliseconds
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(conversationId: ConversationId, turnId: AgentTurnId, revision: StateRevision, stage: AgentTurnStage, messages: [AgentMessageProjection], proposal: AgentProposalProjection?, executionFenceId: AgentExecutionFenceId?, commit: AgentCommitReceipt?, safeFailure: String?, updatedAt: UnixTimestampMilliseconds) {
+        self.conversationId = conversationId
+        self.turnId = turnId
+        self.revision = revision
+        self.stage = stage
+        self.messages = messages
+        self.proposal = proposal
+        self.executionFenceId = executionFenceId
+        self.commit = commit
+        self.safeFailure = safeFailure
+        self.updatedAt = updatedAt
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentTurnProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentTurnProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentTurnProjection {
+        return
+            try AgentTurnProjection(
+                conversationId: FfiConverterTypeConversationId.read(from: &buf),
+                turnId: FfiConverterTypeAgentTurnId.read(from: &buf),
+                revision: FfiConverterTypeStateRevision.read(from: &buf),
+                stage: FfiConverterTypeAgentTurnStage.read(from: &buf),
+                messages: FfiConverterSequenceTypeAgentMessageProjection.read(from: &buf),
+                proposal: FfiConverterOptionTypeAgentProposalProjection.read(from: &buf),
+                executionFenceId: FfiConverterOptionTypeAgentExecutionFenceId.read(from: &buf),
+                commit: FfiConverterOptionTypeAgentCommitReceipt.read(from: &buf),
+                safeFailure: FfiConverterOptionString.read(from: &buf),
+                updatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgentTurnProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeConversationId.write(value.conversationId, into: &buf)
+        FfiConverterTypeAgentTurnId.write(value.turnId, into: &buf)
+        FfiConverterTypeStateRevision.write(value.revision, into: &buf)
+        FfiConverterTypeAgentTurnStage.write(value.stage, into: &buf)
+        FfiConverterSequenceTypeAgentMessageProjection.write(value.messages, into: &buf)
+        FfiConverterOptionTypeAgentProposalProjection.write(value.proposal, into: &buf)
+        FfiConverterOptionTypeAgentExecutionFenceId.write(value.executionFenceId, into: &buf)
+        FfiConverterOptionTypeAgentCommitReceipt.write(value.commit, into: &buf)
+        FfiConverterOptionString.write(value.safeFailure, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.updatedAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentTurnProjection_lift(_ buf: RustBuffer) throws -> AgentTurnProjection {
+    return try FfiConverterTypeAgentTurnProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentTurnProjection_lower(_ value: AgentTurnProjection) -> RustBuffer {
+    return FfiConverterTypeAgentTurnProjection.lower(value)
 }
 
 
@@ -7434,6 +8020,1239 @@ public func FfiConverterTypeUnsupportedProjection_lower(_ value: UnsupportedProj
 
 
 
+public enum AgentAuthority: Equatable, Hashable {
+
+    case none
+    case durableTurnGrant
+    case durableScopedGrant
+    case oneShotApproval
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentAuthority: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentAuthority: FfiConverterRustBuffer {
+    typealias SwiftType = AgentAuthority
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentAuthority {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .none
+
+        case 2: return .durableTurnGrant
+
+        case 3: return .durableScopedGrant
+
+        case 4: return .oneShotApproval
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AgentAuthority, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .none:
+            writeInt(&buf, Int32(1))
+
+
+        case .durableTurnGrant:
+            writeInt(&buf, Int32(2))
+
+
+        case .durableScopedGrant:
+            writeInt(&buf, Int32(3))
+
+
+        case .oneShotApproval:
+            writeInt(&buf, Int32(4))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentAuthority_lift(_ buf: RustBuffer) throws -> AgentAuthority {
+    return try FfiConverterTypeAgentAuthority.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentAuthority_lower(_ value: AgentAuthority) -> RustBuffer {
+    return FfiConverterTypeAgentAuthority.lower(value)
+}
+
+
+
+
+public enum AgentCapabilityOutcome: Equatable, Hashable {
+
+    case succeeded(boundedResult: String
+    )
+    case failed(safeDetail: String?
+    )
+    case cancelled
+    case outcomeAmbiguous
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentCapabilityOutcome: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentCapabilityOutcome: FfiConverterRustBuffer {
+    typealias SwiftType = AgentCapabilityOutcome
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentCapabilityOutcome {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .succeeded(boundedResult: try FfiConverterString.read(from: &buf)
+        )
+
+        case 2: return .failed(safeDetail: try FfiConverterOptionString.read(from: &buf)
+        )
+
+        case 3: return .cancelled
+
+        case 4: return .outcomeAmbiguous
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AgentCapabilityOutcome, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case let .succeeded(boundedResult):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(boundedResult, into: &buf)
+
+
+        case let .failed(safeDetail):
+            writeInt(&buf, Int32(2))
+            FfiConverterOptionString.write(safeDetail, into: &buf)
+
+
+        case .cancelled:
+            writeInt(&buf, Int32(3))
+
+
+        case .outcomeAmbiguous:
+            writeInt(&buf, Int32(4))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentCapabilityOutcome_lift(_ buf: RustBuffer) throws -> AgentCapabilityOutcome {
+    return try FfiConverterTypeAgentCapabilityOutcome.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentCapabilityOutcome_lower(_ value: AgentCapabilityOutcome) -> RustBuffer {
+    return FfiConverterTypeAgentCapabilityOutcome.lower(value)
+}
+
+
+
+
+public enum AgentExecutionKind: Equatable, Hashable {
+
+    case rustCommit
+    case rustProjection
+    case nativeCapability
+    case nativeConversationPresentation
+    case nativeCapabilityAndNmpPublication
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentExecutionKind: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentExecutionKind: FfiConverterRustBuffer {
+    typealias SwiftType = AgentExecutionKind
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentExecutionKind {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .rustCommit
+
+        case 2: return .rustProjection
+
+        case 3: return .nativeCapability
+
+        case 4: return .nativeConversationPresentation
+
+        case 5: return .nativeCapabilityAndNmpPublication
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AgentExecutionKind, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .rustCommit:
+            writeInt(&buf, Int32(1))
+
+
+        case .rustProjection:
+            writeInt(&buf, Int32(2))
+
+
+        case .nativeCapability:
+            writeInt(&buf, Int32(3))
+
+
+        case .nativeConversationPresentation:
+            writeInt(&buf, Int32(4))
+
+
+        case .nativeCapabilityAndNmpPublication:
+            writeInt(&buf, Int32(5))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentExecutionKind_lift(_ buf: RustBuffer) throws -> AgentExecutionKind {
+    return try FfiConverterTypeAgentExecutionKind.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentExecutionKind_lower(_ value: AgentExecutionKind) -> RustBuffer {
+    return FfiConverterTypeAgentExecutionKind.lower(value)
+}
+
+
+
+
+public enum AgentMessageRole: Equatable, Hashable {
+
+    case user
+    case assistant
+    case tool
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentMessageRole: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentMessageRole: FfiConverterRustBuffer {
+    typealias SwiftType = AgentMessageRole
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentMessageRole {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .user
+
+        case 2: return .assistant
+
+        case 3: return .tool
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AgentMessageRole, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .user:
+            writeInt(&buf, Int32(1))
+
+
+        case .assistant:
+            writeInt(&buf, Int32(2))
+
+
+        case .tool:
+            writeInt(&buf, Int32(3))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentMessageRole_lift(_ buf: RustBuffer) throws -> AgentMessageRole {
+    return try FfiConverterTypeAgentMessageRole.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentMessageRole_lower(_ value: AgentMessageRole) -> RustBuffer {
+    return FfiConverterTypeAgentMessageRole.lower(value)
+}
+
+
+
+
+public enum AgentToolAction: Equatable, Hashable {
+
+    case noArguments(tool: AgentToolName
+    )
+    case textInput(tool: AgentToolName, text: String
+    )
+    case search(tool: AgentToolName, query: String, scope: String?, limit: UInt16
+    )
+    case episode(tool: AgentToolName, episodeId: EpisodeId
+    )
+    case podcast(tool: AgentToolName, podcastId: PodcastId
+    )
+    case playEpisode(episodeId: EpisodeId, startMilliseconds: UInt64?, endMilliseconds: UInt64?, placement: QueuePlacement
+    )
+    case setPlaybackRate(permille: UInt16
+    )
+    case setSleepTimer(durationMilliseconds: UInt64?
+    )
+    case createNote(text: String
+    )
+    case recordMemory(text: String
+    )
+    case ask(question: String, context: String?
+    )
+    case scheduleTask(task: ScheduledTaskInput
+    )
+    case cancelScheduledTask(taskId: ScheduledTaskId, expectedRevision: StateRevision
+    )
+    case changePodcastCategory(podcastId: PodcastId, category: String
+    )
+    case createClip(episodeId: EpisodeId, podcastId: PodcastId, startMilliseconds: UInt64, endMilliseconds: UInt64, caption: String?, frozenTranscriptText: String
+    )
+    case subscribePodcast(feedUrl: String
+    )
+    case ingestYoutubeVideo(url: String
+    )
+    case configureAgentVoice(voiceId: String
+    )
+    case createPodcast(title: String, description: String
+    )
+    case updatePodcast(podcastId: PodcastId, title: String, description: String
+    )
+    case generateTtsEpisode(podcastId: PodcastId?, title: String, script: String, voiceId: String?
+    )
+    case generatePodcastArtwork(podcastId: PodcastId, prompt: String
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentToolAction: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentToolAction: FfiConverterRustBuffer {
+    typealias SwiftType = AgentToolAction
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentToolAction {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .noArguments(tool: try FfiConverterTypeAgentToolName.read(from: &buf)
+        )
+
+        case 2: return .textInput(tool: try FfiConverterTypeAgentToolName.read(from: &buf), text: try FfiConverterString.read(from: &buf)
+        )
+
+        case 3: return .search(tool: try FfiConverterTypeAgentToolName.read(from: &buf), query: try FfiConverterString.read(from: &buf), scope: try FfiConverterOptionString.read(from: &buf), limit: try FfiConverterUInt16.read(from: &buf)
+        )
+
+        case 4: return .episode(tool: try FfiConverterTypeAgentToolName.read(from: &buf), episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
+        )
+
+        case 5: return .podcast(tool: try FfiConverterTypeAgentToolName.read(from: &buf), podcastId: try FfiConverterTypePodcastId.read(from: &buf)
+        )
+
+        case 6: return .playEpisode(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), startMilliseconds: try FfiConverterOptionUInt64.read(from: &buf), endMilliseconds: try FfiConverterOptionUInt64.read(from: &buf), placement: try FfiConverterTypeQueuePlacement.read(from: &buf)
+        )
+
+        case 7: return .setPlaybackRate(permille: try FfiConverterUInt16.read(from: &buf)
+        )
+
+        case 8: return .setSleepTimer(durationMilliseconds: try FfiConverterOptionUInt64.read(from: &buf)
+        )
+
+        case 9: return .createNote(text: try FfiConverterString.read(from: &buf)
+        )
+
+        case 10: return .recordMemory(text: try FfiConverterString.read(from: &buf)
+        )
+
+        case 11: return .ask(question: try FfiConverterString.read(from: &buf), context: try FfiConverterOptionString.read(from: &buf)
+        )
+
+        case 12: return .scheduleTask(task: try FfiConverterTypeScheduledTaskInput.read(from: &buf)
+        )
+
+        case 13: return .cancelScheduledTask(taskId: try FfiConverterTypeScheduledTaskId.read(from: &buf), expectedRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        )
+
+        case 14: return .changePodcastCategory(podcastId: try FfiConverterTypePodcastId.read(from: &buf), category: try FfiConverterString.read(from: &buf)
+        )
+
+        case 15: return .createClip(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), podcastId: try FfiConverterTypePodcastId.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf)
+        )
+
+        case 16: return .subscribePodcast(feedUrl: try FfiConverterString.read(from: &buf)
+        )
+
+        case 17: return .ingestYoutubeVideo(url: try FfiConverterString.read(from: &buf)
+        )
+
+        case 18: return .configureAgentVoice(voiceId: try FfiConverterString.read(from: &buf)
+        )
+
+        case 19: return .createPodcast(title: try FfiConverterString.read(from: &buf), description: try FfiConverterString.read(from: &buf)
+        )
+
+        case 20: return .updatePodcast(podcastId: try FfiConverterTypePodcastId.read(from: &buf), title: try FfiConverterString.read(from: &buf), description: try FfiConverterString.read(from: &buf)
+        )
+
+        case 21: return .generateTtsEpisode(podcastId: try FfiConverterOptionTypePodcastId.read(from: &buf), title: try FfiConverterString.read(from: &buf), script: try FfiConverterString.read(from: &buf), voiceId: try FfiConverterOptionString.read(from: &buf)
+        )
+
+        case 22: return .generatePodcastArtwork(podcastId: try FfiConverterTypePodcastId.read(from: &buf), prompt: try FfiConverterString.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AgentToolAction, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case let .noArguments(tool):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeAgentToolName.write(tool, into: &buf)
+
+
+        case let .textInput(tool,text):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeAgentToolName.write(tool, into: &buf)
+            FfiConverterString.write(text, into: &buf)
+
+
+        case let .search(tool,query,scope,limit):
+            writeInt(&buf, Int32(3))
+            FfiConverterTypeAgentToolName.write(tool, into: &buf)
+            FfiConverterString.write(query, into: &buf)
+            FfiConverterOptionString.write(scope, into: &buf)
+            FfiConverterUInt16.write(limit, into: &buf)
+
+
+        case let .episode(tool,episodeId):
+            writeInt(&buf, Int32(4))
+            FfiConverterTypeAgentToolName.write(tool, into: &buf)
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+
+
+        case let .podcast(tool,podcastId):
+            writeInt(&buf, Int32(5))
+            FfiConverterTypeAgentToolName.write(tool, into: &buf)
+            FfiConverterTypePodcastId.write(podcastId, into: &buf)
+
+
+        case let .playEpisode(episodeId,startMilliseconds,endMilliseconds,placement):
+            writeInt(&buf, Int32(6))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterOptionUInt64.write(startMilliseconds, into: &buf)
+            FfiConverterOptionUInt64.write(endMilliseconds, into: &buf)
+            FfiConverterTypeQueuePlacement.write(placement, into: &buf)
+
+
+        case let .setPlaybackRate(permille):
+            writeInt(&buf, Int32(7))
+            FfiConverterUInt16.write(permille, into: &buf)
+
+
+        case let .setSleepTimer(durationMilliseconds):
+            writeInt(&buf, Int32(8))
+            FfiConverterOptionUInt64.write(durationMilliseconds, into: &buf)
+
+
+        case let .createNote(text):
+            writeInt(&buf, Int32(9))
+            FfiConverterString.write(text, into: &buf)
+
+
+        case let .recordMemory(text):
+            writeInt(&buf, Int32(10))
+            FfiConverterString.write(text, into: &buf)
+
+
+        case let .ask(question,context):
+            writeInt(&buf, Int32(11))
+            FfiConverterString.write(question, into: &buf)
+            FfiConverterOptionString.write(context, into: &buf)
+
+
+        case let .scheduleTask(task):
+            writeInt(&buf, Int32(12))
+            FfiConverterTypeScheduledTaskInput.write(task, into: &buf)
+
+
+        case let .cancelScheduledTask(taskId,expectedRevision):
+            writeInt(&buf, Int32(13))
+            FfiConverterTypeScheduledTaskId.write(taskId, into: &buf)
+            FfiConverterTypeStateRevision.write(expectedRevision, into: &buf)
+
+
+        case let .changePodcastCategory(podcastId,category):
+            writeInt(&buf, Int32(14))
+            FfiConverterTypePodcastId.write(podcastId, into: &buf)
+            FfiConverterString.write(category, into: &buf)
+
+
+        case let .createClip(episodeId,podcastId,startMilliseconds,endMilliseconds,caption,frozenTranscriptText):
+            writeInt(&buf, Int32(15))
+            FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
+            FfiConverterTypePodcastId.write(podcastId, into: &buf)
+            FfiConverterUInt64.write(startMilliseconds, into: &buf)
+            FfiConverterUInt64.write(endMilliseconds, into: &buf)
+            FfiConverterOptionString.write(caption, into: &buf)
+            FfiConverterString.write(frozenTranscriptText, into: &buf)
+
+
+        case let .subscribePodcast(feedUrl):
+            writeInt(&buf, Int32(16))
+            FfiConverterString.write(feedUrl, into: &buf)
+
+
+        case let .ingestYoutubeVideo(url):
+            writeInt(&buf, Int32(17))
+            FfiConverterString.write(url, into: &buf)
+
+
+        case let .configureAgentVoice(voiceId):
+            writeInt(&buf, Int32(18))
+            FfiConverterString.write(voiceId, into: &buf)
+
+
+        case let .createPodcast(title,description):
+            writeInt(&buf, Int32(19))
+            FfiConverterString.write(title, into: &buf)
+            FfiConverterString.write(description, into: &buf)
+
+
+        case let .updatePodcast(podcastId,title,description):
+            writeInt(&buf, Int32(20))
+            FfiConverterTypePodcastId.write(podcastId, into: &buf)
+            FfiConverterString.write(title, into: &buf)
+            FfiConverterString.write(description, into: &buf)
+
+
+        case let .generateTtsEpisode(podcastId,title,script,voiceId):
+            writeInt(&buf, Int32(21))
+            FfiConverterOptionTypePodcastId.write(podcastId, into: &buf)
+            FfiConverterString.write(title, into: &buf)
+            FfiConverterString.write(script, into: &buf)
+            FfiConverterOptionString.write(voiceId, into: &buf)
+
+
+        case let .generatePodcastArtwork(podcastId,prompt):
+            writeInt(&buf, Int32(22))
+            FfiConverterTypePodcastId.write(podcastId, into: &buf)
+            FfiConverterString.write(prompt, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentToolAction_lift(_ buf: RustBuffer) throws -> AgentToolAction {
+    return try FfiConverterTypeAgentToolAction.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentToolAction_lower(_ value: AgentToolAction) -> RustBuffer {
+    return FfiConverterTypeAgentToolAction.lower(value)
+}
+
+
+
+
+public enum AgentToolClass: Equatable, Hashable {
+
+    case readOnly
+    case reversibleWrite
+    case externalSideEffect
+    case destructiveWrite
+    case secretBearing
+    case publication
+    case sessionLocal
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentToolClass: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentToolClass: FfiConverterRustBuffer {
+    typealias SwiftType = AgentToolClass
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentToolClass {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .readOnly
+
+        case 2: return .reversibleWrite
+
+        case 3: return .externalSideEffect
+
+        case 4: return .destructiveWrite
+
+        case 5: return .secretBearing
+
+        case 6: return .publication
+
+        case 7: return .sessionLocal
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AgentToolClass, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .readOnly:
+            writeInt(&buf, Int32(1))
+
+
+        case .reversibleWrite:
+            writeInt(&buf, Int32(2))
+
+
+        case .externalSideEffect:
+            writeInt(&buf, Int32(3))
+
+
+        case .destructiveWrite:
+            writeInt(&buf, Int32(4))
+
+
+        case .secretBearing:
+            writeInt(&buf, Int32(5))
+
+
+        case .publication:
+            writeInt(&buf, Int32(6))
+
+
+        case .sessionLocal:
+            writeInt(&buf, Int32(7))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentToolClass_lift(_ buf: RustBuffer) throws -> AgentToolClass {
+    return try FfiConverterTypeAgentToolClass.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentToolClass_lower(_ value: AgentToolClass) -> RustBuffer {
+    return FfiConverterTypeAgentToolClass.lower(value)
+}
+
+
+
+
+public enum AgentToolName: Equatable, Hashable {
+
+    case createNote
+    case recordMemory
+    case upgradeThinking
+    case useSkill
+    case ask
+    case scheduleTask
+    case cancelScheduledTask
+    case listScheduledTasks
+    case listConversations
+    case searchConversations
+    case playEpisode
+    case pausePlayback
+    case setPlaybackRate
+    case setSleepTimer
+    case searchEpisodes
+    case queryTranscripts
+    case perplexitySearch
+    case summarizeEpisode
+    case findSimilarEpisodes
+    case markEpisodePlayed
+    case markEpisodeUnplayed
+    case downloadEpisode
+    case requestTranscription
+    case refreshFeed
+    case listSubscriptions
+    case listPodcasts
+    case listCategories
+    case changePodcastCategory
+    case listEpisodes
+    case listInProgress
+    case listRecentUnplayed
+    case createClip
+    case downloadAndTranscribe
+    case generateTtsEpisode
+    case configureAgentVoice
+    case listAvailableVoices
+    case searchPodcastDirectory
+    case subscribePodcast
+    case deletePodcast
+    case ingestYoutubeVideo
+    case searchYoutube
+    case createPodcast
+    case updatePodcast
+    case deleteMyPodcast
+    case listMyPodcasts
+    case generatePodcastArtwork
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentToolName: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentToolName: FfiConverterRustBuffer {
+    typealias SwiftType = AgentToolName
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentToolName {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .createNote
+
+        case 2: return .recordMemory
+
+        case 3: return .upgradeThinking
+
+        case 4: return .useSkill
+
+        case 5: return .ask
+
+        case 6: return .scheduleTask
+
+        case 7: return .cancelScheduledTask
+
+        case 8: return .listScheduledTasks
+
+        case 9: return .listConversations
+
+        case 10: return .searchConversations
+
+        case 11: return .playEpisode
+
+        case 12: return .pausePlayback
+
+        case 13: return .setPlaybackRate
+
+        case 14: return .setSleepTimer
+
+        case 15: return .searchEpisodes
+
+        case 16: return .queryTranscripts
+
+        case 17: return .perplexitySearch
+
+        case 18: return .summarizeEpisode
+
+        case 19: return .findSimilarEpisodes
+
+        case 20: return .markEpisodePlayed
+
+        case 21: return .markEpisodeUnplayed
+
+        case 22: return .downloadEpisode
+
+        case 23: return .requestTranscription
+
+        case 24: return .refreshFeed
+
+        case 25: return .listSubscriptions
+
+        case 26: return .listPodcasts
+
+        case 27: return .listCategories
+
+        case 28: return .changePodcastCategory
+
+        case 29: return .listEpisodes
+
+        case 30: return .listInProgress
+
+        case 31: return .listRecentUnplayed
+
+        case 32: return .createClip
+
+        case 33: return .downloadAndTranscribe
+
+        case 34: return .generateTtsEpisode
+
+        case 35: return .configureAgentVoice
+
+        case 36: return .listAvailableVoices
+
+        case 37: return .searchPodcastDirectory
+
+        case 38: return .subscribePodcast
+
+        case 39: return .deletePodcast
+
+        case 40: return .ingestYoutubeVideo
+
+        case 41: return .searchYoutube
+
+        case 42: return .createPodcast
+
+        case 43: return .updatePodcast
+
+        case 44: return .deleteMyPodcast
+
+        case 45: return .listMyPodcasts
+
+        case 46: return .generatePodcastArtwork
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AgentToolName, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .createNote:
+            writeInt(&buf, Int32(1))
+
+
+        case .recordMemory:
+            writeInt(&buf, Int32(2))
+
+
+        case .upgradeThinking:
+            writeInt(&buf, Int32(3))
+
+
+        case .useSkill:
+            writeInt(&buf, Int32(4))
+
+
+        case .ask:
+            writeInt(&buf, Int32(5))
+
+
+        case .scheduleTask:
+            writeInt(&buf, Int32(6))
+
+
+        case .cancelScheduledTask:
+            writeInt(&buf, Int32(7))
+
+
+        case .listScheduledTasks:
+            writeInt(&buf, Int32(8))
+
+
+        case .listConversations:
+            writeInt(&buf, Int32(9))
+
+
+        case .searchConversations:
+            writeInt(&buf, Int32(10))
+
+
+        case .playEpisode:
+            writeInt(&buf, Int32(11))
+
+
+        case .pausePlayback:
+            writeInt(&buf, Int32(12))
+
+
+        case .setPlaybackRate:
+            writeInt(&buf, Int32(13))
+
+
+        case .setSleepTimer:
+            writeInt(&buf, Int32(14))
+
+
+        case .searchEpisodes:
+            writeInt(&buf, Int32(15))
+
+
+        case .queryTranscripts:
+            writeInt(&buf, Int32(16))
+
+
+        case .perplexitySearch:
+            writeInt(&buf, Int32(17))
+
+
+        case .summarizeEpisode:
+            writeInt(&buf, Int32(18))
+
+
+        case .findSimilarEpisodes:
+            writeInt(&buf, Int32(19))
+
+
+        case .markEpisodePlayed:
+            writeInt(&buf, Int32(20))
+
+
+        case .markEpisodeUnplayed:
+            writeInt(&buf, Int32(21))
+
+
+        case .downloadEpisode:
+            writeInt(&buf, Int32(22))
+
+
+        case .requestTranscription:
+            writeInt(&buf, Int32(23))
+
+
+        case .refreshFeed:
+            writeInt(&buf, Int32(24))
+
+
+        case .listSubscriptions:
+            writeInt(&buf, Int32(25))
+
+
+        case .listPodcasts:
+            writeInt(&buf, Int32(26))
+
+
+        case .listCategories:
+            writeInt(&buf, Int32(27))
+
+
+        case .changePodcastCategory:
+            writeInt(&buf, Int32(28))
+
+
+        case .listEpisodes:
+            writeInt(&buf, Int32(29))
+
+
+        case .listInProgress:
+            writeInt(&buf, Int32(30))
+
+
+        case .listRecentUnplayed:
+            writeInt(&buf, Int32(31))
+
+
+        case .createClip:
+            writeInt(&buf, Int32(32))
+
+
+        case .downloadAndTranscribe:
+            writeInt(&buf, Int32(33))
+
+
+        case .generateTtsEpisode:
+            writeInt(&buf, Int32(34))
+
+
+        case .configureAgentVoice:
+            writeInt(&buf, Int32(35))
+
+
+        case .listAvailableVoices:
+            writeInt(&buf, Int32(36))
+
+
+        case .searchPodcastDirectory:
+            writeInt(&buf, Int32(37))
+
+
+        case .subscribePodcast:
+            writeInt(&buf, Int32(38))
+
+
+        case .deletePodcast:
+            writeInt(&buf, Int32(39))
+
+
+        case .ingestYoutubeVideo:
+            writeInt(&buf, Int32(40))
+
+
+        case .searchYoutube:
+            writeInt(&buf, Int32(41))
+
+
+        case .createPodcast:
+            writeInt(&buf, Int32(42))
+
+
+        case .updatePodcast:
+            writeInt(&buf, Int32(43))
+
+
+        case .deleteMyPodcast:
+            writeInt(&buf, Int32(44))
+
+
+        case .listMyPodcasts:
+            writeInt(&buf, Int32(45))
+
+
+        case .generatePodcastArtwork:
+            writeInt(&buf, Int32(46))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentToolName_lift(_ buf: RustBuffer) throws -> AgentToolName {
+    return try FfiConverterTypeAgentToolName.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentToolName_lower(_ value: AgentToolName) -> RustBuffer {
+    return FfiConverterTypeAgentToolName.lower(value)
+}
+
+
+
+
+public enum AgentTurnStage: Equatable, Hashable {
+
+    case awaitingModel
+    case approvalRequired
+    case authorized
+    case executing
+    case commitPending
+    case committed
+    case completed
+    case denied
+    case cancelled
+    case blocked
+    case outcomeAmbiguous
+    case failed
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentTurnStage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentTurnStage: FfiConverterRustBuffer {
+    typealias SwiftType = AgentTurnStage
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentTurnStage {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .awaitingModel
+
+        case 2: return .approvalRequired
+
+        case 3: return .authorized
+
+        case 4: return .executing
+
+        case 5: return .commitPending
+
+        case 6: return .committed
+
+        case 7: return .completed
+
+        case 8: return .denied
+
+        case 9: return .cancelled
+
+        case 10: return .blocked
+
+        case 11: return .outcomeAmbiguous
+
+        case 12: return .failed
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AgentTurnStage, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .awaitingModel:
+            writeInt(&buf, Int32(1))
+
+
+        case .approvalRequired:
+            writeInt(&buf, Int32(2))
+
+
+        case .authorized:
+            writeInt(&buf, Int32(3))
+
+
+        case .executing:
+            writeInt(&buf, Int32(4))
+
+
+        case .commitPending:
+            writeInt(&buf, Int32(5))
+
+
+        case .committed:
+            writeInt(&buf, Int32(6))
+
+
+        case .completed:
+            writeInt(&buf, Int32(7))
+
+
+        case .denied:
+            writeInt(&buf, Int32(8))
+
+
+        case .cancelled:
+            writeInt(&buf, Int32(9))
+
+
+        case .blocked:
+            writeInt(&buf, Int32(10))
+
+
+        case .outcomeAmbiguous:
+            writeInt(&buf, Int32(11))
+
+
+        case .failed:
+            writeInt(&buf, Int32(12))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentTurnStage_lift(_ buf: RustBuffer) throws -> AgentTurnStage {
+    return try FfiConverterTypeAgentTurnStage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentTurnStage_lower(_ value: AgentTurnStage) -> RustBuffer {
+    return FfiConverterTypeAgentTurnStage.lower(value)
+}
+
+
+
+
 public enum ApplicationCommand: Equatable, Hashable {
 
     case subscribeToFeed(feedUrl: String
@@ -7498,6 +9317,10 @@ public enum ApplicationCommand: Equatable, Hashable {
     case retryScheduledRun(occurrenceId: ScheduledOccurrenceId, expectedWorkflowRevision: StateRevision
     )
     case cancelScheduledRun(occurrenceId: ScheduledOccurrenceId, expectedWorkflowRevision: StateRevision
+    )
+    case startAgentTurn(conversationId: ConversationId?, userInput: String, modelReference: String, availableTools: [AgentToolName]
+    )
+    case cancelAgentTurn(turnId: AgentTurnId, expectedTurnRevision: StateRevision
     )
     case commitChapter(expectedSelectionRevision: StateRevision, artifact: ChapterArtifactInput
     )
@@ -7650,55 +9473,61 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
         case 33: return .cancelScheduledRun(occurrenceId: try FfiConverterTypeScheduledOccurrenceId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 34: return .commitChapter(expectedSelectionRevision: try FfiConverterTypeStateRevision.read(from: &buf), artifact: try FfiConverterTypeChapterArtifactInput.read(from: &buf)
+        case 34: return .startAgentTurn(conversationId: try FfiConverterOptionTypeConversationId.read(from: &buf), userInput: try FfiConverterString.read(from: &buf), modelReference: try FfiConverterString.read(from: &buf), availableTools: try FfiConverterSequenceTypeAgentToolName.read(from: &buf)
         )
 
-        case 35: return .ensurePublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
+        case 35: return .cancelAgentTurn(turnId: try FfiConverterTypeAgentTurnId.read(from: &buf), expectedTurnRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 36: return .retryPublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 36: return .commitChapter(expectedSelectionRevision: try FfiConverterTypeStateRevision.read(from: &buf), artifact: try FfiConverterTypeChapterArtifactInput.read(from: &buf)
         )
 
-        case 37: return .cancelPublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 37: return .ensurePublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
         )
 
-        case 38: return .ensureModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), configuredModel: try FfiConverterString.read(from: &buf)
+        case 38: return .retryPublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 39: return .retryModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), configuredModel: try FfiConverterString.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 39: return .cancelPublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 40: return .cancelModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 40: return .ensureModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), configuredModel: try FfiConverterString.read(from: &buf)
         )
 
-        case 41: return .createNote(text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), author: try FfiConverterTypeNoteAuthor.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
+        case 41: return .retryModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), configuredModel: try FfiConverterString.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 42: return .updateNote(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
+        case 42: return .cancelModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 43: return .setNoteDeleted(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
+        case 43: return .createNote(text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), author: try FfiConverterTypeNoteAuthor.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
         )
 
-        case 44: return .clearNotes(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 44: return .updateNote(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
         )
 
-        case 45: return .createClip(clipId: try FfiConverterTypeClipId.read(from: &buf), episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), podcastId: try FfiConverterTypePodcastId.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf), source: try FfiConverterTypeClipSource.read(from: &buf)
+        case 45: return .setNoteDeleted(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
         )
 
-        case 46: return .updateClip(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf)
+        case 46: return .clearNotes(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 47: return .setClipDeleted(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
+        case 47: return .createClip(clipId: try FfiConverterTypeClipId.read(from: &buf), episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), podcastId: try FfiConverterTypePodcastId.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf), source: try FfiConverterTypeClipSource.read(from: &buf)
         )
 
-        case 48: return .clearClips(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 48: return .updateClip(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf)
         )
 
-        case 49: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
+        case 49: return .setClipDeleted(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
         )
 
-        case 50: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 50: return .clearClips(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        )
+
+        case 51: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
+        )
+
+        case 52: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -7892,50 +9721,64 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
-        case let .commitChapter(expectedSelectionRevision,artifact):
+        case let .startAgentTurn(conversationId,userInput,modelReference,availableTools):
             writeInt(&buf, Int32(34))
+            FfiConverterOptionTypeConversationId.write(conversationId, into: &buf)
+            FfiConverterString.write(userInput, into: &buf)
+            FfiConverterString.write(modelReference, into: &buf)
+            FfiConverterSequenceTypeAgentToolName.write(availableTools, into: &buf)
+
+
+        case let .cancelAgentTurn(turnId,expectedTurnRevision):
+            writeInt(&buf, Int32(35))
+            FfiConverterTypeAgentTurnId.write(turnId, into: &buf)
+            FfiConverterTypeStateRevision.write(expectedTurnRevision, into: &buf)
+
+
+        case let .commitChapter(expectedSelectionRevision,artifact):
+            writeInt(&buf, Int32(36))
             FfiConverterTypeStateRevision.write(expectedSelectionRevision, into: &buf)
             FfiConverterTypeChapterArtifactInput.write(artifact, into: &buf)
 
 
         case let .ensurePublisherChapters(episodeId):
-            writeInt(&buf, Int32(35))
+            writeInt(&buf, Int32(37))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
 
 
         case let .retryPublisherChapters(episodeId,expectedWorkflowRevision):
-            writeInt(&buf, Int32(36))
+            writeInt(&buf, Int32(38))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
         case let .cancelPublisherChapters(episodeId,expectedWorkflowRevision):
-            writeInt(&buf, Int32(37))
+            writeInt(&buf, Int32(39))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
         case let .ensureModelChapters(episodeId,configuredModel):
-            writeInt(&buf, Int32(38))
+            writeInt(&buf, Int32(40))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterString.write(configuredModel, into: &buf)
 
 
         case let .retryModelChapters(episodeId,configuredModel,expectedWorkflowRevision):
-            writeInt(&buf, Int32(39))
+            writeInt(&buf, Int32(41))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterString.write(configuredModel, into: &buf)
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
         case let .cancelModelChapters(episodeId,expectedWorkflowRevision):
-            writeInt(&buf, Int32(40))
+            writeInt(&buf, Int32(42))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
         case let .createNote(text,kind,author,target):
-            writeInt(&buf, Int32(41))
+            writeInt(&buf, Int32(43))
             FfiConverterString.write(text, into: &buf)
             FfiConverterTypeNoteKind.write(kind, into: &buf)
             FfiConverterTypeNoteAuthor.write(author, into: &buf)
@@ -7943,7 +9786,7 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .updateNote(noteId,expectedNoteRevision,text,kind,target):
-            writeInt(&buf, Int32(42))
+            writeInt(&buf, Int32(44))
             FfiConverterTypeNoteId.write(noteId, into: &buf)
             FfiConverterTypeNoteRevision.write(expectedNoteRevision, into: &buf)
             FfiConverterString.write(text, into: &buf)
@@ -7952,19 +9795,19 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .setNoteDeleted(noteId,expectedNoteRevision,deleted):
-            writeInt(&buf, Int32(43))
+            writeInt(&buf, Int32(45))
             FfiConverterTypeNoteId.write(noteId, into: &buf)
             FfiConverterTypeNoteRevision.write(expectedNoteRevision, into: &buf)
             FfiConverterBool.write(deleted, into: &buf)
 
 
         case let .clearNotes(expectedCollectionRevision):
-            writeInt(&buf, Int32(44))
+            writeInt(&buf, Int32(46))
             FfiConverterTypeStateRevision.write(expectedCollectionRevision, into: &buf)
 
 
         case let .createClip(clipId,episodeId,podcastId,startMilliseconds,endMilliseconds,caption,speakerId,frozenTranscriptText,source):
-            writeInt(&buf, Int32(45))
+            writeInt(&buf, Int32(47))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypePodcastId.write(podcastId, into: &buf)
@@ -7977,7 +9820,7 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .updateClip(clipId,expectedClipRevision,startMilliseconds,endMilliseconds,caption,speakerId,frozenTranscriptText):
-            writeInt(&buf, Int32(46))
+            writeInt(&buf, Int32(48))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeClipRevision.write(expectedClipRevision, into: &buf)
             FfiConverterUInt64.write(startMilliseconds, into: &buf)
@@ -7988,24 +9831,24 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .setClipDeleted(clipId,expectedClipRevision,deleted):
-            writeInt(&buf, Int32(47))
+            writeInt(&buf, Int32(49))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeClipRevision.write(expectedClipRevision, into: &buf)
             FfiConverterBool.write(deleted, into: &buf)
 
 
         case let .clearClips(expectedCollectionRevision):
-            writeInt(&buf, Int32(48))
+            writeInt(&buf, Int32(50))
             FfiConverterTypeStateRevision.write(expectedCollectionRevision, into: &buf)
 
 
         case let .cancelOperation(cancellationId):
-            writeInt(&buf, Int32(49))
+            writeInt(&buf, Int32(51))
             FfiConverterTypeCancellationId.write(cancellationId, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(50))
+            writeInt(&buf, Int32(52))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -10822,6 +12665,12 @@ public enum HostObservation: Equatable, Hashable {
     )
     case scheduledAgentExecutionObserved(observation: ScheduledAgentExecutionObservation
     )
+    case agentModelCompleted(turnId: AgentTurnId, modelFenceId: AgentExecutionFenceId, assistantText: String, proposedAction: AgentToolAction?
+    )
+    case agentApprovalObserved(turnId: AgentTurnId, proposalId: AgentProposalId, proposalDigest: ContentDigest, approved: Bool
+    )
+    case agentCapabilityObserved(turnId: AgentTurnId, proposalId: AgentProposalId, executionFenceId: AgentExecutionFenceId, outcome: AgentCapabilityOutcome
+    )
     case coreWakeReached(reason: CoreWakeReason
     )
     case legacyRecallIndexArtifactsRemoved(removedFileCount: UInt8
@@ -10900,18 +12749,27 @@ public struct FfiConverterTypeHostObservation: FfiConverterRustBuffer {
         case 16: return .scheduledAgentExecutionObserved(observation: try FfiConverterTypeScheduledAgentExecutionObservation.read(from: &buf)
         )
 
-        case 17: return .coreWakeReached(reason: try FfiConverterTypeCoreWakeReason.read(from: &buf)
+        case 17: return .agentModelCompleted(turnId: try FfiConverterTypeAgentTurnId.read(from: &buf), modelFenceId: try FfiConverterTypeAgentExecutionFenceId.read(from: &buf), assistantText: try FfiConverterString.read(from: &buf), proposedAction: try FfiConverterOptionTypeAgentToolAction.read(from: &buf)
         )
 
-        case 18: return .legacyRecallIndexArtifactsRemoved(removedFileCount: try FfiConverterUInt8.read(from: &buf)
+        case 18: return .agentApprovalObserved(turnId: try FfiConverterTypeAgentTurnId.read(from: &buf), proposalId: try FfiConverterTypeAgentProposalId.read(from: &buf), proposalDigest: try FfiConverterTypeContentDigest.read(from: &buf), approved: try FfiConverterBool.read(from: &buf)
         )
 
-        case 19: return .failed(code: try FfiConverterTypeHostFailureCode.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf)
+        case 19: return .agentCapabilityObserved(turnId: try FfiConverterTypeAgentTurnId.read(from: &buf), proposalId: try FfiConverterTypeAgentProposalId.read(from: &buf), executionFenceId: try FfiConverterTypeAgentExecutionFenceId.read(from: &buf), outcome: try FfiConverterTypeAgentCapabilityOutcome.read(from: &buf)
         )
 
-        case 20: return .cancelled
+        case 20: return .coreWakeReached(reason: try FfiConverterTypeCoreWakeReason.read(from: &buf)
+        )
 
-        case 21: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 21: return .legacyRecallIndexArtifactsRemoved(removedFileCount: try FfiConverterUInt8.read(from: &buf)
+        )
+
+        case 22: return .failed(code: try FfiConverterTypeHostFailureCode.read(from: &buf), safeDetail: try FfiConverterOptionString.read(from: &buf)
+        )
+
+        case 23: return .cancelled
+
+        case 24: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -11040,28 +12898,52 @@ public struct FfiConverterTypeHostObservation: FfiConverterRustBuffer {
             FfiConverterTypeScheduledAgentExecutionObservation.write(observation, into: &buf)
 
 
-        case let .coreWakeReached(reason):
+        case let .agentModelCompleted(turnId,modelFenceId,assistantText,proposedAction):
             writeInt(&buf, Int32(17))
+            FfiConverterTypeAgentTurnId.write(turnId, into: &buf)
+            FfiConverterTypeAgentExecutionFenceId.write(modelFenceId, into: &buf)
+            FfiConverterString.write(assistantText, into: &buf)
+            FfiConverterOptionTypeAgentToolAction.write(proposedAction, into: &buf)
+
+
+        case let .agentApprovalObserved(turnId,proposalId,proposalDigest,approved):
+            writeInt(&buf, Int32(18))
+            FfiConverterTypeAgentTurnId.write(turnId, into: &buf)
+            FfiConverterTypeAgentProposalId.write(proposalId, into: &buf)
+            FfiConverterTypeContentDigest.write(proposalDigest, into: &buf)
+            FfiConverterBool.write(approved, into: &buf)
+
+
+        case let .agentCapabilityObserved(turnId,proposalId,executionFenceId,outcome):
+            writeInt(&buf, Int32(19))
+            FfiConverterTypeAgentTurnId.write(turnId, into: &buf)
+            FfiConverterTypeAgentProposalId.write(proposalId, into: &buf)
+            FfiConverterTypeAgentExecutionFenceId.write(executionFenceId, into: &buf)
+            FfiConverterTypeAgentCapabilityOutcome.write(outcome, into: &buf)
+
+
+        case let .coreWakeReached(reason):
+            writeInt(&buf, Int32(20))
             FfiConverterTypeCoreWakeReason.write(reason, into: &buf)
 
 
         case let .legacyRecallIndexArtifactsRemoved(removedFileCount):
-            writeInt(&buf, Int32(18))
+            writeInt(&buf, Int32(21))
             FfiConverterUInt8.write(removedFileCount, into: &buf)
 
 
         case let .failed(code,safeDetail):
-            writeInt(&buf, Int32(19))
+            writeInt(&buf, Int32(22))
             FfiConverterTypeHostFailureCode.write(code, into: &buf)
             FfiConverterOptionString.write(safeDetail, into: &buf)
 
 
         case .cancelled:
-            writeInt(&buf, Int32(20))
+            writeInt(&buf, Int32(23))
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(21))
+            writeInt(&buf, Int32(24))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -11343,6 +13225,12 @@ public enum HostRequest: Equatable, Hashable {
     )
     case executeScheduledAgentTurn(execution: ScheduledAgentExecutionRequest
     )
+    case executeAgentModelTurn(execution: AgentModelExecutionRequest
+    )
+    case presentAgentApproval(approval: AgentApprovalRequest
+    )
+    case executeAgentCapability(capability: AgentCapabilityRequest
+    )
     case scheduleCoreWake(wakeAt: UnixTimestampMilliseconds, reason: CoreWakeReason
     )
     case removeLegacyRecallIndexArtifacts
@@ -11432,12 +13320,21 @@ public struct FfiConverterTypeHostRequest: FfiConverterRustBuffer {
         case 21: return .executeScheduledAgentTurn(execution: try FfiConverterTypeScheduledAgentExecutionRequest.read(from: &buf)
         )
 
-        case 22: return .scheduleCoreWake(wakeAt: try FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf), reason: try FfiConverterTypeCoreWakeReason.read(from: &buf)
+        case 22: return .executeAgentModelTurn(execution: try FfiConverterTypeAgentModelExecutionRequest.read(from: &buf)
         )
 
-        case 23: return .removeLegacyRecallIndexArtifacts
+        case 23: return .presentAgentApproval(approval: try FfiConverterTypeAgentApprovalRequest.read(from: &buf)
+        )
 
-        case 24: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 24: return .executeAgentCapability(capability: try FfiConverterTypeAgentCapabilityRequest.read(from: &buf)
+        )
+
+        case 25: return .scheduleCoreWake(wakeAt: try FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf), reason: try FfiConverterTypeCoreWakeReason.read(from: &buf)
+        )
+
+        case 26: return .removeLegacyRecallIndexArtifacts
+
+        case 27: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -11600,18 +13497,33 @@ public struct FfiConverterTypeHostRequest: FfiConverterRustBuffer {
             FfiConverterTypeScheduledAgentExecutionRequest.write(execution, into: &buf)
 
 
-        case let .scheduleCoreWake(wakeAt,reason):
+        case let .executeAgentModelTurn(execution):
             writeInt(&buf, Int32(22))
+            FfiConverterTypeAgentModelExecutionRequest.write(execution, into: &buf)
+
+
+        case let .presentAgentApproval(approval):
+            writeInt(&buf, Int32(23))
+            FfiConverterTypeAgentApprovalRequest.write(approval, into: &buf)
+
+
+        case let .executeAgentCapability(capability):
+            writeInt(&buf, Int32(24))
+            FfiConverterTypeAgentCapabilityRequest.write(capability, into: &buf)
+
+
+        case let .scheduleCoreWake(wakeAt,reason):
+            writeInt(&buf, Int32(25))
             FfiConverterTypeUnixTimestampMilliseconds.write(wakeAt, into: &buf)
             FfiConverterTypeCoreWakeReason.write(reason, into: &buf)
 
 
         case .removeLegacyRecallIndexArtifacts:
-            writeInt(&buf, Int32(23))
+            writeInt(&buf, Int32(26))
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(24))
+            writeInt(&buf, Int32(27))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -12241,6 +14153,8 @@ public enum OperationResult: Equatable, Hashable {
     case playbackUpdated(episodeId: EpisodeId?
     )
     case queueUpdated
+    case agentTurnStarted(conversationId: ConversationId, turnId: AgentTurnId
+    )
     case recallFinished(queryId: RecallQueryId, evidenceCount: UInt16
     )
     case evidenceRebuilt(episodeId: EpisodeId, generationId: EvidenceGenerationId, spanCount: UInt32
@@ -12311,45 +14225,48 @@ public struct FfiConverterTypeOperationResult: FfiConverterRustBuffer {
 
         case 8: return .queueUpdated
 
-        case 9: return .recallFinished(queryId: try FfiConverterTypeRecallQueryId.read(from: &buf), evidenceCount: try FfiConverterUInt16.read(from: &buf)
+        case 9: return .agentTurnStarted(conversationId: try FfiConverterTypeConversationId.read(from: &buf), turnId: try FfiConverterTypeAgentTurnId.read(from: &buf)
         )
 
-        case 10: return .evidenceRebuilt(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), generationId: try FfiConverterTypeEvidenceGenerationId.read(from: &buf), spanCount: try FfiConverterUInt32.read(from: &buf)
+        case 10: return .recallFinished(queryId: try FfiConverterTypeRecallQueryId.read(from: &buf), evidenceCount: try FfiConverterUInt16.read(from: &buf)
         )
 
-        case 11: return .recallIndexCutoverCommitted(schemaVersion: try FfiConverterUInt32.read(from: &buf), removedLegacyFileCount: try FfiConverterUInt8.read(from: &buf)
+        case 11: return .evidenceRebuilt(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), generationId: try FfiConverterTypeEvidenceGenerationId.read(from: &buf), spanCount: try FfiConverterUInt32.read(from: &buf)
         )
 
-        case 12: return .recallConfigurationImported(imported: try FfiConverterBool.read(from: &buf), revision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 12: return .recallIndexCutoverCommitted(schemaVersion: try FfiConverterUInt32.read(from: &buf), removedLegacyFileCount: try FfiConverterUInt8.read(from: &buf)
         )
 
-        case 13: return .recallConfigurationUpdated(revision: try FfiConverterTypeStateRevision.read(from: &buf), reindexedEpisodeCount: try FfiConverterUInt32.read(from: &buf)
+        case 13: return .recallConfigurationImported(imported: try FfiConverterBool.read(from: &buf), revision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 14: return .transcriptCommitted(receipt: try FfiConverterTypeTranscriptCommitReceipt.read(from: &buf)
+        case 14: return .recallConfigurationUpdated(revision: try FfiConverterTypeStateRevision.read(from: &buf), reindexedEpisodeCount: try FfiConverterUInt32.read(from: &buf)
         )
 
-        case 15: return .chapterCommitted(receipt: try FfiConverterTypeChapterCommitReceipt.read(from: &buf)
+        case 15: return .transcriptCommitted(receipt: try FfiConverterTypeTranscriptCommitReceipt.read(from: &buf)
         )
 
-        case 16: return .noteCreated(noteId: try FfiConverterTypeNoteId.read(from: &buf)
+        case 16: return .chapterCommitted(receipt: try FfiConverterTypeChapterCommitReceipt.read(from: &buf)
         )
 
-        case 17: return .noteUpdated(noteId: try FfiConverterTypeNoteId.read(from: &buf)
+        case 17: return .noteCreated(noteId: try FfiConverterTypeNoteId.read(from: &buf)
         )
 
-        case 18: return .notesCleared
-
-        case 19: return .clipCreated(clipId: try FfiConverterTypeClipId.read(from: &buf), clipRevision: try FfiConverterTypeClipRevision.read(from: &buf), collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 18: return .noteUpdated(noteId: try FfiConverterTypeNoteId.read(from: &buf)
         )
 
-        case 20: return .clipUpdated(clipId: try FfiConverterTypeClipId.read(from: &buf), clipRevision: try FfiConverterTypeClipRevision.read(from: &buf), collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 19: return .notesCleared
+
+        case 20: return .clipCreated(clipId: try FfiConverterTypeClipId.read(from: &buf), clipRevision: try FfiConverterTypeClipRevision.read(from: &buf), collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 21: return .clipsCleared(collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 21: return .clipUpdated(clipId: try FfiConverterTypeClipId.read(from: &buf), clipRevision: try FfiConverterTypeClipRevision.read(from: &buf), collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 22: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 22: return .clipsCleared(collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        )
+
+        case 23: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -12399,82 +14316,88 @@ public struct FfiConverterTypeOperationResult: FfiConverterRustBuffer {
             writeInt(&buf, Int32(8))
 
 
-        case let .recallFinished(queryId,evidenceCount):
+        case let .agentTurnStarted(conversationId,turnId):
             writeInt(&buf, Int32(9))
+            FfiConverterTypeConversationId.write(conversationId, into: &buf)
+            FfiConverterTypeAgentTurnId.write(turnId, into: &buf)
+
+
+        case let .recallFinished(queryId,evidenceCount):
+            writeInt(&buf, Int32(10))
             FfiConverterTypeRecallQueryId.write(queryId, into: &buf)
             FfiConverterUInt16.write(evidenceCount, into: &buf)
 
 
         case let .evidenceRebuilt(episodeId,generationId,spanCount):
-            writeInt(&buf, Int32(10))
+            writeInt(&buf, Int32(11))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypeEvidenceGenerationId.write(generationId, into: &buf)
             FfiConverterUInt32.write(spanCount, into: &buf)
 
 
         case let .recallIndexCutoverCommitted(schemaVersion,removedLegacyFileCount):
-            writeInt(&buf, Int32(11))
+            writeInt(&buf, Int32(12))
             FfiConverterUInt32.write(schemaVersion, into: &buf)
             FfiConverterUInt8.write(removedLegacyFileCount, into: &buf)
 
 
         case let .recallConfigurationImported(imported,revision):
-            writeInt(&buf, Int32(12))
+            writeInt(&buf, Int32(13))
             FfiConverterBool.write(imported, into: &buf)
             FfiConverterTypeStateRevision.write(revision, into: &buf)
 
 
         case let .recallConfigurationUpdated(revision,reindexedEpisodeCount):
-            writeInt(&buf, Int32(13))
+            writeInt(&buf, Int32(14))
             FfiConverterTypeStateRevision.write(revision, into: &buf)
             FfiConverterUInt32.write(reindexedEpisodeCount, into: &buf)
 
 
         case let .transcriptCommitted(receipt):
-            writeInt(&buf, Int32(14))
+            writeInt(&buf, Int32(15))
             FfiConverterTypeTranscriptCommitReceipt.write(receipt, into: &buf)
 
 
         case let .chapterCommitted(receipt):
-            writeInt(&buf, Int32(15))
+            writeInt(&buf, Int32(16))
             FfiConverterTypeChapterCommitReceipt.write(receipt, into: &buf)
 
 
         case let .noteCreated(noteId):
-            writeInt(&buf, Int32(16))
-            FfiConverterTypeNoteId.write(noteId, into: &buf)
-
-
-        case let .noteUpdated(noteId):
             writeInt(&buf, Int32(17))
             FfiConverterTypeNoteId.write(noteId, into: &buf)
 
 
-        case .notesCleared:
+        case let .noteUpdated(noteId):
             writeInt(&buf, Int32(18))
+            FfiConverterTypeNoteId.write(noteId, into: &buf)
+
+
+        case .notesCleared:
+            writeInt(&buf, Int32(19))
 
 
         case let .clipCreated(clipId,clipRevision,collectionRevision):
-            writeInt(&buf, Int32(19))
-            FfiConverterTypeClipId.write(clipId, into: &buf)
-            FfiConverterTypeClipRevision.write(clipRevision, into: &buf)
-            FfiConverterTypeStateRevision.write(collectionRevision, into: &buf)
-
-
-        case let .clipUpdated(clipId,clipRevision,collectionRevision):
             writeInt(&buf, Int32(20))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeClipRevision.write(clipRevision, into: &buf)
             FfiConverterTypeStateRevision.write(collectionRevision, into: &buf)
 
 
-        case let .clipsCleared(collectionRevision):
+        case let .clipUpdated(clipId,clipRevision,collectionRevision):
             writeInt(&buf, Int32(21))
+            FfiConverterTypeClipId.write(clipId, into: &buf)
+            FfiConverterTypeClipRevision.write(clipRevision, into: &buf)
+            FfiConverterTypeStateRevision.write(collectionRevision, into: &buf)
+
+
+        case let .clipsCleared(collectionRevision):
+            writeInt(&buf, Int32(22))
             FfiConverterTypeStateRevision.write(collectionRevision, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(22))
+            writeInt(&buf, Int32(23))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -13480,6 +15403,8 @@ public enum Projection: Equatable, Hashable {
     )
     case scheduledAgent(value: ScheduledAgentProjection
     )
+    case agentConversation(value: AgentConversationProjection
+    )
     case notes(value: NotesProjection
     )
     case clips(value: ClipsProjection
@@ -13546,13 +15471,16 @@ public struct FfiConverterTypeProjection: FfiConverterRustBuffer {
         case 13: return .scheduledAgent(value: try FfiConverterTypeScheduledAgentProjection.read(from: &buf)
         )
 
-        case 14: return .notes(value: try FfiConverterTypeNotesProjection.read(from: &buf)
+        case 14: return .agentConversation(value: try FfiConverterTypeAgentConversationProjection.read(from: &buf)
         )
 
-        case 15: return .clips(value: try FfiConverterTypeClipsProjection.read(from: &buf)
+        case 15: return .notes(value: try FfiConverterTypeNotesProjection.read(from: &buf)
         )
 
-        case 16: return .unsupported(value: try FfiConverterTypeUnsupportedProjection.read(from: &buf)
+        case 16: return .clips(value: try FfiConverterTypeClipsProjection.read(from: &buf)
+        )
+
+        case 17: return .unsupported(value: try FfiConverterTypeUnsupportedProjection.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -13628,18 +15556,23 @@ public struct FfiConverterTypeProjection: FfiConverterRustBuffer {
             FfiConverterTypeScheduledAgentProjection.write(value, into: &buf)
 
 
-        case let .notes(value):
+        case let .agentConversation(value):
             writeInt(&buf, Int32(14))
+            FfiConverterTypeAgentConversationProjection.write(value, into: &buf)
+
+
+        case let .notes(value):
+            writeInt(&buf, Int32(15))
             FfiConverterTypeNotesProjection.write(value, into: &buf)
 
 
         case let .clips(value):
-            writeInt(&buf, Int32(15))
+            writeInt(&buf, Int32(16))
             FfiConverterTypeClipsProjection.write(value, into: &buf)
 
 
         case let .unsupported(value):
-            writeInt(&buf, Int32(16))
+            writeInt(&buf, Int32(17))
             FfiConverterTypeUnsupportedProjection.write(value, into: &buf)
 
         }
@@ -13688,6 +15621,8 @@ public enum ProjectionScope: Equatable, Hashable {
     case downloads(episodeId: EpisodeId?
     )
     case scheduledAgent(taskId: ScheduledTaskId?
+    )
+    case agentConversation(conversationId: ConversationId
     )
     case notes(scope: NoteProjectionScope
     )
@@ -13752,13 +15687,16 @@ public struct FfiConverterTypeProjectionScope: FfiConverterRustBuffer {
         case 13: return .scheduledAgent(taskId: try FfiConverterOptionTypeScheduledTaskId.read(from: &buf)
         )
 
-        case 14: return .notes(scope: try FfiConverterTypeNoteProjectionScope.read(from: &buf)
+        case 14: return .agentConversation(conversationId: try FfiConverterTypeConversationId.read(from: &buf)
         )
 
-        case 15: return .clips(scope: try FfiConverterTypeClipProjectionScope.read(from: &buf)
+        case 15: return .notes(scope: try FfiConverterTypeNoteProjectionScope.read(from: &buf)
         )
 
-        case 16: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 16: return .clips(scope: try FfiConverterTypeClipProjectionScope.read(from: &buf)
+        )
+
+        case 17: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -13833,18 +15771,23 @@ public struct FfiConverterTypeProjectionScope: FfiConverterRustBuffer {
             FfiConverterOptionTypeScheduledTaskId.write(taskId, into: &buf)
 
 
-        case let .notes(scope):
+        case let .agentConversation(conversationId):
             writeInt(&buf, Int32(14))
+            FfiConverterTypeConversationId.write(conversationId, into: &buf)
+
+
+        case let .notes(scope):
+            writeInt(&buf, Int32(15))
             FfiConverterTypeNoteProjectionScope.write(scope, into: &buf)
 
 
         case let .clips(scope):
-            writeInt(&buf, Int32(15))
+            writeInt(&buf, Int32(16))
             FfiConverterTypeClipProjectionScope.write(scope, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(16))
+            writeInt(&buf, Int32(17))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -16842,6 +18785,54 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeAgentCommitReceipt: FfiConverterRustBuffer {
+    typealias SwiftType = AgentCommitReceipt?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeAgentCommitReceipt.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeAgentCommitReceipt.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeAgentProposalProjection: FfiConverterRustBuffer {
+    typealias SwiftType = AgentProposalProjection?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeAgentProposalProjection.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeAgentProposalProjection.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeChapterModelTranscriptInput: FfiConverterRustBuffer {
     typealias SwiftType = ChapterModelTranscriptInput?
 
@@ -17178,6 +19169,30 @@ fileprivate struct FfiConverterOptionTypeTranscriptWorkflowRequest: FfiConverter
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeAgentExecutionFenceId: FfiConverterRustBuffer {
+    typealias SwiftType = AgentExecutionFenceId?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeAgentExecutionFenceId.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeAgentExecutionFenceId.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeChapterArtifactId: FfiConverterRustBuffer {
     typealias SwiftType = ChapterArtifactId?
 
@@ -17242,6 +19257,30 @@ fileprivate struct FfiConverterOptionTypeContentDigest: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeContentDigest.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeConversationId: FfiConverterRustBuffer {
+    typealias SwiftType = ConversationId?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeConversationId.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeConversationId.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -17658,6 +19697,30 @@ fileprivate struct FfiConverterOptionTypeUnixTimestampMilliseconds: FfiConverter
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeAgentToolAction: FfiConverterRustBuffer {
+    typealias SwiftType = AgentToolAction?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeAgentToolAction.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeAgentToolAction.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeModelChapterWorkflowMode: FfiConverterRustBuffer {
     typealias SwiftType = ModelChapterWorkflowMode?
 
@@ -17846,6 +19909,56 @@ fileprivate struct FfiConverterSequenceTypeAgentComposedChapterItem: FfiConverte
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeAgentComposedChapterItem.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeAgentMessageProjection: FfiConverterRustBuffer {
+    typealias SwiftType = [AgentMessageProjection]
+
+    public static func write(_ value: [AgentMessageProjection], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAgentMessageProjection.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AgentMessageProjection] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AgentMessageProjection]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAgentMessageProjection.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeAgentTurnProjection: FfiConverterRustBuffer {
+    typealias SwiftType = [AgentTurnProjection]
+
+    public static func write(_ value: [AgentTurnProjection], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAgentTurnProjection.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AgentTurnProjection] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AgentTurnProjection]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAgentTurnProjection.read(from: &buf))
         }
         return seq
     }
@@ -18546,6 +20659,56 @@ fileprivate struct FfiConverterSequenceTypeQueueEntryId: FfiConverterRustBuffer 
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeQueueEntryId.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeAgentToolClass: FfiConverterRustBuffer {
+    typealias SwiftType = [AgentToolClass]
+
+    public static func write(_ value: [AgentToolClass], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAgentToolClass.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AgentToolClass] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AgentToolClass]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAgentToolClass.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeAgentToolName: FfiConverterRustBuffer {
+    typealias SwiftType = [AgentToolName]
+
+    public static func write(_ value: [AgentToolName], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAgentToolName.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AgentToolName] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AgentToolName]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAgentToolName.read(from: &buf))
         }
         return seq
     }

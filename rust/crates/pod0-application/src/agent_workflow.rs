@@ -1,16 +1,12 @@
-use pod0_domain::{
-    AgentCommitId, AgentExecutionFenceId, AgentProposalId, ContentDigest, StateRevision,
-    UnixTimestampMilliseconds,
-};
-use sha2::{Digest as _, Sha256};
+use pod0_domain::{AgentExecutionFenceId, StateRevision, UnixTimestampMilliseconds};
 
 use crate::{
     AgentActionObservation, AgentActionOutcome, AgentAuthority, AgentAuthorizationObservation,
     AgentCommitReceipt, AgentMessageProjection, AgentMessageRole, AgentModelObservation,
     AgentProposalProjection, AgentTurnProjection, AgentTurnStage, AgentTurnStart,
     AgentTurnStartError, AgentTurnState, AgentWorkflowAcceptance, MAX_AGENT_INPUT_BYTES,
-    MAX_AGENT_MESSAGE_BYTES, agent_proposal_identity, agent_tool_policy, validate_agent_action,
-    validate_agent_model_reference,
+    MAX_AGENT_MESSAGE_BYTES, MAX_AGENT_TOOLS_PER_TURN, agent_commit_id, agent_proposal_identity,
+    agent_tool_policy, validate_agent_action, validate_agent_model_reference,
 };
 
 impl AgentTurnState {
@@ -20,6 +16,17 @@ impl AgentTurnState {
         }
         if validate_agent_model_reference(&input.model_reference).is_err() {
             return Err(AgentTurnStartError::InvalidModelReference);
+        }
+        let unique_tools = input
+            .available_tools
+            .iter()
+            .copied()
+            .collect::<std::collections::BTreeSet<_>>();
+        if input.available_tools.is_empty()
+            || input.available_tools.len() > MAX_AGENT_TOOLS_PER_TURN
+            || unique_tools.len() != input.available_tools.len()
+        {
+            return Err(AgentTurnStartError::InvalidAvailableTools);
         }
         Ok(Self {
             projection: AgentTurnProjection {
@@ -41,36 +48,9 @@ impl AgentTurnState {
             authorization_id: None,
             action_observation: None,
             model_reference: input.model_reference,
+            available_tools: input.available_tools,
+            cancellation_id: input.cancellation_id,
         })
-    }
-
-    #[must_use]
-    pub fn projection(&self) -> AgentTurnProjection {
-        self.projection.clone()
-    }
-
-    #[must_use]
-    pub fn model_reference(&self) -> &str {
-        &self.model_reference
-    }
-
-    #[must_use]
-    pub fn is_valid_for_recovery(&self) -> bool {
-        validate_agent_model_reference(&self.model_reference).is_ok()
-            && !self.projection.messages.is_empty()
-            && self.projection.messages.iter().all(|message| {
-                !message.content.is_empty() && message.content.len() <= MAX_AGENT_MESSAGE_BYTES
-            })
-            && self.projection.proposal.as_ref().is_none_or(|proposal| {
-                validate_agent_action(&proposal.action).is_ok()
-                    && agent_proposal_identity(
-                        self.projection.turn_id,
-                        proposal.revision,
-                        &proposal.action,
-                    ) == (proposal.proposal_id, proposal.proposal_digest)
-                    && agent_tool_policy(proposal.action.tool()).authority
-                        == proposal.required_authority
-            })
     }
 
     pub fn observe_model(&mut self, observation: AgentModelObservation) -> AgentWorkflowAcceptance {
@@ -101,6 +81,10 @@ impl AgentTurnState {
         };
         if validate_agent_action(&action).is_err() {
             self.fail("invalid_tool_action", observation.observed_at);
+            return AgentWorkflowAcceptance::Rejected;
+        }
+        if !self.available_tools.contains(&action.tool()) {
+            self.fail("tool_not_available", observation.observed_at);
             return AgentWorkflowAcceptance::Rejected;
         }
         let next_revision = StateRevision::new(self.projection.revision.value + 1);
@@ -214,7 +198,7 @@ impl AgentTurnState {
                     role: AgentMessageRole::Tool,
                     content: bounded_result,
                 });
-                let commit_id = commit_id(proposal.proposal_id, proposal.proposal_digest);
+                let commit_id = agent_commit_id(proposal.proposal_id, proposal.proposal_digest);
                 self.projection.commit = Some(AgentCommitReceipt {
                     commit_id,
                     proposal_id: proposal.proposal_id,
@@ -256,6 +240,39 @@ impl AgentTurnState {
         AgentWorkflowAcceptance::Updated
     }
 
+    pub fn fail_model(
+        &mut self,
+        safe_detail: Option<String>,
+        observed_at: UnixTimestampMilliseconds,
+    ) -> AgentWorkflowAcceptance {
+        if self.projection.stage != AgentTurnStage::AwaitingModel {
+            return AgentWorkflowAcceptance::Rejected;
+        }
+        self.projection.safe_failure = safe_detail.map(|value| {
+            value
+                .chars()
+                .take(crate::MAX_AGENT_SAFE_DETAIL_BYTES)
+                .collect()
+        });
+        self.projection.execution_fence_id = None;
+        self.advance(AgentTurnStage::Failed, observed_at);
+        AgentWorkflowAcceptance::Updated
+    }
+
+    pub fn mark_outcome_ambiguous(
+        &mut self,
+        observed_at: UnixTimestampMilliseconds,
+    ) -> AgentWorkflowAcceptance {
+        if !matches!(
+            self.projection.stage,
+            AgentTurnStage::AwaitingModel | AgentTurnStage::Executing
+        ) {
+            return AgentWorkflowAcceptance::Rejected;
+        }
+        self.advance(AgentTurnStage::OutcomeAmbiguous, observed_at);
+        AgentWorkflowAcceptance::Updated
+    }
+
     fn advance(&mut self, stage: AgentTurnStage, observed_at: UnixTimestampMilliseconds) {
         self.projection.revision = StateRevision::new(self.projection.revision.value + 1);
         self.projection.stage = stage;
@@ -267,15 +284,4 @@ impl AgentTurnState {
         self.projection.execution_fence_id = None;
         self.advance(AgentTurnStage::Failed, observed_at);
     }
-}
-
-fn commit_id(proposal_id: AgentProposalId, digest: ContentDigest) -> AgentCommitId {
-    let mut hasher = Sha256::new();
-    hasher.update(b"pod0:agent-commit:v1\0");
-    hasher.update(proposal_id.into_bytes());
-    hasher.update(digest.into_bytes());
-    let bytes: [u8; 32] = hasher.finalize().into();
-    let mut id = [0_u8; 16];
-    id.copy_from_slice(&bytes[..16]);
-    AgentCommitId::from_bytes(id)
 }

@@ -1,6 +1,9 @@
+use crate::agent_policy_shape::{
+    episode_tool, no_argument_tool, podcast_tool, search_tool, text_tool,
+};
 use crate::{
-    AgentAuthority, AgentToolAction, AgentToolClass, AgentToolName, AgentToolPolicy,
-    MAX_AGENT_ACTION_TEXT_BYTES, MAX_AGENT_MODEL_REFERENCE_BYTES,
+    AgentAuthority, AgentExecutionKind, AgentToolAction, AgentToolClass, AgentToolName,
+    AgentToolPolicy, MAX_AGENT_ACTION_TEXT_BYTES, MAX_AGENT_MODEL_REFERENCE_BYTES,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -141,48 +144,76 @@ pub fn agent_tool_policy(tool: AgentToolName) -> AgentToolPolicy {
         SecretBearing, SessionLocal,
     };
     use AgentToolName::*;
-    let (classes, authority) = match tool {
+    let (classes, authority, execution) = match tool {
         UpgradeThinking => (
             vec![SessionLocal, ExternalSideEffect, SecretBearing],
             DurableScopedGrant,
+            AgentExecutionKind::NativeCapability,
         ),
-        UseSkill | Ask => (vec![SessionLocal], None),
-        RecordMemory => (vec![ReversibleWrite, SecretBearing], OneShotApproval),
-        ScheduleTask => (vec![ReversibleWrite, ExternalSideEffect], OneShotApproval),
-        CancelScheduledTask | DeletePodcast | DeleteMyPodcast => {
-            (vec![DestructiveWrite], OneShotApproval)
-        }
-        PerplexitySearch | SummarizeEpisode => {
-            (vec![ExternalSideEffect, SecretBearing], DurableScopedGrant)
-        }
+        UseSkill => (vec![SessionLocal], None, AgentExecutionKind::RustCommit),
+        Ask => (
+            vec![SessionLocal],
+            None,
+            AgentExecutionKind::NativeConversationPresentation,
+        ),
+        RecordMemory => (
+            vec![ReversibleWrite, SecretBearing],
+            OneShotApproval,
+            AgentExecutionKind::RustCommit,
+        ),
+        ScheduleTask => (
+            vec![ReversibleWrite, ExternalSideEffect],
+            OneShotApproval,
+            AgentExecutionKind::RustCommit,
+        ),
+        CancelScheduledTask | DeletePodcast | DeleteMyPodcast => (
+            vec![DestructiveWrite],
+            OneShotApproval,
+            AgentExecutionKind::RustCommit,
+        ),
+        PerplexitySearch | SummarizeEpisode => (
+            vec![ExternalSideEffect, SecretBearing],
+            DurableScopedGrant,
+            AgentExecutionKind::NativeCapability,
+        ),
         ListAvailableVoices => (
             vec![ReadOnly, ExternalSideEffect, SecretBearing],
             DurableScopedGrant,
+            AgentExecutionKind::NativeCapability,
         ),
         RequestTranscription | DownloadAndTranscribe => (
             vec![ReversibleWrite, ExternalSideEffect, SecretBearing],
             DurableScopedGrant,
+            AgentExecutionKind::NativeCapability,
         ),
         GenerateTtsEpisode | IngestYoutubeVideo => (
             vec![ReversibleWrite, ExternalSideEffect, SecretBearing],
             OneShotApproval,
+            AgentExecutionKind::NativeCapability,
         ),
         GeneratePodcastArtwork => (
             vec![ExternalSideEffect, SecretBearing, Publication],
             OneShotApproval,
+            AgentExecutionKind::NativeCapabilityAndNmpPublication,
         ),
         PlayEpisode | PausePlayback | SetPlaybackRate | SetSleepTimer | DownloadEpisode
-        | RefreshFeed | SubscribePodcast => {
-            (vec![ReversibleWrite, ExternalSideEffect], DurableTurnGrant)
-        }
-        SearchPodcastDirectory | SearchYoutube => {
-            (vec![ReadOnly, ExternalSideEffect], DurableTurnGrant)
-        }
+        | RefreshFeed | SubscribePodcast => (
+            vec![ReversibleWrite, ExternalSideEffect],
+            DurableTurnGrant,
+            AgentExecutionKind::NativeCapability,
+        ),
+        SearchPodcastDirectory | SearchYoutube => (
+            vec![ReadOnly, ExternalSideEffect],
+            DurableTurnGrant,
+            AgentExecutionKind::NativeCapability,
+        ),
         ListScheduledTasks | ListConversations | SearchConversations | SearchEpisodes
         | QueryTranscripts | FindSimilarEpisodes | ListSubscriptions | ListPodcasts
-        | ListCategories | ListEpisodes | ListInProgress | ListRecentUnplayed | ListMyPodcasts => {
-            (vec![ReadOnly, SecretBearing], DurableTurnGrant)
-        }
+        | ListCategories | ListEpisodes | ListInProgress | ListRecentUnplayed | ListMyPodcasts => (
+            vec![ReadOnly, SecretBearing],
+            DurableTurnGrant,
+            AgentExecutionKind::RustProjection,
+        ),
         CreateNote
         | MarkEpisodePlayed
         | MarkEpisodeUnplayed
@@ -190,12 +221,17 @@ pub fn agent_tool_policy(tool: AgentToolName) -> AgentToolPolicy {
         | CreateClip
         | ConfigureAgentVoice
         | CreatePodcast
-        | UpdatePodcast => (vec![ReversibleWrite], DurableTurnGrant),
+        | UpdatePodcast => (
+            vec![ReversibleWrite],
+            DurableTurnGrant,
+            AgentExecutionKind::RustCommit,
+        ),
     };
     AgentToolPolicy {
         tool,
         classes,
         authority,
+        execution,
     }
 }
 
@@ -217,61 +253,4 @@ fn validate_optional_text(
         Some(value) if !value.is_empty() => validate_text(value, maximum),
         _ => Ok(()),
     }
-}
-
-fn no_argument_tool(tool: AgentToolName) -> bool {
-    use AgentToolName::*;
-    matches!(
-        tool,
-        UpgradeThinking
-            | ListScheduledTasks
-            | ListConversations
-            | PausePlayback
-            | ListSubscriptions
-            | ListPodcasts
-            | ListCategories
-            | ListInProgress
-            | ListRecentUnplayed
-            | ListAvailableVoices
-            | ListMyPodcasts
-    )
-}
-
-fn text_tool(tool: AgentToolName) -> bool {
-    matches!(tool, AgentToolName::UseSkill)
-}
-
-fn search_tool(tool: AgentToolName) -> bool {
-    use AgentToolName::*;
-    matches!(
-        tool,
-        SearchConversations
-            | SearchEpisodes
-            | QueryTranscripts
-            | PerplexitySearch
-            | FindSimilarEpisodes
-            | SearchPodcastDirectory
-            | SearchYoutube
-    )
-}
-
-fn episode_tool(tool: AgentToolName) -> bool {
-    use AgentToolName::*;
-    matches!(
-        tool,
-        SummarizeEpisode
-            | MarkEpisodePlayed
-            | MarkEpisodeUnplayed
-            | DownloadEpisode
-            | RequestTranscription
-            | DownloadAndTranscribe
-    )
-}
-
-fn podcast_tool(tool: AgentToolName) -> bool {
-    use AgentToolName::*;
-    matches!(
-        tool,
-        RefreshFeed | ListEpisodes | DeletePodcast | DeleteMyPodcast
-    )
 }

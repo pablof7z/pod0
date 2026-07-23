@@ -89,6 +89,7 @@ impl Pod0Facade {
             .then(|| pod0_storage::ScheduledAgentStore::open_authoritative(path))
             .transpose()
             .map_err(FacadeOpenError::from)?;
+        let agent_store = pod0_storage::AgentStore::open(path).map_err(FacadeOpenError::from)?;
         let recall_index = RecallIndex::open(
             &recall_index_path_for_core_store(path),
             RECALL_INDEX_DIMENSIONS,
@@ -99,6 +100,7 @@ impl Pod0Facade {
             evidence_store,
             transcript_store,
             scheduled_agent_store,
+            agent_store,
             recall_index,
             clock,
         )

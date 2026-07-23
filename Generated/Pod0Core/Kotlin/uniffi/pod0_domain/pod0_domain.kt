@@ -1191,6 +1191,196 @@ public object FfiConverterTypeAdSpanInput: FfiConverterRustBuffer<AdSpanInput> {
 
 
 
+data class AgentAuthorizationId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentAuthorizationId: FfiConverterRustBuffer<AgentAuthorizationId> {
+    override fun read(buf: ByteBuffer): AgentAuthorizationId {
+        return AgentAuthorizationId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentAuthorizationId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: AgentAuthorizationId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class AgentCommitId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentCommitId: FfiConverterRustBuffer<AgentCommitId> {
+    override fun read(buf: ByteBuffer): AgentCommitId {
+        return AgentCommitId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentCommitId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: AgentCommitId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class AgentExecutionFenceId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentExecutionFenceId: FfiConverterRustBuffer<AgentExecutionFenceId> {
+    override fun read(buf: ByteBuffer): AgentExecutionFenceId {
+        return AgentExecutionFenceId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentExecutionFenceId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: AgentExecutionFenceId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class AgentProposalId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentProposalId: FfiConverterRustBuffer<AgentProposalId> {
+    override fun read(buf: ByteBuffer): AgentProposalId {
+        return AgentProposalId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentProposalId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: AgentProposalId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class AgentTurnId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentTurnId: FfiConverterRustBuffer<AgentTurnId> {
+    override fun read(buf: ByteBuffer): AgentTurnId {
+        return AgentTurnId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AgentTurnId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: AgentTurnId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
 /**
  * Opaque durable artifact identity. Payloads and host file URLs do not cross
  * this domain boundary; their owning workflow resolves this versioned key.
@@ -2030,6 +2220,44 @@ public object FfiConverterTypeContentDigest: FfiConverterRustBuffer<ContentDiges
             FfiConverterULong.write(value.`word1`, buf)
             FfiConverterULong.write(value.`word2`, buf)
             FfiConverterULong.write(value.`word3`, buf)
+    }
+}
+
+
+
+data class ConversationId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeConversationId: FfiConverterRustBuffer<ConversationId> {
+    override fun read(buf: ByteBuffer): ConversationId {
+        return ConversationId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ConversationId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: ConversationId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
     }
 }
 

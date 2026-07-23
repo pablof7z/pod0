@@ -1,6 +1,4 @@
-use pod0_application::{ApplicationCommand, RecallScope};
-use sha2::{Digest, Sha256};
-
+use crate::runtime_agent_command_fingerprint::hash_agent_command;
 use crate::runtime_artifact_command_fingerprint::{hash_chapter_commit, hash_transcript_commit};
 use crate::runtime_clip_command_fingerprint::hash_clip_command;
 use crate::runtime_command_fingerprint_values::{
@@ -11,6 +9,8 @@ use crate::runtime_download_command_fingerprint::hash_download_command;
 use crate::runtime_playback_fingerprint::hash_playback;
 use crate::runtime_scheduled_agent::command_fingerprint::hash_scheduled_agent_command;
 use crate::runtime_transcript_workflow_fingerprint::hash_transcript_workflow_command;
+use pod0_application::{ApplicationCommand, RecallScope};
+use sha2::{Digest, Sha256};
 
 pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
     let mut hash = Sha256::new();
@@ -185,6 +185,9 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
         | ApplicationCommand::RetryScheduledRun { .. }
         | ApplicationCommand::CancelScheduledRun { .. } => {
             hash_scheduled_agent_command(&mut hash, command)
+        }
+        ApplicationCommand::StartAgentTurn { .. } | ApplicationCommand::CancelAgentTurn { .. } => {
+            hash_agent_command(&mut hash, command)
         }
         ApplicationCommand::CommitChapter {
             expected_selection_revision,

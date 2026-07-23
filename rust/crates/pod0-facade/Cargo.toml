@@ -12,6 +12,7 @@ pod0-domain.workspace = true
 pod0-recall-index.workspace = true
 pod0-storage.workspace = true
 sha2.workspace = true
+serde_json.workspace = true
 uniffi.workspace = true
 
 [dev-dependencies]

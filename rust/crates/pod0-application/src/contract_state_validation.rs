@@ -1,3 +1,4 @@
+use crate::contract_state_agent_validation::agent_observation_matches;
 use crate::contract_state_download_validation::download_observation_matches_request;
 use crate::contract_state_playback_validation::playback_request_episode_id;
 use crate::contract_state_scheduled_agent_validation::scheduled_agent_observation_matches;
@@ -18,6 +19,9 @@ pub(super) fn observation_matches_request(
         return matches;
     }
     if let Some(matches) = scheduled_agent_observation_matches(request, observation) {
+        return matches;
+    }
+    if let Some(matches) = agent_observation_matches(request, observation) {
         return matches;
     }
     match (request, observation) {
