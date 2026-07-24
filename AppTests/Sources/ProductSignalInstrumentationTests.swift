@@ -164,7 +164,10 @@ final class ProductSignalInstrumentationTests: XCTestCase {
     ) {
         let fileURL = AppStateTestSupport.uniqueTempFileURL()
         let mediaURL = fileURL.deletingPathExtension().appendingPathExtension("m4a")
-        try SilentAudioWriter.writeSilence(durationSeconds: 2, to: mediaURL)
+        try SilentAudioWriter.writeSilence(
+            durationSeconds: max(2, position + 2),
+            to: mediaURL
+        )
         let persistence = Persistence(fileURL: fileURL)
         let podcast = Podcast(
             feedURL: URL(string: "https://signals.example/feed.xml")!,

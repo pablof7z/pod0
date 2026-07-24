@@ -59,15 +59,11 @@ extension SharedLibraryClient {
         let episodeIDs = Array(episodeIDs)
         guard !episodeIDs.isEmpty else { return }
         for episodeID in episodeIDs {
-            facade.dispatch(command: CommandEnvelope(
-                commandId: CommandId(uuid: UUID()),
-                cancellationId: CancellationId(uuid: UUID()),
-                expectedRevision: nil,
-                command: .ensurePublisherChapters(episodeId: EpisodeId(uuid: episodeID))
-            ))
+            dispatchCoreCommand(
+                .ensurePublisherChapters(episodeId: EpisodeId(uuid: episodeID))
+            )
         }
         workflowClient?.refresh(immediately: true)
-        dispatcher.executePendingRequests(from: facade)
     }
 
     func performPublisherChapterAction(

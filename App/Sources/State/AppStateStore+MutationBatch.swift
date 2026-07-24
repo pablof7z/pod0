@@ -18,8 +18,13 @@ extension AppStateStore {
     /// refresh derived indexes immediately, but import/refresh flows can wrap
     /// many state edits in `performMutationBatch` so the expensive work runs
     /// once after the batch lands.
-    func handleStateDidSet(previousEpisodes: [Episode]) {
-        if Self.episodesFingerprintChanged(previousEpisodes, state.episodes) {
+    func handleStateDidSet(previousState: AppState) {
+        if Self.episodesFingerprintChanged(previousState.episodes, state.episodes)
+            || Self.podcastStructureChanged(previousState.podcasts, state.podcasts)
+            || Self.subscriptionStructureChanged(
+                previousState.subscriptions,
+                state.subscriptions
+            ) {
             markEpisodeProjectionsDirty()
         }
         guard projectionMutationDepth == 0 else { return }

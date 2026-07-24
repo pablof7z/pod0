@@ -109,7 +109,7 @@ extension SharedLibraryClient {
     }
 
     func reconcileScheduledAgents() {
-        dispatchScheduled(.reconcileScheduledRuns)
+        dispatchCoreCommand(.reconcileScheduledRuns)
     }
 
     func performScheduledAgentAction(

@@ -18,7 +18,15 @@ extension SharedLibraryClient {
     }
 
     func notes(forEpisode episodeID: UUID) -> [Note] {
-        loadNotePages(scope: .episode(episodeId: EpisodeId(uuid: episodeID))).notes
+        cachedNotes?.notes.filter {
+            guard !$0.deleted, case .episode(let id, _) = $0.target else { return false }
+            return id == episodeID
+        }.sorted {
+            guard case .episode(_, let lhsPosition) = $0.target,
+                  case .episode(_, let rhsPosition) = $1.target
+            else { return $0.createdAt < $1.createdAt }
+            return lhsPosition < rhsPosition
+        } ?? []
     }
 
     func createNote(

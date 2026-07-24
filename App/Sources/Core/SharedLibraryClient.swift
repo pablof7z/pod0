@@ -7,8 +7,8 @@ final class SharedLibraryClient {
     struct Waiter {
         let continuation: CheckedContinuation<OperationResult?, Error>
     }
-
     nonisolated let facade: Pod0Facade
+    let commandExecutor = CoreFacadeCommandExecutor()
     let authoritativeTranscriptReader: SharedTranscriptReader
     let authoritativeChapterReader: SharedChapterReader
     let dispatcher: Pod0NativeHostDispatcher
@@ -50,6 +50,7 @@ final class SharedLibraryClient {
     var cachedNotes: SharedNoteSnapshot?
     var cachedMemories: SharedMemorySnapshot?
     var cachedClips: SharedClipSnapshot?
+    var cachedRecallConfiguration: RecallConfiguration?
     var lastDownloadsRevision: UInt64 = 0
     var cachedDownloadWorkflows: [UUID: DownloadWorkflowProjection] = [:]
     var lastTranscriptWorkflowRevision: UInt64 = 0
@@ -60,6 +61,10 @@ final class SharedLibraryClient {
     var cachedNewEpisodeNotificationSettings: NewEpisodeNotificationSettingsProjection?
     var announcedTranscriptWorkflowVersions: [UUID: String] = [:]
     var playbackHostAttached = false
+    var coreCommandTail: Task<Void, Never>?
+    var coreCommandGeneration: UInt64 = 0
+    var libraryProjectionTask: Task<Void, Never>?
+    var downloadProjectionTask: Task<Void, Never>?
     var evidenceRebuildTask: Task<Void, Never>?
     var evidenceUpdateTasks: [UUID: Task<Void, Never>] = [:]
     var recallWaiters: [RecallQueryId: SharedRecallWaiter] = [:]
@@ -195,6 +200,7 @@ final class SharedLibraryClient {
         case .playback(let projection):
             receivePlayback(projection, revision: envelope.stateRevision.value)
         case .recallConfiguration(let configuration):
+            cachedRecallConfiguration = configuration
             store?.applySharedRecallConfiguration(configuration)
         case .chapterWorkflows(let projection):
             receiveChapterWorkflows(
@@ -226,6 +232,13 @@ final class SharedLibraryClient {
     }
 
     func shutdown() {
+        coreCommandTail?.cancel()
+        coreCommandTail = nil
+        coreCommandGeneration &+= 1
+        libraryProjectionTask?.cancel()
+        libraryProjectionTask = nil
+        downloadProjectionTask?.cancel()
+        downloadProjectionTask = nil
         evidenceRebuildTask?.cancel()
         evidenceRebuildTask = nil
         for task in evidenceUpdateTasks.values { task.cancel() }

@@ -1,7 +1,7 @@
 import Foundation
 import Pod0Core
 
-struct SharedLibrarySnapshot {
+struct SharedLibrarySnapshot: Sendable {
     let podcasts: [PodcastRecord]
     let subscriptions: [PodcastSubscriptionRecord]
     let episodes: [EpisodeRecord]

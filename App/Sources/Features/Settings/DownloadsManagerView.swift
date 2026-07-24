@@ -10,22 +10,30 @@ struct DownloadsManagerView: View {
     @State private var confirmDeleteDownloaded = false
 
     var body: some View {
+        let rows = downloadRows
+        let active = activeRows(in: rows)
+        let failed = failedRows(in: rows)
+        let downloaded = downloadedRows(in: rows)
         List {
-            summarySection
+            summarySection(
+                activeCount: active.count,
+                failedCount: failed.count,
+                downloadedCount: downloaded.count
+            )
 
-            if downloadRows.isEmpty {
+            if rows.isEmpty {
                 emptySection
             } else {
-                if !activeRows.isEmpty {
-                    activeSection
+                if !active.isEmpty {
+                    activeSection(active)
                 }
-                if !failedRows.isEmpty {
-                    failedSection
+                if !failed.isEmpty {
+                    failedSection(failed)
                 }
-                if !downloadedRows.isEmpty {
-                    downloadedSection
+                if !downloaded.isEmpty {
+                    downloadedSection(downloaded)
                 }
-                actionsSection
+                actionsSection(active: active, downloaded: downloaded)
             }
         }
         .settingsListStyle()
@@ -35,40 +43,44 @@ struct DownloadsManagerView: View {
         .alert("Cancel active downloads?", isPresented: $confirmCancelActive) {
             Button("Keep Downloads", role: .cancel) {}
             Button("Cancel Downloads", role: .destructive) {
-                cancelActiveDownloads()
+                cancelActiveDownloads(active)
             }
         } message: {
-            Text("This stops \(countLabel(activeRows.count, singular: "download")) currently downloading or queued episode\(activeRows.count == 1 ? "" : "s").")
+            Text("This stops \(countLabel(active.count, singular: "download")) currently downloading or queued episode\(active.count == 1 ? "" : "s").")
         }
         .alert("Delete downloaded episodes?", isPresented: $confirmDeleteDownloaded) {
             Button("Keep Downloads", role: .cancel) {}
             Button("Delete Downloads", role: .destructive) {
-                deleteDownloadedEpisodes()
+                deleteDownloadedEpisodes(downloaded)
             }
         } message: {
-            Text("This removes \(countLabel(downloadedRows.count, singular: "downloaded episode")) from this device. Your library and playback progress are kept.")
+            Text("This removes \(countLabel(downloaded.count, singular: "downloaded episode")) from this device. Your library and playback progress are kept.")
         }
     }
 
     // MARK: - Sections
 
-    private var summarySection: some View {
+    private func summarySection(
+        activeCount: Int,
+        failedCount: Int,
+        downloadedCount: Int
+    ) -> some View {
         Section {
             HStack(spacing: 0) {
                 DownloadsSummaryStat(
-                    value: activeRows.count,
+                    value: activeCount,
                     label: "Active",
                     tint: .blue
                 )
                 Divider().padding(.vertical, 4)
                 DownloadsSummaryStat(
-                    value: failedRows.count,
+                    value: failedCount,
                     label: "Failed",
                     tint: .orange
                 )
                 Divider().padding(.vertical, 4)
                 DownloadsSummaryStat(
-                    value: downloadedRows.count,
+                    value: downloadedCount,
                     label: "Saved",
                     tint: .green
                 )
@@ -91,35 +103,38 @@ struct DownloadsManagerView: View {
         }
     }
 
-    private var activeSection: some View {
+    private func activeSection(_ rows: [DownloadManagerRowData]) -> some View {
         Section("Active & Queued") {
-            ForEach(activeRows) { row in
+            ForEach(rows) { row in
                 DownloadsManagerRow(row: row, onAction: perform)
             }
         }
     }
 
-    private var failedSection: some View {
+    private func failedSection(_ rows: [DownloadManagerRowData]) -> some View {
         Section("Failed") {
-            ForEach(failedRows) { row in
+            ForEach(rows) { row in
                 DownloadsManagerRow(row: row, onAction: perform)
             }
         }
     }
 
-    private var downloadedSection: some View {
+    private func downloadedSection(_ rows: [DownloadManagerRowData]) -> some View {
         Section("Downloaded") {
-            ForEach(downloadedRows) { row in
+            ForEach(rows) { row in
                 DownloadsManagerRow(row: row, onAction: perform)
             }
         }
     }
 
     @ViewBuilder
-    private var actionsSection: some View {
-        if !activeRows.isEmpty || !downloadedRows.isEmpty {
+    private func actionsSection(
+        active: [DownloadManagerRowData],
+        downloaded: [DownloadManagerRowData]
+    ) -> some View {
+        if !active.isEmpty || !downloaded.isEmpty {
             Section("Bulk Actions") {
-                if !activeRows.isEmpty {
+                if !active.isEmpty {
                     Button(role: .destructive) {
                         Haptics.warning()
                         confirmCancelActive = true
@@ -127,7 +142,7 @@ struct DownloadsManagerView: View {
                         Label("Cancel Active Downloads", systemImage: "xmark.circle")
                     }
                 }
-                if !downloadedRows.isEmpty {
+                if !downloaded.isEmpty {
                     Button(role: .destructive) {
                         Haptics.warning()
                         confirmDeleteDownloaded = true
@@ -157,8 +172,8 @@ struct DownloadsManagerView: View {
         }
     }
 
-    private var activeRows: [DownloadManagerRowData] {
-        downloadRows
+    private func activeRows(in rows: [DownloadManagerRowData]) -> [DownloadManagerRowData] {
+        rows
             .filter(\.status.isActive)
             .sorted { lhs, rhs in
                 if lhs.status.sortRank != rhs.status.sortRank {
@@ -168,14 +183,14 @@ struct DownloadsManagerView: View {
             }
     }
 
-    private var failedRows: [DownloadManagerRowData] {
-        downloadRows
+    private func failedRows(in rows: [DownloadManagerRowData]) -> [DownloadManagerRowData] {
+        rows
             .filter(\.status.isFailed)
             .sorted { $0.episode.pubDate > $1.episode.pubDate }
     }
 
-    private var downloadedRows: [DownloadManagerRowData] {
-        downloadRows
+    private func downloadedRows(in rows: [DownloadManagerRowData]) -> [DownloadManagerRowData] {
+        rows
             .filter(\.status.isDownloaded)
             .sorted { $0.episode.pubDate > $1.episode.pubDate }
     }
@@ -222,14 +237,14 @@ struct DownloadsManagerView: View {
         }
     }
 
-    private func cancelActiveDownloads() {
-        for row in activeRows {
+    private func cancelActiveDownloads(_ rows: [DownloadManagerRowData]) {
+        for row in rows {
             store.sharedLibrary?.cancelDownload(episodeID: row.id)
         }
     }
 
-    private func deleteDownloadedEpisodes() {
-        for row in downloadedRows {
+    private func deleteDownloadedEpisodes(_ rows: [DownloadManagerRowData]) {
+        for row in rows {
             store.sharedLibrary?.removeDownload(episodeID: row.id)
         }
     }

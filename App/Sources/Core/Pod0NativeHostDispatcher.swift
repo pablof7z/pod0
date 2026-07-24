@@ -16,12 +16,14 @@ final class Pod0NativeHostDispatcher {
     let agentHost: any CoreAgentHosting
     let nostrSignerHost: any CoreNostrSignerHosting
     let playbackHost: any CorePlaybackHosting
-    private let maximumConcurrentTasks: Int
+    let maximumConcurrentTasks: Int
     let recallHost: any CoreRecallHosting
     let scheduledAgentHost: any CoreScheduledAgentHosting
     let transcriptHost: any CoreTranscriptHosting
     let recallObservationRecorder = CoreRecallObservationRecorder()
     let publisherObservationRecorder = CorePublisherChapterObservationRecorder()
+    let transientObservationRecorder = CoreTransientObservationRecorder()
+    let hostRequestReader = CoreHostRequestReader()
     let durableObservationRecorder: CoreDurableObservationRecorder
     let observationOutbox: NativeHostObservationOutbox?
     let now: @MainActor () -> Date
@@ -42,7 +44,9 @@ final class Pod0NativeHostDispatcher {
     var observationRecoveryReady: Bool
     var completedRequestIDs: Set<HostRequestId> = []
     var completionOrder: [HostRequestId] = []
-    private var executionEnabled = false
+    var requestDrainTask: Task<Void, Never>?
+    var requestDrainRequested = false
+    var executionEnabled = false
     init(
         feedHost: any CoreFeedHosting,
         downloadHost: any CoreDownloadHosting = UnavailableCoreDownloadHost(),
@@ -79,38 +83,6 @@ final class Pod0NativeHostDispatcher {
         self.now = now
         playbackHost.installObservationSink { [weak self] observation in
             self?.receivePlaybackObservation(observation)
-        }
-    }
-
-    func executePendingRequests(from facade: Pod0Facade, maximumCount: UInt16 = 64) {
-        guard executionEnabled else { return }
-        guard observationRecoveryReady else {
-            startObservationRecovery(from: facade, maximumCount: maximumCount)
-            return
-        }
-        if retryRetainedObservations(in: facade) { return }
-        if retryRetainedScheduledAgentObservations(in: facade) { return }
-        for cancellation in facade.nextHostCancellations(maximumCount: maximumCount) {
-            cancel(
-                requestID: cancellation.requestId,
-                cancellationID: cancellation.cancellationId
-            )
-        }
-        let capacity = max(
-            0,
-            maximumConcurrentTasks - activeTasks.count - acknowledgementTasks.count
-                - downloadRequests.count - scheduledAgentAcknowledgementTasks.count
-                - pendingScheduledAgentExecutions.count
-        )
-        let boundedCount = min(Int(maximumCount), capacity)
-        guard boundedCount > 0 else { return }
-        for envelope in facade.nextHostRequests(maximumCount: UInt16(boundedCount)) {
-            execute(envelope) { [weak self] observation in
-                guard let self else { return }
-                record(observation, for: envelope, in: facade) { [weak self] in
-                    self?.executePendingRequests(from: facade, maximumCount: maximumCount)
-                }
-            }
         }
     }
 

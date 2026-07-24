@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-24T13:28:29Z",
+      "lines": [
+        "Playback, Saved, and Downloads stay smooth as your podcast library grows."
+      ]
+    },
+    {
       "shipped_at": "2026-07-24T12:08:00Z",
       "lines": [
         "Pod0 now stays responsive while launching, starting playback, and managing downloads."

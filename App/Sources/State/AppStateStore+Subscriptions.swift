@@ -10,9 +10,8 @@ extension AppStateStore {
     /// of having no `PodcastSubscription` row in the new model — they're
     /// `Podcast`-only.
     var sortedFollowedPodcasts: [Podcast] {
-        let podcastByID = Dictionary(uniqueKeysWithValues: state.podcasts.map { ($0.id, $0) })
         return state.subscriptions
-            .compactMap { podcastByID[$0.podcastID] }
+            .compactMap { podcast(id: $0.podcastID) }
             .filter { $0.kind == .rss }
             .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
     }
@@ -20,7 +19,12 @@ extension AppStateStore {
     /// Returns the subscription row for a podcast, or `nil` if the user does
     /// not follow it.
     func subscription(podcastID: UUID) -> PodcastSubscription? {
-        state.subscriptions.first { $0.podcastID == podcastID }
+        if let index = subscriptionIndexByPodcastID[podcastID],
+           state.subscriptions.indices.contains(index),
+           state.subscriptions[index].podcastID == podcastID {
+            return state.subscriptions[index]
+        }
+        return state.subscriptions.first { $0.podcastID == podcastID }
     }
 
     /// Convenience: returns the podcast for an existing subscription row.

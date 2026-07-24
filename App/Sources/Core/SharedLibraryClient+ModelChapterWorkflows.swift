@@ -16,20 +16,16 @@ extension SharedLibraryClient {
                 continue
             }
             announcedModelChapterVersions[transcript.episodeID] = opportunityVersion
-            facade.dispatch(command: CommandEnvelope(
-                commandId: CommandId(uuid: UUID()),
-                cancellationId: CancellationId(uuid: UUID()),
-                expectedRevision: nil,
-                command: .ensureModelChapters(
+            dispatchCoreCommand(
+                .ensureModelChapters(
                     episodeId: EpisodeId(uuid: transcript.episodeID),
                     configuredModel: configuredModel
                 )
-            ))
+            )
             announced = true
         }
         guard announced else { return }
         workflowClient?.refresh(immediately: true)
-        dispatcher.executePendingRequests(from: facade)
     }
 
     func performModelChapterAction(

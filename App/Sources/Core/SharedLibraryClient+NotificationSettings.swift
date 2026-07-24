@@ -3,13 +3,7 @@ import Pod0Core
 
 extension SharedLibraryClient {
     func setNewEpisodeNotificationsEnabled(_ enabled: Bool) {
-        facade.dispatch(command: CommandEnvelope(
-            commandId: CommandId(uuid: UUID()),
-            cancellationId: CancellationId(uuid: UUID()),
-            expectedRevision: nil,
-            command: .setNewEpisodeNotificationsEnabled(enabled: enabled)
-        ))
-        dispatcher.executePendingRequests(from: facade)
+        dispatchCoreCommand(.setNewEpisodeNotificationsEnabled(enabled: enabled))
     }
 
     func publishNewEpisodeNotificationSettings(to store: AppStateStore) {

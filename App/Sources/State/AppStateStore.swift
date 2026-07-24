@@ -33,7 +33,7 @@ final class AppStateStore {
     var pendingVoiceNoteAgentContext: VoiceNoteAgentContext?
     private(set) var state: AppState {
         didSet {
-            handleStateDidSet(previousEpisodes: oldValue.episodes)
+            handleStateDidSet(previousState: oldValue)
         }
     }
     /// The only write gate for companion store extensions and test fixtures.
@@ -75,18 +75,20 @@ final class AppStateStore {
     /// Unplayed-episode count per subscription. Drives `LibraryGridCell`'s
     /// red dot and the Library "Unplayed" filter chip.
     var unplayedCountByShow: [UUID: Int] = [:]
-
     /// Subscriptions that have at least one episode in `.downloaded` state.
     /// Drives the Library "Downloaded" filter chip.
     var hasDownloadedByShow: Set<UUID> = []
-
     /// Subscriptions that have at least one episode with a ready transcript.
     /// Drives the Library "Transcribed" filter chip.
     var hasTranscribedByShow: Set<UUID> = []
+    /// Read-model indexes keep playback UI lookups independent of library size.
+    var episodeIndexByID: [UUID: Int] = [:]
+    var podcastIndexByID: [UUID: Int] = [:]
+    var subscriptionIndexByPodcastID: [UUID: Int] = [:]
 
-    /// Episode array indexes per subscription, pre-sorted newest first.
-    /// Drives `ShowDetailView` without duplicating every `Episode` in memory.
+    /// Episode indexes per subscription, pre-sorted newest first.
     var episodeIndexesByShow: [UUID: [Int]] = [:]
+    var allEpisodeIndexesNewestFirst: [Int] = []
 
     /// Episodes whose Rust-projected `playbackPosition > 0` and `played == false`,
     /// pre-sorted newest first.

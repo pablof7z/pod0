@@ -110,6 +110,23 @@ final class AppStateStorePerformanceTests: XCTestCase {
             XCTAssertGreaterThan(hits, 0)
             XCTAssertLessThan(elapsed, 0.1, "Home feed projection reads took \(elapsed)s.")
         }
+
+        do {
+            let episodeIDs = store.state.episodes.prefix(1_000).map(\.id)
+            let podcastIDs = subs.map(\.podcastID)
+            let start = Date()
+            var hits = 0
+            for index in 0..<20_000 {
+                if store.episode(id: episodeIDs[index % episodeIDs.count]) != nil { hits += 1 }
+                let podcastID = podcastIDs[index % podcastIDs.count]
+                if store.podcast(id: podcastID) != nil { hits += 1 }
+                if store.subscription(podcastID: podcastID) != nil { hits += 1 }
+            }
+            let elapsed = Date().timeIntervalSince(start)
+
+            XCTAssertEqual(hits, 60_000)
+            XCTAssertLessThan(elapsed, 0.05, "Hot player identity lookups took \(elapsed)s.")
+        }
     }
 
     // MARK: - Correctness: invalidation

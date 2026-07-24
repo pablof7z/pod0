@@ -11,6 +11,8 @@ final class WorkflowRuntime {
     private(set) var artifactRepository: ArtifactRepository?
     private var coordinator: WorkCoordinator?
     private weak var client: WorkflowClient?
+    private var wakeTask: Task<Void, Never>?
+    private var wakeRequested = false
     private lazy var persistenceObserver: NSObjectProtocol = NotificationCenter.default.addObserver(
         forName: .persistenceDidCommitWorkflowJobs,
         object: nil,
@@ -122,11 +124,17 @@ final class WorkflowRuntime {
     }
 
     func wake() {
-        guard let coordinator else { return }
-        Task { @MainActor [weak self] in
+        guard coordinator != nil else { return }
+        wakeRequested = true
+        guard wakeTask == nil else { return }
+        wakeTask = Task { @MainActor [weak self] in
             guard let self else { return }
-            await self.reconcile(signalOnly: true)
-            await coordinator.signal()
+            repeat {
+                wakeRequested = false
+                await reconcile(signalOnly: true)
+            } while wakeRequested && !Task.isCancelled
+            wakeTask = nil
+            if wakeRequested && !Task.isCancelled { wake() }
         }
     }
 
@@ -136,19 +144,37 @@ final class WorkflowRuntime {
 
     private func reconcile(signalOnly: Bool) async {
         guard let store = appStore, let coordinator else { return }
+        let episodes = store.state.episodes
+        let settings = store.state.settings
         store.sharedLibrary?.ensurePublisherChapters(
-            episodeIDs: store.state.episodes.map(\.id)
+            episodeIDs: episodes.map(\.id)
         )
-        store.sharedLibrary?.ensureTranscriptWorkflows(
-            episodes: store.state.episodes,
-            settings: store.state.settings
-        )
-        let transcriptSnapshots = store.sharedLibrary?.transcriptWorkflowSnapshots(
-            episodeIDs: store.state.episodes.map(\.id)
-        ) ?? []
+        let transcriptOpportunities = await Task.detached(priority: .utility) {
+            SharedLibraryClient.transcriptWorkflowOpportunities(
+                episodes: episodes,
+                settings: settings
+            )
+        }.value
+        store.sharedLibrary?.ensureTranscriptWorkflows(transcriptOpportunities)
+        let transcriptSnapshots: [TranscriptWorkflowSnapshot]
+        if let sharedLibrary = store.sharedLibrary {
+            let facade = sharedLibrary.facade
+            let episodeIDs = episodes.compactMap { episode -> UUID? in
+                guard case .ready = episode.transcriptState else { return nil }
+                return episode.id
+            }
+            transcriptSnapshots = await Task.detached(priority: .utility) {
+                SharedLibraryClient.transcriptWorkflowSnapshots(
+                    facade: facade,
+                    episodeIDs: episodeIDs
+                )
+            }.value
+        } else {
+            transcriptSnapshots = []
+        }
         store.sharedLibrary?.ensureModelChapters(
             transcripts: transcriptSnapshots,
-            configuredModel: store.state.settings.chapterCompilationModel
+            configuredModel: settings.chapterCompilationModel
         )
         store.sharedLibrary?.reconcileScheduledAgents()
         if signalOnly { await coordinator.signal() }

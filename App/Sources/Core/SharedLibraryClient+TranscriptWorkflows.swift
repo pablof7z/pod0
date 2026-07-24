@@ -1,12 +1,39 @@
 import Foundation
 import Pod0Core
 
+struct TranscriptWorkflowOpportunity: @unchecked Sendable {
+    let episodeID: UUID
+    let configuration: TranscriptWorkflowConfiguration
+    let version: String
+}
+
 extension SharedLibraryClient {
     /// Announces current platform capability facts; Rust alone decides whether
     /// generation or evidence work is admitted.
-    func ensureTranscriptWorkflows(episodes: some Sequence<Episode>, settings: Settings) {
+    func ensureTranscriptWorkflows(_ opportunities: [TranscriptWorkflowOpportunity]) {
         var announced = false
-        for episode in episodes {
+        for opportunity in opportunities {
+            guard announcedTranscriptWorkflowVersions[opportunity.episodeID]
+                    != opportunity.version else { continue }
+            announcedTranscriptWorkflowVersions[opportunity.episodeID] = opportunity.version
+            dispatchCoreCommand(
+                .ensureTranscriptWorkflow(
+                    episodeId: EpisodeId(uuid: opportunity.episodeID),
+                    origin: .automatic,
+                    configuration: opportunity.configuration
+                )
+            )
+            announced = true
+        }
+        guard announced else { return }
+        workflowClient?.refresh(immediately: true)
+    }
+
+    nonisolated static func transcriptWorkflowOpportunities(
+        episodes: [Episode],
+        settings: Settings
+    ) -> [TranscriptWorkflowOpportunity] {
+        episodes.compactMap { episode in
             let configuration = NativeTranscriptWorkflowConfiguration.make(
                 episode: episode,
                 settings: settings
@@ -14,20 +41,16 @@ extension SharedLibraryClient {
             guard NativeTranscriptWorkflowConfiguration.hasAutomaticExecutionOpportunity(
                 for: episode,
                 configuration: configuration
-            ) else { continue }
-            let version = transcriptOpportunityVersion(episode, configuration: configuration)
-            guard announcedTranscriptWorkflowVersions[episode.id] != version else { continue }
-            announcedTranscriptWorkflowVersions[episode.id] = version
-            dispatchTranscript(.ensureTranscriptWorkflow(
-                episodeId: EpisodeId(uuid: episode.id),
-                origin: .automatic,
-                configuration: configuration
-            ))
-            announced = true
+            ) else { return nil }
+            return TranscriptWorkflowOpportunity(
+                episodeID: episode.id,
+                configuration: configuration,
+                version: transcriptOpportunityVersion(
+                    episode,
+                    configuration: configuration
+                )
+            )
         }
-        guard announced else { return }
-        workflowClient?.refresh(immediately: true)
-        dispatcher.executePendingRequests(from: facade)
     }
 
     func requestTranscript(episodeID: UUID, provider: STTProvider?) {
@@ -37,13 +60,14 @@ extension SharedLibraryClient {
             settings: store.state.settings,
             provider: provider
         )
-        dispatchTranscript(.ensureTranscriptWorkflow(
-            episodeId: EpisodeId(uuid: episodeID),
-            origin: .user,
-            configuration: configuration
-        ))
+        dispatchCoreCommand(
+            .ensureTranscriptWorkflow(
+                episodeId: EpisodeId(uuid: episodeID),
+                origin: .user,
+                configuration: configuration
+            )
+        )
         workflowClient?.refresh(immediately: true)
-        dispatcher.executePendingRequests(from: facade)
     }
 
     func performTranscriptAction(
@@ -147,7 +171,7 @@ private extension SharedLibraryClient {
         ).first
     }
 
-    func transcriptOpportunityVersion(
+    nonisolated static func transcriptOpportunityVersion(
         _ episode: Episode,
         configuration: TranscriptWorkflowConfiguration
     ) -> String {

@@ -71,6 +71,23 @@ extension SharedLibraryClient {
     func receiveDownloads(revision: UInt64) {
         guard revision >= lastDownloadsRevision else { return }
         lastDownloadsRevision = revision
+        let facade = facade
+        downloadProjectionTask?.cancel()
+        downloadProjectionTask = Task { @MainActor [weak self] in
+            let workflows = await Task.detached(priority: .utility) {
+                Self.loadDownloadWorkflowPages(facade: facade)
+            }.value
+            guard !Task.isCancelled, let self, revision == lastDownloadsRevision else {
+                return
+            }
+            cachedDownloadWorkflows = workflows
+            workflowClient?.refresh(immediately: true)
+        }
+    }
+
+    nonisolated private static func loadDownloadWorkflowPages(
+        facade: Pod0Facade
+    ) -> [UUID: DownloadWorkflowProjection] {
         var offset: UInt32 = 0
         var workflows: [UUID: DownloadWorkflowProjection] = [:]
         while true {
@@ -86,8 +103,7 @@ extension SharedLibraryClient {
             guard page.hasMore, offset <= UInt32.max - 200 else { break }
             offset += 200
         }
-        cachedDownloadWorkflows = workflows
-        workflowClient?.refresh(immediately: true)
+        return workflows
     }
 
     func performDownloadAction(
@@ -152,28 +168,18 @@ extension SharedLibraryClient {
         let capacity = availableCapacityBytes.flatMap { value in
             value >= 0 ? UInt64(value) : nil
         }
-        facade.dispatch(command: CommandEnvelope(
-            commandId: CommandId(uuid: UUID()),
-            cancellationId: CancellationId(uuid: UUID()),
-            expectedRevision: nil,
-            command: .observeDownloadEnvironment(
+        dispatchCoreCommand(
+            .observeDownloadEnvironment(
                 observation: DownloadEnvironmentObservation(
                     network: mappedNetwork,
                     availableCapacityBytes: capacity
                 )
             )
-        ))
-        dispatcher.executePendingRequests(from: facade)
+        )
     }
 
     private func dispatchDownload(_ command: ApplicationCommand) {
-        facade.dispatch(command: CommandEnvelope(
-            commandId: CommandId(uuid: UUID()),
-            cancellationId: CancellationId(uuid: UUID()),
-            expectedRevision: nil,
-            command: command
-        ))
-        dispatcher.executePendingRequests(from: facade)
+        dispatchCoreCommand(command)
     }
 }
 

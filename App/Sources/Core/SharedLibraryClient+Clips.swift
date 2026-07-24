@@ -18,17 +18,15 @@ extension SharedLibraryClient {
     }
 
     func clip(id: UUID) -> Clip? {
-        loadClipPages(scope: .clip(clipId: ClipId(uuid: id)))
-            .clips
-            .first { !$0.deleted }
+        cachedClips?.clips.first { $0.id == id && !$0.deleted }
     }
 
     func clips(forEpisode episodeID: UUID) -> [Clip] {
-        loadClipPages(scope: .episode(episodeId: EpisodeId(uuid: episodeID))).clips
+        cachedClips?.clips.filter { $0.episodeID == episodeID && !$0.deleted } ?? []
     }
 
     func allClips() -> [Clip] {
-        loadClipPages(scope: .active).clips
+        cachedClips?.clips.filter { !$0.deleted } ?? []
     }
 
     func createClip(_ clip: Clip) throws -> Clip {

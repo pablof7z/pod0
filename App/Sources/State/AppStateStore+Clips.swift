@@ -106,18 +106,18 @@ extension AppStateStore {
     }
 
     func clip(id: UUID) -> Clip? {
-        sharedLibrary?.clip(id: id)
+        state.clips.first { $0.id == id && !$0.deleted }
     }
 
     /// All clips, newest first. Used by the Saved screen's Clips segment.
     func allClips() -> [Clip] {
-        sharedLibrary?.allClips() ?? []
+        state.clips.filter { !$0.deleted }
     }
 
     /// Clips for a single episode, newest first. Used by the episode detail
     /// surface and the global clips list.
     func clips(forEpisode id: UUID) -> [Clip] {
-        sharedLibrary?.clips(forEpisode: id) ?? []
+        state.clips.filter { $0.episodeID == id && !$0.deleted }
     }
 
     @discardableResult
