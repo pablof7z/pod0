@@ -2,6 +2,7 @@ import SwiftUI
 
 struct BYOKUnifiedProviderSection: View {
     @Environment(AppStateStore.self) private var store
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var isConnecting = false
     @State private var message: String?
@@ -16,12 +17,30 @@ struct BYOKUnifiedProviderSection: View {
             Button {
                 Task { await connectWithBYOK() }
             } label: {
-                HStack {
-                    Label(isConnecting ? "Connecting..." : "Connect BYOK Vault", systemImage: "key.viewfinder")
-                    if isConnecting {
-                        Spacer()
-                        ProgressView()
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(spacing: 6) {
+                        Image(systemName: "key.viewfinder")
+                        Text(isConnecting ? "Connecting..." : "Connect BYOK Vault")
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.8)
+                            .multilineTextAlignment(.center)
+                        if isConnecting {
+                            ProgressView()
+                        }
                     }
+                    .frame(maxWidth: .infinity, minHeight: 88)
+                } else {
+                    HStack {
+                        Label(isConnecting ? "Connecting..." : "Connect BYOK Vault", systemImage: "key.viewfinder")
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.8)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                        if isConnecting {
+                            ProgressView()
+                        }
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 44)
                 }
             }
             .buttonStyle(.glassProminent)

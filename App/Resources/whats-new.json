@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-24T10:19:51Z",
+      "lines": [
+        "Provider setup now stays clear and readable at larger accessibility text sizes."
+      ]
+    },
+    {
       "shipped_at": "2026-07-24T07:29:11Z",
       "lines": [
         "New-episode downloads and alerts now recover reliably after the app restarts."
