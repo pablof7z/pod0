@@ -13,7 +13,7 @@ extension AppStateStore {
     nonisolated private static let clipsLogger = Logger.app("AppStateStore+Clips")
 
     @discardableResult
-    func addClip(_ clip: Clip) async -> Bool {
+    func addClip(_ clip: Clip) async -> Clip? {
         do {
             guard let sharedLibrary else { throw SharedLibraryError.unavailable }
             let saved = try await sharedLibrary.createClip(clip)
@@ -22,12 +22,12 @@ extension AppStateStore {
                 subjectID: saved.id,
                 outcome: .created
             ))
-            return true
+            return saved
         } catch {
             Self.clipsLogger.error(
                 "Shared clip creation failed: \(error.localizedDescription, privacy: .public)"
             )
-            return false
+            return nil
         }
     }
 
@@ -56,8 +56,7 @@ extension AppStateStore {
             transcriptText: transcriptText ?? "",
             source: source
         )
-        guard await addClip(clip) else { return nil }
-        return sharedLibrary?.clip(id: clip.id)
+        return await addClip(clip)
     }
 
     /// In-place rewrite for the optimistic-then-refine flow used by

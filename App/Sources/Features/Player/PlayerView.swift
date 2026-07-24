@@ -115,14 +115,7 @@ struct PlayerView: View {
             if state.episode != nil { workflows.wake() }
             AutoSnipController.shared.attach(playback: state, store: store)
         }
-        .overlay(alignment: .top) {
-            VStack(spacing: AppTheme.Spacing.sm) {
-                AutoSnipBanner(controller: AutoSnipController.shared)
-                    .allowsHitTesting(false)
-                NoLLMKeyHintBanner(controller: AutoSnipController.shared)
-            }
-            .padding(.top, AppTheme.Spacing.lg)
-        }
+        .autoSnipPresentation(controller: AutoSnipController.shared)
         .workflowProjectionScope(
             subjectIDs: state.episode.map { [$0.id] } ?? [],
             kinds: [.transcriptIngest, .chapterArtifacts]

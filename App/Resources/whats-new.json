@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-24T21:41:05Z",
+      "lines": [
+        "Tap a new snip's confirmation to open and share the saved clip."
+      ]
+    },
+    {
       "shipped_at": "2026-07-24T21:27:09Z",
       "lines": [
         "Onboarding now clearly marks agent and generated-chapter features that still need provider setup."

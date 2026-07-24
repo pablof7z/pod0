@@ -59,6 +59,9 @@ final class AutoSnipController {
     /// Clears itself after `bannerVisibleSeconds` so back-to-back snips each
     /// retrigger the toast cleanly.
     private(set) var lastCapture: CaptureResult?
+    /// Transient presentation request for the native share sheet. The clip
+    /// value is the exact result returned after the shared-core commit.
+    var pendingShareClip: Clip?
 
     /// Bumped on every successful capture. The banner watches this so an
     /// identical-payload back-to-back snip still re-fires the animation.
@@ -71,12 +74,11 @@ final class AutoSnipController {
     /// hint doesn't re-fire across sessions).
     var noLLMKeyHintPending: Bool = false
 
-    static let bannerVisibleSeconds: TimeInterval = 1.5
+    static let bannerVisibleSeconds: TimeInterval = 8
 
     struct CaptureResult: Hashable, Identifiable {
         let id: UUID
-        let clipID: UUID
-        let episodeID: UUID
+        let clip: Clip
         let createdAt: Date
         let summary: String
     }
@@ -86,6 +88,11 @@ final class AutoSnipController {
     private var didWireRemote = false
 
     private init() {}
+
+    func presentShare(for clip: Clip) {
+        pendingShareClip = clip
+        Self.logger.debug("presenting captured clip \(clip.id, privacy: .public)")
+    }
 
     /// Idempotent. Called from `RootView.onAppear`.
     func attach(playback: PlaybackState, store: AppStateStore) {
@@ -157,16 +164,15 @@ final class AutoSnipController {
             var clip = proposedClip
             clip.transcriptText = text ?? ""
             clip.speakerID = speaker?.uuidString
-            guard await store.addClip(clip) else {
+            guard let savedClip = await store.addClip(clip) else {
                 Self.logger.error("captureSnip: shared clip commit failed")
                 return
             }
             Haptics.success()
             lastCapture = CaptureResult(
                 id: UUID(),
-                clipID: clip.id,
-                episodeID: episode.id,
-                createdAt: clip.createdAt,
+                clip: savedClip,
+                createdAt: savedClip.createdAt,
                 summary: formatSummary(
                     startSeconds: startSeconds,
                     endSeconds: endSeconds
@@ -174,10 +180,10 @@ final class AutoSnipController {
             )
             captureGeneration &+= 1
             Self.logger.info(
-                "captured clip \(clip.id, privacy: .public) [\(startMs, privacy: .public)..\(endMs, privacy: .public)] source=\(String(describing: source), privacy: .public)"
+                "captured clip \(savedClip.id, privacy: .public) [\(startMs, privacy: .public)..\(endMs, privacy: .public)] source=\(String(describing: source), privacy: .public)"
             )
             await refine(
-                clipID: clip.id,
+                clipID: savedClip.id,
                 episodeID: episode.id,
                 playheadSeconds: now,
                 modelID: modelID,
