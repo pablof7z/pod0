@@ -22,6 +22,7 @@ struct OnboardingView: View {
     @State var apiKeySaving: Bool = false
     @State var isConnectingBYOK: Bool = false
     @State var byokConnect = BYOKConnectService()
+    @State var providerConfiguredDuringOnboarding: Bool = false
 
     // Identity state
     @State var agentNameDraft: String = ""
@@ -91,7 +92,7 @@ struct OnboardingView: View {
             .tag(OnboardingStep.subscribe)
             .padding(.horizontal, AppTheme.Spacing.lg)
 
-            OnboardingReadyPage()
+            OnboardingReadyPage(providerConfigured: providerConfiguredDuringOnboarding)
                 .tag(OnboardingStep.ready)
                 .padding(.horizontal, AppTheme.Spacing.lg)
         }

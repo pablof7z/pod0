@@ -5,6 +5,8 @@ import SwiftUI
 /// The final onboarding page. Confirms setup is complete and previews the
 /// four core capability areas the user can explore immediately.
 struct OnboardingReadyPage: View {
+    let providerConfigured: Bool
+
     @State private var bounceTrigger: Int = 0
 
     private enum Layout {
@@ -19,12 +21,26 @@ struct OnboardingReadyPage: View {
     }
 
     /// The four headline features surfaced to the user on completion.
-    private let features: [(icon: String, label: String, color: Color)] = [
-        ("antenna.radiowaves.left.and.right", "Subscribe via OPML or feed URL", AppTheme.Tint.onboardingChipAI),
-        ("headphones", "Listen with chapters & speed control", .white),
-        ("sparkles", "Ask the agent about anything you've heard", AppTheme.Tint.onboardingChipFriends),
-        ("list.bullet.indent", "Auto-generated chapters with ad-skip", AppTheme.Tint.onboardingChipChapters),
-    ]
+    private var features: [(icon: String, label: String, color: Color)] {
+        [
+            ("antenna.radiowaves.left.and.right", "Subscribe via OPML or feed URL", AppTheme.Tint.onboardingChipAI),
+            ("headphones", "Listen with chapters & speed control", .white),
+            (
+                "sparkles",
+                providerConfigured
+                    ? "Ask the agent about anything you've heard"
+                    : "Connect a provider to use the agent",
+                AppTheme.Tint.onboardingChipFriends
+            ),
+            (
+                "list.bullet.indent",
+                providerConfigured
+                    ? "Auto-generated chapters with ad-skip"
+                    : "Connect a provider to generate chapters",
+                AppTheme.Tint.onboardingChipChapters
+            ),
+        ]
+    }
 
     var body: some View {
         VStack(spacing: AppTheme.Spacing.lg) {
@@ -37,7 +53,7 @@ struct OnboardingReadyPage: View {
                     .font(AppTheme.Typography.largeTitle)
                     .foregroundStyle(.white)
 
-                Text("Here's what you can do right away.")
+                Text(providerConfigured ? "Here's what you can do right away." : "Here's what to explore next.")
                     .font(AppTheme.Typography.body)
                     .foregroundStyle(.white.opacity(0.85))
                     .multilineTextAlignment(.center)

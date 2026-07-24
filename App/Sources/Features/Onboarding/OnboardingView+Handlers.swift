@@ -22,6 +22,7 @@ extension OnboardingView {
             var s = store.state.settings
             s.markOpenRouterManual()
             store.updateSettings(s)
+            providerConfiguredDuringOnboarding = true
             apiKeyDraft = ""
             apiKeySaving = false
             Haptics.success()
@@ -45,6 +46,7 @@ extension OnboardingView {
                 throw BYOKConnectError.noProviderKeysReturned
             }
             store.updateSettings(s)
+            providerConfiguredDuringOnboarding = true
             apiKeyDraft = ""
             Haptics.success()
             advance()

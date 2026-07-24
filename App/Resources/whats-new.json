@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-24T21:27:09Z",
+      "lines": [
+        "Onboarding now clearly marks agent and generated-chapter features that still need provider setup."
+      ]
+    },
+    {
       "shipped_at": "2026-07-24T20:46:24Z",
       "lines": [
         "Workflow actions and scheduled-task changes now keep the interface responsive."
