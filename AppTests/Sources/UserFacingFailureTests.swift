@@ -157,7 +157,11 @@ final class UserFacingFailureTests: XCTestCase {
 
         XCTAssertTrue(source.contains("Picker(\"Filter episodes\""))
         XCTAssertTrue(source.contains("return \"Bookmarked\""))
+        XCTAssertTrue(source.contains("if showsSearch"))
+        XCTAssertTrue(source.contains(".onScrollGeometryChange"))
         XCTAssertTrue(source.contains(".navigationBarDrawer(displayMode: .automatic)"))
+        XCTAssertTrue(source.contains("Color(.systemBackground)"))
+        XCTAssertFalse(source.contains("Color(.systemGroupedBackground)"))
         XCTAssertFalse(source.contains("filterRailSection"))
         XCTAssertFalse(source.contains(".navigationBarDrawer(displayMode: .always)"))
     }
@@ -169,9 +173,19 @@ final class UserFacingFailureTests: XCTestCase {
             .deletingLastPathComponent()
             .appendingPathComponent("App/Sources/Features/Clips/ClipsView.swift")
         let source = try String(contentsOf: sourceURL, encoding: .utf8)
+        let segmentSource = try String(
+            contentsOf: sourceURL
+                .deletingLastPathComponent()
+                .appendingPathComponent("ClipsSegment.swift"),
+            encoding: .utf8
+        )
 
-        XCTAssertTrue(source.contains(".navigationTitle(\"Clips\")"))
+        XCTAssertTrue(segmentSource.contains("Text(\"Clips\")"))
+        XCTAssertTrue(segmentSource.contains(".onScrollGeometryChange"))
+        XCTAssertTrue(source.contains("if showsSearch"))
         XCTAssertTrue(source.contains(".navigationBarDrawer(displayMode: .automatic)"))
+        XCTAssertTrue(source.contains("Color(.systemBackground)"))
+        XCTAssertFalse(source.contains("Color(.systemGroupedBackground)"))
         XCTAssertFalse(source.contains("LiquidGlassSegmentedPicker"))
         XCTAssertFalse(source.contains("StarredSegment"))
     }
@@ -191,7 +205,24 @@ final class UserFacingFailureTests: XCTestCase {
         )
 
         XCTAssertFalse(rootSource.contains(".accessibilityLabel(\"Settings\")"))
+        XCTAssertFalse(rootSource.contains(".sheet(isPresented: $showSettings)"))
+        XCTAssertTrue(rootSource.contains("case .settings:"))
         XCTAssertTrue(sidebarSource.contains("navRow(\"Settings\""))
+        XCTAssertTrue(sidebarSource.contains("selectedTab = .settings"))
+    }
+
+    func testGlobalSearchSheetAndButtonAreRemoved() throws {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("App/Sources/App/RootView.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+
+        XCTAssertFalse(source.contains("showSearch"))
+        XCTAssertFalse(source.contains("searchSheet"))
+        XCTAssertFalse(source.contains(".accessibilityLabel(\"Search\")"))
+        XCTAssertFalse(source.contains("PodcastSearchView()"))
     }
 
     private func makeProjection(errorClass: JobErrorClass) -> WorkflowJobProjection {

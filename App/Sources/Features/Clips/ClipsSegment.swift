@@ -11,41 +11,67 @@ struct ClipsSegment: View {
 
     let searchQuery: String
     let onOpenEpisode: (UUID) -> Void
+    let onPullToSearch: () -> Void
 
     var body: some View {
         let all = store.allClips()
-        if all.isEmpty {
-            emptyState
-        } else {
-            let filteredClips = filtered(all)
-            if filteredClips.isEmpty {
+        let filteredClips = filtered(all)
+
+        List {
+            Text("Clips")
+                .font(.system(size: 34, weight: .bold))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .listRowInsets(EdgeInsets(
+                    top: AppTheme.Spacing.sm,
+                    leading: AppTheme.Spacing.md,
+                    bottom: AppTheme.Spacing.sm,
+                    trailing: AppTheme.Spacing.md
+                ))
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color(.systemBackground))
+                .accessibilityAddTraits(.isHeader)
+
+            if !all.isEmpty, !filteredClips.isEmpty {
+                clipSections(buckets(from: filteredClips))
+            }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Color(.systemBackground))
+        .scrollBounceBehavior(.always)
+        .overlay {
+            if all.isEmpty {
+                emptyState
+            } else if filteredClips.isEmpty {
                 ContentUnavailableView.search(text: searchQuery)
-            } else {
-                clipsList(buckets(from: filteredClips))
+            }
+        }
+        .onScrollGeometryChange(for: Bool.self) { geometry in
+            geometry.contentOffset.y + geometry.contentInsets.top < -44
+        } action: { _, pulledPastSearchThreshold in
+            if pulledPastSearchThreshold {
+                onPullToSearch()
             }
         }
     }
 
     // MARK: - List
 
-    private func clipsList(_ sections: [(String, [Clip])]) -> some View {
-        List {
-            ForEach(sections, id: \.0) { sectionName, clips in
-                Section {
-                    ForEach(clips) { clip in
-                        clipRow(clip)
-                    }
-                } header: {
-                    Text(sectionName)
-                        .font(.system(.caption, design: .rounded).weight(.semibold))
-                        .tracking(0.6)
-                        .textCase(.uppercase)
-                        .foregroundStyle(.secondary)
+    @ViewBuilder
+    private func clipSections(_ sections: [(String, [Clip])]) -> some View {
+        ForEach(sections, id: \.0) { sectionName, clips in
+            Section {
+                ForEach(clips) { clip in
+                    clipRow(clip)
                 }
+            } header: {
+                Text(sectionName)
+                    .font(.system(.caption, design: .rounded).weight(.semibold))
+                    .tracking(0.6)
+                    .textCase(.uppercase)
+                    .foregroundStyle(.secondary)
             }
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
     }
 
     @ViewBuilder
