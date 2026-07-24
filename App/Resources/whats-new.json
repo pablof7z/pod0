@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-24T22:21:00Z",
+      "lines": [
+        "VoiceOver now announces the actual duration of each new snip."
+      ]
+    },
+    {
       "shipped_at": "2026-07-24T21:41:05Z",
       "lines": [
         "Tap a new snip's confirmation to open and share the saved clip."

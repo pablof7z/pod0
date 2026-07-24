@@ -3,8 +3,8 @@ import SwiftUI
 // MARK: - AutoSnipBanner
 //
 // Small glass toast that remains visible for eight seconds after
-// `AutoSnipController`
-// captures a snip. Tapping the banner opens the existing clip share sheet.
+// `AutoSnipController` captures a snip. Tapping the banner opens the existing
+// clip share sheet.
 //
 // Designed to be installed once at the player root via `.overlay(...)`. The
 // banner observes the controller's `captureGeneration` so back-to-back snips
@@ -43,7 +43,7 @@ struct AutoSnipBanner: View {
                     .move(edge: .top)
                         .combined(with: .opacity)
                 )
-                .accessibilityLabel("Snipped 30 seconds")
+                .accessibilityLabel(capture.summary)
                 .accessibilityHint("Open clip")
             }
         }
