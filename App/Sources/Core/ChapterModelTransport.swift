@@ -19,7 +19,7 @@ struct ChapterModelTransportResponse: Equatable, Sendable {
 protocol CoreChapterModelTransporting: Sendable {
     func execute(
         _ request: ChapterModelExecutionRequest
-    ) async -> Result<ChapterModelTransportResponse, ChapterCapabilityFailure>
+    ) async -> Result<ChapterModelTransportResponse, ChapterModelTransportFailure>
 }
 
 /// Credential-backed provider executor. It decodes only the provider envelope;
@@ -51,7 +51,7 @@ struct LiveChapterModelTransport: CoreChapterModelTransporting, Sendable {
 
     func execute(
         _ request: ChapterModelExecutionRequest
-    ) async -> Result<ChapterModelTransportResponse, ChapterCapabilityFailure> {
+    ) async -> Result<ChapterModelTransportResponse, ChapterModelTransportFailure> {
         guard request.maximumCompletionBytes > 0,
               request.responseFormat == .jsonObject,
               let provider = LLMProvider(rawValue: request.provider),
@@ -64,7 +64,7 @@ struct LiveChapterModelTransport: CoreChapterModelTransporting, Sendable {
         do {
             guard let value = try credentialResolver(provider),
                   !value.isEmpty else {
-                return .failure(ChapterCapabilityFailure(
+                return .failure(ChapterModelTransportFailure(
                     code: .authentication,
                     httpStatus: nil,
                     safeDetail: "Chapter model credential unavailable"
@@ -72,7 +72,7 @@ struct LiveChapterModelTransport: CoreChapterModelTransporting, Sendable {
             }
             apiKey = value
         } catch {
-            return .failure(ChapterCapabilityFailure(
+            return .failure(ChapterModelTransportFailure(
                 code: .authentication,
                 httpStatus: nil,
                 safeDetail: "Chapter model credential unavailable"
@@ -124,7 +124,7 @@ struct LiveChapterModelTransport: CoreChapterModelTransporting, Sendable {
         _ request: URLRequest,
         provider: LLMProvider,
         maximumCompletionBytes: UInt64
-    ) async -> Result<ChapterModelTransportResponse, ChapterCapabilityFailure> {
+    ) async -> Result<ChapterModelTransportResponse, ChapterModelTransportFailure> {
         let envelopeAllowance: UInt64 = 256 * 1_024
         let maximumEnvelopeBytes = maximumCompletionBytes.addingReportingOverflow(
             envelopeAllowance
@@ -169,13 +169,13 @@ struct LiveChapterModelTransport: CoreChapterModelTransporting, Sendable {
             return .failure(.cancelled)
         } catch let error as URLError {
             if error.code == .cancelled { return .failure(.cancelled) }
-            return .failure(ChapterCapabilityFailure(
+            return .failure(ChapterModelTransportFailure(
                 code: .transport,
                 httpStatus: nil,
                 safeDetail: "Chapter model transport failed"
             ))
         } catch {
-            return .failure(ChapterCapabilityFailure(
+            return .failure(ChapterModelTransportFailure(
                 code: .transport,
                 httpStatus: nil,
                 safeDetail: "Chapter model transport failed"
@@ -187,7 +187,7 @@ struct LiveChapterModelTransport: CoreChapterModelTransporting, Sendable {
         _ data: Data,
         provider: LLMProvider,
         maximumCompletionBytes: UInt64
-    ) -> Result<ChapterModelTransportResponse, ChapterCapabilityFailure> {
+    ) -> Result<ChapterModelTransportResponse, ChapterModelTransportFailure> {
         do {
             let response: ChapterModelTransportResponse
             switch provider {

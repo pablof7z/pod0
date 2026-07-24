@@ -61,9 +61,6 @@
         "App/Sources/Core/SharedTranscriptReader.swift",
         "App/Sources/Core/TranscriptObservationMapper.swift",
         "App/Sources/Core/CorePublisherChapterHost.swift",
-        "App/Sources/Core/ChapterObservationCapability.swift",
-        "App/Sources/Core/ChapterObservationCapabilityAdapter.swift",
-        "App/Sources/Core/ChapterObservationCapabilityAdapter+Mapping.swift",
         "App/Sources/Core/ChapterModelTransport.swift",
         "App/Sources/Core/SharedChapterReader.swift",
         "App/Sources/Core/SharedLibraryClient+Chapters.swift",
@@ -183,23 +180,6 @@
       ]
     },
     {
-      "id": "temporary-chapter-observation-orchestration",
-      "classification": "temporary_swift",
-      "current_owner": "Swift transient agent-composition task shell and raw observation mapping",
-      "target_owner": "Pod0 Rust agent workflow/application layer issuing typed native host requests",
-      "reason": "Issue #110 deleted the model branch after its Rust workflow activated; only agent-composed chapter observations remain temporarily outside a Rust-issued host request.",
-      "boundary": "Map a bounded agent composition into a typed observation, call Rust qualification, and retain only bounded in-memory task identities.",
-      "persisted_state": "None; no files, database rows, retry counters, selected artifacts, or canonical mirrors.",
-      "migration_issues": [111],
-      "deletion_target": "Issue #111 replaces the remaining agent composition shell with a Rust-issued agent workflow request; primitive platform capabilities remain native.",
-      "priority": "high",
-      "includes": [
-        "App/Sources/Core/ChapterObservationCapability.swift",
-        "App/Sources/Core/ChapterObservationCapabilityAdapter.swift",
-        "App/Sources/Core/ChapterObservationCapabilityAdapter+Mapping.swift"
-      ]
-    },
-    {
       "id": "native-chapter-projection-adapter",
       "classification": "native_by_design",
       "current_owner": "Swift bounded chapter projection and active-view adapters",
@@ -312,23 +292,9 @@
       "priority": "high",
       "includes": ["App/Sources/Workflows/"],
       "excludes": [
-        "App/Sources/Workflows/ArtifactVerificationExecutor.swift",
         "App/Sources/Workflows/JobStore+LegacyChapterRetirement.swift",
         "App/Sources/Workflows/JobStore+LegacyScheduledAgentCutover.swift"
       ]
-    },
-    {
-      "id": "temporary-workflow-verification-executor",
-      "classification": "temporary_swift",
-      "current_owner": "Swift bounded artifact verification executor",
-      "target_owner": "Pod0 Rust workflow and artifact application layer",
-      "reason": "Issue #48 removes visible main-actor stalls without delaying product proof; the typed request/result boundary is explicitly temporary until the workflow slice migrates.",
-      "boundary": "Native callers submit typed file evidence requests; only verified typed results may reach fenced workflow commits.",
-      "persisted_state": "None; exact immutable file identities are cached in memory only.",
-      "migration_issues": [60, 115, 117, 119],
-      "deletion_target": "Issue #119 deletes download verification use after Rust adoption; #60 deletes the executor when the final unmigrated artifact workflow no longer calls it.",
-      "priority": "high",
-      "includes": ["App/Sources/Workflows/ArtifactVerificationExecutor.swift"]
     },
     {
       "id": "shared-transcript-model-and-normalization",

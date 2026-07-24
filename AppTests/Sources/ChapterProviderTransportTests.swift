@@ -29,7 +29,7 @@ final class ChapterProviderTransportTests: XCTestCase {
         let session = makeSession()
         let transport = modelTransport(session: session)
 
-        let result = await transport.execute(ChapterCapabilityFixtures.executionRequest(
+        let result = await transport.execute(ChapterModelTransportFixtures.executionRequest(
             maximumCompletionBytes: 1_024
         ))
 
@@ -65,7 +65,7 @@ final class ChapterProviderTransportTests: XCTestCase {
         ])
         let session = makeSession()
         let transport = modelTransport(session: session)
-        let request = ChapterCapabilityFixtures.executionRequest(
+        let request = ChapterModelTransportFixtures.executionRequest(
             provider: "ollama",
             model: "requested-ollama-model",
             maximumCompletionBytes: 1_024
@@ -89,7 +89,7 @@ final class ChapterProviderTransportTests: XCTestCase {
             session: session,
             credentialResolver: { _ in nil }
         )
-        let unauthorized = await missing.execute(ChapterCapabilityFixtures.executionRequest(
+        let unauthorized = await missing.execute(ChapterModelTransportFixtures.executionRequest(
             maximumCompletionBytes: 100
         ))
         assertFailure(unauthorized, code: .authentication)
@@ -99,13 +99,13 @@ final class ChapterProviderTransportTests: XCTestCase {
             "choices": [["message": ["content": "five!"]]],
         ])
         let oversized = await modelTransport(session: session).execute(
-            ChapterCapabilityFixtures.executionRequest(maximumCompletionBytes: 4)
+            ChapterModelTransportFixtures.executionRequest(maximumCompletionBytes: 4)
         )
         assertFailure(oversized, code: .responseTooLarge)
 
         ChapterProviderStubProtocol.responseBody = Data(#"{"choices":[]}"#.utf8)
         let malformed = await modelTransport(session: session).execute(
-            ChapterCapabilityFixtures.executionRequest(maximumCompletionBytes: 100)
+            ChapterModelTransportFixtures.executionRequest(maximumCompletionBytes: 100)
         )
         assertFailure(malformed, code: .invalidResponseMetadata)
         session.invalidateAndCancel()
@@ -117,7 +117,7 @@ final class ChapterProviderTransportTests: XCTestCase {
         let session = makeSession()
 
         let result = await modelTransport(session: session).execute(
-            ChapterCapabilityFixtures.executionRequest(maximumCompletionBytes: 100)
+            ChapterModelTransportFixtures.executionRequest(maximumCompletionBytes: 100)
         )
 
         assertFailure(
@@ -146,8 +146,8 @@ final class ChapterProviderTransportTests: XCTestCase {
     }
 
     private func assertFailure<T>(
-        _ result: Result<T, ChapterCapabilityFailure>,
-        code: ChapterCapabilityFailureCode,
+        _ result: Result<T, ChapterModelTransportFailure>,
+        code: ChapterModelTransportFailureCode,
         status: UInt16? = nil,
         retryAfterMilliseconds: UInt64? = nil,
         file: StaticString = #filePath,
