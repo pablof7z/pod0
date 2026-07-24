@@ -260,7 +260,7 @@ struct SettingsView: View {
     }
 
     private var notificationsRowValue: String? {
-        store.state.settings.notifyOnNewEpisodes ? "On" : "Off"
+        store.newEpisodeNotificationsEnabled ? "On" : "Off"
     }
 
     private var providersRowValue: String {

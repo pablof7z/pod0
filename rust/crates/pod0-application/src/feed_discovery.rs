@@ -1,5 +1,5 @@
 use pod0_domain::{
-    CancellationId, CommandId, EpisodeId, EpisodeRecord, FeedDiscoveryItemId,
+    CancellationId, CommandId, ContentDigest, EpisodeId, EpisodeRecord, FeedDiscoveryItemId,
     FeedDiscoveryOccurrenceId, HostRequestId, StateRevision,
 };
 
@@ -24,6 +24,24 @@ pub fn feed_discovery_occurrence_id(command_id: CommandId) -> FeedDiscoveryOccur
     let mut hash = FramedHash::new(b"pod0-feed-discovery-occurrence-v1");
     hash.bytes(&command_id.into_bytes());
     FeedDiscoveryOccurrenceId::from_bytes(hash.first_16())
+}
+
+#[must_use]
+pub fn legacy_feed_discovery_command_id(
+    backup_digest: ContentDigest,
+    source_occurrence_id: CommandId,
+) -> CommandId {
+    let mut hash = FramedHash::new(b"pod0-legacy-feed-discovery-command-v1");
+    hash.bytes(&backup_digest.into_bytes());
+    hash.bytes(&source_occurrence_id.into_bytes());
+    CommandId::from_bytes(hash.first_16())
+}
+
+#[must_use]
+pub fn legacy_feed_discovery_notification_command_id(backup_digest: ContentDigest) -> CommandId {
+    let mut hash = FramedHash::new(b"pod0-legacy-feed-discovery-notification-setting-v1");
+    hash.bytes(&backup_digest.into_bytes());
+    CommandId::from_bytes(hash.first_16())
 }
 
 #[must_use]
@@ -168,5 +186,16 @@ mod tests {
         let mut changed = episode();
         changed.title = "Retitled".to_owned();
         assert_ne!(version, feed_discovery_item_input_version(&changed));
+
+        let backup = ContentDigest::from_bytes([4; 32]);
+        let legacy = CommandId::from_parts(9, 10);
+        assert_eq!(
+            legacy_feed_discovery_command_id(backup, legacy),
+            legacy_feed_discovery_command_id(backup, legacy)
+        );
+        assert_ne!(
+            legacy_feed_discovery_command_id(backup, legacy),
+            legacy_feed_discovery_notification_command_id(backup)
+        );
     }
 }

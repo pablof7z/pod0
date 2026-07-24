@@ -17,6 +17,8 @@ final class AppStateStore {
     @ObservationIgnored private(set) var sharedLibraryUnavailableReason: String?
     @ObservationIgnored private(set) var sharedLibraryUnavailableStage: SharedLibraryBootstrapStage?
     @ObservationIgnored private(set) var startupRecoveryRequired = false
+    /// Bounded Rust projection; never persisted as native durable state.
+    var newEpisodeNotificationsEnabled = true
     var recallConfigurationRevision: UInt64 = 0
     /// Chapter the user long-pressed in `PlayerChaptersScrollView`. Drained
     /// by `SharedAgentChatView` and prefilled into the composer; cleared by

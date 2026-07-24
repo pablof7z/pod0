@@ -91,5 +91,46 @@ pub(crate) fn validate_feed_discovery_schema(
             "stage",
             "updated_at_ms",
         ],
+    )?;
+    if version < 31 {
+        return Ok(());
+    }
+    require_columns(
+        connection,
+        "pod0_feed_discovery_cutover",
+        &[
+            "ambiguous_count",
+            "backup_byte_count",
+            "backup_digest",
+            "blocked_count",
+            "candidate_count",
+            "committed_at_ms",
+            "inspected_job_count",
+            "notification_command_id",
+            "notifications_enabled",
+            "singleton",
+            "source_fingerprint",
+            "source_generation",
+            "staged_at_ms",
+            "state",
+        ],
+    )?;
+    require_columns(
+        connection,
+        "pod0_feed_discovery_cutover_candidates",
+        &[
+            "attempt",
+            "command_id",
+            "disposition",
+            "episode_id",
+            "expires_at_ms",
+            "input_version",
+            "kind",
+            "not_before_ms",
+            "observed_at_ms",
+            "occurrence_id",
+            "podcast_id",
+            "published_at_ms",
+        ],
     )
 }

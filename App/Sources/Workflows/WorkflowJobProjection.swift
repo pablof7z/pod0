@@ -68,7 +68,6 @@ extension WorkflowJobProjection {
 /// kinds exist only here because their durable rows and actions are owned by
 /// Rust; `WorkJobKind` remains limited to mutable Swift job-store records.
 enum WorkflowProjectionKind: String, CaseIterable, Sendable {
-    case feedDiscovery
     case download
     case transcriptIngest
     case transcriptIndex
@@ -76,7 +75,6 @@ enum WorkflowProjectionKind: String, CaseIterable, Sendable {
     case chapterArtifacts
     case metadataIndex
     case autoDownload
-    case newEpisodeNotification
     case scheduledAgentRun
 
     init(_ kind: WorkJobKind) {
@@ -88,8 +86,9 @@ enum WorkflowProjectionKind: String, CaseIterable, Sendable {
 
     var swiftJobKind: WorkJobKind? {
         switch self {
-        case .download, .transcriptIngest, .transcriptIndex, .autoDownload,
-             .publisherChapters, .chapterArtifacts:
+        case .download, .transcriptIngest, .transcriptIndex,
+             .autoDownload, .publisherChapters,
+             .chapterArtifacts:
             nil
         default:
             WorkJobKind(rawValue: rawValue)

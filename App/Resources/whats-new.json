@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-24T07:29:11Z",
+      "lines": [
+        "New-episode downloads and alerts now recover reliably after the app restarts."
+      ]
+    },
+    {
       "shipped_at": "2026-07-24T04:06:39Z",
       "lines": [
         "Home now stays focused on listening progress and your podcast library."

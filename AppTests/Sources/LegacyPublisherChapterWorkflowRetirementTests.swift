@@ -163,18 +163,18 @@ final class LegacyPublisherChapterWorkflowRetirementTests: XCTestCase {
         try insert(publisher)
         try insert(model)
         _ = try store.ensureJob(DesiredJob(
-            idempotencyKey: "native-feed", kind: .feedDiscovery,
-            subjectID: UUID(), inputVersion: "feed-v1", resourceClass: .planning
+            idempotencyKey: "native-metadata", kind: .metadataIndex,
+            subjectID: UUID(), inputVersion: "metadata-v1", resourceClass: .embedding
         ), notBefore: .distantPast)
 
         try store.unblockAll()
         try store.reclaimExpiredLeases()
         let claimed = try store.claimDueJobs(
-            resourceClass: .planning, capacity: 3, now: Date(),
+            resourceClass: .embedding, capacity: 3, now: Date(),
             owner: "new", leaseDuration: 60
         )
 
-        XCTAssertEqual(claimed.map(\.idempotencyKey), ["native-feed"])
+        XCTAssertEqual(claimed.map(\.idempotencyKey), ["native-metadata"])
         XCTAssertEqual(try store.legacyChapterJobs(kind: .publisherChapters), [publisher])
         XCTAssertEqual(try store.legacyChapterJobs(kind: .chapterArtifacts), [model])
     }

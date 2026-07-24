@@ -119,7 +119,7 @@ final class SharedLibraryVerticalSliceTests: XCTestCase {
             sharedFeedHost: host,
             startSubscriptionRefresh: false
         )
-        XCTAssertNotNil(store.sharedLibrary)
+        let client = try XCTUnwrap(store.sharedLibrary)
 
         let service = SubscriptionService(store: store)
         let podcast = try await service.addSubscription(feedURLString: feedURL)
@@ -157,17 +157,24 @@ final class SharedLibraryVerticalSliceTests: XCTestCase {
         XCTAssertEqual(requests[1].entityTag, "\"v1\"")
         XCTAssertLessThanOrEqual(requests[0].maximumResponseBytes, 8 * 1_024 * 1_024)
 
-        let discoveryJobs = try JobStore(fileURL: persistence.episodeStore.fileURL)
-            .allJobs()
-            .filter { $0.kind == .feedDiscovery }
-        XCTAssertEqual(discoveryJobs.count, 1)
-        let payload = try XCTUnwrap(discoveryJobs.first?.payload)
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        let discovery = try decoder.decode(FeedDiscoveryPayload.self, from: payload)
-        XCTAssertEqual(discovery.episodes.map(\.title), ["Second Episode"])
-        XCTAssertTrue(discovery.notificationsEnabled)
-        XCTAssertEqual(discovery.autoDownloadPolicy?.mode, .allNew)
+        let legacyJobs = JobStore(fileURL: persistence.episodeStore.fileURL)
+        XCTAssertTrue(try legacyJobs.legacyFeedDiscoveryJobs().isEmpty)
+        XCTAssertTrue(try legacyJobs.legacyFeedDiscoverySourceIsRetired())
+        XCTAssertEqual(client.facade.feedDiscoveryCutover().stage, .authoritative)
+        let downloads = client.facade.snapshot(request: ProjectionRequest(
+            scope: .downloads(episodeId: nil),
+            offset: 0,
+            maxItems: 10
+        ))
+        guard case .downloads(let page) = downloads.projection else {
+            return XCTFail("Expected Rust download workflow projection")
+        }
+        let secondEpisodeID = try XCTUnwrap(
+            store.episodes(forPodcast: podcast.id).first { $0.guid == "episode-2" }?.id
+        )
+        XCTAssertTrue(page.workflows.contains {
+            $0.episodeId.uuid == secondEpisodeID && $0.origin == .automatic
+        })
     }
 
     func testListeningResetClearsRustAuthorityAndSurvivesRelaunch() async throws {

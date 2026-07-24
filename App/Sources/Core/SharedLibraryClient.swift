@@ -26,6 +26,7 @@ final class SharedLibraryClient {
     private var clipsSubscriptionID: SubscriptionId?
     private var downloadsSubscriptionID: SubscriptionId?
     private var transcriptWorkflowSubscriptionID: SubscriptionId?
+    private var newEpisodeNotificationSettingsSubscriptionID: SubscriptionId?
     private var nostrSignerSubscriptionID: SubscriptionId?
     var scheduledAgentSubscriptionID: SubscriptionId?
     var waiters: [CommandId: Waiter] = [:]
@@ -56,6 +57,7 @@ final class SharedLibraryClient {
     var lastNostrSignerRevision: UInt64 = 0
     var cachedNostrSigner: SignerProjection?
     var cachedScheduledAgent: ScheduledAgentProjection?
+    var cachedNewEpisodeNotificationSettings: NewEpisodeNotificationSettingsProjection?
     var announcedTranscriptWorkflowVersions: [UUID: String] = [:]
     var playbackHostAttached = false
     var evidenceRebuildTask: Task<Void, Never>?
@@ -72,8 +74,7 @@ final class SharedLibraryClient {
         coreStoreURL: URL,
         feedHost: any CoreFeedHosting,
         downloadHost: any CoreDownloadHosting = UnavailableCoreDownloadHost(),
-        // #160 enables the live host only when legacy notification writes retire.
-        notificationHost: any CoreNotificationHosting = UnavailableCoreNotificationHost(),
+        notificationHost: any CoreNotificationHosting = CoreNotificationHost(),
         observationOutbox: NativeHostObservationOutbox? = nil
     ) {
         self.facade = facade
@@ -151,6 +152,14 @@ final class SharedLibraryClient {
             ),
             subscriber: subscriber
         )
+        newEpisodeNotificationSettingsSubscriptionID = facade.subscribe(
+            request: ProjectionRequest(
+                scope: .newEpisodeNotificationSettings,
+                offset: 0,
+                maxItems: 1
+            ),
+            subscriber: subscriber
+        )
         subscribeToScheduledAgents(subscriber)
         nostrSignerSubscriptionID = facade.subscribe(
             request: ProjectionRequest(scope: .nostrSigner, offset: 0, maxItems: 20),
@@ -175,6 +184,7 @@ final class SharedLibraryClient {
         cachedClips = clips
         store.applySharedClips(clips)
         publishScheduledAgents(to: store)
+        publishNewEpisodeNotificationSettings(to: store)
         publishRecallConfiguration(to: store)
     }
 
@@ -205,7 +215,10 @@ final class SharedLibraryClient {
             receiveScheduledAgents(projection, revision: envelope.stateRevision.value)
         case .nostrSigner(let projection):
             receiveNostrSigner(projection, revision: envelope.stateRevision.value)
-        case .podcastDetail, .episodeDetail, .newEpisodeNotificationSettings,
+        case .newEpisodeNotificationSettings(let projection):
+            cachedNewEpisodeNotificationSettings = projection
+            if let store { publishNewEpisodeNotificationSettings(to: store) }
+        case .podcastDetail, .episodeDetail,
              .recall, .evidenceIndex, .transcript, .chapter, .agentConversations,
              .agentConversation, .publications, .unsupported:
             break
@@ -235,6 +248,9 @@ final class SharedLibraryClient {
         }
         if let transcriptWorkflowSubscriptionID {
             facade.unsubscribe(subscriptionId: transcriptWorkflowSubscriptionID)
+        }
+        if let newEpisodeNotificationSettingsSubscriptionID {
+            facade.unsubscribe(subscriptionId: newEpisodeNotificationSettingsSubscriptionID)
         }
         unsubscribeFromScheduledAgents()
         if let nostrSignerSubscriptionID {

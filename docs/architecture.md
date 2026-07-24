@@ -21,7 +21,7 @@ configuration, indexing, and retrieval; publisher and model chapter workflows;
 scheduled-agent definitions, occurrences, and artifacts; interactive
 product-proof agent conversations, proposals, permissions, recall citations,
 model usage, generated audio provenance, tracked NMP publication receipts, and
-feed-discovery download/notification policy with durable recovery. The facade contract is now version 46. It exposes bounded commands,
+feed-discovery download/notification policy with durable recovery. The facade contract is now version 47. It exposes bounded commands,
 projections, domain events, and correlated host requests across those migrated
 domains. Exact integer milliseconds, stable identifiers, explicit revisions,
 effect fences, cancellation, and typed failure states prevent native adapters
@@ -222,6 +222,14 @@ Swift and Kotlin bindings. CI rejects drift from Rust metadata.
   migrated domains. Version 46 adds exact feed-discovery occurrences,
   Rust-owned notification eligibility/retry policy, and typed native delivery
   requests without moving UserNotifications behavior into the shared core.
+- Version 47 imports every exact legacy Swift feed-discovery and notification
+  occurrence through an immutable, content-qualified backup; interrupted
+  notification delivery becomes terminal ambiguous evidence rather than an
+  unsafe replay. Rust stages the source inertly, Swift compare-deletes only the
+  verified rows and artifacts, and Rust atomically activates the imported
+  workflows and notification setting. The native scheduler, reconciler,
+  payloads, executors, settings persistence, and UI job projection can no
+  longer create or mutate feed-discovery authority.
 - Open views receive bounded, revisioned, screen-shaped projections.
 - Operation failure and cancellation appear in projection state, not thrown
   per-operation FFI results.

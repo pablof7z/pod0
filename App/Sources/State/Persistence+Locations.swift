@@ -127,6 +127,10 @@ extension Persistence {
         episodeStore.fileURL.appendingPathExtension("download-workflow-backup-v1.json")
     }
 
+    var legacyFeedDiscoveryWorkflowBackupRootURL: URL {
+        episodeStore.fileURL.appendingPathExtension("feed-discovery-workflow-backups")
+    }
+
     var legacyScheduledAgentWorkflowBackupRootURL: URL {
         episodeStore.fileURL.appendingPathExtension("scheduled-agent-workflow-backups")
     }
@@ -184,6 +188,7 @@ extension Persistence {
             legacyPublisherChapterWorkflowBackupRootURL,
             legacyTranscriptWorkflowBackupRootURL,
             legacyDownloadWorkflowBackupURL,
+            legacyFeedDiscoveryWorkflowBackupRootURL,
             legacyScheduledAgentWorkflowBackupRootURL,
             legacyAgentHistoryBackupRootURL,
             legacyAgentRunLogURL,

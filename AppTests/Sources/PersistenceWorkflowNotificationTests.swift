@@ -25,11 +25,11 @@ final class PersistenceWorkflowNotificationTests: XCTestCase {
         defer { NotificationCenter.default.removeObserver(observer) }
         let job = DesiredJob(
             idempotencyKey: "notification:atomic-job",
-            kind: .feedDiscovery,
+            kind: .metadataIndex,
             subjectID: UUID(),
             inputVersion: "v1",
             occurrenceID: "notification:atomic-job",
-            resourceClass: .planning
+            resourceClass: .embedding
         )
 
         fixture.persistence.save(AppState(), ensuring: [job])

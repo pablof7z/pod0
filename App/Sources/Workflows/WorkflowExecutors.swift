@@ -1,59 +1,6 @@
 import Foundation
 
 @MainActor
-final class FeedDiscoveryJobExecutor: JobExecutor {
-    private let store: AppStateStore
-    private let jobStore: JobStore
-
-    init(store: AppStateStore, jobStore: JobStore) {
-        self.store = store
-        self.jobStore = jobStore
-    }
-
-    func run(_ context: JobAttemptContext) async throws -> JobOutcome {
-        let payload = try decode(FeedDiscoveryPayload.self, from: context.job)
-        let available = payload.episodes.filter { input in
-            guard let episode = store.episode(id: input.episodeID) else { return false }
-            return DesiredStatePlanner.audioVersion(episode) == input.inputVersion
-        }
-        let sorted = available.sorted {
-            if $0.pubDate != $1.pubDate { return $0.pubDate > $1.pubDate }
-            return $0.episodeID.uuidString < $1.episodeID.uuidString
-        }
-
-        store.sharedLibrary?.reportAutomaticDownloadCandidates(
-            podcastID: payload.podcastID,
-            episodeIDs: available.map(\.episodeID)
-        )
-
-        if payload.notificationsEnabled,
-           store.state.settings.notifyOnNewEpisodes,
-           store.subscription(podcastID: payload.podcastID)?.notificationsEnabled == true {
-            for input in sorted.prefix(NotificationService.maxNewEpisodeNotificationsPerRefresh) {
-                let occurrence = "notification:\(payload.occurrenceID):\(input.episodeID.uuidString)"
-                let child = NotificationJobPayload(
-                    discoveredAt: payload.discoveredAt,
-                    podcastID: payload.podcastID,
-                    episodeTitle: input.title
-                )
-                _ = try jobStore.ensureJob(DesiredJob(
-                    idempotencyKey: occurrence,
-                    kind: .newEpisodeNotification,
-                    subjectID: input.episodeID,
-                    inputVersion: input.inputVersion,
-                    occurrenceID: occurrence,
-                    payload: try workflowEncoder.encode(child),
-                    priority: 30,
-                    resourceClass: .notification,
-                    maxAttempts: 4
-                ))
-            }
-        }
-        return .succeeded(outputVersion: payload.occurrenceID)
-    }
-}
-
-@MainActor
 final class MetadataIndexJobExecutor: JobExecutor {
     init(store: AppStateStore) { _ = store }
 
@@ -61,48 +8,4 @@ final class MetadataIndexJobExecutor: JobExecutor {
         _ = context
         return .obsolete
     }
-}
-
-@MainActor
-final class NewEpisodeNotificationJobExecutor: JobExecutor {
-    private let store: AppStateStore
-    init(store: AppStateStore) { self.store = store }
-
-    func run(_ context: JobAttemptContext) async throws -> JobOutcome {
-        let payload = try decode(NotificationJobPayload.self, from: context.job)
-        guard Date().timeIntervalSince(payload.discoveredAt) <= 24 * 60 * 60 else { return .obsolete }
-        guard let episode = store.episode(id: context.job.subjectID),
-              let podcast = store.podcast(id: episode.podcastID) else { return .obsolete }
-        guard store.state.settings.notifyOnNewEpisodes else { return .obsolete }
-        guard store.subscription(podcastID: episode.podcastID)?.notificationsEnabled == true else {
-            return .obsolete
-        }
-        guard await NotificationService.notifyNewEpisodes(
-            [episode], podcast: podcast, occurrenceID: context.job.occurrenceID
-        ) else {
-            return .obsolete
-        }
-        return .succeeded(outputVersion: context.job.occurrenceID)
-    }
-}
-
-private let workflowDecoder: JSONDecoder = {
-    let decoder = JSONDecoder()
-    decoder.dateDecodingStrategy = .iso8601
-    return decoder
-}()
-
-private let workflowEncoder: JSONEncoder = {
-    let encoder = JSONEncoder()
-    encoder.dateEncodingStrategy = .iso8601
-    encoder.outputFormatting = [.sortedKeys]
-    return encoder
-}()
-
-private func decode<T: Decodable>(_ type: T.Type, from job: WorkJob) throws -> T {
-    guard let payload = job.payload else {
-        throw JobFailure(classification: .invalidInput, message: "Missing versioned job payload.")
-    }
-    do { return try workflowDecoder.decode(type, from: payload) }
-    catch { throw JobFailure(classification: .invalidInput, message: error.localizedDescription) }
 }

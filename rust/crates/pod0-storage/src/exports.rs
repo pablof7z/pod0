@@ -30,6 +30,8 @@ pub use crate::evidence_model::{
     EvidenceSelectionReceipt, EvidenceStageReceipt, EvidenceVerificationReceipt,
 };
 pub use crate::evidence_store::EvidenceStore;
+pub use crate::feed_discovery_cutover::inspect_legacy_feed_discovery_cutover;
+pub use crate::feed_discovery_cutover_model::*;
 pub use crate::feed_discovery_store_model::{
     AppliedFeed, FeedDiscoveryItemRecord, FeedDiscoveryOccurrenceRecord,
 };

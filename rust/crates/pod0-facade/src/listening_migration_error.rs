@@ -56,6 +56,8 @@ impl From<StorageError> for LegacyListeningMigrationError {
             | StorageError::DownloadRequestNotFound
             | StorageError::InvalidDownloadArtifact
             | StorageError::StaleDownloadAttempt
+            | StorageError::FeedDiscoveryCutoverConflict
+            | StorageError::InvalidFeedDiscoveryCutover
             | StorageError::TranscriptWorkflowConflict
             | StorageError::TranscriptWorkflowNotFound
             | StorageError::StaleTranscriptAttempt

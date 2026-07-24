@@ -179,7 +179,9 @@ fn schema_13_imported_history_revalidates_and_activates_after_upgrade() {
     rusqlite::Connection::open(&fixture.target)
         .unwrap()
         .execute_batch(
-            "DROP TABLE pod0_feed_apply_receipts;
+            "DROP TABLE pod0_feed_discovery_cutover_candidates;
+             DROP TABLE pod0_feed_discovery_cutover;
+             DROP TABLE pod0_feed_apply_receipts;
              DROP TABLE pod0_feed_discovery_effects;
              DROP TABLE pod0_feed_discovery_workflows;
              DROP TABLE pod0_new_episode_notification_settings;

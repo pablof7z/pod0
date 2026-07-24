@@ -18,19 +18,9 @@ final class SubscriptionRefreshService {
         guard let sharedLibrary = store.sharedLibrary else {
             throw SharedLibraryError.unavailable
         }
-        let priorIDs = Set(store.episodes(forPodcast: podcastID).map(\.id))
-        let firstEverFetch = priorIDs.isEmpty
         _ = try await sharedLibrary.execute(.refreshPodcast(
             podcastId: PodcastId(uuid: podcastID)
         ))
-        let insertedIDs = store.episodes(forPodcast: podcastID)
-            .map(\.id)
-            .filter { !priorIDs.contains($0) }
-        store.recordSharedFeedDiscovery(
-            podcastID: podcastID,
-            episodeIDs: insertedIDs,
-            notificationDiscoveredAt: firstEverFetch ? nil : Date()
-        )
     }
 
     /// Refreshes followed podcasts in bounded batches. Rust remains the only

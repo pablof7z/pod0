@@ -76,12 +76,12 @@ final class PersistenceDurabilityTests: XCTestCase {
         var discovered = AppState()
         discovered.episodes = [episode]
         let occurrence = DesiredJob(
-            idempotencyKey: "discovery:carried",
-            kind: .feedDiscovery,
-            subjectID: episode.podcastID,
-            inputVersion: "batch-v1",
-            occurrenceID: "discovery:carried",
-            resourceClass: .planning
+            idempotencyKey: "metadata:carried",
+            kind: .metadataIndex,
+            subjectID: episode.id,
+            inputVersion: "metadata-v1",
+            occurrenceID: "metadata:carried",
+            resourceClass: .embedding
         )
 
         let failedRevision = persistence.save(discovered, ensuring: [occurrence])

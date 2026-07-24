@@ -19,6 +19,9 @@ mod download_cutover;
 mod download_cutover_types;
 #[cfg(test)]
 mod facade_contract_tests;
+mod feed_discovery_cutover;
+mod feed_discovery_cutover_mapping;
+mod feed_discovery_cutover_types;
 mod kernel_probe_facade;
 mod listening_migration;
 mod listening_migration_error;
@@ -233,6 +236,7 @@ pub use download_cutover_types::{
     LegacyDownloadCutoverCandidate, LegacyDownloadCutoverDisposition, LegacyDownloadCutoverFailure,
     LegacyDownloadCutoverFailureCode, LegacyDownloadCutoverProjection, LegacyDownloadCutoverStage,
 };
+pub use feed_discovery_cutover_types::*;
 pub use kernel_probe_facade::KernelProbeFacade;
 pub use listening_migration::{
     LegacyListeningBackupEvidence, LegacyListeningImportPlan, LegacyListeningImportReport,

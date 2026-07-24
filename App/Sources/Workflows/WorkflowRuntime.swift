@@ -36,18 +36,11 @@ final class WorkflowRuntime {
         if let client { store.sharedLibrary?.attach(workflowClient: client) }
 
         let executors: [WorkJobKind: any JobExecutor] = [
-            .feedDiscovery: FeedDiscoveryJobExecutor(store: store, jobStore: jobs),
             .metadataIndex: MetadataIndexJobExecutor(store: store),
-            .newEpisodeNotification: NewEpisodeNotificationJobExecutor(store: store),
         ]
-        let verifier = WorkflowArtifactVerifier(artifacts: artifacts)
-        let verifiers = Dictionary(
-            uniqueKeysWithValues: executors.keys.map { ($0, verifier as any JobPostconditionVerifier) }
-        )
         coordinator = WorkCoordinator(
             jobStore: jobs,
-            executors: executors,
-            verifiers: verifiers
+            executors: executors
         )
     }
 
@@ -142,30 +135,24 @@ final class WorkflowRuntime {
     }
 
     private func reconcile(signalOnly: Bool) async {
-        guard let store = appStore, let jobStore, let coordinator else { return }
-        do {
-            store.sharedLibrary?.ensurePublisherChapters(
-                episodeIDs: store.state.episodes.map(\.id)
-            )
-            store.sharedLibrary?.ensureTranscriptWorkflows(
-                episodes: store.state.episodes,
-                settings: store.state.settings
-            )
-            let transcriptSnapshots = store.sharedLibrary?.transcriptWorkflowSnapshots(
-                episodeIDs: store.state.episodes.map(\.id)
-            ) ?? []
-            store.sharedLibrary?.ensureModelChapters(
-                transcripts: transcriptSnapshots,
-                configuredModel: store.state.settings.chapterCompilationModel
-            )
-            store.sharedLibrary?.reconcileScheduledAgents()
-            let reconciler = Reconciler(appStore: store, jobStore: jobStore)
-            _ = try reconciler.reconcile()
-            if signalOnly { await coordinator.signal() }
-            else { await coordinator.drainDueJobs() }
-        } catch {
-            Self.logger.error("Reconciliation failed: \(error, privacy: .public)")
-        }
+        guard let store = appStore, let coordinator else { return }
+        store.sharedLibrary?.ensurePublisherChapters(
+            episodeIDs: store.state.episodes.map(\.id)
+        )
+        store.sharedLibrary?.ensureTranscriptWorkflows(
+            episodes: store.state.episodes,
+            settings: store.state.settings
+        )
+        let transcriptSnapshots = store.sharedLibrary?.transcriptWorkflowSnapshots(
+            episodeIDs: store.state.episodes.map(\.id)
+        ) ?? []
+        store.sharedLibrary?.ensureModelChapters(
+            transcripts: transcriptSnapshots,
+            configuredModel: store.state.settings.chapterCompilationModel
+        )
+        store.sharedLibrary?.reconcileScheduledAgents()
+        if signalOnly { await coordinator.signal() }
+        else { await coordinator.drainDueJobs() }
     }
 
 }

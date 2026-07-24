@@ -1,6 +1,6 @@
 import uniffi.pod0_application.*
 import uniffi.pod0_domain.*
-import uniffi.pod0_facade.Pod0Facade
+import uniffi.pod0_facade.*
 
 fun qualifyFeedDiscoveryContract() {
     val occurrenceId = FeedDiscoveryOccurrenceId(1UL, 2UL)
@@ -39,9 +39,27 @@ fun qualifyFeedDiscoveryContract() {
         2u.toUByte(),
     )
     check(wake.attempt == 2u.toUByte())
+    val legacyCandidate = LegacyFeedDiscoveryCandidateInput(
+        CommandId(9UL, 10UL),
+        podcastId,
+        episodeId,
+        LegacyFeedDiscoveryEffectKindInput.NOTIFICATION,
+        LegacyFeedDiscoveryDispositionInput.Ambiguous(2u.toUByte()),
+        UnixTimestampMilliseconds(1_800_000_000_000L),
+        UnixTimestampMilliseconds(1_800_086_400_000L),
+        UnixTimestampMilliseconds(1_799_999_000_000L),
+        "a".repeat(64),
+    )
+    check(legacyCandidate.disposition is LegacyFeedDiscoveryDispositionInput.Ambiguous)
 
     val facade = Pod0Facade()
     try {
+        val unavailableCutover = facade.feedDiscoveryCutover()
+        check(unavailableCutover.stage == LegacyFeedDiscoveryCutoverStage.BLOCKED)
+        check(
+            unavailableCutover.failure?.code ==
+                LegacyFeedDiscoveryCutoverFailureCode.STORAGE_UNAVAILABLE,
+        )
         val envelope = facade.snapshot(
             ProjectionRequest(
                 ProjectionScope.NewEpisodeNotificationSettings,
@@ -49,7 +67,7 @@ fun qualifyFeedDiscoveryContract() {
                 1u,
             ),
         )
-        check(envelope.contractVersion == 46u)
+        check(envelope.contractVersion == 47u)
         val projection = envelope.projection
         check(projection is Projection.NewEpisodeNotificationSettings)
         check(projection.value.enabled)

@@ -78,4 +78,20 @@ final class SettingsCodableRoundTripTests: XCTestCase {
         XCTAssertEqual(decoded.autoDeleteDownloadsAfterPlayed, false)
         XCTAssertEqual(decoded.autoIngestPublisherTranscripts, true)
     }
+
+    func testLegacyNotificationSettingIsDecodeOnlyAfterRustCutover() throws {
+        let legacy = #"{"notifyOnNewEpisodes":false}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(Settings.self, from: legacy)
+        XCTAssertFalse(decoded.legacyNotifyOnNewEpisodes)
+
+        let encoded = try JSONEncoder().encode(decoded)
+        let object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: encoded) as? [String: Any]
+        )
+        XCTAssertNil(object["notifyOnNewEpisodes"])
+        XCTAssertTrue(try JSONDecoder().decode(
+            Settings.self,
+            from: encoded
+        ).legacyNotifyOnNewEpisodes)
+    }
 }

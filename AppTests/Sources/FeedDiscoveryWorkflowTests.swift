@@ -3,47 +3,192 @@ import Pod0Core
 import XCTest
 @testable import Podcastr
 
-@MainActor
 final class FeedDiscoveryWorkflowTests: XCTestCase {
-    func testExactDiscoveryBatchPlansLatestNAndNotificationsIdempotently() async throws {
-        let fileURL = AppStateTestSupport.uniqueTempFileURL()
-        let persistence = Persistence(fileURL: fileURL)
-        defer { AppStateTestSupport.disposeIsolatedStore(at: fileURL) }
-        let podcast = Podcast(
-            id: UUID(),
-            feedURL: URL(string: "https://example.com/feed.xml"),
-            title: "Discovery"
-        )
-        let base = Date(timeIntervalSince1970: 20_000)
+    private let base = Date(timeIntervalSince1970: 1_800_000_000)
+
+    func testMapperPlansLatestDownloadsAndNotificationsDeterministically() throws {
+        let podcastID = UUID()
         let episodes = (0..<5).map { index in
             Episode(
-                podcastID: podcast.id,
+                podcastID: podcastID,
                 guid: "episode-\(index)",
                 title: "Episode \(index)",
                 pubDate: base.addingTimeInterval(Double(index)),
-                enclosureURL: URL(string: "https://example.com/\(index).mp3")!
+                enclosureURL: URL(string: "https://example.test/\(index).mp3")!
             )
         }
-        var legacy = AppState()
-        legacy.podcasts = [podcast]
-        legacy.subscriptions = [PodcastSubscription(
-                podcastID: podcast.id,
-                autoDownload: AutoDownloadPolicy(mode: .latestN(2), wifiOnly: false),
-                notificationsEnabled: true
-        )]
-        legacy.episodes = episodes
-        legacy.settings.notifyOnNewEpisodes = true
-        XCTAssertTrue(persistence.write(legacy, revision: 1))
-        let store = AppStateStore(
-            persistence: persistence,
-            sharedFeedHost: QueuedCoreFeedHost([]),
-            startSubscriptionRefresh: false
+        let parent = try parentJob(
+            podcastID: podcastID,
+            episodes: episodes,
+            policy: Podcastr.AutoDownloadPolicy(mode: .latestN(2), wifiOnly: false)
         )
-        let client = try XCTUnwrap(store.sharedLibrary)
-        let jobs = JobStore(fileURL: store.persistence.episodeStore.fileURL)
-        let occurrence = "discovery:test-batch"
-        let payload = FeedDiscoveryPayload(
-            podcastID: podcast.id,
+        let result = try LegacyFeedDiscoveryWorkflowMapper.map(
+            backup: backup(jobs: [parent]),
+            state: state(podcastID: podcastID, episodes: episodes),
+            now: base.addingTimeInterval(60)
+        )
+
+        XCTAssertEqual(result.blockedCount, 0)
+        let downloads = result.candidates.filter {
+            $0.kind == LegacyFeedDiscoveryEffectKindInput.download
+        }
+        let notifications = result.candidates.filter {
+            $0.kind == LegacyFeedDiscoveryEffectKindInput.notification
+        }
+        XCTAssertEqual(downloads.count, 2)
+        XCTAssertEqual(notifications.count, 3)
+        let actualDownloadIDs = Set(downloads.compactMap(\.episodeId.uuid))
+        let expectedDownloadIDs = Set(episodes.suffix(2).map(\.id))
+        XCTAssertEqual(actualDownloadIDs, expectedDownloadIDs)
+        let parentIdentifier = parent.id.uuidString
+            .replacingOccurrences(of: "-", with: "")
+            .lowercased()
+        XCTAssertTrue(result.candidates.allSatisfy {
+            $0.sourceOccurrenceId.stableString == parentIdentifier
+        })
+    }
+
+    func testInterruptedNotificationIsAmbiguousAndNeverReplayedAsPending() throws {
+        let podcastID = UUID()
+        let episode = episode(podcastID: podcastID)
+        let parent = try parentJob(podcastID: podcastID, episodes: [episode], policy: nil)
+        let occurrence = "notification:discovery:test:\(episode.id.uuidString)"
+        let child = LegacyFeedDiscoveryWorkflowTestSupport.makeJob(
+            kind: .newEpisodeNotification,
+            subjectID: episode.id,
+            inputVersion: DesiredStatePlanner.audioVersion(episode),
+            occurrenceID: occurrence,
+            payload: try LegacyFeedDiscoveryWorkflowTestSupport.encode(
+                LegacyNewEpisodeNotificationPayload(
+                    discoveredAt: base,
+                    podcastID: podcastID,
+                    episodeTitle: episode.title
+                )
+            ),
+            state: .running,
+            attempt: 2,
+            leaseToken: UUID(),
+            externalOperationID: "native-request",
+            externalOperationState: "submitted"
+        )
+        let result = try LegacyFeedDiscoveryWorkflowMapper.map(
+            backup: backup(jobs: [parent, child]),
+            state: state(podcastID: podcastID, episodes: [episode]),
+            now: base.addingTimeInterval(60)
+        )
+
+        XCTAssertEqual(result.candidates.count, 1)
+        XCTAssertEqual(
+            result.candidates[0].kind,
+            LegacyFeedDiscoveryEffectKindInput.notification
+        )
+        XCTAssertEqual(
+            result.candidates[0].disposition,
+            LegacyFeedDiscoveryDispositionInput.ambiguous(attempt: 2)
+        )
+    }
+
+    func testMissingEpisodeIsBlockedAndExpiredCandidateIsObsolete() throws {
+        let podcastID = UUID()
+        let existing = episode(podcastID: podcastID)
+        let missing = episode(podcastID: podcastID)
+        let parent = try parentJob(
+            podcastID: podcastID,
+            episodes: [existing, missing],
+            policy: Podcastr.AutoDownloadPolicy(mode: .allNew, wifiOnly: false)
+        )
+        let result = try LegacyFeedDiscoveryWorkflowMapper.map(
+            backup: backup(jobs: [parent]),
+            state: state(podcastID: podcastID, episodes: [existing]),
+            now: base.addingTimeInterval(24 * 60 * 60 + 1)
+        )
+
+        XCTAssertEqual(result.blockedCount, 1)
+        XCTAssertEqual(result.candidates.count, 2)
+        XCTAssertTrue(result.candidates.allSatisfy {
+            if case .obsolete = $0.disposition { return true }
+            return false
+        })
+    }
+
+    func testMalformedDuplicateChildFailsClosed() throws {
+        let podcastID = UUID()
+        let episode = episode(podcastID: podcastID)
+        let parent = try parentJob(podcastID: podcastID, episodes: [episode], policy: nil)
+        let occurrence = "notification:discovery:test:\(episode.id.uuidString)"
+        let payload = try LegacyFeedDiscoveryWorkflowTestSupport.encode(
+            LegacyNewEpisodeNotificationPayload(
+                discoveredAt: base,
+                podcastID: podcastID,
+                episodeTitle: episode.title
+            )
+        )
+        let first = LegacyFeedDiscoveryWorkflowTestSupport.makeJob(
+            kind: .newEpisodeNotification,
+            subjectID: episode.id,
+            inputVersion: DesiredStatePlanner.audioVersion(episode),
+            occurrenceID: occurrence,
+            payload: payload
+        )
+        let second = LegacyFeedDiscoveryWorkflowTestSupport.makeJob(
+            kind: .newEpisodeNotification,
+            subjectID: episode.id,
+            inputVersion: DesiredStatePlanner.audioVersion(episode),
+            occurrenceID: occurrence,
+            payload: payload
+        )
+
+        XCTAssertThrowsError(try LegacyFeedDiscoveryWorkflowMapper.map(
+            backup: backup(jobs: [parent, first, second]),
+            state: state(podcastID: podcastID, episodes: [episode]),
+            now: base
+        )) {
+            guard case .duplicateCandidate = $0 as? LegacyFeedDiscoveryWorkflowMappingError
+            else { return XCTFail("Expected duplicateCandidate, got \($0)") }
+        }
+    }
+
+    func testDuplicateEpisodeStateFailsClosedWithoutTrapping() throws {
+        let podcastID = UUID()
+        let episode = episode(podcastID: podcastID)
+        let parent = try parentJob(podcastID: podcastID, episodes: [episode], policy: nil)
+
+        XCTAssertThrowsError(try LegacyFeedDiscoveryWorkflowMapper.map(
+            backup: backup(jobs: [parent]),
+            state: state(podcastID: podcastID, episodes: [episode, episode]),
+            now: base
+        )) {
+            XCTAssertEqual(
+                $0 as? LegacyFeedDiscoveryWorkflowMappingError,
+                .duplicateEpisode(episode.id)
+            )
+        }
+    }
+
+    func testDuplicateParentOccurrenceFailsClosed() throws {
+        let podcastID = UUID()
+        let episode = episode(podcastID: podcastID)
+        let first = try parentJob(podcastID: podcastID, episodes: [episode], policy: nil)
+        let second = try parentJob(podcastID: podcastID, episodes: [episode], policy: nil)
+
+        XCTAssertThrowsError(try LegacyFeedDiscoveryWorkflowMapper.map(
+            backup: backup(jobs: [first, second]),
+            state: state(podcastID: podcastID, episodes: [episode]),
+            now: base
+        )) {
+            guard case .duplicateOccurrence = $0 as? LegacyFeedDiscoveryWorkflowMappingError
+            else { return XCTFail("Expected duplicateOccurrence, got \($0)") }
+        }
+    }
+
+    private func parentJob(
+        podcastID: UUID,
+        episodes: [Episode],
+        policy: Podcastr.AutoDownloadPolicy?
+    ) throws -> LegacyFeedDiscoveryWorkJob {
+        let occurrence = "discovery:test"
+        let payload = LegacyFeedDiscoveryPayload(
+            podcastID: podcastID,
             occurrenceID: occurrence,
             discoveredAt: base,
             episodes: episodes.map {
@@ -54,215 +199,47 @@ final class FeedDiscoveryWorkflowTests: XCTestCase {
                     title: $0.title
                 )
             },
-            autoDownloadPolicy: AutoDownloadPolicy(mode: .latestN(2), wifiOnly: false),
+            autoDownloadPolicy: policy,
             notificationsEnabled: true,
             policyVersion: "feed-policy-v1"
         )
-        let desired = DesiredJob(
-            idempotencyKey: occurrence,
+        return LegacyFeedDiscoveryWorkflowTestSupport.makeJob(
             kind: .feedDiscovery,
-            subjectID: podcast.id,
-            inputVersion: "batch-v1",
+            subjectID: podcastID,
+            inputVersion: String(repeating: "f", count: 64),
             occurrenceID: occurrence,
-            payload: try workflowData(payload),
-            resourceClass: .planning
-        )
-        _ = try jobs.ensureJob(desired)
-        let claimed = try XCTUnwrap(try jobs.claimDueJobs(
-            resourceClass: .planning,
-            capacity: 1,
-            now: Date(),
-            owner: "feed-test",
-            leaseDuration: 60
-        ).first)
-        let context = JobAttemptContext(
-            job: claimed,
-            leaseToken: try XCTUnwrap(claimed.leaseToken),
-            deadline: claimed.leaseExpiresAt
-        )
-        let executor = FeedDiscoveryJobExecutor(store: store, jobStore: jobs)
-
-        _ = try await executor.run(context)
-        _ = try await executor.run(context)
-
-        let created = try jobs.allJobs()
-        let notifications = created.filter { $0.kind == .newEpisodeNotification }
-        XCTAssertTrue(created.filter { $0.kind == .autoDownload }.isEmpty)
-        let downloads = client.facade.snapshot(request: ProjectionRequest(
-            scope: .downloads(episodeId: nil),
-            offset: 0,
-            maxItems: 20
-        ))
-        guard case .downloads(let page) = downloads.projection else {
-            return XCTFail("Expected Rust download workflows")
-        }
-        XCTAssertEqual(page.workflows.count, 2)
-        XCTAssertEqual(
-            Set(page.workflows.compactMap { $0.episodeId.uuid }),
-            Set(episodes.sorted { $0.pubDate > $1.pubDate }.prefix(2).map(\.id))
-        )
-        XCTAssertTrue(page.workflows.allSatisfy { $0.origin == .automatic })
-        XCTAssertEqual(notifications.count, 3)
-        XCTAssertEqual(Set(notifications.compactMap(\.occurrenceID)).count, 3)
-        XCTAssertEqual(
-            Set(notifications.map(\.subjectID)),
-            Set(episodes.sorted { $0.pubDate > $1.pubDate }.prefix(3).map(\.id))
+            payload: try LegacyFeedDiscoveryWorkflowTestSupport.encode(payload)
         )
     }
 
-    func testExpiredNotificationOccurrenceBecomesObsoleteBeforeDelivery() async throws {
-        let made = AppStateTestSupport.makeIsolatedStore()
-        defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
-        let podcast = Podcast(id: UUID(), title: "Old")
-        let episode = Episode(
-            podcastID: podcast.id, guid: "old", title: "Old episode",
-            pubDate: Date(), enclosureURL: URL(string: "https://example.com/old.mp3")!
-        )
-        made.store.mutateState {
-            $0.podcasts = [podcast]
-            $0.subscriptions = [PodcastSubscription(
-                podcastID: podcast.id,
-                notificationsEnabled: true
-            )]
-            $0.episodes = [episode]
-        }
-        let occurrence = "notification:old"
-        let payload = NotificationJobPayload(
-            discoveredAt: Date().addingTimeInterval(-(24 * 60 * 60 + 1)),
-            podcastID: podcast.id,
-            episodeTitle: episode.title
-        )
-        let job = workJob(
-            kind: .newEpisodeNotification,
-            subjectID: episode.id,
-            occurrenceID: occurrence,
-            payload: try workflowData(payload)
-        )
-
-        let outcome = try await NewEpisodeNotificationJobExecutor(
-            store: made.store
-        ).run(JobAttemptContext(job: job, leaseToken: UUID(), deadline: nil))
-
-        XCTAssertEqual(outcome, .obsolete)
-        XCTAssertEqual(
-            NotificationService.requestIdentifier(
-                episodeID: episode.id,
-                occurrenceID: occurrence
-            ),
-            occurrence
-        )
-    }
-
-    func testGlobalNotificationTogglePreventsDiscoveryFromCreatingDeliveryJobs() async throws {
-        let made = AppStateTestSupport.makeIsolatedStore()
-        defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
-        let podcast = Podcast(id: UUID(), title: "Muted")
-        let episode = Episode(
-            podcastID: podcast.id, guid: "muted", title: "Muted episode",
-            pubDate: Date(), enclosureURL: URL(string: "https://example.com/muted.mp3")!
-        )
-        made.store.mutateState {
-            $0.podcasts = [podcast]
-            $0.subscriptions = [PodcastSubscription(
-                podcastID: podcast.id,
-                notificationsEnabled: true
-            )]
-            $0.episodes = [episode]
-            $0.settings.notifyOnNewEpisodes = false
-        }
-        let jobs = JobStore(fileURL: made.store.persistence.episodeStore.fileURL)
-        let occurrence = "discovery:muted"
-        let payload = FeedDiscoveryPayload(
-            podcastID: podcast.id,
-            occurrenceID: occurrence,
-            discoveredAt: Date(),
-            episodes: [.init(
-                episodeID: episode.id,
-                inputVersion: DesiredStatePlanner.audioVersion(episode),
-                pubDate: episode.pubDate,
-                title: episode.title
-            )],
-            autoDownloadPolicy: nil,
+    private func backup(
+        jobs: [LegacyFeedDiscoveryWorkJob],
+        artifacts: [LegacyFeedDiscoveryArtifactRecord] = []
+    ) -> LegacyFeedDiscoveryWorkflowBackup {
+        LegacyFeedDiscoveryWorkflowBackup(
+            formatVersion: 1,
+            persistenceGeneration: 7,
+            capturedAt: base,
             notificationsEnabled: true,
-            policyVersion: "feed-policy-v1"
+            jobs: jobs,
+            artifacts: artifacts
         )
-        let job = workJob(
-            kind: .feedDiscovery,
-            subjectID: podcast.id,
-            occurrenceID: occurrence,
-            payload: try workflowData(payload)
-        )
-
-        _ = try await FeedDiscoveryJobExecutor(
-            store: made.store,
-            jobStore: jobs
-        ).run(JobAttemptContext(job: job, leaseToken: UUID(), deadline: nil))
-
-        XCTAssertTrue(try jobs.allJobs().filter {
-            $0.kind == .newEpisodeNotification
-        }.isEmpty)
     }
 
-    func testGlobalNotificationTogglePreventsFreshDeliveryAtExecutorBoundary() async throws {
-        let made = AppStateTestSupport.makeIsolatedStore()
-        defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
-        let podcast = Podcast(id: UUID(), title: "Muted")
-        let episode = Episode(
-            podcastID: podcast.id, guid: "fresh-muted", title: "Fresh muted episode",
-            pubDate: Date(), enclosureURL: URL(string: "https://example.com/fresh.mp3")!
-        )
-        made.store.mutateState {
-            $0.podcasts = [podcast]
-            $0.subscriptions = [PodcastSubscription(
-                podcastID: podcast.id,
-                notificationsEnabled: true
-            )]
-            $0.episodes = [episode]
-            $0.settings.notifyOnNewEpisodes = false
-        }
-        let occurrence = "notification:fresh-muted"
-        let payload = NotificationJobPayload(
-            discoveredAt: Date(),
-            podcastID: podcast.id,
-            episodeTitle: episode.title
-        )
-        let job = workJob(
-            kind: .newEpisodeNotification,
-            subjectID: episode.id,
-            occurrenceID: occurrence,
-            payload: try workflowData(payload)
-        )
-
-        let outcome = try await NewEpisodeNotificationJobExecutor(
-            store: made.store
-        ).run(JobAttemptContext(job: job, leaseToken: UUID(), deadline: nil))
-
-        XCTAssertEqual(outcome, .obsolete)
+    private func state(podcastID: UUID, episodes: [Episode]) -> AppState {
+        var value = AppState()
+        value.podcasts = [Podcast(id: podcastID, title: "Show")]
+        value.episodes = episodes
+        return value
     }
 
-    private func workflowData<T: Encodable>(_ value: T) throws -> Data {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.sortedKeys]
-        return try encoder.encode(value)
-    }
-
-    private func workJob(
-        kind: WorkJobKind,
-        subjectID: UUID,
-        occurrenceID: String,
-        payload: Data
-    ) -> WorkJob {
-        WorkJob(
-            id: UUID(), idempotencyKey: occurrenceID, kind: kind,
-            subjectID: subjectID, inputVersion: "v1", occurrenceID: occurrenceID,
-            payloadVersion: 1, payload: payload, state: .running, priority: 0,
-            resourceClass: .notification, attempt: 1, maxAttempts: 4,
-            notBefore: Date(), leaseToken: nil, leaseOwner: nil,
-            leaseExpiresAt: nil, externalProvider: nil,
-            externalOperationID: nil, externalOperationState: nil,
-            outputVersion: nil, lastErrorClass: nil, lastErrorMessage: nil,
-            createdAt: Date(), updatedAt: Date()
+    private func episode(podcastID: UUID) -> Episode {
+        Episode(
+            podcastID: podcastID,
+            guid: UUID().uuidString,
+            title: "Episode",
+            pubDate: base,
+            enclosureURL: URL(string: "https://example.test/audio.mp3")!
         )
     }
 }

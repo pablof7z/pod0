@@ -203,6 +203,13 @@ enum SharedLibraryBootstrap {
                 ),
                 backupURL: persistence.legacyDownloadWorkflowBackupURL
             )
+            stage = .feedDiscoveryWorkflowCutover
+            try LegacyFeedDiscoveryWorkflowCutover.run(
+                facade: facade,
+                state: legacyState,
+                jobStore: legacyJobStore,
+                backupRoot: persistence.legacyFeedDiscoveryWorkflowBackupRootURL
+            )
             stage = .transcriptWorkflowCutover
             try LegacyTranscriptWorkflowCutover.run(
                 facade: facade,
@@ -265,6 +272,7 @@ enum SharedLibraryBootstrap {
                 coreStoreURL: target,
                 feedHost: feedHost,
                 downloadHost: CoreDownloadHost.shared,
+                notificationHost: CoreNotificationHost(),
                 observationOutbox: observationOutbox
             )
             client.start()

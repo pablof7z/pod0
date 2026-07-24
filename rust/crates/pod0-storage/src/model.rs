@@ -5,7 +5,7 @@ use pod0_domain::CommandId;
 
 pub const APPLICATION_ID: i64 = 0x504F_4430;
 pub const MIN_SUPPORTED_SCHEMA_VERSION: u32 = 0;
-pub const CURRENT_SCHEMA_VERSION: u32 = 30;
+pub const CURRENT_SCHEMA_VERSION: u32 = 31;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AccessMode {
@@ -162,6 +162,8 @@ pub enum StorageError {
     DownloadRequestNotFound,
     InvalidDownloadArtifact,
     StaleDownloadAttempt,
+    FeedDiscoveryCutoverConflict,
+    InvalidFeedDiscoveryCutover,
     TranscriptWorkflowConflict,
     TranscriptWorkflowNotFound,
     StaleTranscriptAttempt,
@@ -243,6 +245,8 @@ impl StorageError {
             Self::DownloadRequestNotFound => "download_request_not_found",
             Self::InvalidDownloadArtifact => "invalid_download_artifact",
             Self::StaleDownloadAttempt => "stale_download_attempt",
+            Self::FeedDiscoveryCutoverConflict => "feed_discovery_cutover_conflict",
+            Self::InvalidFeedDiscoveryCutover => "invalid_feed_discovery_cutover",
             Self::TranscriptWorkflowConflict => "transcript_workflow_conflict",
             Self::TranscriptWorkflowNotFound => "transcript_workflow_not_found",
             Self::StaleTranscriptAttempt => "stale_transcript_attempt",

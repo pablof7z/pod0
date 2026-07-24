@@ -168,7 +168,6 @@ final class iCloudSettingsSync {
            let v = HeadphoneGestureAction(rawValue: raw)      { settings.headphoneTripleTapAction = v }
         if let v = bool(.autoIngestPublisherTranscripts)      { settings.autoIngestPublisherTranscripts = v }
         if let v = bool(.autoFallbackToScribe)                { settings.autoFallbackToScribe = v }
-        if let v = bool(.notifyOnNewEpisodes)                 { settings.notifyOnNewEpisodes = v }
         if let v = string(.agentDisplayName)                  { settings.agentDisplayName = v }
         if let v = string(.agentAvatarURLString)              { settings.agentAvatarURLString = v }
     }
@@ -205,7 +204,6 @@ final class iCloudSettingsSync {
         kvs.set(settings.headphoneTripleTapAction.rawValue,       forKey: Key.headphoneTripleTapAction.rawValue)
         kvs.set(settings.autoIngestPublisherTranscripts,          forKey: Key.autoIngestPublisherTranscripts.rawValue)
         kvs.set(settings.autoFallbackToScribe,                    forKey: Key.autoFallbackToScribe.rawValue)
-        kvs.set(settings.notifyOnNewEpisodes,                     forKey: Key.notifyOnNewEpisodes.rawValue)
         kvs.set(settings.agentDisplayName,                        forKey: Key.agentDisplayName.rawValue)
         kvs.set(settings.agentAvatarURLString,                    forKey: Key.agentAvatarURLString.rawValue)
     }
@@ -249,7 +247,6 @@ final class iCloudSettingsSync {
         case headphoneTripleTapAction            = "sync.settings.headphoneTripleTapAction"
         case autoIngestPublisherTranscripts      = "sync.settings.autoIngestPublisherTranscripts"
         case autoFallbackToScribe                = "sync.settings.autoFallbackToScribe"
-        case notifyOnNewEpisodes                 = "sync.settings.notifyOnNewEpisodes"
         case agentDisplayName                    = "sync.settings.agentDisplayName"
         case agentAvatarURLString                = "sync.settings.agentAvatarURLString"
     }
