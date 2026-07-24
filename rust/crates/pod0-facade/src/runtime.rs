@@ -211,6 +211,7 @@ impl Pod0Facade {
             let mut state = self.state();
             let mut changed = state.retry_pending_publisher_observations();
             changed |= state.reconcile_download_deadlines();
+            let _ = state.reconcile_feed_discovery_workflows();
             let _ = state.admit_publisher_chapter_requests();
             let _ = state.admit_download_requests();
             let _ = state.admit_scheduled_agent_requests();

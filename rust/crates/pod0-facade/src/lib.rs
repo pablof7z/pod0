@@ -117,6 +117,8 @@ mod runtime_evidence_state;
 mod runtime_evidence_tests;
 mod runtime_failure;
 mod runtime_feed_commands;
+mod runtime_feed_discovery_observations;
+mod runtime_feed_discovery_workflow;
 mod runtime_feed_observations;
 mod runtime_feed_state;
 mod runtime_lifecycle;

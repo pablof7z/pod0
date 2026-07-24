@@ -18,6 +18,11 @@ impl Default for FacadeState {
             clock: Arc::new(SystemClock),
             revision: StateRevision::INITIAL,
             listening: empty_listening_snapshot(),
+            new_episode_notification_settings:
+                pod0_application::NewEpisodeNotificationSettingsProjection {
+                    enabled: true,
+                    revision: StateRevision::INITIAL,
+                },
             notes: pod0_storage::NoteCollectionSnapshot {
                 revision: StateRevision::INITIAL,
                 notes: Vec::new(),
@@ -55,6 +60,8 @@ impl Default for FacadeState {
             pending_publisher_observations: BTreeMap::new(),
             pending_downloads: BTreeMap::new(),
             pending_download_observations: BTreeMap::new(),
+            pending_feed_discovery_notifications: BTreeMap::new(),
+            pending_feed_discovery_notification_observations: BTreeMap::new(),
             pending_model_chapters: BTreeMap::new(),
             pending_model_observations: BTreeMap::new(),
             pending_transcripts: BTreeMap::new(),

@@ -2858,6 +2858,114 @@ public func FfiConverterTypeEvidenceSpanId_lower(_ value: EvidenceSpanId) -> Rus
 }
 
 
+public struct FeedDiscoveryItemId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension FeedDiscoveryItemId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFeedDiscoveryItemId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FeedDiscoveryItemId {
+        return
+            try FeedDiscoveryItemId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FeedDiscoveryItemId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFeedDiscoveryItemId_lift(_ buf: RustBuffer) throws -> FeedDiscoveryItemId {
+    return try FfiConverterTypeFeedDiscoveryItemId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFeedDiscoveryItemId_lower(_ value: FeedDiscoveryItemId) -> RustBuffer {
+    return FfiConverterTypeFeedDiscoveryItemId.lower(value)
+}
+
+
+public struct FeedDiscoveryOccurrenceId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension FeedDiscoveryOccurrenceId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFeedDiscoveryOccurrenceId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FeedDiscoveryOccurrenceId {
+        return
+            try FeedDiscoveryOccurrenceId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FeedDiscoveryOccurrenceId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFeedDiscoveryOccurrenceId_lift(_ buf: RustBuffer) throws -> FeedDiscoveryOccurrenceId {
+    return try FfiConverterTypeFeedDiscoveryOccurrenceId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFeedDiscoveryOccurrenceId_lower(_ value: FeedDiscoveryOccurrenceId) -> RustBuffer {
+    return FfiConverterTypeFeedDiscoveryOccurrenceId.lower(value)
+}
+
+
 /**
  * Versioned comparison identity matching the current Swift store exactly:
  * lowercase the complete absolute URL without trimming a trailing slash.

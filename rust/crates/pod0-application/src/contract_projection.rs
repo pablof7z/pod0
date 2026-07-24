@@ -21,6 +21,7 @@ pub enum ProjectionScope {
         episode_id: EpisodeId,
     },
     Playback,
+    NewEpisodeNotificationSettings,
     RecallConfiguration,
     Recall {
         query_id: RecallQueryId,
@@ -113,6 +114,9 @@ pub enum Projection {
     },
     Playback {
         value: PlaybackProjection,
+    },
+    NewEpisodeNotificationSettings {
+        value: crate::NewEpisodeNotificationSettingsProjection,
     },
     RecallConfiguration {
         value: pod0_domain::RecallConfiguration,

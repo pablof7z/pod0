@@ -144,6 +144,17 @@ pub(super) fn observation_matches_request(
             HostObservation::CoreWakeReached { reason },
         ) => expected == reason,
         (
+            HostRequest::DeliverNewEpisodeNotification {
+                occurrence_id: expected_occurrence,
+                episode_id: expected_episode,
+                ..
+            },
+            HostObservation::NewEpisodeNotificationDelivered {
+                occurrence_id,
+                episode_id,
+            },
+        ) => expected_occurrence == occurrence_id && expected_episode == episode_id,
+        (
             HostRequest::ExecuteTranscriptCapability { capability },
             HostObservation::TranscriptCapabilityObserved { observation },
         ) => transcript_observation_matches(capability, observation),

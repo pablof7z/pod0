@@ -141,6 +141,10 @@ impl FacadeState {
                 }
                 true
             }
+            CoreWakeReason::FeedDiscoveryNotificationRetry { .. } => {
+                let _ = self.reconcile_feed_discovery_workflows();
+                true
+            }
             CoreWakeReason::Unsupported { .. } => true,
         }
     }
@@ -229,7 +233,8 @@ fn reason_matches_record(reason: CoreWakeReason, record: &ModelChapterWorkflowRe
         }
         CoreWakeReason::TranscriptProviderRecovery { .. }
         | CoreWakeReason::TranscriptRetry { .. }
-        | CoreWakeReason::TranscriptFinalization { .. } => false,
+        | CoreWakeReason::TranscriptFinalization { .. }
+        | CoreWakeReason::FeedDiscoveryNotificationRetry { .. } => false,
         CoreWakeReason::Unsupported { .. } => false,
     }
 }
@@ -276,6 +281,16 @@ fn wake_request_id(reason: CoreWakeReason, wake_at_ms: i64) -> HostRequestId {
         CoreWakeReason::TranscriptFinalization { request_id } => {
             hash.update([5]);
             hash.update(request_id.into_bytes());
+        }
+        CoreWakeReason::FeedDiscoveryNotificationRetry {
+            occurrence_id,
+            episode_id,
+            attempt,
+        } => {
+            hash.update([6]);
+            hash.update(occurrence_id.into_bytes());
+            hash.update(episode_id.into_bytes());
+            hash.update([attempt]);
         }
         CoreWakeReason::Unsupported { wire_code } => {
             hash.update([255]);

@@ -48,6 +48,10 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
             hash.update(podcast_id.into_bytes());
             hash.update([u8::from(*enabled)]);
         }
+        ApplicationCommand::SetNewEpisodeNotificationsEnabled { enabled } => {
+            hash.update(b"new-episode-notifications\0");
+            hash.update([u8::from(*enabled)]);
+        }
         ApplicationCommand::SetSubscriptionAutoDownload { podcast_id, policy } => {
             hash.update(b"auto-download\0");
             hash.update(podcast_id.into_bytes());

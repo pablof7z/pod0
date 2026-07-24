@@ -16,7 +16,7 @@ final class ChapterContractBindingFixtureTests: XCTestCase {
         }
 
         XCTAssertEqual(fixture["fixture_version"], "1")
-        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 45)
+        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 46)
         XCTAssertEqual(fixture["unknown_future_field"], "ignored-by-v1-readers")
         XCTAssertEqual(receipt.artifactId, try id("expected_artifact_id", fixture, ChapterArtifactId.init))
         XCTAssertEqual(receipt.contentDigest, try digest("expected_content_digest", fixture))

@@ -53,6 +53,7 @@ impl FacadeState {
             | HostObservation::DownloadStaged { .. }
             | HostObservation::DownloadCancelled { .. }
             | HostObservation::DownloadArtifactRemoved { .. }
+            | HostObservation::NewEpisodeNotificationDelivered { .. }
             | HostObservation::TranscriptCapabilityObserved { .. }
             | HostObservation::ScheduledAgentExecutionObserved { .. }
             | HostObservation::AgentModelCompleted { .. }
@@ -107,12 +108,15 @@ impl FacadeState {
         );
         match result {
             Ok(applied) => match self.reload_listening() {
-                Ok(()) => self.succeed(
-                    pending.command_id,
-                    Some(OperationResult::Podcast {
-                        podcast_id: applied.podcast_id,
-                    }),
-                ),
+                Ok(()) => {
+                    let _ = self.reconcile_feed_discovery_workflows();
+                    self.succeed(
+                        pending.command_id,
+                        Some(OperationResult::Podcast {
+                            podcast_id: applied.podcast_id,
+                        }),
+                    );
+                }
                 Err(error) => self.fail(pending.command_id, storage_failure(error)),
             },
             Err(error) => self.fail(pending.command_id, storage_failure(error)),

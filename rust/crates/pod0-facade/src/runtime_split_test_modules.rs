@@ -2,6 +2,7 @@ mod runtime_playback_race_tests;
 mod runtime_playback_recovery_tests;
 mod runtime_playback_test_support;
 mod runtime_playback_tests;
+mod runtime_feed_discovery_retry_tests;
 mod runtime_feed_persistence_tests;
 mod runtime_publication_tests;
 mod runtime_recall_configuration_test_support;

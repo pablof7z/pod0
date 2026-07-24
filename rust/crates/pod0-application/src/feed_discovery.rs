@@ -1,5 +1,6 @@
 use pod0_domain::{
-    CommandId, EpisodeId, EpisodeRecord, FeedDiscoveryItemId, FeedDiscoveryOccurrenceId,
+    CancellationId, CommandId, EpisodeId, EpisodeRecord, FeedDiscoveryItemId,
+    FeedDiscoveryOccurrenceId, HostRequestId, StateRevision,
 };
 
 use crate::download_contract::FramedHash;
@@ -7,6 +8,16 @@ use crate::download_contract::FramedHash;
 pub const FEED_DISCOVERY_POLICY_VERSION: u32 = 1;
 pub const FEED_DISCOVERY_WORKFLOW_SCHEMA_VERSION: u32 = 1;
 pub const MAX_FEED_DISCOVERY_ITEMS: usize = 10_000;
+pub const MAX_NEW_EPISODE_NOTIFICATIONS_PER_OCCURRENCE: usize = 3;
+pub const FEED_DISCOVERY_NOTIFICATION_TTL_MILLISECONDS: i64 = 24 * 60 * 60 * 1_000;
+pub const FEED_DISCOVERY_NOTIFICATION_RETRY_MILLISECONDS: i64 = 5 * 60 * 1_000;
+pub const FEED_DISCOVERY_NOTIFICATION_MAX_ATTEMPTS: u8 = 4;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct NewEpisodeNotificationSettingsProjection {
+    pub enabled: bool,
+    pub revision: StateRevision,
+}
 
 #[must_use]
 pub fn feed_discovery_occurrence_id(command_id: CommandId) -> FeedDiscoveryOccurrenceId {
@@ -24,6 +35,72 @@ pub fn feed_discovery_item_id(
     hash.bytes(&occurrence_id.into_bytes());
     hash.bytes(&episode_id.into_bytes());
     FeedDiscoveryItemId::from_bytes(hash.first_16())
+}
+
+#[must_use]
+pub fn feed_discovery_download_command_id(
+    occurrence_id: FeedDiscoveryOccurrenceId,
+    episode_id: EpisodeId,
+) -> CommandId {
+    CommandId::from_bytes(feed_discovery_effect_bytes(
+        b"pod0-feed-discovery-download-command-v1",
+        occurrence_id,
+        episode_id,
+        0,
+    ))
+}
+
+#[must_use]
+pub fn feed_discovery_download_cancellation_id(
+    occurrence_id: FeedDiscoveryOccurrenceId,
+    episode_id: EpisodeId,
+) -> CancellationId {
+    CancellationId::from_bytes(feed_discovery_effect_bytes(
+        b"pod0-feed-discovery-download-cancellation-v1",
+        occurrence_id,
+        episode_id,
+        0,
+    ))
+}
+
+#[must_use]
+pub fn feed_discovery_notification_request_id(
+    occurrence_id: FeedDiscoveryOccurrenceId,
+    episode_id: EpisodeId,
+    attempt: u8,
+) -> HostRequestId {
+    HostRequestId::from_bytes(feed_discovery_effect_bytes(
+        b"pod0-feed-discovery-notification-request-v1",
+        occurrence_id,
+        episode_id,
+        attempt,
+    ))
+}
+
+#[must_use]
+pub fn feed_discovery_notification_cancellation_id(
+    occurrence_id: FeedDiscoveryOccurrenceId,
+    episode_id: EpisodeId,
+) -> CancellationId {
+    CancellationId::from_bytes(feed_discovery_effect_bytes(
+        b"pod0-feed-discovery-notification-cancellation-v1",
+        occurrence_id,
+        episode_id,
+        0,
+    ))
+}
+
+fn feed_discovery_effect_bytes(
+    domain: &[u8],
+    occurrence_id: FeedDiscoveryOccurrenceId,
+    episode_id: EpisodeId,
+    attempt: u8,
+) -> [u8; 16] {
+    let mut hash = FramedHash::new(domain);
+    hash.bytes(&occurrence_id.into_bytes());
+    hash.bytes(&episode_id.into_bytes());
+    hash.bytes(&[attempt]);
+    hash.first_16()
 }
 
 #[must_use]

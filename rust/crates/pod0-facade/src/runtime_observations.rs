@@ -12,6 +12,21 @@ impl FacadeState {
         observation: HostObservationEnvelope,
     ) -> (bool, HostObservationReceipt) {
         let request_id = observation.request_id;
+        if let Some(pending) = self
+            .pending_feed_discovery_notification_observations
+            .get(&request_id)
+            .cloned()
+        {
+            if pending != observation {
+                return (false, retain(request_id));
+            }
+            let result = self.persist_feed_discovery_notification_observation(observation);
+            if !matches!(result.1, HostObservationReceipt::RetainAndRetry { .. }) {
+                self.pending_feed_discovery_notification_observations
+                    .remove(&request_id);
+            }
+            return result;
+        }
         if let Some(pending) = self.pending_download_observations.get(&request_id).cloned() {
             if pending != observation {
                 return (false, retain(request_id));
@@ -103,6 +118,9 @@ impl FacadeState {
         let pending_transcript = self.pending_transcript_record(request_id);
         let pending_wake = self.pending_core_wakes.contains_key(&request_id);
         let pending_download = self.pending_downloads.contains_key(&request_id);
+        let pending_feed_notification = self
+            .pending_feed_discovery_notifications
+            .contains_key(&request_id);
         let pending_scheduled_agent = self.pending_scheduled_agents.contains_key(&request_id);
         let pending_agent = self.pending_agents.contains_key(&request_id);
         let acceptance = self.host_requests.accept_observation(&observation);
@@ -169,6 +187,15 @@ impl FacadeState {
             }
             let changed = matches!(receipt, HostObservationReceipt::Persisted { .. });
             return (changed, receipt);
+        }
+        if pending_feed_notification {
+            let retained = observation.clone();
+            let result = self.persist_feed_discovery_notification_observation(observation);
+            if matches!(result.1, HostObservationReceipt::RetainAndRetry { .. }) {
+                self.pending_feed_discovery_notification_observations
+                    .insert(request_id, retained);
+            }
+            return result;
         }
         if pending_wake {
             let changed = self.finish_core_wake(request_id, observation.observation);
@@ -246,6 +273,7 @@ impl FacadeState {
                 | HostObservation::DownloadStaged { .. }
                 | HostObservation::DownloadCancelled { .. }
                 | HostObservation::DownloadArtifactRemoved { .. }
+                | HostObservation::NewEpisodeNotificationDelivered { .. }
                 | HostObservation::TranscriptCapabilityObserved { .. }
                 | HostObservation::ScheduledAgentExecutionObserved { .. }
                 | HostObservation::AgentModelCompleted { .. }

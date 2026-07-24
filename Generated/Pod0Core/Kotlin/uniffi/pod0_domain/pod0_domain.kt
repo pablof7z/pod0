@@ -2823,6 +2823,82 @@ public object FfiConverterTypeEvidenceSpanId: FfiConverterRustBuffer<EvidenceSpa
 
 
 
+data class FeedDiscoveryItemId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFeedDiscoveryItemId: FfiConverterRustBuffer<FeedDiscoveryItemId> {
+    override fun read(buf: ByteBuffer): FeedDiscoveryItemId {
+        return FeedDiscoveryItemId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FeedDiscoveryItemId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: FeedDiscoveryItemId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class FeedDiscoveryOccurrenceId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFeedDiscoveryOccurrenceId: FfiConverterRustBuffer<FeedDiscoveryOccurrenceId> {
+    override fun read(buf: ByteBuffer): FeedDiscoveryOccurrenceId {
+        return FeedDiscoveryOccurrenceId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FeedDiscoveryOccurrenceId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: FeedDiscoveryOccurrenceId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
 /**
  * Versioned comparison identity matching the current Swift store exactly:
  * lowercase the complete absolute URL without trimming a trailing slash.

@@ -139,6 +139,11 @@ impl FacadeState {
                 value.enforce_bounds(item_limit);
                 Projection::Playback { value }
             }
+            ProjectionScope::NewEpisodeNotificationSettings => {
+                Projection::NewEpisodeNotificationSettings {
+                    value: self.new_episode_notification_settings,
+                }
+            }
             ProjectionScope::RecallConfiguration => Projection::RecallConfiguration {
                 value: self.recall_configuration.clone(),
             },

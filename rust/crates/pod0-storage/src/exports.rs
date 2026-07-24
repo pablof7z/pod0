@@ -33,6 +33,10 @@ pub use crate::evidence_store::EvidenceStore;
 pub use crate::feed_discovery_store_model::{
     AppliedFeed, FeedDiscoveryItemRecord, FeedDiscoveryOccurrenceRecord,
 };
+pub use crate::feed_discovery_workflow_model::{
+    FeedDiscoveryEffectKind, FeedDiscoveryEffectRecord, FeedDiscoveryEffectStage,
+    FeedDiscoveryNotificationOutcome,
+};
 pub use crate::import_model::{
     LegacyBackupEvidence, LegacyImportPlan, LegacySourceKind, ListeningImportReport,
     ListeningImportVerification,

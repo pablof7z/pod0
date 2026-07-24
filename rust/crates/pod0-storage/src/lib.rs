@@ -75,6 +75,8 @@ mod evidence_store_stage;
 mod exports;
 mod feed_discovery_store;
 mod feed_discovery_store_model;
+mod feed_discovery_workflow_model;
+mod feed_discovery_workflow_store;
 mod import_model;
 mod legacy_backup;
 mod legacy_chapter_artifact_source;

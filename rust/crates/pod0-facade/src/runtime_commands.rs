@@ -35,6 +35,9 @@ impl FacadeState {
                 podcast_id,
                 enabled,
             } => self.set_subscription_notifications(&envelope, &fingerprint, podcast_id, enabled),
+            ApplicationCommand::SetNewEpisodeNotificationsEnabled { enabled } => {
+                self.set_new_episode_notifications_enabled(&envelope, &fingerprint, enabled)
+            }
             ApplicationCommand::SetSubscriptionAutoDownload { podcast_id, policy } => {
                 self.set_subscription_auto_download(&envelope, &fingerprint, podcast_id, policy)
             }

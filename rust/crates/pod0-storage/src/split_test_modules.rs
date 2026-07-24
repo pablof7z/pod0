@@ -24,6 +24,8 @@ mod evidence_store_tests;
 mod feed_discovery_store_schema_tests;
 mod feed_discovery_store_test_support;
 mod feed_discovery_store_tests;
+mod feed_discovery_workflow_policy_tests;
+mod feed_discovery_workflow_store_tests;
 mod library_store_playback_tests;
 mod library_store_synthetic_tests;
 mod library_store_tests;

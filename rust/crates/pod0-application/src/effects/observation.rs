@@ -101,6 +101,10 @@ pub enum HostObservation {
         episode_id: EpisodeId,
         artifact_key: String,
     },
+    NewEpisodeNotificationDelivered {
+        occurrence_id: pod0_domain::FeedDiscoveryOccurrenceId,
+        episode_id: EpisodeId,
+    },
     TranscriptCapabilityObserved {
         observation: crate::TranscriptCapabilityObservation,
     },

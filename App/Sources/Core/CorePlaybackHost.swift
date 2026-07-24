@@ -79,7 +79,8 @@ final class CorePlaybackHost: CorePlaybackHosting {
              .executeAgentModelTurn, .presentAgentApproval,
              .executeAgentCapability, .provisionNostrSignerCredential,
              .restoreNostrSignerCredential, .signNostrEvent,
-             .deleteNostrSignerCredential, .scheduleCoreWake:
+             .deleteNostrSignerCredential, .scheduleCoreWake,
+             .deliverNewEpisodeNotification:
             return .failed(code: .invalidResponse, safeDetail: "Core request sent to player")
         case .startEpisodeDownload, .cancelEpisodeDownload,
              .removeEpisodeDownloadArtifact:

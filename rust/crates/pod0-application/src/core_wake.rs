@@ -1,6 +1,6 @@
 use pod0_domain::{
-    ChapterModelSubmissionFenceId, EpisodeId, HostRequestId, TranscriptAttemptId,
-    TranscriptSubmissionFenceId,
+    ChapterModelSubmissionFenceId, EpisodeId, FeedDiscoveryOccurrenceId, HostRequestId,
+    TranscriptAttemptId, TranscriptSubmissionFenceId,
 };
 
 /// Durable product work that needs a native wake without exposing native
@@ -27,6 +27,11 @@ pub enum CoreWakeReason {
     },
     TranscriptFinalization {
         request_id: HostRequestId,
+    },
+    FeedDiscoveryNotificationRetry {
+        occurrence_id: FeedDiscoveryOccurrenceId,
+        episode_id: EpisodeId,
+        attempt: u8,
     },
     Unsupported {
         wire_code: u32,
