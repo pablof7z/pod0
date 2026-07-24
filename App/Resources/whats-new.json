@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-24T23:40:59Z",
+      "lines": [
+        "Agent approval prompts now appear without leaving conversations stuck."
+      ]
+    },
+    {
       "shipped_at": "2026-07-24T23:05:23Z",
       "lines": [
         "Startup migrations now protect newer library changes from stale saves."

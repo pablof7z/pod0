@@ -3,7 +3,7 @@ import Observation
 import Pod0Core
 
 /// Native presentation queue for exact Rust-authored proposals. It reports
-/// only approve or deny; it never edits arguments or decides authorization.
+/// approve, deny, or dismissal; it never edits arguments or decides authorization.
 @MainActor
 @Observable
 final class AgentApprovalCoordinator: CoreAgentApprovalPresenting {

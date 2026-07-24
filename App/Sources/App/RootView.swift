@@ -80,6 +80,7 @@ struct RootView: View {
                                 }
                         }
                         .environment(playbackState)
+                        .agentApprovalPresenter(coordinator: approvalCoordinator)
                     }
                 }
                 .onChange(of: showAgentChat) { _, _ in
@@ -127,7 +128,10 @@ struct RootView: View {
                     store: store
                 ))
                 .agentAskPresenter(coordinator: askCoordinator)
-                .agentApprovalPresenter(coordinator: approvalCoordinator)
+                .agentApprovalPresenter(
+                    coordinator: approvalCoordinator,
+                    isEnabled: !showAgentChat
+                )
                 .onOpenURL { handleDeepLink($0) }
                 .onReceive(
                     NotificationCenter.default.publisher(for: AppDelegate.shortcutURLNotification)

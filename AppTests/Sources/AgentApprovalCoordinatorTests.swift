@@ -43,4 +43,25 @@ final class AgentApprovalCoordinatorTests: XCTestCase {
         XCTAssertEqual(decision, .dismiss)
         XCTAssertNil(coordinator.current)
     }
+
+    func testOnlyTheActivePresentationContextClaimsAnApproval() async throws {
+        let coordinator = AgentApprovalCoordinator()
+        let task = Task { @MainActor in await coordinator.requestApproval(approvalRequest()) }
+        await Task.yield()
+
+        let hiddenPresenter = AgentApprovalPresenter(
+            coordinator: coordinator,
+            isEnabled: false
+        )
+        let visiblePresenter = AgentApprovalPresenter(
+            coordinator: coordinator,
+            isEnabled: true
+        )
+
+        XCTAssertNil(hiddenPresenter.pendingForPresentation)
+        let pending = try XCTUnwrap(visiblePresenter.pendingForPresentation)
+        coordinator.dismiss(pending.id)
+        let decision = await task.value
+        XCTAssertEqual(decision, .dismiss)
+    }
 }
