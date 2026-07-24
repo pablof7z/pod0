@@ -76,7 +76,7 @@ fn note_action_requires_exact_approval_and_commits_once_in_rust() {
             turn_id: request.turn_id,
             proposal_id: request.proposal.proposal_id,
             proposal_digest: ContentDigest::from_bytes([77; 32]),
-            approved: true,
+            decision: AgentApprovalDecision::Approve,
         },
     ));
     assert!(matches!(
@@ -101,17 +101,19 @@ fn note_action_requires_exact_approval_and_commits_once_in_rust() {
             .is_empty()
     );
 
-    let approved = observe(
+    let approval_observation = observe(
         &approval,
         HostObservation::AgentApprovalObserved {
             turn_id: request.turn_id,
             proposal_id: request.proposal.proposal_id,
             proposal_digest: request.proposal.proposal_digest,
-            approved: true,
+            decision: AgentApprovalDecision::Approve,
         },
     );
     assert!(matches!(
-        fixture.facade.record_host_observation(approved.clone()),
+        fixture
+            .facade
+            .record_host_observation(approval_observation.clone()),
         HostObservationReceipt::Persisted { .. }
     ));
     assert_eq!(
@@ -165,7 +167,7 @@ fn note_action_requires_exact_approval_and_commits_once_in_rust() {
         "Saved that note."
     );
 
-    let _ = fixture.facade.record_host_observation(approved);
+    let _ = fixture.facade.record_host_observation(approval_observation);
     let Projection::Notes { value } = fixture
         .facade
         .snapshot(ProjectionRequest {
@@ -215,7 +217,7 @@ fn native_action_is_fenced_and_restart_never_blindly_replays_it() {
             turn_id: request.turn_id,
             proposal_id: request.proposal.proposal_id,
             proposal_digest: request.proposal.proposal_digest,
-            approved: true,
+            decision: AgentApprovalDecision::Approve,
         },
     ));
     let capability = fixture.facade.next_host_requests(8).remove(0);

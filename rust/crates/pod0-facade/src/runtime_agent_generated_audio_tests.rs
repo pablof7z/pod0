@@ -55,7 +55,7 @@ pub(crate) fn start(fixture: &PlaybackFixture, id: u64) -> (CommandEnvelope, Hos
             turn_id: request.turn_id,
             proposal_id: request.proposal.proposal_id,
             proposal_digest: request.proposal.proposal_digest,
-            approved: true,
+            decision: AgentApprovalDecision::Approve,
         },
     ));
     (command, fixture.facade.next_host_requests(8).remove(0))

@@ -13,21 +13,34 @@ final class AgentApprovalCoordinatorTests: XCTestCase {
 
         coordinator.approve(pending.id)
 
-        let approved = await task.value
-        XCTAssertTrue(approved)
+        let decision = await task.value
+        XCTAssertEqual(decision, .approve)
         XCTAssertNil(coordinator.current)
     }
 
-    func testCancellationDeniesAndReleasesPresentation() async throws {
+    func testExplicitDenialRemainsDistinctFromDismissal() async throws {
+        let coordinator = AgentApprovalCoordinator()
+        let task = Task { @MainActor in await coordinator.requestApproval(approvalRequest()) }
+        await Task.yield()
+        let pending = try XCTUnwrap(coordinator.current)
+
+        coordinator.deny(pending.id)
+
+        let decision = await task.value
+        XCTAssertEqual(decision, .deny)
+        XCTAssertNil(coordinator.current)
+    }
+
+    func testCancellationDismissesAndReleasesPresentation() async throws {
         let coordinator = AgentApprovalCoordinator()
         let task = Task { @MainActor in await coordinator.requestApproval(approvalRequest()) }
         await Task.yield()
         XCTAssertNotNil(coordinator.current)
 
         task.cancel()
-        let approved = await task.value
+        let decision = await task.value
 
-        XCTAssertFalse(approved)
+        XCTAssertEqual(decision, .dismiss)
         XCTAssertNil(coordinator.current)
     }
 }

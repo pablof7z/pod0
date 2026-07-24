@@ -1,6 +1,6 @@
 use super::*;
 use pod0_domain::{
-    AgentAuthorizationId, AgentExecutionFenceId, AgentTurnId, ConversationId, StateRevision,
+    AgentAuthorizationId, AgentExecutionFenceId, AgentTurnId, ConversationId,
     UnixTimestampMilliseconds,
 };
 
@@ -80,7 +80,7 @@ fn matching_durable_authority_is_required_and_denial_is_terminal() {
         proposal_digest: proposal.proposal_digest,
         authority: AgentAuthority::OneShotApproval,
         authorization_id: id(4, AgentAuthorizationId::from_bytes),
-        approved: true,
+        decision: AgentApprovalDecision::Approve,
         observed_at: at(30),
     });
     assert_eq!(wrong, AgentWorkflowAcceptance::Rejected);
@@ -89,11 +89,28 @@ fn matching_durable_authority_is_required_and_denial_is_terminal() {
         proposal_digest: proposal.proposal_digest,
         authority: AgentAuthority::DurableTurnGrant,
         authorization_id: id(5, AgentAuthorizationId::from_bytes),
-        approved: false,
+        decision: AgentApprovalDecision::Deny,
         observed_at: at(31),
     });
     assert_eq!(denied, AgentWorkflowAcceptance::Updated);
     assert_eq!(state.projection().stage, AgentTurnStage::Denied);
+}
+
+#[test]
+fn dismissal_is_preserved_as_input_and_fails_closed() {
+    let mut state = turn();
+    let proposal = propose_note(&mut state);
+    let dismissed = state.authorize(AgentAuthorizationObservation {
+        proposal_id: proposal.proposal_id,
+        proposal_digest: proposal.proposal_digest,
+        authority: AgentAuthority::DurableTurnGrant,
+        authorization_id: id(6, AgentAuthorizationId::from_bytes),
+        decision: AgentApprovalDecision::Dismiss,
+        observed_at: at(32),
+    });
+    assert_eq!(dismissed, AgentWorkflowAcceptance::Updated);
+    assert_eq!(state.projection().stage, AgentTurnStage::Denied);
+    assert!(state.projection().execution_fence_id.is_none());
 }
 
 #[test]
@@ -105,7 +122,7 @@ fn stale_fences_and_duplicate_observations_cannot_repeat_a_commit() {
         proposal_digest: proposal.proposal_digest,
         authority: AgentAuthority::DurableTurnGrant,
         authorization_id: id(4, AgentAuthorizationId::from_bytes),
-        approved: true,
+        decision: AgentApprovalDecision::Approve,
         observed_at: at(30),
     };
     assert_eq!(
@@ -158,7 +175,7 @@ fn committed_action_continues_once_for_a_final_answer_without_more_tools() {
         proposal_digest: proposal.proposal_digest,
         authority: AgentAuthority::DurableTurnGrant,
         authorization_id: id(4, AgentAuthorizationId::from_bytes),
-        approved: true,
+        decision: AgentApprovalDecision::Approve,
         observed_at: at(30),
     });
     let action_fence = id(6, AgentExecutionFenceId::from_bytes);
@@ -204,7 +221,7 @@ fn post_commit_continuation_rejects_a_second_tool_action() {
         proposal_digest: proposal.proposal_digest,
         authority: AgentAuthority::DurableTurnGrant,
         authorization_id: id(4, AgentAuthorizationId::from_bytes),
-        approved: true,
+        decision: AgentApprovalDecision::Approve,
         observed_at: at(30),
     });
     let action_fence = id(6, AgentExecutionFenceId::from_bytes);
@@ -247,7 +264,7 @@ fn cancellation_and_provider_failure_are_explicit_states() {
         proposal_digest: proposal.proposal_digest,
         authority: AgentAuthority::DurableTurnGrant,
         authorization_id: id(4, AgentAuthorizationId::from_bytes),
-        approved: true,
+        decision: AgentApprovalDecision::Approve,
         observed_at: at(30),
     });
     let fence = id(6, AgentExecutionFenceId::from_bytes);
@@ -264,33 +281,5 @@ fn cancellation_and_provider_failure_are_explicit_states() {
     assert_eq!(
         failed.projection().safe_failure.as_deref(),
         Some("provider unavailable")
-    );
-}
-
-#[test]
-fn every_tool_has_one_policy_and_proposal_identity_is_deterministic() {
-    assert_eq!(ALL_AGENT_TOOL_NAMES.len(), 46);
-    let unique = ALL_AGENT_TOOL_NAMES
-        .iter()
-        .map(|(_, tool)| *tool)
-        .collect::<std::collections::BTreeSet<_>>();
-    assert_eq!(unique.len(), 46);
-    for (_, tool) in ALL_AGENT_TOOL_NAMES {
-        assert_eq!(agent_tool_policy(*tool).tool, *tool);
-    }
-    let action = AgentToolAction::CreateNote {
-        text: "same".into(),
-    };
-    assert_eq!(
-        agent_proposal_identity(
-            id(2, AgentTurnId::from_bytes),
-            StateRevision::new(2),
-            &action
-        ),
-        agent_proposal_identity(
-            id(2, AgentTurnId::from_bytes),
-            StateRevision::new(2),
-            &action
-        )
     );
 }

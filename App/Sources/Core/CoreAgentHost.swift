@@ -19,7 +19,7 @@ protocol CoreAgentModelTransporting: AnyObject {
 
 @MainActor
 protocol CoreAgentApprovalPresenting: AnyObject {
-    func requestApproval(_ request: AgentApprovalRequest) async -> Bool
+    func requestApproval(_ request: AgentApprovalRequest) async -> AgentApprovalDecision
 }
 
 @MainActor
@@ -172,12 +172,12 @@ final class CoreAgentHost: CoreAgentHosting {
                 safeDetail: "Agent approval presentation is unavailable"
             )
         }
-        let approved = await approvalPresenter.requestApproval(approval)
+        let decision = await approvalPresenter.requestApproval(approval)
         return .agentApprovalObserved(
             turnId: approval.turnId,
             proposalId: approval.proposal.proposalId,
             proposalDigest: approval.proposal.proposalDigest,
-            approved: approved
+            decision: decision
         )
     }
 

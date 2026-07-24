@@ -10,7 +10,7 @@ struct AgentApprovalPresenter: ViewModifier {
             get: { coordinator.current },
             set: { newValue in
                 if newValue == nil, let current = coordinator.current {
-                    coordinator.deny(current.id)
+                    coordinator.dismiss(current.id)
                 }
             }
         )) { pending in
@@ -65,7 +65,7 @@ private struct AgentApprovalSheet: View {
         }
         .padding(AppTheme.Spacing.lg)
         .onDisappear {
-            if !resolved { coordinator.deny(pending.id) }
+            if !resolved { coordinator.dismiss(pending.id) }
         }
     }
 

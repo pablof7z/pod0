@@ -19,6 +19,8 @@ mod agent_provider_output_tests;
 mod agent_run_contract;
 mod agent_tool_catalog;
 mod agent_tool_names;
+#[cfg(test)]
+mod agent_tool_policy_tests;
 mod agent_workflow;
 #[cfg(test)]
 mod agent_workflow_compatibility_tests;

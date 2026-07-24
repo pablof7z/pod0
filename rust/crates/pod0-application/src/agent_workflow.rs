@@ -1,12 +1,13 @@
 use pod0_domain::{AgentExecutionFenceId, StateRevision, UnixTimestampMilliseconds};
 
 use crate::{
-    AgentActionObservation, AgentActionOutcome, AgentAuthority, AgentAuthorizationObservation,
-    AgentCommitReceipt, AgentMessageProjection, AgentMessageRole, AgentModelObservation,
-    AgentProposalProjection, AgentTurnProjection, AgentTurnStage, AgentTurnStart,
-    AgentTurnStartError, AgentTurnState, AgentWorkflowAcceptance, MAX_AGENT_INPUT_BYTES,
-    MAX_AGENT_MESSAGE_BYTES, MAX_AGENT_TOOLS_PER_TURN, agent_commit_id, agent_proposal_identity,
-    agent_tool_policy, validate_agent_action, validate_agent_model_reference,
+    AgentActionObservation, AgentActionOutcome, AgentApprovalDecision, AgentAuthority,
+    AgentAuthorizationObservation, AgentCommitReceipt, AgentMessageProjection, AgentMessageRole,
+    AgentModelObservation, AgentProposalProjection, AgentTurnProjection, AgentTurnStage,
+    AgentTurnStart, AgentTurnStartError, AgentTurnState, AgentWorkflowAcceptance,
+    MAX_AGENT_INPUT_BYTES, MAX_AGENT_MESSAGE_BYTES, MAX_AGENT_TOOLS_PER_TURN, agent_commit_id,
+    agent_proposal_identity, agent_tool_policy, validate_agent_action,
+    validate_agent_model_reference,
 };
 
 impl AgentTurnState {
@@ -160,7 +161,7 @@ impl AgentTurnState {
         }
         self.authorization_id = Some(observation.authorization_id);
         self.advance(
-            if observation.approved {
+            if observation.decision == AgentApprovalDecision::Approve {
                 AgentTurnStage::Authorized
             } else {
                 AgentTurnStage::Denied

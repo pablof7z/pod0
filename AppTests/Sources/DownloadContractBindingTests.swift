@@ -74,7 +74,7 @@ final class DownloadContractBindingTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(projection.contractVersion, 48)
+        XCTAssertEqual(projection.contractVersion, 49)
         guard case let .downloads(value) = projection.projection else {
             return XCTFail("Expected a download projection")
         }

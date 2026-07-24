@@ -122,7 +122,7 @@ pub enum HostObservation {
         turn_id: AgentTurnId,
         proposal_id: AgentProposalId,
         proposal_digest: ContentDigest,
-        approved: bool,
+        decision: crate::AgentApprovalDecision,
     },
     AgentCapabilityObserved {
         turn_id: AgentTurnId,

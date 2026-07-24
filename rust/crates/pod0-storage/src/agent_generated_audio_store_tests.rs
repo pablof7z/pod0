@@ -6,10 +6,10 @@ use crate::{
     LibraryStore, StorageError, commit_listening_cutover,
 };
 use pod0_application::{
-    AgentActionObservation, AgentActionOutcome, AgentAuthorizationObservation,
-    AgentModelObservation, AgentToolAction, AgentToolName, AgentTurnStart, AgentTurnState,
-    AgentWorkflowAcceptance, agent_generated_artifact_id, agent_generated_episode_id,
-    agent_generated_script_digest, default_agent_generated_podcast_id,
+    AgentActionObservation, AgentActionOutcome, AgentApprovalDecision,
+    AgentAuthorizationObservation, AgentModelObservation, AgentToolAction, AgentToolName,
+    AgentTurnStart, AgentTurnState, AgentWorkflowAcceptance, agent_generated_artifact_id,
+    agent_generated_episode_id, agent_generated_script_digest, default_agent_generated_podcast_id,
 };
 use pod0_domain::{
     AgentAuthorizationId, AgentExecutionFenceId, AgentTurnId, CancellationId, CommandId,
@@ -90,7 +90,7 @@ fn executing_state(podcast_id: Option<PodcastId>) -> (AgentTurnState, &'static s
             proposal_digest: proposal.proposal_digest,
             authority: proposal.required_authority,
             authorization_id: AgentAuthorizationId::from_parts(9, 10),
-            approved: true,
+            decision: AgentApprovalDecision::Approve,
             observed_at: UnixTimestampMilliseconds::new(30),
         }),
         AgentWorkflowAcceptance::Updated

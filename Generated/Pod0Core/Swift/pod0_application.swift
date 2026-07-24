@@ -9194,6 +9194,79 @@ public func FfiConverterTypeUnsupportedProjection_lower(_ value: UnsupportedProj
 
 
 
+public enum AgentApprovalDecision: Equatable, Hashable {
+
+    case approve
+    case deny
+    case dismiss
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AgentApprovalDecision: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgentApprovalDecision: FfiConverterRustBuffer {
+    typealias SwiftType = AgentApprovalDecision
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgentApprovalDecision {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .approve
+
+        case 2: return .deny
+
+        case 3: return .dismiss
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AgentApprovalDecision, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .approve:
+            writeInt(&buf, Int32(1))
+
+
+        case .deny:
+            writeInt(&buf, Int32(2))
+
+
+        case .dismiss:
+            writeInt(&buf, Int32(3))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentApprovalDecision_lift(_ buf: RustBuffer) throws -> AgentApprovalDecision {
+    return try FfiConverterTypeAgentApprovalDecision.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgentApprovalDecision_lower(_ value: AgentApprovalDecision) -> RustBuffer {
+    return FfiConverterTypeAgentApprovalDecision.lower(value)
+}
+
+
+
+
 public enum AgentAuthority: Equatable, Hashable {
 
     case none
@@ -14118,7 +14191,7 @@ public enum HostObservation: Equatable, Hashable {
     )
     case agentModelCompleted(turnId: AgentTurnId, modelFenceId: AgentExecutionFenceId, assistantText: String, proposedToolCall: AgentModelToolCallObservation?, usage: AgentModelUsageObservation?
     )
-    case agentApprovalObserved(turnId: AgentTurnId, proposalId: AgentProposalId, proposalDigest: ContentDigest, approved: Bool
+    case agentApprovalObserved(turnId: AgentTurnId, proposalId: AgentProposalId, proposalDigest: ContentDigest, decision: AgentApprovalDecision
     )
     case agentCapabilityObserved(turnId: AgentTurnId, proposalId: AgentProposalId, executionFenceId: AgentExecutionFenceId, outcome: AgentCapabilityOutcome
     )
@@ -14212,7 +14285,7 @@ public struct FfiConverterTypeHostObservation: FfiConverterRustBuffer {
         case 18: return .agentModelCompleted(turnId: try FfiConverterTypeAgentTurnId.read(from: &buf), modelFenceId: try FfiConverterTypeAgentExecutionFenceId.read(from: &buf), assistantText: try FfiConverterString.read(from: &buf), proposedToolCall: try FfiConverterOptionTypeAgentModelToolCallObservation.read(from: &buf), usage: try FfiConverterOptionTypeAgentModelUsageObservation.read(from: &buf)
         )
 
-        case 19: return .agentApprovalObserved(turnId: try FfiConverterTypeAgentTurnId.read(from: &buf), proposalId: try FfiConverterTypeAgentProposalId.read(from: &buf), proposalDigest: try FfiConverterTypeContentDigest.read(from: &buf), approved: try FfiConverterBool.read(from: &buf)
+        case 19: return .agentApprovalObserved(turnId: try FfiConverterTypeAgentTurnId.read(from: &buf), proposalId: try FfiConverterTypeAgentProposalId.read(from: &buf), proposalDigest: try FfiConverterTypeContentDigest.read(from: &buf), decision: try FfiConverterTypeAgentApprovalDecision.read(from: &buf)
         )
 
         case 20: return .agentCapabilityObserved(turnId: try FfiConverterTypeAgentTurnId.read(from: &buf), proposalId: try FfiConverterTypeAgentProposalId.read(from: &buf), executionFenceId: try FfiConverterTypeAgentExecutionFenceId.read(from: &buf), outcome: try FfiConverterTypeAgentCapabilityOutcome.read(from: &buf)
@@ -14382,12 +14455,12 @@ public struct FfiConverterTypeHostObservation: FfiConverterRustBuffer {
             FfiConverterOptionTypeAgentModelUsageObservation.write(usage, into: &buf)
 
 
-        case let .agentApprovalObserved(turnId,proposalId,proposalDigest,approved):
+        case let .agentApprovalObserved(turnId,proposalId,proposalDigest,decision):
             writeInt(&buf, Int32(19))
             FfiConverterTypeAgentTurnId.write(turnId, into: &buf)
             FfiConverterTypeAgentProposalId.write(proposalId, into: &buf)
             FfiConverterTypeContentDigest.write(proposalDigest, into: &buf)
-            FfiConverterBool.write(approved, into: &buf)
+            FfiConverterTypeAgentApprovalDecision.write(decision, into: &buf)
 
 
         case let .agentCapabilityObserved(turnId,proposalId,executionFenceId,outcome):

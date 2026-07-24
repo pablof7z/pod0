@@ -8423,6 +8423,43 @@ public object FfiConverterTypeUnsupportedProjection: FfiConverterRustBuffer<Unsu
 
 
 
+enum class AgentApprovalDecision {
+
+    APPROVE,
+    DENY,
+    DISMISS;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAgentApprovalDecision: FfiConverterRustBuffer<AgentApprovalDecision> {
+    override fun read(buf: ByteBuffer) = try {
+
+        AgentApprovalDecision.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: AgentApprovalDecision) = 4UL
+
+    override fun write(value: AgentApprovalDecision, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
 enum class AgentAuthority {
 
     NONE,
@@ -15514,7 +15551,7 @@ sealed class HostObservation {
         val `turnId`: uniffi.pod0_domain.AgentTurnId,
         val `proposalId`: uniffi.pod0_domain.AgentProposalId,
         val `proposalDigest`: uniffi.pod0_domain.ContentDigest,
-        val `approved`: kotlin.Boolean) : HostObservation()
+        val `decision`: uniffi.pod0_application.AgentApprovalDecision) : HostObservation()
 
     {
 
@@ -15719,7 +15756,7 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 FfiConverterTypeAgentTurnId.read(buf),
                 FfiConverterTypeAgentProposalId.read(buf),
                 FfiConverterTypeContentDigest.read(buf),
-                FfiConverterBoolean.read(buf),
+                FfiConverterTypeAgentApprovalDecision.read(buf),
                 )
             20 -> HostObservation.AgentCapabilityObserved(
                 FfiConverterTypeAgentTurnId.read(buf),
@@ -15932,7 +15969,7 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 + FfiConverterTypeAgentTurnId.allocationSize(value.`turnId`)
                 + FfiConverterTypeAgentProposalId.allocationSize(value.`proposalId`)
                 + FfiConverterTypeContentDigest.allocationSize(value.`proposalDigest`)
-                + FfiConverterBoolean.allocationSize(value.`approved`)
+                + FfiConverterTypeAgentApprovalDecision.allocationSize(value.`decision`)
             )
         }
         is HostObservation.AgentCapabilityObserved -> {
@@ -16144,7 +16181,7 @@ public object FfiConverterTypeHostObservation : FfiConverterRustBuffer<HostObser
                 FfiConverterTypeAgentTurnId.write(value.`turnId`, buf)
                 FfiConverterTypeAgentProposalId.write(value.`proposalId`, buf)
                 FfiConverterTypeContentDigest.write(value.`proposalDigest`, buf)
-                FfiConverterBoolean.write(value.`approved`, buf)
+                FfiConverterTypeAgentApprovalDecision.write(value.`decision`, buf)
                 Unit
             }
             is HostObservation.AgentCapabilityObserved -> {
