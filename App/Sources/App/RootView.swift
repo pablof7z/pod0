@@ -10,10 +10,8 @@ struct RootView: View {
     @Environment(AgentApprovalCoordinator.self) var approvalCoordinator
     @Environment(WorkflowClient.self) var workflows
     @State var selectedTab: RootTab = .home
-    @State var showSettings = false
     @State var showAgentChat = false
     @State var showSidebar = false
-    @State var showSearch = false
     @State var agentSession: SharedAgentConversationSession?
     @State var requestedAgentConversationID: ConversationId?
     @State var agentUnseenMessageCount: Int = 0
@@ -57,9 +55,6 @@ struct RootView: View {
                         .presentationDragIndicator(.visible)
                         .presentationBackgroundInteraction(.disabled)
                 }
-                .sheet(isPresented: $showSettings) {
-                    NavigationStack { SettingsView() }
-                }
                 .sheet(isPresented: $showAgentChat) {
                     if let session = agentSession {
                         NavigationStack {
@@ -97,7 +92,6 @@ struct RootView: View {
                 ) {
                     OnboardingView()
                 }
-                .sheet(isPresented: $showSearch) { searchSheet }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                     store.sharedLibrary?.ensureNostrSigner()
                     Task { await workflows.reconcileAndDrain() }
@@ -139,10 +133,7 @@ struct RootView: View {
 
             AppSidebarView(
                 selectedTab: $selectedTab,
-                isPresented: $showSidebar,
-                onOpenSettings: {
-                    showSettings = true
-                }
+                isPresented: $showSidebar
             )
             .frame(width: sidebarWidth)
             .ignoresSafeArea()
@@ -198,24 +189,13 @@ struct RootView: View {
                     .toolbar { sharedToolbar() }
             }
             .toolbar(.hidden, for: .tabBar)
+        case .settings:
+            NavigationStack {
+                SettingsView()
+                    .toolbar { sharedToolbar() }
+            }
+            .toolbar(.hidden, for: .tabBar)
         }
-    }
-
-    // MARK: - Search sheet
-
-    private var searchSheet: some View {
-        NavigationStack {
-            PodcastSearchView()
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("Done") {
-                            Haptics.selection()
-                            showSearch = false
-                        }
-                    }
-                }
-        }
-        .environment(playbackState)
     }
 
     // MARK: - Toolbar
@@ -237,15 +217,6 @@ struct RootView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Open sidebar")
-        }
-        ToolbarItem(placement: .topBarTrailing) {
-            Button {
-                Haptics.selection()
-                showSearch = true
-            } label: {
-                Image(systemName: "magnifyingglass")
-            }
-            .accessibilityLabel("Search")
         }
         ToolbarItem(placement: .topBarTrailing) {
             Button {

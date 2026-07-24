@@ -44,6 +44,8 @@ struct AllEpisodesView: View {
 
     @State private var filter: AllEpisodesFilter = .all
     @State private var searchText: String = ""
+    @State private var showsSearch = false
+    @State private var isSearchPresented = false
     @State private var visibleCount: Int = 50
     @State private var voiceOverDetailRoute: LibraryEpisodeRoute?
 
@@ -52,23 +54,23 @@ struct AllEpisodesView: View {
         let filtered = filteredEpisodes
         let visible = Array(filtered.prefix(visibleCount))
 
-        List {
-            episodeListSection(
-                visible: visible,
-                totalCount: filtered.count,
-                podcasts: podcasts
-            )
+        ZStack {
+            if showsSearch {
+                libraryList(visible: visible, totalCount: filtered.count, podcasts: podcasts)
+                    .searchable(
+                        text: $searchText,
+                        isPresented: $isSearchPresented,
+                        placement: .navigationBarDrawer(displayMode: .automatic),
+                        prompt: "Search episodes"
+                    )
+            } else {
+                libraryList(visible: visible, totalCount: filtered.count, podcasts: podcasts)
+            }
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .background(Color(.systemGroupedBackground).ignoresSafeArea())
-        .navigationTitle("Library")
-        .navigationBarTitleDisplayMode(.large)
-        .searchable(
-            text: $searchText,
-            placement: .navigationBarDrawer(displayMode: .automatic),
-            prompt: "Search episodes"
-        )
+        .background(Color(.systemBackground).ignoresSafeArea())
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color(.systemBackground), for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 filterMenu
@@ -82,6 +84,60 @@ struct AllEpisodesView: View {
         }
         .onChange(of: filter) { _, _ in visibleCount = 50 }
         .onChange(of: searchText) { _, _ in visibleCount = 50 }
+        .onChange(of: isSearchPresented) { _, presented in
+            if !presented, searchText.isEmpty {
+                showsSearch = false
+            }
+        }
+    }
+
+    private func libraryList(
+        visible: [Episode],
+        totalCount: Int,
+        podcasts: [UUID: Podcast]
+    ) -> some View {
+        List {
+            screenTitle("Library")
+            episodeListSection(
+                visible: visible,
+                totalCount: totalCount,
+                podcasts: podcasts
+            )
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Color(.systemBackground))
+        .scrollBounceBehavior(.always)
+        .onScrollGeometryChange(for: Bool.self) { geometry in
+            geometry.contentOffset.y + geometry.contentInsets.top < -44
+        } action: { _, pulledPastSearchThreshold in
+            if pulledPastSearchThreshold {
+                revealSearch()
+            }
+        }
+    }
+
+    private func screenTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 34, weight: .bold))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .listRowInsets(EdgeInsets(
+                top: AppTheme.Spacing.sm,
+                leading: AppTheme.Spacing.md,
+                bottom: AppTheme.Spacing.sm,
+                trailing: AppTheme.Spacing.md
+            ))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color(.systemBackground))
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private func revealSearch() {
+        guard !showsSearch else { return }
+        showsSearch = true
+        Task { @MainActor in
+            isSearchPresented = true
+        }
     }
 
     // MARK: - Computed data

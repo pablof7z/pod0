@@ -7,7 +7,7 @@ extension RootView {
         guard let link = DeepLinkHandler.resolve(url) else { return }
         switch link {
         case .settings:
-            showSettings = true
+            selectedTab = .settings
         case .agent:
             openAgentChat()
         case .episode(let uuid):

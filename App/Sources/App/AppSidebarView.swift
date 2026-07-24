@@ -6,7 +6,6 @@ import SwiftUI
 struct AppSidebarView: View {
     @Binding var selectedTab: RootTab
     @Binding var isPresented: Bool
-    let onOpenSettings: () -> Void
 
     @Environment(AppStateStore.self) private var store
 
@@ -63,9 +62,9 @@ struct AppSidebarView: View {
                 selectedTab = .clips
                 dismiss()
             }
-            navRow("Settings", icon: "gearshape", isActive: false) {
+            navRow("Settings", icon: "gearshape", isActive: selectedTab == .settings) {
+                selectedTab = .settings
                 dismiss()
-                onOpenSettings()
             }
         }
     }

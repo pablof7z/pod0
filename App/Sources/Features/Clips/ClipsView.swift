@@ -4,24 +4,50 @@ import SwiftUI
 
 struct ClipsView: View {
     @State private var searchQuery = ""
+    @State private var showsSearch = false
+    @State private var isSearchPresented = false
     @State private var episodeNavTarget: UUID?
 
     var body: some View {
+        ZStack {
+            if showsSearch {
+                clipsContent
+                    .searchable(
+                        text: $searchQuery,
+                        isPresented: $isSearchPresented,
+                        placement: .navigationBarDrawer(displayMode: .automatic),
+                        prompt: "Search clips"
+                    )
+            } else {
+                clipsContent
+            }
+        }
+        .background(Color(.systemBackground).ignoresSafeArea())
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color(.systemBackground), for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .navigationDestination(item: $episodeNavTarget) { id in
+            EpisodeDetailView(episodeID: id)
+        }
+        .onChange(of: isSearchPresented) { _, presented in
+            if !presented, searchQuery.isEmpty {
+                showsSearch = false
+            }
+        }
+    }
+
+    private var clipsContent: some View {
         ClipsSegment(
             searchQuery: searchQuery,
-            onOpenEpisode: { episodeNavTarget = $0 }
-        )
-            .navigationTitle("Clips")
-            .navigationBarTitleDisplayMode(.large)
-            .background(Color(.systemGroupedBackground).ignoresSafeArea())
-            .searchable(
-                text: $searchQuery,
-                placement: .navigationBarDrawer(displayMode: .automatic),
-                prompt: "Search clips"
-            )
-            .navigationDestination(item: $episodeNavTarget) { id in
-                EpisodeDetailView(episodeID: id)
+            onOpenEpisode: { episodeNavTarget = $0 },
+            onPullToSearch: {
+                guard !showsSearch else { return }
+                showsSearch = true
+                Task { @MainActor in
+                    isSearchPresented = true
+                }
             }
+        )
     }
 }
 
