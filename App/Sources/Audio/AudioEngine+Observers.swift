@@ -46,7 +46,7 @@ extension AudioEngine {
     // MARK: - Item observers
 
     func installItemObservers(for item: AVPlayerItem) {
-        statusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
+        statusObservation = item.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
             Task { @MainActor in
                 guard let self, self.player.currentItem === item else { return }
                 self.handleItemStatusChange(item)
@@ -106,10 +106,42 @@ extension AudioEngine {
             if assetDuration.isFinite, assetDuration > 0 {
                 setDuration(assetDuration)
             }
+            if let pendingInitialSeekTime {
+                self.pendingInitialSeekTime = nil
+                let target = max(
+                    0,
+                    min(
+                        pendingInitialSeekTime,
+                        duration > 0 ? duration : pendingInitialSeekTime
+                    )
+                )
+                setCurrentTime(target)
+                let time = CMTime(seconds: target, preferredTimescale: 600)
+                let tolerance = CMTime(seconds: 0.5, preferredTimescale: 600)
+                player.seek(
+                    to: time,
+                    toleranceBefore: tolerance,
+                    toleranceAfter: tolerance
+                ) { [weak self, weak item] _ in
+                    Task { @MainActor in
+                        guard let self, let item, self.player.currentItem === item else {
+                            return
+                        }
+                        if self.playRequested {
+                            self.startPlayerPlayback()
+                        } else {
+                            self.setState(.paused)
+                            self.publishNowPlaying()
+                        }
+                    }
+                }
+                return
+            }
             // Coming out of `.loading` to `.paused` — caller must `play()` to start.
             if case .loading = state { setState(.paused) }
             publishNowPlaying()
         case .failed:
+            playRequested = false
             setState(.failed(EngineError(item.error)))
         default:
             break
@@ -133,6 +165,7 @@ extension AudioEngine {
 
     func handleEndOfItem(_ item: AVPlayerItem) {
         guard player.currentItem === item else { return }
+        playRequested = false
         setCurrentTime(duration)
         didReachNaturalEnd = true
         publishNowPlayingElapsed()

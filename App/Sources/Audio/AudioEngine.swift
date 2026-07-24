@@ -118,6 +118,8 @@ final class AudioEngine {
     var endObserver: NSObjectProtocol?
     var audioSessionObserver: PlaybackAudioSessionObserver?
     var fadeBaseVolume: Float = 1.0
+    var pendingInitialSeekTime: TimeInterval?
+    var playRequested = false
 
     /// Typed raw lifecycle observations for the Rust playback-policy owner.
     var onHostStateChanged: () -> Void = { }
@@ -150,7 +152,11 @@ final class AudioEngine {
     /// caller must follow with `play()` to start playback.
     ///
     /// Prefers the verified Rust-projected local artifact when available.
-    func load(_ episode: Episode, requestedURL: URL? = nil) {
+    func load(
+        _ episode: Episode,
+        requestedURL: URL? = nil,
+        initialPosition: TimeInterval = 0
+    ) {
         let url: URL = {
             if let local = episode.downloadState.localFileURL,
                FileManager.default.fileExists(atPath: local.path) {
@@ -171,12 +177,22 @@ final class AudioEngine {
         }()
         teardownItemObservers()
         self.episode = episode
+        playRequested = false
+        let feedDuration = episode.duration ?? 0
+        let boundedInitialPosition = max(
+            0,
+            min(initialPosition, feedDuration > 0 ? feedDuration : initialPosition)
+        )
+        pendingInitialSeekTime = boundedInitialPosition > 0 ? boundedInitialPosition : nil
         setState(.loading(episode))
-        setCurrentTime(0)
-        setDuration(episode.duration ?? 0)
+        setCurrentTime(boundedInitialPosition)
+        setDuration(feedDuration)
         didReachNaturalEnd = false
 
-        let asset = AVURLAsset(url: url)
+        let asset = AVURLAsset(
+            url: url,
+            options: Self.assetOptions(for: episode, sourceURL: url)
+        )
         let item = AVPlayerItem(asset: asset)
         player.replaceCurrentItem(with: item)
         installItemObservers(for: item)
@@ -223,6 +239,17 @@ final class AudioEngine {
     func setPlaybackRate(_ newRate: Double) {
         rate = newRate
         onHostStateChanged()
+    }
+
+    static func assetOptions(for episode: Episode, sourceURL: URL) -> [String: Any] {
+        guard sourceURL.isFileURL, let enclosureMimeType = episode.enclosureMimeType else {
+            return [:]
+        }
+        // Core download artifacts intentionally use opaque `.media`
+        // filenames. Preserve that durable storage contract while giving
+        // AVFoundation the feed-declared format it cannot infer from the
+        // local path extension.
+        return [AVURLAssetOverrideMIMETypeKey: enclosureMimeType]
     }
 
 }
