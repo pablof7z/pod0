@@ -7,14 +7,7 @@ use crate::{
     chapter_store_is_authoritative, verify_backup,
 };
 
-#[derive(Clone, Copy)]
-struct FixedClock;
-
-impl MigrationClock for FixedClock {
-    fn now_milliseconds(&self) -> i64 {
-        1_800_000_000_000
-    }
-}
+include!("migration_chapter_test_clock.rs");
 
 #[test]
 fn chapter_artifact_upgrade_is_one_step_and_keeps_authority_inactive() {

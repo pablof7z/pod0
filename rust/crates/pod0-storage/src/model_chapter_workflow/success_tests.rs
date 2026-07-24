@@ -8,14 +8,7 @@ use super::tests::Fixture;
 use super::*;
 use crate::{CoreStoreMigrator, MigrationClock};
 
-#[derive(Clone, Copy)]
-struct FixedClock;
-
-impl MigrationClock for FixedClock {
-    fn now_milliseconds(&self) -> i64 {
-        1_800_000_200_000
-    }
-}
+include!("success_test_clock.rs");
 
 #[test]
 fn qualified_commit_is_atomic_and_completion_history_survives_replan() {

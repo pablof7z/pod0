@@ -12,31 +12,8 @@ impl FacadeState {
         observation: HostObservationEnvelope,
     ) -> (bool, HostObservationReceipt) {
         let request_id = observation.request_id;
-        if let Some(pending) = self
-            .pending_feed_discovery_notification_observations
-            .get(&request_id)
-            .cloned()
-        {
-            if pending != observation {
-                return (false, retain(request_id));
-            }
-            let result = self.persist_feed_discovery_notification_observation(observation);
-            if !matches!(result.1, HostObservationReceipt::RetainAndRetry { .. }) {
-                self.pending_feed_discovery_notification_observations
-                    .remove(&request_id);
-            }
+        if let Some(result) = self.retry_pending_durable_observation(&observation) {
             return result;
-        }
-        if let Some(pending) = self.pending_download_observations.get(&request_id).cloned() {
-            if pending != observation {
-                return (false, retain(request_id));
-            }
-            let receipt = self.persist_download_observation(observation);
-            let changed = matches!(receipt, HostObservationReceipt::Persisted { .. });
-            if !matches!(receipt, HostObservationReceipt::RetainAndRetry { .. }) {
-                self.pending_download_observations.remove(&request_id);
-            }
-            return (changed, receipt);
         }
         if let Some(result) =
             self.retry_pending_scheduled_agent_observation(request_id, &observation)
@@ -294,34 +271,6 @@ impl FacadeState {
         self.trim_operations();
         (true, accepted(request_id))
     }
-
-    pub(super) fn retry_pending_publisher_observations(&mut self) -> bool {
-        let request_ids = self
-            .pending_publisher_observations
-            .keys()
-            .copied()
-            .collect::<Vec<_>>();
-        let mut changed = false;
-        for request_id in request_ids {
-            let Some(record) = self.pending_publisher_chapters.get(&request_id).cloned() else {
-                self.pending_publisher_observations.remove(&request_id);
-                continue;
-            };
-            let Some(observation) = self
-                .pending_publisher_observations
-                .get(&request_id)
-                .cloned()
-            else {
-                continue;
-            };
-            if self.finish_publisher_chapter_observation(record, observation) {
-                self.retire_publisher_chapter_request(request_id);
-                changed = true;
-            }
-        }
-        if changed {
-            self.trim_operations();
-        }
-        changed
-    }
 }
+
+include!("runtime_observations_pending.rs");
