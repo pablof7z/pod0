@@ -8,37 +8,9 @@ import Pod0Core
 final class Pod0NativeHostDispatcher {
     typealias Delivery = @MainActor (HostObservationEnvelope) -> Void
 
-    struct ActiveTask {
-        let envelope: HostRequestEnvelope
-        let task: Task<Void, Never>
-        let delivery: Delivery
-    }
-
-    struct PendingScheduledAgentExecution {
-        let envelope: HostRequestEnvelope
-        let execution: ScheduledAgentExecutionRequest
-        let delivery: Delivery
-    }
-
-    struct AcknowledgementTask {
-        let envelope: HostRequestEnvelope
-        let observation: HostObservationEnvelope
-        let completion: @MainActor () -> Void
-        let task: Task<Void, Never>
-    }
-
-    struct PlaybackStream {
-        let envelope: HostRequestEnvelope
-        let episodeID: EpisodeId?
-        let minimumInterval: TimeInterval
-        let delivery: Delivery
-        var sequenceNumber: UInt64 = 0
-        var lastDeliveryAt: Date?
-        var lastObservation: PlaybackLifecycleObservation?
-    }
-
     let feedHost: any CoreFeedHosting
     let downloadHost: any CoreDownloadHosting
+    let notificationHost: any CoreNotificationHosting
     let publisherChapterHost: any CorePublisherChapterHosting
     let chapterModelHost: any CoreChapterModelHosting
     let agentHost: any CoreAgentHosting
@@ -74,6 +46,7 @@ final class Pod0NativeHostDispatcher {
     init(
         feedHost: any CoreFeedHosting,
         downloadHost: any CoreDownloadHosting = UnavailableCoreDownloadHost(),
+        notificationHost: any CoreNotificationHosting = UnavailableCoreNotificationHost(),
         publisherChapterHost: any CorePublisherChapterHosting = CorePublisherChapterHost(),
         chapterModelHost: any CoreChapterModelHosting = CoreChapterModelHost(),
         agentHost: any CoreAgentHosting = UnavailableCoreAgentHost(),
@@ -88,6 +61,7 @@ final class Pod0NativeHostDispatcher {
     ) {
         self.feedHost = feedHost
         self.downloadHost = downloadHost
+        self.notificationHost = notificationHost
         self.publisherChapterHost = publisherChapterHost
         self.chapterModelHost = chapterModelHost
         self.agentHost = agentHost
@@ -286,6 +260,22 @@ final class Pod0NativeHostDispatcher {
         case .startEpisodeDownload, .cancelEpisodeDownload,
              .removeEpisodeDownloadArtifact:
             startDownloadRequest(envelope, delivery: delivery)
+        case let .deliverNewEpisodeNotification(
+            occurrenceID,
+            episodeID,
+            podcastID,
+            podcastTitle,
+            episodeTitle
+        ):
+            startNotificationTask(
+                envelope,
+                occurrenceID: occurrenceID,
+                episodeID: episodeID,
+                podcastID: podcastID,
+                podcastTitle: podcastTitle,
+                episodeTitle: episodeTitle,
+                delivery: delivery
+            )
         default:
             finish(
                 envelope,

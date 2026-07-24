@@ -112,6 +112,7 @@ extension Pod0NativeHostDispatcher {
             active.task.cancel()
         }
         activeTasks.removeAll()
+        notificationHost.shutdown()
         for acknowledgement in acknowledgementTasks.values {
             acknowledgement.task.cancel()
         }

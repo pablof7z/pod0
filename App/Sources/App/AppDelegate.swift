@@ -145,11 +145,9 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         defer { completionHandler() }
-        let userInfo = response.notification.request.content.userInfo
-        guard let episodeID = userInfo[NotificationService.episodeIDUserInfoKey] as? String,
-              UUID(uuidString: episodeID) != nil,
-              let url = URL(string: "podcastr://episode/\(episodeID)")
-        else { return }
+        guard let url = Self.notificationDeepLink(
+            userInfo: response.notification.request.content.userInfo
+        ) else { return }
         // Hop onto the main actor to post — RootView listens on the main queue.
         Task { @MainActor in
             NotificationCenter.default.post(
@@ -157,6 +155,15 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
                 object: url
             )
         }
+    }
+
+    nonisolated static func notificationDeepLink(
+        userInfo: [AnyHashable: Any]
+    ) -> URL? {
+        guard let episodeID = userInfo[NotificationService.episodeIDUserInfoKey] as? String,
+              UUID(uuidString: episodeID) != nil
+        else { return nil }
+        return URL(string: "podcastr://episode/\(episodeID)")
     }
 }
 

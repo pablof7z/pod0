@@ -165,6 +165,7 @@
 		2D513196CDC7406B9095D78B /* CoreRecallIndexCutoverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71DB599520C3A8755FE8EDDC /* CoreRecallIndexCutoverTests.swift */; };
 		2D717E9E6B036A84F7786C79 /* PlayerTimeFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9680026FBE01F6C15E610D65 /* PlayerTimeFormat.swift */; };
 		2DE69BD3733E4A10555977E6 /* PlayerGenerationSourceChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7AF4BBAADE2F45A33CD06E1 /* PlayerGenerationSourceChip.swift */; };
+		2E0CCE48C39FC5E6509FF79F /* Pod0NativeHostDispatcher+Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52D54D8601617981989B2D71 /* Pod0NativeHostDispatcher+Notifications.swift */; };
 		2E33C88244DAABF6FF05563C /* JobStoreCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5718F8E779077D4AEC975F82 /* JobStoreCoordinatorTests.swift */; };
 		2E5D3053787336D7BF51CD6B /* PodcastCategorizationPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6A1F5D29BDC0B8355BC7378 /* PodcastCategorizationPrompt.swift */; };
 		2E62019DE271D8073992AC44 /* OllamaModelCatalogService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309D206C26BE174476D056B9 /* OllamaModelCatalogService.swift */; };
@@ -308,6 +309,7 @@
 		641F2588DE631E18F6DCC548 /* OPMLImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107A4F56C8B628B04E067F78 /* OPMLImportTests.swift */; };
 		6425CF09CC208E4B92222CEE /* EngineError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E526EEE99DB36BC8B9EB926 /* EngineError.swift */; };
 		642D729BCF01B29A890BCFDD /* Episode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 086F37EBFE11D08101EB3756 /* Episode.swift */; };
+		64B21C0E14B40DDDFB29955F /* Pod0NativeHostDispatcherNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7029C0ABEC1B8AF4C3DFDC0 /* Pod0NativeHostDispatcherNotificationTests.swift */; };
 		64C1BC7CCC2AD5ABD83C516B /* SlugNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BEFEE14B2179F68C72FE966 /* SlugNormalizer.swift */; };
 		650B16220A342C2D8418DB1C /* JobStore+Transaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25D9CA0A3B6B064C904C87B7 /* JobStore+Transaction.swift */; };
 		653DAAC527453619FE0B6892 /* SpeechRecognizerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34844619100E1D12A7AB23CE /* SpeechRecognizerService.swift */; };
@@ -333,7 +335,9 @@
 		6A74F4F679BE1BC52B0A2728 /* OnboardingAISetupPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8200C9B29F01A8001A49ADF1 /* OnboardingAISetupPage.swift */; };
 		6A9CCF09E39CA0D09D80DA78 /* WorkflowSQLite.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3FC91748AF64CE72EE4EA81 /* WorkflowSQLite.swift */; };
 		6B73B05CAF1E0BBC4E341B07 /* FeedDiscoveryWorkflowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17741766C3B15EEB235AE655 /* FeedDiscoveryWorkflowTests.swift */; };
+		6B777ACE2385C05686E548BC /* CoreNotificationHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC73ECD1DA62E09AE87A1772 /* CoreNotificationHost.swift */; };
 		6C0113E2C18087F3D3EF3B8B /* ProductSignalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2830DD820A0CA486B4F3E1C4 /* ProductSignalStore.swift */; };
+		6C41A4FDE55F74643B24C97B /* Pod0NativeHostDispatcher+Types.swift in Sources */ = {isa = PBXBuildFile; fileRef = C26BC8AE3702294CEB9BF9ED /* Pod0NativeHostDispatcher+Types.swift */; };
 		6C5BB0D499BC899A446E8EAC /* SharedLibraryClient+Evidence.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB7275607E9EA0A5914AE99A /* SharedLibraryClient+Evidence.swift */; };
 		6D703EBB91024FAA8CDE300F /* AskAgentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29B7C2595F8831855C66B0B5 /* AskAgentView.swift */; };
 		6E21267F061FD08238128FAF /* WorkflowSchemaMigrations.swift in Sources */ = {isa = PBXBuildFile; fileRef = B78A95330784E4C734798745 /* WorkflowSchemaMigrations.swift */; };
@@ -724,6 +728,7 @@
 		F1AD3692D26D85D39BFFFEF4 /* VoiceNoteRealtimeSTTAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B3FE576C130C4F4E32B875 /* VoiceNoteRealtimeSTTAudio.swift */; };
 		F1C6CD8EED14F919A4320FB3 /* OnboardingStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80CB2E8A2ABAE7AF0A229AC9 /* OnboardingStep.swift */; };
 		F1D74AD842C37F08A407C6B4 /* TuistBundle+Podcastr.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A973CC1C68553201DCE3289 /* TuistBundle+Podcastr.swift */; };
+		F1E6680E7F1F69064AB62493 /* CoreNotificationHostTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AD1021C1666CDCB24DC2192 /* CoreNotificationHostTests.swift */; };
 		F1EB467378276648AC0F5808 /* Podcast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 232ABBC6300963E56AA0CC10 /* Podcast.swift */; };
 		F225EFA39AA3A3CD6F8AABA0 /* AppStateStore+DerivedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BD7F743FEB2B7E0ADC851CA /* AppStateStore+DerivedViews.swift */; };
 		F2B5C7BE3E2D85BB64D402CC /* WorkflowJobChangeSignal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00D4D6CAB8B11CE0C6FB33CE /* WorkflowJobChangeSignal.swift */; };
@@ -1108,6 +1113,7 @@
 		519E489FD7FA0B6F484E9790 /* DiscoverSearchTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverSearchTextField.swift; sourceTree = "<group>"; };
 		5215FF586797CD3FCD1D7208 /* AppMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMain.swift; sourceTree = "<group>"; };
 		528A082CB3D6A527E87DD7CD /* PodcastrTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PodcastrTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		52D54D8601617981989B2D71 /* Pod0NativeHostDispatcher+Notifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Pod0NativeHostDispatcher+Notifications.swift"; sourceTree = "<group>"; };
 		52DFE92608991791CA9F8A7D /* VoiceCaption.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCaption.swift; sourceTree = "<group>"; };
 		534ECE6D4FCD465390D7C355 /* CoreFeedHostTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreFeedHostTests.swift; sourceTree = "<group>"; };
 		5378716211A015BB0F29358F /* PlayerTimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerTimelineView.swift; sourceTree = "<group>"; };
@@ -1262,6 +1268,7 @@
 		8AA60BBA4B34BCFF5249F046 /* LegacyAgentHistoryMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyAgentHistoryMapper.swift; sourceTree = "<group>"; };
 		8ABB431DB5EC28D06498DD4A /* ChapterModelTransportTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChapterModelTransportTestSupport.swift; sourceTree = "<group>"; };
 		8ACC23063DAAC097C9A2243D /* JobStore+Recovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JobStore+Recovery.swift"; sourceTree = "<group>"; };
+		8AD1021C1666CDCB24DC2192 /* CoreNotificationHostTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreNotificationHostTests.swift; sourceTree = "<group>"; };
 		8B23D6259BBB5DC5ECF273D4 /* VTTParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VTTParserTests.swift; sourceTree = "<group>"; };
 		8B8B89D30986C074F8EE5657 /* StatBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatBadge.swift; sourceTree = "<group>"; };
 		8B8DB08DDACEDA64FA128991 /* CoreDownloadIdentityStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDownloadIdentityStoreTests.swift; sourceTree = "<group>"; };
@@ -1398,6 +1405,7 @@
 		BB24799E859BE8C5FBF47ACD /* CoreDownloadVerticalSliceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDownloadVerticalSliceTests.swift; sourceTree = "<group>"; };
 		BB62DB767E57AC1F93FE26B5 /* OpenRouterModelDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenRouterModelDetailView.swift; sourceTree = "<group>"; };
 		BB7D5AE106B58BCB1FB3DA05 /* OPMLImportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OPMLImportSheet.swift; sourceTree = "<group>"; };
+		BC73ECD1DA62E09AE87A1772 /* CoreNotificationHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreNotificationHost.swift; sourceTree = "<group>"; };
 		BCAA2C483F52E40A2911E21B /* KingfisherConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KingfisherConfiguration.swift; sourceTree = "<group>"; };
 		BCF0BA28F287A96332AE5434 /* AppStateStore+Categories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+Categories.swift"; sourceTree = "<group>"; };
 		BCFFE151214348985D8714D7 /* CoreDownloadNativeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDownloadNativeStore.swift; sourceTree = "<group>"; };
@@ -1416,6 +1424,7 @@
 		C040201389D6F4145E537D3E /* VoiceNoteSTTFailureMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceNoteSTTFailureMapping.swift; sourceTree = "<group>"; };
 		C0EBC0E54AEB49D56717E28A /* AppStateStore+ExternalEpisodes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+ExternalEpisodes.swift"; sourceTree = "<group>"; };
 		C1C956873F51CD20BEC7E247 /* TranscriptWorkflowContractBindingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptWorkflowContractBindingTests.swift; sourceTree = "<group>"; };
+		C26BC8AE3702294CEB9BF9ED /* Pod0NativeHostDispatcher+Types.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Pod0NativeHostDispatcher+Types.swift"; sourceTree = "<group>"; };
 		C451D163225ECB4F72060C6A /* OnboardingIdentityPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingIdentityPage.swift; sourceTree = "<group>"; };
 		C460696C8DC804B1599D398B /* EpisodeAuditPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeAuditPresentation.swift; sourceTree = "<group>"; };
 		C4BF9CC4846FB4B72975ACBE /* ProductSignalReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductSignalReport.swift; sourceTree = "<group>"; };
@@ -1520,6 +1529,7 @@
 		E5672995977351A3288E91C7 /* LegacyDownloadWorkflowSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyDownloadWorkflowSnapshot.swift; sourceTree = "<group>"; };
 		E5A3A11B971535B75154DE9A /* LegacyTranscriptWorkflowSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyTranscriptWorkflowSnapshot.swift; sourceTree = "<group>"; };
 		E5AAF68D8DF54A1E812AF400 /* AutoSnipButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoSnipButton.swift; sourceTree = "<group>"; };
+		E7029C0ABEC1B8AF4C3DFDC0 /* Pod0NativeHostDispatcherNotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pod0NativeHostDispatcherNotificationTests.swift; sourceTree = "<group>"; };
 		E80BDA5A8D0A560E21AB91D5 /* LegacyAgentHistoryCutover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyAgentHistoryCutover.swift; sourceTree = "<group>"; };
 		E8350DA2ECAB3BD4233213FF /* AppStateStore+Sorting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+Sorting.swift"; sourceTree = "<group>"; };
 		E870217CC0A73FC46D927747 /* LegacyChapterWorkflowJob.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyChapterWorkflowJob.swift; sourceTree = "<group>"; };
@@ -1820,6 +1830,7 @@
 				9DB1F1E58D70483A1E52161C /* CoreFeedHost.swift */,
 				6F722CCAA2169C6B7FCB42DE /* CoreNostrSignerCrypto.swift */,
 				8E27A7CBC67C1F6851F9AA18 /* CoreNostrSignerHost.swift */,
+				BC73ECD1DA62E09AE87A1772 /* CoreNotificationHost.swift */,
 				87AD2A35A78499B7D133A765 /* CorePlaybackHost.swift */,
 				A619964441015F750E5F983B /* CorePublisherChapterHost.swift */,
 				22225646A576B054D752BF8B /* CoreRecallHost.swift */,
@@ -1874,11 +1885,13 @@
 				8EAA68843FAB1E3152C938F9 /* Pod0NativeHostDispatcher+Lifecycle.swift */,
 				5F7506ADB7B77C782E728143 /* Pod0NativeHostDispatcher+Model.swift */,
 				E4D35857BFBC82B47DFB4D39 /* Pod0NativeHostDispatcher+NostrSigner.swift */,
+				52D54D8601617981989B2D71 /* Pod0NativeHostDispatcher+Notifications.swift */,
 				1F559219A0DCB775C71877A7 /* Pod0NativeHostDispatcher+Playback.swift */,
 				8206A8BF49E40E98FC5FBB00 /* Pod0NativeHostDispatcher+PublisherChapters.swift */,
 				50F93E5068FC876BC3948878 /* Pod0NativeHostDispatcher+Recall.swift */,
 				DF03E17239D1903CBC268AD3 /* Pod0NativeHostDispatcher+ScheduledAgent.swift */,
 				EBBEBCE8C144A2B7EEC1C9CE /* Pod0NativeHostDispatcher+Transcripts.swift */,
+				C26BC8AE3702294CEB9BF9ED /* Pod0NativeHostDispatcher+Types.swift */,
 				75EA693D9BD1EE46CDF38F7C /* SharedAgentConversationRuntime.swift */,
 				48EE4F19C7249F6B9D86CD75 /* SharedAgentConversationSession.swift */,
 				7418D282D6EED0F6338493F5 /* SharedAgentConversationSubscriber.swift */,
@@ -2480,6 +2493,7 @@
 				BB24799E859BE8C5FBF47ACD /* CoreDownloadVerticalSliceTests.swift */,
 				534ECE6D4FCD465390D7C355 /* CoreFeedHostTests.swift */,
 				F278BAEEF39BEA37D09FE0C1 /* CoreNostrSignerHostTests.swift */,
+				8AD1021C1666CDCB24DC2192 /* CoreNotificationHostTests.swift */,
 				CF073F83DAD82B121F3F6A4C /* CorePlaybackHostTests.swift */,
 				C8AB15A110A5AAD47D226A3B /* CorePublisherChapterHostTests.swift */,
 				D56B6C98AE8A408817234A5F /* CoreRecallHostTests.swift */,
@@ -2546,6 +2560,7 @@
 				4161817D3E6B69E47CCDC078 /* Pod0ListeningDomainBindingTestSupport.swift */,
 				A84631A5F208D3C562898882 /* Pod0NativeHostDispatcherAgentTests.swift */,
 				1EA1A58DB7895F874B090E14 /* Pod0NativeHostDispatcherNostrSignerTests.swift */,
+				E7029C0ABEC1B8AF4C3DFDC0 /* Pod0NativeHostDispatcherNotificationTests.swift */,
 				47C87AB09009640E2BCADE9F /* Pod0NativeHostDispatcherRecallTests.swift */,
 				BD86A02F51A88D0CDD82FE9A /* Pod0NativeHostDispatcherScheduledAgentTests.swift */,
 				A8BF1F2397F4EBFFE901336D /* Pod0NativeHostDispatcherTests.swift */,
@@ -3108,6 +3123,7 @@
 				ECE42A0EAFBB62BBB2600ED3 /* CoreFeedHost.swift in Sources */,
 				08A8B41C9426478BA6FF5F6C /* CoreNostrSignerCrypto.swift in Sources */,
 				8703D8784FF4A37E0DE6C254 /* CoreNostrSignerHost.swift in Sources */,
+				6B777ACE2385C05686E548BC /* CoreNotificationHost.swift in Sources */,
 				3D72CC53EC0E568081C00C99 /* CorePlaybackHost.swift in Sources */,
 				3DE1D061E5732D8295920FC2 /* CorePublisherChapterHost.swift in Sources */,
 				4FC99BC8EDBEFE3490BEF1C1 /* CoreRecallHost.swift in Sources */,
@@ -3161,11 +3177,13 @@
 				70A2CA330C5451F782433A9F /* Pod0NativeHostDispatcher+Lifecycle.swift in Sources */,
 				396690D241817373C93CBA8D /* Pod0NativeHostDispatcher+Model.swift in Sources */,
 				C621C2640B3A42DE2775828D /* Pod0NativeHostDispatcher+NostrSigner.swift in Sources */,
+				2E0CCE48C39FC5E6509FF79F /* Pod0NativeHostDispatcher+Notifications.swift in Sources */,
 				70A057F4383462240AA94E81 /* Pod0NativeHostDispatcher+Playback.swift in Sources */,
 				2EC4197278A4235EFB0FD7C5 /* Pod0NativeHostDispatcher+PublisherChapters.swift in Sources */,
 				82CD34C830880589003BB0AB /* Pod0NativeHostDispatcher+Recall.swift in Sources */,
 				E5507610937EFD4FF243AE2B /* Pod0NativeHostDispatcher+ScheduledAgent.swift in Sources */,
 				160F3435352C4507DE0C97FD /* Pod0NativeHostDispatcher+Transcripts.swift in Sources */,
+				6C41A4FDE55F74643B24C97B /* Pod0NativeHostDispatcher+Types.swift in Sources */,
 				F640D078A940E4606B21623A /* Pod0NativeHostDispatcher.swift in Sources */,
 				18201EA90138227ADCE0B668 /* SharedAgentConversationRuntime.swift in Sources */,
 				7715E4906CC39448045D4794 /* SharedAgentConversationSession.swift in Sources */,
@@ -3676,6 +3694,7 @@
 				BBA48630B71EB06BFF9E3577 /* CoreDownloadVerticalSliceTests.swift in Sources */,
 				85092C4EECD728D1EC9F6AAF /* CoreFeedHostTests.swift in Sources */,
 				79F2C73D028D07DD4897553F /* CoreNostrSignerHostTests.swift in Sources */,
+				F1E6680E7F1F69064AB62493 /* CoreNotificationHostTests.swift in Sources */,
 				FE1EB82518C3EFC96D2C1D12 /* CorePlaybackHostTests.swift in Sources */,
 				D5B8D6667B3758A81D2AE5A7 /* CorePublisherChapterHostTests.swift in Sources */,
 				4BB96AE05D1F9355B925ED81 /* CoreRecallHostTests.swift in Sources */,
@@ -3742,6 +3761,7 @@
 				4188EEF9C028387D11BFFC7D /* Pod0ListeningDomainBindingTests.swift in Sources */,
 				F14EB304C807B7B444D41664 /* Pod0NativeHostDispatcherAgentTests.swift in Sources */,
 				94462D89152B890D5757E9F1 /* Pod0NativeHostDispatcherNostrSignerTests.swift in Sources */,
+				64B21C0E14B40DDDFB29955F /* Pod0NativeHostDispatcherNotificationTests.swift in Sources */,
 				A0C9C5973FFC25DA3720FCDA /* Pod0NativeHostDispatcherRecallTests.swift in Sources */,
 				48E5FA127387C041146FF5E4 /* Pod0NativeHostDispatcherScheduledAgentTests.swift in Sources */,
 				CE94D022B0EC5DB5293B7FC5 /* Pod0NativeHostDispatcherTests.swift in Sources */,

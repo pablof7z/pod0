@@ -72,6 +72,8 @@ final class SharedLibraryClient {
         coreStoreURL: URL,
         feedHost: any CoreFeedHosting,
         downloadHost: any CoreDownloadHosting = UnavailableCoreDownloadHost(),
+        // #160 enables the live host only when legacy notification writes retire.
+        notificationHost: any CoreNotificationHosting = UnavailableCoreNotificationHost(),
         observationOutbox: NativeHostObservationOutbox? = nil
     ) {
         self.facade = facade
@@ -87,6 +89,7 @@ final class SharedLibraryClient {
         self.dispatcher = Pod0NativeHostDispatcher(
             feedHost: feedHost,
             downloadHost: downloadHost,
+            notificationHost: notificationHost,
             agentHost: agentHost,
             playbackHost: playbackHost,
             recallHost: recallHost,
