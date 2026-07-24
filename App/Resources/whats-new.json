@@ -2,9 +2,15 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-24T04:06:39Z",
+      "lines": [
+        "Home now stays focused on listening progress and your podcast library."
+      ]
+    },
+    {
       "shipped_at": "2026-07-24T03:48:55Z",
       "lines": [
-        "The premature Featured narration path and its leftover settings language are now gone."
+        "Audio settings now describe only the generation tools the app actually uses."
       ]
     },
     {
@@ -34,7 +40,7 @@
     {
       "shipped_at": "2026-07-23T23:21:27Z",
       "lines": [
-        "Home is now focused on Continue Listening and your library, without the Featured section."
+        "Home is now focused on Continue Listening and your podcast library."
       ]
     },
     {
@@ -347,7 +353,7 @@
       "lines": [
         "Streamlined the app: removed Wiki, Briefings, and Inbox triage for a faster, simpler experience.",
         "New episodes now appear and download immediately, without waiting on a background review pass.",
-        "Home's featured section is back to agent-curated picks."
+        "Home keeps your listening progress and podcast library close at hand."
       ]
     },
     {
@@ -767,7 +773,7 @@
     {
       "shipped_at": "2026-05-12T12:00:00Z",
       "lines": [
-        "Home now shows a Continue Listening strip at the top — up to 3 in-progress episodes from the last 2 weeks, with a See All screen where you can swipe to dismiss any you're done with. The Featured section now shows only agent picks, and the podcast list is slightly larger."
+        "Home now shows a Continue Listening strip at the top — up to 3 in-progress episodes from the last 2 weeks, with a See All screen where you can swipe to dismiss any you're done with — and the podcast list is slightly larger."
       ]
     },
     {
