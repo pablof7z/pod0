@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-24T03:48:55Z",
+      "lines": [
+        "The premature Featured narration path and its leftover settings language are now gone."
+      ]
+    },
+    {
       "shipped_at": "2026-07-24T02:35:00Z",
       "lines": [
         "Episodes now resume reliably after you close and reopen Pod0."
