@@ -1,0 +1,15 @@
+# Scan authored source and scripts. Generated bindings are checked separately
+# for reproducibility and must never be edited to satisfy a lint rule.
+exclude = [
+    ".git/**",
+    ".build/**",
+    "build/**",
+    "target/**",
+    "Generated/**",
+    ".planning/**",
+    "Podcastr.xcodeproj/**",
+    "Podcastr.xcworkspace/**",
+]
+
+# Keep the scan bounded if a fixture or packaged artifact is added later.
+max_file_size_kb = 1024

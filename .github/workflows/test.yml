@@ -10,6 +10,21 @@ permissions:
   contents: read
 
 jobs:
+  antislop:
+    name: Antislop
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned Antislop
+        run: cargo install antislop --version 0.3.0 --locked --no-default-features --features rust,parallel
+
+      - name: Reject implementation slop
+        run: antislop --config antislop.toml --no-filename-check .
+
   test:
     name: Build and Test
     runs-on: macos-26

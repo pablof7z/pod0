@@ -3,17 +3,14 @@ import Foundation
 
 // MARK: - ClipAudioComposer
 //
-// Third clip-share fidelity (Image / Video / Audio + universal link). The
-// image card and link already ship; video is intentionally stubbed (see
-// `ClipExporter.exportVideo`). Audio is the cheapest of the three to do
-// right because the heavy lifting belongs to `AVAssetExportSession` — no
-// compositing, no overlay layers, no generator video track.
+// Audio clip-sharing companion to the image card and universal link. The
+// heavy lifting belongs to `AVAssetExportSession`, with no compositing or
+// overlay layers.
 //
 // Pipeline:
 //   1. Resolve the episode's local audio file. Streaming the enclosure
-//      is intentionally NOT supported here — same precondition the video
-//      composer documents. Reasons: unpredictable export time, no
-//      progress signal, and the user can always download first.
+//      is intentionally NOT supported here. Reasons: unpredictable export
+//      time, no progress signal, and the user can always download first.
 //   2. Build an `AVURLAsset` over the local file and an
 //      `AVAssetExportSession` with `presetAppleM4A` (AAC in an m4a
 //      container — universal iOS / Mac / web compatibility, no licensing
@@ -84,10 +81,8 @@ enum ClipAudioComposer {
 
     // MARK: - Helpers
 
-    /// Same precondition shape as `ClipExporter.exportVideo`'s local-audio check.
-    /// Kept independent (rather than reaching across files) so the
-    /// audio path stays self-contained and the video stub is free to
-    /// evolve without coupling them.
+    /// Keep local-audio validation inside the audio path so callers receive
+    /// one consistent error for missing and already-removed downloads.
     private static func resolveLocalAudioURL(for episode: Episode) throws -> URL {
         guard let url = episode.downloadState.localFileURL
                 ?? (episode.enclosureURL.isFileURL ? episode.enclosureURL : nil),

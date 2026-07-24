@@ -121,7 +121,7 @@ final class AppTests: XCTestCase {
 
     // MARK: - Persistence isolation
 
-    /// Regression test for the test-leak bug: writing through an isolated
+    /// Regression test for persistence isolation: writing through an isolated
     /// store must NOT mutate the production App Group state file.
     func testIsolatedStoreDoesNotTouchSharedAppGroupContainer() async throws {
         let productionURL = Persistence.appGroupStateFileURL

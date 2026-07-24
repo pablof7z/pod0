@@ -80,7 +80,7 @@ struct MiniPlayerView: View {
     /// glass surface — the toolbar's own glass shell hosts it.
     ///
     /// Same Button-inside-Button trap as `expandedBody`: the play/pause icon
-    /// has to remain a real, separately-tappable Button. Use a non-Button
+    /// has to remain an independent, separately-tappable Button. Use a non-Button
     /// tap surface for the expand-on-tap action.
     ///
     /// Title is included alongside the artwork — without it, the pill reads
