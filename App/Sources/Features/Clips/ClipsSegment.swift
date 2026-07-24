@@ -2,10 +2,8 @@ import SwiftUI
 
 // MARK: - ClipsSegment
 //
-// The "Clips" segment of `SavedView` — every clip the user has made, newest
-// first, bucketed into Today / This Week / Earlier. Tap a card to seek and
-// play; swipe or long-press for delete. Carries the same behavior the
-// standalone Clippings tab had before the Bookmarks/Clippings merge.
+// Every clip the user has made, newest first, bucketed into Today / This Week /
+// Earlier. Tap a card to seek and play; swipe or long-press for delete.
 struct ClipsSegment: View {
 
     @Environment(AppStateStore.self) private var store

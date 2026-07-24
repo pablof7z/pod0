@@ -7,7 +7,7 @@ enum AllEpisodesFilter: String, CaseIterable, Identifiable {
     case unplayed
     case inProgress
     case downloaded
-    case starred
+    case bookmarked
 
     var id: String { rawValue }
 
@@ -17,17 +17,7 @@ enum AllEpisodesFilter: String, CaseIterable, Identifiable {
         case .unplayed:   return "Unplayed"
         case .inProgress: return "In Progress"
         case .downloaded: return "Downloaded"
-        case .starred:    return "Starred"
-        }
-    }
-
-    var systemImage: String? {
-        switch self {
-        case .all:        return nil
-        case .unplayed:   return "circle.fill"
-        case .inProgress: return "circle.lefthalf.filled"
-        case .downloaded: return "arrow.down.circle.fill"
-        case .starred:    return "star.fill"
+        case .bookmarked: return "Bookmarked"
         }
     }
 
@@ -39,7 +29,7 @@ enum AllEpisodesFilter: String, CaseIterable, Identifiable {
         case .downloaded:
             if case .downloaded = episode.downloadState { return true }
             return false
-        case .starred:    return episode.isStarred
+        case .bookmarked: return episode.isStarred
         }
     }
 }
@@ -47,14 +37,13 @@ enum AllEpisodesFilter: String, CaseIterable, Identifiable {
 // MARK: - AllEpisodesView
 
 /// Library screen showing every episode across all subscriptions, newest
-/// first, with filter chips and scroll-triggered pagination so large libraries
-/// never render more rows than are needed.
+/// first, with a toolbar filter menu and scroll-triggered pagination so large
+/// libraries never render more rows than are needed.
 struct AllEpisodesView: View {
     @Environment(AppStateStore.self) private var store
 
     @State private var filter: AllEpisodesFilter = .all
     @State private var searchText: String = ""
-    @State private var isSearchActive: Bool = false
     @State private var visibleCount: Int = 50
     @State private var voiceOverDetailRoute: LibraryEpisodeRoute?
 
@@ -64,7 +53,6 @@ struct AllEpisodesView: View {
         let visible = Array(filtered.prefix(visibleCount))
 
         List {
-            filterRailSection
             episodeListSection(
                 visible: visible,
                 totalCount: filtered.count,
@@ -78,10 +66,14 @@ struct AllEpisodesView: View {
         .navigationBarTitleDisplayMode(.large)
         .searchable(
             text: $searchText,
-            isPresented: $isSearchActive,
-            placement: .navigationBarDrawer(displayMode: .always),
+            placement: .navigationBarDrawer(displayMode: .automatic),
             prompt: "Search episodes"
         )
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                filterMenu
+            }
+        }
         .navigationDestination(for: LibraryEpisodeRoute.self) { route in
             LibraryEpisodePlaceholder(route: route)
         }
@@ -109,50 +101,21 @@ struct AllEpisodesView: View {
 
     // MARK: - Sections
 
-    private var filterRailSection: some View {
-        Section {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    ForEach(AllEpisodesFilter.allCases) { f in
-                        filterChip(f)
-                    }
+    private var filterMenu: some View {
+        Menu {
+            Picker("Filter episodes", selection: $filter) {
+                ForEach(AllEpisodesFilter.allCases) { filter in
+                    Text(filter.label)
+                        .tag(filter)
                 }
-                .padding(.horizontal, AppTheme.Spacing.md)
-                .padding(.vertical, AppTheme.Spacing.sm)
             }
-        }
-        .listRowInsets(EdgeInsets())
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color(.systemGroupedBackground))
-    }
-
-    private func filterChip(_ f: AllEpisodesFilter) -> some View {
-        Button {
-            Haptics.selection()
-            withAnimation(AppTheme.Animation.springFast) { filter = f }
         } label: {
-            HStack(spacing: AppTheme.Spacing.xs) {
-                if let symbol = f.systemImage {
-                    Image(systemName: symbol)
-                        .font(.caption2.weight(.semibold))
-                }
-                Text(f.label)
-                    .font(AppTheme.Typography.caption)
-            }
-            .padding(.horizontal, AppTheme.Spacing.md)
-            .padding(.vertical, AppTheme.Spacing.sm)
-            .foregroundStyle(filter == f ? Color.white : Color.primary)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(filter == f
-                          ? AnyShapeStyle(Color.accentColor)
-                          : AnyShapeStyle(Color(.tertiarySystemFill)))
-            )
-            .contentShape(Capsule())
+            Image(systemName: filter == .all
+                  ? "line.3.horizontal.decrease.circle"
+                  : "line.3.horizontal.decrease.circle.fill")
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(f.label)
-        .accessibilityAddTraits(filter == f ? .isSelected : [])
+        .accessibilityLabel("Filter episodes")
+        .accessibilityValue(filter.label)
     }
 
     @ViewBuilder
@@ -209,7 +172,7 @@ struct AllEpisodesView: View {
         case .unplayed:   return "Nothing unplayed."
         case .inProgress: return "Nothing in progress."
         case .downloaded: return "No downloads."
-        case .starred:    return "No starred episodes."
+        case .bookmarked: return "No bookmarked episodes."
         }
     }
 
@@ -219,7 +182,7 @@ struct AllEpisodesView: View {
         case .unplayed:   return "circle.dashed"
         case .inProgress: return "circle.lefthalf.filled"
         case .downloaded: return "arrow.down.circle"
-        case .starred:    return "star"
+        case .bookmarked: return "bookmark"
         }
     }
 
@@ -233,8 +196,8 @@ struct AllEpisodesView: View {
             return "Start listening to an episode to see it here."
         case .downloaded:
             return "Download episodes for offline listening."
-        case .starred:
-            return "Star episodes from the episode detail view."
+        case .bookmarked:
+            return "Bookmark episodes from an episode's menu."
         }
     }
 }

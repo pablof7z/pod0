@@ -139,7 +139,10 @@ struct RootView: View {
 
             AppSidebarView(
                 selectedTab: $selectedTab,
-                isPresented: $showSidebar
+                isPresented: $showSidebar,
+                onOpenSettings: {
+                    showSettings = true
+                }
             )
             .frame(width: sidebarWidth)
             .ignoresSafeArea()
@@ -189,9 +192,9 @@ struct RootView: View {
                     .toolbar { sharedToolbar() }
             }
             .toolbar(.hidden, for: .tabBar)
-        case .saved:
+        case .clips:
             NavigationStack {
-                SavedView()
+                ClipsView()
                     .toolbar { sharedToolbar() }
             }
             .toolbar(.hidden, for: .tabBar)
@@ -234,15 +237,6 @@ struct RootView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Open sidebar")
-        }
-        ToolbarItem(placement: .topBarLeading) {
-            Button {
-                Haptics.selection()
-                showSettings = true
-            } label: {
-                Image(systemName: "gear")
-            }
-            .accessibilityLabel("Settings")
         }
         ToolbarItem(placement: .topBarTrailing) {
             Button {
