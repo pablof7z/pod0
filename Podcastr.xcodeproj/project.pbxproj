@@ -224,6 +224,7 @@
 		4483405973A890F79B08C523 /* PlayerChaptersScrollView+Notes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 441F113FA005D215335ECB76 /* PlayerChaptersScrollView+Notes.swift */; };
 		44F5E62712EE5954AFB4826E /* OccurrenceIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 796DEC742BBA51E1C316B82C /* OccurrenceIdentity.swift */; };
 		45069A18E7EF7CD2C6692DD5 /* LiveCoreTranscriptTransport+Publisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CD3BCE379F21620B0E48A7C /* LiveCoreTranscriptTransport+Publisher.swift */; };
+		45749B2F450F489BA9506268 /* Persistence+Lifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3B69DB23B6396259AB42DBC /* Persistence+Lifecycle.swift */; };
 		458F44D192D4F02C7F0555E9 /* LegacyFeedDiscoveryWorkflowSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1439A493C8D6602E193E974F /* LegacyFeedDiscoveryWorkflowSnapshot.swift */; };
 		47100C07F65DFFF7DF28CA4D /* clip-projection-v1.properties in Resources */ = {isa = PBXBuildFile; fileRef = 9D144D7CFEBC571186744931 /* clip-projection-v1.properties */; };
 		479BDFD59A8366D3DAEFD46E /* chapter-model-generation-system-v1.txt in Resources */ = {isa = PBXBuildFile; fileRef = 771DA741EEAD5FF4141B66ED /* chapter-model-generation-system-v1.txt */; };
@@ -1370,6 +1371,7 @@
 		A1E1AC1E33A14A2AB17F388B /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		A320BD8C8764E80EB6DE1139 /* LegacyAgentMemoryBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyAgentMemoryBackup.swift; sourceTree = "<group>"; };
 		A35A2B0B4C49E99CA891FB05 /* LegacyFeedDiscoveryWorkflowMapper+Support.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LegacyFeedDiscoveryWorkflowMapper+Support.swift"; sourceTree = "<group>"; };
+		A3B69DB23B6396259AB42DBC /* Persistence+Lifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Persistence+Lifecycle.swift"; sourceTree = "<group>"; };
 		A3B81BF533495087061843FA /* AudioEngine+Observers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AudioEngine+Observers.swift"; sourceTree = "<group>"; };
 		A42B0D74B9E27A1106F55BB7 /* ComposedAudioStitcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposedAudioStitcher.swift; sourceTree = "<group>"; };
 		A4D4309281FE532B1008199C /* AppStateStore+ProductSignals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+ProductSignals.swift"; sourceTree = "<group>"; };
@@ -2367,6 +2369,7 @@
 				E1CA95C0A91FA2689DE5A2D3 /* EpisodeSQLiteStore+Statements.swift */,
 				DB34028F5B06CDE094BE03B4 /* Persistence.swift */,
 				6B219F3418A5CF4A76E4D98E /* Persistence+LegacyAgentActivity.swift */,
+				A3B69DB23B6396259AB42DBC /* Persistence+Lifecycle.swift */,
 				3E8B382EC43BE04F8D797670 /* Persistence+Loading.swift */,
 				953A34D21D06F66661D76077 /* Persistence+Locations.swift */,
 				D221F32ACBD34C096ECBEA19 /* Persistence+Notifications.swift */,
@@ -3617,6 +3620,7 @@
 				E5D3653CEBB6AB8426BA4390 /* EpisodeSQLiteStore+Statements.swift in Sources */,
 				9C79FFEF401FD320193872B7 /* EpisodeSQLiteStore.swift in Sources */,
 				AF5306D344E825C0D3F0E5F6 /* Persistence+LegacyAgentActivity.swift in Sources */,
+				45749B2F450F489BA9506268 /* Persistence+Lifecycle.swift in Sources */,
 				DDD4F2EF67C9FB04A04F411C /* Persistence+Loading.swift in Sources */,
 				89E4894F867017DC5D7A78E3 /* Persistence+Locations.swift in Sources */,
 				0F4F42B2855B0FD207AF315C /* Persistence+Notifications.swift in Sources */,

@@ -227,17 +227,6 @@ final class Persistence: Sendable {
         return true
     }
 
-    func reset() {
-        try? FileManager.default.removeItem(at: fileURL)
-        episodeStore.reset()
-        removeSharedCoreArtifacts()
-        episodeSnapshot.withLock { $0 = nil }
-        revision.withLock { $0 = 0 }
-        lastWrittenRevision.withLock { $0 = 0 }
-        sharedArtifactAuthority.withLock { $0 = .init() }
-        resetEpisodeWriteSummary()
-    }
-
     // MARK: - Static helpers
     static let logger = Logger.app("Persistence")
     /// Prior-art `UserDefaults` key the file backend migrates from on first

@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-24T23:05:23Z",
+      "lines": [
+        "Startup migrations now protect newer library changes from stale saves."
+      ]
+    },
+    {
       "shipped_at": "2026-07-24T22:54:23Z",
       "lines": [
         "Dismissing an agent approval now stays distinct from choosing Deny."

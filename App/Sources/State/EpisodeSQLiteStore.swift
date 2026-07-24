@@ -182,6 +182,8 @@ struct EpisodeSQLiteStore: Sendable {
     }
 
     func reset() {
+        WorkflowSQLite.databaseLock.lock()
+        defer { WorkflowSQLite.databaseLock.unlock() }
         for suffix in ["", "-wal", "-shm"] {
             try? FileManager.default.removeItem(
                 at: URL(fileURLWithPath: fileURL.path + suffix)

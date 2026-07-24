@@ -196,9 +196,7 @@ final class AppStateStore {
                 }
             } else if preparedStartup.needsNativeProjectionRetirement {
                 let retirementState = state
-                Task.detached(priority: .utility) {
-                    persistence.save(retirementState)
-                }
+                persistence.commitStartupRetirement(retirementState)
             }
         case .authoritativeUnavailable(let reason, let stage):
             sharedLibraryUnavailableReason = reason
