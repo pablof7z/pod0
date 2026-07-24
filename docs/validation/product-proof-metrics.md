@@ -1,6 +1,8 @@
 # Pod0 product-proof metrics
 
-Status: Predeclared for M1 evidence collection and the M5 Android investment gate.
+Status: Predeclared for M1 evidence collection and the M5 Android investment
+gate. Automated and simulator qualification is current; real-user cohorts are
+still insufficient, so Android product investment remains gated.
 
 This dictionary fixes the measurement rules before Pod0 evaluates results. A
 later change must be recorded before viewing gate results; thresholds are not
@@ -90,3 +92,13 @@ forbidden sample content cannot enter an export.
 
 Compilation of Kotlin bindings is readiness evidence only and cannot change a
 hold or stop into a go.
+
+## Current evidence state
+
+The repository and simulator evidence recorded on 2026-07-24 is
+[`ios-product-proof-2026-07-24.json`](../architecture/evidence/ios-product-proof-2026-07-24.json).
+Automated iOS, process-restart, archive, recall-performance, privacy, ownership,
+and single-writer gates pass. Physical playback qualification in issue #84 and
+the minimum real-user cohorts above remain missing. The current decision is
+therefore **Hold**, not Go: the app can continue iOS validation, while Android
+product work remains closed.

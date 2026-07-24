@@ -1,6 +1,6 @@
 # iOS playback qualification
 
-Issue: #70
+Issues: #70 (automated and simulator qualification), #84 (physical hardware)
 
 Ownership: Native by design
 
@@ -43,6 +43,27 @@ Native executor: Swift `AudioEngine` / AVFoundation through `CorePlaybackHost`
 | Audio route/interruption with real wired and Bluetooth hardware | Physical-device checklist below | Pending hardware |
 
 ## Latest automated evidence
+
+Current `master` evidence is recorded in
+[`ios-product-proof-2026-07-24.json`](../architecture/evidence/ios-product-proof-2026-07-24.json).
+At commit `da3556e8a5f0c7000d7f6c74cdf88bb5340fb6f2`:
+
+- Hosted CI run
+  [30081008161](https://github.com/pablof7z/pod0/actions/runs/30081008161)
+  passed 655 optimized iOS tests with zero failures, generated-project drift,
+  workflow reconstruction across process termination, and a non-publishing
+  Release archive.
+- A hands-on iPhone 17 / iOS 26.5 simulator smoke completed
+  search → episode detail → downloaded-episode resume → force-quit → relaunch.
+  The same episode returned at 4:39, inside the 30-second loss budget, and the
+  Home surface rendered without Featured.
+- The architecture ratchet classified all 566 production Swift files; UI/storage
+  and listening, recall, transcript, chapter, feed-discovery, scheduled-agent,
+  and agent single-writer checks passed.
+- No physical iPhone was connected. Issue #84 remains open for wired,
+  Bluetooth, phone/Siri, and lock-screen evidence.
+
+Historical evidence from the first shared-playback qualification follows.
 
 Validated on 2026-07-20 against an iPhone 17 Pro simulator running iOS 26.5:
 
