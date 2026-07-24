@@ -21,4 +21,5 @@ enum SharedLibraryBootstrapStage: String {
     case agentHistoryCutover
     case agentRunLogRetirement
     case agentMemoryCutover
+    case agentActivityRetirement
 }

@@ -254,6 +254,8 @@ enum SharedLibraryBootstrap {
                 state: legacyState,
                 backupRoot: persistence.legacyAgentMemoryBackupRootURL
             )
+            stage = .agentActivityRetirement
+            try persistence.retireLegacyAgentActivitySource(state: legacyState)
             let observationOutbox = try NativeHostObservationOutbox(
                 fileURL: persistence.nativeHostObservationOutboxURL
             )

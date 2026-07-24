@@ -56,16 +56,6 @@ struct AgentSettingsView: View {
                 )
             }
 
-            NavigationLink {
-                AgentActivityLogView()
-            } label: {
-                SettingsRow(
-                    icon: "clock.arrow.circlepath",
-                    tint: .teal,
-                    title: "Activity Log",
-                    badge: store.activeAgentActivityCount
-                )
-            }
         }
     }
 }

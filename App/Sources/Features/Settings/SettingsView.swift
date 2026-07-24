@@ -186,7 +186,6 @@ struct SettingsView: View {
             + store.state.episodes.count
             + store.activeNotes.count
             + store.activeMemories.count
-            + store.activeAgentActivityCount
     }
 
     private var currentModelShortName: String {

@@ -83,6 +83,7 @@
         "App/Sources/Core/LegacyAgentHistoryMapper.swift",
         "App/Sources/Core/LegacyChatHistorySource.swift",
         "App/Sources/Core/LegacyAgentRunLogRetirement.swift",
+        "App/Sources/Core/LegacyAgentActivity.swift",
         "App/Sources/Core/LegacyAgentMemoryBackup.swift",
         "App/Sources/Core/LegacyAgentMemoryCutover.swift"
       ]
@@ -131,11 +132,11 @@
     {
       "id": "temporary-agent-history-cutover",
       "classification": "temporary_swift",
-      "current_owner": "Swift decode-only chat source, immutable rollback manifest, typed mapper, exact source retirement, and exact removal of the retired private run-log duplicate",
+      "current_owner": "Swift decode-only chat/activity sources, immutable rollback manifest, typed mapper, exact source retirement, and exact removal of retired native diagnostic duplicates",
       "target_owner": "Deleted after the issue #138 rollback support window closes",
-      "reason": "Existing Swift conversations must survive the transition into Rust without preserving a native writer or a long-lived private diagnostic store.",
-      "boundary": "Decode and back up the exact legacy conversation file, map supported conversations to typed Rust inputs, delete the exact matching chat source before Rust authority commits, then remove only the retired AgentRunLog/runs.json duplicate and expose no restore or mutation API.",
-      "persisted_state": "Versioned integrity-checked rollback manifests only; Rust owns all active and imported conversation history after cutover.",
+      "reason": "Existing Swift conversations must survive the transition into Rust without preserving a native writer or long-lived private activity and diagnostic stores.",
+      "boundary": "Decode and back up the exact legacy conversation file, map supported conversations to typed Rust inputs, delete the exact matching chat source before Rust authority commits, then remove the retired AgentRunLog/runs.json and embedded activity duplicates after conversation and memory authority are verified. Expose no restore or mutation API.",
+      "persisted_state": "Versioned integrity-checked conversation rollback manifests only; Rust owns all active and imported conversation history. The embedded activity payload is decode-only until its verified one-shot retirement.",
       "migration_issues": [138],
       "deletion_target": "Remove the legacy conversation decoder, backup, mapper, and cutover adapter after supported installations are proven across the Rust authority marker; immutable rollback evidence may remain read-only.",
       "priority": "highest",
@@ -145,6 +146,8 @@
         "App/Sources/Core/LegacyAgentHistoryMapper.swift",
         "App/Sources/Core/LegacyChatHistorySource.swift",
         "App/Sources/Core/LegacyAgentRunLogRetirement.swift",
+        "App/Sources/Core/LegacyAgentActivity.swift",
+        "App/Sources/State/Persistence+LegacyAgentActivity.swift",
         "App/Sources/Features/Agent/ChatConversation.swift"
       ]
     },
@@ -291,6 +294,7 @@
       "priority": "highest",
       "includes": ["App/Sources/State/"],
       "excludes": [
+        "App/Sources/State/Persistence+LegacyAgentActivity.swift",
         "App/Sources/State/Persistence+SharedMemories.swift",
         "App/Sources/State/Persistence+SharedScheduledAgents.swift"
       ]
@@ -489,11 +493,11 @@
     {
       "id": "temporary-shared-services",
       "classification": "temporary_swift",
-      "current_owner": "Swift owns explicitly temporary product-proof services for editorial picks, categorization, cross-episode threading, clip-boundary assistance, and remaining provider/workflow adapters",
+      "current_owner": "Swift owns explicitly temporary categorization, clip-boundary assistance, and remaining provider/workflow adapters",
       "target_owner": "Pod0 Rust domain/application/workflow layers plus thin native capabilities",
       "reason": "The residual mixed service layer contains unsettled product behavior and thin platform executors. Listening, subscription durability, downloads, transcript workflow state, scheduled agents, active conversations, generated audio, and Nostr receipt authority have already moved to Rust and must not reappear here.",
       "boundary": "Migrated domains use typed Rust commands and projections. Temporary behavior writes only through its declared typed owner and may not create a second durable store.",
-      "persisted_state": "Temporary durable Swift state is limited to categories, threading records, agent activity/local diagnostics, and explicitly unmigrated adjuncts. Migrated library, workflow, conversation, memory, artifact, and publication facts remain Rust-owned.",
+      "persisted_state": "Temporary durable Swift state is limited to categories and explicitly unmigrated adjuncts. Migrated library, workflow, conversation, memory, artifact, activity, and publication facts remain Rust-owned or retired.",
       "migration_issues": [58, 59, 60, 69, 79, 80, 81, 82, 83, 94, 95, 96, 97, 115, 116, 117, 118, 119, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138],
       "deletion_target": "Issues #119 and #130 reduced download and scheduled work to typed native capabilities. Issues #60, #133, #134, and #138 migrate or delete each residual temporary policy while retaining capabilities that are native by design.",
       "priority": "high",

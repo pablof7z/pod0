@@ -55,7 +55,6 @@ struct DataExportView: View {
             statRow(icon: "headphones", tint: .blue, label: "Episodes", count: stats.episodes)
             statRow(icon: "note.text", tint: .indigo, label: "Notes", count: stats.notes)
             statRow(icon: "brain.head.profile", tint: .orange, label: "Memories", count: stats.memories)
-            statRow(icon: "clock.arrow.circlepath", tint: .gray, label: "Agent activity", count: stats.agentActivity)
         }
     }
 

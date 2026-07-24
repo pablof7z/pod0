@@ -55,6 +55,7 @@ enum DataExport {
     static func redactedState(from state: AppState) -> AppState {
         var copy = state
         copy.settings.legacyOpenRouterAPIKey = nil
+        copy.legacyAgentActivity = []
         return copy
     }
 
@@ -108,10 +109,9 @@ enum DataExport {
         var episodes: Int
         var notes: Int
         var memories: Int
-        var agentActivity: Int
 
         var totalRecords: Int {
-            subscriptions + episodes + notes + memories + agentActivity
+            subscriptions + episodes + notes + memories
         }
     }
 
@@ -120,8 +120,7 @@ enum DataExport {
             subscriptions: state.subscriptions.count,
             episodes: state.episodes.count,
             notes: state.notes.filter { !$0.deleted }.count,
-            memories: state.agentMemories.filter { !$0.deleted }.count,
-            agentActivity: state.agentActivity.count
+            memories: state.agentMemories.filter { !$0.deleted }.count
         )
     }
 }

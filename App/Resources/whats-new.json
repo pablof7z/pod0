@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-24T00:19:13Z",
+      "lines": [
+        "Pod0 now removes the obsolete Agent Activity Log after your history and memories are safely upgraded."
+      ]
+    },
+    {
       "shipped_at": "2026-07-24T00:00:03Z",
       "lines": [
         "Pod0 now removes retired Agent diagnostics after your conversation history is safely upgraded."

@@ -237,7 +237,7 @@ final class ProductSignalInstrumentationTests: XCTestCase {
         _ count: Int,
         sink: RecordingProductSignalSink
     ) async -> [ProductSignalObservation] {
-        let captured = await sink.waitForCount(count)
+        let captured = await sink.waitForCount(count, timeout: .seconds(10))
         XCTAssertGreaterThanOrEqual(
             captured.count,
             count,

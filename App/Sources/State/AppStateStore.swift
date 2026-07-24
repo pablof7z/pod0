@@ -241,10 +241,6 @@ final class AppStateStore {
         sharedLibrary?.attachRecall(RecallProviderService.shared, store: self)
         WorkflowRuntime.shared.attach(store: self)
         BackgroundWorkScheduler.shared.attach(store: self)
-        // Prune agent-activity entries older than 30 days so the persisted log
-        // doesn't grow unboundedly across many months of use. This fires one
-        // Persistence.save only when stale entries are actually found.
-        pruneStaleActivityEntries()
         // One-time cleanup of the deleted Wiki feature's on-disk pages
         // (`Application Support/podcastr/wiki/`). Guarded by a UserDefaults
         // flag so this touches the filesystem at most once per install.

@@ -14,7 +14,6 @@ struct SharedAgentChatTranscript: View {
                     ForEach(messages) { message in
                         AgentChatBubble(
                             message: message,
-                            batchFirstSummary: batchSummary(for: message),
                             onOpenRecallEvidence: onOpenRecallEvidence
                         )
                         .id(message.id)
@@ -50,8 +49,4 @@ struct SharedAgentChatTranscript: View {
         }
     }
 
-    private func batchSummary(for message: ChatMessage) -> String? {
-        guard case .toolBatch = message.role else { return nil }
-        return message.text
-    }
 }

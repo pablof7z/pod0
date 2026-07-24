@@ -35,6 +35,9 @@ extension Persistence {
             metadata.agentMemories = []
             metadata.compiledMemory = nil
         }
+        if sharedArtifactAuthority.withLock({ $0.legacyAgentActivityRetired }) {
+            metadata.legacyAgentActivity = []
+        }
         return metadata
     }
 

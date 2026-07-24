@@ -34,7 +34,11 @@ struct AppState: Codable, Sendable {
     /// Per-category user preferences keyed by `PodcastCategory.id`.
     var categorySettings: [UUID: CategorySettings] = [:]
     var settings: Settings = Settings()
-    var agentActivity: [AgentActivityEntry] = []
+    /// Decode-only compatibility source for the retired Swift agent activity
+    /// log. Shared-library bootstrap removes this payload after Rust agent
+    /// history and memory authority are verified. It must never be rendered,
+    /// exported, or written by product code.
+    var legacyAgentActivity: [LegacyAgentActivityEntry] = []
     /// User-authored transcript excerpts. See `Clip` and the composer in
     /// `App/Sources/Features/EpisodeDetail/Clip/`.
     var clips: [Clip] = []
@@ -54,7 +58,7 @@ struct AppState: Codable, Sendable {
         case podcasts, subscriptions, episodes
         case notes, agentMemories, compiledMemory, settings
         case categories, categorySettings
-        case agentActivity
+        case legacyAgentActivity = "agentActivity"
         case clips
         case agentScheduledTasks
         case lastPlayedEpisodeID
@@ -93,7 +97,10 @@ struct AppState: Codable, Sendable {
         categories = try c.decodeIfPresent([PodcastCategory].self, forKey: .categories) ?? []
         categorySettings = try c.decodeIfPresent([UUID: CategorySettings].self, forKey: .categorySettings) ?? [:]
         settings = try c.decodeIfPresent(Settings.self, forKey: .settings) ?? Settings()
-        agentActivity = try c.decodeIfPresent([AgentActivityEntry].self, forKey: .agentActivity) ?? []
+        legacyAgentActivity = try c.decodeIfPresent(
+            [LegacyAgentActivityEntry].self,
+            forKey: .legacyAgentActivity
+        ) ?? []
         clips = try c.decodeIfPresent([Clip].self, forKey: .clips) ?? []
         agentScheduledTasks = try c.decodeIfPresent([AgentScheduledTask].self, forKey: .agentScheduledTasks) ?? []
         lastPlayedEpisodeID = try c.decodeIfPresent(UUID.self, forKey: .lastPlayedEpisodeID)

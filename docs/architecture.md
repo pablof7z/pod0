@@ -31,11 +31,10 @@ Cancellable native host adapters execute URLSession/provider primitives,
 AVFoundation playback, Keychain/security prompts, platform files,
 notifications, speech, and other Apple capabilities. Swift renders Rust
 projections and retains durable authority only for explicitly unmigrated
-categories, threading records, agent activity/local diagnostic adjuncts, and
-supported rollback evidence. Pod0-specific Nostr publication semantics and
-receipts are Rust-owned over the exactly pinned generic NMP dependency. There
-is no Android product project; Kotlin binding smoke tests and Android-compatible
-Rust builds are readiness checks only.
+settings and categories, plus supported rollback evidence. Pod0-specific Nostr
+publication semantics and receipts are Rust-owned over the exactly pinned
+generic NMP dependency. There is no Android product project; Kotlin binding
+smoke tests and Android-compatible Rust builds are readiness checks only.
 
 ### Application state
 
@@ -47,8 +46,10 @@ call typed methods; migrated commands dispatch to the shared facade, and direct
 `AppState` contains replaceable projections for podcasts, subscriptions,
 episodes, notes, clips, memories, and scheduled tasks. Those projections are
 not written back as native durable authority. Swift remains authoritative for
-settings, categories/category settings, threading records, agent activity and
-local diagnostic adjuncts, plus explicitly retained compatibility evidence.
+settings and categories/category settings, plus explicitly retained
+compatibility evidence. The former Agent activity log has no live native
+writer or UI; its decode-only payload is removed after Rust conversation and
+memory authority are verified and is then excluded from every native write.
 
 ### Persistence topology
 

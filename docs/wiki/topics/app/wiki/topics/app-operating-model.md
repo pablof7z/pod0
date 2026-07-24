@@ -26,7 +26,7 @@ The app gates first run with onboarding, listens for shake-to-feedback, routes S
 
 ## State
 
-The state model is intentionally centralized. `AppState` stores subscriptions, episodes, notes, friends, memories, categories, settings, Nostr trust state, activity logs, clips, and threading data. `AppStateStore` wraps that struct, owns mutations, persists changes, rebuilds episode projections, coalesces playback-position writes, wires widget refreshes, attaches RAG and download services, starts feed refresh, and syncs selected settings via iCloud KVS.
+The native state model is a projection and compatibility shell around the Rust product kernel. `AppState` renders Rust-owned subscriptions, episodes, notes, memories, clips, and scheduled tasks while retaining native settings and categories. `AppStateStore` dispatches typed commands, applies bounded projections, rebuilds native lookup indexes, wires platform capabilities, and syncs selected settings via iCloud KVS. Migrated records are stripped from native persistence, and the former Agent activity log is retired after shared history and memory authority are verified.
 
 Secrets are outside this state blob. Provider API keys are stored by Keychain-backed credential stores, with only non-secret metadata in `Settings`.
 
