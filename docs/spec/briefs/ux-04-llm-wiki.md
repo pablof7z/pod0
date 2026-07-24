@@ -239,7 +239,7 @@ Search-within-wiki is a separate input from #7's semantic episode search: the wi
 - **Low-evidence claims.** Single-source claims render with an amber dotted left rule and the inline tag *(1 source)*. Claims with zero corroboration outside the user's library get *(uncorroborated)*.
 - **Sources retracted.** If a podcast episode is removed from a feed, every citation pointing to it gets struck-through and replaced with a footnote: *"Source no longer available — claim retained for context, evidence weight reduced."*
 - **Hallucination caught.** "This is wrong" submissions are queued; the *next* regeneration must either remove the claim, reduce its confidence, or surface a counter-citation. The user sees a small "you flagged this" badge until resolution.
-- **Empty wiki.** New users see a "Your wiki will appear as you listen" state, with three example pages from a featured podcast as a teaser.
+- **Empty wiki.** New users see a "Your wiki will appear as you listen" state, with three generic example pages as a teaser.
 - **Offline.** Pages are cached as static markdown + waveform sprites; citation peek falls back to transcript-only with a "audio offline" note.
 
 ---
