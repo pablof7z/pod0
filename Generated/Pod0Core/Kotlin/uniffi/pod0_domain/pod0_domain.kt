@@ -3834,6 +3834,8 @@ data class PodcastSubscriptionRecord (
     val `notificationsEnabled`: kotlin.Boolean
     ,
     val `defaultPlaybackRate`: PlaybackRatePermille?
+    ,
+    val `transcriptStartPolicy`: TranscriptStartPolicy
 
 ){
 
@@ -3855,6 +3857,7 @@ public object FfiConverterTypePodcastSubscriptionRecord: FfiConverterRustBuffer<
             FfiConverterTypeAutoDownloadPolicy.read(buf),
             FfiConverterBoolean.read(buf),
             FfiConverterOptionalTypePlaybackRatePermille.read(buf),
+            FfiConverterTypeTranscriptStartPolicy.read(buf),
         )
     }
 
@@ -3863,7 +3866,8 @@ public object FfiConverterTypePodcastSubscriptionRecord: FfiConverterRustBuffer<
             FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`subscribedAt`) +
             FfiConverterTypeAutoDownloadPolicy.allocationSize(value.`autoDownload`) +
             FfiConverterBoolean.allocationSize(value.`notificationsEnabled`) +
-            FfiConverterOptionalTypePlaybackRatePermille.allocationSize(value.`defaultPlaybackRate`)
+            FfiConverterOptionalTypePlaybackRatePermille.allocationSize(value.`defaultPlaybackRate`) +
+            FfiConverterTypeTranscriptStartPolicy.allocationSize(value.`transcriptStartPolicy`)
     )
 
     override fun write(value: PodcastSubscriptionRecord, buf: ByteBuffer) {
@@ -3872,6 +3876,7 @@ public object FfiConverterTypePodcastSubscriptionRecord: FfiConverterRustBuffer<
             FfiConverterTypeAutoDownloadPolicy.write(value.`autoDownload`, buf)
             FfiConverterBoolean.write(value.`notificationsEnabled`, buf)
             FfiConverterOptionalTypePlaybackRatePermille.write(value.`defaultPlaybackRate`, buf)
+            FfiConverterTypeTranscriptStartPolicy.write(value.`transcriptStartPolicy`, buf)
     }
 }
 
@@ -8522,6 +8527,97 @@ public object FfiConverterTypeTranscriptSource : FfiConverterRustBuffer<Transcri
             }
             is TranscriptSource.Unsupported -> {
                 buf.putInt(7)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+/**
+ * Controls when transcript work becomes eligible for a followed podcast.
+ * Manual user and agent requests remain independent of this background policy.
+ */
+sealed class TranscriptStartPolicy {
+
+    object Automatic : TranscriptStartPolicy()
+
+
+    object WhenPlayed : TranscriptStartPolicy()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : TranscriptStartPolicy()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptStartPolicy : FfiConverterRustBuffer<TranscriptStartPolicy>{
+    override fun read(buf: ByteBuffer): TranscriptStartPolicy {
+        return when(buf.getInt()) {
+            1 -> TranscriptStartPolicy.Automatic
+            2 -> TranscriptStartPolicy.WhenPlayed
+            3 -> TranscriptStartPolicy.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: TranscriptStartPolicy): ULong = when(value) {
+        is TranscriptStartPolicy.Automatic -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptStartPolicy.WhenPlayed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TranscriptStartPolicy.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: TranscriptStartPolicy, buf: ByteBuffer) {
+        when(value) {
+            is TranscriptStartPolicy.Automatic -> {
+                buf.putInt(1)
+                Unit
+            }
+            is TranscriptStartPolicy.WhenPlayed -> {
+                buf.putInt(2)
+                Unit
+            }
+            is TranscriptStartPolicy.Unsupported -> {
+                buf.putInt(3)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }

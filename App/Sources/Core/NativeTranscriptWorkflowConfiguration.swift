@@ -4,20 +4,6 @@ import Pod0Core
 /// Supplies bounded platform facts to the Rust transcript planner. It does not
 /// decide admission, fallback, retry, or workflow state.
 enum NativeTranscriptWorkflowConfiguration {
-    /// Bounds native capability announcements without taking ownership of
-    /// admission policy. Rust still decides whether an announced opportunity
-    /// creates, resumes, or leaves a workflow unchanged.
-    static func hasAutomaticExecutionOpportunity(
-        for episode: Episode,
-        configuration: TranscriptWorkflowConfiguration
-    ) -> Bool {
-        guard case .none = episode.transcriptState else { return false }
-        if episode.publisherTranscriptURL != nil, configuration.autoPublisherEnabled {
-            return true
-        }
-        return configuration.autoProviderEnabled && configuration.credentialAvailable
-    }
-
     static func make(
         episode: Episode,
         settings: Settings,

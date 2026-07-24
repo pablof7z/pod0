@@ -85,4 +85,27 @@ extension AppStateStore {
             policy: policy.coreValue
         ))
     }
+
+    func setSubscriptionTranscriptStartPolicy(
+        _ podcastID: UUID,
+        policy: TranscriptStartPolicy
+    ) {
+        Task { @MainActor [weak self] in
+            try? await self?.setSubscriptionTranscriptStartPolicyAndWait(
+                podcastID,
+                policy: policy
+            )
+        }
+    }
+
+    func setSubscriptionTranscriptStartPolicyAndWait(
+        _ podcastID: UUID,
+        policy: TranscriptStartPolicy
+    ) async throws {
+        guard let sharedLibrary else { throw SharedLibraryError.unavailable }
+        _ = try await sharedLibrary.execute(.setSubscriptionTranscriptStartPolicy(
+            podcastId: PodcastId(uuid: podcastID),
+            policy: policy.coreValue
+        ))
+    }
 }

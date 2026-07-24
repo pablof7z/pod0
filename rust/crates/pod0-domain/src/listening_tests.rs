@@ -81,6 +81,7 @@ pub(crate) fn golden_snapshot() -> ListeningDomainSnapshot {
             default_playback_rate: Some(PlaybackRatePermille {
                 value: number(&values, "default_playback_rate_permille"),
             }),
+            transcript_start_policy: TranscriptStartPolicy::Automatic,
         }],
         episodes: vec![EpisodeRecord {
             episode_id,

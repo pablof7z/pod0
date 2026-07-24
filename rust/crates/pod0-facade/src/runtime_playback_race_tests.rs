@@ -194,7 +194,12 @@ fn late_position_cannot_undo_explicit_completion_until_user_resumes() {
         0
     );
 
-    fixture.dispatch(122, PlaybackCommand::Play);
+    fixture.dispatch(
+        122,
+        PlaybackCommand::Play {
+            transcript_configuration: None,
+        },
+    );
     let _ = fixture.facade.next_host_requests(u16::MAX);
     record_observation(
         &fixture.facade,

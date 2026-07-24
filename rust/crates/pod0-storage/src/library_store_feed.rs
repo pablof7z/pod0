@@ -182,7 +182,8 @@ fn insert_subscription(
     transaction
         .execute(
             "INSERT INTO pod0_subscriptions(podcast_id,subscribed_at_ms,auto_download_code,\
-         wifi_only,notifications_enabled,source_import_id) VALUES(?1,?2,3,1,1,?3) \
+         wifi_only,notifications_enabled,source_import_id,transcript_start_policy_code) \
+         VALUES(?1,?2,3,1,1,?3,1) \
          ON CONFLICT(podcast_id) DO NOTHING",
             params![podcast_id.into_bytes().as_slice(), observed_at_ms, origin],
         )

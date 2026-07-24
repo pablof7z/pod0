@@ -67,6 +67,31 @@ fn automatic_remote_work_is_not_created_without_a_credential() {
 }
 
 #[test]
+fn playback_request_starts_provider_work_even_when_background_fallback_is_off() {
+    let mut value = input(TranscriptWorkflowOrigin::Playback);
+    value.auto_provider_enabled = false;
+
+    let plan = plan_transcript_workflow(value);
+    assert_eq!(plan.generation, TranscriptGenerationDecision::Ensure);
+    let request = plan.request.unwrap();
+    assert!(!request.publisher_first);
+    assert!(request.provider_fallback_enabled);
+}
+
+#[test]
+fn playback_request_surfaces_a_missing_provider_credential() {
+    let mut value = input(TranscriptWorkflowOrigin::Playback);
+    value.credential_available = false;
+
+    assert_eq!(
+        plan_transcript_workflow(value).generation,
+        TranscriptGenerationDecision::AwaitingCredential {
+            provider: TranscriptProvider::AssemblyAi,
+        }
+    );
+}
+
+#[test]
 fn explicit_remote_and_apple_requests_surface_missing_prerequisites() {
     let mut remote = input(TranscriptWorkflowOrigin::User);
     remote.credential_available = false;

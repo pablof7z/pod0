@@ -1,6 +1,6 @@
 use pod0_domain::{
     AutoDownloadMode, CompletionCause, CompletionStatus, DownloadArtifactStatus, PlaybackSleepMode,
-    PodcastKind, TranscriptArtifactStatus, TranscriptSource,
+    PodcastKind, TranscriptArtifactStatus, TranscriptSource, TranscriptStartPolicy,
 };
 
 use crate::StorageError;
@@ -52,6 +52,28 @@ pub(crate) fn decode_auto_download(
             wire_code: u32_value(wire, "auto-download wire code")?,
         }),
         _ => Err(corrupt("auto-download code")),
+    }
+}
+
+pub(crate) fn transcript_start_policy(value: &TranscriptStartPolicy) -> (i64, Option<i64>) {
+    match value {
+        TranscriptStartPolicy::Automatic => (1, None),
+        TranscriptStartPolicy::WhenPlayed => (2, None),
+        TranscriptStartPolicy::Unsupported { wire_code } => (255, Some(i64::from(*wire_code))),
+    }
+}
+
+pub(crate) fn decode_transcript_start_policy(
+    code: i64,
+    wire: Option<i64>,
+) -> Result<TranscriptStartPolicy, StorageError> {
+    match code {
+        1 => Ok(TranscriptStartPolicy::Automatic),
+        2 => Ok(TranscriptStartPolicy::WhenPlayed),
+        255 => Ok(TranscriptStartPolicy::Unsupported {
+            wire_code: u32_value(wire, "transcript start policy wire code")?,
+        }),
+        _ => Err(corrupt("transcript start policy code")),
     }
 }
 

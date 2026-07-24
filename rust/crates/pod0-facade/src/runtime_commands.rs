@@ -38,6 +38,13 @@ impl FacadeState {
             ApplicationCommand::SetSubscriptionAutoDownload { podcast_id, policy } => {
                 self.set_subscription_auto_download(&envelope, &fingerprint, podcast_id, policy)
             }
+            ApplicationCommand::SetSubscriptionTranscriptStartPolicy { podcast_id, policy } => self
+                .set_subscription_transcript_start_policy(
+                    &envelope,
+                    &fingerprint,
+                    podcast_id,
+                    policy,
+                ),
             ApplicationCommand::SetEpisodeStarred {
                 episode_id,
                 starred,

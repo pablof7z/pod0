@@ -11,11 +11,14 @@ extension SharedLibraryClient {
                 episode: episode,
                 settings: settings
             )
-            guard NativeTranscriptWorkflowConfiguration.hasAutomaticExecutionOpportunity(
-                for: episode,
-                configuration: configuration
-            ) else { continue }
-            let version = transcriptOpportunityVersion(episode, configuration: configuration)
+            let startPolicy = store?.subscription(
+                podcastID: episode.podcastID
+            )?.transcriptStartPolicy ?? .automatic
+            let version = transcriptOpportunityVersion(
+                episode,
+                configuration: configuration,
+                startPolicy: startPolicy
+            )
             guard announcedTranscriptWorkflowVersions[episode.id] != version else { continue }
             announcedTranscriptWorkflowVersions[episode.id] = version
             dispatchTranscript(.ensureTranscriptWorkflow(
@@ -150,13 +153,15 @@ private extension SharedLibraryClient {
 
     func transcriptOpportunityVersion(
         _ episode: Episode,
-        configuration: TranscriptWorkflowConfiguration
+        configuration: TranscriptWorkflowConfiguration,
+        startPolicy: TranscriptStartPolicy
     ) -> String {
         ArtifactRepository.version(parts: [
             DesiredStatePlanner.audioVersion(episode),
             String(describing: configuration.provider), configuration.model,
             configuration.localAudioUrl ?? "", String(configuration.credentialAvailable),
             String(configuration.autoPublisherEnabled), String(configuration.autoProviderEnabled),
+            startPolicy.rawValue,
             episode.publisherTranscriptURL?.absoluteString ?? "",
             episode.publisherTranscriptType?.rawValue ?? "",
         ])

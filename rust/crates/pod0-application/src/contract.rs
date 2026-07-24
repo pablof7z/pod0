@@ -2,7 +2,7 @@ use pod0_domain::{
     AutoDownloadPolicy, CancellationId, ChapterArtifactInput, ClipId, ClipRevision, ClipSource,
     CommandId, ContentDigest, EpisodeId, NoteAuthor, NoteId, NoteKind, NoteRevision, NoteTarget,
     PodcastId, RecallConfigurationInput, SpeakerId, StateRevision, TranscriptArtifactInput,
-    UnixTimestampMilliseconds,
+    TranscriptStartPolicy, UnixTimestampMilliseconds,
 };
 
 use crate::{
@@ -10,7 +10,7 @@ use crate::{
     TranscriptWorkflowConfiguration, TranscriptWorkflowOrigin,
 };
 
-pub const FACADE_CONTRACT_VERSION: u32 = 45;
+pub const FACADE_CONTRACT_VERSION: u32 = 46;
 pub const MAX_PROJECTION_ITEMS: u16 = 200;
 pub const MAX_OPERATION_ITEMS: usize = 32;
 pub const MAX_HOST_REQUEST_BATCH: u16 = 64;
@@ -80,6 +80,10 @@ pub enum ApplicationCommand {
     SetSubscriptionAutoDownload {
         podcast_id: PodcastId,
         policy: AutoDownloadPolicy,
+    },
+    SetSubscriptionTranscriptStartPolicy {
+        podcast_id: PodcastId,
+        policy: TranscriptStartPolicy,
     },
     SetEpisodeStarred {
         episode_id: EpisodeId,

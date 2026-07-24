@@ -23,7 +23,12 @@ fn restore_observes_once_and_checkpoints_on_first_sample_and_thirty_second_cap()
         .into_iter()
         .find(|request| matches!(request.request, HostRequest::ObservePlayback { .. }))
         .unwrap();
-    fixture.dispatch(2, PlaybackCommand::Play);
+    fixture.dispatch(
+        2,
+        PlaybackCommand::Play {
+            transcript_configuration: None,
+        },
+    );
     assert!(fixture.facade.next_host_requests(u16::MAX).iter().any(|request| {
         matches!(request.request, HostRequest::Play { episode_id, .. } if episode_id == fixture.episode_id)
     }));

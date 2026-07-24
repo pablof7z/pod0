@@ -53,6 +53,18 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
             hash.update(podcast_id.into_bytes());
             hash_policy(&mut hash, policy);
         }
+        ApplicationCommand::SetSubscriptionTranscriptStartPolicy { podcast_id, policy } => {
+            hash.update(b"transcript-start-policy\0");
+            hash.update(podcast_id.into_bytes());
+            match policy {
+                pod0_domain::TranscriptStartPolicy::Automatic => hash.update([1]),
+                pod0_domain::TranscriptStartPolicy::WhenPlayed => hash.update([2]),
+                pod0_domain::TranscriptStartPolicy::Unsupported { wire_code } => {
+                    hash.update([255]);
+                    hash.update(wire_code.to_be_bytes());
+                }
+            }
+        }
         ApplicationCommand::SetEpisodeStarred {
             episode_id,
             starred,

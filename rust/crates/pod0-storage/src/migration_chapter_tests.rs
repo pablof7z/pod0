@@ -225,6 +225,8 @@ fn schema_13_imported_history_revalidates_and_activates_after_upgrade() {
              DROP TABLE pod0_model_chapter_workflows;
              DROP TABLE pod0_publisher_chapter_workflows;
              DROP TABLE pod0_chapter_commands;
+             ALTER TABLE pod0_subscriptions DROP COLUMN transcript_start_policy_wire_code;
+             ALTER TABLE pod0_subscriptions DROP COLUMN transcript_start_policy_code;
              CREATE TABLE pod0_chapter_selections_v13(
                episode_id BLOB NOT NULL CHECK(length(episode_id)=16),
                selection_revision INTEGER NOT NULL CHECK(selection_revision>=1),

@@ -6,7 +6,7 @@ import SwiftUI
 // per-category knobs:
 //   • Auto-download override (off when the toggle is off; falls back to
 //     the per-subscription policy as it stands today).
-//   • Per-feature toggles: transcription, RAG, notifs.
+//   • Per-feature toggles: RAG and notifications.
 //   • Read-only list of subscriptions in this category.
 //
 // The auto-download picker mirrors `ShowDetailSettingsSheet`'s 3-way
@@ -56,9 +56,6 @@ struct CategoryDetailView: View {
 
     private var featuresSection: some View {
         Section {
-            Toggle(isOn: toggleBinding(\.transcriptionEnabled)) {
-                Label("Transcription", systemImage: "captions.bubble.fill")
-            }
             Toggle(isOn: toggleBinding(\.ragEnabled)) {
                 Label("RAG indexing", systemImage: "brain")
             }
@@ -68,7 +65,7 @@ struct CategoryDetailView: View {
         } header: {
             Text("Features")
         } footer: {
-            Text("Disable features for categories you don't want analysed — entertainment shows, for example, often don't need transcripts.")
+            Text("Control indexing and notifications for every show in this category.")
         }
     }
 

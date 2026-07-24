@@ -211,6 +211,8 @@ fn schema_16_completion_is_preserved_and_no_longer_pins_the_current_request() {
              INSERT INTO pod0_model_chapter_completions SELECT *
                  FROM pod0_model_chapter_completions_v17;
              DROP TABLE pod0_model_chapter_completions_v17;
+             ALTER TABLE pod0_subscriptions DROP COLUMN transcript_start_policy_wire_code;
+             ALTER TABLE pod0_subscriptions DROP COLUMN transcript_start_policy_code;
              UPDATE pod0_schema_versions SET version=16 WHERE component='kernel';
              PRAGMA user_version=16;",
         )
@@ -227,7 +229,7 @@ fn schema_16_completion_is_preserved_and_no_longer_pins_the_current_request() {
         .unwrap();
     assert_eq!(
         report.applied_versions,
-        [17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]
+        [17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
     );
     let connection = rusqlite::Connection::open(&path).unwrap();
     connection.execute("PRAGMA foreign_keys=ON", []).unwrap();

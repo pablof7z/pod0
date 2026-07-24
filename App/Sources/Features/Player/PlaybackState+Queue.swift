@@ -53,7 +53,7 @@ extension PlaybackState {
             for item in items.dropFirst().reversed() {
                 sharedCore.dispatchPlayback(.enqueue(entry: item.coreValue, placement: .next))
             }
-            sharedCore.dispatchPlayback(.play)
+            sharedCore.dispatchPlay()
         } else {
             for item in items {
                 sharedCore.dispatchPlayback(.enqueue(entry: item.coreValue, placement: .back))

@@ -22,6 +22,10 @@ impl FacadeState {
         origin: TranscriptWorkflowOrigin,
         configuration: TranscriptWorkflowConfiguration,
     ) {
+        if !self.transcript_origin_is_allowed(episode_id, origin) {
+            self.succeed(envelope.command_id, None);
+            return;
+        }
         self.start_transcript_workflow(envelope, episode_id, origin, configuration, None);
     }
 

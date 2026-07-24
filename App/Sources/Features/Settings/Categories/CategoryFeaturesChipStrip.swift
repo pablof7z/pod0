@@ -4,7 +4,7 @@ import SwiftUI
 //
 // Compact icon-only strip that telegraphs which features are enabled for
 // a category. Used inside `CategoriesListView` rows so the user can scan
-// the list and immediately see "this category has transcription off".
+// the list and immediately see its feature overrides.
 //
 // Pure presentational — takes a snapshot of `CategorySettings` and renders.
 // No bindings, no store access. The list view rebuilds the strip on every
@@ -15,10 +15,6 @@ struct CategoryFeaturesChipStrip: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            chip(systemImage: "captions.bubble.fill",
-                 enabled: settings.transcriptionEnabled,
-                 enabledTint: .orange,
-                 accessibility: "Transcription")
             chip(systemImage: "brain",
                  enabled: settings.ragEnabled,
                  enabledTint: .purple,

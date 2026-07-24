@@ -137,6 +137,7 @@ mod runtime_playback_fingerprint;
 mod runtime_playback_host;
 mod runtime_playback_observations;
 mod runtime_playback_state;
+mod runtime_playback_transcripts;
 mod runtime_playback_transitions;
 mod runtime_projection;
 mod runtime_projection_envelope;

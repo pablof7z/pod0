@@ -4140,15 +4140,17 @@ public struct PodcastSubscriptionRecord: Equatable, Hashable {
     public let autoDownload: AutoDownloadPolicy
     public let notificationsEnabled: Bool
     public let defaultPlaybackRate: PlaybackRatePermille?
+    public let transcriptStartPolicy: TranscriptStartPolicy
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(podcastId: PodcastId, subscribedAt: UnixTimestampMilliseconds, autoDownload: AutoDownloadPolicy, notificationsEnabled: Bool, defaultPlaybackRate: PlaybackRatePermille?) {
+    public init(podcastId: PodcastId, subscribedAt: UnixTimestampMilliseconds, autoDownload: AutoDownloadPolicy, notificationsEnabled: Bool, defaultPlaybackRate: PlaybackRatePermille?, transcriptStartPolicy: TranscriptStartPolicy) {
         self.podcastId = podcastId
         self.subscribedAt = subscribedAt
         self.autoDownload = autoDownload
         self.notificationsEnabled = notificationsEnabled
         self.defaultPlaybackRate = defaultPlaybackRate
+        self.transcriptStartPolicy = transcriptStartPolicy
     }
 
 
@@ -4171,7 +4173,8 @@ public struct FfiConverterTypePodcastSubscriptionRecord: FfiConverterRustBuffer 
                 subscribedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
                 autoDownload: FfiConverterTypeAutoDownloadPolicy.read(from: &buf),
                 notificationsEnabled: FfiConverterBool.read(from: &buf),
-                defaultPlaybackRate: FfiConverterOptionTypePlaybackRatePermille.read(from: &buf)
+                defaultPlaybackRate: FfiConverterOptionTypePlaybackRatePermille.read(from: &buf),
+                transcriptStartPolicy: FfiConverterTypeTranscriptStartPolicy.read(from: &buf)
         )
     }
 
@@ -4181,6 +4184,7 @@ public struct FfiConverterTypePodcastSubscriptionRecord: FfiConverterRustBuffer 
         FfiConverterTypeAutoDownloadPolicy.write(value.autoDownload, into: &buf)
         FfiConverterBool.write(value.notificationsEnabled, into: &buf)
         FfiConverterOptionTypePlaybackRatePermille.write(value.defaultPlaybackRate, into: &buf)
+        FfiConverterTypeTranscriptStartPolicy.write(value.transcriptStartPolicy, into: &buf)
     }
 }
 
@@ -8943,6 +8947,86 @@ public func FfiConverterTypeTranscriptSource_lift(_ buf: RustBuffer) throws -> T
 #endif
 public func FfiConverterTypeTranscriptSource_lower(_ value: TranscriptSource) -> RustBuffer {
     return FfiConverterTypeTranscriptSource.lower(value)
+}
+
+
+
+/**
+ * Controls when transcript work becomes eligible for a followed podcast.
+ * Manual user and agent requests remain independent of this background policy.
+ */
+
+public enum TranscriptStartPolicy: Equatable, Hashable {
+
+    case automatic
+    case whenPlayed
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptStartPolicy: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptStartPolicy: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptStartPolicy
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptStartPolicy {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .automatic
+
+        case 2: return .whenPlayed
+
+        case 3: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: TranscriptStartPolicy, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .automatic:
+            writeInt(&buf, Int32(1))
+
+
+        case .whenPlayed:
+            writeInt(&buf, Int32(2))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptStartPolicy_lift(_ buf: RustBuffer) throws -> TranscriptStartPolicy {
+    return try FfiConverterTypeTranscriptStartPolicy.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptStartPolicy_lower(_ value: TranscriptStartPolicy) -> RustBuffer {
+    return FfiConverterTypeTranscriptStartPolicy.lower(value)
 }
 
 

@@ -1,8 +1,8 @@
 use pod0_domain::{
     AutoDownloadMode, AutoDownloadPolicy, EpisodeId, FeedIdentityV1, ListeningDomainSnapshot,
     ListeningPlaybackPolicy, PlaybackSleepMode, PodcastId, PodcastKind, PodcastRecord,
-    PodcastSubscriptionRecord, StateRevision, UnixTimestampMilliseconds, make_feed_identity_v1,
-    validate_listening_snapshot,
+    PodcastSubscriptionRecord, StateRevision, TranscriptStartPolicy, UnixTimestampMilliseconds,
+    make_feed_identity_v1, validate_listening_snapshot,
 };
 use serde_json::Value;
 
@@ -212,6 +212,7 @@ fn subscription(
             .default_playback_rate
             .map(|value| playback_rate(value, "subscription", index))
             .transpose()?,
+        transcript_start_policy: TranscriptStartPolicy::Automatic,
     })
 }
 

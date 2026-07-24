@@ -6,7 +6,10 @@ use pod0_domain::{
 use rusqlite::{Connection, OptionalExtension, Row};
 
 use crate::import_model::{LegacyBackupEvidence, ListeningImportReport};
-use crate::listening_db_codec::{corrupt, decode_auto_download, decode_podcast_kind, decode_sleep};
+use crate::listening_db_codec::{
+    corrupt, decode_auto_download, decode_podcast_kind, decode_sleep,
+    decode_transcript_start_policy,
+};
 use crate::listening_store_read_episode::read_episodes;
 use crate::{LegacyImportPlan, LegacySourceKind, StorageError};
 
@@ -108,7 +111,8 @@ fn read_subscriptions(
     let mut statement = connection
         .prepare(
             "SELECT podcast_id,subscribed_at_ms,auto_download_code,auto_download_wire_code,\
-         auto_download_latest_count,wifi_only,notifications_enabled,default_playback_rate_permille \
+         auto_download_latest_count,wifi_only,notifications_enabled,default_playback_rate_permille,\
+         transcript_start_policy_code,transcript_start_policy_wire_code \
          FROM pod0_subscriptions ORDER BY rowid",
         )
         .map_err(|error| StorageError::sqlite("prepare subscription projection", error))?;
@@ -124,6 +128,7 @@ fn read_subscriptions(
             default_playback_rate: row
                 .get::<_, Option<u16>>(7)?
                 .map(|value| PlaybackRatePermille { value }),
+            transcript_start_policy: decode_transcript_start_policy(row.get(8)?, row.get(9)?)?,
         })
     })
 }

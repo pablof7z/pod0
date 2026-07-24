@@ -34,8 +34,28 @@ extension PodcastSubscriptionRecord {
             subscribedAt: subscribedAt.date,
             autoDownload: autoDownload.swiftValue,
             notificationsEnabled: notificationsEnabled,
-            defaultPlaybackRate: defaultPlaybackRate.map { Double($0.value) / 1_000 }
+            defaultPlaybackRate: defaultPlaybackRate.map { Double($0.value) / 1_000 },
+            transcriptStartPolicy: transcriptStartPolicy.swiftValue
         )
+    }
+}
+
+extension Pod0Core.TranscriptStartPolicy {
+    var swiftValue: TranscriptStartPolicy {
+        switch self {
+        case .automatic: .automatic
+        case .whenPlayed: .whenPlayed
+        case .unsupported: .automatic
+        }
+    }
+}
+
+extension TranscriptStartPolicy {
+    var coreValue: Pod0Core.TranscriptStartPolicy {
+        switch self {
+        case .automatic: .automatic
+        case .whenPlayed: .whenPlayed
+        }
     }
 }
 

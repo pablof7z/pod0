@@ -14,6 +14,7 @@ struct ShowDetailSettingsSheet: View {
     @State private var autoDownloadChoice: AutoDownloadChoice
     @State private var latestNCount: Int
     @State private var wifiOnly: Bool
+    @State private var transcriptStartPolicy: TranscriptStartPolicy
 
     /// Picker-friendly enum that flattens `AutoDownloadPolicy.Mode`'s
     /// associated value into a stepper-driven count. `latestN` covers the
@@ -64,6 +65,9 @@ struct ShowDetailSettingsSheet: View {
             _latestNCount = State(initialValue: 5)
         }
         _wifiOnly = State(initialValue: policy.wifiOnly)
+        _transcriptStartPolicy = State(
+            initialValue: subscription?.transcriptStartPolicy ?? .automatic
+        )
     }
 
     var body: some View {
@@ -109,6 +113,26 @@ struct ShowDetailSettingsSheet: View {
                         Toggle("Wi-Fi only", isOn: $wifiOnly)
                             .onChange(of: wifiOnly) { _, _ in persistPolicy() }
                     }
+                }
+                Section {
+                    Picker("Create transcripts", selection: $transcriptStartPolicy) {
+                        ForEach(TranscriptStartPolicy.allCases) { policy in
+                            Text(policy.label).tag(policy)
+                        }
+                    }
+                    .onChange(of: transcriptStartPolicy) { _, policy in
+                        store.setSubscriptionTranscriptStartPolicy(
+                            podcast.id,
+                            policy: policy
+                        )
+                    }
+                } header: {
+                    Text("Transcripts")
+                } footer: {
+                    Text(
+                        "Automatic starts transcript work as episodes arrive. "
+                        + "When played waits until you start listening."
+                    )
                 }
                 Section("Feed") {
                     if let feedURL = podcast.feedURL {

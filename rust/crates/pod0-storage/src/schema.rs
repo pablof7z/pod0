@@ -129,21 +129,24 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
             podcast_columns.push("library_visible");
         }
         require_columns(connection, "pod0_podcasts", &podcast_columns)?;
-        require_columns(
-            connection,
-            "pod0_subscriptions",
-            &[
-                "auto_download_code",
-                "auto_download_latest_count",
-                "auto_download_wire_code",
-                "default_playback_rate_permille",
-                "notifications_enabled",
-                "podcast_id",
-                "source_import_id",
-                "subscribed_at_ms",
-                "wifi_only",
-            ],
-        )?;
+        let mut subscription_columns = vec![
+            "auto_download_code",
+            "auto_download_latest_count",
+            "auto_download_wire_code",
+            "default_playback_rate_permille",
+            "notifications_enabled",
+            "podcast_id",
+            "source_import_id",
+            "subscribed_at_ms",
+            "wifi_only",
+        ];
+        if version >= 29 {
+            subscription_columns.extend([
+                "transcript_start_policy_code",
+                "transcript_start_policy_wire_code",
+            ]);
+        }
+        require_columns(connection, "pod0_subscriptions", &subscription_columns)?;
         require_columns(
             connection,
             "pod0_episodes",
