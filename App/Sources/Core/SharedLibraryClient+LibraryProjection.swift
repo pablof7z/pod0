@@ -4,6 +4,9 @@ extension SharedLibraryClient {
     func receiveLibrary(_ envelope: ProjectionEnvelope) {
         guard envelope.stateRevision.value >= lastLibraryRevision else { return }
         lastLibraryRevision = envelope.stateRevision.value
+        guard case .library(let projection) = envelope.projection else { return }
+        resolveWaiters(projection.operations)
+        guard envelope.contentChanged else { return }
         let previous = cachedSnapshot
         let snapshot = loadAllPages()
         let readModelChanged = previous.map { !$0.hasSameReadModel(as: snapshot) } ?? true
@@ -12,8 +15,6 @@ extension SharedLibraryClient {
             store?.applySharedLibrary(snapshot)
             announcePublisherSourceChanges(previous: previous, current: snapshot)
         }
-        resolveWaiters(snapshot.operations)
-        dispatcher.executePendingRequests(from: facade)
         if readModelChanged {
             WorkflowRuntime.shared.wake()
         }

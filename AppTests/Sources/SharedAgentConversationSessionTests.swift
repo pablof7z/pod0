@@ -212,6 +212,7 @@ private final class StubSharedAgentConversationRuntime: SharedAgentConversationR
         subscriber?.receive(projection: ProjectionEnvelope(
             contractVersion: 1,
             stateRevision: StateRevision(value: stateRevision),
+            contentChanged: true,
             projection: .agentConversation(value: conversation)
         ))
     }

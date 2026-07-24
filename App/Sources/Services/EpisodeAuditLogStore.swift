@@ -10,11 +10,9 @@ import os.log
 /// the app's durable stores so a single fallback to `temporaryDirectory` covers
 /// every persistence path when the container is unavailable.
 ///
-/// Concurrency: every mutation runs on `@MainActor`. Writes are synchronous —
-/// the volume of events per episode is small (tens), and a synchronous append
-/// gives us a clean ordering guarantee without an extra lock. Reads from
-/// background contexts go through `loadDetached(episodeID:)` which performs
-/// its own JSON decode on the caller's queue.
+/// Concurrency: observable state stays on `@MainActor`; ordered disk work runs
+/// through a background tail so opening Diagnostics and workflow event bursts
+/// never perform file I/O on the UI executor.
 ///
 /// Cap: the most recent `maxEventsPerEpisode` entries are retained. This is
 /// generous (a transcript ingest produces ~6 events, a download ~3, plus
@@ -44,11 +42,15 @@ final class EpisodeAuditLogStore {
     /// directory bootstrapping so the same Application Support container is
     /// shared by every persistence path.
     let rootURL: URL
+    private let diskStore: EpisodeAuditLogDiskStore
 
     /// In-memory cache keyed by episode ID. Loaded lazily on first read so we
     /// don't walk the whole audit directory at launch. `@Observable` means SwiftUI
     /// re-renders the sheet whenever a new event lands for the displayed episode.
     private var cache: [UUID: [EpisodeAuditEvent]] = [:]
+    private var loadRequested: Set<UUID> = []
+    private var cacheRevisions: [UUID: UInt64] = [:]
+    private var diskTail: Task<Void, Never>?
 
     // MARK: Init
 
@@ -66,10 +68,7 @@ final class EpisodeAuditLogStore {
                 .appendingPathComponent("podcastr", isDirectory: true)
                 .appendingPathComponent("audit", isDirectory: true)
         }
-        try? FileManager.default.createDirectory(
-            at: rootURL,
-            withIntermediateDirectories: true
-        )
+        diskStore = EpisodeAuditLogDiskStore(rootURL: rootURL)
     }
 
     // MARK: API
@@ -87,7 +86,24 @@ final class EpisodeAuditLogStore {
             list = Array(list.suffix(maxEventsPerEpisode))
         }
         cache[event.episodeID] = list
-        persist(list, episodeID: event.episodeID)
+        let revision = advanceCacheRevision(for: event.episodeID)
+        enqueueDiskWork { [weak self] diskStore in
+            let persisted = await diskStore.append(
+                event,
+                maximumCount: self?.maxEventsPerEpisode ?? 200
+            )
+            guard let self, cacheRevisions[event.episodeID] == revision else { return }
+            let current = cache[event.episodeID] ?? []
+            let byID = Dictionary(
+                (persisted + current).map { ($0.id, $0) },
+                uniquingKeysWith: { _, latest in latest }
+            )
+            cache[event.episodeID] = Array(
+                byID.values
+                    .sorted { $0.timestamp < $1.timestamp }
+                    .suffix(maxEventsPerEpisode)
+            )
+        }
     }
 
     /// Convenience builder. Captures the event and appends in one call.
@@ -113,9 +129,23 @@ final class EpisodeAuditLogStore {
     /// Returns the events for `episodeID`, newest first.
     func events(for episodeID: UUID) -> [EpisodeAuditEvent] {
         if let cached = cache[episodeID] { return cached }
-        let loaded = loadFromDisk(episodeID: episodeID)
-        cache[episodeID] = loaded
-        return loaded
+        cache[episodeID] = []
+        guard loadRequested.insert(episodeID).inserted else { return [] }
+        let revision = cacheRevisions[episodeID, default: 0]
+        enqueueDiskWork { [weak self] diskStore in
+            let loaded = await diskStore.load(episodeID: episodeID)
+            guard let self, cacheRevisions[episodeID, default: 0] == revision else { return }
+            let current = cache[episodeID] ?? []
+            let byID = Dictionary(
+                (loaded + current).map { ($0.id, $0) },
+                uniquingKeysWith: { _, latest in latest }
+            )
+            let merged = byID.values
+                .sorted { $0.timestamp < $1.timestamp }
+                .suffix(maxEventsPerEpisode)
+            cache[episodeID] = Array(merged)
+        }
+        return []
     }
 
     /// Reverse-chronological view for the Diagnostics sheet.
@@ -126,41 +156,97 @@ final class EpisodeAuditLogStore {
     /// Discards all events for `episodeID` (memory + disk).
     func clear(episodeID: UUID) {
         cache[episodeID] = []
-        let url = fileURL(for: episodeID)
-        try? FileManager.default.removeItem(at: url)
+        _ = advanceCacheRevision(for: episodeID)
+        enqueueDiskWork { diskStore in
+            await diskStore.clear(episodeID: episodeID)
+        }
     }
 
     // MARK: - Persistence
 
+    private func enqueueDiskWork(
+        _ operation: @escaping @MainActor (EpisodeAuditLogDiskStore) async -> Void
+    ) {
+        let previous = diskTail
+        let diskStore = diskStore
+        diskTail = Task { @MainActor in
+            await previous?.value
+            await operation(diskStore)
+        }
+    }
+
+    private func advanceCacheRevision(for episodeID: UUID) -> UInt64 {
+        let revision = cacheRevisions[episodeID, default: 0]
+        let next = revision == .max ? .max : revision + 1
+        cacheRevisions[episodeID] = next
+        return next
+    }
+}
+
+private actor EpisodeAuditLogDiskStore {
+    let rootURL: URL
+    private var cache: [UUID: [EpisodeAuditEvent]] = [:]
+
+    init(rootURL: URL) {
+        self.rootURL = rootURL
+    }
+
+    func append(
+        _ event: EpisodeAuditEvent,
+        maximumCount: Int
+    ) -> [EpisodeAuditEvent] {
+        var events = load(episodeID: event.episodeID)
+        if let index = events.firstIndex(where: { $0.id == event.id }) {
+            events[index] = event
+        } else {
+            events.append(event)
+        }
+        events = Array(
+            events.sorted { $0.timestamp < $1.timestamp }.suffix(maximumCount)
+        )
+        persist(events, episodeID: event.episodeID)
+        return events
+    }
+
     private func persist(_ events: [EpisodeAuditEvent], episodeID: UUID) {
-        let url = fileURL(for: episodeID)
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.sortedKeys]
         do {
-            let data = try encoder.encode(events)
-            try data.write(to: url, options: .atomic)
+            try FileManager.default.createDirectory(
+                at: rootURL,
+                withIntermediateDirectories: true
+            )
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            encoder.outputFormatting = [.sortedKeys]
+            try encoder.encode(events).write(to: fileURL(for: episodeID), options: .atomic)
+            cache[episodeID] = events
         } catch {
-            Self.logger.error(
-                "persist failed for \(episodeID, privacy: .public): \(String(describing: error), privacy: .public)"
+            Logger.app("EpisodeAuditLogStore").error(
+                "persist failed for \(episodeID, privacy: .public)"
             )
         }
     }
 
-    private func loadFromDisk(episodeID: UUID) -> [EpisodeAuditEvent] {
+    func load(episodeID: UUID) -> [EpisodeAuditEvent] {
+        if let cached = cache[episodeID] { return cached }
         let url = fileURL(for: episodeID)
         guard FileManager.default.fileExists(atPath: url.path) else { return [] }
         do {
-            let data = try Data(contentsOf: url)
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
-            return try decoder.decode([EpisodeAuditEvent].self, from: data)
+            let loaded = try decoder.decode([EpisodeAuditEvent].self, from: Data(contentsOf: url))
+            cache[episodeID] = loaded
+            return loaded
         } catch {
-            Self.logger.error(
-                "load failed for \(episodeID, privacy: .public): \(String(describing: error), privacy: .public)"
+            Logger.app("EpisodeAuditLogStore").error(
+                "load failed for \(episodeID, privacy: .public)"
             )
             return []
         }
+    }
+
+    func clear(episodeID: UUID) {
+        cache[episodeID] = []
+        try? FileManager.default.removeItem(at: fileURL(for: episodeID))
     }
 
     private func fileURL(for episodeID: UUID) -> URL {

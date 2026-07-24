@@ -221,16 +221,23 @@ extension CoreDownloadHost {
         resumeData: Data?
     ) {
         if cancelledTaskIDs.remove(taskID) != nil { return }
-        nativeStore.saveResumeData(resumeData, for: identity.attemptID)
         let code = httpStatus.map(CoreDownloadCoordinator.failureCode(httpStatus:))
             ?? CoreDownloadCoordinator.failureCode(error)
-        handleFailure(
-            identity: identity,
-            taskID: taskID,
-            code: code,
-            safeDetail: httpStatus.map { "HTTP response \($0)" }
-                ?? "Native transfer failed (\(error.domain):\(error.code))"
-        )
+        let safeDetail = httpStatus.map { "HTTP response \($0)" }
+            ?? "Native transfer failed (\(error.domain):\(error.code))"
+        let nativeStore = nativeStore
+        Task { @MainActor [weak self] in
+            await Task.detached(priority: .utility) {
+                nativeStore.saveResumeData(resumeData, for: identity.attemptID)
+            }.value
+            guard let self else { return }
+            handleFailure(
+                identity: identity,
+                taskID: taskID,
+                code: code,
+                safeDetail: safeDetail
+            )
+        }
     }
 
     func handleFailure(

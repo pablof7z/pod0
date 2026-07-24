@@ -6,7 +6,10 @@ use pod0_domain::{
 };
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, params};
 
-use crate::migration_db::{configure, open_connection, user_version, validate_open_database};
+use crate::migration_db::{
+    configure, open_connection, user_version, validate_current_database_identity,
+    validate_open_database,
+};
 use crate::{CURRENT_SCHEMA_VERSION, StorageError};
 
 #[derive(Clone, Debug)]
@@ -17,6 +20,7 @@ pub struct SignerStore {
 impl SignerStore {
     pub fn open(path: &Path) -> Result<Self, StorageError> {
         let connection = open_current(path, true)?;
+        validate_open_database(&connection, CURRENT_SCHEMA_VERSION)?;
         drop(connection);
         Ok(Self {
             path: path.to_owned(),

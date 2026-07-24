@@ -5,7 +5,7 @@ use pod0_application::{
     Clock, CommandEnvelope, CommandLedger, CommandRegistration, CoreFailure, CoreFailureCode,
     CoreWakeReason, HostCancellationRequest, HostObservation, HostRequestEnvelope,
     HostRequestLedger, OperationProjection, OperationResult, OperationStage, PlaybackPolicyState,
-    SubscriptionRegistry,
+    Projection, SubscriptionRegistry,
 };
 use pod0_domain::{
     CommandId, EpisodeId, HostRequestId, ListeningDomainSnapshot, RecallQueryId, StateRevision,
@@ -19,6 +19,7 @@ use pod0_storage::{
 
 use crate::ProjectionSubscriber;
 use crate::runtime_agent_modules::state::{PendingAgentRecallObservation, PendingAgentRequest};
+use crate::runtime_delivery_content::ProjectionDeliveryContent;
 use crate::runtime_evidence_state::PendingEvidenceIndex;
 pub(super) use crate::runtime_failure::failure;
 use crate::runtime_feed_state::PendingFeed;
@@ -103,6 +104,8 @@ pub(super) struct FacadeState {
     pub(super) operations: Vec<OperationProjection>,
     pub(super) subscriptions: SubscriptionRegistry,
     pub(super) subscribers: BTreeMap<SubscriptionId, Arc<dyn ProjectionSubscriber>>,
+    pub(super) delivered_projections: BTreeMap<SubscriptionId, Projection>,
+    pub(super) delivered_contents: BTreeMap<SubscriptionId, ProjectionDeliveryContent>,
 }
 
 impl FacadeState {

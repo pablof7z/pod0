@@ -87,9 +87,7 @@ extension SharedLibraryClient {
             offset += 200
         }
         cachedDownloadWorkflows = workflows
-        store?.applySharedLibrary(loadAllPages())
         workflowClient?.refresh(immediately: true)
-        dispatcher.executePendingRequests(from: facade)
     }
 
     func performDownloadAction(

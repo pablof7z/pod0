@@ -120,11 +120,6 @@ fn valid_lower_hex(value: &str, length: usize) -> bool {
 fn open_current(path: &Path, read_only: bool) -> Result<Connection, StorageError> {
     let connection = open_connection(path, read_only)?;
     let version = user_version(&connection)?;
-    validate_open_database(&connection, version)?;
-    if version != CURRENT_SCHEMA_VERSION {
-        return Err(StorageError::CorruptSchema {
-            detail: "signer store schema is not current",
-        });
-    }
+    validate_current_database_identity(&connection, version)?;
     Ok(connection)
 }

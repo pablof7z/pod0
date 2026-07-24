@@ -90,7 +90,6 @@ extension SharedLibraryClient {
         guard revision >= lastTranscriptWorkflowRevision else { return }
         lastTranscriptWorkflowRevision = revision
         workflowClient?.refresh(immediately: true)
-        dispatcher.executePendingRequests(from: facade)
     }
 
     nonisolated static func transcriptWorkflows(

@@ -8,6 +8,8 @@ import SwiftUI
 /// Owns no state; all interactions bubble up via callbacks. The play button
 /// label flips between Play / Resume based on `playbackPosition`.
 struct EpisodeDetailHeroView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let episode: Episode
     let showName: String
     let showImageURL: URL?
@@ -16,19 +18,11 @@ struct EpisodeDetailHeroView: View {
     let onPlayChapter: (Episode.Chapter) -> Void
     var isInQueue: Bool = false
     var onAddToQueue: () -> Void = {}
-    /// Active chapter id when this episode is currently playing — drives
-    /// the live "you are here" highlight in the chapters list. `nil` when
-    /// playback is on a different episode (or no chapters); the list
-    /// renders flat in that case.
     var activeChapterID: UUID? = nil
-    /// Live transfer progress and durable job state are separate from the
-    /// episode's stable local-file evidence.
     var downloadProgress: Double? = nil
     var downloadJobState: WorkJobState? = nil
     var preparationStatus: EpisodePreparationStatus? = nil
     var onPreparationAction: (EpisodePreparationActionKind, WorkflowJobProjection?) -> Void = { _, _ in }
-    /// Download / cancel / delete handler bound by the parent. The hero
-    /// flips the affordance based on the episode's `downloadState`.
     var onToggleDownload: () -> Void = {}
 
     var body: some View {
@@ -123,21 +117,18 @@ struct EpisodeDetailHeroView: View {
     // MARK: Sections
 
     private var actionRow: some View {
-        HStack(spacing: AppTheme.Spacing.md) {
+        actionLayout {
             Button(action: onPlay) {
                 Label(playLabel, systemImage: "play.fill")
                     .font(.system(.subheadline, design: .rounded).weight(.medium))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 9)
+                    .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil, alignment: .leading)
                     .glassSurface(cornerRadius: AppTheme.Corner.pill, interactive: true)
             }
             .buttonStyle(.plain)
             .foregroundStyle(.primary)
 
-            // Add to Queue / Queued — sits next to Play so the queue is
-            // a one-tap action instead of buried inside a long-press
-            // context menu. Flips to a disabled "Queued" state once the
-            // episode is in `PlaybackState.queue`.
             Button(action: onAddToQueue) {
                 Label(
                     isInQueue ? "Queued" : "Queue",
@@ -146,6 +137,7 @@ struct EpisodeDetailHeroView: View {
                 .font(.system(.subheadline, design: .rounded).weight(.medium))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 9)
+                .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil, alignment: .leading)
                 .glassSurface(cornerRadius: AppTheme.Corner.pill, interactive: !isInQueue)
             }
             .buttonStyle(.plain)
@@ -153,11 +145,14 @@ struct EpisodeDetailHeroView: View {
             .disabled(isInQueue)
             .accessibilityHint(isInQueue ? "Already in your Up Next queue" : "Add to Up Next queue")
 
-            // Download pill — promoted from the menu so the user sees a
-            // primary affordance and a live progress badge while bytes are
-            // moving. Flips between Download / Cancel (with %) / Downloaded.
             downloadPill
         }
+    }
+
+    private var actionLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: AppTheme.Spacing.md))
+            : AnyLayout(HStackLayout(spacing: AppTheme.Spacing.md))
     }
 
     @ViewBuilder
@@ -167,6 +162,7 @@ struct EpisodeDetailHeroView: View {
                 .font(.system(.subheadline, design: .rounded).weight(.medium))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 9)
+                .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil, alignment: .leading)
                 .glassSurface(cornerRadius: AppTheme.Corner.pill, interactive: false)
                 .foregroundStyle(.secondary)
                 .accessibilityLabel("Downloaded")
@@ -177,6 +173,7 @@ struct EpisodeDetailHeroView: View {
                     .font(.system(.subheadline, design: .rounded).weight(.medium))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 9)
+                    .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil, alignment: .leading)
                     .glassSurface(cornerRadius: AppTheme.Corner.pill, interactive: true)
             }
             .buttonStyle(.plain)
@@ -190,6 +187,7 @@ struct EpisodeDetailHeroView: View {
                     .font(.system(.subheadline, design: .rounded).weight(.medium))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 9)
+                    .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil, alignment: .leading)
                     .glassSurface(cornerRadius: AppTheme.Corner.pill, interactive: true)
             }
             .buttonStyle(.plain)
@@ -201,6 +199,7 @@ struct EpisodeDetailHeroView: View {
                     .font(.system(.subheadline, design: .rounded).weight(.medium))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 9)
+                    .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil, alignment: .leading)
                     .glassSurface(cornerRadius: AppTheme.Corner.pill, interactive: true)
             }
             .buttonStyle(.plain)
@@ -213,6 +212,7 @@ struct EpisodeDetailHeroView: View {
                     .font(.system(.subheadline, design: .rounded).weight(.medium))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 9)
+                    .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil, alignment: .leading)
                     .glassSurface(cornerRadius: AppTheme.Corner.pill, interactive: true)
             }
             .buttonStyle(.plain)

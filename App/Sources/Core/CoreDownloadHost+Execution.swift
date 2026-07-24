@@ -31,6 +31,7 @@ extension CoreDownloadHost {
             )
             return
         }
+        let nativeStore = nativeStore
         Task { @MainActor [weak self] in
             guard let self else { return }
             let tasks = await session.allTasks.compactMap { $0 as? URLSessionDownloadTask }
@@ -43,7 +44,10 @@ extension CoreDownloadHost {
                 return
             }
             let task: URLSessionDownloadTask
-            if let resumeData = nativeStore.resumeData(for: resumeKey) {
+            let resumeData = await Task.detached(priority: .utility) {
+                nativeStore.resumeData(for: resumeKey)
+            }.value
+            if let resumeData {
                 task = session.downloadTask(withResumeData: resumeData)
             } else {
                 task = session.downloadTask(with: url)
@@ -103,7 +107,9 @@ extension CoreDownloadHost {
             identitiesByTask[task.taskIdentifier] = nil
             Task { @MainActor [weak self, nativeStore] in
                 let resumeData = await task.cancelByProducingResumeData()
-                nativeStore.saveResumeData(resumeData, for: attemptID)
+                await Task.detached(priority: .utility) {
+                    nativeStore.saveResumeData(resumeData, for: attemptID)
+                }.value
                 guard let self else { return }
                 clearProgress(for: episodeID)
                 emit(

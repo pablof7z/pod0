@@ -8,6 +8,7 @@ pub(super) fn projection_envelope(
     ProjectionEnvelope {
         contract_version: pod0_application::FACADE_CONTRACT_VERSION,
         state_revision,
+        content_changed: true,
         projection,
     }
 }

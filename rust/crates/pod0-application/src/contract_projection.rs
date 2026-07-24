@@ -94,6 +94,11 @@ impl ProjectionRequest {
 pub struct ProjectionEnvelope {
     pub contract_version: u32,
     pub state_revision: StateRevision,
+    /// True when the requested projection's read model changed since the
+    /// subscriber's previous delivery. Operation-only library deliveries set
+    /// this to false so native clients can resolve commands without reloading
+    /// durable state.
+    pub content_changed: bool,
     pub projection: Projection,
 }
 

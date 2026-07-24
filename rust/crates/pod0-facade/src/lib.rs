@@ -96,6 +96,7 @@ mod runtime_commands;
 mod runtime_core_wakes;
 mod runtime_cross_platform_fingerprint;
 mod runtime_deliveries;
+mod runtime_delivery_content;
 mod runtime_download_admission;
 #[cfg(test)]
 mod runtime_download_admission_tests;
@@ -290,7 +291,6 @@ pub trait Pod0ApplicationApi: Send + Sync {
     ) -> SubscriptionId;
     fn unsubscribe(&self, subscription_id: SubscriptionId);
     fn next_host_requests(&self, maximum_count: u16) -> Vec<HostRequestEnvelope>;
-
     fn next_host_cancellations(&self, maximum_count: u16) -> Vec<HostCancellationRequest>;
     fn record_host_observation(
         &self,

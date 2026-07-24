@@ -18,6 +18,5 @@ extension SharedLibraryClient {
         lastNostrSignerRevision = revision
         cachedNostrSigner = projection
         resolveWaiters(projection.operations)
-        dispatcher.executePendingRequests(from: facade)
     }
 }

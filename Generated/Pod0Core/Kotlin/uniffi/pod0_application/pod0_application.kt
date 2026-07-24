@@ -5818,6 +5818,14 @@ data class ProjectionEnvelope (
     ,
     val `stateRevision`: StateRevision
     ,
+    /**
+     * True when the requested projection's read model changed since the
+     * subscriber's previous delivery. Operation-only library deliveries set
+     * this to false so native clients can resolve commands without reloading
+     * durable state.
+     */
+    val `contentChanged`: kotlin.Boolean
+    ,
     val `projection`: Projection
 
 ){
@@ -5837,6 +5845,7 @@ public object FfiConverterTypeProjectionEnvelope: FfiConverterRustBuffer<Project
         return ProjectionEnvelope(
             FfiConverterUInt.read(buf),
             FfiConverterTypeStateRevision.read(buf),
+            FfiConverterBoolean.read(buf),
             FfiConverterTypeProjection.read(buf),
         )
     }
@@ -5844,12 +5853,14 @@ public object FfiConverterTypeProjectionEnvelope: FfiConverterRustBuffer<Project
     override fun allocationSize(value: ProjectionEnvelope) = (
             FfiConverterUInt.allocationSize(value.`contractVersion`) +
             FfiConverterTypeStateRevision.allocationSize(value.`stateRevision`) +
+            FfiConverterBoolean.allocationSize(value.`contentChanged`) +
             FfiConverterTypeProjection.allocationSize(value.`projection`)
     )
 
     override fun write(value: ProjectionEnvelope, buf: ByteBuffer) {
             FfiConverterUInt.write(value.`contractVersion`, buf)
             FfiConverterTypeStateRevision.write(value.`stateRevision`, buf)
+            FfiConverterBoolean.write(value.`contentChanged`, buf)
             FfiConverterTypeProjection.write(value.`projection`, buf)
     }
 }

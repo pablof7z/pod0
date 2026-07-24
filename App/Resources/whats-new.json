@@ -2,6 +2,18 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-24T12:08:00Z",
+      "lines": [
+        "Pod0 now stays responsive while launching, starting playback, and managing downloads."
+      ]
+    },
+    {
+      "shipped_at": "2026-07-24T11:18:00Z",
+      "lines": [
+        "Episode playback and download actions now remain clear at larger accessibility text sizes."
+      ]
+    },
+    {
       "shipped_at": "2026-07-24T11:07:45Z",
       "lines": [
         "Show details and episode lists now stay readable at larger accessibility text sizes."

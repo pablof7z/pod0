@@ -103,11 +103,14 @@ final class CoreDownloadHost: CoreDownloadHosting {
         guard let task = tasksByRequest.removeValue(forKey: requestID) else { return }
         cancelledTaskIDs.insert(task.taskIdentifier)
         identitiesByTask[task.taskIdentifier] = nil
-        Task { [nativeStore, attemptID = identity.attemptID] in
+        Task { @MainActor [weak self, nativeStore, attemptID = identity.attemptID] in
             let resumeData = await task.cancelByProducingResumeData()
-            nativeStore.saveResumeData(resumeData, for: attemptID)
+            await Task.detached(priority: .utility) {
+                nativeStore.saveResumeData(resumeData, for: attemptID)
+            }.value
+            guard let self else { return }
+            clearProgress(for: identity.episodeID)
         }
-        clearProgress(for: identity.episodeID)
     }
 
     func retire(

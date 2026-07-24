@@ -119,7 +119,6 @@ extension SharedLibraryClient {
         cachedPublisherChapterWorkflows = projection.publisher
         if publisherChanged { announcedModelChapterVersions.removeAll() }
         workflowClient?.refresh(immediately: true)
-        dispatcher.executePendingRequests(from: facade)
         if publisherChanged { WorkflowRuntime.shared.wake() }
     }
 

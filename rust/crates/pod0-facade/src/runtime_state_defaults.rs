@@ -81,6 +81,8 @@ impl Default for FacadeState {
             operations: Vec::new(),
             subscriptions: SubscriptionRegistry::default(),
             subscribers: BTreeMap::new(),
+            delivered_projections: BTreeMap::new(),
+            delivered_contents: BTreeMap::new(),
         }
     }
 }

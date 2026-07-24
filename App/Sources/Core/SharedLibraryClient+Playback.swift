@@ -56,6 +56,5 @@ extension SharedLibraryClient {
                 store?.episode(id: id)
             }
         }
-        dispatcher.executePendingRequests(from: facade)
     }
 }

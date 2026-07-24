@@ -30,7 +30,6 @@ extension SharedLibraryClient {
         lastScheduledAgentRevision = revision
         cachedScheduledAgent = loadScheduledAgentPages(fallback: projection)
         if let store { publishScheduledAgents(to: store) }
-        dispatcher.executePendingRequests(from: facade)
     }
 
     func publishScheduledAgents(to store: AppStateStore) {

@@ -67,6 +67,8 @@ pub(crate) fn application_id(connection: &Connection) -> Result<i64, StorageErro
         .map_err(|error| StorageError::sqlite("read application id", error))
 }
 
+include!("migration_db_validation.rs");
+
 pub(crate) fn validate_open_database(
     connection: &Connection,
     version: u32,

@@ -194,7 +194,13 @@ impl Pod0Facade {
             let mut state = self.state();
             let id = state.subscriptions.subscribe(request);
             state.subscribers.insert(id, Arc::clone(&subscriber));
-            (id, state.snapshot(request))
+            let projection = state.snapshot(request);
+            let content = state.delivery_content(request, &projection.projection);
+            state
+                .delivered_projections
+                .insert(id, projection.projection.clone());
+            state.delivered_contents.insert(id, content);
+            (id, projection)
         };
         subscriber.receive(projection);
         subscription_id
@@ -204,6 +210,8 @@ impl Pod0Facade {
         let mut state = self.state();
         let _ = state.subscriptions.unsubscribe(subscription_id);
         state.subscribers.remove(&subscription_id);
+        state.delivered_projections.remove(&subscription_id);
+        state.delivered_contents.remove(&subscription_id);
     }
 
     pub fn next_host_requests(&self, maximum_count: u16) -> Vec<HostRequestEnvelope> {

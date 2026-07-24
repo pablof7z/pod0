@@ -6030,13 +6030,27 @@ public func FfiConverterTypePodcastSummary_lower(_ value: PodcastSummary) -> Rus
 public struct ProjectionEnvelope: Equatable, Hashable {
     public let contractVersion: UInt32
     public let stateRevision: StateRevision
+    /**
+     * True when the requested projection's read model changed since the
+     * subscriber's previous delivery. Operation-only library deliveries set
+     * this to false so native clients can resolve commands without reloading
+     * durable state.
+     */
+    public let contentChanged: Bool
     public let projection: Projection
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(contractVersion: UInt32, stateRevision: StateRevision, projection: Projection) {
+    public init(contractVersion: UInt32, stateRevision: StateRevision,
+        /**
+         * True when the requested projection's read model changed since the
+         * subscriber's previous delivery. Operation-only library deliveries set
+         * this to false so native clients can resolve commands without reloading
+         * durable state.
+         */contentChanged: Bool, projection: Projection) {
         self.contractVersion = contractVersion
         self.stateRevision = stateRevision
+        self.contentChanged = contentChanged
         self.projection = projection
     }
 
@@ -6058,6 +6072,7 @@ public struct FfiConverterTypeProjectionEnvelope: FfiConverterRustBuffer {
             try ProjectionEnvelope(
                 contractVersion: FfiConverterUInt32.read(from: &buf),
                 stateRevision: FfiConverterTypeStateRevision.read(from: &buf),
+                contentChanged: FfiConverterBool.read(from: &buf),
                 projection: FfiConverterTypeProjection.read(from: &buf)
         )
     }
@@ -6065,6 +6080,7 @@ public struct FfiConverterTypeProjectionEnvelope: FfiConverterRustBuffer {
     public static func write(_ value: ProjectionEnvelope, into buf: inout [UInt8]) {
         FfiConverterUInt32.write(value.contractVersion, into: &buf)
         FfiConverterTypeStateRevision.write(value.stateRevision, into: &buf)
+        FfiConverterBool.write(value.contentChanged, into: &buf)
         FfiConverterTypeProjection.write(value.projection, into: &buf)
     }
 }

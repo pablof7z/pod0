@@ -5,7 +5,10 @@ use rusqlite::{Connection, Transaction, TransactionBehavior};
 
 use crate::evidence_codec::generation_id;
 use crate::evidence_store_read::{read_artifact, read_summary, selected_generation_id};
-use crate::migration_db::{configure, open_connection, user_version, validate_open_database};
+use crate::migration_db::{
+    configure, open_connection, user_version, validate_current_database_identity,
+    validate_open_database,
+};
 use crate::{CURRENT_SCHEMA_VERSION, EvidenceGenerationSummary, StorageError};
 
 #[derive(Clone, Debug)]
@@ -16,6 +19,7 @@ pub struct EvidenceStore {
 impl EvidenceStore {
     pub fn open(path: &Path) -> Result<Self, StorageError> {
         let connection = open_current(path, true)?;
+        validate_open_database(&connection, CURRENT_SCHEMA_VERSION)?;
         require_valid_foreign_keys(&connection)?;
         Ok(Self {
             path: path.to_owned(),
@@ -157,12 +161,7 @@ fn exists(connection: &Connection, sql: &str, identifier: &[u8]) -> Result<bool,
 fn open_current(path: &Path, read_only: bool) -> Result<Connection, StorageError> {
     let connection = open_connection(path, read_only)?;
     let version = user_version(&connection)?;
-    validate_open_database(&connection, version)?;
-    if version != CURRENT_SCHEMA_VERSION {
-        return Err(StorageError::CorruptSchema {
-            detail: "evidence store schema is not current",
-        });
-    }
+    validate_current_database_identity(&connection, version)?;
     Ok(connection)
 }
 

@@ -9,7 +9,7 @@ enum UsageLedgerPersistenceStatus: Equatable {
 
 @MainActor
 final class CostLedger: ObservableObject {
-    static let shared = CostLedger()
+    static let shared = CostLedger(writeMode: .background)
     static let maximumRecordCount = 500
     static let retentionDays = 90
 
@@ -19,20 +19,36 @@ final class CostLedger: ObservableObject {
     private let directoryURL: URL
     private let fileURL: URL
     private let now: () -> Date
-    private static let logger = Logger.app("CostLedger")
+    private let writeMode: WriteMode
+    private var backgroundWriteTail: Task<Void, Never>?
+    nonisolated private static let logger = Logger.app("CostLedger")
 
-    private convenience init() {
+    private enum WriteMode {
+        case immediate
+        case background
+    }
+
+    private convenience init(writeMode: WriteMode) {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
         self.init(fileURL: base
             .appendingPathComponent("UsageLedger", isDirectory: true)
-            .appendingPathComponent("ledger.json"))
+            .appendingPathComponent("ledger.json"), now: Date.init, writeMode: writeMode)
     }
 
-    init(fileURL: URL, now: @escaping () -> Date = Date.init) {
+    convenience init(fileURL: URL, now: @escaping () -> Date = Date.init) {
+        self.init(fileURL: fileURL, now: now, writeMode: .immediate)
+    }
+
+    private init(
+        fileURL: URL,
+        now: @escaping () -> Date,
+        writeMode: WriteMode
+    ) {
         self.fileURL = fileURL
         directoryURL = fileURL.deletingLastPathComponent()
         self.now = now
+        self.writeMode = writeMode
         do {
             try FileManager.default.createDirectory(
                 at: directoryURL,
@@ -133,29 +149,39 @@ final class CostLedger: ObservableObject {
     }
 
     private func save() {
+        guard writeMode == .immediate else {
+            let snapshot = records
+            let fileURL = fileURL
+            let previous = backgroundWriteTail
+            backgroundWriteTail = Task { @MainActor [weak self] in
+                await previous?.value
+                let succeeded = await Task.detached(priority: .utility) {
+                    Self.persist(snapshot, to: fileURL)
+                }.value
+                guard let self else { return }
+                persistenceStatus = succeeded ? .ready : .unavailable
+            }
+            return
+        }
+        persistenceStatus = Self.persist(records, to: fileURL) ? .ready : .unavailable
+    }
+
+    nonisolated private static func persist(_ records: [UsageRecord], to fileURL: URL) -> Bool {
         do {
-            let data = try Self.encoder.encode(records)
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            encoder.outputFormatting = [.sortedKeys]
+            let data = try encoder.encode(records)
             try data.write(
                 to: fileURL,
                 options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]
             )
-            persistenceStatus = .ready
+            return true
         } catch {
-            persistenceStatus = .unavailable
             Self.logger.error("Usage ledger save failed")
+            return false
         }
     }
-
-    /// Configured once. `save()` runs on every cost-log (every LLM
-    /// call the user makes), so per-call encoder construction +
-    /// `.iso8601` / `.sortedKeys` configuration was real (if modest)
-    /// waste.
-    private static let encoder: JSONEncoder = {
-        let e = JSONEncoder()
-        e.dateEncodingStrategy = .iso8601
-        e.outputFormatting = [.sortedKeys]
-        return e
-    }()
 
     private static func load(from url: URL) throws -> [UsageRecord] {
         guard FileManager.default.fileExists(atPath: url.path) else { return [] }
