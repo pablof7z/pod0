@@ -231,25 +231,29 @@ pub fn download_attempt_id(intent_id: DownloadIntentId, attempt: u16) -> Option<
     pod0_domain::download_attempt_identity(intent_id, attempt)
 }
 
-struct FramedHash(Sha256);
+pub(crate) struct FramedHash(Sha256);
 
 impl FramedHash {
-    fn new(domain: &[u8]) -> Self {
+    pub(crate) fn new(domain: &[u8]) -> Self {
         let mut value = Self(Sha256::new());
         value.bytes(domain);
         value
     }
 
-    fn bytes(&mut self, value: &[u8]) {
+    pub(crate) fn bytes(&mut self, value: &[u8]) {
         self.0.update((value.len() as u64).to_be_bytes());
         self.0.update(value);
     }
 
-    fn string(&mut self, value: &str) {
+    pub(crate) fn string(&mut self, value: &str) {
         self.bytes(value.as_bytes());
     }
 
-    fn u64(&mut self, value: u64) {
+    pub(crate) fn u64(&mut self, value: u64) {
+        self.bytes(&value.to_be_bytes());
+    }
+
+    pub(crate) fn i64(&mut self, value: i64) {
         self.bytes(&value.to_be_bytes());
     }
 
@@ -257,14 +261,14 @@ impl FramedHash {
         self.0.finalize().into()
     }
 
-    fn hex(self) -> String {
+    pub(crate) fn hex(self) -> String {
         self.finish()
             .iter()
             .map(|byte| format!("{byte:02x}"))
             .collect()
     }
 
-    fn first_16(self) -> [u8; 16] {
+    pub(crate) fn first_16(self) -> [u8; 16] {
         self.finish()[..16].try_into().expect("digest slice")
     }
 }

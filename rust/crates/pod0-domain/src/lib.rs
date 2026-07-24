@@ -75,6 +75,10 @@ opaque_id!(ChapterPlaybackSessionId, uniffi::Record);
 opaque_id!(ChapterModelSubmissionFenceId, uniffi::Record);
 opaque_id!(DownloadIntentId, uniffi::Record);
 opaque_id!(DownloadAttemptId, uniffi::Record);
+// Storage-only workflow identities stay off FFI until a bounded typed host
+// capability requires them.
+opaque_id!(FeedDiscoveryOccurrenceId);
+opaque_id!(FeedDiscoveryItemId);
 opaque_id!(TranscriptWorkflowId, uniffi::Record);
 opaque_id!(TranscriptAttemptId, uniffi::Record);
 opaque_id!(TranscriptSubmissionFenceId, uniffi::Record);

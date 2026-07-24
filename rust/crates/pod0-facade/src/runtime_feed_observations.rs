@@ -100,15 +100,18 @@ impl FacadeState {
             parsed.podcast,
             episodes,
             pending.intent == FeedIntent::Subscribe,
+            pending.intent == FeedIntent::Refresh,
             entity_tag,
             last_modified,
             observed_at_ms,
         );
         match result {
-            Ok((_, podcast_id)) => match self.reload_listening() {
+            Ok(applied) => match self.reload_listening() {
                 Ok(()) => self.succeed(
                     pending.command_id,
-                    Some(OperationResult::Podcast { podcast_id }),
+                    Some(OperationResult::Podcast {
+                        podcast_id: applied.podcast_id,
+                    }),
                 ),
                 Err(error) => self.fail(pending.command_id, storage_failure(error)),
             },

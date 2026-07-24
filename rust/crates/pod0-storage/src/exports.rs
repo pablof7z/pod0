@@ -30,6 +30,9 @@ pub use crate::evidence_model::{
     EvidenceSelectionReceipt, EvidenceStageReceipt, EvidenceVerificationReceipt,
 };
 pub use crate::evidence_store::EvidenceStore;
+pub use crate::feed_discovery_store_model::{
+    AppliedFeed, FeedDiscoveryItemRecord, FeedDiscoveryOccurrenceRecord,
+};
 pub use crate::import_model::{
     LegacyBackupEvidence, LegacyImportPlan, LegacySourceKind, ListeningImportReport,
     ListeningImportVerification,

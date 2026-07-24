@@ -1,8 +1,14 @@
-use pod0_domain::{CommandId, EpisodeId, EpisodeRecord, PodcastId, PodcastRecord, StateRevision};
+use std::collections::BTreeMap;
+
+use pod0_domain::{CommandId, EpisodeId, EpisodeRecord, PodcastId, PodcastRecord};
 use rusqlite::{OptionalExtension, Transaction, params};
 use sha2::{Digest, Sha256};
 
 use crate::StorageError;
+use crate::feed_discovery_store::{
+    NewFeedDiscoveryItem, apply_receipt_for_command, insert_apply_receipt, insert_occurrence,
+};
+use crate::feed_discovery_store_model::AppliedFeed;
 use crate::library_feed_codec;
 use crate::library_store::{LibraryStore, command_was_applied, finish_command, source_import_id};
 use crate::listening_db_codec::{bool_value, i64_value, podcast_kind};
@@ -16,16 +22,31 @@ impl LibraryStore {
         mut podcast: PodcastRecord,
         mut episodes: Vec<EpisodeRecord>,
         subscribe: bool,
+        record_discovery: bool,
         entity_tag: Option<String>,
         last_modified: Option<String>,
         observed_at_ms: i64,
-    ) -> Result<(StateRevision, PodcastId), StorageError> {
+    ) -> Result<AppliedFeed, StorageError> {
         self.write(|transaction| {
             if let Some(revision) =
                 command_was_applied(transaction, command_id, command_fingerprint)?
             {
-                let resolved = resolve_podcast_id(transaction, &podcast)?;
-                return Ok((revision, resolved));
+                if let Some((podcast_id, discovery_occurrence_id, inserted_episode_count)) =
+                    apply_receipt_for_command(transaction, command_id)?
+                {
+                    return Ok(AppliedFeed {
+                        revision,
+                        podcast_id,
+                        discovery_occurrence_id,
+                        inserted_episode_count,
+                    });
+                }
+                return Ok(AppliedFeed {
+                    revision,
+                    podcast_id: resolve_podcast_id(transaction, &podcast)?,
+                    discovery_occurrence_id: None,
+                    inserted_episode_count: 0,
+                });
             }
             let podcast_id = resolve_podcast_id(transaction, &podcast)?;
             if podcast_id != podcast.podcast_id {
@@ -35,18 +56,55 @@ impl LibraryStore {
                     episode.episode_id = episode_id(podcast_id, &episode.publisher_guid);
                 }
             }
+            let is_initial_population = !podcast_has_episodes(transaction, podcast_id)?;
             podcast.etag = entity_tag.or(podcast.etag);
             podcast.last_modified = last_modified.or(podcast.last_modified);
             upsert_podcast(transaction, &podcast)?;
+            let mut inserted = BTreeMap::new();
             for episode in &episodes {
-                upsert_episode(transaction, episode)?;
+                let (episode_id, was_inserted) = upsert_episode(transaction, episode)?;
+                if was_inserted || inserted.contains_key(&episode_id) {
+                    inserted.insert(
+                        episode_id,
+                        NewFeedDiscoveryItem {
+                            episode_id,
+                            input_version: pod0_application::feed_discovery_item_input_version(
+                                episode,
+                            ),
+                            published_at_ms: episode.published_at.value,
+                        },
+                    );
+                }
             }
             if subscribe {
                 insert_subscription(transaction, podcast_id, observed_at_ms)?;
             }
+            let inserted_episode_count =
+                u32::try_from(inserted.len()).map_err(|_| StorageError::CorruptSchema {
+                    detail: "feed discovery item count overflows",
+                })?;
             let revision =
                 finish_command(transaction, command_id, command_fingerprint, observed_at_ms)?;
-            Ok((revision, podcast_id))
+            let discovery_occurrence_id = if !record_discovery || inserted.is_empty() {
+                None
+            } else {
+                Some(insert_occurrence(
+                    transaction,
+                    command_id,
+                    podcast_id,
+                    is_initial_population,
+                    observed_at_ms,
+                    &inserted.into_values().collect::<Vec<_>>(),
+                )?)
+            };
+            let applied = AppliedFeed {
+                revision,
+                podcast_id,
+                discovery_occurrence_id,
+                inserted_episode_count,
+            };
+            insert_apply_receipt(transaction, command_id, &applied)?;
+            Ok(applied)
         })
     }
 }
@@ -119,8 +177,19 @@ pub(crate) fn upsert_podcast(
 pub(crate) fn upsert_episode(
     transaction: &Transaction<'_>,
     episode: &EpisodeRecord,
-) -> Result<(), StorageError> {
+) -> Result<(EpisodeId, bool), StorageError> {
     let origin = source_import_id(transaction)?;
+    let existing_id: Option<Vec<u8>> = transaction
+        .query_row(
+            "SELECT episode_id FROM pod0_episodes WHERE podcast_id=?1 AND publisher_guid=?2",
+            params![
+                episode.podcast_id.into_bytes().as_slice(),
+                episode.publisher_guid
+            ],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|error| StorageError::sqlite("read existing feed episode identity", error))?;
     transaction.execute(
         "INSERT INTO pod0_episodes(episode_id,podcast_id,publisher_guid,title,description,\
          published_at_ms,duration_ms,enclosure_url,enclosure_mime_type,image_url,resume_position_ms,\
@@ -159,7 +228,7 @@ pub(crate) fn upsert_episode(
          chapters_url=excluded.chapters_url,persons_json=excluded.persons_json,\
          sound_bites_json=excluded.sound_bites_json",
             params![
-                actual_id,
+                actual_id.as_slice(),
                 metadata.transcript_url,
                 metadata.transcript_media_type,
                 metadata.transcript_format_code,
@@ -170,7 +239,25 @@ pub(crate) fn upsert_episode(
             ],
         )
         .map_err(|error| StorageError::sqlite("upsert episode feed metadata", error))?;
-    Ok(())
+    let actual_id: [u8; 16] = actual_id
+        .try_into()
+        .map_err(|_| StorageError::CorruptSchema {
+            detail: "feed episode identity is malformed",
+        })?;
+    Ok((EpisodeId::from_bytes(actual_id), existing_id.is_none()))
+}
+
+fn podcast_has_episodes(
+    transaction: &Transaction<'_>,
+    podcast_id: PodcastId,
+) -> Result<bool, StorageError> {
+    transaction
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM pod0_episodes WHERE podcast_id=?1)",
+            [podcast_id.into_bytes().as_slice()],
+            |row| row.get::<_, bool>(0),
+        )
+        .map_err(|error| StorageError::sqlite("read podcast episode population", error))
 }
 
 fn insert_subscription(

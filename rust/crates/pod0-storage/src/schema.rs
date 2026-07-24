@@ -254,6 +254,9 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
     if version >= 28 {
         crate::schema_memories::validate_memory_schema(connection)?;
     }
+    if version >= 29 {
+        crate::schema_feed_discoveries::validate_feed_discovery_schema(connection)?;
+    }
     if version >= 8 {
         crate::schema_notes::validate_notes_schema(connection)?;
     }
