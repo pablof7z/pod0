@@ -126,19 +126,27 @@ extension SharedLibraryClient {
     func performDownloadAction(
         _ action: WorkflowJobAction,
         on projection: WorkflowJobProjection
-    ) -> WorkflowJobActionResult {
+    ) async -> WorkflowJobActionResult {
         guard projection.authority == .sharedRustDownloads,
               projection.allowedActions.contains(action),
-              cachedDownloadWorkflows[projection.subjectID]?.workflowRevision.value
-                == projection.coreWorkflowRevision
+              let workflow = cachedDownloadWorkflows[projection.subjectID],
+              workflow.workflowRevision.value == projection.coreWorkflowRevision
         else { return .stale }
-        switch action {
+        let command: ApplicationCommand = switch action {
         case .retry:
-            retryDownload(episodeID: projection.subjectID)
+            .requestEpisodeDownload(
+                episodeId: workflow.episodeId,
+                origin: workflow.origin
+            )
         case .cancel:
-            cancelDownload(episodeID: projection.subjectID)
+            .cancelEpisodeDownload(
+                episodeId: workflow.episodeId,
+                expectedWorkflowRevision: workflow.workflowRevision
+            )
         }
-        return .accepted(action)
+        let result = await executeWorkflowAction(command, action: action)
+        if case .accepted = result { workflowClient?.refresh(immediately: true) }
+        return result
     }
 
     nonisolated static func downloadWorkflows(

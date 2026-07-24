@@ -72,50 +72,53 @@ final class WorkflowRuntime {
     func perform(
         _ action: WorkflowJobAction,
         on projection: WorkflowJobProjection
-    ) -> WorkflowJobActionResult {
+    ) async -> WorkflowJobActionResult {
         if projection.authority == .sharedRustPublisherChapters {
-            return appStore?.sharedLibrary?.performPublisherChapterAction(
+            return await appStore?.sharedLibrary?.performPublisherChapterAction(
                 action,
                 on: projection
             ) ?? .failed
         }
         if projection.authority == .sharedRustModelChapters {
-            return appStore?.sharedLibrary?.performModelChapterAction(
+            return await appStore?.sharedLibrary?.performModelChapterAction(
                 action,
                 on: projection
             ) ?? .failed
         }
         if projection.authority == .sharedRustDownloads {
-            return appStore?.sharedLibrary?.performDownloadAction(
+            return await appStore?.sharedLibrary?.performDownloadAction(
                 action,
                 on: projection
             ) ?? .failed
         }
         if projection.authority == .sharedRustTranscripts {
-            return appStore?.sharedLibrary?.performTranscriptAction(
+            return await appStore?.sharedLibrary?.performTranscriptAction(
                 action,
                 on: projection
             ) ?? .failed
         }
         if projection.authority == .sharedRustScheduledAgents {
-            return appStore?.sharedLibrary?.performScheduledAgentAction(
+            return await appStore?.sharedLibrary?.performScheduledAgentAction(
                 action,
                 on: projection
             ) ?? .failed
         }
         guard let jobStore else { return .failed }
+        let result: WorkflowJobActionResult
         do {
-            let result = try jobStore.perform(
-                action,
-                jobID: projection.id,
-                expectedUpdatedAt: projection.updatedAt
-            )
+            result = try await Task.detached(priority: .userInitiated) {
+                try jobStore.perform(
+                    action,
+                    jobID: projection.id,
+                    expectedUpdatedAt: projection.updatedAt
+                )
+            }.value
             if case .accepted = result { wake() }
-            return result
         } catch {
             Self.logger.error("Unable to perform workflow action: \(error, privacy: .public)")
             return .failed
         }
+        return result
     }
 
     func latestJob(kind: WorkJobKind, subjectID: UUID) -> WorkJob? {

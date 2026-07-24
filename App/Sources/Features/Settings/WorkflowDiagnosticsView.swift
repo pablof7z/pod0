@@ -83,6 +83,8 @@ struct WorkflowDiagnosticsView: View {
     }
 
     private func perform(_ action: WorkflowJobAction, on job: WorkflowJobProjection) {
-        actionNotice = .make(for: workflows.perform(action, on: job))
+        Task {
+            actionNotice = .make(for: await workflows.perform(action, on: job))
+        }
     }
 }

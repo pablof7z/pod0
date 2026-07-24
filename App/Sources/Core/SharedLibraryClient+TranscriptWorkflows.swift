@@ -73,10 +73,18 @@ extension SharedLibraryClient {
     func performTranscriptAction(
         _ action: WorkflowJobAction,
         on projection: WorkflowJobProjection
-    ) -> WorkflowJobActionResult {
+    ) async -> WorkflowJobActionResult {
+        let request = ProjectionRequest(
+            scope: .transcriptWorkflows(
+                episodeId: EpisodeId(uuid: projection.subjectID)
+            ),
+            offset: 0,
+            maxItems: 1
+        )
+        let currentEnvelope = await coreSnapshot(request)
         guard projection.authority == .sharedRustTranscripts,
               let expected = projection.coreWorkflowRevision,
-              let current = transcriptWorkflow(episodeID: projection.subjectID),
+              let current = Self.transcriptWorkflow(in: currentEnvelope),
               current.workflowRevision.value == expected else { return .stale }
         let command: ApplicationCommand
         switch action {
@@ -102,12 +110,9 @@ extension SharedLibraryClient {
         default:
             return current.stage == .succeeded ? .alreadyComplete : .notAllowed
         }
-        dispatchTranscript(command)
-        guard transcriptWorkflow(episodeID: projection.subjectID)?.workflowRevision.value != expected
-        else { return .stale }
-        workflowClient?.refresh(immediately: true)
-        dispatcher.executePendingRequests(from: facade)
-        return .accepted(action)
+        let result = await executeWorkflowAction(command, action: action)
+        if case .accepted = result { workflowClient?.refresh(immediately: true) }
+        return result
     }
 
     func receiveTranscriptWorkflows(revision: UInt64) {
@@ -158,17 +163,12 @@ extension SharedLibraryClient {
 }
 
 private extension SharedLibraryClient {
-    func transcriptWorkflow(episodeID: UUID) -> TranscriptWorkflowProjection? {
-        Self.transcriptWorkflows(
-            facade: facade,
-            query: WorkflowProjectionQuery(
-                subjectIDs: [episodeID],
-                kinds: [.transcriptIngest, .transcriptIndex],
-                attentionKinds: [],
-                recentKinds: [],
-                limit: 1
-            )
-        ).first
+    nonisolated static func transcriptWorkflow(
+        in envelope: ProjectionEnvelope
+    ) -> TranscriptWorkflowProjection? {
+        guard case .transcriptWorkflows(let projection) = envelope.projection,
+              projection.failure == nil else { return nil }
+        return projection.workflows.first
     }
 
     nonisolated static func transcriptOpportunityVersion(
@@ -183,14 +183,5 @@ private extension SharedLibraryClient {
             episode.publisherTranscriptURL?.absoluteString ?? "",
             episode.publisherTranscriptType?.rawValue ?? "",
         ])
-    }
-
-    func dispatchTranscript(_ command: ApplicationCommand) {
-        facade.dispatch(command: CommandEnvelope(
-            commandId: CommandId(uuid: UUID()),
-            cancellationId: CancellationId(uuid: UUID()),
-            expectedRevision: nil,
-            command: command
-        ))
     }
 }

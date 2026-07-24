@@ -28,19 +28,24 @@ extension AppStateStore {
             lastRunAt: nil,
             nextRunAt: now.addingTimeInterval(intervalSeconds)
         )
-        _ = sharedLibrary?.ensureScheduledTask(
-            id: task.id,
-            label: label,
-            prompt: prompt,
-            intervalSeconds: intervalSeconds,
-            modelReference: state.settings.agentInitialModel,
-            nextRunAt: task.nextRunAt
-        )
+        let sharedLibrary = sharedLibrary
+        let modelReference = state.settings.agentInitialModel
+        Task {
+            _ = await sharedLibrary?.ensureScheduledTask(
+                id: task.id,
+                label: label,
+                prompt: prompt,
+                intervalSeconds: intervalSeconds,
+                modelReference: modelReference,
+                nextRunAt: task.nextRunAt
+            )
+        }
         return scheduledTasks.first(where: { $0.id == task.id }) ?? task
     }
 
     func removeScheduledTask(id: UUID) {
-        _ = sharedLibrary?.removeScheduledTask(id: id)
+        let sharedLibrary = sharedLibrary
+        Task { _ = await sharedLibrary?.removeScheduledTask(id: id) }
     }
 
     func updateScheduledTask(
@@ -49,13 +54,18 @@ extension AppStateStore {
         prompt: String,
         intervalSeconds: TimeInterval
     ) {
-        _ = sharedLibrary?.updateScheduledTask(
-            id: id,
-            label: label,
-            prompt: prompt,
-            intervalSeconds: intervalSeconds,
-            modelReference: state.settings.agentInitialModel,
-            nextRunAt: Date().addingTimeInterval(intervalSeconds)
-        )
+        let sharedLibrary = sharedLibrary
+        let modelReference = state.settings.agentInitialModel
+        let nextRunAt = Date().addingTimeInterval(intervalSeconds)
+        Task {
+            _ = await sharedLibrary?.updateScheduledTask(
+                id: id,
+                label: label,
+                prompt: prompt,
+                intervalSeconds: intervalSeconds,
+                modelReference: modelReference,
+                nextRunAt: nextRunAt
+            )
+        }
     }
 }

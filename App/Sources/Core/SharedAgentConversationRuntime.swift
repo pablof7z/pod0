@@ -58,24 +58,19 @@ extension SharedLibraryClient: SharedAgentConversationRuntime {
         _ conversationID: ConversationId,
         subscriber: any ProjectionSubscriber
     ) async -> SubscriptionId {
-        let facade = facade
-        return await Task.detached(priority: .utility) {
-            facade.subscribe(
-                request: ProjectionRequest(
-                    scope: .agentConversation(conversationId: conversationID),
-                    offset: 0,
-                    maxItems: 64
-                ),
-                subscriber: subscriber
-            )
-        }.value
+        await commandExecutor.subscribe(
+            ProjectionRequest(
+                scope: .agentConversation(conversationId: conversationID),
+                offset: 0,
+                maxItems: 64
+            ),
+            subscriber: subscriber,
+            to: facade
+        )
     }
 
     func unsubscribeAgentConversation(_ subscriptionID: SubscriptionId) async {
-        let facade = facade
-        await Task.detached(priority: .utility) {
-            facade.unsubscribe(subscriptionId: subscriptionID)
-        }.value
+        await commandExecutor.unsubscribe(subscriptionID, from: facade)
     }
 }
 

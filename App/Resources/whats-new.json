@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-24T20:46:24Z",
+      "lines": [
+        "Workflow actions and scheduled-task changes now keep the interface responsive."
+      ]
+    },
+    {
       "shipped_at": "2026-07-24T20:20:00Z",
       "lines": [
         "Clip sharing now shows only formats that are ready to use."

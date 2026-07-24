@@ -69,10 +69,16 @@ extension SharedLibraryClient {
     func performPublisherChapterAction(
         _ action: WorkflowJobAction,
         on projection: WorkflowJobProjection
-    ) -> WorkflowJobActionResult {
+    ) async -> WorkflowJobActionResult {
+        let request = ProjectionRequest(
+            scope: .chapterWorkflows(episodeId: EpisodeId(uuid: projection.subjectID)),
+            offset: 0,
+            maxItems: 2
+        )
+        let currentEnvelope = await coreSnapshot(request)
         guard projection.authority == .sharedRustPublisherChapters,
               let expectedRevision = projection.coreWorkflowRevision,
-              let current = publisherChapterWorkflow(episodeID: projection.subjectID)
+              let current = Self.publisherChapterWorkflow(in: currentEnvelope)
         else { return .notFound }
         guard current.workflowRevision.value == expectedRevision else { return .stale }
 
@@ -92,17 +98,9 @@ extension SharedLibraryClient {
             return current.stage == .succeeded ? .alreadyComplete : .notAllowed
         }
 
-        facade.dispatch(command: CommandEnvelope(
-            commandId: CommandId(uuid: UUID()),
-            cancellationId: CancellationId(uuid: UUID()),
-            expectedRevision: nil,
-            command: command
-        ))
-        let updated = publisherChapterWorkflow(episodeID: projection.subjectID)
-        guard let updated, updated.workflowRevision.value > expectedRevision else { return .stale }
-        workflowClient?.refresh(immediately: true)
-        dispatcher.executePendingRequests(from: facade)
-        return .accepted(action)
+        let result = await executeWorkflowAction(command, action: action)
+        if case .accepted = result { workflowClient?.refresh(immediately: true) }
+        return result
     }
 
     func receiveChapterWorkflows(
@@ -118,14 +116,9 @@ extension SharedLibraryClient {
         if publisherChanged { WorkflowRuntime.shared.wake() }
     }
 
-    nonisolated private func publisherChapterWorkflow(
-        episodeID: UUID
+    nonisolated private static func publisherChapterWorkflow(
+        in envelope: ProjectionEnvelope
     ) -> PublisherChapterWorkflowProjection? {
-        let envelope = facade.snapshot(request: ProjectionRequest(
-            scope: .chapterWorkflows(episodeId: EpisodeId(uuid: episodeID)),
-            offset: 0,
-            maxItems: 2
-        ))
         guard case .chapterWorkflows(let projection) = envelope.projection,
               projection.failure == nil else { return nil }
         return projection.publisher.first

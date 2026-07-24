@@ -119,12 +119,16 @@ final class SharedLibraryClient {
         }
         self.subscriber = subscriber
         let facade = facade
+        let commandExecutor = commandExecutor
         subscriptionTask = Task { @MainActor [weak self] in
-            let subscriptions = await Task.detached(priority: .utility) {
-                Self.makeSubscriptions(facade: facade, subscriber: subscriber)
-            }.value
+            let subscriptions = await commandExecutor.makeSubscriptions(
+                facade: facade,
+                subscriber: subscriber
+            )
             guard !Task.isCancelled, let self, self.subscriber === subscriber else {
-                Task.detached { subscriptions.unsubscribeAll(from: facade) }
+                Task {
+                    await commandExecutor.unsubscribe(subscriptions.ids, from: facade)
+                }
                 return
             }
             install(subscriptions)
@@ -204,40 +208,41 @@ final class SharedLibraryClient {
         chapterProjectionTasks.removeAll()
         cancelAllRecallWaiters()
         dispatcher.shutdown()
-        if let librarySubscriptionID { facade.unsubscribe(subscriptionId: librarySubscriptionID) }
-        if let playbackSubscriptionID { facade.unsubscribe(subscriptionId: playbackSubscriptionID) }
-        unsubscribeFromRecallConfiguration()
-        if let chapterWorkflowSubscriptionID {
-            facade.unsubscribe(subscriptionId: chapterWorkflowSubscriptionID)
-        }
-        if let notesSubscriptionID { facade.unsubscribe(subscriptionId: notesSubscriptionID) }
-        if let memoriesSubscriptionID {
-            facade.unsubscribe(subscriptionId: memoriesSubscriptionID)
-        }
-        if let clipsSubscriptionID { facade.unsubscribe(subscriptionId: clipsSubscriptionID) }
-        if let downloadsSubscriptionID {
-            facade.unsubscribe(subscriptionId: downloadsSubscriptionID)
-        }
-        if let transcriptWorkflowSubscriptionID {
-            facade.unsubscribe(subscriptionId: transcriptWorkflowSubscriptionID)
-        }
-        if let newEpisodeNotificationSettingsSubscriptionID {
-            facade.unsubscribe(subscriptionId: newEpisodeNotificationSettingsSubscriptionID)
-        }
-        unsubscribeFromScheduledAgents()
-        if let nostrSignerSubscriptionID {
-            facade.unsubscribe(subscriptionId: nostrSignerSubscriptionID)
+        let subscriptionIDs = [
+            librarySubscriptionID,
+            playbackSubscriptionID,
+            recallConfigurationSubscriptionID,
+            chapterWorkflowSubscriptionID,
+            notesSubscriptionID,
+            memoriesSubscriptionID,
+            clipsSubscriptionID,
+            downloadsSubscriptionID,
+            transcriptWorkflowSubscriptionID,
+            newEpisodeNotificationSettingsSubscriptionID,
+            scheduledAgentSubscriptionID,
+            nostrSignerSubscriptionID,
+        ].compactMap { $0 }
+        if !subscriptionIDs.isEmpty {
+            let commandExecutor = commandExecutor
+            let facade = facade
+            Task {
+                await commandExecutor.unsubscribe(subscriptionIDs, from: facade)
+            }
         }
         librarySubscriptionID = nil
         playbackSubscriptionID = nil
+        recallConfigurationSubscriptionID = nil
         chapterWorkflowSubscriptionID = nil
         notesSubscriptionID = nil
         memoriesSubscriptionID = nil
         clipsSubscriptionID = nil
         downloadsSubscriptionID = nil
         transcriptWorkflowSubscriptionID = nil
+        newEpisodeNotificationSettingsSubscriptionID = nil
+        scheduledAgentSubscriptionID = nil
         nostrSignerSubscriptionID = nil
         cachedNostrSigner = nil
+        cachedScheduledAgent = nil
         chapterScopeCounts.removeAll()
         chapterSnapshots.removeAll()
         announcedPublisherChapterEpisodeIDs.removeAll()
@@ -248,6 +253,7 @@ final class SharedLibraryClient {
         workflowClient?.detachModelChapterCore()
         workflowClient?.detachDownloadCore()
         workflowClient?.detachTranscriptCore()
+        workflowClient?.detachScheduledAgentCore()
         playbackChapterEpisodeID = nil
         subscriber = nil
         for waiter in waiters.values {

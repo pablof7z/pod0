@@ -1,28 +1,10 @@
 import Pod0Core
 
 extension SharedLibraryClient {
-    func subscribeToRecallConfiguration(_ subscriber: SharedLibrarySubscriber) {
-        recallConfigurationSubscriptionID = facade.subscribe(
-            request: ProjectionRequest(
-                scope: .recallConfiguration,
-                offset: 0,
-                maxItems: 1
-            ),
-            subscriber: subscriber
-        )
-    }
-
     func publishRecallConfiguration(to store: AppStateStore) {
         if let configuration = cachedRecallConfiguration {
             store.applySharedRecallConfiguration(configuration)
         }
-    }
-
-    func unsubscribeFromRecallConfiguration() {
-        if let recallConfigurationSubscriptionID {
-            facade.unsubscribe(subscriptionId: recallConfigurationSubscriptionID)
-        }
-        recallConfigurationSubscriptionID = nil
     }
 
     func recallConfiguration() -> RecallConfiguration? {

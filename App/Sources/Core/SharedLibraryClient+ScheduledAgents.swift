@@ -2,26 +2,6 @@ import Foundation
 import Pod0Core
 
 extension SharedLibraryClient {
-    func subscribeToScheduledAgents(_ subscriber: SharedLibrarySubscriber) {
-        scheduledAgentSubscriptionID = facade.subscribe(
-            request: ProjectionRequest(
-                scope: .scheduledAgent(taskId: nil),
-                offset: 0,
-                maxItems: 200
-            ),
-            subscriber: subscriber
-        )
-    }
-
-    func unsubscribeFromScheduledAgents() {
-        if let scheduledAgentSubscriptionID {
-            facade.unsubscribe(subscriptionId: scheduledAgentSubscriptionID)
-        }
-        scheduledAgentSubscriptionID = nil
-        cachedScheduledAgent = nil
-        workflowClient?.detachScheduledAgentCore()
-    }
-
     func receiveScheduledAgents(
         _ projection: ScheduledAgentProjection,
         revision: UInt64
@@ -68,17 +48,17 @@ extension SharedLibraryClient {
         intervalSeconds: TimeInterval,
         modelReference: String,
         nextRunAt: Date
-    ) -> Bool {
+    ) async -> Bool {
         guard let interval = Self.intervalMilliseconds(intervalSeconds) else { return false }
-        dispatchScheduled(.ensureScheduledTask(task: ScheduledTaskInput(
-            taskId: ScheduledTaskId(uuid: id),
+        let taskID = ScheduledTaskId(uuid: id)
+        return await executeScheduled(.ensureScheduledTask(task: ScheduledTaskInput(
+            taskId: taskID,
             label: label,
             prompt: prompt,
             modelReference: modelReference,
             intervalMilliseconds: interval,
             nextRunAt: UnixTimestampMilliseconds(date: nextRunAt)
         )))
-        return scheduledTask(id: id) != nil
     }
 
     @discardableResult
@@ -89,10 +69,12 @@ extension SharedLibraryClient {
         intervalSeconds: TimeInterval,
         modelReference: String,
         nextRunAt: Date
-    ) -> Bool {
-        guard let existing = scheduledTask(id: id),
+    ) async -> Bool {
+        let taskID = ScheduledTaskId(uuid: id)
+        let current = await scheduledProjection(taskID: taskID)
+        guard let existing = Self.scheduledTask(in: current, id: taskID),
               let interval = Self.intervalMilliseconds(intervalSeconds) else { return false }
-        dispatchScheduled(.updateScheduledTask(
+        return await executeScheduled(.updateScheduledTask(
             taskId: existing.taskId,
             expectedTaskRevision: existing.taskRevision,
             task: ScheduledTaskInput(
@@ -104,18 +86,17 @@ extension SharedLibraryClient {
                 nextRunAt: UnixTimestampMilliseconds(date: nextRunAt)
             )
         ))
-        guard let updated = scheduledTask(id: id) else { return false }
-        return updated.taskRevision.value > existing.taskRevision.value
     }
 
     @discardableResult
-    func removeScheduledTask(id: UUID) -> Bool {
-        guard let task = scheduledTask(id: id) else { return false }
-        dispatchScheduled(.removeScheduledTask(
+    func removeScheduledTask(id: UUID) async -> Bool {
+        let taskID = ScheduledTaskId(uuid: id)
+        let current = await scheduledProjection(taskID: taskID)
+        guard let task = Self.scheduledTask(in: current, id: taskID) else { return false }
+        return await executeScheduled(.removeScheduledTask(
             taskId: task.taskId,
             expectedTaskRevision: task.taskRevision
         ))
-        return scheduledTask(id: id) == nil
     }
 
     func reconcileScheduledAgents() {
@@ -125,7 +106,7 @@ extension SharedLibraryClient {
     func performScheduledAgentAction(
         _ action: WorkflowJobAction,
         on projection: WorkflowJobProjection
-    ) -> WorkflowJobActionResult {
+    ) async -> WorkflowJobActionResult {
         guard projection.authority == .sharedRustScheduledAgents,
               projection.allowedActions.contains(action),
               let workflow = cachedScheduledAgent?.workflows.first(where: {
@@ -135,18 +116,20 @@ extension SharedLibraryClient {
         else { return .stale }
         switch action {
         case .retry:
-            dispatchScheduled(.retryScheduledRun(
+            let result = await executeWorkflowAction(.retryScheduledRun(
                 occurrenceId: workflow.occurrenceId,
                 expectedWorkflowRevision: workflow.workflowRevision
-            ))
-            dispatchScheduled(.reconcileScheduledRuns)
+            ), action: action)
+            if case .accepted = result {
+                dispatchCoreCommand(.reconcileScheduledRuns)
+            }
+            return result
         case .cancel:
-            dispatchScheduled(.cancelScheduledRun(
+            return await executeWorkflowAction(.cancelScheduledRun(
                 occurrenceId: workflow.occurrenceId,
                 expectedWorkflowRevision: workflow.workflowRevision
-            ))
+            ), action: action)
         }
-        return .accepted(action)
     }
 }
 
@@ -189,22 +172,34 @@ extension SharedLibraryClient {
         )
     }
 
-    func scheduledTask(id: UUID) -> ScheduledTaskProjection? {
-        let taskID = ScheduledTaskId(uuid: id)
-        return Self.loadScheduledAgentPages(
-            facade: facade,
-            fallback: nil
-        ).tasks.first { $0.taskId == taskID }
+    private func scheduledProjection(
+        taskID: ScheduledTaskId
+    ) async -> ProjectionEnvelope {
+        await coreSnapshot(ProjectionRequest(
+            scope: .scheduledAgent(taskId: taskID),
+            offset: 0,
+            maxItems: 1
+        ))
     }
 
-    func dispatchScheduled(_ command: ApplicationCommand) {
-        facade.dispatch(command: CommandEnvelope(
-            commandId: CommandId(uuid: UUID()),
-            cancellationId: CancellationId(uuid: UUID()),
-            expectedRevision: nil,
-            command: command
-        ))
-        dispatcher.executePendingRequests(from: facade)
+    private func executeScheduled(_ command: ApplicationCommand) async -> Bool {
+        do {
+            _ = try await execute(command)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    nonisolated private static func scheduledTask(
+        in envelope: ProjectionEnvelope?,
+        id: ScheduledTaskId
+    ) -> ScheduledTaskProjection? {
+        guard let envelope,
+              case .scheduledAgent(let projection) = envelope.projection,
+              projection.failure == nil
+        else { return nil }
+        return projection.tasks.first { $0.taskId == id }
     }
 
     static func intervalMilliseconds(_ seconds: TimeInterval) -> UInt64? {
