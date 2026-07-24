@@ -147,6 +147,53 @@ final class UserFacingFailureTests: XCTestCase {
         XCTAssertFalse(source.contains("stage:"))
     }
 
+    func testAllEpisodesUsesMenuFiltersAndCollapsibleSearch() throws {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("App/Sources/Features/Library/AllEpisodesView.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+
+        XCTAssertTrue(source.contains("Picker(\"Filter episodes\""))
+        XCTAssertTrue(source.contains("return \"Bookmarked\""))
+        XCTAssertTrue(source.contains(".navigationBarDrawer(displayMode: .automatic)"))
+        XCTAssertFalse(source.contains("filterRailSection"))
+        XCTAssertFalse(source.contains(".navigationBarDrawer(displayMode: .always)"))
+    }
+
+    func testClipsHasNoSavedSegmentsAndUsesCollapsibleSearch() throws {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("App/Sources/Features/Clips/ClipsView.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+
+        XCTAssertTrue(source.contains(".navigationTitle(\"Clips\")"))
+        XCTAssertTrue(source.contains(".navigationBarDrawer(displayMode: .automatic)"))
+        XCTAssertFalse(source.contains("LiquidGlassSegmentedPicker"))
+        XCTAssertFalse(source.contains("StarredSegment"))
+    }
+
+    func testSettingsEntryLivesInSidebarNotSharedToolbar() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let rootSource = try String(
+            contentsOf: root.appendingPathComponent("App/Sources/App/RootView.swift"),
+            encoding: .utf8
+        )
+        let sidebarSource = try String(
+            contentsOf: root.appendingPathComponent("App/Sources/App/AppSidebarView.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertFalse(rootSource.contains(".accessibilityLabel(\"Settings\")"))
+        XCTAssertTrue(sidebarSource.contains("navRow(\"Settings\""))
+    }
+
     private func makeProjection(errorClass: JobErrorClass) -> WorkflowJobProjection {
         let now = Date()
         return WorkflowJobProjection(job: WorkJob(

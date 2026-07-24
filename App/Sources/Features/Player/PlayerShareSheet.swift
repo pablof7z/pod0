@@ -12,7 +12,7 @@ import UIKit
 ///   - **Share via system** — SwiftUI `ShareLink` over the deep link.
 ///   - **Share quote** — resolves a short (10-25s) clip around the current
 ///     playhead via `ClipBoundaryResolver`, persists it as a real `Clip`
-///     (so it also shows up in Saved > Clips), then presents `ClipShareSheet`
+///     (so it also shows up in Clips), then presents `ClipShareSheet`
 ///     for it — the same sharing pipeline AutoSnip-captured clips use.
 ///     Gated on `episode.transcriptState == .ready`.
 struct PlayerShareSheet: View {

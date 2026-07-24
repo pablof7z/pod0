@@ -66,8 +66,8 @@ struct EpisodeRowContextMenu<Route: Hashable>: View {
             store.toggleEpisodeStarred(episode.id)
         } label: {
             Label(
-                episode.isStarred ? "Unstar" : "Star",
-                systemImage: episode.isStarred ? "star.slash" : "star"
+                episode.isStarred ? "Remove Bookmark" : "Bookmark",
+                systemImage: episode.isStarred ? "bookmark.slash" : "bookmark"
             )
         }
 

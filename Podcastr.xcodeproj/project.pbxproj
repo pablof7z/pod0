@@ -21,7 +21,7 @@
 		05197AD7DF009D85BAE76DFC /* LiveCoreTranscriptTransportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E624151A4602D2698EB71AB /* LiveCoreTranscriptTransportTests.swift */; };
 		05826CF48649800BD1E4EF7B /* LegacyAgentHistoryBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C51858179CD1E9DFB6E31DC /* LegacyAgentHistoryBackup.swift */; };
 		05961085D7F0E4A183C2C29D /* ElevenLabsScribeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2763688843F3F2578F4B5DA8 /* ElevenLabsScribeClient.swift */; };
-		059E68CEF6C0BCA28A454699 /* SavedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 406DDFE05B5B09CE544916D1 /* SavedView.swift */; };
+		059E68CEF6C0BCA28A454699 /* ClipsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 406DDFE05B5B09CE544916D1 /* ClipsView.swift */; };
 		05F2AC4043C523AC4368E06A /* CoreTranscriptTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 613DA20A1D34D650FD88F4F2 /* CoreTranscriptTransport.swift */; };
 		062857220399F08A2C2450A8 /* MarkdownView+Block.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CBAA0C5D3C975610FBDE06C /* MarkdownView+Block.swift */; };
 		07065C53D3999D27E045E801 /* AutoSnipController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDB7B4ECACEDAE7E860D460F /* AutoSnipController.swift */; };
@@ -307,7 +307,6 @@
 		5E9F169DA5B20FA54E28395C /* CoreDownloadIdentityStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B8DB08DDACEDA64FA128991 /* CoreDownloadIdentityStoreTests.swift */; };
 		5EBAC12672EDFEF02D453E54 /* CoreTranscriptHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A98B5A6A98940B969CE4310 /* CoreTranscriptHost.swift */; };
 		5F097D5A4D5EB62EA9FFB436 /* OpenRouterModelSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19B7C5E509BE70FC06BF2C59 /* OpenRouterModelSelectorView.swift */; };
-		5F180A753E0DFEED981EC9B5 /* StarredSegment.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5354834A7845C2EC7581139 /* StarredSegment.swift */; };
 		5F19096D94872170D5F19ED3 /* AgentRunTurnSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5478E7C31101E48A9E93CA9 /* AgentRunTurnSection.swift */; };
 		5F6624D3237A8A79B8C98298 /* AgentApprovalCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94397DFC646CD8B48FBF547A /* AgentApprovalCoordinator.swift */; };
 		5FFDC94DDA75A41062F7860B /* ArtifactRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = A504DF2340BE447873EA10A7 /* ArtifactRepository.swift */; };
@@ -1096,7 +1095,7 @@
 		3FEE9A7B2E816DA7D7D12662 /* ElevenLabsTTSPreviewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElevenLabsTTSPreviewService.swift; sourceTree = "<group>"; };
 		4049A801101833D0EAC89954 /* ElevenLabsTTSClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElevenLabsTTSClient.swift; sourceTree = "<group>"; };
 		404E61C27D17C733B652F11A /* SharedAgentChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedAgentChatView.swift; sourceTree = "<group>"; };
-		406DDFE05B5B09CE544916D1 /* SavedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedView.swift; sourceTree = "<group>"; };
+		406DDFE05B5B09CE544916D1 /* ClipsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipsView.swift; sourceTree = "<group>"; };
 		40BC9C3032D52C27E6D7B12A /* BackgroundOpportunityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundOpportunityTests.swift; sourceTree = "<group>"; };
 		4161817D3E6B69E47CCDC078 /* Pod0ListeningDomainBindingTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pod0ListeningDomainBindingTestSupport.swift; sourceTree = "<group>"; };
 		4182D4EC6BB568B01029761C /* AgentTypingIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentTypingIndicator.swift; sourceTree = "<group>"; };
@@ -1427,7 +1426,6 @@
 		B3BF0B94950585F8A0823EFA /* PlaybackAudioSessionEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackAudioSessionEvent.swift; sourceTree = "<group>"; };
 		B4CEBBDB59D0DB18F9BAF906 /* PlaybackState+SleepTimer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlaybackState+SleepTimer.swift"; sourceTree = "<group>"; };
 		B4E33163F84009399DD7B903 /* SharedMemoryMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedMemoryMapping.swift; sourceTree = "<group>"; };
-		B5354834A7845C2EC7581139 /* StarredSegment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarredSegment.swift; sourceTree = "<group>"; };
 		B54883E524B4595B2E6CDDA9 /* SharedLibraryClient+TranscriptWorkflows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SharedLibraryClient+TranscriptWorkflows.swift"; sourceTree = "<group>"; };
 		B5830870176D2E57736DF1FD /* PlaybackState+SharedCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlaybackState+SharedCore.swift"; sourceTree = "<group>"; };
 		B69373C4B98408E1D2A3C139 /* ChapterCapabilityTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChapterCapabilityTestSupport.swift; sourceTree = "<group>"; };
@@ -2130,10 +2128,9 @@
 			children = (
 				ADD6B321370EA3D005C488D4 /* ClippingsCard.swift */,
 				DB01C3600CB6751A61528D44 /* ClipsSegment.swift */,
-				406DDFE05B5B09CE544916D1 /* SavedView.swift */,
-				B5354834A7845C2EC7581139 /* StarredSegment.swift */,
+				406DDFE05B5B09CE544916D1 /* ClipsView.swift */,
 			);
-			path = Saved;
+			path = Clips;
 			sourceTree = "<group>";
 		};
 		40C5F0D20AAF8D60646F167D /* CoreListening */ = {
@@ -3483,8 +3480,7 @@
 				5E7A545519F5D7412BB53105 /* RecallQualityLogger.swift in Sources */,
 				0C68D5E1F40D4C78A419EEC1 /* ClippingsCard.swift in Sources */,
 				4B9EC98884940350EB3E246D /* ClipsSegment.swift in Sources */,
-				059E68CEF6C0BCA28A454699 /* SavedView.swift in Sources */,
-				5F180A753E0DFEED981EC9B5 /* StarredSegment.swift in Sources */,
+				059E68CEF6C0BCA28A454699 /* ClipsView.swift in Sources */,
 				A6FEE32582E1556C45CCF86A /* PodcastSearchEmptyState.swift in Sources */,
 				21CFAE8F1EDF45BB33B9F6DE /* PodcastSearchModels.swift in Sources */,
 				7C1EE05E1112CE0AD10972CC /* PodcastSearchRows.swift in Sources */,

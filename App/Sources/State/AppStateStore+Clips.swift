@@ -109,7 +109,7 @@ extension AppStateStore {
         sharedLibrary?.clip(id: id)
     }
 
-    /// All clips, newest first. Used by the Saved screen's Clips segment.
+    /// All clips, newest first. Used by the Clips screen.
     func allClips() -> [Clip] {
         sharedLibrary?.allClips() ?? []
     }
