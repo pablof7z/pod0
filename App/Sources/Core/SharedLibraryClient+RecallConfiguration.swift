@@ -13,9 +13,6 @@ extension SharedLibraryClient {
     }
 
     func publishRecallConfiguration(to store: AppStateStore) {
-        if cachedRecallConfiguration == nil {
-            cachedRecallConfiguration = loadRecallConfiguration()
-        }
         if let configuration = cachedRecallConfiguration {
             store.applySharedRecallConfiguration(configuration)
         }
@@ -32,7 +29,9 @@ extension SharedLibraryClient {
         cachedRecallConfiguration
     }
 
-    private func loadRecallConfiguration() -> RecallConfiguration? {
+    nonisolated static func loadRecallConfiguration(
+        facade: Pod0Facade
+    ) -> RecallConfiguration? {
         guard case .recallConfiguration(let configuration) = facade.snapshot(
             request: ProjectionRequest(
                 scope: .recallConfiguration,
@@ -47,7 +46,15 @@ extension SharedLibraryClient {
         storedEmbeddingModelID: String? = nil,
         rerankerEnabled: Bool? = nil
     ) async throws {
-        guard let current = recallConfiguration() ?? loadRecallConfiguration() else {
+        let facade = facade
+        let current = if let cached = recallConfiguration() {
+            cached
+        } else {
+            await Task.detached(priority: .utility) {
+                Self.loadRecallConfiguration(facade: facade)
+            }.value
+        }
+        guard let current else {
             throw SharedLibraryError.unavailable
         }
         cachedRecallConfiguration = current

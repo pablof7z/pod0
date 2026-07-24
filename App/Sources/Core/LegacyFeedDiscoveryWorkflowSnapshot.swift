@@ -8,7 +8,6 @@ struct LegacyFeedDiscoveryWorkflowSnapshot {
     let candidates: [LegacyFeedDiscoveryCandidateInput]
     let blockedCount: UInt32
 
-    @MainActor
     static func capture(
         state: AppState,
         jobStore: JobStore,

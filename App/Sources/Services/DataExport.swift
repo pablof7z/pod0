@@ -28,24 +28,24 @@ enum DataExport {
 
     static let currentSchemaVersion = 1
 
-    private static let encoder: JSONEncoder = {
+    private static func makeEncoder() -> JSONEncoder {
         let e = JSONEncoder()
         e.dateEncodingStrategy = .iso8601
         e.outputFormatting = [.prettyPrinted, .sortedKeys]
         return e
-    }()
+    }
 
     // ISO8601DateFormatter is thread-safe for reads after setup — nonisolated(unsafe) suppresses
     // the Swift 6 Sendable warning without changing runtime behaviour.
     private nonisolated(unsafe) static let iso8601 = ISO8601DateFormatter()
 
-    private static let filenameDateFormatter: DateFormatter = {
+    private static func makeFilenameDateFormatter() -> DateFormatter {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd-HHmm"
         f.timeZone = TimeZone(identifier: "UTC")
         f.locale = Locale(identifier: "en_US_POSIX")
         return f
-    }()
+    }
 
     // MARK: - Build
 
@@ -74,12 +74,12 @@ enum DataExport {
 
     /// Encodes the payload to pretty-printed UTF-8 JSON.
     static func encode(_ payload: Payload) throws -> Data {
-        try encoder.encode(payload)
+        try makeEncoder().encode(payload)
     }
 
     /// Suggested filename, e.g. `Podcastr-Export-2026-05-05-1430.json`.
     static func suggestedFilename(at date: Date = Date()) -> String {
-        "Podcastr-Export-\(filenameDateFormatter.string(from: date)).json"
+        "Podcastr-Export-\(makeFilenameDateFormatter().string(from: date)).json"
     }
 
     // MARK: - Write

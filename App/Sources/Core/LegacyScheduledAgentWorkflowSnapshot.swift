@@ -8,7 +8,6 @@ struct LegacyScheduledAgentWorkflowSnapshot {
     let tasks: [LegacyScheduledAgentTaskInput]
     let occurrences: [LegacyScheduledAgentOccurrenceInput]
 
-    @MainActor
     static func capture(
         state: AppState,
         jobStore: JobStore,

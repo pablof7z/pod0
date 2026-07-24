@@ -39,17 +39,7 @@ extension SharedLibraryClient {
         }
     }
 
-    func loadAllPages() -> SharedLibrarySnapshot {
-        let snapshot = Self.loadAllPages(
-            facade: facade,
-            activeEpisodeIDs: Set(chapterScopeCounts.keys),
-            chapterReader: authoritativeChapterReader
-        )
-        chapterSnapshots = snapshot.chaptersByEpisodeID
-        return snapshot
-    }
-
-    nonisolated private static func loadAllPages(
+    nonisolated static func loadAllPages(
         facade: Pod0Facade,
         activeEpisodeIDs: Set<UUID>,
         chapterReader: SharedChapterReader

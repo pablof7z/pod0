@@ -39,6 +39,7 @@ final class CoreDownloadHostTests: XCTestCase {
         let relaunched = makeHost(root: root)
         var replay: [(UInt64, HostObservation)] = []
         relaunched.execute(request) { replay.append(($0, $1)) }
+        try await waitUntil { !replay.isEmpty }
         XCTAssertEqual(replay.map(\.0), [2])
         guard case .downloadStaged = replay.first?.1 else {
             return XCTFail("Expected stable staged replay without another transfer")

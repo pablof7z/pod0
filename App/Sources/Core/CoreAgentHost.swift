@@ -13,7 +13,7 @@ protocol CoreAgentModelTransporting: AnyObject {
         tools: [[String: Any]],
         model: String,
         ollamaChatURL: URL?,
-        onPartialContent: @escaping (String) -> Void
+        onPartialContent: @escaping @MainActor @Sendable (String) -> Void
     ) async throws -> AgentResult
 }
 
@@ -239,11 +239,10 @@ final class LiveCoreAgentModelTransport: CoreAgentModelTransporting {
         tools: [[String: Any]],
         model: String,
         ollamaChatURL: URL?,
-        onPartialContent: @escaping (String) -> Void
+        onPartialContent: @escaping @MainActor @Sendable (String) -> Void
     ) async throws -> AgentResult {
         try await AgentLLMClient.streamCompletion(
-            messages: messages,
-            tools: tools,
+            payload: AgentProviderPayload(messages: messages, tools: tools),
             model: model,
             ollamaChatURL: ollamaChatURL,
             onPartialContent: onPartialContent

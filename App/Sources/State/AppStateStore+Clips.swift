@@ -13,10 +13,10 @@ extension AppStateStore {
     nonisolated private static let clipsLogger = Logger.app("AppStateStore+Clips")
 
     @discardableResult
-    func addClip(_ clip: Clip) -> Bool {
+    func addClip(_ clip: Clip) async -> Bool {
         do {
             guard let sharedLibrary else { throw SharedLibraryError.unavailable }
-            let saved = try sharedLibrary.createClip(clip)
+            let saved = try await sharedLibrary.createClip(clip)
             recordProductSignal(.once(
                 name: .clipCreated,
                 subjectID: saved.id,
@@ -45,7 +45,7 @@ extension AppStateStore {
         speakerID: UUID? = nil,
         source: Clip.Source = .auto,
         caption: String? = nil
-    ) -> Clip? {
+    ) async -> Clip? {
         let clip = Clip(
             episodeID: episodeID,
             subscriptionID: subscriptionID,
@@ -56,7 +56,7 @@ extension AppStateStore {
             transcriptText: transcriptText ?? "",
             source: source
         )
-        guard addClip(clip) else { return nil }
+        guard await addClip(clip) else { return nil }
         return sharedLibrary?.clip(id: clip.id)
     }
 
@@ -71,7 +71,7 @@ extension AppStateStore {
         endMs: Int,
         transcriptText: String,
         speakerID: UUID?
-    ) -> Bool {
+    ) async -> Bool {
         guard var clip = sharedLibrary?.clip(id: id) else { return false }
         clip.startMs = startMs
         clip.endMs = endMs
@@ -79,7 +79,7 @@ extension AppStateStore {
         clip.speakerID = speakerID?.uuidString
         do {
             guard let sharedLibrary else { throw SharedLibraryError.unavailable }
-            try sharedLibrary.updateClip(clip)
+            try await sharedLibrary.updateClip(clip)
             return true
         } catch {
             Self.clipsLogger.error(
@@ -90,12 +90,12 @@ extension AppStateStore {
     }
 
     @discardableResult
-    func deleteClip(id: UUID) -> Bool {
+    func deleteClip(id: UUID) async -> Bool {
         do {
             guard let clip = sharedLibrary?.clip(id: id),
                   let sharedLibrary
             else { throw SharedLibraryError.notFound }
-            try sharedLibrary.setClipDeleted(clip, deleted: true)
+            try await sharedLibrary.setClipDeleted(clip, deleted: true)
             return true
         } catch {
             Self.clipsLogger.error(
@@ -121,10 +121,10 @@ extension AppStateStore {
     }
 
     @discardableResult
-    func clearAllClips() -> Bool {
+    func clearAllClips() async -> Bool {
         do {
             guard let sharedLibrary else { throw SharedLibraryError.unavailable }
-            try sharedLibrary.clearClips()
+            try await sharedLibrary.clearClips()
             return true
         } catch {
             Self.clipsLogger.error(

@@ -6,15 +6,18 @@ struct AgentTokenUsage: Codable, Sendable {
     let cachedTokens: Int?
 }
 
+struct AgentProviderPayload: @unchecked Sendable {
+    let messages: [[String: Any]]
+    let tools: [[String: Any]]
+}
+
 enum AgentLLMClient {
-    @MainActor
     static func streamCompletion(
-        messages: [[String: Any]],
-        tools: [[String: Any]],
+        payload: AgentProviderPayload,
         model: String,
         feature: String = CostFeature.agentChat,
         ollamaChatURL: URL? = nil,
-        onPartialContent: (String) -> Void
+        onPartialContent: @escaping @MainActor @Sendable (String) -> Void
     ) async throws -> AgentResult {
         let reference = LLMModelReference(storedID: model)
         guard !reference.isEmpty else {
@@ -28,8 +31,8 @@ enum AgentLLMClient {
         switch reference.provider {
         case .openRouter:
             return try await AgentOpenRouterClient.streamCompletion(
-                messages: messages,
-                tools: tools,
+                messages: payload.messages,
+                tools: payload.tools,
                 apiKey: apiKey,
                 model: reference.modelID,
                 feature: feature,
@@ -37,8 +40,8 @@ enum AgentLLMClient {
             )
         case .ollama:
             return try await AgentOllamaClient.streamCompletion(
-                messages: messages,
-                tools: tools,
+                messages: payload.messages,
+                tools: payload.tools,
                 apiKey: apiKey,
                 model: reference.modelID,
                 feature: feature,

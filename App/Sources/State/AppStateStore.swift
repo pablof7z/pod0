@@ -131,35 +131,41 @@ final class AppStateStore {
     /// without producing extra refreshes.
     var widgetReloadTask: Task<Void, Never>?
 
-    init(
+    convenience init(
         persistence: Persistence = .shared,
         productSignals: any ProductSignalSink = DiscardingProductSignalSink.shared,
         sharedFeedHost: (any CoreFeedHosting)? = nil,
         startSubscriptionRefresh: Bool = true
     ) {
+        self.init(
+            preparedStartup: AppStateStartupPreparer.prepare(
+                persistence: persistence,
+                sharedFeedHost: sharedFeedHost
+            ),
+            persistence: persistence,
+            productSignals: productSignals,
+            startSubscriptionRefresh: startSubscriptionRefresh
+        )
+        if persistence !== Persistence.shared {
+            sharedLibrary?.hydrateSynchronouslyForTesting()
+        }
+    }
+
+    init(
+        preparedStartup: AppStateStartupPreparation,
+        persistence: Persistence,
+        productSignals: any ProductSignalSink,
+        startSubscriptionRefresh: Bool
+    ) {
         self.persistence = persistence
         syncSettingsWithICloud = persistence === Persistence.shared
         self.productSignals = productSignals
-        var loadedState: AppState
-        var startupLoadFailed = false
-        do {
-            let chapterAuthorityActive = FileManager.default.fileExists(
-                atPath: persistence.sharedCoreStoreURL.path
-            ) && sharedChapterStoreIsAuthoritative(
-                targetPath: persistence.sharedCoreStoreURL.path
-            )
-            loadedState = try persistence.load(
-                loadLegacyChapterAdjuncts: !chapterAuthorityActive
-            )
-        } catch {
-            Self.logger.error(
-                "Persistence.load failed; startup is blocked and persisted data is untouched"
-            )
-            startupLoadFailed = true
-            loadedState = AppState()
+        var loadedState = preparedStartup.state
+        if syncSettingsWithICloud, !preparedStartup.loadFailed {
+            iCloudSettingsSync.shared.start(mergingInto: &loadedState.settings)
         }
-        if startupLoadFailed {
-            self.state = loadedState
+        self.state = loadedState
+        if preparedStartup.loadFailed {
             startupRecoveryRequired = true
             sharedLibraryUnavailableReason = "app_state_recovery_required"
             Task {
@@ -172,58 +178,22 @@ final class AppStateStore {
             recomputeEpisodeProjections()
             return
         }
-        Self.migrateLegacyOpenRouterSecretIfNeeded(in: &loadedState, persistence: persistence)
-        // Strip synthetic external-playback podcasts written by an earlier
-        // build that used an `external-episode://` sentinel feed URL. The
-        // new model parents external episodes to `Podcast.unknownID` (or a
-        // real podcast row when a feed_url is supplied), so these legacy
-        // artifacts should not appear in the library.
-        let legacyExternalPodcastIDs = Set(
-            loadedState.podcasts
-                .filter { $0.feedURL?.scheme == "external-episode" }
-                .map(\.id)
-        )
-        if !legacyExternalPodcastIDs.isEmpty {
-            loadedState.podcasts.removeAll { legacyExternalPodcastIDs.contains($0.id) }
-            loadedState.subscriptions.removeAll { legacyExternalPodcastIDs.contains($0.podcastID) }
-        }
-        if !FileManager.default.fileExists(atPath: persistence.sharedCoreStoreURL.path) {
-            let nextGeneration = loadedState.persistenceGeneration == .max
-                ? UInt64.max
-                : loadedState.persistenceGeneration + 1
-            let importRevision = max(nextGeneration, 1)
-            loadedState.persistenceGeneration = importRevision
-            _ = persistence.write(loadedState, revision: importRevision)
-        }
-        // Start iCloud KV sync before assigning state so that the first
-        // push (triggered by the `didSet` below) reflects the merged values.
-        if syncSettingsWithICloud {
-            iCloudSettingsSync.shared.start(mergingInto: &loadedState.settings)
-        }
-        self.state = loadedState
-        let needsNativeProjectionRetirement = Self.hasMigratedNativeState(loadedState)
-        let needsRecallConfigurationRetirement =
-            loadedState.settings.legacyRecallConfigurationSeed != nil
-        let feedHost: any CoreFeedHosting = sharedFeedHost ?? CoreFeedHost()
-        switch SharedLibraryBootstrap.run(
-            persistence: persistence,
-            legacyState: loadedState,
-            feedHost: feedHost,
-            chapterCompilationModel: loadedState.settings.chapterCompilationModel,
-            legacyRecallConfiguration: loadedState.settings.legacyRecallConfigurationSeed
-        ) {
+        let bootstrap = preparedStartup.bootstrap
+            ?? .authoritativeUnavailable(reason: "bootstrap_missing", stage: .storePreparation)
+        switch SharedLibraryBootstrap.finish(bootstrap, persistence: persistence) {
         case .ready(let client):
             sharedLibrary = client
             client.attach(store: self)
-            if needsRecallConfigurationRetirement {
+            if preparedStartup.needsRecallConfigurationRetirement {
                 mutateState { $0.settings.retireLegacyRecallConfiguration() }
                 if syncSettingsWithICloud {
                     iCloudSettingsSync.shared.retireLegacyRecallConfiguration()
                 }
-            } else if needsNativeProjectionRetirement {
-                // One explicit cutover cleanup replaces the former accidental
-                // burst of projection-triggered native writes.
-                persistence.save(state)
+            } else if preparedStartup.needsNativeProjectionRetirement {
+                let retirementState = state
+                Task.detached(priority: .utility) {
+                    persistence.save(retirementState)
+                }
             }
         case .authoritativeUnavailable(let reason, let stage):
             sharedLibraryUnavailableReason = reason
@@ -245,10 +215,9 @@ final class AppStateStore {
         sharedLibrary?.attachRecall(RecallProviderService.shared, store: self)
         WorkflowRuntime.shared.attach(store: self)
         BackgroundWorkScheduler.shared.attach(store: self)
-        // One-time cleanup of the deleted Wiki feature's on-disk pages
-        // (`Application Support/podcastr/wiki/`). Guarded by a UserDefaults
-        // flag so this touches the filesystem at most once per install.
-        Self.cleanupOrphanedWikiFilesIfNeeded()
+        Task.detached(priority: .utility) {
+            Self.cleanupOrphanedWikiFilesIfNeeded()
+        }
         // Spotlight indexing is disabled — the formatter pass over hundreds of
         // multi-KB show-notes blobs was monopolizing a cooperative worker for
         // tens of seconds on every state change. Clear anything we previously

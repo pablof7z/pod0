@@ -123,14 +123,14 @@ final class AppTests: XCTestCase {
 
     /// Regression test for the test-leak bug: writing through an isolated
     /// store must NOT mutate the production App Group state file.
-    func testIsolatedStoreDoesNotTouchSharedAppGroupContainer() throws {
+    func testIsolatedStoreDoesNotTouchSharedAppGroupContainer() async throws {
         let productionURL = Persistence.appGroupStateFileURL
         // Snapshot whatever the production file currently holds (may be
         // absent on a clean dev machine — `nil` is a valid baseline).
         let before = try? Data(contentsOf: productionURL)
 
         // Make a noisy unmigrated-domain mutation through the isolated store.
-        _ = store.addAgentMemory(content: "Leak Canary \(UUID().uuidString)")
+        _ = await store.addAgentMemory(content: "Leak Canary \(UUID().uuidString)")
 
         // The production file must be byte-identical to the snapshot.
         let after = try? Data(contentsOf: productionURL)

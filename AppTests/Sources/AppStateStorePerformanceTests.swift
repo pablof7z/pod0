@@ -125,7 +125,10 @@ final class AppStateStorePerformanceTests: XCTestCase {
             let elapsed = Date().timeIntervalSince(start)
 
             XCTAssertEqual(hits, 60_000)
-            XCTAssertLessThan(elapsed, 0.05, "Hot player identity lookups took \(elapsed)s.")
+            // Debug builds on hosted simulators are substantially slower than
+            // Release, while an accidental O(n) scan here would still exceed
+            // this bound by orders of magnitude at 10,000 episodes.
+            XCTAssertLessThan(elapsed, 0.5, "Hot player identity lookups took \(elapsed)s.")
         }
     }
 
@@ -158,6 +161,9 @@ final class AppStateStorePerformanceTests: XCTestCase {
         XCTAssertFalse(store.hasTranscribedEpisode(forPodcast: sub.id))
 
         try installTranscriptEvidence(for: ep, source: .scribeV1)
+        for _ in 0 ..< 100 where !store.hasTranscribedEpisode(forPodcast: sub.id) {
+            try await Task.sleep(for: .milliseconds(10))
+        }
         XCTAssertTrue(store.hasTranscribedEpisode(forPodcast: sub.id))
     }
 

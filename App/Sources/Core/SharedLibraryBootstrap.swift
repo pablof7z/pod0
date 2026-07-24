@@ -8,18 +8,17 @@ enum SharedLibraryBootstrapOutcome {
 }
 
 enum SharedLibraryBootstrap {
-    private static let logger = Logger.app("SharedLibraryBootstrap")
+    static let logger = Logger.app("SharedLibraryBootstrap")
 
-    @MainActor
-    static func run(
+    static func prepare(
         persistence: Persistence,
         legacyState: AppState,
         feedHost: any CoreFeedHosting = CoreFeedHost(),
         chapterCompilationModel: String = Settings().chapterCompilationModel,
         legacyRecallConfiguration: LegacyRecallConfigurationSeed? = nil
-    ) -> SharedLibraryBootstrapOutcome {
+    ) -> SharedLibraryBootstrapPreparationOutcome {
         persistence.withSharedArtifactMigrationLock {
-            runLocked(
+            prepareLocked(
                 persistence: persistence,
                 legacyState: legacyState,
                 feedHost: feedHost,
@@ -29,14 +28,13 @@ enum SharedLibraryBootstrap {
         }
     }
 
-    @MainActor
-    private static func runLocked(
+    private static func prepareLocked(
         persistence: Persistence,
         legacyState: AppState,
         feedHost: any CoreFeedHosting,
         chapterCompilationModel: String,
         legacyRecallConfiguration: LegacyRecallConfigurationSeed?
-    ) -> SharedLibraryBootstrapOutcome {
+    ) -> SharedLibraryBootstrapPreparationOutcome {
         let target = persistence.sharedCoreStoreURL
         var stage = SharedLibraryBootstrapStage.storePreparation
         do {
@@ -266,19 +264,12 @@ enum SharedLibraryBootstrap {
             let observationOutbox = try NativeHostObservationOutbox(
                 fileURL: persistence.nativeHostObservationOutboxURL
             )
-            CoreDownloadHost.shared.configure(coreStoreURL: target)
-            let client = SharedLibraryClient(
+            return .ready(SharedLibraryBootstrapPreparation(
                 facade: facade,
                 coreStoreURL: target,
                 feedHost: feedHost,
-                downloadHost: CoreDownloadHost.shared,
-                notificationHost: CoreNotificationHost(),
                 observationOutbox: observationOutbox
-            )
-            client.start()
-            persistence.activateSharedListeningAuthority()
-            logger.info("Shared Rust library is authoritative at \(target.path, privacy: .public)")
-            return .ready(client)
+            ))
         } catch {
             let code = SharedLibraryBootstrapFailureCode.classify(error)
             logger.error("Shared library bootstrap failed at \(stage.rawValue, privacy: .public): \(code.rawValue, privacy: .public)")

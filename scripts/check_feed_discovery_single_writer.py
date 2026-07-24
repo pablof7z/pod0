@@ -57,6 +57,8 @@ FORBIDDEN = (
 REQUIRED = {
     "App/Sources/Core/SharedLibraryBootstrap.swift": (
         "LegacyFeedDiscoveryWorkflowCutover.run",
+    ),
+    "App/Sources/Core/SharedLibraryBootstrap+Preparation.swift": (
         "notificationHost: CoreNotificationHost()",
     ),
     "App/Sources/Core/LegacyFeedDiscoveryWorkflowBackup.swift": (

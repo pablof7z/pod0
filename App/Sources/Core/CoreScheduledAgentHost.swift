@@ -105,8 +105,7 @@ private final class LiveCoreScheduledAgentTransport: CoreScheduledAgentTransport
         }
         messages.append(["role": "user", "content": prompt])
         let result = try await AgentLLMClient.streamCompletion(
-            messages: messages,
-            tools: [],
+            payload: AgentProviderPayload(messages: messages, tools: []),
             model: modelReference,
             feature: CostFeature.agentChat,
             onPartialContent: { _ in }

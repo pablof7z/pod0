@@ -6,7 +6,6 @@ enum LegacyFeedDiscoveryWorkflowCutoverError: Error {
 }
 
 enum LegacyFeedDiscoveryWorkflowCutover {
-    @MainActor
     static func run(
         facade: Pod0Facade,
         state: AppState,

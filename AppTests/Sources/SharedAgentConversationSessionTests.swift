@@ -63,7 +63,7 @@ final class SharedAgentConversationSessionTests: XCTestCase {
         XCTAssertEqual(session.stateRevision, 9)
     }
 
-    func testResumesPersistedConversationAndClearsPointerForNewConversation() {
+    func testResumesPersistedConversationAndClearsPointerForNewConversation() async throws {
         let runtime = StubSharedAgentConversationRuntime()
         let resumedID = ConversationId(high: 8, low: 9)
         var changes: [ConversationId?] = []
@@ -74,16 +74,16 @@ final class SharedAgentConversationSessionTests: XCTestCase {
             modelReference: { "openrouter/test" }
         )
 
-        XCTAssertEqual(runtime.subscribedConversationID, resumedID)
+        try await waitUntil { runtime.subscribedConversationID == resumedID }
         XCTAssertEqual(changes, [resumedID])
 
         session.startNewConversation()
 
-        XCTAssertNil(runtime.subscribedConversationID)
+        try await waitUntil { runtime.subscribedConversationID == nil }
         XCTAssertEqual(changes, [resumedID, nil])
     }
 
-    func testLoadsAndRefreshesDurableConversationHistory() {
+    func testLoadsAndRefreshesDurableConversationHistory() async throws {
         let runtime = StubSharedAgentConversationRuntime()
         runtime.history = historyProjection(
             id: ConversationId(high: 11, low: 12),
@@ -94,10 +94,10 @@ final class SharedAgentConversationSessionTests: XCTestCase {
             modelReference: { "openrouter/test" }
         )
 
-        XCTAssertEqual(
-            session.conversationSummaries.map(\.title),
-            ["What did they say about habits?"]
-        )
+        try await waitUntil {
+            session.conversationSummaries.map(\.title) ==
+                ["What did they say about habits?"]
+        }
 
         runtime.history = historyProjection(
             id: ConversationId(high: 21, low: 22),
@@ -105,10 +105,20 @@ final class SharedAgentConversationSessionTests: XCTestCase {
         )
         session.refreshConversationHistory()
 
-        XCTAssertEqual(
-            session.conversationSummaries.map(\.conversationId),
-            [ConversationId(high: 21, low: 22)]
-        )
+        try await waitUntil {
+            session.conversationSummaries.map(\.conversationId) ==
+                [ConversationId(high: 21, low: 22)]
+        }
+    }
+
+    private func waitUntil(
+        _ condition: @escaping @MainActor () -> Bool
+    ) async throws {
+        for _ in 0 ..< 100 {
+            if condition() { return }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTFail("Condition did not become true")
     }
 
     private func conversation(
@@ -173,7 +183,7 @@ private final class StubSharedAgentConversationRuntime: SharedAgentConversationR
         failure: nil
     )
 
-    func agentConversationHistory() -> AgentConversationsProjection {
+    func agentConversationHistory() async -> AgentConversationsProjection {
         history
     }
 
@@ -195,13 +205,13 @@ private final class StubSharedAgentConversationRuntime: SharedAgentConversationR
     func subscribeAgentConversation(
         _ conversationID: ConversationId,
         subscriber: any ProjectionSubscriber
-    ) -> SubscriptionId {
+    ) async -> SubscriptionId {
         self.subscriber = subscriber
         subscribedConversationID = conversationID
         return SubscriptionId(high: conversationID.high, low: conversationID.low)
     }
 
-    func unsubscribeAgentConversation(_ subscriptionID: SubscriptionId) {
+    func unsubscribeAgentConversation(_ subscriptionID: SubscriptionId) async {
         subscriber = nil
         subscribedConversationID = nil
     }

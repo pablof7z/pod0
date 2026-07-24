@@ -6,7 +6,6 @@ enum LegacyScheduledAgentWorkflowCutoverError: Error {
 }
 
 enum LegacyScheduledAgentWorkflowCutover {
-    @MainActor
     static func run(
         facade: Pod0Facade,
         persistence: Persistence,

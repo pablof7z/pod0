@@ -13,6 +13,11 @@ struct SharedEvidenceReceipt: Codable, Sendable, Equatable {
     let schemaVersion: Int
 }
 
+private struct SharedEvidenceBuildSource: @unchecked Sendable {
+    let transcript: Transcript
+    let summary: TranscriptSummaryProjection
+}
+
 extension SharedLibraryClient {
     private static let evidenceLogger = Logger.app("SharedEvidenceRebuild")
 
@@ -53,24 +58,28 @@ extension SharedLibraryClient {
             throw SharedLibraryError.unavailable
         }
         defer { rebuildingEvidenceEpisodeIDs.remove(transcript.episodeID) }
-        let segments = try transcript.segments.map { segment in
-            TranscriptSegmentInput(
-                text: segment.text,
-                startMilliseconds: try Self.milliseconds(segment.start),
-                endMilliseconds: try Self.milliseconds(segment.end),
-                speakerId: segment.speakerID.map(SpeakerId.init(uuid:))
-            )
-        }
-        let result = try await execute(.rebuildTranscriptEvidence(
-            input: TranscriptEvidenceInput(
-                episodeId: EpisodeId(uuid: transcript.episodeID),
-                podcastId: summary.podcastId,
-                sourceRevision: summary.sourceRevision,
-                source: summary.source,
-                provider: summary.provider,
-                sourcePayloadDigest: summary.sourcePayloadDigest,
+        let source = SharedEvidenceBuildSource(transcript: transcript, summary: summary)
+        let input = try await Task.detached(priority: .utility) {
+            let segments = try source.transcript.segments.map { segment in
+                TranscriptSegmentInput(
+                    text: segment.text,
+                    startMilliseconds: try Self.milliseconds(segment.start),
+                    endMilliseconds: try Self.milliseconds(segment.end),
+                    speakerId: segment.speakerID.map(SpeakerId.init(uuid:))
+                )
+            }
+            return TranscriptEvidenceInput(
+                episodeId: EpisodeId(uuid: source.transcript.episodeID),
+                podcastId: source.summary.podcastId,
+                sourceRevision: source.summary.sourceRevision,
+                source: source.summary.source,
+                provider: source.summary.provider,
+                sourcePayloadDigest: source.summary.sourcePayloadDigest,
                 segments: segments
-            ),
+            )
+        }.value
+        let result = try await execute(.rebuildTranscriptEvidence(
+            input: input,
             policy: EvidenceChunkPolicy(
                 version: 1,
                 targetTokens: 400,
@@ -80,7 +89,7 @@ extension SharedLibraryClient {
         ))
         guard case .evidenceRebuilt(let episodeID, let generationID, let spanCount) = result,
               episodeID.uuid == transcript.episodeID,
-              let projection = evidenceIndex(episodeID: episodeID),
+              let projection = await evidenceIndex(episodeID: episodeID),
               projection.stage == .ready,
               projection.generationId == generationID,
               projection.totalSpans == spanCount,
@@ -98,10 +107,10 @@ extension SharedLibraryClient {
         )
     }
 
-    func verifyEvidenceReceipt(_ receipt: SharedEvidenceReceipt) -> Bool {
+    func verifyEvidenceReceipt(_ receipt: SharedEvidenceReceipt) async -> Bool {
         let episodeID = EpisodeId(uuid: receipt.episodeID)
         guard receipt.schemaVersion == SharedEvidenceReceipt.schemaVersion,
-              let projection = evidenceIndex(episodeID: episodeID),
+              let projection = await evidenceIndex(episodeID: episodeID),
               projection.stage == .ready,
               projection.generationId?.stableString == receipt.generationID,
               projection.transcriptContentDigest?.stableString
@@ -115,18 +124,24 @@ extension SharedLibraryClient {
         let episodes = store.state.episodes
             .filter { if case .ready = $0.transcriptState { true } else { false } }
             .sorted { $0.id.uuidString < $1.id.uuidString }
+        let reader = authoritativeTranscriptReader
         for episode in episodes {
             guard !Task.isCancelled else { return false }
-            guard let transcript = authoritativeTranscriptReader.load(episodeID: episode.id),
-                  let summary = try? authoritativeTranscriptReader.summary(episodeID: episode.id)
+            let source = await Task.detached(priority: .utility) {
+                guard let transcript = reader.load(episodeID: episode.id),
+                      let summary = try? reader.summary(episodeID: episode.id)
+                else { return nil as SharedEvidenceBuildSource? }
+                return SharedEvidenceBuildSource(transcript: transcript, summary: summary)
+            }.value
+            guard let source
             else {
                 rebuiltAllEvidence = false
                 continue
             }
             do {
                 _ = try await rebuildTranscriptEvidence(
-                    transcript: transcript,
-                    summary: summary
+                    transcript: source.transcript,
+                    summary: source.summary
                 )
             } catch is CancellationError {
                 return false
@@ -140,7 +155,9 @@ extension SharedLibraryClient {
         return rebuiltAllEvidence
     }
 
-    private static func milliseconds(_ seconds: TimeInterval) throws -> UInt64 {
+    nonisolated private static func milliseconds(
+        _ seconds: TimeInterval
+    ) throws -> UInt64 {
         let value = seconds * 1_000
         guard value.isFinite, value >= 0, value <= Double(UInt64.max) else {
             throw SharedLibraryError.unavailable
@@ -148,12 +165,26 @@ extension SharedLibraryClient {
         return UInt64(value.rounded())
     }
 
-    private func evidenceIndex(episodeID: EpisodeId) -> EvidenceIndexProjection? {
-        guard case .evidenceIndex(let projection) = facade.snapshot(request: ProjectionRequest(
-            scope: .evidenceIndex(episodeId: episodeID),
-            offset: 0,
-            maxItems: 1
-        )).projection else { return nil }
+    private func evidenceIndex(
+        episodeID: EpisodeId
+    ) async -> EvidenceIndexProjection? {
+        let facade = facade
+        return await Task.detached(priority: .utility) {
+            Self.loadEvidenceIndex(facade: facade, episodeID: episodeID)
+        }.value
+    }
+
+    nonisolated private static func loadEvidenceIndex(
+        facade: Pod0Facade,
+        episodeID: EpisodeId
+    ) -> EvidenceIndexProjection? {
+        guard case .evidenceIndex(let projection) = facade.snapshot(
+            request: ProjectionRequest(
+                scope: .evidenceIndex(episodeId: episodeID),
+                offset: 0,
+                maxItems: 1
+            )
+        ).projection else { return nil }
         return projection
     }
 }

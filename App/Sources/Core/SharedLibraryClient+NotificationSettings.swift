@@ -7,21 +7,21 @@ extension SharedLibraryClient {
     }
 
     func publishNewEpisodeNotificationSettings(to store: AppStateStore) {
-        let projection: NewEpisodeNotificationSettingsProjection
-        if let cachedNewEpisodeNotificationSettings {
-            projection = cachedNewEpisodeNotificationSettings
-        } else {
-            let envelope = facade.snapshot(request: ProjectionRequest(
-                scope: .newEpisodeNotificationSettings,
-                offset: 0,
-                maxItems: 1
-            ))
-            guard case .newEpisodeNotificationSettings(let value) = envelope.projection else {
-                return
-            }
-            projection = value
-            cachedNewEpisodeNotificationSettings = value
-        }
+        guard let projection = cachedNewEpisodeNotificationSettings else { return }
         store.applySharedNewEpisodeNotificationSettings(projection)
+    }
+
+    nonisolated static func loadNewEpisodeNotificationSettings(
+        facade: Pod0Facade
+    ) -> NewEpisodeNotificationSettingsProjection? {
+        let envelope = facade.snapshot(request: ProjectionRequest(
+            scope: .newEpisodeNotificationSettings,
+            offset: 0,
+            maxItems: 1
+        ))
+        guard case .newEpisodeNotificationSettings(let value) = envelope.projection else {
+            return nil
+        }
+        return value
     }
 }

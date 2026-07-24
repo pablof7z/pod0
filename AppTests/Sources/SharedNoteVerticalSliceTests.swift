@@ -4,7 +4,7 @@ import XCTest
 
 @MainActor
 final class SharedNoteVerticalSliceTests: XCTestCase {
-    func testLegacyNotesCutOverLosslesslyAndCommandsSurviveRelaunch() throws {
+    func testLegacyNotesCutOverLosslesslyAndCommandsSurviveRelaunch() async throws {
         let fileURL = AppStateTestSupport.uniqueTempFileURL()
         let persistence = Persistence(fileURL: fileURL)
         defer { persistence.reset() }
@@ -83,30 +83,36 @@ final class SharedNoteVerticalSliceTests: XCTestCase {
         XCTAssertEqual(importedDeleted.author, .agent)
         XCTAssertTrue(try persistence.load().notes.isEmpty, "Swift metadata must stop persisting notes")
 
-        let later = try XCTUnwrap(store?.addNote(
+        let laterNote = await store?.addNote(
             text: "Later note",
             target: .episode(id: episodeID, positionSeconds: 30),
             author: .agent
-        ))
-        let earlier = try XCTUnwrap(store?.addNote(
+        )
+        let later = try XCTUnwrap(laterNote)
+        let earlierNote = await store?.addNote(
             text: "Earlier note",
             target: .episode(id: episodeID, positionSeconds: 5),
             author: .user
-        ))
+        )
+        let earlier = try XCTUnwrap(earlierNote)
         XCTAssertEqual(store?.notes(forEpisode: episodeID).map(\.id), [earlier.id, firstID, later.id])
 
         var edited = later
         edited.text = "Later note, edited"
-        XCTAssertTrue(store?.updateNote(edited) == true)
+        let didEdit = await store?.updateNote(edited)
+        XCTAssertTrue(didEdit == true)
         XCTAssertEqual(store?.state.notes.first(where: { $0.id == later.id })?.revision, 2)
-        XCTAssertFalse(store?.updateNote(later) == true, "A stale projection must not overwrite Rust")
+        let didOverwriteStale = await store?.updateNote(later)
+        XCTAssertFalse(didOverwriteStale == true, "A stale projection must not overwrite Rust")
         XCTAssertEqual(
             store?.state.notes.first(where: { $0.id == later.id })?.text,
             "Later note, edited"
         )
-        XCTAssertTrue(store?.deleteNote(earlier.id) == true)
+        let didDelete = await store?.deleteNote(earlier.id)
+        XCTAssertTrue(didDelete == true)
         XCTAssertFalse(store?.notes(forEpisode: episodeID).contains(where: { $0.id == earlier.id }) == true)
-        XCTAssertTrue(store?.restoreNote(earlier.id) == true)
+        let didRestore = await store?.restoreNote(earlier.id)
+        XCTAssertTrue(didRestore == true)
 
         store = nil
         store = AppStateStore(
@@ -123,7 +129,8 @@ final class SharedNoteVerticalSliceTests: XCTestCase {
             "Later note, edited"
         )
 
-        XCTAssertTrue(store?.clearAllNotes() == true)
+        let didClear = await store?.clearAllNotes()
+        XCTAssertTrue(didClear == true)
         XCTAssertTrue(store?.activeNotes.isEmpty == true)
         store = nil
         let relaunched = AppStateStore(

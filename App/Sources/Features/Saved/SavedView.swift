@@ -74,15 +74,17 @@ struct SavedView: View {
     previewState.subscriptions = [PodcastSubscription(podcastID: podcast.id)]
     previewState.episodes = [episode]
     let store = AppStateStore.previewStore(importing: previewState, name: "saved")
-    store.addClip(Clip(
-        episodeID: episode.id,
-        subscriptionID: podcast.id,
-        startMs: 14 * 60_000 + 31_000,
-        endMs: 14 * 60_000 + 58_000,
-        caption: "On metabolism",
-        transcriptText: "Metabolic flexibility isn't a diet — it's a property of the mitochondria.",
-        source: .touch
-    ))
+    Task {
+        await store.addClip(Clip(
+            episodeID: episode.id,
+            subscriptionID: podcast.id,
+            startMs: 14 * 60_000 + 31_000,
+            endMs: 14 * 60_000 + 58_000,
+            caption: "On metabolism",
+            transcriptText: "Metabolic flexibility isn't a diet — it's a property of the mitochondria.",
+            source: .touch
+        ))
+    }
     return NavigationStack {
         SavedView()
             .environment(store)

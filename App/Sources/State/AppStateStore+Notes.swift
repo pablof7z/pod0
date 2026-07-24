@@ -8,8 +8,12 @@ extension AppStateStore {
     /// Existing call-sites (`AgentNotesView`, `FriendDetailView`) hit this
     /// signature unchanged.
     @discardableResult
-    func addNote(text: String, kind: NoteKind = .free, target: Anchor? = nil) -> Note? {
-        addNote(text: text, kind: kind, target: target, author: .user)
+    func addNote(
+        text: String,
+        kind: NoteKind = .free,
+        target: Anchor? = nil
+    ) async -> Note? {
+        await addNote(text: text, kind: kind, target: target, author: .user)
     }
 
     /// Author-aware overload. The agent-tool path passes `author: .agent`
@@ -20,10 +24,10 @@ extension AppStateStore {
         kind: NoteKind = .free,
         target: Anchor? = nil,
         author: NoteAuthor
-    ) -> Note? {
+    ) async -> Note? {
         do {
             guard let sharedLibrary else { throw SharedLibraryError.unavailable }
-            let note = try sharedLibrary.createNote(
+            let note = try await sharedLibrary.createNote(
                 text: text,
                 kind: kind,
                 target: target,
@@ -58,20 +62,20 @@ extension AppStateStore {
     }
 
     @discardableResult
-    func deleteNote(_ id: UUID) -> Bool {
-        setNoteDeleted(id, deleted: true)
+    func deleteNote(_ id: UUID) async -> Bool {
+        await setNoteDeleted(id, deleted: true)
     }
 
     @discardableResult
-    func restoreNote(_ id: UUID) -> Bool {
-        setNoteDeleted(id, deleted: false)
+    func restoreNote(_ id: UUID) async -> Bool {
+        await setNoteDeleted(id, deleted: false)
     }
 
     @discardableResult
-    func updateNote(_ note: Note) -> Bool {
+    func updateNote(_ note: Note) async -> Bool {
         do {
             guard let sharedLibrary else { throw SharedLibraryError.unavailable }
-            try sharedLibrary.updateNote(note)
+            try await sharedLibrary.updateNote(note)
             return true
         } catch {
             Self.logger.error("Shared note update failed: \(error.localizedDescription, privacy: .public)")
@@ -80,10 +84,10 @@ extension AppStateStore {
     }
 
     @discardableResult
-    func clearAllNotes() -> Bool {
+    func clearAllNotes() async -> Bool {
         do {
             guard let sharedLibrary else { throw SharedLibraryError.unavailable }
-            try sharedLibrary.clearNotes()
+            try await sharedLibrary.clearNotes()
             return true
         } catch {
             Self.logger.error("Shared note clear failed: \(error.localizedDescription, privacy: .public)")
@@ -91,12 +95,12 @@ extension AppStateStore {
         }
     }
 
-    private func setNoteDeleted(_ id: UUID, deleted: Bool) -> Bool {
+    private func setNoteDeleted(_ id: UUID, deleted: Bool) async -> Bool {
         do {
             guard let note = state.notes.first(where: { $0.id == id }),
                   let sharedLibrary
             else { throw SharedLibraryError.notFound }
-            try sharedLibrary.setNoteDeleted(note, deleted: deleted)
+            try await sharedLibrary.setNoteDeleted(note, deleted: deleted)
             return true
         } catch {
             Self.logger.error("Shared note deletion change failed: \(error.localizedDescription, privacy: .public)")

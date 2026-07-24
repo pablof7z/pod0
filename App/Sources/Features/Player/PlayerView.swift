@@ -14,7 +14,6 @@ struct PlayerView: View {
     @Bindable var state: PlaybackState
     @Environment(\.dismiss) private var dismiss
     let glassNamespace: Namespace.ID
-
     @State private var isScrubbing: Bool = false
     @State private var showSpeedSheet: Bool = false
     @State private var showSleepSheet: Bool = false
@@ -26,7 +25,6 @@ struct PlayerView: View {
     /// button was tapped — used as the anchor position for the new note.
     @State private var showAddNoteSheet: Bool = false
     @State private var noteAnchorTime: TimeInterval = 0
-
     private var podcast: Podcast? {
         guard let podID = state.episode?.podcastID else { return nil }
         return store.podcast(id: podID)
@@ -35,7 +33,6 @@ struct PlayerView: View {
     private var showName: String {
         podcast?.title ?? ""
     }
-
     var body: some View {
         VStack(spacing: 0) {
             episodeHeader
@@ -83,12 +80,15 @@ struct PlayerView: View {
                 let capturedEpisodeID = episode.id
                 let capturedTime = noteAnchorTime
                 EditTextSheet(title: "Add Note", initialText: "") { text in
-                    store.addNote(
-                        text: text,
-                        kind: .free,
-                        target: .episode(id: capturedEpisodeID, positionSeconds: capturedTime)
-                    )
-                    Haptics.success()
+                    Task {
+                        let target = Anchor.episode(
+                            id: capturedEpisodeID,
+                            positionSeconds: capturedTime
+                        )
+                        if await store.addNote(text: text, target: target) != nil {
+                            Haptics.success()
+                        }
+                    }
                 }
             }
         }

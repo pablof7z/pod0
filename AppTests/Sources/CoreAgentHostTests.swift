@@ -261,7 +261,7 @@ private final class StubCoreAgentModelTransport: CoreAgentModelTransporting {
         tools: [[String: Any]],
         model _: String,
         ollamaChatURL _: URL?,
-        onPartialContent: @escaping (String) -> Void
+        onPartialContent: @escaping @MainActor @Sendable (String) -> Void
     ) async throws -> AgentResult {
         lastMessages = messages
         lastTools = tools

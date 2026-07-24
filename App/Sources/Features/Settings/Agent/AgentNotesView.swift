@@ -76,19 +76,25 @@ struct AgentNotesView: View {
             EditTextSheet(title: "Edit Note", initialText: note.text) { newText in
                 var updated = note
                 updated.text = newText
-                store.updateNote(updated)
+                Task { await store.updateNote(updated) }
             }
         }
         .sheet(isPresented: $showNewNote) {
             EditTextSheet(title: "New Note", initialText: "") { text in
-                store.addNote(text: text, kind: .free)
-                Haptics.success()
+                Task {
+                    if await store.addNote(text: text, kind: .free) != nil {
+                        Haptics.success()
+                    }
+                }
             }
         }
         .alert("Clear All Notes?", isPresented: $showClearConfirm) {
             Button("Clear All", role: .destructive) {
-                store.clearAllNotes()
-                Haptics.bulkAction()
+                Task {
+                    if await store.clearAllNotes() {
+                        Haptics.bulkAction()
+                    }
+                }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -197,7 +203,9 @@ struct AgentNotesView: View {
                         .agentContentRowActions(
                             onEdit: { editingNote = note },
                             copyText: note.text,
-                            onDelete: { store.deleteNote(note.id) }
+                            onDelete: {
+                                Task { await store.deleteNote(note.id) }
+                            }
                         )
                 }
             } header: {

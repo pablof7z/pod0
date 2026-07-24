@@ -40,13 +40,16 @@ struct AgentMemoriesView: View {
         .toolbar { toolbarContent }
         .sheet(item: $editingMemory) { memory in
             EditTextSheet(title: "Edit Memory", initialText: memory.content) { newContent in
-                store.updateAgentMemory(memory.id, content: newContent)
+                Task { await store.updateAgentMemory(memory.id, content: newContent) }
             }
         }
         .alert("Clear All Memories?", isPresented: $showClearConfirm) {
             Button("Clear All", role: .destructive) {
-                store.clearAllAgentMemories()
-                Haptics.bulkAction()
+                Task {
+                    if await store.clearAllAgentMemories() {
+                        Haptics.bulkAction()
+                    }
+                }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -97,7 +100,9 @@ struct AgentMemoriesView: View {
                         .agentContentRowActions(
                             onEdit: { editingMemory = memory },
                             copyText: memory.content,
-                            onDelete: { store.deleteAgentMemory(memory.id) }
+                            onDelete: {
+                                Task { await store.deleteAgentMemory(memory.id) }
+                            }
                         )
                 }
             } header: {

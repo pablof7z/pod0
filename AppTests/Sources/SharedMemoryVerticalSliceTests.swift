@@ -4,7 +4,7 @@ import XCTest
 
 @MainActor
 final class SharedMemoryVerticalSliceTests: XCTestCase {
-    func testLegacyMemoriesCutOverLosslesslyAndCommandsSurviveRelaunch() throws {
+    func testLegacyMemoriesCutOverLosslesslyAndCommandsSurviveRelaunch() async throws {
         let fileURL = AppStateTestSupport.uniqueTempFileURL()
         let persistence = Persistence(fileURL: fileURL)
         defer { persistence.reset() }
@@ -64,26 +64,31 @@ final class SharedMemoryVerticalSliceTests: XCTestCase {
         XCTAssertTrue(retired.agentMemories.isEmpty, "Swift metadata must stop persisting memories")
         XCTAssertNil(retired.compiledMemory, "Swift metadata must stop persisting compiled memory")
 
-        let created = try XCTUnwrap(store?.addAgentMemory(content: "Likes concise answers"))
+        let createdMemory = await store?.addAgentMemory(content: "Likes concise answers")
+        let created = try XCTUnwrap(createdMemory)
         let stale = created
-        XCTAssertTrue(store?.updateAgentMemory(
+        let didUpdate = await store?.updateAgentMemory(
             created.id,
             content: "Likes concise, evidence-backed answers"
-        ) == true)
+        )
+        XCTAssertTrue(didUpdate == true)
         let edited = try XCTUnwrap(store?.state.agentMemories.first {
             $0.id == created.id
         })
         XCTAssertEqual(edited.revision, 2)
         XCTAssertEqual(edited.content, "Likes concise, evidence-backed answers")
         let sharedLibrary = try XCTUnwrap(store?.sharedLibrary)
-        XCTAssertThrowsError(
-            try sharedLibrary.updateMemory(stale, content: "A stale overwrite")
-        ) { error in
+        do {
+            try await sharedLibrary.updateMemory(stale, content: "A stale overwrite")
+            XCTFail("Expected stale memory update to fail")
+        } catch {
             XCTAssertEqual(error as? SharedLibraryError, .revisionConflict)
         }
-        XCTAssertTrue(store?.deleteAgentMemory(created.id) == true)
+        let didDelete = await store?.deleteAgentMemory(created.id)
+        XCTAssertTrue(didDelete == true)
         XCTAssertFalse(store?.activeMemories.contains(where: { $0.id == created.id }) == true)
-        XCTAssertTrue(store?.restoreAgentMemory(created.id) == true)
+        let didRestore = await store?.restoreAgentMemory(created.id)
+        XCTAssertTrue(didRestore == true)
 
         store = nil
         store = AppStateStore(
@@ -101,7 +106,8 @@ final class SharedMemoryVerticalSliceTests: XCTestCase {
             "Likes concise, evidence-backed answers"
         )
 
-        XCTAssertTrue(store?.clearAllAgentMemories() == true)
+        let didClear = await store?.clearAllAgentMemories()
+        XCTAssertTrue(didClear == true)
         XCTAssertTrue(store?.activeMemories.isEmpty == true)
         store = nil
         let relaunched = AppStateStore(

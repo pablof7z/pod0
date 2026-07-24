@@ -41,4 +41,22 @@ actor CoreFacadeCommandExecutor {
     func dispatch(_ envelope: CommandEnvelope, to facade: Pod0Facade) {
         facade.dispatch(command: envelope)
     }
+
+    func dispatchThenSubscribe(
+        request: ProjectionRequest,
+        subscriber: any ProjectionSubscriber,
+        envelope: CommandEnvelope,
+        to facade: Pod0Facade
+    ) -> SubscriptionId {
+        facade.dispatch(command: envelope)
+        let subscriptionID = facade.subscribe(
+            request: request,
+            subscriber: subscriber
+        )
+        return subscriptionID
+    }
+
+    func unsubscribe(_ subscriptionID: SubscriptionId, from facade: Pod0Facade) {
+        facade.unsubscribe(subscriptionId: subscriptionID)
+    }
 }

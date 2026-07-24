@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-24T16:16:59Z",
+      "lines": [
+        "Pod0 opens responsively and keeps downloads, transcripts, clips, agent replies, imports, and exports from freezing the app."
+      ]
+    },
+    {
       "shipped_at": "2026-07-24T13:28:29Z",
       "lines": [
         "Playback, Saved, and Downloads stay smooth as your podcast library grows."

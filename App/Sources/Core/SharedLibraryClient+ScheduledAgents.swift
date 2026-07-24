@@ -28,13 +28,23 @@ extension SharedLibraryClient {
     ) {
         guard revision >= lastScheduledAgentRevision else { return }
         lastScheduledAgentRevision = revision
-        cachedScheduledAgent = loadScheduledAgentPages(fallback: projection)
-        if let store { publishScheduledAgents(to: store) }
+        let facade = facade
+        scheduledAgentProjectionTask?.cancel()
+        scheduledAgentProjectionTask = Task { @MainActor [weak self] in
+            let snapshot = await Task.detached(priority: .utility) {
+                Self.loadScheduledAgentPages(facade: facade, fallback: projection)
+            }.value
+            guard !Task.isCancelled,
+                  let self,
+                  revision == lastScheduledAgentRevision
+            else { return }
+            cachedScheduledAgent = snapshot
+            if let store { publishScheduledAgents(to: store) }
+        }
     }
 
     func publishScheduledAgents(to store: AppStateStore) {
-        let projection = cachedScheduledAgent ?? loadScheduledAgentPages(fallback: nil)
-        cachedScheduledAgent = projection
+        guard let projection = cachedScheduledAgent else { return }
         store.applySharedScheduledTasks(projection.tasks.compactMap { task in
             guard let id = task.taskId.uuid else { return nil }
             return AgentScheduledTask(
@@ -140,8 +150,9 @@ extension SharedLibraryClient {
     }
 }
 
-private extension SharedLibraryClient {
-    func loadScheduledAgentPages(
+extension SharedLibraryClient {
+    nonisolated static func loadScheduledAgentPages(
+        facade: Pod0Facade,
         fallback: ScheduledAgentProjection?
     ) -> ScheduledAgentProjection {
         var offset: UInt32 = 0
@@ -180,7 +191,10 @@ private extension SharedLibraryClient {
 
     func scheduledTask(id: UUID) -> ScheduledTaskProjection? {
         let taskID = ScheduledTaskId(uuid: id)
-        return loadScheduledAgentPages(fallback: nil).tasks.first { $0.taskId == taskID }
+        return Self.loadScheduledAgentPages(
+            facade: facade,
+            fallback: nil
+        ).tasks.first { $0.taskId == taskID }
     }
 
     func dispatchScheduled(_ command: ApplicationCommand) {

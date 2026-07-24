@@ -112,9 +112,9 @@ final class AutoSnipController {
 
     // MARK: - Capture
 
-    /// Capture a snip from the live playhead. Returns the persisted clip on
-    /// success, or `nil` when there's nothing to capture (no episode loaded,
-    /// no store attached, etc.).
+    /// Capture a snip from the live playhead. Returns the proposed clip
+    /// immediately so lock-screen commands can acknowledge without blocking;
+    /// transcript extraction and the authoritative Rust commit run off-main.
     @discardableResult
     func captureSnip(source: Clip.Source = .touch) -> Clip? {
         guard let playback, let store, let episode = playback.episode else {
@@ -133,62 +133,58 @@ final class AutoSnipController {
             return nil
         }
 
-        let (text, speaker) = transcriptWindow(
-            episodeID: episode.id,
-            startSeconds: startSeconds,
-            endSeconds: endSeconds,
-            atSeconds: now
-        )
-
-        guard let clip = store.addClip(
+        let proposedClip = Clip(
             episodeID: episode.id,
             subscriptionID: episode.podcastID,
             startMs: startMs,
             endMs: endMs,
-            transcriptText: text,
-            speakerID: speaker,
+            transcriptText: "",
             source: source
-        ) else {
-            Self.logger.error("captureSnip: shared clip commit failed")
-            return nil
-        }
-
-        Haptics.success()
-
-        let summary = formatSummary(
-            startSeconds: startSeconds,
-            endSeconds: endSeconds
         )
-        lastCapture = CaptureResult(
-            id: UUID(),
-            clipID: clip.id,
-            episodeID: episode.id,
-            createdAt: clip.createdAt,
-            summary: summary
-        )
-        captureGeneration &+= 1
-        Self.logger.info(
-            "captured clip \(clip.id, privacy: .public) [\(startMs, privacy: .public)..\(endMs, privacy: .public)] source=\(String(describing: source), privacy: .public)"
-        )
-
-        // Optimistic-then-refine: kick off an LLM call that picks semantic
-        // start/end boundaries from a wider asymmetric window around the
-        // playhead. When it returns, overwrite the mechanical bounds in
-        // place. Runs as a detached @MainActor task so the lock-screen
-        // bookmarkCommand path (which can't await UI) still gets refinement.
         let modelID = store.state.settings.wikiModel
-        let playheadAtCapture = now
-        Task { @MainActor in
+        let reader = transcriptReader
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let (text, speaker) = await Task.detached(priority: .userInitiated) {
+                Self.transcriptWindow(
+                    reader: reader,
+                    episodeID: episode.id,
+                    startSeconds: startSeconds,
+                    endSeconds: endSeconds,
+                    atSeconds: now
+                )
+            }.value
+            var clip = proposedClip
+            clip.transcriptText = text ?? ""
+            clip.speakerID = speaker?.uuidString
+            guard await store.addClip(clip) else {
+                Self.logger.error("captureSnip: shared clip commit failed")
+                return
+            }
+            Haptics.success()
+            lastCapture = CaptureResult(
+                id: UUID(),
+                clipID: clip.id,
+                episodeID: episode.id,
+                createdAt: clip.createdAt,
+                summary: formatSummary(
+                    startSeconds: startSeconds,
+                    endSeconds: endSeconds
+                )
+            )
+            captureGeneration &+= 1
+            Self.logger.info(
+                "captured clip \(clip.id, privacy: .public) [\(startMs, privacy: .public)..\(endMs, privacy: .public)] source=\(String(describing: source), privacy: .public)"
+            )
             await refine(
                 clipID: clip.id,
                 episodeID: episode.id,
-                playheadSeconds: playheadAtCapture,
+                playheadSeconds: now,
                 modelID: modelID,
                 store: store
             )
         }
-
-        return clip
+        return proposedClip
     }
 
     // MARK: - Refinement
@@ -203,7 +199,11 @@ final class AutoSnipController {
         modelID: String,
         store: AppStateStore
     ) async {
-        guard let transcript = transcriptReader.load(episodeID: episodeID) else {
+        let reader = transcriptReader
+        let transcript = await Task.detached(priority: .utility) {
+            reader.load(episodeID: episodeID)
+        }.value
+        guard let transcript else {
             Self.logger.debug("refine: no transcript yet for \(episodeID, privacy: .public)")
             return
         }
@@ -225,7 +225,7 @@ final class AutoSnipController {
         let startMs = Int((resolved.startSeconds * 1000).rounded())
         let endMs = Int((resolved.endSeconds * 1000).rounded())
         guard endMs > startMs else { return }
-        store.updateClipBoundaries(
+        await store.updateClipBoundaries(
             id: clipID,
             startMs: startMs,
             endMs: endMs,
@@ -248,13 +248,14 @@ final class AutoSnipController {
     /// Pull the transcript span [startSeconds, endSeconds] and the speaker
     /// at the trigger moment. Returns `(nil, nil)` when no transcript is
     /// available — the snip is still valid as a span-grounded clip.
-    private func transcriptWindow(
+    nonisolated private static func transcriptWindow(
+        reader: any TranscriptReading,
         episodeID: UUID,
         startSeconds: TimeInterval,
         endSeconds: TimeInterval,
         atSeconds: TimeInterval
     ) -> (String?, UUID?) {
-        guard let transcript = transcriptReader.load(episodeID: episodeID) else {
+        guard let transcript = reader.load(episodeID: episodeID) else {
             return (nil, nil)
         }
         // Overlapping segments: any segment that intersects the window.

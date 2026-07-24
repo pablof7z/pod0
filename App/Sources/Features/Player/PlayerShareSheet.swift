@@ -146,28 +146,35 @@ struct PlayerShareSheet: View {
     /// works — same defensive path the previous implementation took, just
     /// preceded by an LLM round-trip when possible.
     private func captureAndShareQuote() {
-        guard let transcript = EpisodeDetailView.readyTranscript(
-            for: episode,
-            store: store.transcriptReader
-        ),
-              store.podcast(id: episode.podcastID) != nil else {
+        guard case .ready = episode.transcriptState,
+              store.podcast(id: episode.podcastID) != nil
+        else {
             Haptics.error()
             return
         }
         Haptics.light()
         let modelID = store.state.settings.wikiModel
         let modelReference = LLMModelReference(storedID: modelID)
-        // Surface the one-time hint when we'd otherwise silently degrade.
-        // Falls through to the mechanical fallback below regardless.
-        if !LLMProviderCredentialResolver.hasAPIKey(for: modelReference.provider) {
-            AutoSnipController.shared.noLLMKeyHintPending = true
-            saveQuoteClip(from: transcript.segment(at: state.currentTime))
-            return
-        }
         quoteResolving = true
         let playhead = state.currentTime
+        let reader = store.transcriptReader
+        let episodeID = episode.id
         Task { @MainActor in
             defer { quoteResolving = false }
+            let transcript = await Task.detached(priority: .userInitiated) {
+                reader.load(episodeID: episodeID)
+            }.value
+            guard let transcript else {
+                Haptics.error()
+                return
+            }
+            // Surface the one-time hint when we'd otherwise silently degrade.
+            // Falls through to the mechanical fallback below regardless.
+            if !LLMProviderCredentialResolver.hasAPIKey(for: modelReference.provider) {
+                AutoSnipController.shared.noLLMKeyHintPending = true
+                await saveQuoteClip(from: transcript.segment(at: playhead))
+                return
+            }
             let resolved = await ClipBoundaryResolver.shared.resolveBoundaries(
                 transcript: transcript,
                 playheadSeconds: playhead,
@@ -178,7 +185,7 @@ struct PlayerShareSheet: View {
                 let startMs = Int((resolved.startSeconds * 1000).rounded())
                 let endMs = Int((resolved.endSeconds * 1000).rounded())
                 guard endMs > startMs else { return }
-                quoteClip = store.addClip(
+                quoteClip = await store.addClip(
                     episodeID: episode.id,
                     subscriptionID: episode.podcastID,
                     startMs: startMs,
@@ -190,7 +197,7 @@ struct PlayerShareSheet: View {
             } else {
                 // Mechanical fallback so a failed LLM call still lets the
                 // user share something. Same shape as the pre-LLM behavior.
-                saveQuoteClip(from: transcript.segment(at: playhead))
+                await saveQuoteClip(from: transcript.segment(at: playhead))
             }
         }
     }
@@ -198,12 +205,12 @@ struct PlayerShareSheet: View {
     /// Persists a `Clip` from a raw transcript `Segment` — the mechanical
     /// fallback path, used both when no LLM key is configured and when
     /// resolution fails.
-    private func saveQuoteClip(from segment: Segment?) {
+    private func saveQuoteClip(from segment: Segment?) async {
         guard let segment else { return }
         let startMs = Int((segment.start * 1000).rounded())
         let endMs = Int((segment.end * 1000).rounded())
         guard endMs > startMs else { return }
-        quoteClip = store.addClip(
+        quoteClip = await store.addClip(
             episodeID: episode.id,
             subscriptionID: episode.podcastID,
             startMs: startMs,

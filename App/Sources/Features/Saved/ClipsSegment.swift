@@ -64,7 +64,7 @@ struct ClipsSegment: View {
             },
             onDelete: {
                 Haptics.delete()
-                store.deleteClip(id: clip.id)
+                Task { await store.deleteClip(id: clip.id) }
             }
         )
         .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
@@ -73,7 +73,7 @@ struct ClipsSegment: View {
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button(role: .destructive) {
                 Haptics.delete()
-                store.deleteClip(id: clip.id)
+                Task { await store.deleteClip(id: clip.id) }
             } label: {
                 Label("Delete", systemImage: "trash")
             }

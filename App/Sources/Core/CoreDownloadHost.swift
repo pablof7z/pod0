@@ -137,12 +137,20 @@ final class CoreDownloadHost: CoreDownloadHosting {
         let episodeID = identity?.episodeID ?? observation.downloadEpisodeID
         switch observation {
         case .downloadStaged, .downloadCancelled:
-            if let attemptID { nativeStore.removeNativeFiles(for: attemptID) }
+            if let attemptID {
+                let nativeStore = nativeStore
+                Task.detached(priority: .utility) {
+                    nativeStore.removeNativeFiles(for: attemptID)
+                }
+            }
         case .failed:
             break
         default:
             if case .rejected = receipt, let attemptID {
-                nativeStore.removeNativeFiles(for: attemptID)
+                let nativeStore = nativeStore
+                Task.detached(priority: .utility) {
+                    nativeStore.removeNativeFiles(for: attemptID)
+                }
             }
         }
         if let episodeID { clearProgress(for: episodeID) }

@@ -261,22 +261,21 @@ struct SubscriptionsListView: View {
 
     // MARK: - OPML export
 
-    /// Generates a fresh OPML file and stores its URL in `opmlURL` so the
-    /// `ShareLink` lights up. Skips the work when the subscription list is
-    /// empty (the export row stays disabled in that case). Errors land in
-    /// `exportError` and surface via the `.alert` modifier.
     private func regenerateOPMLIfNeeded() async {
         guard !store.sortedFollowedPodcasts.isEmpty else {
             opmlURL = nil
             return
         }
         let subs = store.sortedFollowedPodcasts
-        let exporter = OPMLExport()
-        let data = exporter.exportOPML(podcasts: subs)
         let filename = "Podcastr-Subscriptions-\(Self.dateStamp()).opml"
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
         do {
-            try data.write(to: url, options: [.atomic])
+            let url = try await Task.detached(priority: .userInitiated) {
+                let data = OPMLExport().exportOPML(podcasts: subs)
+                let url = FileManager.default.temporaryDirectory
+                    .appendingPathComponent(filename)
+                try data.write(to: url, options: [.atomic])
+                return url
+            }.value
             opmlURL = url
         } catch {
             Self.logger.error("OPML export write failed: \(error, privacy: .public)")

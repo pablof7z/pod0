@@ -42,7 +42,7 @@
     "AppTests/Sources/RSSParserTests.swift": 317,
     "App/Sources/Features/Settings/AI/ProviderConnectionSection.swift": 312,
     "App/Sources/Features/Player/VoiceNote/VoiceNoteRecordingSheet.swift": 311,
-    "App/Sources/Features/Settings/SubscriptionsListView.swift": 308,
+    "App/Sources/Features/Settings/SubscriptionsListView.swift": 307,
     "AppTests/Sources/ScribeRequestEncodingTests.swift": 303
   }
 }

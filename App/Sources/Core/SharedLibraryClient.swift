@@ -1,6 +1,5 @@
 import Foundation
 import Pod0Core
-
 @MainActor
 final class SharedLibraryClient {
     static let maximumActiveChapterProjections = 8
@@ -17,17 +16,17 @@ final class SharedLibraryClient {
     let deferredAgentHost: DeferredAgentHost
     let deferredRecallHost: DeferredRecallHost
     private var subscriber: SharedLibrarySubscriber?
-    private var librarySubscriptionID: SubscriptionId?
-    private var playbackSubscriptionID: SubscriptionId?
-    private var chapterWorkflowSubscriptionID: SubscriptionId?
+    var librarySubscriptionID: SubscriptionId?
+    var playbackSubscriptionID: SubscriptionId?
+    var chapterWorkflowSubscriptionID: SubscriptionId?
     var recallConfigurationSubscriptionID: SubscriptionId?
-    private var notesSubscriptionID: SubscriptionId?
-    private var memoriesSubscriptionID: SubscriptionId?
-    private var clipsSubscriptionID: SubscriptionId?
-    private var downloadsSubscriptionID: SubscriptionId?
-    private var transcriptWorkflowSubscriptionID: SubscriptionId?
-    private var newEpisodeNotificationSettingsSubscriptionID: SubscriptionId?
-    private var nostrSignerSubscriptionID: SubscriptionId?
+    var notesSubscriptionID: SubscriptionId?
+    var memoriesSubscriptionID: SubscriptionId?
+    var clipsSubscriptionID: SubscriptionId?
+    var downloadsSubscriptionID: SubscriptionId?
+    var transcriptWorkflowSubscriptionID: SubscriptionId?
+    var newEpisodeNotificationSettingsSubscriptionID: SubscriptionId?
+    var nostrSignerSubscriptionID: SubscriptionId?
     var scheduledAgentSubscriptionID: SubscriptionId?
     var waiters: [CommandId: Waiter] = [:]
     var lastLibraryRevision: UInt64 = 0
@@ -41,6 +40,7 @@ final class SharedLibraryClient {
     var cachedSnapshot: SharedLibrarySnapshot?
     var chapterScopeCounts: [UUID: Int] = [:]
     var chapterSnapshots: [UUID: SharedChapterSnapshot] = [:]
+    var chapterProjectionTasks: [UUID: Task<Void, Never>] = [:]
     var announcedPublisherChapterEpisodeIDs: Set<UUID> = []
     var announcedModelChapterVersions: [UUID: String] = [:]
     var cachedPublisherChapterWorkflows: [PublisherChapterWorkflowProjection] = []
@@ -63,7 +63,13 @@ final class SharedLibraryClient {
     var playbackHostAttached = false
     var coreCommandTail: Task<Void, Never>?
     var coreCommandGeneration: UInt64 = 0
+    var subscriptionTask: Task<Void, Never>?
+    var initialProjectionTask: Task<Void, Never>?
     var libraryProjectionTask: Task<Void, Never>?
+    var noteProjectionTask: Task<Void, Never>?
+    var memoryProjectionTask: Task<Void, Never>?
+    var clipProjectionTask: Task<Void, Never>?
+    var scheduledAgentProjectionTask: Task<Void, Never>?
     var downloadProjectionTask: Task<Void, Never>?
     var evidenceRebuildTask: Task<Void, Never>?
     var evidenceUpdateTasks: [UUID: Task<Void, Never>] = [:]
@@ -105,92 +111,31 @@ final class SharedLibraryClient {
     }
 
     func start() {
-        guard librarySubscriptionID == nil else { return }
+        guard subscriber == nil else { return }
         dispatcher.activateExecution()
         CoreDownloadEnvironmentMonitor.shared.start(client: self)
         let subscriber = SharedLibrarySubscriber { [weak self] projection in
             Task { @MainActor [weak self] in self?.receive(projection) }
         }
         self.subscriber = subscriber
-        librarySubscriptionID = facade.subscribe(
-            request: ProjectionRequest(scope: .library, offset: 0, maxItems: 200),
-            subscriber: subscriber
-        )
-        playbackSubscriptionID = facade.subscribe(
-            request: ProjectionRequest(scope: .playback, offset: 0, maxItems: 200),
-            subscriber: subscriber
-        )
-        subscribeToRecallConfiguration(subscriber)
-        chapterWorkflowSubscriptionID = facade.subscribe(
-            request: ProjectionRequest(
-                scope: .chapterWorkflows(episodeId: nil),
-                offset: 0,
-                maxItems: 200
-            ),
-            subscriber: subscriber
-        )
-        notesSubscriptionID = facade.subscribe(
-            request: ProjectionRequest(scope: .notes(scope: .all), offset: 0, maxItems: 200),
-            subscriber: subscriber
-        )
-        memoriesSubscriptionID = facade.subscribe(
-            request: ProjectionRequest(scope: .memories(scope: .all), offset: 0, maxItems: 200),
-            subscriber: subscriber
-        )
-        clipsSubscriptionID = facade.subscribe(
-            request: ProjectionRequest(scope: .clips(scope: .active), offset: 0, maxItems: 200),
-            subscriber: subscriber
-        )
-        downloadsSubscriptionID = facade.subscribe(
-            request: ProjectionRequest(
-                scope: .downloads(episodeId: nil),
-                offset: 0,
-                maxItems: 200
-            ),
-            subscriber: subscriber
-        )
-        transcriptWorkflowSubscriptionID = facade.subscribe(
-            request: ProjectionRequest(
-                scope: .transcriptWorkflows(episodeId: nil),
-                offset: 0,
-                maxItems: 200
-            ),
-            subscriber: subscriber
-        )
-        newEpisodeNotificationSettingsSubscriptionID = facade.subscribe(
-            request: ProjectionRequest(
-                scope: .newEpisodeNotificationSettings,
-                offset: 0,
-                maxItems: 1
-            ),
-            subscriber: subscriber
-        )
-        subscribeToScheduledAgents(subscriber)
-        nostrSignerSubscriptionID = facade.subscribe(
-            request: ProjectionRequest(scope: .nostrSigner, offset: 0, maxItems: 20),
-            subscriber: subscriber
-        )
-        ensureNostrSigner()
-        dispatcher.executePendingRequests(from: facade)
+        let facade = facade
+        subscriptionTask = Task { @MainActor [weak self] in
+            let subscriptions = await Task.detached(priority: .utility) {
+                Self.makeSubscriptions(facade: facade, subscriber: subscriber)
+            }.value
+            guard !Task.isCancelled, let self, self.subscriber === subscriber else {
+                Task.detached { subscriptions.unsubscribeAll(from: facade) }
+                return
+            }
+            install(subscriptions)
+            ensureNostrSigner()
+            dispatcher.executePendingRequests(from: facade)
+        }
     }
 
     func attach(store: AppStateStore) {
         self.store = store
-        let snapshot = loadAllPages()
-        cachedSnapshot = snapshot
-        store.applySharedLibrary(snapshot)
-        let notes = loadNotePages(scope: .all)
-        cachedNotes = notes
-        store.applySharedNotes(notes)
-        let memories = loadMemoryPages(scope: .all)
-        cachedMemories = memories
-        store.applySharedMemories(memories)
-        let clips = loadClipPages(scope: .active)
-        cachedClips = clips
-        store.applySharedClips(clips)
-        publishScheduledAgents(to: store)
-        publishNewEpisodeNotificationSettings(to: store)
-        publishRecallConfiguration(to: store)
+        refreshInitialProjections()
     }
 
     private func receive(_ envelope: ProjectionEnvelope) {
@@ -235,14 +180,28 @@ final class SharedLibraryClient {
         coreCommandTail?.cancel()
         coreCommandTail = nil
         coreCommandGeneration &+= 1
+        subscriptionTask?.cancel()
+        subscriptionTask = nil
+        initialProjectionTask?.cancel()
+        initialProjectionTask = nil
         libraryProjectionTask?.cancel()
         libraryProjectionTask = nil
+        noteProjectionTask?.cancel()
+        noteProjectionTask = nil
+        memoryProjectionTask?.cancel()
+        memoryProjectionTask = nil
+        clipProjectionTask?.cancel()
+        clipProjectionTask = nil
+        scheduledAgentProjectionTask?.cancel()
+        scheduledAgentProjectionTask = nil
         downloadProjectionTask?.cancel()
         downloadProjectionTask = nil
         evidenceRebuildTask?.cancel()
         evidenceRebuildTask = nil
         for task in evidenceUpdateTasks.values { task.cancel() }
         evidenceUpdateTasks.removeAll()
+        for task in chapterProjectionTasks.values { task.cancel() }
+        chapterProjectionTasks.removeAll()
         cancelAllRecallWaiters()
         dispatcher.shutdown()
         if let librarySubscriptionID { facade.unsubscribe(subscriptionId: librarySubscriptionID) }

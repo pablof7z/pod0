@@ -21,6 +21,8 @@ extension SharedLibraryClient {
     }
 
     func execute(_ command: ApplicationCommand) async throws -> OperationResult? {
+        await subscriptionTask?.value
+        await initialProjectionTask?.value
         let commandID = CommandId(uuid: UUID())
         let cancellationID = CancellationId(uuid: UUID())
         let result = try await withCheckedThrowingContinuation { continuation in

@@ -29,6 +29,7 @@ struct DataExportView: View {
     @State private var fileSize: Int?
     @State private var errorMessage: String?
     @State private var generatedAt: Date?
+    @State private var isGenerating = false
 
     var body: some View {
         ZStack {
@@ -80,14 +81,22 @@ struct DataExportView: View {
             Button {
                 generate()
             } label: {
-                SettingsRow(
-                    icon: "square.and.arrow.up",
-                    tint: .indigo,
-                    title: "Export & Share",
-                    subtitle: "Generates a JSON file and opens the share sheet"
-                )
+                if isGenerating {
+                    HStack {
+                        ProgressView()
+                        Text("Preparing export…")
+                    }
+                } else {
+                    SettingsRow(
+                        icon: "square.and.arrow.up",
+                        tint: .indigo,
+                        title: "Export & Share",
+                        subtitle: "Generates a JSON file and opens the share sheet"
+                    )
+                }
             }
             .foregroundStyle(.primary)
+            .disabled(isGenerating)
         } footer: {
             Text(actionFooterText)
         }
@@ -139,32 +148,36 @@ struct DataExportView: View {
     // MARK: - Actions
 
     private func generate() {
-        do {
-            let now = Date()
-            let exportState = store.state
-            let url = try DataExport.writeExport(of: exportState, now: now)
-            let attrs: [FileAttributeKey: Any]?
+        guard !isGenerating else { return }
+        isGenerating = true
+        let now = Date()
+        let exportState = store.state
+        Task { @MainActor in
             do {
-                attrs = try FileManager.default.attributesOfItem(atPath: url.path)
+                let artifact = try await Task.detached(priority: .userInitiated) {
+                    let url = try DataExport.writeExport(of: exportState, now: now)
+                    let attributes = try? FileManager.default.attributesOfItem(
+                        atPath: url.path
+                    )
+                    let size = (attributes?[.size] as? NSNumber)?.intValue
+                    return (url, size)
+                }.value
+                fileURL = artifact.0
+                fileSize = artifact.1
+                generatedAt = now
+                errorMessage = nil
+                Haptics.success()
+                SystemShareSheet.present(items: [artifact.0])
             } catch {
-                Self.logger.warning("DataExportView: could not read file attributes for \(url.lastPathComponent, privacy: .public): \(error, privacy: .public)")
-                attrs = nil
+                Self.logger.error(
+                    "DataExportView: export failed: \(error, privacy: .public)"
+                )
+                errorMessage = "Pod0 couldn't generate the export safely. Try again."
+                fileURL = nil
+                fileSize = nil
+                Haptics.error()
             }
-            fileURL = url
-            fileSize = (attrs?[.size] as? NSNumber)?.intValue
-            generatedAt = now
-            errorMessage = nil
-            Haptics.success()
-            // Imperative present rather than `.sheet { ShareSheet(items:) }`
-            // — the SwiftUI sheet wrapper renders blank for file-URL items
-            // on iOS 16+ (`UIActivityViewController` needs its own
-            // presentation context, not a SwiftUI modal scope).
-            SystemShareSheet.present(items: [url])
-        } catch {
-            errorMessage = "Pod0 couldn't generate the export safely. Try again."
-            fileURL = nil
-            fileSize = nil
-            Haptics.error()
+            isGenerating = false
         }
     }
 

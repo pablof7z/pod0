@@ -6,7 +6,6 @@ enum LegacyDownloadWorkflowCutoverError: Error {
 }
 
 enum LegacyDownloadWorkflowCutover {
-    @MainActor
     static func run(
         facade: Pod0Facade,
         state: AppState,

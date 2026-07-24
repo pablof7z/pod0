@@ -1,7 +1,7 @@
 import Foundation
 import Pod0Core
 
-struct SharedClipSnapshot {
+struct SharedClipSnapshot: @unchecked Sendable {
     let collectionRevision: StateRevision
     let clips: [Clip]
     let operations: [OperationProjection]
@@ -11,10 +11,17 @@ extension SharedLibraryClient {
     func receiveClips(revision: UInt64) {
         guard revision >= lastClipsRevision else { return }
         lastClipsRevision = revision
-        let snapshot = loadClipPages(scope: .active)
-        cachedClips = snapshot
-        store?.applySharedClips(snapshot)
-        resolveWaiters(snapshot.operations)
+        let facade = facade
+        clipProjectionTask?.cancel()
+        clipProjectionTask = Task { @MainActor [weak self] in
+            let snapshot = await Task.detached(priority: .utility) {
+                Self.loadClipPages(facade: facade, scope: .active)
+            }.value
+            guard !Task.isCancelled, let self, revision == lastClipsRevision else { return }
+            cachedClips = snapshot
+            store?.applySharedClips(snapshot)
+            resolveWaiters(snapshot.operations)
+        }
     }
 
     func clip(id: UUID) -> Clip? {
@@ -29,12 +36,12 @@ extension SharedLibraryClient {
         cachedClips?.clips.filter { !$0.deleted } ?? []
     }
 
-    func createClip(_ clip: Clip) throws -> Clip {
+    func createClip(_ clip: Clip) async throws -> Clip {
         guard let start = clip.coreStartMilliseconds,
               let end = clip.coreEndMilliseconds,
               start < end
         else { throw SharedClipMappingError.invalidBounds }
-        let result = try executeClipCommand(.createClip(
+        let result = try await execute(.createClip(
             clipId: ClipId(uuid: clip.id),
             episodeId: EpisodeId(uuid: clip.episodeID),
             podcastId: PodcastId(uuid: clip.subscriptionID),
@@ -45,13 +52,13 @@ extension SharedLibraryClient {
             frozenTranscriptText: clip.transcriptText,
             source: clip.source.coreValue
         ))
+        let snapshot = await refreshClipSnapshot()
         guard case .clipCreated(
             let clipID,
             let clipRevision,
             let collectionRevision
         ) = result,
               let id = clipID.uuid,
-              let snapshot = cachedClips,
               snapshot.collectionRevision == collectionRevision,
               let projected = snapshot.clips.first(where: { $0.id == id }),
               projected.revision == clipRevision.value
@@ -59,12 +66,12 @@ extension SharedLibraryClient {
         return projected
     }
 
-    func updateClip(_ clip: Clip) throws {
+    func updateClip(_ clip: Clip) async throws {
         guard let start = clip.coreStartMilliseconds,
               let end = clip.coreEndMilliseconds,
               start < end
         else { throw SharedClipMappingError.invalidBounds }
-        let result = try executeClipCommand(.updateClip(
+        let result = try await execute(.updateClip(
             clipId: ClipId(uuid: clip.id),
             expectedClipRevision: ClipRevision(value: clip.revision),
             startMilliseconds: start,
@@ -73,28 +80,33 @@ extension SharedLibraryClient {
             speakerId: try clip.coreSpeakerID(preservingLegacyLabel: true),
             frozenTranscriptText: clip.transcriptText
         ))
-        try verifyClipUpdate(result, id: clip.id, deleted: false)
+        _ = await refreshClipSnapshot()
+        try await verifyClipUpdate(result, id: clip.id, deleted: false)
     }
 
-    func setClipDeleted(_ clip: Clip, deleted: Bool) throws {
-        let result = try executeClipCommand(.setClipDeleted(
+    func setClipDeleted(_ clip: Clip, deleted: Bool) async throws {
+        let result = try await execute(.setClipDeleted(
             clipId: ClipId(uuid: clip.id),
             expectedClipRevision: ClipRevision(value: clip.revision),
             deleted: deleted
         ))
-        try verifyClipUpdate(result, id: clip.id, deleted: deleted)
+        _ = await refreshClipSnapshot()
+        try await verifyClipUpdate(result, id: clip.id, deleted: deleted)
     }
 
-    func clearClips() throws {
-        let revision = cachedClips?.collectionRevision
-            ?? loadClipPages(scope: .active).collectionRevision
-        let result = try executeClipCommand(.clearClips(expectedCollectionRevision: revision))
+    func clearClips() async throws {
+        let revision = await clipCollectionRevision()
+        let result = try await execute(.clearClips(expectedCollectionRevision: revision))
+        _ = await refreshClipSnapshot()
         guard case .clipsCleared(let collectionRevision) = result,
               cachedClips?.collectionRevision == collectionRevision
         else { throw SharedLibraryError.unavailable }
     }
 
-    func loadClipPages(scope: ClipProjectionScope) -> SharedClipSnapshot {
+    nonisolated static func loadClipPages(
+        facade: Pod0Facade,
+        scope: ClipProjectionScope
+    ) -> SharedClipSnapshot {
         var offset: UInt32 = 0
         var collectionRevision = StateRevision(value: 1)
         var clips: [Clip] = []
@@ -119,42 +131,45 @@ extension SharedLibraryClient {
         )
     }
 
-    private func executeClipCommand(_ command: ApplicationCommand) throws -> OperationResult? {
-        let commandID = CommandId(uuid: UUID())
-        facade.dispatch(command: CommandEnvelope(
-            commandId: commandID,
-            cancellationId: CancellationId(uuid: UUID()),
-            expectedRevision: nil,
-            command: command
-        ))
-        let snapshot = loadClipPages(scope: .active)
+    private func clipCollectionRevision() async -> StateRevision {
+        if let revision = cachedClips?.collectionRevision { return revision }
+        let facade = facade
+        let snapshot = await Task.detached(priority: .utility) {
+            Self.loadClipPages(facade: facade, scope: .active)
+        }.value
         cachedClips = snapshot
         store?.applySharedClips(snapshot)
-        guard let operation = snapshot.operations.first(where: { $0.commandId == commandID })
-        else { throw SharedLibraryError.unavailable }
-        switch operation.stage {
-        case .succeeded:
-            return operation.result
-        case .failed, .cancelled, .unsupported:
-            throw SharedLibraryError(operation.failure?.code)
-        case .accepted, .running, .blocked:
-            throw SharedLibraryError.unavailable
-        }
+        return snapshot.collectionRevision
+    }
+
+    private func refreshClipSnapshot() async -> SharedClipSnapshot {
+        let facade = facade
+        let snapshot = await Task.detached(priority: .utility) {
+            Self.loadClipPages(facade: facade, scope: .active)
+        }.value
+        cachedClips = snapshot
+        store?.applySharedClips(snapshot)
+        return snapshot
     }
 
     private func verifyClipUpdate(
         _ result: OperationResult?,
         id: UUID,
         deleted: Bool
-    ) throws {
+    ) async throws {
+        let facade = facade
         guard case .clipUpdated(
             let clipID,
             let clipRevision,
             let collectionRevision
         ) = result,
               clipID.uuid == id,
-              cachedClips?.collectionRevision == collectionRevision,
-              let projected = loadClipPages(scope: .clip(clipId: clipID)).clips.first,
+              cachedClips?.collectionRevision == collectionRevision
+        else { throw SharedLibraryError.unavailable }
+        let projected = await Task.detached(priority: .utility) {
+            Self.loadClipPages(facade: facade, scope: .clip(clipId: clipID)).clips.first
+        }.value
+        guard let projected,
               projected.revision == clipRevision.value,
               projected.deleted == deleted
         else { throw SharedLibraryError.unavailable }

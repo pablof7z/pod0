@@ -6,7 +6,6 @@ enum AgentOllamaClient {
         static let requestTimeout: TimeInterval = 60
     }
 
-    @MainActor
     static func streamCompletion(
         messages: [[String: Any]],
         tools: [[String: Any]],
@@ -14,7 +13,7 @@ enum AgentOllamaClient {
         model: String,
         feature: String = CostFeature.agentChat,
         chatURL: URL? = nil,
-        onPartialContent: (String) -> Void
+        onPartialContent: @escaping @MainActor @Sendable (String) -> Void
     ) async throws -> AgentResult {
         let resolvedURL = chatURL ?? NetworkConstants.chatURL
         var request = URLRequest(url: resolvedURL)
@@ -41,6 +40,7 @@ enum AgentOllamaClient {
         var promptTokens = 0
         var completionTokens = 0
         var capturedModel = model
+        var lastPartialPublish = Date.distantPast
 
         for try await line in bytes.lines {
             guard !line.isBlank,
@@ -51,7 +51,12 @@ enum AgentOllamaClient {
             if let message = json["message"] as? [String: Any] {
                 if let chunk = message["content"] as? String {
                     content += chunk
-                    if !content.isEmpty { onPartialContent(content) }
+                    let now = Date()
+                    if !content.isEmpty,
+                       now.timeIntervalSince(lastPartialPublish) >= 0.05 {
+                        await onPartialContent(content)
+                        lastPartialPublish = now
+                    }
                 }
                 if let calls = message["tool_calls"] as? [[String: Any]] {
                     toolCalls.append(contentsOf: calls)
@@ -63,6 +68,9 @@ enum AgentOllamaClient {
                 capturedModel = (json["model"] as? String) ?? model
                 break
             }
+        }
+        if !content.isEmpty {
+            await onPartialContent(content)
         }
 
         let latencyMs = Int(Date().timeIntervalSince(start) * 1000)
@@ -76,7 +84,7 @@ enum AgentOllamaClient {
                 cachedTokens: nil
             )
         )
-        CostLedger.shared.logOllama(
+        await CostLedger.shared.logOllama(
             feature: feature,
             model: capturedModel,
             promptTokens: promptTokens,
