@@ -69,11 +69,15 @@ struct StarredSegment: View {
             return result
         }()
 
+        var relevantEpisodeIDs = Set(store.starredEpisodesView().map(\.id))
+        relevantEpisodeIDs.formUnion(clipsByEpisode.keys)
+        relevantEpisodeIDs.formUnion(notesByEpisode.keys)
+
         var entries: [StarredEntry] = []
-        for episode in store.state.episodes {
+        for episodeID in relevantEpisodeIDs {
+            guard let episode = store.episode(id: episodeID) else { continue }
             let clips = clipsByEpisode[episode.id] ?? []
             let notes = notesByEpisode[episode.id] ?? []
-            guard episode.isStarred || !clips.isEmpty || !notes.isEmpty else { continue }
             let podcast = store.podcast(id: episode.podcastID)
             entries.append(StarredEntry(
                 episode: episode,

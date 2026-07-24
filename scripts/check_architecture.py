@@ -30,6 +30,7 @@ def main() -> int:
         (scripts / "check_listening_single_writer.py", True),
         (scripts / "check_ui_storage_boundary.py", True),
         (scripts / "check_main_actor_core_io.py", True),
+        (scripts / "check_render_path_normalization.py", True),
         (scripts / "check_file_lengths.py", True),
         (scripts / "check_nmp_domain_boundary.py", True),
         (scripts / "check_rust_dependency_policy.py", True),

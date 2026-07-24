@@ -11,7 +11,7 @@ struct PlayerShowNotesView: View {
     let episode: Episode?
 
     private var notes: String {
-        EpisodeShowNotesFormatter.plainText(from: episode?.description ?? "")
+        episode?.plainTextDescription ?? ""
     }
 
     var body: some View {

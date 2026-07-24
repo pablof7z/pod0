@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-24T19:55:51Z",
+      "lines": [
+        "Episode lists, Search, Saved, and Downloads stay responsive even with large podcast libraries."
+      ]
+    },
+    {
       "shipped_at": "2026-07-24T16:16:59Z",
       "lines": [
         "Pod0 opens responsively and keeps downloads, transcripts, clips, agent replies, imports, and exports from freezing the app."

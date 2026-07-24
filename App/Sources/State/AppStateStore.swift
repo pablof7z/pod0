@@ -99,6 +99,11 @@ final class AppStateStore {
     /// 30 cap matches Home's hard upper bound — anything beyond that the
     /// Home feed never renders, and a smaller cap keeps the cache cheap.
     var recentEpisodesCached: [Episode] = []
+    /// Indexes for the small subsets used by download and Saved surfaces.
+    /// Keeping these alongside the other episode projections prevents those
+    /// screens from rescanning the whole library during progress updates.
+    var downloadedEpisodeIndexes: [Int] = []
+    var starredEpisodeIndexes: [Int] = []
 
     /// Cap used when building `recentEpisodesCached`. Matches Home's
     /// rendered limit; if a caller asks for more we recompute on the fly.

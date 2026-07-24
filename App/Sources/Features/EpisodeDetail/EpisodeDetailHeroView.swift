@@ -316,7 +316,7 @@ struct EpisodeDetailHeroView: View {
     }
 
     private var descriptionPlain: String {
-        EpisodeShowNotesFormatter.plainText(from: episode.description)
+        episode.plainTextDescription
     }
 
     private func formatTimestamp(_ t: TimeInterval) -> String {

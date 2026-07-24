@@ -44,6 +44,9 @@ enum AppStateStartupPreparer {
             in: &loadedState,
             persistence: persistence
         )
+        EpisodeShowNotesFormatter.prewarm(
+            loadedState.episodes.prefix(1_000).map(\.description)
+        )
         removeLegacyExternalPodcasts(from: &loadedState)
         seedLegacyImportRevisionIfNeeded(in: &loadedState, persistence: persistence)
         let needsNativeRetirement = AppStateStore.hasMigratedNativeState(loadedState)

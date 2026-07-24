@@ -210,15 +210,7 @@ struct SettingsView: View {
     private var downloadsSummaryLabel: String? {
         var active = 0
         var failed = 0
-        var downloaded = 0
-        for episode in store.state.episodes {
-            switch episode.downloadState {
-            case .downloaded:
-                downloaded += 1
-            case .notDownloaded:
-                break
-            }
-        }
+        let downloaded = store.downloadedEpisodesView().count
         for job in workflows.jobs(kind: .download) {
             if job.state == .failedPermanent || job.state == .blocked { failed += 1 }
             else if job.state.isActive { active += 1 }

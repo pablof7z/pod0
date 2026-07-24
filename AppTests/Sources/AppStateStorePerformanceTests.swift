@@ -192,6 +192,20 @@ final class AppStateStorePerformanceTests: XCTestCase {
         XCTAssertEqual(listed.first?.id, unplayed.id)
     }
 
+    func testBoundedDownloadAndStarredSubsetsTrackEpisodeMutations() {
+        let sub = addSubscription(title: "Bounded")
+        var episode = makeEpisode(podcastID: sub.id, guid: "bounded")
+        episode.isStarred = true
+        episode.downloadState = .downloaded(
+            localFileURL: URL(fileURLWithPath: "/tmp/bounded.mp3"),
+            byteCount: 42
+        )
+        store.installEpisodeFixtures([episode], forPodcast: sub.id)
+
+        XCTAssertEqual(store.downloadedEpisodesView().map(\.id), [episode.id])
+        XCTAssertEqual(store.starredEpisodesView().map(\.id), [episode.id])
+    }
+
     // MARK: - Fixtures
 
     @discardableResult

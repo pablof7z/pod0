@@ -7,7 +7,7 @@ struct PodcastSearchView: View {
     @State private var destination: PodcastSearchDestination?
 
     private var localResults: PodcastLocalSearchResults {
-        PodcastSearchEngine.localResults(query: model.debouncedQuery, state: store.state)
+        model.localResults
     }
 
     private var hasAnyResults: Bool {
@@ -45,7 +45,7 @@ struct PodcastSearchView: View {
         .task(id: model.query) {
             model.attach(recall: store.sharedLibrary)
             guard !model.query.trimmed.isEmpty else {
-                model.debouncedQuery = ""
+                await model.searchLocal(state: store.state)
                 await model.searchTranscripts()
                 return
             }
@@ -54,7 +54,7 @@ struct PodcastSearchView: View {
             } catch {
                 return
             }
-            model.debouncedQuery = model.query
+            await model.searchLocal(state: store.state)
             await model.searchTranscripts()
         }
         .navigationDestination(item: $destination) { destination in

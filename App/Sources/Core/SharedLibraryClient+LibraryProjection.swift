@@ -63,6 +63,9 @@ extension SharedLibraryClient {
             guard page.hasMore, offset <= UInt32.max - 200 else { break }
             offset += 200
         }
+        EpisodeShowNotesFormatter.prewarm(
+            episodes.prefix(1_000).map(\.description)
+        )
         let chapters: [UUID: SharedChapterSnapshot] = Dictionary(
             uniqueKeysWithValues: activeEpisodeIDs.compactMap {
             episodeID in

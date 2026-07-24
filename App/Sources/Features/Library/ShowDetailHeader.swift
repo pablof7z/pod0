@@ -77,7 +77,7 @@ struct ShowDetailHeader: View {
 
     @ViewBuilder
     private var descriptionBlock: some View {
-        let body = EpisodeShowNotesFormatter.plainText(from: podcast.description)
+        let body = podcast.plainTextDescription
         if !body.isEmpty {
             Text(body)
                 .font(AppTheme.Typography.caption)

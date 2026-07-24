@@ -6,17 +6,33 @@ import Pod0Core
 @MainActor
 final class PodcastSearchViewModel {
     var query: String = ""
-    /// Lags `query` by the debounce interval; drives local + transcript search.
-    var debouncedQuery: String = ""
+    private(set) var localResults = PodcastLocalSearchResults()
     private(set) var transcriptResults: [PodcastTranscriptSearchHit] = []
     private(set) var isSearchingTranscripts = false
     private(set) var transcriptError: String?
 
     private weak var recall: (any SharedRecallSearching)?
+    private var activeLocalQuery: String?
     private var activeTranscriptQuery: String?
 
     func attach(recall: (any SharedRecallSearching)?) {
         self.recall = recall
+    }
+
+    func searchLocal(state: AppState) async {
+        let trimmed = query.trimmed
+        guard !trimmed.isEmpty else {
+            activeLocalQuery = nil
+            localResults = PodcastLocalSearchResults()
+            return
+        }
+        activeLocalQuery = trimmed
+        let results = await Task.detached(priority: .userInitiated) {
+            PodcastSearchEngine.localResults(query: trimmed, state: state)
+        }.value
+        guard activeLocalQuery == trimmed, query.trimmed == trimmed else { return }
+        localResults = results
+        activeLocalQuery = nil
     }
 
     func searchTranscripts() async {

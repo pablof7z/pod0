@@ -56,6 +56,8 @@ extension AppStateStore {
         var byShow: [UUID: [Int]] = [:]
         var inProgress: [Episode] = []
         var recent: [Episode] = []
+        var downloadedIndexes: [Int] = []
+        var starredIndexes: [Int] = []
 
         // Reserve capacity to avoid the rehash storm when growing through
         // a 10k-episode pass. Conservative bounds: bucket counts ≤ unique
@@ -69,6 +71,8 @@ extension AppStateStore {
         byShow.reserveCapacity(state.subscriptions.count)
         inProgress.reserveCapacity(min(64, episodes.count))
         recent.reserveCapacity(min(Self.recentEpisodesCacheLimit, episodes.count))
+        downloadedIndexes.reserveCapacity(min(256, episodes.count))
+        starredIndexes.reserveCapacity(min(256, episodes.count))
 
         for (index, episode) in episodes.enumerated() {
             let podID = episode.podcastID
@@ -89,7 +93,9 @@ extension AppStateStore {
             // for the same podID; Set.insert is O(1) amortised.
             if case .downloaded = episode.downloadState {
                 downloaded.insert(podID)
+                downloadedIndexes.append(index)
             }
+            if episode.isStarred { starredIndexes.append(index) }
             if case .ready = episode.transcriptState {
                 transcribed.insert(podID)
             }
@@ -143,6 +149,8 @@ extension AppStateStore {
         allEpisodeIndexesNewestFirst = allNewestFirst
         inProgressEpisodesCached = inProgress
         recentEpisodesCached = recent
+        downloadedEpisodeIndexes = downloadedIndexes
+        starredEpisodeIndexes = starredIndexes
     }
 
     /// Alias for `recomputeEpisodeProjections()`. Kept as a separate name
@@ -192,6 +200,22 @@ extension AppStateStore {
             return episodes[index]
         }
         return cached
+    }
+
+    func downloadedEpisodesView() -> [Episode] {
+        episodes(at: downloadedEpisodeIndexes)
+    }
+
+    func starredEpisodesView() -> [Episode] {
+        episodes(at: starredEpisodeIndexes)
+    }
+
+    private func episodes(at indexes: [Int]) -> [Episode] {
+        let episodes = state.episodes
+        return indexes.compactMap { index in
+            guard episodes.indices.contains(index) else { return nil }
+            return episodes[index]
+        }
     }
 
     // MARK: - Fingerprint (didSet safety net)

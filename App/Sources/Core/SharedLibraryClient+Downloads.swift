@@ -68,6 +68,23 @@ extension SharedLibraryClient {
         }
     }
 
+    /// Bounded set of episodes whose workflow still needs presentation.
+    /// Historical succeeded/cancelled workflows stay out so download progress
+    /// updates never make a SwiftUI screen rescan the whole episode library.
+    func downloadManagerEpisodeIDs() -> Set<UUID> {
+        var episodeIDs = Set(cachedDownloadWorkflows.compactMap { episodeID, workflow in
+            switch workflow.stage {
+            case .waitingForEnvironment, .requested, .hostAccepted, .transferring,
+                 .staged, .retryScheduled, .removing, .failed, .unsupported:
+                episodeID
+            case .cancelled, .succeeded:
+                nil
+            }
+        })
+        episodeIDs.formUnion(CoreDownloadHost.shared.progress.keys.compactMap(\.uuid))
+        return episodeIDs
+    }
+
     func receiveDownloads(revision: UInt64) {
         guard revision >= lastDownloadsRevision else { return }
         lastDownloadsRevision = revision
