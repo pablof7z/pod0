@@ -35,15 +35,8 @@ final class PlaybackStateAutoDownloadTests: XCTestCase {
         // `setEpisode` on every gesture. Re-firing the download trigger
         // would spam the queue / clobber resume data — verify the
         // same-episode reload path skips it.
-        let played = expectation(description: "Rust committed playing")
         let episode = makeEpisode(downloadState: .notDownloaded)
-        let fixture = makeFixture(
-            episodes: [episode],
-            productSignals: ProductSignalExpectationSink(
-                name: .playStarted,
-                expectation: played
-            )
-        )
+        let fixture = makeFixture(episodes: [episode])
         defer { fixture.persistence.reset() }
         let requested = expectation(description: "download requested once")
         var calls: [UUID] = []
@@ -55,9 +48,9 @@ final class PlaybackStateAutoDownloadTests: XCTestCase {
         fixture.playback.setEpisode(episode)
         await fulfillment(of: [requested], timeout: 1)
         fixture.playback.setEpisode(episode)
-        fixture.playback.play()
+        fixture.playback.setRate(.fast)
 
-        await fulfillment(of: [played], timeout: 5)
+        await waitForPlaybackRate(.fast, in: fixture.store)
         XCTAssertEqual(calls, [episode.id])
     }
 
@@ -172,6 +165,24 @@ final class PlaybackStateAutoDownloadTests: XCTestCase {
             duration: duration,
             enclosureURL: URL(string: "https://example.com/\(id.uuidString).mp3")!,
             downloadState: downloadState
+        )
+    }
+
+    private func waitForPlaybackRate(
+        _ expected: PlaybackRate,
+        in store: AppStateStore
+    ) async {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: .seconds(10))
+        while store.sharedLibrary?.cachedPlayback?.rate.value
+            != UInt16((expected.rawValue * 1_000).rounded()),
+            clock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertEqual(
+            store.sharedLibrary?.cachedPlayback?.rate.value,
+            UInt16((expected.rawValue * 1_000).rounded()),
+            "Rust did not project the sentinel playback-rate command"
         )
     }
 }
