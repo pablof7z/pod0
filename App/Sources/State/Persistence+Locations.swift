@@ -135,6 +135,16 @@ extension Persistence {
         episodeStore.fileURL.appendingPathExtension("agent-history-backups")
     }
 
+    var legacyAgentRunLogURL: URL {
+        let support = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first ?? FileManager.default.temporaryDirectory
+        return support
+            .appendingPathComponent("AgentRunLog", isDirectory: true)
+            .appendingPathComponent("runs.json", isDirectory: false)
+    }
+
     var legacyAgentMemoryBackupRootURL: URL {
         episodeStore.fileURL.appendingPathExtension("agent-memory-backups")
     }
@@ -176,6 +186,7 @@ extension Persistence {
             legacyDownloadWorkflowBackupURL,
             legacyScheduledAgentWorkflowBackupRootURL,
             legacyAgentHistoryBackupRootURL,
+            legacyAgentRunLogURL,
             legacyAgentMemoryBackupRootURL
         ]
         urls.append(contentsOf: (1...32).map {

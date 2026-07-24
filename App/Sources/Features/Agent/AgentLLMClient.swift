@@ -1,5 +1,11 @@
 import Foundation
 
+struct AgentTokenUsage: Codable, Sendable {
+    let promptTokens: Int
+    let completionTokens: Int
+    let cachedTokens: Int?
+}
+
 enum AgentLLMClient {
     @MainActor
     static func streamCompletion(

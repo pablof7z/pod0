@@ -149,7 +149,7 @@ final class CostLedger: ObservableObject {
     /// Configured once. `save()` runs on every cost-log (every LLM
     /// call the user makes), so per-call encoder construction +
     /// `.iso8601` / `.sortedKeys` configuration was real (if modest)
-    /// waste. Matches the same fix applied to `AgentRunLogger.save()`.
+    /// waste.
     private static let encoder: JSONEncoder = {
         let e = JSONEncoder()
         e.dateEncodingStrategy = .iso8601

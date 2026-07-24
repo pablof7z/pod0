@@ -2,7 +2,6 @@ import SwiftUI
 
 struct AgentSettingsView: View {
     @Environment(AppStateStore.self) private var store
-    @ObservedObject private var runLogger = AgentRunLogger.shared
     @State private var settings: Settings = Settings()
 
     var body: some View {
@@ -54,17 +53,6 @@ struct AgentSettingsView: View {
                     tint: .teal,
                     title: "Tasks",
                     badge: store.scheduledTasks.count
-                )
-            }
-
-            NavigationLink {
-                AgentRunListView()
-            } label: {
-                SettingsRow(
-                    icon: "doc.text.magnifyingglass",
-                    tint: .orange,
-                    title: "Run History",
-                    badge: runLogger.runs.count
                 )
             }
 

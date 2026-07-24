@@ -85,28 +85,6 @@ final class UserFacingFailureTests: XCTestCase {
         }
     }
 
-    func testLegacyAgentRunFailureIsReplacedWithSafeCodeAndDiagnosticID() throws {
-        let id = UUID()
-        let run = AgentRun(
-            id: id,
-            timestamp: Date(),
-            source: .typedChat,
-            initialInput: "question",
-            systemPrompt: "prompt",
-            turns: [],
-            finalOutcome: .failed,
-            totalTokensUsed: 0,
-            durationMs: 1,
-            failureReason: "SECRET provider body /private/file token=request-id"
-        )
-        let failure = try XCTUnwrap(run.presentedFailure)
-        XCTAssertEqual(failure.code, .unexpected)
-        XCTAssertEqual(failure.diagnosticID, String(id.uuidString.prefix(8)).uppercased())
-        XCTAssertFalse(failure.diagnosticSummary.contains("SECRET"))
-        XCTAssertFalse(failure.diagnosticSummary.contains("/private"))
-        XCTAssertFalse(failure.diagnosticSummary.contains("token="))
-    }
-
     func testFeaturePresentationDoesNotBindRawFailureStrings() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

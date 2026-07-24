@@ -82,6 +82,7 @@
         "App/Sources/Core/LegacyAgentHistoryCutover.swift",
         "App/Sources/Core/LegacyAgentHistoryMapper.swift",
         "App/Sources/Core/LegacyChatHistorySource.swift",
+        "App/Sources/Core/LegacyAgentRunLogRetirement.swift",
         "App/Sources/Core/LegacyAgentMemoryBackup.swift",
         "App/Sources/Core/LegacyAgentMemoryCutover.swift"
       ]
@@ -130,10 +131,10 @@
     {
       "id": "temporary-agent-history-cutover",
       "classification": "temporary_swift",
-      "current_owner": "Swift decode-only chat source, immutable rollback manifest, typed mapper, and exact source retirement",
+      "current_owner": "Swift decode-only chat source, immutable rollback manifest, typed mapper, exact source retirement, and exact removal of the retired private run-log duplicate",
       "target_owner": "Deleted after the issue #138 rollback support window closes",
-      "reason": "Existing Swift conversations must survive the transition into Rust without preserving a native writer or a long-lived archive store.",
-      "boundary": "Decode and back up the exact legacy file, map supported conversations to typed Rust inputs, delete the exact matching source before Rust authority commits, and expose no restore or mutation API.",
+      "reason": "Existing Swift conversations must survive the transition into Rust without preserving a native writer or a long-lived private diagnostic store.",
+      "boundary": "Decode and back up the exact legacy conversation file, map supported conversations to typed Rust inputs, delete the exact matching chat source before Rust authority commits, then remove only the retired AgentRunLog/runs.json duplicate and expose no restore or mutation API.",
       "persisted_state": "Versioned integrity-checked rollback manifests only; Rust owns all active and imported conversation history after cutover.",
       "migration_issues": [138],
       "deletion_target": "Remove the legacy conversation decoder, backup, mapper, and cutover adapter after supported installations are proven across the Rust authority marker; immutable rollback evidence may remain read-only.",
@@ -143,6 +144,7 @@
         "App/Sources/Core/LegacyAgentHistoryCutover.swift",
         "App/Sources/Core/LegacyAgentHistoryMapper.swift",
         "App/Sources/Core/LegacyChatHistorySource.swift",
+        "App/Sources/Core/LegacyAgentRunLogRetirement.swift",
         "App/Sources/Features/Agent/ChatConversation.swift"
       ]
     },
@@ -425,13 +427,13 @@
     {
       "id": "shared-agent-application-policy",
       "classification": "shared_rust_now",
-      "current_owner": "Rust owns interactive and scheduled turn state, conversation history, model usage, generated audio provenance, tool identity, permissions, fences, supported commits, and publication receipts; Swift retains typed provider/platform capabilities, transient presentation streams, bounded local diagnostics, and decode-only rollback compatibility",
+      "current_owner": "Rust owns interactive and scheduled turn state, conversation history, model usage, generated audio provenance, tool identity, permissions, fences, supported commits, and publication receipts; Swift retains typed provider/platform capabilities, transient presentation streams, and decode-only rollback compatibility",
       "target_owner": "Pod0 Rust agent/application layer",
       "reason": "Tool validation, permission, durable commits, jobs, and generated artifact policy must be identical across platforms.",
       "boundary": "ADR-0008 and agent-tool-permissions.json require typed Rust proposals, durable grants, effect fences, commits, and bounded projections. Native presents conversations/approvals and returns raw observations for typed platform capabilities. pod0-nmp alone owns generic NMP engine, signing, routing, and receipt facts; the app facade accepts no relay selection.",
-      "persisted_state": "Rust SQLite owns conversations, turns, model usage, memories, scheduled tasks/occurrences, generated audio and artifact provenance, and publication receipts. Swift retains bounded local diagnostic presentation, platform files awaiting acknowledged adoption, and immutable rollback manifests only.",
+      "persisted_state": "Rust SQLite owns conversations, turns, model usage, memories, scheduled tasks/occurrences, generated audio and artifact provenance, and publication receipts. Swift retains platform files awaiting acknowledged adoption and immutable rollback manifests only.",
       "migration_issues": [60, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138],
-      "deletion_target": "Issues #130, #135, and #136 completed scheduled/conversation/artifact/publication authority cutovers. Facade v45 deleted native catalog and provider-neutral schema ownership. Issues #133 and #134 finish broader commit and capability families, #137 qualifies the physical-device signer, and #138 removes remaining compatibility ownership and decides bounded diagnostic retention.",
+      "deletion_target": "Issues #130, #135, and #136 completed scheduled/conversation/artifact/publication authority cutovers. Facade v45 deleted native catalog and provider-neutral schema ownership. Issue #133 completed the product-proof Rust agent owner; #134 finishes native capability qualification, #137 qualifies the physical-device signer, and #138 removes remaining compatibility ownership.",
       "priority": "high",
       "includes": ["App/Sources/Agent/"]
     },

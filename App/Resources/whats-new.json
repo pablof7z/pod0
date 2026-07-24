@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-24T00:00:03Z",
+      "lines": [
+        "Pod0 now removes retired Agent diagnostics after your conversation history is safely upgraded."
+      ]
+    },
+    {
       "shipped_at": "2026-07-23T23:21:27Z",
       "lines": [
         "Home is now focused on Continue Listening and your library, without the Featured section."

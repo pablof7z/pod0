@@ -243,6 +243,10 @@ enum SharedLibraryBootstrap {
                 source: legacyChatHistory,
                 backupRoot: persistence.legacyAgentHistoryBackupRootURL
             )
+            stage = .agentRunLogRetirement
+            try LegacyAgentRunLogRetirement.run(
+                fileURL: persistence.legacyAgentRunLogURL
+            )
             stage = .agentMemoryCutover
             try LegacyAgentMemoryCutover.run(
                 facade: facade,
