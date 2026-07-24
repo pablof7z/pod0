@@ -2,6 +2,30 @@ import Foundation
 import Pod0Core
 import SwiftUI
 
+struct AgentChatProviderPresentation: Equatable {
+    let canCompose: Bool
+    let title: String
+    let detail: String
+    let actionLabel: String?
+
+    static func resolve(providerName: String, hasCredential: Bool) -> Self {
+        if hasCredential {
+            return Self(
+                canCompose: true,
+                title: "What do you want to know?",
+                detail: "Ask about your library, save a note, or control playback.",
+                actionLabel: nil
+            )
+        }
+        return Self(
+            canCompose: false,
+            title: "Connect \(providerName)",
+            detail: "The Agent needs \(providerName) before it can answer.",
+            actionLabel: "Set up \(providerName)"
+        )
+    }
+}
+
 /// Native SwiftUI shell over the Rust-owned durable conversation workflow.
 struct SharedAgentChatView: View {
     let session: SharedAgentConversationSession
@@ -44,7 +68,7 @@ struct SharedAgentChatView: View {
         .onAppear {
             selectRequestedConversation()
             drainPendingContext()
-            inputFocused = hasCredential
+            inputFocused = providerPresentation.canCompose
         }
         .onChange(of: requestedConversationID) { _, _ in
             selectRequestedConversation()
@@ -105,28 +129,39 @@ struct SharedAgentChatView: View {
     private var welcome: some View {
         VStack(spacing: AppTheme.Spacing.md) {
             Spacer()
-            Image(systemName: "sparkles")
+            Image(systemName: providerPresentation.canCompose ? "sparkles" : "key.viewfinder")
                 .font(.system(size: 44, weight: .semibold))
                 .foregroundStyle(AppTheme.Gradients.agentAccent)
-            Text("What do you want to know?")
+            Text(providerPresentation.title)
                 .font(AppTheme.Typography.title)
-            Text("Ask about your library, save a note, or control playback.")
+            Text(providerPresentation.detail)
                 .font(AppTheme.Typography.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-            ForEach(Self.suggestions, id: \.self) { suggestion in
-                Button(suggestion) {
-                    draft = suggestion
-                    inputFocused = true
+            if providerPresentation.canCompose {
+                ForEach(Self.suggestions, id: \.self) { suggestion in
+                    Button(suggestion) {
+                        draft = suggestion
+                        inputFocused = true
+                    }
+                    .buttonStyle(.glass)
                 }
-                .buttonStyle(.glass)
             }
             Spacer()
         }
         .padding(AppTheme.Spacing.lg)
     }
 
+    @ViewBuilder
     private var composer: some View {
+        if providerPresentation.canCompose {
+            readyComposer
+        } else {
+            providerSetupComposer
+        }
+    }
+
+    private var readyComposer: some View {
         VStack(spacing: AppTheme.Spacing.xs) {
             if case .failed(let detail) = session.phase {
                 Text(detail)
@@ -142,7 +177,6 @@ struct SharedAgentChatView: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .glassEffect(.regular, in: .rect(cornerRadius: 22))
-                    .disabled(!hasCredential)
                 Button {
                     if session.phase == .running {
                         Task { await session.cancelActiveTurn() }
@@ -166,13 +200,35 @@ struct SharedAgentChatView: View {
         .background(.ultraThinMaterial)
     }
 
-    private var canSend: Bool {
-        hasCredential && session.canSend && !draft.isBlank
+    private var providerSetupComposer: some View {
+        VStack(spacing: AppTheme.Spacing.xs) {
+            NavigationLink {
+                AIProvidersSettingsView()
+            } label: {
+                Label(
+                    providerPresentation.actionLabel ?? "Set up an AI provider",
+                    systemImage: "key.viewfinder"
+                )
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.glassProminent)
+            .accessibilityHint("Opens provider settings")
+        }
+        .padding(.horizontal, AppTheme.Spacing.md)
+        .padding(.vertical, AppTheme.Spacing.sm)
+        .background(.ultraThinMaterial)
     }
 
-    private var hasCredential: Bool {
+    private var canSend: Bool {
+        providerPresentation.canCompose && session.canSend && !draft.isBlank
+    }
+
+    private var providerPresentation: AgentChatProviderPresentation {
         let reference = LLMModelReference(storedID: store.state.settings.agentInitialModel)
-        return LLMProviderCredentialResolver.hasAPIKey(for: reference.provider)
+        return .resolve(
+            providerName: reference.provider.displayName,
+            hasCredential: LLMProviderCredentialResolver.hasAPIKey(for: reference.provider)
+        )
     }
 
     private func send() {

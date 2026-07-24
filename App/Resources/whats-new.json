@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-24T00:56:30Z",
+      "lines": [
+        "The Agent now explains when its AI provider is missing and takes you straight to setup."
+      ]
+    },
+    {
       "shipped_at": "2026-07-24T00:19:13Z",
       "lines": [
         "Pod0 now removes the obsolete Agent Activity Log after your history and memories are safely upgraded."
@@ -1258,7 +1264,7 @@
     {
       "shipped_at": "2026-05-10T20:52:29Z",
       "lines": [
-        "Today and Library merged into one editorial Home — dateline, filter chips, featured row, and your shows all in one surface"
+        "Today and Library merged into one editorial Home with filters and your shows in one surface"
       ]
     },
     {
