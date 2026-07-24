@@ -13,6 +13,7 @@ import SwiftUI
 ///   - Downloaded:   title at full opacity; not-yet-downloaded titles are muted.
 struct EpisodeRow: View {
     @Environment(AppStateStore.self) private var store
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let episode: Episode
     let showAccent: Color
     /// Fallback artwork URL when the episode has no per-item `<itunes:image>`.
@@ -29,53 +30,101 @@ struct EpisodeRow: View {
     private static let thumbnailSize: CGFloat = 56
 
     var body: some View {
-        HStack(alignment: .center, spacing: AppTheme.Spacing.md) {
-            thumbnail
-                .overlay(alignment: .topLeading) { stateBadge }
-
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
-                if let podcastTitle {
-                    Text(podcastTitle)
-                        .font(AppTheme.Typography.caption)
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                }
-                Text(episode.title)
-                    .font(AppTheme.Typography.headline)
-                    .foregroundStyle(titleColor)
-                    .lineLimit(2)
-
-                let summary = episode.plainTextSummary
-                if !summary.isEmpty {
-                    Text(summary)
-                        .font(AppTheme.Typography.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
-
-                metaRow
-            }
-
-            if let onPlay {
-                Spacer()
-                Button {
-                    Haptics.medium()
-                    onPlay()
-                } label: {
-                    Image(systemName: "play.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(showAccent)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Play \(episode.title)")
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                accessibilityLayout
+            } else {
+                compactLayout
             }
         }
         .padding(.vertical, AppTheme.Spacing.sm)
         .overlay(alignment: .bottom) { downloadProgressBar }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityLabel)
+        .accessibilityLabel(EpisodeRowAccessibilityPresentation.label(
+            for: episode,
+            downloadProgress: store.sharedLibrary?.downloadProgress(episodeID: episode.id)
+        ))
+    }
+
+    private var compactLayout: some View {
+        HStack(alignment: .center, spacing: AppTheme.Spacing.md) {
+            thumbnail
+                .overlay(alignment: .topLeading) { stateBadge }
+
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+                titleBlock
+                summaryBlock
+                metaRow
+            }
+
+            playButton
+        }
+    }
+
+    private var accessibilityLayout: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
+                thumbnail
+                    .overlay(alignment: .topLeading) { stateBadge }
+                titleBlock
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            summaryBlock
+            metaRow
+            if onPlay != nil {
+                HStack {
+                    Spacer()
+                    playButton
+                }
+            }
+        }
+    }
+
+    private var titleBlock: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+            if let podcastTitle {
+                Text(podcastTitle)
+                    .font(AppTheme.Typography.caption)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+            }
+            Text(episode.title)
+                .font(AppTheme.Typography.headline)
+                .foregroundStyle(titleColor)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+        }
+    }
+
+    @ViewBuilder
+    private var summaryBlock: some View {
+        let summary = episode.plainTextSummary
+        if !summary.isEmpty {
+            Text(summary)
+                .font(AppTheme.Typography.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+        }
+    }
+
+    @ViewBuilder
+    private var playButton: some View {
+        if let onPlay {
+            if !dynamicTypeSize.isAccessibilitySize {
+                Spacer()
+            }
+            Button {
+                Haptics.medium()
+                onPlay()
+            } label: {
+                Image(systemName: "play.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(showAccent)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Play \(episode.title)")
+        }
     }
 
     // MARK: - Thumbnail
@@ -154,28 +203,52 @@ struct EpisodeRow: View {
         .frame(width: 16, height: 16)
     }
 
+    @ViewBuilder
     private var metaRow: some View {
-        HStack(spacing: AppTheme.Spacing.sm) {
-            Text(episode.formattedDuration)
-                .font(AppTheme.Typography.monoCaption)
-                .foregroundStyle(.secondary)
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 2) {
+                durationLabel
+                publishedLabel
+                progressLabel
+            }
+        } else {
+            HStack(spacing: AppTheme.Spacing.sm) {
+                durationLabel
 
-            Text("·")
-                .font(AppTheme.Typography.caption)
-                .foregroundStyle(.tertiary)
-
-            Text(relativePublished)
-                .font(AppTheme.Typography.caption)
-                .foregroundStyle(.secondary)
-
-            if episode.isInProgress {
                 Text("·")
                     .font(AppTheme.Typography.caption)
                     .foregroundStyle(.tertiary)
-                Text("\(Int((episode.playbackProgress * 100).rounded()))% in")
-                    .font(AppTheme.Typography.caption)
-                    .foregroundStyle(showAccent)
+
+                publishedLabel
+
+                if episode.isInProgress {
+                    Text("·")
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(.tertiary)
+                    progressLabel
+                }
             }
+        }
+    }
+
+    private var durationLabel: some View {
+        Text(episode.formattedDuration)
+            .font(AppTheme.Typography.monoCaption)
+            .foregroundStyle(.secondary)
+    }
+
+    private var publishedLabel: some View {
+        Text(relativePublished)
+            .font(AppTheme.Typography.caption)
+            .foregroundStyle(.secondary)
+    }
+
+    @ViewBuilder
+    private var progressLabel: some View {
+        if episode.isInProgress {
+            Text("\(Int((episode.playbackProgress * 100).rounded()))% in")
+                .font(AppTheme.Typography.caption)
+                .foregroundStyle(showAccent)
         }
     }
 
@@ -221,29 +294,4 @@ struct EpisodeRow: View {
         return f
     }()
 
-    private var accessibilityLabel: String {
-        var parts: [String] = [episode.title]
-        parts.append(episode.formattedDuration)
-        if episode.played {
-            parts.append("played")
-        } else if episode.isInProgress {
-            parts.append("\(Int((episode.playbackProgress * 100).rounded())) percent listened")
-        } else {
-            parts.append("unplayed")
-        }
-        switch episode.downloadState {
-        case .downloaded:
-            switch episode.transcriptState {
-            case .ready:
-                parts.append("transcript available")
-            case .none:
-                parts.append("downloaded")
-            }
-        case .notDownloaded:
-            if let progress = store.sharedLibrary?.downloadProgress(episodeID: episode.id) {
-                parts.append("downloading \(Int((progress.clamped01 * 100).rounded())) percent")
-            }
-        }
-        return parts.joined(separator: ", ")
-    }
 }

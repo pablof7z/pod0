@@ -14,46 +14,79 @@ struct ShowDetailHeader: View {
     let podcast: Podcast
     let episodeCount: Int
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     private static let artworkSize: CGFloat = 116
 
     var body: some View {
-        HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
-            artwork
-
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
-                Text(podcast.title)
-                    .font(AppTheme.Typography.title)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if !podcast.author.isEmpty {
-                    Text(podcast.author)
-                        .font(AppTheme.Typography.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-
-                let body = EpisodeShowNotesFormatter.plainText(from: podcast.description)
-                if !body.isEmpty {
-                    Text(body)
-                        .font(AppTheme.Typography.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(3)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, AppTheme.Spacing.xs)
-                }
-
-                metaRow
-                    .padding(.top, AppTheme.Spacing.xs)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                accessibilityLayout
+            } else {
+                compactLayout
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, AppTheme.Spacing.lg)
         .padding(.top, AppTheme.Spacing.lg)
         .padding(.bottom, AppTheme.Spacing.md)
     }
 
+    private var compactLayout: some View {
+        HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
+            artwork
+
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+                titleBlock
+                descriptionBlock
+                metaRow
+                    .padding(.top, AppTheme.Spacing.xs)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var accessibilityLayout: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
+                artwork
+                titleBlock
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            descriptionBlock
+            metaRow
+        }
+    }
+
     // MARK: - Pieces
+
+    private var titleBlock: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+            Text(podcast.title)
+                .font(AppTheme.Typography.title)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !podcast.author.isEmpty {
+                Text(podcast.author)
+                    .font(AppTheme.Typography.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var descriptionBlock: some View {
+        let body = EpisodeShowNotesFormatter.plainText(from: podcast.description)
+        if !body.isEmpty {
+            Text(body)
+                .font(AppTheme.Typography.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, AppTheme.Spacing.xs)
+        }
+    }
 
     private var artwork: some View {
         RoundedRectangle(cornerRadius: AppTheme.Corner.lg, style: .continuous)
@@ -98,20 +131,40 @@ struct ShowDetailHeader: View {
             .accessibilityHidden(true)
     }
 
+    @ViewBuilder
     private var metaRow: some View {
-        HStack(spacing: AppTheme.Spacing.sm) {
-            Text("\(episodeCount) \(episodeCount == 1 ? "episode" : "episodes")")
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+                episodeCountLabel
+                refreshedLabel
+            }
+        } else {
+            HStack(spacing: AppTheme.Spacing.sm) {
+                episodeCountLabel
+                if podcast.lastRefreshedAt != nil {
+                    Text("·")
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                refreshedLabel
+            }
+        }
+    }
+
+    private var episodeCountLabel: some View {
+        Text("\(episodeCount) \(episodeCount == 1 ? "episode" : "episodes")")
+            .font(AppTheme.Typography.caption)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+    }
+
+    @ViewBuilder
+    private var refreshedLabel: some View {
+        if let refreshed = podcast.lastRefreshedAt {
+            Text("Updated \(relative(refreshed))")
                 .font(AppTheme.Typography.caption)
                 .foregroundStyle(.secondary)
-            if let refreshed = podcast.lastRefreshedAt {
-                Text("·")
-                    .font(AppTheme.Typography.caption)
-                    .foregroundStyle(.tertiary)
-                Text("Updated \(relative(refreshed))")
-                    .font(AppTheme.Typography.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+                .lineLimit(1)
         }
     }
 

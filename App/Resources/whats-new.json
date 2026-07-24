@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-24T11:07:45Z",
+      "lines": [
+        "Show details and episode lists now stay readable at larger accessibility text sizes."
+      ]
+    },
+    {
       "shipped_at": "2026-07-24T10:49:18Z",
       "lines": [
         "Home podcast rows and player time labels now stay readable at larger accessibility text sizes."
