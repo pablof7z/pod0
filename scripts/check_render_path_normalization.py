@@ -18,6 +18,11 @@ def findings(root: Path) -> list[str]:
             errors.append(f"{path.relative_to(root)}: call cached Episode/Podcast text projections")
         if "PodcastSearchEngine.localResults(" in text:
             errors.append(f"{path.relative_to(root)}: run local search through its async view model")
+    image_loader = root / "App/Sources/Design/CachedAsyncImage.swift"
+    if image_loader.is_file() and ".isCached(" in image_loader.read_text():
+        errors.append(
+            "App/Sources/Design/CachedAsyncImage.swift: synchronous disk-cache probe is forbidden"
+        )
     return errors
 
 
@@ -35,7 +40,10 @@ def main() -> int:
                 "let x = EpisodeShowNotesFormatter.plainText(from: raw)\n"
                 "let y = PodcastSearchEngine.localResults(query: q, state: state)\n"
             )
-            if len(findings(fixture)) != 2:
+            image_loader = fixture / "App/Sources/Design"
+            image_loader.mkdir(parents=True)
+            (image_loader / "CachedAsyncImage.swift").write_text("cache.isCached(forKey: key)\n")
+            if len(findings(fixture)) != 3:
                 print("Render-path normalization negative fixture failed")
                 return 1
         print("Render-path normalization negative fixture passed")
