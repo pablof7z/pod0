@@ -122,9 +122,9 @@ final class AppTests: XCTestCase {
     // MARK: - Persistence isolation
 
     /// Regression test for persistence isolation: writing through an isolated
-    /// store must NOT mutate the production App Group state file.
-    func testIsolatedStoreDoesNotTouchSharedAppGroupContainer() async throws {
-        let productionURL = Persistence.appGroupStateFileURL
+    /// store must NOT mutate the production app-container state file.
+    func testIsolatedStoreDoesNotTouchProductionContainer() async throws {
+        let productionURL = Persistence.applicationStateFileURL
         // Snapshot whatever the production file currently holds (may be
         // absent on a clean dev machine — `nil` is a valid baseline).
         let before = try? Data(contentsOf: productionURL)
@@ -134,7 +134,7 @@ final class AppTests: XCTestCase {
 
         // The production file must be byte-identical to the snapshot.
         let after = try? Data(contentsOf: productionURL)
-        XCTAssertEqual(before, after, "Test mutation leaked into the shared App Group state file.")
+        XCTAssertEqual(before, after, "Test mutation leaked into the production state file.")
     }
 
     // MARK: - Settings

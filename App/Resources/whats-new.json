@@ -2,6 +2,12 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-25T21:41:00Z",
+      "lines": [
+        "Pod0 now starts with a clean local library instead of recovering older app storage."
+      ]
+    },
+    {
       "shipped_at": "2026-07-24T23:40:59Z",
       "lines": [
         "Agent approval prompts now appear without leaving conversations stuck."
