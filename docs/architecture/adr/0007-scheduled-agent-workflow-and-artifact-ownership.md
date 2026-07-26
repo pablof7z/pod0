@@ -5,15 +5,22 @@
 - Decision owners: Pod0 application architecture
 - Related issues: #60, #125, #126, #127, #128, #129, #130
 
+## Implementation status
+
+Completed by #125–#130. Rust is authoritative for scheduled definitions,
+occurrences, attempts, recurrence, generated output, and recovery. Swift
+retains a bounded provider capability/projection adapter and decode-only
+rollback compatibility; the active native coordinator has been removed.
+
 ## Context
 
-Scheduled agent work is currently one user flow with several durable Swift
-owners. `AppStateStore` stores recurring definitions, `DesiredStatePlanner`
-derives due occurrences from `Date`, `JobStore` owns attempts and retry state,
-`ChatHistoryStore` can declare an occurrence complete, and
-`ArtifactRepository` stores a second completion fact. `AgentChatSession` and
-`ScheduledAgentRunJobExecutor` also combine provider execution with retry,
-resume, and completion policy.
+Before the cutover, scheduled agent work was one user flow with several durable
+Swift owners. `AppStateStore` stored recurring definitions,
+`DesiredStatePlanner` derived due occurrences from `Date`, `JobStore` owned
+attempts and retry state, `ChatHistoryStore` could declare an occurrence
+complete, and `ArtifactRepository` stored a second completion fact.
+`AgentChatSession` and `ScheduledAgentRunJobExecutor` also combined provider
+execution with retry, resume, and completion policy.
 
 Those decisions are cross-platform and termination-sensitive. Leaving them in
 Swift would require Android to reproduce occurrence identity, paid-operation
@@ -135,7 +142,7 @@ provider; capability completion and application wakeups are event-driven.
 
 ## Import and authority cutover
 
-Issue #130 performs a one-way inspect, stage, validate, commit sequence under
+Issue #130 performed a one-way inspect, stage, validate, commit sequence under
 the legacy persistence writer lock:
 
 1. Inspect scheduled definitions, supported scheduled job rows, completion
@@ -151,8 +158,8 @@ the legacy persistence writer lock:
 7. Delete the scheduled-agent branches from Swift planning, job execution,
    retry/recovery, artifact-completion, and recurrence policy.
 
-Before authority commits, rollback discards staging and leaves Swift active.
-After authority commits, the old writer cannot be restored. Rollback uses a
+Before authority committed, rollback discarded staging and left Swift active.
+After authority committed, the old writer could not be restored. Rollback uses a
 separately tested export/restore procedure; the backup remains read-only
 evidence and cannot overwrite Rust authority.
 

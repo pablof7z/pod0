@@ -58,8 +58,8 @@ REQUIRED_TOKENS = {
         "request.maximumCompletionBytes",
     ),
     "App/Sources/Workflows/WorkflowRuntime.swift": (
-        "projection.authority == .sharedRustPublisherChapters",
-        "projection.authority == .sharedRustModelChapters", "ensureModelChapters(",
+        "case .sharedRustPublisherChapters:",
+        "case .sharedRustModelChapters:", "ensureModelChapters(",
     ),
     "App/Sources/Services/WorkflowClient.swift": (
         "attachPublisherChapterCore(", "corePublisherJobsByID",

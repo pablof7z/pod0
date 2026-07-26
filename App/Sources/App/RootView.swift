@@ -43,7 +43,7 @@ struct RootView: View {
                     }
                 }
                 .task {
-                    await workflows.reconcileAndDrain()
+                    await workflows.reconcileOpportunity()
                 }
                 .onAppear { setupPlaybackHandlers() }
                 .onChange(of: store.state.settings) { _, new in
@@ -94,7 +94,7 @@ struct RootView: View {
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                     store.sharedLibrary?.ensureNostrSigner()
-                    Task { await workflows.reconcileAndDrain() }
+                    Task { await workflows.reconcileOpportunity() }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .askAgentRequested)) { _ in
                     showFullPlayer = false

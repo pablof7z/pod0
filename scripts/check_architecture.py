@@ -48,6 +48,7 @@ def main() -> int:
         (scripts / "check_scheduled_agent_single_writer.py", True),
         (scripts / "check_agent_single_writer.py", True),
         (scripts / "check_agent_tool_permissions.py", True),
+        (scripts / "check_shared_workflow_owner.py", True),
     ]
     failed = False
     for script, has_self_test in checks:

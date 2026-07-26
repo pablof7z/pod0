@@ -1,68 +1,37 @@
 import Foundation
-import os.log
 
+/// Native opportunity adapter for Rust-owned durable workflows.
+///
+/// The app may announce platform lifecycle and input changes, but it does not
+/// lease, execute, or mutate durable workflow rows. Rust remains the single
+/// workflow owner and asks native hosts for bounded platform capabilities.
 @MainActor
 final class WorkflowRuntime {
     static let shared = WorkflowRuntime()
-    private static let logger = Logger.app("WorkflowRuntime")
 
     private weak var appStore: AppStateStore?
-    private(set) var jobStore: JobStore?
-    private(set) var artifactRepository: ArtifactRepository?
-    private var coordinator: WorkCoordinator?
     private weak var client: WorkflowClient?
     private var wakeTask: Task<Void, Never>?
     private var wakeRequested = false
-    private lazy var persistenceObserver: NSObjectProtocol = NotificationCenter.default.addObserver(
-        forName: .persistenceDidCommitWorkflowJobs,
-        object: nil,
-        queue: .main
-    ) { [weak self] _ in
-        MainActor.assumeIsolated {
-            self?.client?.refresh()
-            self?.wake()
-        }
-    }
     private init() {}
 
     func attach(store: AppStateStore) {
-        _ = persistenceObserver
         guard appStore !== store else { return }
         appStore = store
-        let databaseURL = store.persistence.episodeStore.fileURL
-        let jobs = JobStore(fileURL: databaseURL)
-        let artifacts = ArtifactRepository(fileURL: databaseURL)
-        jobStore = jobs
-        artifactRepository = artifacts
-        client?.attach(jobStore: jobs)
         if let client { store.sharedLibrary?.attach(workflowClient: client) }
-
-        let executors: [WorkJobKind: any JobExecutor] = [
-            .metadataIndex: MetadataIndexJobExecutor(store: store),
-        ]
-        coordinator = WorkCoordinator(
-            jobStore: jobs,
-            executors: executors
-        )
     }
 
     func attach(client: WorkflowClient) {
-        _ = persistenceObserver
         self.client = client
-        if let jobStore { client.attach(jobStore: jobStore) }
         appStore?.sharedLibrary?.attach(workflowClient: client)
     }
 
     func startAndReconcile() async {
-        guard let coordinator else { return }
-        await coordinator.start()
-        await reconcile(signalOnly: true)
+        await reconcile()
     }
 
-    func reconcileAndDrain() async {
-        guard let coordinator else { return }
-        await coordinator.start()
-        await reconcile(signalOnly: false)
+    func reconcileOpportunity() async {
+        await reconcile()
     }
 
     func requestTranscript(episodeID: UUID, provider: STTProvider? = nil) {
@@ -73,80 +42,55 @@ final class WorkflowRuntime {
         _ action: WorkflowJobAction,
         on projection: WorkflowJobProjection
     ) async -> WorkflowJobActionResult {
-        if projection.authority == .sharedRustPublisherChapters {
+        switch projection.authority {
+        case .sharedRustPublisherChapters:
             return await appStore?.sharedLibrary?.performPublisherChapterAction(
                 action,
                 on: projection
             ) ?? .failed
-        }
-        if projection.authority == .sharedRustModelChapters {
+        case .sharedRustModelChapters:
             return await appStore?.sharedLibrary?.performModelChapterAction(
                 action,
                 on: projection
             ) ?? .failed
-        }
-        if projection.authority == .sharedRustDownloads {
+        case .sharedRustDownloads:
             return await appStore?.sharedLibrary?.performDownloadAction(
                 action,
                 on: projection
             ) ?? .failed
-        }
-        if projection.authority == .sharedRustTranscripts {
+        case .sharedRustTranscripts:
             return await appStore?.sharedLibrary?.performTranscriptAction(
                 action,
                 on: projection
             ) ?? .failed
-        }
-        if projection.authority == .sharedRustScheduledAgents {
+        case .sharedRustScheduledAgents:
             return await appStore?.sharedLibrary?.performScheduledAgentAction(
                 action,
                 on: projection
             ) ?? .failed
+        case .swiftJobStore:
+            // Decode-only legacy rows are never actionable product work.
+            return .notAllowed
         }
-        guard let jobStore else { return .failed }
-        let result: WorkflowJobActionResult
-        do {
-            result = try await Task.detached(priority: .userInitiated) {
-                try jobStore.perform(
-                    action,
-                    jobID: projection.id,
-                    expectedUpdatedAt: projection.updatedAt
-                )
-            }.value
-            if case .accepted = result { wake() }
-        } catch {
-            Self.logger.error("Unable to perform workflow action: \(error, privacy: .public)")
-            return .failed
-        }
-        return result
-    }
-
-    func latestJob(kind: WorkJobKind, subjectID: UUID) -> WorkJob? {
-        guard let jobs = try? jobStore?.allJobs() else { return nil }
-        return jobs.last { $0.kind == kind && $0.subjectID == subjectID }
     }
 
     func wake() {
-        guard coordinator != nil else { return }
+        guard appStore != nil else { return }
         wakeRequested = true
         guard wakeTask == nil else { return }
         wakeTask = Task { @MainActor [weak self] in
             guard let self else { return }
             repeat {
                 wakeRequested = false
-                await reconcile(signalOnly: true)
+                await reconcile()
             } while wakeRequested && !Task.isCancelled
             wakeTask = nil
             if wakeRequested && !Task.isCancelled { wake() }
         }
     }
 
-    func cancelActive() async {
-        await coordinator?.cancelActive()
-    }
-
-    private func reconcile(signalOnly: Bool) async {
-        guard let store = appStore, let coordinator else { return }
+    private func reconcile() async {
+        guard let store = appStore else { return }
         let episodes = store.state.episodes
         let settings = store.state.settings
         store.sharedLibrary?.ensurePublisherChapters(
@@ -186,8 +130,5 @@ final class WorkflowRuntime {
             configuredModel: settings.chapterCompilationModel
         )
         store.sharedLibrary?.reconcileScheduledAgents()
-        if signalOnly { await coordinator.signal() }
-        else { await coordinator.drainDueJobs() }
     }
-
 }

@@ -83,21 +83,24 @@ first position, semantic boundaries, and a maximum 30-second cadence.
 
 ### Durable workflows
 
-The Swift workflow runtime currently provides these facilities for domains
-that have not yet migrated:
+Rust owns desired state, occurrence identity, workflow stages, fences,
+retry/block policy, external-operation evidence, artifact adoption, and
+restart recovery for every active durable workflow. This includes publisher
+and model chapters, downloads, transcript/evidence preparation, feed discovery
+and notification obligations, scheduled and interactive agent work, generated
+artifacts, and Pod0 Nostr publication receipts.
 
-- deterministic desired-job planning;
-- idempotency keys and occurrence identity;
-- SQLite job state, leases, fencing tokens, attempt/retry/block state;
-- external-operation evidence to avoid duplicate provider charges;
-- staged artifact verification and atomic adoption;
-- BGTask opportunities and background URLSession reconciliation;
-- restartable schema migrations and a process-reconstruction harness.
+The Swift `WorkflowRuntime` is now an opportunity adapter only. It announces
+foreground/BGTask and input changes to the Rust facade; typed native hosts
+execute bounded URLSession, notification, model-provider, signer, and other
+platform capabilities and return correlated observations. Swift has no active
+job executor or coordinator. Its versioned workflow/artifact tables remain
+quarantined decode-only rollback evidence until their support windows close.
 
-Publisher chapter acquisition no longer uses this runtime: Rust owns its
-desired state and lifecycle, while Swift performs only the exact bounded GET
-and renders the Rust projection. The remaining Swift runtime is a
-characterization baseline for later vertical-slice migrations.
+CI runs the full Rust workspace plus named restart tests spanning chapter,
+download, transcript, feed-discovery, scheduled-agent, native-effect fencing,
+and publication-receipt seams. The architecture ratchet rejects any restored
+native coordinator, executor, metadata-index admission, or JobStore attachment.
 
 ### Presentation and platform capabilities
 
