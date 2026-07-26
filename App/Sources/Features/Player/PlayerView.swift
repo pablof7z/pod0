@@ -368,12 +368,11 @@ struct PlayerView: View {
         return store.clips(forEpisode: id)
     }
 
-    /// Pulled out of the scroll body and attached via
-    /// `safeAreaInset(edge: .bottom)` so the chapter list scrolls under it.
-    /// The outer `RoundedRectangle` glass surface gives the chrome a solid
-    /// liquid-glass backdrop so chapters scrolling behind it don't bleed
-    /// through. The inner `GlassEffectContainer` connects the individual glass
-    /// buttons so they morph together on press.
+    /// Attached via `safeAreaInset(edge: .bottom)` so chapters scroll under it.
+    /// The controls are the glass, each its own body in the container so they
+    /// morph together on press. Deliberately **no** outer glass card: the old
+    /// `glassSurface` wrapper put a second blur under five more, and stacked
+    /// glass goes opaque — that is what rendered the buttons as flat grey discs.
     private var floatingChrome: some View {
         GlassEffectContainer(spacing: AppTheme.Spacing.md) {
             VStack(spacing: AppTheme.Spacing.md) {
@@ -392,6 +391,10 @@ struct PlayerView: View {
                         onClipTap: { clip in state.navigationalSeek(to: clip.startSeconds) },
                         downloadFraction: downloadFraction
                     )
+                    // Thin ticks over a moving list need a body of their own.
+                    .padding(.horizontal, AppTheme.Spacing.md)
+                    .padding(.vertical, AppTheme.Spacing.sm)
+                    .glassEffect(.regular, in: .rect(cornerRadius: AppTheme.Corner.xl))
                     routePicker
                 }
                 PlayerControlsView(
@@ -401,9 +404,6 @@ struct PlayerView: View {
                     showVoiceNoteSheet: $showVoiceNoteSheet
                 )
             }
-            .padding(.horizontal, AppTheme.Spacing.md)
-            .padding(.vertical, AppTheme.Spacing.md)
-            .glassSurface(cornerRadius: AppTheme.Corner.xl)
         }
         .padding(.horizontal, AppTheme.Spacing.md)
         .padding(.bottom, AppTheme.Spacing.md)

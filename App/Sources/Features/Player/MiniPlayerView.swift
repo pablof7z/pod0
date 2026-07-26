@@ -9,8 +9,10 @@ import SwiftUI
 ///     and the trailing toolbar controls when the tab bar collapses on
 ///     scroll-down (Apple Music pattern).
 ///
-/// The expanded UI shows artwork, the episode title, the show name + clock,
-/// and play / +30s. The inline pill drops to artwork + play/pause only.
+/// The expanded UI is two glass bodies inside one `GlassEffectContainer`: a
+/// metadata card (artwork, episode title, show name + clock) and a circular
+/// play/pause orb beside it. The inline pill drops to artwork + play/pause
+/// only, unsplit, since the tab bar's own glass shell hosts it.
 struct MiniPlayerView: View {
 
     @Environment(AppStateStore.self) private var store
@@ -54,16 +56,27 @@ struct MiniPlayerView: View {
 
     // MARK: - Expanded (regular) layout
 
+    /// One bar, and no glass of our own.
+    ///
+    /// `tabViewBottomAccessory` already draws a Liquid Glass capsule around
+    /// whatever it hosts, and there is no API to opt out of it — there is no
+    /// `ContainerBackgroundPlacement` for it. This view used to paint a second
+    /// `glassEffect` on top of that shell, which stacked two blurs: each one
+    /// lightens what's behind it, so over light content the pair went nearly
+    /// opaque and lost the translucency and specular edge that make the
+    /// material read as glass at all.
+    ///
+    /// So the content sits directly on the accessory's own glass. Nothing
+    /// inside carries a background either — a glass control on a glass shell
+    /// just reads as a button bolted onto a toolbar.
+    ///
+    /// Wrapping this in `Button(action: onTap)` would collapse the nested
+    /// play/pause Button into the parent's tap target, so tapping the visible
+    /// pause icon would *expand* the player instead of pausing. Use a
+    /// non-Button tap surface so the transport Button keeps its own gesture.
     private var expandedBody: some View {
-        // Wrapping in `Button(action: onTap)` collapses every nested Button
-        // (Pause, Skip Forward) into the parent's tap target — sighted users
-        // tapping the visible pause icon end up *expanding* the player
-        // instead of pausing. Use a non-Button tap surface so the nested
-        // transport Buttons keep their own gestures.
         content
-            .glassEffect(.regular.interactive(), in: .rect(cornerRadius: AppTheme.Corner.lg))
-            .glassEffectID("player.surface", in: glassNamespace)
-            .contentShape(.rect(cornerRadius: AppTheme.Corner.lg))
+            .contentShape(.rect)
             .onTapGesture {
                 Haptics.light()
                 onTap()
@@ -200,27 +213,47 @@ struct MiniPlayerView: View {
     // MARK: - Subviews
 
     private var content: some View {
-        HStack(spacing: AppTheme.Spacing.sm) {
+        HStack(spacing: AppTheme.Spacing.md) {
             artwork
                 .glassEffectID("player.artwork", in: glassNamespace)
 
-            VStack(alignment: .leading, spacing: 2) {
+            // Three lines inside a 48pt capsule leaves no room for gaps —
+            // spacing 0 and the tight caption sizes are what make them fit.
+            VStack(alignment: .leading, spacing: 0) {
                 titleLine
                 metadataLine
+                showLine
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .animation(AppTheme.Animation.spring, value: activeChapterTitle)
 
-            transportButtons
+            playPauseButton
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 14)
+        // Fill whatever vertical slot the accessory hands us, then centre in it.
+        // Sizing to the content instead left the artwork 3pt from the capsule's
+        // top edge and 15pt from the bottom — visibly off-centre and touching.
+        .frame(maxHeight: .infinity)
+        // Vertical padding cannot make this bar taller. `tabViewBottomAccessory`
+        // draws its glass capsule at a height it owns — measured at ~60pt on a
+        // 17 Pro Max — and ignores the content's own height: padding this out to
+        // 24pt grew the content box to 92pt while the drawn capsule stayed 60pt,
+        // so the only visible effect was tap targets spilling outside the glass.
+        // Breathing room has to come from smaller content, not more padding.
+        .padding(.horizontal, AppTheme.Spacing.md)
+        .padding(.vertical, AppTheme.Spacing.sm)
     }
 
+    /// Sized against the accessory's fixed 48pt capsule, not chosen freely.
+    /// Inside that height the trade is zero-sum, measured on a 17 Pro Max:
+    /// 42pt artwork leaves 3pt above and below and reads as wedged in; 34pt
+    /// leaves 7pt but the cover reads as undersized. 38pt splits it at 5pt.
+    /// Overcast gets both because its pill is ~58pt — height the accessory
+    /// does not let us have.
     private var artwork: some View {
         artworkSurface(
-            size: 42,
+            size: 38,
             cornerRadius: AppTheme.Corner.md,
-            placeholderGlyphSize: 17
+            placeholderGlyphSize: 15
         )
     }
 
@@ -278,127 +311,79 @@ struct MiniPlayerView: View {
     private var titleLine: some View {
         if let episode = state.episode {
             Text(episode.title)
-                .font(.subheadline.weight(.semibold))
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .truncationMode(.tail)
         }
     }
 
+    /// Chapter line — bare text. The clock and the `list.bullet.rectangle`
+    /// glyph that used to flank it are gone: the glyph had no tap behaviour
+    /// and read as an unexplained blue mark, and the playhead is already one
+    /// tap away in the full player.
     @ViewBuilder
     private var metadataLine: some View {
-        if state.episode != nil {
-            HStack(spacing: 6) {
-                if let chapterTitle = activeChapterTitle {
-                    // `list.bullet.rectangle` reads as "chapter / item in
-                    // a list" — the previous `book.pages` glyph reads as
-                    // "show notes / read more" and conflicted with the
-                    // long-form notes affordance.
-                    Image(systemName: "list.bullet.rectangle")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(.tint)
-                        .accessibilityHidden(true)
-                    Text(chapterTitle)
-                        .font(AppTheme.Typography.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .transition(.opacity)
-                        .id(chapterTitle)
-                    Text("·")
-                        .font(AppTheme.Typography.caption)
-                        .foregroundStyle(.tertiary)
-                        .accessibilityHidden(true)
-                } else if !showName.isEmpty {
-                    Text(showName)
-                        .font(AppTheme.Typography.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    Text("·")
-                        .font(AppTheme.Typography.caption)
-                        .foregroundStyle(.tertiary)
-                        .accessibilityHidden(true)
-                }
-                Text(PlayerTimeFormat.clock(state.currentTime))
-                    .font(AppTheme.Typography.monoCaption)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-            .animation(AppTheme.Animation.spring, value: activeChapterTitle)
+        if state.episode != nil, let chapterTitle = activeChapterTitle {
+            Text(chapterTitle)
+                .font(AppTheme.Typography.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .transition(.opacity)
+                .id(chapterTitle)
         }
     }
 
-    private var transportButtons: some View {
-        HStack(spacing: AppTheme.Spacing.xs) {
-            Button {
-                state.togglePlayPause()
-            } label: {
-                Image(systemName: state.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 36, height: 36)
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-                    .glassEffectID("player.play", in: glassNamespace)
-            }
-            .buttonStyle(.pressable)
-            .accessibilityLabel(state.isPlaying ? "Pause" : "Play")
-
-            Button {
-                state.skipForward()
-            } label: {
-                Image(systemName: forwardSkipGlyph)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 36, height: 36)
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.pressable)
-            .accessibilityLabel("Skip forward \(state.skipForwardSeconds) seconds")
-
-            Button {
-                dismissCurrentEpisode()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 36, height: 36)
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.pressable)
-            .accessibilityLabel("Dismiss")
+    /// Show name, muted and semibold. Third line, so it needs to be the
+    /// quietest thing that still reads as a distinct field — weight carries it
+    /// rather than size, since there is no vertical room to spend.
+    @ViewBuilder
+    private var showLine: some View {
+        if !showName.isEmpty {
+            Text(showName)
+                .font(AppTheme.Typography.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
         }
     }
 
-    private func dismissCurrentEpisode() {
-        guard let episodeID = state.episode?.id else { return }
-        Haptics.warning()
-        state.pause()
-        state.episode = nil
-        store.markEpisodePlayed(episodeID)
+    /// Sole transport control in the expanded bar. Skip-forward and dismiss
+    /// were removed so play/pause reads as the one obvious target: the full
+    /// player (a tap away on the bar itself) already owns skipping, and
+    /// dismissal is a destructive action that doesn't belong one stray thumb
+    /// away from the tab bar.
+    ///
+    /// Bare glyph, no background of its own — the accessory's glass is the
+    /// only surface here, and a second one around the glyph turns the bar into
+    /// a toolbar with a button screwed to it.
+    private var playPauseButton: some View {
+        Button {
+            state.togglePlayPause()
+        } label: {
+            Image(systemName: state.isPlaying ? "pause.fill" : "play.fill")
+                .font(.title.weight(.bold))
+                .foregroundStyle(.primary)
+                .frame(width: 44, height: 44)
+                .contentShape(.rect)
+                .glassEffectID("player.play", in: glassNamespace)
+        }
+        .buttonStyle(.pressable)
+        .accessibilityLabel(state.isPlaying ? "Pause" : "Play")
     }
 
     private var accessibilityLabel: String {
         let title = state.episode?.title ?? "Now playing"
         var parts: [String] = [title]
+        // Both, not either/or — the expanded bar now shows the chapter and the
+        // show name on separate lines, so VoiceOver should hear what is there.
         if let chapter = activeChapterTitle {
             parts.append("Chapter: \(chapter)")
-        } else if !showName.isEmpty {
+        }
+        if !showName.isEmpty {
             parts.append(showName)
         }
         return parts.joined(separator: ", ")
-    }
-
-    /// Picks the SF Symbol that *exactly* matches the user's configured
-    /// skip-forward interval. iOS only ships numeric variants for
-    /// `{10, 15, 30, 45, 60, 75, 90}`; anything off-grid falls back to bare
-    /// `goforward` (no number) so the visible label never lies about the
-    /// actual skip seconds — a 20 s skip used to render `goforward.15`.
-    private var forwardSkipGlyph: String {
-        let supported = [10, 15, 30, 45, 60, 75, 90]
-        let seconds = state.skipForwardSeconds
-        return supported.contains(seconds) ? "goforward.\(seconds)" : "goforward"
     }
 }
