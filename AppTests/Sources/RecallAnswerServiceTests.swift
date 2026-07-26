@@ -142,7 +142,8 @@ final class RecallAnswerServiceTests: XCTestCase {
     }
 
     func testEvidencePlaybackHandoffSeeksToExactCoreMoment() async throws {
-        let made = AppStateTestSupport.makeIsolatedStore()
+        let signals = RecordingProductSignalSink()
+        let made = AppStateTestSupport.makeIsolatedStore(productSignals: signals)
         defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
         let podcast = Podcast(id: podcastID, title: "Practical Minds")
         let episode = try await made.store.upsertExternalEpisodeAndWait(
@@ -193,11 +194,29 @@ final class RecallAnswerServiceTests: XCTestCase {
             )
         )
 
-        XCTAssertTrue(RecallPlaybackHandoff.open(evidence, store: made.store, playback: playback))
+        let responseID = UUID()
+        XCTAssertTrue(RecallPlaybackHandoff.open(
+            evidence,
+            responseID: responseID,
+            store: made.store,
+            playback: playback
+        ))
+        XCTAssertTrue(RecallPlaybackHandoff.open(
+            evidence,
+            responseID: responseID,
+            store: made.store,
+            playback: playback
+        ))
         await fulfillment(of: [played], timeout: 5)
+        let observations = await signals.waitForCount(2)
         XCTAssertEqual(host.episodeID?.uuid, episode.id)
         XCTAssertEqual(host.positionMilliseconds, 47_125)
         XCTAssertTrue(host.didPlay)
+        XCTAssertEqual(observations.map(\.name), [
+            .recallCitationOpened,
+            .recallCitationOpened,
+        ])
+        XCTAssertEqual(Set(observations.map(\.signalID)).count, 1)
     }
 
     private func makeService(
