@@ -26,7 +26,12 @@ fn selecting_loaded_episode_is_idempotent_while_playing() {
         1_000,
         host_observation(fixture.episode_id, PlaybackHostState::Prepared, 0, false),
     );
-    fixture.dispatch(41, PlaybackCommand::Play);
+    fixture.dispatch(
+        41,
+        PlaybackCommand::Play {
+            transcript_configuration: None,
+        },
+    );
     let play = fixture
         .facade
         .next_host_requests(u16::MAX)
@@ -81,7 +86,12 @@ fn failed_media_is_reloaded_before_playing_again() {
             },
         });
 
-    fixture.dispatch(51, PlaybackCommand::Play);
+    fixture.dispatch(
+        51,
+        PlaybackCommand::Play {
+            transcript_configuration: None,
+        },
+    );
     let effects = fixture.facade.next_host_requests(u16::MAX);
     assert!(effects.iter().any(|request| matches!(
         request.request,

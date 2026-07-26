@@ -1,5 +1,19 @@
 import Foundation
 
+enum TranscriptStartPolicy: String, Codable, Sendable, Hashable, CaseIterable, Identifiable {
+    case automatic
+    case whenPlayed
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .automatic: "Automatically"
+        case .whenPlayed: "When played"
+        }
+    }
+}
+
 /// User's follow state for a specific `Podcast`.
 ///
 /// Holds purely user-mutable preferences — auto-download, notifications,
@@ -30,6 +44,8 @@ struct PodcastSubscription: Codable, Sendable, Identifiable, Hashable {
     /// Optional per-show playback rate override; falls back to
     /// `Settings.defaultPlaybackRate` when `nil`.
     var defaultPlaybackRate: Double?
+    /// Determines when the shared state machine may start transcript work.
+    var transcriptStartPolicy: TranscriptStartPolicy
 
     var id: UUID { podcastID }
 
@@ -38,20 +54,22 @@ struct PodcastSubscription: Codable, Sendable, Identifiable, Hashable {
         subscribedAt: Date = Date(),
         autoDownload: AutoDownloadPolicy = .default,
         notificationsEnabled: Bool = true,
-        defaultPlaybackRate: Double? = nil
+        defaultPlaybackRate: Double? = nil,
+        transcriptStartPolicy: TranscriptStartPolicy = .automatic
     ) {
         self.podcastID = podcastID
         self.subscribedAt = subscribedAt
         self.autoDownload = autoDownload
         self.notificationsEnabled = notificationsEnabled
         self.defaultPlaybackRate = defaultPlaybackRate
+        self.transcriptStartPolicy = transcriptStartPolicy
     }
 
     // MARK: - Codable (forward-compat decoding)
 
     private enum CodingKeys: String, CodingKey {
         case podcastID, subscribedAt
-        case autoDownload, notificationsEnabled, defaultPlaybackRate
+        case autoDownload, notificationsEnabled, defaultPlaybackRate, transcriptStartPolicy
         // Legacy keys from the pre-split shape. Decoded only as a fallback
         // when `podcastID` is absent so a freshly-installed app reading a
         // pre-split persisted file recovers cleanly. Never written.
@@ -70,6 +88,10 @@ struct PodcastSubscription: Codable, Sendable, Identifiable, Hashable {
         autoDownload = try c.decodeIfPresent(AutoDownloadPolicy.self, forKey: .autoDownload) ?? .default
         notificationsEnabled = try c.decodeIfPresent(Bool.self, forKey: .notificationsEnabled) ?? true
         defaultPlaybackRate = try c.decodeIfPresent(Double.self, forKey: .defaultPlaybackRate)
+        transcriptStartPolicy = try c.decodeIfPresent(
+            TranscriptStartPolicy.self,
+            forKey: .transcriptStartPolicy
+        ) ?? .automatic
     }
 
     func encode(to encoder: Encoder) throws {
@@ -79,5 +101,6 @@ struct PodcastSubscription: Codable, Sendable, Identifiable, Hashable {
         try c.encode(autoDownload, forKey: .autoDownload)
         try c.encode(notificationsEnabled, forKey: .notificationsEnabled)
         try c.encodeIfPresent(defaultPlaybackRate, forKey: .defaultPlaybackRate)
+        try c.encode(transcriptStartPolicy, forKey: .transcriptStartPolicy)
     }
 }

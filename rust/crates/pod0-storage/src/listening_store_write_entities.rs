@@ -8,7 +8,7 @@ use crate::import_model::InspectedLegacySource;
 use crate::library_feed_codec;
 use crate::listening_db_codec::{
     auto_download, bool_value, completion, download, i64_value, podcast_kind, transcript,
-    transcript_source,
+    transcript_source, transcript_start_policy,
 };
 
 pub(crate) fn insert_podcasts(
@@ -63,10 +63,12 @@ pub(crate) fn insert_subscriptions(
     snapshot: &ListeningDomainSnapshot,
 ) -> Result<(), StorageError> {
     let mut statement = transaction.prepare(
-        "INSERT INTO pod0_subscriptions(podcast_id,subscribed_at_ms,auto_download_code,auto_download_wire_code,auto_download_latest_count,wifi_only,notifications_enabled,default_playback_rate_permille,source_import_id) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9)",
+        "INSERT INTO pod0_subscriptions(podcast_id,subscribed_at_ms,auto_download_code,auto_download_wire_code,auto_download_latest_count,wifi_only,notifications_enabled,default_playback_rate_permille,source_import_id,transcript_start_policy_code,transcript_start_policy_wire_code) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",
     ).map_err(|error| StorageError::sqlite("prepare subscription import", error))?;
     for subscription in &snapshot.subscriptions {
         let (mode, wire, latest) = auto_download(&subscription.auto_download.mode);
+        let (transcript_policy, transcript_policy_wire) =
+            transcript_start_policy(&subscription.transcript_start_policy);
         statement
             .execute(params![
                 subscription.podcast_id.into_bytes().as_slice(),
@@ -80,6 +82,8 @@ pub(crate) fn insert_subscriptions(
                     .default_playback_rate
                     .map(|rate| i64::from(rate.value)),
                 import_id.into_bytes().as_slice(),
+                transcript_policy,
+                transcript_policy_wire,
             ])
             .map_err(|error| StorageError::sqlite("insert subscription", error))?;
     }

@@ -1,5 +1,5 @@
 use pod0_application::{CommandEnvelope, OperationResult};
-use pod0_domain::{AutoDownloadPolicy, PodcastId};
+use pod0_domain::{AutoDownloadPolicy, PodcastId, TranscriptStartPolicy};
 
 use crate::runtime_state::FacadeState;
 
@@ -51,6 +51,7 @@ impl FacadeState {
                     podcast_id,
                     None,
                     Some(enabled),
+                    None,
                     self.now().value,
                 )
             });
@@ -119,6 +120,7 @@ impl FacadeState {
                     podcast_id,
                     Some(policy),
                     None,
+                    None,
                     self.now().value,
                 )
             });
@@ -131,5 +133,34 @@ impl FacadeState {
         if preference_changed {
             let _ = self.reconcile_download_admission();
         }
+    }
+
+    pub(super) fn set_subscription_transcript_start_policy(
+        &mut self,
+        envelope: &CommandEnvelope,
+        fingerprint: &str,
+        podcast_id: PodcastId,
+        policy: TranscriptStartPolicy,
+    ) {
+        let result = self
+            .store
+            .as_ref()
+            .ok_or(pod0_storage::StorageError::CutoverNotAuthoritative)
+            .and_then(|store| {
+                store.update_subscription_preferences(
+                    envelope.command_id,
+                    fingerprint,
+                    podcast_id,
+                    None,
+                    None,
+                    Some(policy),
+                    self.now().value,
+                )
+            });
+        self.finish_storage_command(
+            envelope.command_id,
+            result,
+            OperationResult::PreferencesUpdated { podcast_id },
+        );
     }
 }

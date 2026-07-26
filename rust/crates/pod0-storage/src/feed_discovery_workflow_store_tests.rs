@@ -22,6 +22,7 @@ fn original_batch_plans_latest_downloads_and_capped_notifications_once() {
                 wifi_only: true,
             }),
             Some(true),
+            None,
             BASE_TIME + 1,
         )
         .unwrap();
@@ -226,6 +227,7 @@ pub(super) fn subscribe_with_existing_episode(
             podcast.podcast_id,
             None,
             Some(true),
+            None,
             BASE_TIME + 1,
         )
         .unwrap();

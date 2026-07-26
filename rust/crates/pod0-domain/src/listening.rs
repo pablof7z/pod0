@@ -50,6 +50,15 @@ pub struct AutoDownloadPolicy {
     pub wifi_only: bool,
 }
 
+/// Controls when transcript work becomes eligible for a followed podcast.
+/// Manual user and agent requests remain independent of this background policy.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum TranscriptStartPolicy {
+    Automatic,
+    WhenPlayed,
+    Unsupported { wire_code: u32 },
+}
+
 /// Integer thousandths avoid platform floating-point drift at the boundary.
 /// 1.7x is represented as 1700.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Record)]
@@ -64,6 +73,7 @@ pub struct PodcastSubscriptionRecord {
     pub auto_download: AutoDownloadPolicy,
     pub notifications_enabled: bool,
     pub default_playback_rate: Option<PlaybackRatePermille>,
+    pub transcript_start_policy: TranscriptStartPolicy,
 }
 
 /// Opaque durable artifact identity. Payloads and host file URLs do not cross

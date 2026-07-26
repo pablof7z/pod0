@@ -29,6 +29,8 @@ mod cutover_tests;
 #[cfg(test)]
 mod protocol_tests;
 #[cfg(test)]
+mod success_replan_tests;
+#[cfg(test)]
 mod success_tests;
 #[cfg(test)]
 mod tests;

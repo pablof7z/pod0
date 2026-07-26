@@ -6,8 +6,12 @@ use pod0_domain::{
 use rusqlite::{Connection, OptionalExtension, Row};
 
 use crate::import_model::{LegacyBackupEvidence, ListeningImportReport};
-use crate::listening_db_codec::{corrupt, decode_auto_download, decode_podcast_kind, decode_sleep};
+use crate::listening_db_codec::{
+    corrupt, decode_auto_download, decode_podcast_kind, decode_sleep,
+    decode_transcript_start_policy,
+};
 use crate::listening_store_read_episode::read_episodes;
+use crate::listening_store_read_scalars::{boolean, count, optional_unsigned, unsigned};
 use crate::{LegacyImportPlan, LegacySourceKind, StorageError};
 
 pub(crate) fn read_snapshot(
@@ -108,7 +112,8 @@ fn read_subscriptions(
     let mut statement = connection
         .prepare(
             "SELECT podcast_id,subscribed_at_ms,auto_download_code,auto_download_wire_code,\
-         auto_download_latest_count,wifi_only,notifications_enabled,default_playback_rate_permille \
+         auto_download_latest_count,wifi_only,notifications_enabled,default_playback_rate_permille,\
+         transcript_start_policy_code,transcript_start_policy_wire_code \
          FROM pod0_subscriptions ORDER BY rowid",
         )
         .map_err(|error| StorageError::sqlite("prepare subscription projection", error))?;
@@ -124,6 +129,7 @@ fn read_subscriptions(
             default_playback_rate: row
                 .get::<_, Option<u16>>(7)?
                 .map(|value| PlaybackRatePermille { value }),
+            transcript_start_policy: decode_transcript_start_policy(row.get(8)?, row.get(9)?)?,
         })
     })
 }
@@ -267,25 +273,6 @@ fn id(row: &Row<'_>, index: usize) -> Result<[u8; 16], StorageError> {
 }
 fn id_from_bytes(value: Vec<u8>) -> Result<[u8; 16], StorageError> {
     value.try_into().map_err(|_| corrupt("stored ID length"))
-}
-fn unsigned(value: i64, detail: &'static str) -> Result<u64, StorageError> {
-    u64::try_from(value).map_err(|_| corrupt(detail))
-}
-fn optional_unsigned(
-    value: Option<i64>,
-    detail: &'static str,
-) -> Result<Option<u64>, StorageError> {
-    value.map(|value| unsigned(value, detail)).transpose()
-}
-fn count(value: i64, detail: &'static str) -> Result<u32, StorageError> {
-    u32::try_from(value).map_err(|_| corrupt(detail))
-}
-fn boolean(value: i64) -> Result<bool, StorageError> {
-    match value {
-        0 => Ok(false),
-        1 => Ok(true),
-        _ => Err(corrupt("boolean")),
-    }
 }
 fn cutover_is_staged(connection: &Connection) -> Result<bool, StorageError> {
     connection

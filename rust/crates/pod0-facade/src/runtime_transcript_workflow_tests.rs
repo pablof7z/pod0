@@ -5,6 +5,7 @@ use pod0_application::{
 };
 use pod0_domain::{
     ContentDigest, TranscriptArtifactInput, TranscriptArtifactSegmentInput, TranscriptSource,
+    TranscriptStartPolicy,
 };
 
 use crate::runtime_playback_test_support::{PlaybackFixture, library_request};
@@ -92,6 +93,94 @@ fn transcript_workflow_commits_indexes_and_survives_relaunch() {
                 HostRequest::ExecuteTranscriptCapability { .. }
             ))
     );
+}
+
+#[test]
+fn automatic_policy_admits_background_transcript_work() {
+    let fixture = PlaybackFixture::new();
+    ensure_automatic(&fixture, 20);
+
+    assert!(has_transcript_request(&fixture.facade));
+    assert_eq!(transcript_workflow_count(&fixture.facade), 1);
+}
+
+#[test]
+fn when_played_policy_defers_automatic_work_until_play_and_deduplicates_replays() {
+    let fixture = PlaybackFixture::new();
+    set_transcript_policy(&fixture, TranscriptStartPolicy::WhenPlayed, 30);
+    ensure_automatic(&fixture, 31);
+
+    assert!(!has_transcript_request(&fixture.facade));
+    assert_eq!(transcript_workflow_count(&fixture.facade), 0);
+
+    fixture.dispatch(
+        32,
+        PlaybackCommand::Play {
+            transcript_configuration: Some(configuration()),
+        },
+    );
+    assert!(has_transcript_request(&fixture.facade));
+    assert_eq!(transcript_workflow_count(&fixture.facade), 1);
+
+    fixture.dispatch(
+        33,
+        PlaybackCommand::Play {
+            transcript_configuration: Some(configuration()),
+        },
+    );
+    assert!(!has_transcript_request(&fixture.facade));
+    assert_eq!(transcript_workflow_count(&fixture.facade), 1);
+}
+
+fn set_transcript_policy(fixture: &PlaybackFixture, policy: TranscriptStartPolicy, command: u64) {
+    fixture.facade.dispatch(CommandEnvelope {
+        command_id: CommandId::from_parts(70, command),
+        cancellation_id: CancellationId::from_parts(71, command),
+        expected_revision: None,
+        command: ApplicationCommand::SetSubscriptionTranscriptStartPolicy {
+            podcast_id: fixture.podcast_id,
+            policy,
+        },
+    });
+}
+
+fn ensure_automatic(fixture: &PlaybackFixture, command: u64) {
+    fixture.facade.dispatch(CommandEnvelope {
+        command_id: CommandId::from_parts(70, command),
+        cancellation_id: CancellationId::from_parts(71, command),
+        expected_revision: None,
+        command: ApplicationCommand::EnsureTranscriptWorkflow {
+            episode_id: fixture.episode_id,
+            origin: TranscriptWorkflowOrigin::Automatic,
+            configuration: configuration(),
+        },
+    });
+}
+
+fn has_transcript_request(facade: &Pod0Facade) -> bool {
+    facade
+        .next_host_requests(u16::MAX)
+        .into_iter()
+        .any(|request| {
+            matches!(
+                request.request,
+                HostRequest::ExecuteTranscriptCapability { .. }
+            )
+        })
+}
+
+fn transcript_workflow_count(facade: &Pod0Facade) -> usize {
+    let Projection::TranscriptWorkflows { value } = facade
+        .snapshot(ProjectionRequest {
+            scope: ProjectionScope::TranscriptWorkflows { episode_id: None },
+            offset: 0,
+            max_items: 20,
+        })
+        .projection
+    else {
+        panic!("expected transcript workflow projection");
+    };
+    value.workflows.len()
 }
 
 fn configuration() -> TranscriptWorkflowConfiguration {

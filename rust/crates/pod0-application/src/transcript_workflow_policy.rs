@@ -41,6 +41,13 @@ pub fn plan_transcript_workflow(input: TranscriptWorkflowPlanInput) -> Transcrip
             TranscriptWorkflowOrigin::Automatic | TranscriptWorkflowOrigin::Unsupported { .. } => {
                 no_generation(evidence)
             }
+            TranscriptWorkflowOrigin::Playback => TranscriptWorkflowPlan {
+                generation: TranscriptGenerationDecision::AwaitingCredential {
+                    provider: input.configured_provider,
+                },
+                request: None,
+                evidence,
+            },
         };
     }
     if !request.publisher_first
@@ -119,6 +126,10 @@ fn requested_paths(input: &TranscriptWorkflowPlanInput) -> (bool, bool) {
         TranscriptWorkflowOrigin::Automatic => (
             input.auto_publisher_enabled && input.publisher_transcript_url.is_some(),
             input.auto_provider_enabled,
+        ),
+        TranscriptWorkflowOrigin::Playback => (
+            input.auto_publisher_enabled && input.publisher_transcript_url.is_some(),
+            true,
         ),
         TranscriptWorkflowOrigin::Unsupported { .. } => (false, false),
     }

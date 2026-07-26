@@ -29,25 +29,25 @@ extension SharedLibraryClient {
         workflowClient?.refresh(immediately: true)
     }
 
+    /// `startPolicies` is keyed by podcast ID and snapshotted on the main actor
+    /// by the caller, so this stays free of `store` and can run off-actor.
     nonisolated static func transcriptWorkflowOpportunities(
         episodes: [Episode],
-        settings: Settings
+        settings: Settings,
+        startPolicies: [UUID: TranscriptStartPolicy]
     ) -> [TranscriptWorkflowOpportunity] {
-        episodes.compactMap { episode in
+        episodes.map { episode in
             let configuration = NativeTranscriptWorkflowConfiguration.make(
                 episode: episode,
                 settings: settings
             )
-            guard NativeTranscriptWorkflowConfiguration.hasAutomaticExecutionOpportunity(
-                for: episode,
-                configuration: configuration
-            ) else { return nil }
             return TranscriptWorkflowOpportunity(
                 episodeID: episode.id,
                 configuration: configuration,
                 version: transcriptOpportunityVersion(
                     episode,
-                    configuration: configuration
+                    configuration: configuration,
+                    startPolicy: startPolicies[episode.podcastID] ?? .automatic
                 )
             )
         }
@@ -173,13 +173,15 @@ private extension SharedLibraryClient {
 
     nonisolated static func transcriptOpportunityVersion(
         _ episode: Episode,
-        configuration: TranscriptWorkflowConfiguration
+        configuration: TranscriptWorkflowConfiguration,
+        startPolicy: TranscriptStartPolicy
     ) -> String {
         ArtifactRepository.version(parts: [
             DesiredStatePlanner.audioVersion(episode),
             String(describing: configuration.provider), configuration.model,
             configuration.localAudioUrl ?? "", String(configuration.credentialAvailable),
             String(configuration.autoPublisherEnabled), String(configuration.autoProviderEnabled),
+            startPolicy.rawValue,
             episode.publisherTranscriptURL?.absoluteString ?? "",
             episode.publisherTranscriptType?.rawValue ?? "",
         ])

@@ -5,6 +5,7 @@ use pod0_domain::{
 use sha2::{Digest, Sha256};
 
 use crate::runtime_command_fingerprint_values::hash_optional;
+use crate::runtime_transcript_workflow_fingerprint::hash_transcript_configuration;
 
 pub(super) fn hash_playback(hash: &mut Sha256, command: &PlaybackCommand) {
     match command {
@@ -19,7 +20,18 @@ pub(super) fn hash_playback(hash: &mut Sha256, command: &PlaybackCommand) {
             hash_optional(hash, label.as_deref());
         }
         PlaybackCommand::Restore => hash.update(b"playback-restore\0"),
-        PlaybackCommand::Play => hash.update(b"playback-play\0"),
+        PlaybackCommand::Play {
+            transcript_configuration,
+        } => {
+            hash.update(b"playback-play\0");
+            match transcript_configuration {
+                Some(configuration) => {
+                    hash.update([1]);
+                    hash_transcript_configuration(hash, configuration);
+                }
+                None => hash.update([0]),
+            }
+        }
         PlaybackCommand::Pause => hash.update(b"playback-pause\0"),
         PlaybackCommand::Seek {
             position_milliseconds,
