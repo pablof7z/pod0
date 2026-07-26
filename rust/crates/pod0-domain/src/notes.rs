@@ -1,6 +1,6 @@
 use crate::{
-    ContentDigest, EpisodeId, EvidenceGenerationId, EvidenceSpanId, NoteId, TranscriptVersionId,
-    UnixTimestampMilliseconds,
+    ClipId, ContentDigest, EpisodeId, EvidenceGenerationId, EvidenceSpanId, NoteId,
+    TranscriptVersionId, UnixTimestampMilliseconds,
 };
 
 pub const MAX_NOTE_TEXT_BYTES: usize = 65_536;
@@ -42,6 +42,16 @@ pub enum NoteTarget {
     Episode {
         episode_id: EpisodeId,
         position_milliseconds: u64,
+    },
+    /// A note about a clip as an artifact — the margin beside a highlight.
+    ///
+    /// Deliberately carries no position. A clip is already a span, so a clip
+    /// note needs no point of its own, and giving it one would permit a note
+    /// claiming a clip while sitting outside that clip's boundaries after the
+    /// clip is retimed. A note about a specific moment is an `Episode` target;
+    /// the two cases are disjoint and neither can reach an inconsistent state.
+    Clip {
+        clip_id: ClipId,
     },
     Unsupported {
         wire_code: u32,

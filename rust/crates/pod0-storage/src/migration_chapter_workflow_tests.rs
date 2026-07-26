@@ -81,6 +81,7 @@ fn schema_14_through_current_preserves_and_adopts_current_publisher_chapters() {
              PRAGMA user_version=14;",
         )
         .unwrap();
+    crate::note_schema_test_support::revert_notes_below_v33(&fixture.target);
 
     CoreStoreMigrator::new(FixedClock)
         .migrate(
@@ -162,6 +163,7 @@ fn schema_15_to_current_preserves_publisher_state_and_adds_fenced_model_storage(
              PRAGMA user_version=15;",
         )
         .unwrap();
+    crate::note_schema_test_support::revert_notes_below_v33_on(&connection);
     drop(connection);
 
     let report = CoreStoreMigrator::new(FixedClock)
@@ -174,7 +176,7 @@ fn schema_15_to_current_preserves_publisher_state_and_adds_fenced_model_storage(
         .unwrap();
     assert_eq!(
         report.applied_versions,
-        [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
+        [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]
     );
 
     let reopened = crate::LibraryStore::open_authoritative(&fixture.target).unwrap();

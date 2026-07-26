@@ -218,6 +218,7 @@ fn schema_16_completion_is_preserved_and_no_longer_pins_the_current_request() {
              PRAGMA user_version=16;",
         )
         .unwrap();
+    crate::note_schema_test_support::revert_notes_below_v33_on(&connection);
     drop(connection);
 
     let report = CoreStoreMigrator::new(FixedClock)
@@ -231,7 +232,7 @@ fn schema_16_completion_is_preserved_and_no_longer_pins_the_current_request() {
     assert_eq!(
         report.applied_versions,
         [
-            17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
+            17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33
         ]
     );
     let connection = rusqlite::Connection::open(&path).unwrap();

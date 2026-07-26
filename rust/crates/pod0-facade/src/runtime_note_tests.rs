@@ -193,3 +193,83 @@ fn note_validation_and_command_replay_have_typed_deterministic_outcomes() {
         Some(OperationResult::NoteCreated { .. })
     ));
 }
+
+/// A clip-targeted note round-trips through the kernel and survives restart,
+/// and a note may not point at a clip that does not exist.
+///
+/// `NoteTarget::Clip` deliberately carries no position: a clip is already a
+/// span. A note about a moment inside the clip is an `Episode` target instead,
+/// so neither variant can reach a state where a note claims a clip while
+/// sitting outside that clip's boundaries.
+#[test]
+fn clip_targeted_notes_persist_across_restart_and_require_a_real_clip() {
+    let fixture = PlaybackFixture::new();
+    let clip_id = ClipId::from_parts(77, 1);
+    fixture.facade.dispatch(envelope(
+        1,
+        ApplicationCommand::CreateClip {
+            clip_id,
+            episode_id: fixture.episode_id,
+            podcast_id: fixture.podcast_id,
+            start_milliseconds: 10_000,
+            end_milliseconds: 25_000,
+            caption: None,
+            speaker_id: None,
+            frozen_transcript_text: "The margin is the point".to_owned(),
+            source: ClipSource::Touch,
+        },
+    ));
+
+    let target = Some(NoteTarget::Clip { clip_id });
+    let create = envelope(
+        2,
+        ApplicationCommand::CreateNote {
+            text: "This is what I thought about it".to_owned(),
+            kind: NoteKind::Free,
+            author: NoteAuthor::User,
+            target,
+        },
+    );
+    fixture.facade.dispatch(create.clone());
+
+    let created = notes(&fixture.facade, NoteProjectionScope::All);
+    let note_id = NoteId::from_bytes(create.command_id.into_bytes());
+    let note = created
+        .notes
+        .iter()
+        .find(|note| note.note_id == note_id)
+        .expect("clip-targeted note should be projected");
+    assert_eq!(note.target, target);
+    assert_eq!(note.text, "This is what I thought about it");
+
+    // A dangling clip reference is refused rather than stored.
+    fixture.facade.dispatch(envelope(
+        3,
+        ApplicationCommand::CreateNote {
+            text: "Points at nothing".to_owned(),
+            kind: NoteKind::Free,
+            author: NoteAuthor::User,
+            target: Some(NoteTarget::Clip {
+                clip_id: ClipId::from_parts(77, 9),
+            }),
+        },
+    ));
+    let after = notes(&fixture.facade, NoteProjectionScope::All);
+    assert!(
+        !after
+            .notes
+            .iter()
+            .any(|note| note.text == "Points at nothing"),
+        "a note must not persist against a clip that does not exist"
+    );
+
+    // The target survives a full reopen, not just the in-memory projection.
+    let reopened = Pod0Facade::open(fixture.target.to_string_lossy().into_owned()).unwrap();
+    let restored = notes(&reopened, NoteProjectionScope::All);
+    let restored_note = restored
+        .notes
+        .iter()
+        .find(|note| note.note_id == note_id)
+        .expect("clip-targeted note should survive restart");
+    assert_eq!(restored_note.target, target);
+}

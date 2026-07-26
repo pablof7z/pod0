@@ -7158,6 +7158,24 @@ sealed class NoteTarget {
         companion object
     }
 
+    /**
+     * A note about a clip as an artifact — the margin beside a highlight.
+     *
+     * Deliberately carries no position. A clip is already a span, so a clip
+     * note needs no point of its own, and giving it one would permit a note
+     * claiming a clip while sitting outside that clip's boundaries after the
+     * clip is retimed. A note about a specific moment is an `Episode` target;
+     * the two cases are disjoint and neither can reach an inconsistent state.
+     */
+    data class Clip(
+        val `clipId`: uniffi.pod0_domain.ClipId) : NoteTarget()
+
+    {
+
+
+        companion object
+    }
+
     data class Unsupported(
         val `wireCode`: kotlin.UInt) : NoteTarget()
 
@@ -7190,7 +7208,10 @@ public object FfiConverterTypeNoteTarget : FfiConverterRustBuffer<NoteTarget>{
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterULong.read(buf),
                 )
-            3 -> NoteTarget.Unsupported(
+            3 -> NoteTarget.Clip(
+                FfiConverterTypeClipId.read(buf),
+                )
+            4 -> NoteTarget.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -7211,6 +7232,13 @@ public object FfiConverterTypeNoteTarget : FfiConverterRustBuffer<NoteTarget>{
                 4UL
                 + FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`)
                 + FfiConverterULong.allocationSize(value.`positionMilliseconds`)
+            )
+        }
+        is NoteTarget.Clip -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeClipId.allocationSize(value.`clipId`)
             )
         }
         is NoteTarget.Unsupported -> {
@@ -7235,8 +7263,13 @@ public object FfiConverterTypeNoteTarget : FfiConverterRustBuffer<NoteTarget>{
                 FfiConverterULong.write(value.`positionMilliseconds`, buf)
                 Unit
             }
-            is NoteTarget.Unsupported -> {
+            is NoteTarget.Clip -> {
                 buf.putInt(3)
+                FfiConverterTypeClipId.write(value.`clipId`, buf)
+                Unit
+            }
+            is NoteTarget.Unsupported -> {
+                buf.putInt(4)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }

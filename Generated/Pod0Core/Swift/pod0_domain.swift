@@ -7561,6 +7561,17 @@ public enum NoteTarget: Equatable, Hashable {
     )
     case episode(episodeId: EpisodeId, positionMilliseconds: UInt64
     )
+    /**
+     * A note about a clip as an artifact — the margin beside a highlight.
+     *
+     * Deliberately carries no position. A clip is already a span, so a clip
+     * note needs no point of its own, and giving it one would permit a note
+     * claiming a clip while sitting outside that clip's boundaries after the
+     * clip is retimed. A note about a specific moment is an `Episode` target;
+     * the two cases are disjoint and neither can reach an inconsistent state.
+     */
+    case clip(clipId: ClipId
+    )
     case unsupported(wireCode: UInt32
     )
 
@@ -7590,7 +7601,10 @@ public struct FfiConverterTypeNoteTarget: FfiConverterRustBuffer {
         case 2: return .episode(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), positionMilliseconds: try FfiConverterUInt64.read(from: &buf)
         )
 
-        case 3: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 3: return .clip(clipId: try FfiConverterTypeClipId.read(from: &buf)
+        )
+
+        case 4: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -7612,8 +7626,13 @@ public struct FfiConverterTypeNoteTarget: FfiConverterRustBuffer {
             FfiConverterUInt64.write(positionMilliseconds, into: &buf)
 
 
-        case let .unsupported(wireCode):
+        case let .clip(clipId):
             writeInt(&buf, Int32(3))
+            FfiConverterTypeClipId.write(clipId, into: &buf)
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(4))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }

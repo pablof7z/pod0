@@ -69,6 +69,8 @@ extension Anchor {
                 episodeId: EpisodeId(uuid: id),
                 positionMilliseconds: UInt64(milliseconds.rounded())
             )
+        case .clip(let id):
+            return .clip(clipId: ClipId(uuid: id))
         }
     }
 }
@@ -106,6 +108,8 @@ private extension Pod0Core.NoteTarget {
                     positionSeconds: Double(positionMilliseconds) / 1_000
                 )
             }
+        case .clip(let clipID):
+            clipID.uuid.map(Anchor.clip(id:))
         case .unsupported:
             nil
         }
