@@ -111,10 +111,12 @@ hold or stop into a go.
 
 ## Current evidence state
 
-The repository and simulator evidence recorded on 2026-07-24 is
-[`ios-product-proof-2026-07-24.json`](../architecture/evidence/ios-product-proof-2026-07-24.json).
-Automated iOS, process-restart, archive, recall-performance, privacy, ownership,
-and single-writer gates pass. Physical playback qualification in issue #84 and
-the minimum real-user cohorts above remain missing. The current decision is
-therefore **Hold**, not Go: the app can continue iOS validation, while Android
-product work remains closed.
+The latest repository and simulator evidence is
+[`ios-product-proof-2026-07-26.json`](../architecture/evidence/ios-product-proof-2026-07-26.json).
+Its qualified head merged as `806f7170`; hosted run
+[30205632299](https://github.com/pablof7z/pod0/actions/runs/30205632299)
+passed the evaluator, 660 iOS tests, 530 Rust tests, process restart, archive,
+privacy, ownership, single-writer, binding, Kotlin, and portability gates.
+Physical playback qualification in issue #84 and the minimum real-user cohorts
+above remain missing. The current decision is therefore **Hold**, not Go: the
+app can continue iOS validation, while Android product work remains closed.
