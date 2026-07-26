@@ -26,7 +26,7 @@
     "App/Sources/Features/Player/PlayerView.swift": 415,
     "App/Sources/Features/Library/DiscoverSearchForm.swift": 424,
     "App/Sources/Features/Library/OPMLImportSheet.swift": 411,
-    "App/Sources/Features/Player/MiniPlayerView.swift": 404,
+    "App/Sources/Features/Player/MiniPlayerView.swift": 389,
     "AppTests/Sources/PersistenceDurabilityTests.swift": 325,
     "App/Sources/Voice/AudioConversationManager.swift": 385,
     "App/Sources/Features/EpisodeDetail/EpisodeAuditLogView.swift": 333,
