@@ -2,6 +2,13 @@
   "schema_version": 1,
   "entries": [
     {
+      "shipped_at": "2026-07-26T02:20:00Z",
+      "lines": [
+        "The agent now just runs — no more approval prompts interrupting a turn.",
+        "Fixed a crash that could leave the app closing instantly on every launch."
+      ]
+    },
+    {
       "shipped_at": "2026-07-25T21:41:00Z",
       "lines": [
         "Pod0 now starts with a clean local library instead of recovering older app storage."

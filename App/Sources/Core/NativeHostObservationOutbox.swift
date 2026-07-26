@@ -25,28 +25,18 @@ actor NativeHostObservationOutbox {
         case unsupportedSchema
         case invalidArchive
         case receiptRequestMismatch
+        case abandonedTooOften
     }
 
     typealias Delivery = @Sendable (HostObservationEnvelope) async -> HostObservationReceipt
 
-    private struct Archive: Codable {
-        let schemaVersion: UInt32
-        let records: [StoredRecord]
-    }
+    private typealias Entry = NativeHostObservationArchive.Entry
 
-    private struct StoredRecord: Codable, Equatable, Sendable {
-        let requestHigh: UInt64
-        let requestLow: UInt64
-        let sequenceNumber: UInt64
-        let envelopeBytes: Data
-    }
-
-    private struct Entry: Sendable {
-        let stored: StoredRecord
-        let envelope: HostObservationEnvelope
-    }
-
-    private static let schemaVersion: UInt32 = 1
+    /// A record that has killed the process this many times mid-delivery is
+    /// poison: replaying it again would relaunch straight back into the same
+    /// abort. Rust keeps its own pending-request state, so quarantining the
+    /// transport copy costs at most one re-request and never bricks the app.
+    private static let maximumAbandonedDeliveries: UInt32 = 2
     private let fileURL: URL
     private let limits: Limits
     private var entries: [Entry]
@@ -63,14 +53,14 @@ actor NativeHostObservationOutbox {
         else { throw OutboxError.invalidLimits }
         self.fileURL = try fileURL ?? Self.defaultFileURL(fileManager: fileManager)
         self.limits = limits
-        entries = try Self.restore(from: self.fileURL, limits: limits)
+        entries = try NativeHostObservationArchive.restore(from: self.fileURL, limits: limits)
     }
 
     /// Atomically persists exact generated evidence before the caller delivers it.
     /// Exact duplicate envelopes are idempotent.
     @discardableResult
     func persistBeforeDelivery(_ envelope: HostObservationEnvelope) throws -> Bool {
-        let stored = try Self.store(envelope, limits: limits)
+        let stored = try NativeHostObservationArchive.store(envelope, limits: limits)
         guard !entries.contains(where: { $0.stored.envelopeBytes == stored.envelopeBytes }) else {
             return false
         }
@@ -92,6 +82,51 @@ actor NativeHostObservationOutbox {
         entries.map(\.envelope)
     }
 
+    /// Records that a delivery is about to cross into Rust, so a process death
+    /// inside that call is still visible after relaunch. Returns `false` when
+    /// the record has already been abandoned too often to replay safely; the
+    /// caller must not deliver it, and the record is dropped from the archive.
+    func beginDelivery(of envelope: HostObservationEnvelope) -> Bool {
+        guard let index = entries.firstIndex(where: { Self.matches($0, envelope) }) else {
+            return true
+        }
+        let attempts = entries[index].stored.abandonedDeliveries + 1
+        guard attempts <= Self.maximumAbandonedDeliveries else {
+            var updated = entries
+            updated.remove(at: index)
+            try? persist(updated)
+            entries = updated
+            return false
+        }
+        var updated = entries
+        updated[index] = Self.marking(updated[index], abandonedDeliveries: attempts)
+        guard (try? persist(updated)) != nil else { return true }
+        entries = updated
+        return true
+    }
+
+    /// Clears the in-flight mark once Rust returns any receipt at all.
+    func finishDelivery(of envelope: HostObservationEnvelope) {
+        guard let index = entries.firstIndex(where: { Self.matches($0, envelope) }),
+              entries[index].stored.abandonedDeliveries != 0
+        else { return }
+        var updated = entries
+        updated[index] = Self.marking(updated[index], abandonedDeliveries: 0)
+        guard (try? persist(updated)) != nil else { return }
+        entries = updated
+    }
+
+    private static func matches(_ entry: Entry, _ envelope: HostObservationEnvelope) -> Bool {
+        entry.envelope.requestId == envelope.requestId
+            && entry.envelope.sequenceNumber == envelope.sequenceNumber
+    }
+
+    private static func marking(_ entry: Entry, abandonedDeliveries: UInt32) -> Entry {
+        var stored = entry.stored
+        stored.abandonedDeliveries = abandonedDeliveries
+        return Entry(stored: stored, envelope: entry.envelope)
+    }
+
     func pendingCount() -> Int {
         entries.count
     }
@@ -103,7 +138,9 @@ actor NativeHostObservationOutbox {
         using delivery: @escaping Delivery
     ) async throws -> HostObservationReceipt {
         _ = try persistBeforeDelivery(envelope)
+        guard beginDelivery(of: envelope) else { throw OutboxError.abandonedTooOften }
         let receipt = await delivery(envelope)
+        finishDelivery(of: envelope)
         guard Self.requestID(receipt) == envelope.requestId else {
             throw OutboxError.receiptRequestMismatch
         }
@@ -132,7 +169,9 @@ actor NativeHostObservationOutbox {
         var delivered = 0
         for entry in snapshot {
             guard entries.contains(where: { $0.stored == entry.stored }) else { continue }
+            guard beginDelivery(of: entry.envelope) else { continue }
             let receipt = await delivery(entry.envelope)
+            finishDelivery(of: entry.envelope)
             guard Self.requestID(receipt) == entry.envelope.requestId else {
                 throw OutboxError.receiptRequestMismatch
             }
@@ -143,97 +182,7 @@ actor NativeHostObservationOutbox {
     }
 
     private func persist(_ updated: [Entry]) throws {
-        let archive = Archive(
-            schemaVersion: Self.schemaVersion,
-            records: updated.map(\.stored)
-        )
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        let data = try encoder.encode(archive)
-        guard data.count <= limits.maximumArchiveBytes else {
-            throw OutboxError.archiveTooLarge
-        }
-        try FileManager.default.createDirectory(
-            at: fileURL.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
-        try data.write(to: fileURL, options: .atomic)
-    }
-
-    private static func restore(from url: URL, limits: Limits) throws -> [Entry] {
-        guard FileManager.default.fileExists(atPath: url.path) else { return [] }
-        let fileSize = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize
-        guard let fileSize, fileSize <= limits.maximumArchiveBytes else {
-            throw OutboxError.archiveTooLarge
-        }
-        let data = try Data(contentsOf: url, options: .mappedIfSafe)
-        guard data.count <= limits.maximumArchiveBytes else { throw OutboxError.archiveTooLarge }
-        let archive: Archive
-        do {
-            archive = try JSONDecoder().decode(Archive.self, from: data)
-        } catch {
-            throw OutboxError.invalidArchive
-        }
-        guard archive.schemaVersion == schemaVersion else { throw OutboxError.unsupportedSchema }
-        guard archive.records.count <= limits.maximumRecordCount else {
-            throw OutboxError.recordLimitExceeded
-        }
-        var seen = Set<Data>()
-        var identities = Set<ObservationIdentity>()
-        return try archive.records.map { stored in
-            guard stored.envelopeBytes.count <= limits.maximumEnvelopeBytes,
-                  seen.insert(stored.envelopeBytes).inserted
-            else { throw OutboxError.invalidArchive }
-            let envelope = try decode(stored.envelopeBytes)
-            guard envelope.requestId.high == stored.requestHigh,
-                  envelope.requestId.low == stored.requestLow,
-                  envelope.sequenceNumber == stored.sequenceNumber
-            else { throw OutboxError.invalidArchive }
-            guard identities.insert(ObservationIdentity(envelope)).inserted else {
-                throw OutboxError.invalidArchive
-            }
-            return Entry(stored: stored, envelope: envelope)
-        }
-    }
-
-    private struct ObservationIdentity: Hashable {
-        let requestID: HostRequestId
-        let sequenceNumber: UInt64
-
-        init(_ envelope: HostObservationEnvelope) {
-            requestID = envelope.requestId
-            sequenceNumber = envelope.sequenceNumber
-        }
-    }
-
-    private static func store(
-        _ envelope: HostObservationEnvelope,
-        limits: Limits
-    ) throws -> StoredRecord {
-        var bytes: [UInt8] = []
-        FfiConverterTypeHostObservationEnvelope.write(envelope, into: &bytes)
-        guard bytes.count <= limits.maximumEnvelopeBytes else {
-            throw OutboxError.envelopeTooLarge
-        }
-        return StoredRecord(
-            requestHigh: envelope.requestId.high,
-            requestLow: envelope.requestId.low,
-            sequenceNumber: envelope.sequenceNumber,
-            envelopeBytes: Data(bytes)
-        )
-    }
-
-    private static func decode(_ data: Data) throws -> HostObservationEnvelope {
-        var buffer = (data: data, offset: data.startIndex)
-        do {
-            let envelope = try FfiConverterTypeHostObservationEnvelope.read(from: &buffer)
-            guard buffer.offset == data.endIndex else { throw OutboxError.invalidArchive }
-            return envelope
-        } catch let error as OutboxError {
-            throw error
-        } catch {
-            throw OutboxError.invalidArchive
-        }
+        try NativeHostObservationArchive.write(updated, to: fileURL, limits: limits)
     }
 
     private static func requestID(_ receipt: HostObservationReceipt) -> HostRequestId {

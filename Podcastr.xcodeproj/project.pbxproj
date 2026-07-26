@@ -611,6 +611,7 @@
 		C61F0BC9BEAD739C973FEF22 /* PlayerNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3C34DE471ECE3208D3A3661 /* PlayerNotifications.swift */; };
 		C621C2640B3A42DE2775828D /* Pod0NativeHostDispatcher+NostrSigner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D35857BFBC82B47DFB4D39 /* Pod0NativeHostDispatcher+NostrSigner.swift */; };
 		C6CACC9B70E0CDDD373D9A27 /* CoreTranscriptHost+Failures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C05FE2C8FA78969B2C4EA29 /* CoreTranscriptHost+Failures.swift */; };
+		C7125829DBE25AA11BE50B60 /* NativeHostObservationArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CEE8336C2FC007C9E3E4D11 /* NativeHostObservationArchive.swift */; };
 		C750F22CBB6429E7F57AF879 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 96C6D55FB366063E88D8E980 /* Assets.xcassets */; };
 		C77A985078E47C235BFA90B4 /* PlayerCompactTitleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F93D5146D6F408B4CECDC8FE /* PlayerCompactTitleView.swift */; };
 		C7AF174F49036C5A88580541 /* AppStateStore+SharedProjectionRetirement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 447BD2AAC2901C36196F555C /* AppStateStore+SharedProjectionRetirement.swift */; };
@@ -642,7 +643,6 @@
 		D267AAD91FB152332C541626 /* LiquidGlassSegmentedPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 383F11D22FF9F026C79AF15B /* LiquidGlassSegmentedPicker.swift */; };
 		D26DF3D8B662DFD8B6861453 /* EmbeddingsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D323573C621187F4835D5223 /* EmbeddingsClient.swift */; };
 		D296A3A113B7CA431F3F4B45 /* P256K in Frameworks */ = {isa = PBXBuildFile; productRef = A865ADD09595500A328B6A66 /* P256K */; };
-		D32605B7F48AE6D15CEF8E76 /* AgentApprovalPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81D988DB2A81E490CDC64EB6 /* AgentApprovalPresenter.swift */; };
 		D3B6E4DEB421455E080AC878 /* SharedLibraryClient+Downloads.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99B9B2143F69CCB3DCF73DF8 /* SharedLibraryClient+Downloads.swift */; };
 		D4BCEDB60F8FD3AEE41AB3A6 /* EpisodeChapter+AdOverlap.swift in Sources */ = {isa = PBXBuildFile; fileRef = F654B4C781D9BBD6209EB9CA /* EpisodeChapter+AdOverlap.swift */; };
 		D5412314369C63ACA179A5D0 /* BackgroundWorkScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F3827CD7544A83BA52AC64 /* BackgroundWorkScheduler.swift */; };
@@ -1033,7 +1033,7 @@
 		31822DD58237A18EDF0122A4 /* AppStateStore+Subscriptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+Subscriptions.swift"; sourceTree = "<group>"; };
 		31927B4E3DA07C4DCFCB2216 /* AgentChatHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentChatHistoryView.swift; sourceTree = "<group>"; };
 		325AAE8B62A04BEFC34A5FB0 /* AppStateStore+Podcasts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStateStore+Podcasts.swift"; sourceTree = "<group>"; };
-		3266ABF27DC6701CC2EC309E /* Pod0CoreFFI.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = Pod0CoreFFI.xcframework; path = .build/pod0core/Pod0CoreFFI.xcframework; sourceTree = SOURCE_ROOT; };
+		3266ABF27DC6701CC2EC309E /* Pod0CoreFFI.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = Pod0CoreFFI.xcframework; path = "/Users/pablofernandez/Work/pod0/.claude/worktrees/agent-approval-crash-fix/.build/pod0core/Pod0CoreFFI.xcframework"; sourceTree = "<absolute>"; };
 		3287A4A390015E885F29B691 /* SharedLibrarySubscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedLibrarySubscriber.swift; sourceTree = "<group>"; };
 		32D6DCC3AC57739150675344 /* AppTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTests.swift; sourceTree = "<group>"; };
 		3406662F3C98F8A17731C39C /* LegacyAgentMemoryCutover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyAgentMemoryCutover.swift; sourceTree = "<group>"; };
@@ -1163,6 +1163,7 @@
 		5BFACE176690DF5220BB7D4C /* Pod0FeedbackProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pod0FeedbackProtocol.swift; sourceTree = "<group>"; };
 		5C81C6D415CD402C1CACAAA5 /* LegacyModelChapterWorkflowSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyModelChapterWorkflowSnapshot.swift; sourceTree = "<group>"; };
 		5CDCAAC417B4604850BBB6BA /* ProviderLogoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderLogoView.swift; sourceTree = "<group>"; };
+		5CEE8336C2FC007C9E3E4D11 /* NativeHostObservationArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeHostObservationArchive.swift; sourceTree = "<group>"; };
 		5D047B045E2427211FDB8C06 /* SharedNoteVerticalSliceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedNoteVerticalSliceTests.swift; sourceTree = "<group>"; };
 		5D4C0A045A868CC28B7D38CA /* LiveCoreTranscriptTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveCoreTranscriptTransport.swift; sourceTree = "<group>"; };
 		5D8269F3BAD30696B61360DE /* OnboardingSubscribePage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingSubscribePage.swift; sourceTree = "<group>"; };
@@ -1261,7 +1262,6 @@
 		80D89E3501095FCCE1DCE609 /* LLMProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMProviderTests.swift; sourceTree = "<group>"; };
 		8109C45F152E2735F9A5C412 /* Pod0NativeHostDispatcherWorkflowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pod0NativeHostDispatcherWorkflowTests.swift; sourceTree = "<group>"; };
 		81CAD36ACDA01D3DCB97A5DF /* DesiredStatePlannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesiredStatePlannerTests.swift; sourceTree = "<group>"; };
-		81D988DB2A81E490CDC64EB6 /* AgentApprovalPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentApprovalPresenter.swift; sourceTree = "<group>"; };
 		81E6F65A1DF23AAAF93E0FA6 /* VoiceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceView.swift; sourceTree = "<group>"; };
 		81EA3E7DD4188ADC39648130 /* ModelBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelBadge.swift; sourceTree = "<group>"; };
 		8200C9B29F01A8001A49ADF1 /* OnboardingAISetupPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingAISetupPage.swift; sourceTree = "<group>"; };
@@ -1908,6 +1908,7 @@
 				3680E0783D3CC698F1463183 /* LegacyWorkflowBackupStorage.swift */,
 				5D4C0A045A868CC28B7D38CA /* LiveCoreTranscriptTransport.swift */,
 				8CD3BCE379F21620B0E48A7C /* LiveCoreTranscriptTransport+Publisher.swift */,
+				5CEE8336C2FC007C9E3E4D11 /* NativeHostObservationArchive.swift */,
 				48D702DAB2E7E35DFF627413 /* NativeHostObservationOutbox.swift */,
 				F263E57699B517B521172BAA /* NativeTranscriptWorkflowConfiguration.swift */,
 				CCA6356EFC2F304644896C5E /* Pod0CoreAvailability.swift */,
@@ -2039,7 +2040,6 @@
 		308296E68B16FE483C694F9A /* Agent */ = {
 			isa = PBXGroup;
 			children = (
-				81D988DB2A81E490CDC64EB6 /* AgentApprovalPresenter.swift */,
 				DB68AA285AEB79B5335C5F1F /* AgentAskPresenter.swift */,
 				CAA368DB271D79A4FD7A0A06 /* AgentAssistantMessageView.swift */,
 				7C70D48DA04DEB4330285B88 /* AgentChatBubble.swift */,
@@ -2943,6 +2943,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = E05E0D98DB59A7EF5495E97F /* Build configuration list for PBXNativeTarget "Pod0Core" */;
 			buildPhases = (
+				3F639FE562B7CC0486C9EAB0 /* Check Pod0Core binding freshness */,
 				7CAADE749FECA60544139DCC /* Sources */,
 				F956A08F4C2D6CF497DF32BC /* Resources */,
 				CE6B745F2E9F09D9E5EE7133 /* Frameworks */,
@@ -3113,6 +3114,31 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		3F639FE562B7CC0486C9EAB0 /* Check Pod0Core binding freshness */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/scripts/check_core_binding_freshness.sh",
+				"$(SRCROOT)/Generated/Pod0Core/bindings.fingerprint",
+				"$(SRCROOT)/.build/pod0core/Pod0CoreFFI.xcframework/bindings.fingerprint",
+			);
+			name = "Check Pod0Core binding freshness";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"$SRCROOT/scripts/check_core_binding_freshness.sh\"";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		2837A17C0CC762E72DA9928D /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -3216,6 +3242,7 @@
 				215A144F8BB0B198AB0640F2 /* LegacyWorkflowBackupStorage.swift in Sources */,
 				45069A18E7EF7CD2C6692DD5 /* LiveCoreTranscriptTransport+Publisher.swift in Sources */,
 				E40E934C118BEF414B45A25E /* LiveCoreTranscriptTransport.swift in Sources */,
+				C7125829DBE25AA11BE50B60 /* NativeHostObservationArchive.swift in Sources */,
 				F2DCA92A67EB2646732B744B /* NativeHostObservationOutbox.swift in Sources */,
 				532397E8F914CE1908379280 /* NativeTranscriptWorkflowConfiguration.swift in Sources */,
 				5A6656DD0FEA7214F615F814 /* Pod0CoreAvailability.swift in Sources */,
@@ -3331,7 +3358,6 @@
 				E42216B0651009E75B0436EF /* Settings.swift in Sources */,
 				64C1BC7CCC2AD5ABD83C516B /* SlugNormalizer.swift in Sources */,
 				F3B55ECE7F9F3116A78674E5 /* VoiceNoteAgentContext.swift in Sources */,
-				D32605B7F48AE6D15CEF8E76 /* AgentApprovalPresenter.swift in Sources */,
 				24C8C462D0C92C4C99A07285 /* AgentAskPresenter.swift in Sources */,
 				E9338BFD6196F3B7E33B1FE6 /* AgentAssistantMessageView.swift in Sources */,
 				79D1D9914C9DCC31FD4ED58F /* AgentChatBubble.swift in Sources */,

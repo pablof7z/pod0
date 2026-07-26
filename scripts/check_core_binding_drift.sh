@@ -15,4 +15,8 @@ trap cleanup EXIT
 POD0_BINDINGS_OUTPUT_ROOT="$TEMP_ROOT" "$SCRIPT_DIR/generate_core_bindings.sh"
 diff -ru "$REPO_ROOT/Generated/Pod0Core/Swift" "$TEMP_ROOT/Swift"
 diff -ru "$REPO_ROOT/Generated/Pod0Core/Kotlin" "$TEMP_ROOT/Kotlin"
+# The checked-in fingerprint is what check_core_binding_freshness.sh compares
+# the built xcframework against, so it has to describe these exact bindings.
+diff -u "$REPO_ROOT/Generated/Pod0Core/bindings.fingerprint" \
+  "$TEMP_ROOT/bindings.fingerprint"
 echo "Generated core bindings match Rust facade metadata"
