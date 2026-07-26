@@ -12,7 +12,8 @@ import SwiftUI
 ///   - Share (`ShareLink` with the enclosure URL).
 ///
 /// The route is generic over `Hashable` so Library can pass `LibraryEpisodeRoute`
-/// and Home can pass `HomeEpisodeRoute` without either feature owning the menu.
+/// and other episode surfaces can pass their own routes without this menu
+/// owning navigation.
 ///
 /// Usage with `.contextMenu`:
 /// ```swift

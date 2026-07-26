@@ -216,10 +216,9 @@ struct Settings: Codable, Hashable, Sendable {
     /// preserved.
     var autoFallbackToScribe: Bool = true
 
-    // Notifications (per-kind toggles; the system permission is separate)
-    /// When `true`, fire a local notification when a feed refresh discovers a brand-new
-    /// episode for a subscription that has notifications enabled.
-    var notifyOnNewEpisodes: Bool = true
+    // Decode-only seed imported into the Rust-owned notification setting.
+    // It is deliberately not encoded after the verified cutover.
+    var legacyNotifyOnNewEpisodes: Bool = true
 
     // Agent identity — display name and avatar the user configures for the
     // agent during onboarding. Surfaced in the sidebar/toolbar avatar.
@@ -313,7 +312,8 @@ struct Settings: Codable, Hashable, Sendable {
         headphoneTripleTapAction = try c.decodeIfPresent(HeadphoneGestureAction.self, forKey: .headphoneTripleTapAction) ?? .clipNow
         autoIngestPublisherTranscripts = try c.decodeIfPresent(Bool.self, forKey: .autoIngestPublisherTranscripts) ?? true
         autoFallbackToScribe = try c.decodeIfPresent(Bool.self, forKey: .autoFallbackToScribe) ?? true
-        notifyOnNewEpisodes = try c.decodeIfPresent(Bool.self, forKey: .notifyOnNewEpisodes) ?? true
+        legacyNotifyOnNewEpisodes =
+            try c.decodeIfPresent(Bool.self, forKey: .notifyOnNewEpisodes) ?? true
         agentDisplayName = try c.decodeIfPresent(String.self, forKey: .agentDisplayName) ?? ""
         agentAvatarURLString = try c.decodeIfPresent(String.self, forKey: .agentAvatarURLString) ?? ""
         hasCompletedOnboarding = try c.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? false
@@ -377,7 +377,6 @@ struct Settings: Codable, Hashable, Sendable {
         try c.encode(headphoneTripleTapAction, forKey: .headphoneTripleTapAction)
         try c.encode(autoIngestPublisherTranscripts, forKey: .autoIngestPublisherTranscripts)
         try c.encode(autoFallbackToScribe, forKey: .autoFallbackToScribe)
-        try c.encode(notifyOnNewEpisodes, forKey: .notifyOnNewEpisodes)
         try c.encode(agentDisplayName, forKey: .agentDisplayName)
         try c.encode(agentAvatarURLString, forKey: .agentAvatarURLString)
         try c.encode(hasCompletedOnboarding, forKey: .hasCompletedOnboarding)

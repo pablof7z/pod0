@@ -21,18 +21,30 @@ extension CoreDownloadHost {
             return
         }
         identitiesByRequest[envelope.requestId] = identity
-        if let staged = nativeStore.stagedFile(for: identity.attemptID),
-           let count = try? staged.resourceValues(forKeys: [.fileSizeKey]).fileSize,
-           count > 0 {
-            emit(
-                requestID: envelope.requestId,
-                sequence: 2,
-                observation: stagedObservation(identity, path: staged.path, byteCount: UInt64(count))
-            )
-            return
-        }
+        let nativeStore = nativeStore
         Task { @MainActor [weak self] in
             guard let self else { return }
+            let staged = await Task.detached(priority: .utility) {
+                guard let url = nativeStore.stagedFile(for: identity.attemptID),
+                      let count = try? url.resourceValues(
+                          forKeys: [.fileSizeKey]
+                      ).fileSize,
+                      count > 0
+                else { return nil as (URL, UInt64)? }
+                return (url, UInt64(count))
+            }.value
+            if let (url, count) = staged {
+                emit(
+                    requestID: envelope.requestId,
+                    sequence: 2,
+                    observation: stagedObservation(
+                        identity,
+                        path: url.path,
+                        byteCount: count
+                    )
+                )
+                return
+            }
             let tasks = await session.allTasks.compactMap { $0 as? URLSessionDownloadTask }
             if let task = tasks.first(where: {
                 CoreDownloadTaskIdentity(encoded: $0.taskDescription) == identity
@@ -43,7 +55,10 @@ extension CoreDownloadHost {
                 return
             }
             let task: URLSessionDownloadTask
-            if let resumeData = nativeStore.resumeData(for: resumeKey) {
+            let resumeData = await Task.detached(priority: .utility) {
+                nativeStore.resumeData(for: resumeKey)
+            }.value
+            if let resumeData {
                 task = session.downloadTask(withResumeData: resumeData)
             } else {
                 task = session.downloadTask(with: url)
@@ -103,7 +118,9 @@ extension CoreDownloadHost {
             identitiesByTask[task.taskIdentifier] = nil
             Task { @MainActor [weak self, nativeStore] in
                 let resumeData = await task.cancelByProducingResumeData()
-                nativeStore.saveResumeData(resumeData, for: attemptID)
+                await Task.detached(priority: .utility) {
+                    nativeStore.saveResumeData(resumeData, for: attemptID)
+                }.value
                 guard let self else { return }
                 clearProgress(for: episodeID)
                 emit(
@@ -122,25 +139,35 @@ extension CoreDownloadHost {
     func remove(_ envelope: HostRequestEnvelope) {
         guard case let .removeEpisodeDownloadArtifact(episodeID, artifactKey) = envelope.request
         else { return }
-        do {
-            try nativeStore.removeArtifact(coreStoreURL: coreStoreURL, artifactKey: artifactKey)
-            emit(
-                requestID: envelope.requestId,
-                sequence: 1,
-                observation: .downloadArtifactRemoved(
-                    episodeId: episodeID,
-                    artifactKey: artifactKey
+        let nativeStore = nativeStore
+        let coreStoreURL = coreStoreURL
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                try await Task.detached(priority: .utility) {
+                    try nativeStore.removeArtifact(
+                        coreStoreURL: coreStoreURL,
+                        artifactKey: artifactKey
+                    )
+                }.value
+                emit(
+                    requestID: envelope.requestId,
+                    sequence: 1,
+                    observation: .downloadArtifactRemoved(
+                        episodeId: episodeID,
+                        artifactKey: artifactKey
+                    )
                 )
-            )
-        } catch {
-            emit(
-                requestID: envelope.requestId,
-                sequence: 1,
-                observation: .failed(
-                    code: .platformFailure,
-                    safeDetail: "Native artifact removal failed"
+            } catch {
+                emit(
+                    requestID: envelope.requestId,
+                    sequence: 1,
+                    observation: .failed(
+                        code: .platformFailure,
+                        safeDetail: "Native artifact removal failed"
+                    )
                 )
-            )
+            }
         }
     }
 

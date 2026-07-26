@@ -3,17 +3,26 @@ import Pod0Core
 @MainActor
 protocol SharedAgentConversationRuntime: AnyObject {
     func execute(_ command: ApplicationCommand) async throws -> OperationResult?
-    func agentConversationHistory() -> AgentConversationsProjection
+    func agentConversationHistory() async -> AgentConversationsProjection
     func subscribeAgentConversation(
         _ conversationID: ConversationId,
         subscriber: any ProjectionSubscriber
-    ) -> SubscriptionId
-    func unsubscribeAgentConversation(_ subscriptionID: SubscriptionId)
+    ) async -> SubscriptionId
+    func unsubscribeAgentConversation(_ subscriptionID: SubscriptionId) async
     func executePendingHostRequests()
 }
 
 extension SharedLibraryClient: SharedAgentConversationRuntime {
-    func agentConversationHistory() -> AgentConversationsProjection {
+    func agentConversationHistory() async -> AgentConversationsProjection {
+        let facade = facade
+        return await Task.detached(priority: .utility) {
+            Self.loadAgentConversationHistory(facade: facade)
+        }.value
+    }
+
+    nonisolated private static func loadAgentConversationHistory(
+        facade: Pod0Facade
+    ) -> AgentConversationsProjection {
         let pageSize: UInt32 = 100
         let maximumItems = 500
         var offset: UInt32 = 0
@@ -48,24 +57,25 @@ extension SharedLibraryClient: SharedAgentConversationRuntime {
     func subscribeAgentConversation(
         _ conversationID: ConversationId,
         subscriber: any ProjectionSubscriber
-    ) -> SubscriptionId {
-        facade.subscribe(
-            request: ProjectionRequest(
+    ) async -> SubscriptionId {
+        await commandExecutor.subscribe(
+            ProjectionRequest(
                 scope: .agentConversation(conversationId: conversationID),
                 offset: 0,
                 maxItems: 64
             ),
-            subscriber: subscriber
+            subscriber: subscriber,
+            to: facade
         )
     }
 
-    func unsubscribeAgentConversation(_ subscriptionID: SubscriptionId) {
-        facade.unsubscribe(subscriptionId: subscriptionID)
+    func unsubscribeAgentConversation(_ subscriptionID: SubscriptionId) async {
+        await commandExecutor.unsubscribe(subscriptionID, from: facade)
     }
 }
 
 extension SharedAgentConversationRuntime {
-    func agentConversationHistory() -> AgentConversationsProjection {
+    func agentConversationHistory() async -> AgentConversationsProjection {
         AgentConversationsProjection(conversations: [], hasMore: false, failure: nil)
     }
 }

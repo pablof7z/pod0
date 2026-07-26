@@ -18,7 +18,7 @@ Podcastr's visible product surface is split into a few stable entry points, but 
 
 ## Home And Library
 
-Home is the main library surface. It combines a dateline, active category chips, featured resume cards, agent picks, threaded-today signals, subscription lists or grids, filters for all/unplayed/downloaded/transcribed, and pull-to-refresh. Empty states route users into adding shows.
+Home is the main library surface. It combines active category selection, Continue Listening, subscription lists or grids, filters for all/unplayed/downloaded/transcribed, and pull-to-refresh. Empty states route users into adding shows.
 
 Library details are distributed through show detail, episode detail, OPML import/export, category settings, and subscription management rather than a separate standalone Library tab.
 

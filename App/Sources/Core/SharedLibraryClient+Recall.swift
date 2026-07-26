@@ -12,16 +12,16 @@ protocol SharedRecallSearching: AnyObject {
 
 @MainActor
 final class SharedRecallWaiter {
-    let subscriptionID: SubscriptionId
     let subscriber: SharedRecallSubscriber
     let continuation: CheckedContinuation<RecallResultProjection, Never>
+    var subscriptionID: SubscriptionId?
+    var cancellationRequested = false
+    var cancellationDispatched = false
 
     init(
-        subscriptionID: SubscriptionId,
         subscriber: SharedRecallSubscriber,
         continuation: CheckedContinuation<RecallResultProjection, Never>
     ) {
-        self.subscriptionID = subscriptionID
         self.subscriber = subscriber
         self.continuation = continuation
     }
@@ -43,7 +43,7 @@ extension SharedLibraryClient: SharedRecallSearching {
                         self?.receiveRecall(queryID: queryID, envelope: envelope)
                     }
                 }
-                facade.dispatch(command: CommandEnvelope(
+                let command = CommandEnvelope(
                     commandId: commandID,
                     cancellationId: cancellationID,
                     expectedRevision: nil,
@@ -53,21 +53,42 @@ extension SharedLibraryClient: SharedRecallSearching {
                         scope: scope,
                         limit: limit
                     ))
-                ))
-                let subscriptionID = facade.subscribe(
-                    request: ProjectionRequest(
+                )
+                let request = ProjectionRequest(
                         scope: .recall(queryId: queryID),
                         offset: 0,
                         maxItems: limit
-                    ),
-                    subscriber: subscriber
                 )
-                recallWaiters[queryID] = SharedRecallWaiter(
-                    subscriptionID: subscriptionID,
+                let waiter = SharedRecallWaiter(
                     subscriber: subscriber,
                     continuation: continuation
                 )
-                executePendingHostRequests()
+                recallWaiters[queryID] = waiter
+                let executor = commandExecutor
+                let facade = facade
+                Task { @MainActor [weak self] in
+                    let subscriptionID = await executor.dispatchThenSubscribe(
+                        request: request,
+                        subscriber: subscriber,
+                        envelope: command,
+                        to: facade
+                    )
+                    guard let self,
+                          let active = recallWaiters[queryID],
+                          active === waiter
+                    else {
+                        await executor.unsubscribe(subscriptionID, from: facade)
+                        return
+                    }
+                    active.subscriptionID = subscriptionID
+                    if active.cancellationRequested {
+                        sendRecallCancellation(
+                            queryID: queryID,
+                            cancellationID: cancellationID
+                        )
+                    }
+                    executePendingHostRequests()
+                }
                 if Task.isCancelled {
                     cancelRecall(queryID: queryID, cancellationID: cancellationID)
                 }
@@ -91,19 +112,32 @@ extension SharedLibraryClient: SharedRecallSearching {
     }
 
     private func cancelRecall(queryID: RecallQueryId, cancellationID: CancellationId) {
-        guard recallWaiters[queryID] != nil else { return }
-        facade.dispatch(command: CommandEnvelope(
-            commandId: CommandId(uuid: UUID()),
-            cancellationId: CancellationId(uuid: UUID()),
-            expectedRevision: nil,
-            command: .cancelOperation(cancellationId: cancellationID)
-        ))
+        guard let waiter = recallWaiters[queryID] else { return }
+        waiter.cancellationRequested = true
+        guard waiter.subscriptionID != nil else { return }
+        sendRecallCancellation(queryID: queryID, cancellationID: cancellationID)
+    }
+
+    private func sendRecallCancellation(
+        queryID: RecallQueryId,
+        cancellationID: CancellationId
+    ) {
+        guard let waiter = recallWaiters[queryID],
+              !waiter.cancellationDispatched else { return }
+        waiter.cancellationDispatched = true
+        dispatchCoreCommand(.cancelOperation(cancellationId: cancellationID))
         cancelPendingHostRequests(cancellationID: cancellationID)
     }
 
     private func finishRecall(queryID: RecallQueryId, projection: RecallResultProjection) {
         guard let waiter = recallWaiters.removeValue(forKey: queryID) else { return }
-        facade.unsubscribe(subscriptionId: waiter.subscriptionID)
+        if let subscriptionID = waiter.subscriptionID {
+            let executor = commandExecutor
+            let facade = facade
+            Task {
+                await executor.unsubscribe(subscriptionID, from: facade)
+            }
+        }
         waiter.continuation.resume(returning: projection)
     }
 

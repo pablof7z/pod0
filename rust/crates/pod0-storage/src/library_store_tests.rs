@@ -32,13 +32,14 @@ fn feed_upsert_preserves_identity_and_user_state_while_replacing_metadata() {
     let mut episode = refreshed_episode(podcast.podcast_id, "guid-1");
     episode.episode_id = EpisodeId::from_parts(9, 9);
 
-    let (revision, resolved_id) = store
+    let applied = store
         .apply_feed(
             id(10),
             &"a".repeat(64),
             podcast,
             vec![episode],
             false,
+            true,
             Some("fresh-etag".to_owned()),
             Some("today".to_owned()),
             1_800_000_000_010,
@@ -47,27 +48,28 @@ fn feed_upsert_preserves_identity_and_user_state_while_replacing_metadata() {
     let after = store.snapshot().unwrap();
     let updated = &after.episodes[0];
 
-    assert_eq!(resolved_id, before.podcasts[0].podcast_id);
+    assert_eq!(applied.podcast_id, before.podcasts[0].podcast_id);
     assert_eq!(updated.episode_id, imported.episode_id);
     assert_eq!(updated.listening, imported.listening);
     assert_eq!(updated.download, imported.download);
     assert_eq!(updated.title, "Fresh episode title");
     assert_eq!(after.podcasts[0].etag.as_deref(), Some("fresh-etag"));
-    assert_eq!(after.playback.revision, revision);
+    assert_eq!(after.playback.revision, applied.revision);
 
     let replay = store
         .apply_feed(
             id(10),
             &"a".repeat(64),
-            refreshed_podcast(resolved_id),
-            vec![refreshed_episode(resolved_id, "guid-1")],
+            refreshed_podcast(applied.podcast_id),
+            vec![refreshed_episode(applied.podcast_id, "guid-1")],
             false,
+            true,
             None,
             None,
             1_800_000_000_020,
         )
         .unwrap();
-    assert_eq!(replay.0, revision);
+    assert_eq!(replay, applied);
     assert_eq!(store.snapshot().unwrap(), after);
 }
 

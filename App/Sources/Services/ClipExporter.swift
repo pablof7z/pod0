@@ -8,13 +8,13 @@ import UIKit
 //
 // Renders a `Clip` to one of three share targets:
 //   1. A 1080×1080 PNG card (image).
-//   2. A square or 9:16 MP4 with subtitles burned in (video).
+//   2. A trimmed M4A file (audio).
 //   3. A `podcastr://clip/{id}` deep link (link).
 //
-// Implemented as an actor so the (long) `AVAssetExportSession` path stays
-// off the main thread. The image path bridges back to MainActor explicitly
-// (`ImageRenderer` is MainActor-bound). The exporter is stateless beyond
-// its temp-file management — a single instance per session is fine.
+// Implemented as an actor so export orchestration stays off the main thread.
+// The image path bridges back to MainActor explicitly (`ImageRenderer` is
+// MainActor-bound). The exporter is stateless beyond its temp-file
+// management — a single instance per session is fine.
 actor ClipExporter {
 
     // MARK: - Singleton
@@ -28,9 +28,6 @@ actor ClipExporter {
         /// the enclosure URL is disabled for this path. Caller should
         /// download the episode first.
         case audioUnavailable
-        /// The video overlay path is intentionally stubbed in this build —
-        /// see the share-targets commit message. Image + Link work.
-        case notImplemented(String)
         /// AVFoundation reported a failure (composition, export session,
         /// instruction wiring, etc.).
         case avFailure(String)
@@ -41,7 +38,6 @@ actor ClipExporter {
         var description: String {
             switch self {
             case .audioUnavailable:           return "Episode audio is not available locally."
-            case .notImplemented(let msg):    return "Not implemented: \(msg)"
             case .avFailure(let msg):         return "AV failure: \(msg)"
             case .renderFailed:               return "Image renderer returned nil."
             }
@@ -113,8 +109,8 @@ actor ClipExporter {
     }
 
     /// Trims the episode's local audio to the clip's span and writes a
-    /// temp `.m4a` (AAC). The local-file precondition matches the video
-    /// path — see `ClipAudioComposer` for rationale.
+    /// temp `.m4a` (AAC). See `ClipAudioComposer` for the local-file
+    /// precondition and export rationale.
     func exportAudio(
         _ clip: Clip,
         episode: Episode,
@@ -124,30 +120,6 @@ actor ClipExporter {
             clip: clip,
             episode: episode,
             podcast: podcast
-        )
-    }
-
-    /// Renders the audio segment + subtitle-burned video. Stubbed pending
-    /// generator-track wiring (`AVVideoCompositionCoreAnimationTool` needs
-    /// real frames flowing through the composition's video track; an empty
-    /// track compiles but yields `AVErrorInvalidVideoComposition` at export
-    /// time). Image + Link share targets are fully wired; video is the
-    /// explicit long pole. Surfaces the audio precondition first so the
-    /// punt error is less noisy when the user wouldn't have been able to
-    /// render anyway — keeps parity with what a real implementation will
-    /// require (download-first).
-    func exportVideo(
-        _ clip: Clip,
-        episode: Episode,
-        podcast: Podcast,
-        theme: SubtitleStyle,
-        aspectRatio: ClipVideo.Aspect
-    ) async throws -> URL {
-        guard episode.downloadState.localFileURL != nil else {
-            throw ExportError.audioUnavailable
-        }
-        throw ExportError.notImplemented(
-            "Video export is pending generator-track wiring."
         )
     }
 
@@ -181,33 +153,5 @@ actor ClipExporter {
             }
         }
         return nil
-    }
-}
-
-// MARK: - ClipVideo namespace
-
-/// Caseless namespace for video-export-specific types. Lives next to
-/// `ClipExporter` so callers reach for `ClipVideo.Aspect` without an
-/// extra import dance.
-enum ClipVideo {
-    enum Aspect: String, Sendable, CaseIterable {
-        case square
-        case vertical9x16
-
-        var displayName: String {
-            switch self {
-            case .square:        return "Square"
-            case .vertical9x16:  return "9:16"
-            }
-        }
-
-        /// Render-target pixel dimensions. 1080-wide canvas matches the
-        /// image card and keeps file sizes reasonable for share sheets.
-        var renderSize: CGSize {
-            switch self {
-            case .square:        return CGSize(width: 1080, height: 1080)
-            case .vertical9x16:  return CGSize(width: 1080, height: 1920)
-            }
-        }
     }
 }

@@ -11,8 +11,12 @@ extension AppStateStore {
     /// Synthesizes `Podcast.unknown` on the fly if a caller queries the
     /// Unknown ID before hydration has finished inserting it.
     func podcast(id: UUID) -> Podcast? {
-        if let hit = state.podcasts.first(where: { $0.id == id }) {
-            return hit
+        if let index = podcastIndexByID[id], state.podcasts.indices.contains(index),
+           state.podcasts[index].id == id {
+            return state.podcasts[index]
+        }
+        if let podcast = state.podcasts.first(where: { $0.id == id }) {
+            return podcast
         }
         if id == Podcast.unknownID {
             return Podcast.unknown

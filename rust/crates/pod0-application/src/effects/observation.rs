@@ -101,6 +101,10 @@ pub enum HostObservation {
         episode_id: EpisodeId,
         artifact_key: String,
     },
+    NewEpisodeNotificationDelivered {
+        occurrence_id: pod0_domain::FeedDiscoveryOccurrenceId,
+        episode_id: EpisodeId,
+    },
     TranscriptCapabilityObserved {
         observation: crate::TranscriptCapabilityObservation,
     },
@@ -118,7 +122,7 @@ pub enum HostObservation {
         turn_id: AgentTurnId,
         proposal_id: AgentProposalId,
         proposal_digest: ContentDigest,
-        approved: bool,
+        decision: crate::AgentApprovalDecision,
     },
     AgentCapabilityObserved {
         turn_id: AgentTurnId,

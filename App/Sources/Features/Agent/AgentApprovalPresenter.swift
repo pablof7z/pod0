@@ -4,13 +4,14 @@ import SwiftUI
 
 struct AgentApprovalPresenter: ViewModifier {
     let coordinator: AgentApprovalCoordinator
+    let isEnabled: Bool
 
     func body(content: Content) -> some View {
         content.sheet(item: Binding(
-            get: { coordinator.current },
+            get: { pendingForPresentation },
             set: { newValue in
-                if newValue == nil, let current = coordinator.current {
-                    coordinator.deny(current.id)
+                if isEnabled, newValue == nil, let current = coordinator.current {
+                    coordinator.dismiss(current.id)
                 }
             }
         )) { pending in
@@ -19,11 +20,21 @@ struct AgentApprovalPresenter: ViewModifier {
                 .presentationDragIndicator(.visible)
         }
     }
+
+    var pendingForPresentation: AgentApprovalCoordinator.PendingApproval? {
+        isEnabled ? coordinator.current : nil
+    }
 }
 
 extension View {
-    func agentApprovalPresenter(coordinator: AgentApprovalCoordinator) -> some View {
-        modifier(AgentApprovalPresenter(coordinator: coordinator))
+    func agentApprovalPresenter(
+        coordinator: AgentApprovalCoordinator,
+        isEnabled: Bool = true
+    ) -> some View {
+        modifier(AgentApprovalPresenter(
+            coordinator: coordinator,
+            isEnabled: isEnabled
+        ))
     }
 }
 
@@ -65,7 +76,7 @@ private struct AgentApprovalSheet: View {
         }
         .padding(AppTheme.Spacing.lg)
         .onDisappear {
-            if !resolved { coordinator.deny(pending.id) }
+            if !resolved { coordinator.dismiss(pending.id) }
         }
     }
 

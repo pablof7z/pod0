@@ -10,7 +10,6 @@ enum LegacyTranscriptWorkflowCutoverError: Error, Equatable {
 }
 
 enum LegacyTranscriptWorkflowCutover {
-    @MainActor
     static func run(
         facade: Pod0Facade,
         state: AppState,

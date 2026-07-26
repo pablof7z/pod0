@@ -110,15 +110,11 @@ struct CircularBuffer<Element> {
 /// the energy detector runs alone — slightly more permissive but still
 /// gated by AEC + the ring-buffer subtraction.
 ///
-/// **Documented punt**: full cross-correlation against a PCM-decoded TTS
-/// ring buffer is not implemented — the TTS bytes arrive as Opus/MP3
-/// frames from ElevenLabs and decoding them just to correlate would burn
-/// the latency budget. We use byte-magnitude RMS instead, which behaves
-/// like a coarse "is the speaker currently driving the phone speaker"
-/// gate. Combined with iOS's `.voiceChat` AEC this clears 95%+ of the
-/// bleed in practice; the residual is what the 50 ms / 250 ms
-/// hysteresis is for. Future upgrade: decode TTS frames once, correlate
-/// proper, and drop the byte-RMS approximation.
+/// **Echo rejection**: the TTS bytes arrive as encoded Opus/MP3 frames, so
+/// decoding them solely for cross-correlation would consume the latency
+/// budget. Byte-magnitude RMS provides a coarse "is the speaker currently
+/// driving the phone speaker" gate. Combined with iOS's `.voiceChat` AEC,
+/// the residual bleed is handled by the 50 ms / 250 ms hysteresis.
 @MainActor
 final class BargeInDetector: BargeInDetectorProtocol {
 

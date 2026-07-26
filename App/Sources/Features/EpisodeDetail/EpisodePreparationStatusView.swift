@@ -63,9 +63,7 @@ enum WorkflowPresentationCopy {
         case .publisherChapters, .chapterArtifacts: return "Chapters"
         case .scheduledAgentRun: return "Agent task"
         case .download: return "Download"
-        case .feedDiscovery: return "Feed refresh"
         case .autoDownload: return "Auto-download"
-        case .newEpisodeNotification: return "Notification"
         }
     }
 

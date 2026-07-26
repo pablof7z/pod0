@@ -245,49 +245,6 @@ final class JobStoreCoordinatorTests: XCTestCase {
         XCTAssertEqual(try store.ensureJobs(desired), 3)
     }
 
-    func testMixedBacklogRespectsEverySupportedResourceLaneIndependently() async throws {
-        let lanes: [(WorkJobKind, WorkResourceClass, Int)] = [
-            (.feedDiscovery, .planning, 1),
-            (.metadataIndex, .embedding, 4),
-            (.newEpisodeNotification, .notification, 5),
-        ]
-        var desired: [DesiredJob] = []
-        for (kind, resource, _) in lanes {
-            for index in 0..<30 {
-                desired.append(makeDesired(
-                    key: "mixed:\(resource.rawValue):\(index)",
-                    kind: kind,
-                    resource: resource
-                ))
-            }
-        }
-        XCTAssertEqual(try store.ensureJobs(desired), desired.count)
-        let probe = LaneConcurrencyProbe(delay: .milliseconds(2))
-        let executors = Dictionary(
-            uniqueKeysWithValues: Set(lanes.map(\.0)).map {
-                ($0, probe as any JobExecutor)
-            }
-        )
-        let capacities = Dictionary(uniqueKeysWithValues: lanes.map { ($0.1, $0.2) })
-        let coordinator = WorkCoordinator(
-            jobStore: store,
-            executors: executors,
-            capacities: capacities,
-            leaseDuration: 3_600,
-            baseBackoff: 0.01
-        )
-
-        await coordinator.drainDueJobs()
-
-        let snapshot = await probe.snapshot()
-        XCTAssertEqual(snapshot.completed, desired.count)
-        for (_, resource, capacity) in lanes {
-            XCTAssertLessThanOrEqual(snapshot.maximum[resource, default: 0], capacity)
-            XCTAssertGreaterThan(snapshot.maximum[resource, default: 0], 0)
-        }
-        XCTAssertEqual(Set(try store.allJobs().map(\.state)), [.succeeded])
-    }
-
     func testBlockedOutcomeDoesNotSpinOrReportSuccess() async throws {
         _ = try store.ensureJob(makeDesired(key: "blocked"))
         let executor = OutcomeExecutor(.blocked(reason: JobFailure(

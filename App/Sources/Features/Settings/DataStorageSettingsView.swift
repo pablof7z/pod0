@@ -81,7 +81,6 @@ struct DataStorageSettingsView: View {
             + store.state.episodes.count
             + store.activeNotes.count
             + store.activeMemories.count
-            + store.activeAgentActivityCount
     }
 
     private func refreshStorageSummary() async {

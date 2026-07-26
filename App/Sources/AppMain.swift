@@ -6,7 +6,7 @@ import SwiftUI
 struct PodcastrApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @State private var store = AppStateStore(productSignals: ProductSignalStore.shared)
+    @State private var store: AppStateStore?
     /// Single global owner-consultation coordinator. Lives here so it can pop
     /// the same sheet even when the user is on Home / Library / Clippings.
     /// Mounted on `RootView` via `agentAskPresenter(coordinator:)`.
@@ -17,20 +17,45 @@ struct PodcastrApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .environment(store)
-                .environment(askCoordinator)
-                .environment(approvalCoordinator)
-                .environment(workflows)
-                .task { await workflows.startAndReconcile() }
-                .onChange(of: scenePhase, initial: true) { _, phase in
-                    Task { await ProductSignalStore.shared.setSessionActive(phase == .active) }
-                    if phase == .background {
-                        suspensionPersistence.persistForSuspension {
-                            await store.flushForSuspension()
+            if let store {
+                RootView()
+                    .environment(store)
+                    .environment(askCoordinator)
+                    .environment(approvalCoordinator)
+                    .environment(workflows)
+                    .task { await workflows.startAndReconcile() }
+                    .onChange(of: scenePhase, initial: true) { _, phase in
+                        Task {
+                            await ProductSignalStore.shared.setSessionActive(phase == .active)
+                        }
+                        if phase == .background {
+                            suspensionPersistence.persistForSuspension {
+                                await store.flushForSuspension()
+                            }
                         }
                     }
-                }
+            } else {
+                Pod0LaunchView()
+                    .task {
+                        store = await AppStateStore.production(
+                            productSignals: ProductSignalStore.shared
+                        )
+                    }
+            }
         }
+    }
+}
+
+private struct Pod0LaunchView: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            ProgressView()
+            Text("Opening your library…")
+                .font(.system(.subheadline, weight: .medium))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(uiColor: .systemBackground))
+        .accessibilityElement(children: .combine)
     }
 }

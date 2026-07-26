@@ -85,8 +85,16 @@ extension SharedLibraryClient {
     nonisolated func transcriptWorkflowSnapshots(
         episodeIDs: [UUID]
     ) -> [TranscriptWorkflowSnapshot] {
+        Self.transcriptWorkflowSnapshots(facade: facade, episodeIDs: episodeIDs)
+    }
+
+    nonisolated static func transcriptWorkflowSnapshots(
+        facade: Pod0Facade,
+        episodeIDs: [UUID]
+    ) -> [TranscriptWorkflowSnapshot] {
         episodeIDs.compactMap { episodeID in
             guard let projection = try? transcriptProjection(
+                facade: facade,
                 episodeID: episodeID,
                 scope: .summary,
                 offset: 0,
@@ -102,6 +110,22 @@ extension SharedLibraryClient {
     }
 
     nonisolated private func transcriptProjection(
+        episodeID: UUID,
+        scope: TranscriptProjectionScope,
+        offset: UInt32,
+        maxItems: UInt16
+    ) throws -> TranscriptProjection {
+        try Self.transcriptProjection(
+            facade: facade,
+            episodeID: episodeID,
+            scope: scope,
+            offset: offset,
+            maxItems: maxItems
+        )
+    }
+
+    nonisolated private static func transcriptProjection(
+        facade: Pod0Facade,
         episodeID: UUID,
         scope: TranscriptProjectionScope,
         offset: UInt32,

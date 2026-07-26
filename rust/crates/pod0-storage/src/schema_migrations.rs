@@ -32,7 +32,10 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../../../schema/migrations/0026_nostr_signer_state.sql"),
     include_str!("../../../schema/migrations/0027_agent_history_cutover.sql"),
     include_str!("../../../schema/migrations/0028_agent_memories.sql"),
-    include_str!("../../../schema/migrations/0029_subscription_transcript_policy.sql"),
+    include_str!("../../../schema/migrations/0029_feed_discoveries.sql"),
+    include_str!("../../../schema/migrations/0030_feed_discovery_workflows.sql"),
+    include_str!("../../../schema/migrations/0031_feed_discovery_cutover.sql"),
+    include_str!("../../../schema/migrations/0032_subscription_transcript_policy.sql"),
 ];
 
 pub(crate) fn migration_sql(version: u32) -> Option<&'static str> {

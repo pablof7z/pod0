@@ -3,7 +3,7 @@ extension AppStateStore {
         sharedLibrary?.authoritativeTranscriptReader ?? UnavailableTranscriptReader.shared
     }
 
-    static func hasMigratedNativeState(_ state: AppState) -> Bool {
+    nonisolated static func hasMigratedNativeState(_ state: AppState) -> Bool {
         state.podcasts.contains { $0.id != Podcast.unknownID }
             || !state.subscriptions.isEmpty
             || !state.episodes.isEmpty

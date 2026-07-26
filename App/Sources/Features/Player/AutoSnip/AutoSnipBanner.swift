@@ -2,9 +2,9 @@ import SwiftUI
 
 // MARK: - AutoSnipBanner
 //
-// Small glass toast that fades in for ~1.5s after `AutoSnipController`
-// captures a snip. Tapping the banner opens the clip composer (placeholder
-// hand-off until the sister "clips" agent ships the editor sheet).
+// Small glass toast that remains visible for eight seconds after
+// `AutoSnipController` captures a snip. Tapping the banner opens the existing
+// clip share sheet.
 //
 // Designed to be installed once at the player root via `.overlay(...)`. The
 // banner observes the controller's `captureGeneration` so back-to-back snips
@@ -14,11 +14,6 @@ struct AutoSnipBanner: View {
 
     @Bindable var controller: AutoSnipController
 
-    /// Optional callback invoked when the user taps the banner. The player can
-    /// route this to a clip composer sheet. Default is a no-op so simply
-    /// installing the banner doesn't force a sheet binding on the host.
-    var onTap: (Clip.ID) -> Void = { _ in }
-
     @State private var visible: Bool = false
     @State private var dismissTask: Task<Void, Never>?
     @State private var lastSeenGeneration: Int = 0
@@ -27,7 +22,8 @@ struct AutoSnipBanner: View {
         Group {
             if visible, let capture = controller.lastCapture {
                 Button {
-                    onTap(capture.clipID)
+                    Haptics.selection()
+                    controller.presentShare(for: capture.clip)
                 } label: {
                     HStack(spacing: 10) {
                         Image(systemName: "bookmark.fill")
@@ -47,7 +43,7 @@ struct AutoSnipBanner: View {
                     .move(edge: .top)
                         .combined(with: .opacity)
                 )
-                .accessibilityLabel("Snipped 30 seconds")
+                .accessibilityLabel(capture.summary)
                 .accessibilityHint("Open clip")
             }
         }
@@ -74,5 +70,35 @@ struct AutoSnipBanner: View {
             guard !Task.isCancelled else { return }
             controller.dismissBanner(for: captureID)
         }
+    }
+}
+
+private struct AutoSnipPresentationModifier: ViewModifier {
+    @Environment(AppStateStore.self) private var store
+    @Bindable var controller: AutoSnipController
+
+    func body(content: Content) -> some View {
+        content
+            .sheet(item: $controller.pendingShareClip) { clip in
+                if let episode = store.episode(id: clip.episodeID),
+                   let podcast = store.podcast(id: clip.subscriptionID) {
+                    ClipShareSheet(clip: clip, episode: episode, podcast: podcast)
+                        .presentationDetents([.large])
+                        .presentationDragIndicator(.visible)
+                }
+            }
+            .overlay(alignment: .top) {
+                VStack(spacing: AppTheme.Spacing.sm) {
+                    AutoSnipBanner(controller: controller)
+                    NoLLMKeyHintBanner(controller: controller)
+                }
+                .padding(.top, AppTheme.Spacing.lg)
+            }
+    }
+}
+
+extension View {
+    func autoSnipPresentation(controller: AutoSnipController) -> some View {
+        modifier(AutoSnipPresentationModifier(controller: controller))
     }
 }

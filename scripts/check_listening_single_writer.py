@@ -37,6 +37,7 @@ COLLECTION_ASSIGNMENT = re.compile(
 PROJECTION_WRITERS = {
     "App/Sources/State/AppStateStore+Reset.swift",
     "App/Sources/State/AppStateStore+SharedLibrary.swift",
+    "App/Sources/State/AppStateStartupPreparation.swift",
 }
 
 

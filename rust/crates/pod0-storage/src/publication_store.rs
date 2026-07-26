@@ -3,7 +3,10 @@ use std::path::{Path, PathBuf};
 use pod0_domain::PublicationRecord;
 use rusqlite::{Connection, Transaction, TransactionBehavior};
 
-use crate::migration_db::{configure, open_connection, user_version, validate_open_database};
+use crate::migration_db::{
+    configure, open_connection, user_version, validate_current_database_identity,
+    validate_open_database,
+};
 use crate::{CURRENT_SCHEMA_VERSION, StorageError};
 
 #[derive(Clone, Debug)]
@@ -29,6 +32,7 @@ impl PublicationPrepareOutcome {
 impl PublicationStore {
     pub fn open(path: &Path) -> Result<Self, StorageError> {
         let connection = open_current(path, true)?;
+        validate_open_database(&connection, CURRENT_SCHEMA_VERSION)?;
         drop(connection);
         Ok(Self {
             path: path.to_owned(),
@@ -63,11 +67,6 @@ impl PublicationStore {
 fn open_current(path: &Path, read_only: bool) -> Result<Connection, StorageError> {
     let connection = open_connection(path, read_only)?;
     let version = user_version(&connection)?;
-    validate_open_database(&connection, version)?;
-    if version != CURRENT_SCHEMA_VERSION {
-        return Err(StorageError::CorruptSchema {
-            detail: "publication store schema is not current",
-        });
-    }
+    validate_current_database_identity(&connection, version)?;
     Ok(connection)
 }

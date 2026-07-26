@@ -88,7 +88,7 @@ actor CoreChapterModelHost: CoreChapterModelHosting {
         episodeID: EpisodeId,
         generation: UInt64,
         submissionFenceID: ChapterModelSubmissionFenceId,
-        failure: ChapterCapabilityFailure
+        failure: ChapterModelTransportFailure
     ) -> HostObservation {
         let code: ChapterModelHostFailureCode
         if let status = failure.httpStatus {

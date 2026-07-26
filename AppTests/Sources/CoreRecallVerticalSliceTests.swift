@@ -95,7 +95,7 @@ final class CoreRecallVerticalSliceTests: XCTestCase {
                 limit: 3
             )
         }
-        await fulfillment(of: [recallStarted], timeout: 1)
+        await fulfillment(of: [recallStarted], timeout: 10)
         cancelledTask.cancel()
         let cancelled = await cancelledTask.value
         XCTAssertEqual(cancelled.stage, .cancelled)

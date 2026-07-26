@@ -73,8 +73,11 @@ extension Pod0NativeHostDispatcher {
                 completion: completion
             )
         default:
-            _ = facade.recordHostObservation(observation: observation)
-            completion()
+            let recorder = transientObservationRecorder
+            Task { @MainActor in
+                await recorder.record(observation, in: facade)
+                completion()
+            }
         }
     }
 
@@ -104,6 +107,9 @@ extension Pod0NativeHostDispatcher {
     }
 
     func shutdown() {
+        requestDrainTask?.cancel()
+        requestDrainTask = nil
+        requestDrainRequested = false
         observationRecoveryTask?.cancel()
         observationRecoveryTask = nil
         retainedObservationRetryTask?.cancel()
@@ -112,6 +118,7 @@ extension Pod0NativeHostDispatcher {
             active.task.cancel()
         }
         activeTasks.removeAll()
+        notificationHost.shutdown()
         for acknowledgement in acknowledgementTasks.values {
             acknowledgement.task.cancel()
         }

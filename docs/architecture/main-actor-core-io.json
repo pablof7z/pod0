@@ -1,0 +1,11 @@
+{
+  "policy": "Direct synchronous Pod0Facade calls in UI-reachable Swift must only decrease.",
+  "issue": "https://github.com/pablof7z/pod0/issues/161",
+  "deletion_target": "Keep runtime facade I/O behind typed actors; retain only the bounded pre-UI bootstrap exception.",
+  "baseline": {
+    "App/Sources/Core/SharedLibraryBootstrap+RecallConfiguration.swift|importLegacyRecallConfiguration|dispatch": 1,
+    "App/Sources/Core/SharedLibraryBootstrap+RecallConfiguration.swift|importLegacyRecallConfiguration|snapshot": 1,
+    "App/Sources/Core/SharedLibraryBootstrap.swift|prepareLocked|modelChapterCutover": 1,
+    "App/Sources/Core/SharedLibraryBootstrap.swift|prepareLocked|open": 1
+  }
+}

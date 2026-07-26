@@ -1,19 +1,11 @@
 import SwiftUI
 import UniformTypeIdentifiers
-
-// MARK: - OPMLImportPhase
-
-/// Lifecycle of the OPML import sheet. The sheet rotates the user through
-/// three single-purpose screens — `pick`, `review`, `progress` — rather than
-/// stacking everything at once.
 enum OPMLImportPhase: Equatable {
     case pick
     case review(parsed: [Podcast])
     case progress(completed: Int, total: Int, errors: [OPMLImportRowError])
     case done(imported: Int, skipped: Int, errors: [OPMLImportRowError])
 }
-
-// MARK: - OPMLImportRowError
 
 /// Per-row import failure surfaced under the progress bar. We track the feed
 /// URL plus the human-readable reason so the user can copy the URL out and
@@ -335,13 +327,17 @@ struct OPMLImportContent: View {
             parseError = "Pod0 couldn't open that OPML file."
         case .success(let urls):
             guard let url = urls.first else { return }
-            do {
+            Task { @MainActor in
                 let needsScope = url.startAccessingSecurityScopedResource()
                 defer { if needsScope { url.stopAccessingSecurityScopedResource() } }
-                let data = try Data(contentsOf: url)
-                try parseAndAdvance(data: data)
-            } catch {
-                parseError = "Pod0 couldn't read that OPML file."
+                do {
+                    let entries = try await Task.detached(priority: .userInitiated) {
+                        try OPMLImport().parseOPML(data: Data(contentsOf: url))
+                    }.value
+                    advance(with: entries)
+                } catch {
+                    parseError = "Pod0 couldn't read that OPML file."
+                }
             }
         }
     }
@@ -351,15 +347,19 @@ struct OPMLImportContent: View {
         guard !trimmed.isEmpty,
               let data = trimmed.data(using: .utf8)
         else { return }
-        do {
-            try parseAndAdvance(data: data)
-        } catch {
-            parseError = "That text isn't a readable OPML subscription list."
+        Task { @MainActor in
+            do {
+                let entries = try await Task.detached(priority: .userInitiated) {
+                    try OPMLImport().parseOPML(data: data)
+                }.value
+                advance(with: entries)
+            } catch {
+                parseError = "That text isn't a readable OPML subscription list."
+            }
         }
     }
 
-    private func parseAndAdvance(data: Data) throws {
-        let entries = try OPMLImport().parseOPML(data: data)
+    private func advance(with entries: [Podcast]) {
         guard !entries.isEmpty else {
             parseError = "No feeds found in that OPML."
             return

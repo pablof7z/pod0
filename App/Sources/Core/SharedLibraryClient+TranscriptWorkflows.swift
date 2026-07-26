@@ -1,36 +1,56 @@
 import Foundation
 import Pod0Core
 
+struct TranscriptWorkflowOpportunity: @unchecked Sendable {
+    let episodeID: UUID
+    let configuration: TranscriptWorkflowConfiguration
+    let version: String
+}
+
 extension SharedLibraryClient {
     /// Announces current platform capability facts; Rust alone decides whether
     /// generation or evidence work is admitted.
-    func ensureTranscriptWorkflows(episodes: some Sequence<Episode>, settings: Settings) {
+    func ensureTranscriptWorkflows(_ opportunities: [TranscriptWorkflowOpportunity]) {
         var announced = false
-        for episode in episodes {
-            let configuration = NativeTranscriptWorkflowConfiguration.make(
-                episode: episode,
-                settings: settings
+        for opportunity in opportunities {
+            guard announcedTranscriptWorkflowVersions[opportunity.episodeID]
+                    != opportunity.version else { continue }
+            announcedTranscriptWorkflowVersions[opportunity.episodeID] = opportunity.version
+            dispatchCoreCommand(
+                .ensureTranscriptWorkflow(
+                    episodeId: EpisodeId(uuid: opportunity.episodeID),
+                    origin: .automatic,
+                    configuration: opportunity.configuration
+                )
             )
-            let startPolicy = store?.subscription(
-                podcastID: episode.podcastID
-            )?.transcriptStartPolicy ?? .automatic
-            let version = transcriptOpportunityVersion(
-                episode,
-                configuration: configuration,
-                startPolicy: startPolicy
-            )
-            guard announcedTranscriptWorkflowVersions[episode.id] != version else { continue }
-            announcedTranscriptWorkflowVersions[episode.id] = version
-            dispatchTranscript(.ensureTranscriptWorkflow(
-                episodeId: EpisodeId(uuid: episode.id),
-                origin: .automatic,
-                configuration: configuration
-            ))
             announced = true
         }
         guard announced else { return }
         workflowClient?.refresh(immediately: true)
-        dispatcher.executePendingRequests(from: facade)
+    }
+
+    /// `startPolicies` is keyed by podcast ID and snapshotted on the main actor
+    /// by the caller, so this stays free of `store` and can run off-actor.
+    nonisolated static func transcriptWorkflowOpportunities(
+        episodes: [Episode],
+        settings: Settings,
+        startPolicies: [UUID: TranscriptStartPolicy]
+    ) -> [TranscriptWorkflowOpportunity] {
+        episodes.map { episode in
+            let configuration = NativeTranscriptWorkflowConfiguration.make(
+                episode: episode,
+                settings: settings
+            )
+            return TranscriptWorkflowOpportunity(
+                episodeID: episode.id,
+                configuration: configuration,
+                version: transcriptOpportunityVersion(
+                    episode,
+                    configuration: configuration,
+                    startPolicy: startPolicies[episode.podcastID] ?? .automatic
+                )
+            )
+        }
     }
 
     func requestTranscript(episodeID: UUID, provider: STTProvider?) {
@@ -40,22 +60,31 @@ extension SharedLibraryClient {
             settings: store.state.settings,
             provider: provider
         )
-        dispatchTranscript(.ensureTranscriptWorkflow(
-            episodeId: EpisodeId(uuid: episodeID),
-            origin: .user,
-            configuration: configuration
-        ))
+        dispatchCoreCommand(
+            .ensureTranscriptWorkflow(
+                episodeId: EpisodeId(uuid: episodeID),
+                origin: .user,
+                configuration: configuration
+            )
+        )
         workflowClient?.refresh(immediately: true)
-        dispatcher.executePendingRequests(from: facade)
     }
 
     func performTranscriptAction(
         _ action: WorkflowJobAction,
         on projection: WorkflowJobProjection
-    ) -> WorkflowJobActionResult {
+    ) async -> WorkflowJobActionResult {
+        let request = ProjectionRequest(
+            scope: .transcriptWorkflows(
+                episodeId: EpisodeId(uuid: projection.subjectID)
+            ),
+            offset: 0,
+            maxItems: 1
+        )
+        let currentEnvelope = await coreSnapshot(request)
         guard projection.authority == .sharedRustTranscripts,
               let expected = projection.coreWorkflowRevision,
-              let current = transcriptWorkflow(episodeID: projection.subjectID),
+              let current = Self.transcriptWorkflow(in: currentEnvelope),
               current.workflowRevision.value == expected else { return .stale }
         let command: ApplicationCommand
         switch action {
@@ -81,19 +110,15 @@ extension SharedLibraryClient {
         default:
             return current.stage == .succeeded ? .alreadyComplete : .notAllowed
         }
-        dispatchTranscript(command)
-        guard transcriptWorkflow(episodeID: projection.subjectID)?.workflowRevision.value != expected
-        else { return .stale }
-        workflowClient?.refresh(immediately: true)
-        dispatcher.executePendingRequests(from: facade)
-        return .accepted(action)
+        let result = await executeWorkflowAction(command, action: action)
+        if case .accepted = result { workflowClient?.refresh(immediately: true) }
+        return result
     }
 
     func receiveTranscriptWorkflows(revision: UInt64) {
         guard revision >= lastTranscriptWorkflowRevision else { return }
         lastTranscriptWorkflowRevision = revision
         workflowClient?.refresh(immediately: true)
-        dispatcher.executePendingRequests(from: facade)
     }
 
     nonisolated static func transcriptWorkflows(
@@ -138,20 +163,15 @@ extension SharedLibraryClient {
 }
 
 private extension SharedLibraryClient {
-    func transcriptWorkflow(episodeID: UUID) -> TranscriptWorkflowProjection? {
-        Self.transcriptWorkflows(
-            facade: facade,
-            query: WorkflowProjectionQuery(
-                subjectIDs: [episodeID],
-                kinds: [.transcriptIngest, .transcriptIndex],
-                attentionKinds: [],
-                recentKinds: [],
-                limit: 1
-            )
-        ).first
+    nonisolated static func transcriptWorkflow(
+        in envelope: ProjectionEnvelope
+    ) -> TranscriptWorkflowProjection? {
+        guard case .transcriptWorkflows(let projection) = envelope.projection,
+              projection.failure == nil else { return nil }
+        return projection.workflows.first
     }
 
-    func transcriptOpportunityVersion(
+    nonisolated static func transcriptOpportunityVersion(
         _ episode: Episode,
         configuration: TranscriptWorkflowConfiguration,
         startPolicy: TranscriptStartPolicy
@@ -165,14 +185,5 @@ private extension SharedLibraryClient {
             episode.publisherTranscriptURL?.absoluteString ?? "",
             episode.publisherTranscriptType?.rawValue ?? "",
         ])
-    }
-
-    func dispatchTranscript(_ command: ApplicationCommand) {
-        facade.dispatch(command: CommandEnvelope(
-            commandId: CommandId(uuid: UUID()),
-            cancellationId: CancellationId(uuid: UUID()),
-            expectedRevision: nil,
-            command: command
-        ))
     }
 }

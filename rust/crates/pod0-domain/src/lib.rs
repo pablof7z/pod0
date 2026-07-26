@@ -75,6 +75,8 @@ opaque_id!(ChapterPlaybackSessionId, uniffi::Record);
 opaque_id!(ChapterModelSubmissionFenceId, uniffi::Record);
 opaque_id!(DownloadIntentId, uniffi::Record);
 opaque_id!(DownloadAttemptId, uniffi::Record);
+opaque_id!(FeedDiscoveryOccurrenceId, uniffi::Record);
+opaque_id!(FeedDiscoveryItemId, uniffi::Record);
 opaque_id!(TranscriptWorkflowId, uniffi::Record);
 opaque_id!(TranscriptAttemptId, uniffi::Record);
 opaque_id!(TranscriptSubmissionFenceId, uniffi::Record);

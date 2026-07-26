@@ -19,6 +19,8 @@ mod agent_provider_output_tests;
 mod agent_run_contract;
 mod agent_tool_catalog;
 mod agent_tool_names;
+#[cfg(test)]
+mod agent_tool_policy_tests;
 mod agent_workflow;
 #[cfg(test)]
 mod agent_workflow_compatibility_tests;
@@ -90,6 +92,7 @@ mod download_contract_tests;
 mod effects;
 mod evidence_contract;
 mod feed;
+mod feed_discovery;
 mod feed_parser;
 mod feed_parser_reader;
 mod feed_parser_values;
@@ -134,6 +137,8 @@ mod transcript_workflow_identity;
 mod transcript_workflow_identity_tests;
 mod transcript_workflow_policy;
 #[cfg(test)]
+mod transcript_workflow_projection_tests;
+#[cfg(test)]
 mod transcript_workflow_tests;
 
 pub use agent_action_hash::*;
@@ -168,6 +173,7 @@ pub use download_contract::*;
 pub use effects::*;
 pub use evidence_contract::*;
 pub use feed::*;
+pub use feed_discovery::*;
 pub use host_cancellation::*;
 pub use knowledge::*;
 pub use knowledge_chunking::*;

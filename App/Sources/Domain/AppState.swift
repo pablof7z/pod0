@@ -34,18 +34,14 @@ struct AppState: Codable, Sendable {
     /// Per-category user preferences keyed by `PodcastCategory.id`.
     var categorySettings: [UUID: CategorySettings] = [:]
     var settings: Settings = Settings()
-    var agentActivity: [AgentActivityEntry] = []
+    /// Decode-only compatibility source for the retired Swift agent activity
+    /// log. Shared-library bootstrap removes this payload after Rust agent
+    /// history and memory authority are verified. It must never be rendered,
+    /// exported, or written by product code.
+    var legacyAgentActivity: [LegacyAgentActivityEntry] = []
     /// User-authored transcript excerpts. See `Clip` and the composer in
     /// `App/Sources/Features/EpisodeDetail/Clip/`.
     var clips: [Clip] = []
-    /// Cross-episode threading topics inferred by `ThreadingInferenceService`.
-    /// Empty until the user runs a recompute (or the seed-mock path fires in
-    /// Debug). UX-09 surfaces are reserved for >=3-mention patterns.
-    var threadingTopics: [ThreadingTopic] = []
-    /// Per-topic mentions powering the timeline view. One row per transcript
-    /// span. Carries its own `topicID` so adapters can build the mention list
-    /// without scanning the topic array.
-    var threadingMentions: [ThreadingMention] = []
     /// Recurring tasks the agent has scheduled via `schedule_task`. Fired by
     /// the durable workflow coordinator on foreground / background refresh. Persisted so
     /// tasks survive restarts.
@@ -62,9 +58,8 @@ struct AppState: Codable, Sendable {
         case podcasts, subscriptions, episodes
         case notes, agentMemories, compiledMemory, settings
         case categories, categorySettings
-        case agentActivity
+        case legacyAgentActivity = "agentActivity"
         case clips
-        case threadingTopics, threadingMentions
         case agentScheduledTasks
         case lastPlayedEpisodeID
     }
@@ -102,10 +97,11 @@ struct AppState: Codable, Sendable {
         categories = try c.decodeIfPresent([PodcastCategory].self, forKey: .categories) ?? []
         categorySettings = try c.decodeIfPresent([UUID: CategorySettings].self, forKey: .categorySettings) ?? [:]
         settings = try c.decodeIfPresent(Settings.self, forKey: .settings) ?? Settings()
-        agentActivity = try c.decodeIfPresent([AgentActivityEntry].self, forKey: .agentActivity) ?? []
+        legacyAgentActivity = try c.decodeIfPresent(
+            [LegacyAgentActivityEntry].self,
+            forKey: .legacyAgentActivity
+        ) ?? []
         clips = try c.decodeIfPresent([Clip].self, forKey: .clips) ?? []
-        threadingTopics = try c.decodeIfPresent([ThreadingTopic].self, forKey: .threadingTopics) ?? []
-        threadingMentions = try c.decodeIfPresent([ThreadingMention].self, forKey: .threadingMentions) ?? []
         agentScheduledTasks = try c.decodeIfPresent([AgentScheduledTask].self, forKey: .agentScheduledTasks) ?? []
         lastPlayedEpisodeID = try c.decodeIfPresent(UUID.self, forKey: .lastPlayedEpisodeID)
     }

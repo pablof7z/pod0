@@ -233,7 +233,7 @@ struct StorageSettingsView: View {
     }
 
     private func deleteAll() {
-        for episode in store.state.episodes where episode.downloadState.isAvailable {
+        for episode in store.downloadedEpisodesView() {
             store.sharedLibrary?.removeDownload(episodeID: episode.id)
         }
         Task { await refresh() }

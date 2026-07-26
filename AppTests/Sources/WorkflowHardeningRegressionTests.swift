@@ -7,5 +7,7 @@ final class WorkflowRepairRegressionTests: XCTestCase {
         XCTAssertFalse(JobStore.supportedKindSQL.contains("transcriptIngest"))
         XCTAssertFalse(JobStore.supportedKindSQL.contains("transcriptIndex"))
         XCTAssertFalse(JobStore.supportedKindSQL.contains("scheduledAgentRun"))
+        XCTAssertFalse(JobStore.supportedKindSQL.contains("feedDiscovery"))
+        XCTAssertFalse(JobStore.supportedKindSQL.contains("newEpisodeNotification"))
     }
 }

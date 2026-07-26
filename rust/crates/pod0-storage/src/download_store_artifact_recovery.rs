@@ -5,7 +5,7 @@ use rusqlite::{OptionalExtension, params};
 
 use crate::download_store_artifact::complete_request;
 use crate::download_store_artifact_file::{
-    artifact_key, install_staged, sync_parent, verified_file,
+    artifact_key, file_metadata_matches, install_staged, sync_parent, verified_file,
 };
 use crate::download_store_read::workflow;
 use crate::{
@@ -102,7 +102,15 @@ impl LibraryStore {
         ) else {
             return Ok(false);
         };
-        verified_file(&self.download_artifact_path(key)?, count, digest)
+        // A succeeded artifact was fully hashed before its atomic rename and
+        // the digest is part of its typed key. Re-reading every downloaded
+        // episode on each launch makes startup O(total media bytes), so
+        // restart recovery only validates the immutable identity and file
+        // metadata. Interrupted staged files above still receive a full hash.
+        if key != &artifact_key(record.intent_id, record.attempt, digest) {
+            return Ok(false);
+        }
+        file_metadata_matches(&self.download_artifact_path(key)?, count)
     }
 
     pub(crate) fn repair_invalid_artifact(

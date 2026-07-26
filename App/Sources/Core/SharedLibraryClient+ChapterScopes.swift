@@ -18,13 +18,25 @@ extension SharedLibraryClient {
         }
         chapterScopeCounts[episodeID, default: 0] += 1
         guard chapterScopeCounts[episodeID] == 1 else { return }
-        guard let snapshot = try? authoritativeChapterReader.load(episodeID: episodeID) else {
-            chapterSnapshots[episodeID] = nil
-            store?.clearSharedChapter(episodeID: episodeID)
-            return
+        let reader = authoritativeChapterReader
+        chapterProjectionTasks[episodeID]?.cancel()
+        chapterProjectionTasks[episodeID] = Task { @MainActor [weak self] in
+            let snapshot = await Task.detached(priority: .userInitiated) {
+                try? reader.load(episodeID: episodeID)
+            }.value
+            guard !Task.isCancelled,
+                  let self,
+                  chapterScopeCounts[episodeID] != nil
+            else { return }
+            chapterProjectionTasks[episodeID] = nil
+            guard let snapshot else {
+                chapterSnapshots[episodeID] = nil
+                store?.clearSharedChapter(episodeID: episodeID)
+                return
+            }
+            chapterSnapshots[episodeID] = snapshot
+            store?.applySharedChapter(snapshot)
         }
-        chapterSnapshots[episodeID] = snapshot
-        store?.applySharedChapter(snapshot)
     }
 
     func releaseChapterProjection(episodeID: UUID) {
@@ -33,6 +45,8 @@ extension SharedLibraryClient {
             chapterScopeCounts[episodeID] = count - 1
             return
         }
+        chapterProjectionTasks[episodeID]?.cancel()
+        chapterProjectionTasks[episodeID] = nil
         chapterScopeCounts[episodeID] = nil
         chapterSnapshots[episodeID] = nil
         store?.clearSharedChapter(episodeID: episodeID)

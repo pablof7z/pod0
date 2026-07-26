@@ -110,6 +110,26 @@ final class AppStateStorePerformanceTests: XCTestCase {
             XCTAssertGreaterThan(hits, 0)
             XCTAssertLessThan(elapsed, 0.1, "Home feed projection reads took \(elapsed)s.")
         }
+
+        do {
+            let episodeIDs = store.state.episodes.prefix(1_000).map(\.id)
+            let podcastIDs = subs.map(\.podcastID)
+            let start = Date()
+            var hits = 0
+            for index in 0..<20_000 {
+                if store.episode(id: episodeIDs[index % episodeIDs.count]) != nil { hits += 1 }
+                let podcastID = podcastIDs[index % podcastIDs.count]
+                if store.podcast(id: podcastID) != nil { hits += 1 }
+                if store.subscription(podcastID: podcastID) != nil { hits += 1 }
+            }
+            let elapsed = Date().timeIntervalSince(start)
+
+            XCTAssertEqual(hits, 60_000)
+            // Debug builds on hosted simulators are substantially slower than
+            // Release, while an accidental O(n) scan here would still exceed
+            // this bound by orders of magnitude at 10,000 episodes.
+            XCTAssertLessThan(elapsed, 0.5, "Hot player identity lookups took \(elapsed)s.")
+        }
     }
 
     // MARK: - Correctness: invalidation
@@ -141,6 +161,9 @@ final class AppStateStorePerformanceTests: XCTestCase {
         XCTAssertFalse(store.hasTranscribedEpisode(forPodcast: sub.id))
 
         try installTranscriptEvidence(for: ep, source: .scribeV1)
+        for _ in 0 ..< 100 where !store.hasTranscribedEpisode(forPodcast: sub.id) {
+            try await Task.sleep(for: .milliseconds(10))
+        }
         XCTAssertTrue(store.hasTranscribedEpisode(forPodcast: sub.id))
     }
 
@@ -167,6 +190,20 @@ final class AppStateStorePerformanceTests: XCTestCase {
         let listed = store.recentEpisodes(limit: 30)
         XCTAssertEqual(listed.count, 1)
         XCTAssertEqual(listed.first?.id, unplayed.id)
+    }
+
+    func testBoundedDownloadAndStarredSubsetsTrackEpisodeMutations() {
+        let sub = addSubscription(title: "Bounded")
+        var episode = makeEpisode(podcastID: sub.id, guid: "bounded")
+        episode.isStarred = true
+        episode.downloadState = .downloaded(
+            localFileURL: URL(fileURLWithPath: "/tmp/bounded.mp3"),
+            byteCount: 42
+        )
+        store.installEpisodeFixtures([episode], forPodcast: sub.id)
+
+        XCTAssertEqual(store.downloadedEpisodesView().map(\.id), [episode.id])
+        XCTAssertEqual(store.starredEpisodesView().map(\.id), [episode.id])
     }
 
     // MARK: - Fixtures

@@ -81,38 +81,41 @@ final class LegacyScheduledAgentWorkflowCutoverTests: XCTestCase {
         XCTAssertNotNil(report.backupDigest)
     }
 
-    func testNativeAdapterCreatesUpdatesAndRemovesThroughTypedRustCommands() throws {
+    func testNativeAdapterCreatesUpdatesAndRemovesThroughTypedRustCommands() async throws {
         let fixture = SharedTranscriptRecoveryTestSupport.makeFixture()
         defer { SharedTranscriptRecoveryTestSupport.dispose(fixture) }
         let client = try bootstrap(fixture)
         defer { client.shutdown() }
         let taskID = UUID()
         let nextRun = Date().addingTimeInterval(86_400)
-        XCTAssertTrue(client.ensureScheduledTask(
+        let createdTask = await client.ensureScheduledTask(
             id: taskID,
             label: "Morning brief",
             prompt: "Summarize highlights",
             intervalSeconds: 86_400,
             modelReference: "openrouter:test/model",
             nextRunAt: nextRun
-        ))
+        )
+        XCTAssertTrue(createdTask)
         let created = try XCTUnwrap(scheduledProjection(client.facade).tasks.first {
             $0.taskId.uuid == taskID
         })
         XCTAssertEqual(created.label, "Morning brief")
-        XCTAssertTrue(client.updateScheduledTask(
+        let updatedTask = await client.updateScheduledTask(
             id: taskID,
             label: "Updated brief",
             prompt: "Summarize notes",
             intervalSeconds: 43_200,
             modelReference: "openrouter:test/model",
             nextRunAt: nextRun.addingTimeInterval(10)
-        ))
+        )
+        XCTAssertTrue(updatedTask)
         XCTAssertEqual(
             scheduledProjection(client.facade).tasks.first { $0.taskId.uuid == taskID }?.label,
             "Updated brief"
         )
-        XCTAssertTrue(client.removeScheduledTask(id: taskID))
+        let removedTask = await client.removeScheduledTask(id: taskID)
+        XCTAssertTrue(removedTask)
         XCTAssertNil(scheduledProjection(client.facade).tasks.first { $0.taskId.uuid == taskID })
     }
 

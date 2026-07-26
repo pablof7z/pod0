@@ -8,14 +8,7 @@ use super::tests::Fixture;
 use super::*;
 use crate::{CoreStoreMigrator, MigrationClock};
 
-#[derive(Clone, Copy)]
-struct FixedClock;
-
-impl MigrationClock for FixedClock {
-    fn now_milliseconds(&self) -> i64 {
-        1_800_000_200_000
-    }
-}
+include!("success_test_clock.rs");
 
 #[test]
 fn qualified_commit_is_atomic_and_completion_history_survives_replan() {
@@ -153,6 +146,14 @@ fn schema_16_completion_is_preserved_and_no_longer_pins_the_current_request() {
     connection
         .execute_batch(
             "PRAGMA foreign_keys=OFF;
+             DROP TABLE pod0_feed_discovery_cutover_candidates;
+             DROP TABLE pod0_feed_discovery_cutover;
+             DROP TABLE pod0_feed_apply_receipts;
+             DROP TABLE pod0_feed_discovery_effects;
+             DROP TABLE pod0_feed_discovery_workflows;
+             DROP TABLE pod0_new_episode_notification_settings;
+             DROP TABLE pod0_feed_discovery_items;
+             DROP TABLE pod0_feed_discovery_occurrences;
              DROP TABLE pod0_compiled_memory_sources;
              DROP TABLE pod0_compiled_memory;
              DROP TABLE pod0_memories;
@@ -229,7 +230,9 @@ fn schema_16_completion_is_preserved_and_no_longer_pins_the_current_request() {
         .unwrap();
     assert_eq!(
         report.applied_versions,
-        [17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+        [
+            17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
+        ]
     );
     let connection = rusqlite::Connection::open(&path).unwrap();
     connection.execute("PRAGMA foreign_keys=ON", []).unwrap();
@@ -258,41 +261,5 @@ fn schema_16_completion_is_preserved_and_no_longer_pins_the_current_request() {
             .model_chapter_completion(completion.request_id)
             .unwrap(),
         Some(completion)
-    );
-}
-
-#[test]
-fn post_claim_replan_requires_durable_completion_evidence() {
-    let fixture = Fixture::new();
-    let requested = fixture.ensure(10, None);
-    let ModelChapterSubmissionClaim::Authorized(authorized) =
-        fixture.claim(&requested, 1_800_000_100_030)
-    else {
-        panic!("claim must authorize")
-    };
-    assert_eq!(
-        fixture
-            .store
-            .fail_model_chapter_workflow(ModelChapterFailureInput {
-                episode_id: authorized.episode_id,
-                request_id: authorized.request_id.unwrap(),
-                generation: authorized.generation,
-                submission_fence_id: authorized.submission_fence_id.unwrap(),
-                failure_code: "stale_transcript".to_owned(),
-                failure_detail: None,
-                may_have_submitted: true,
-                disposition: ModelChapterFailureDisposition::Replan,
-                observed_at_ms: 1_800_000_100_031,
-            }),
-        Err(crate::StorageError::ChapterWorkflowConflict)
-    );
-    assert_eq!(
-        fixture
-            .store
-            .model_chapter_workflow(fixture.episode_id)
-            .unwrap()
-            .unwrap()
-            .state,
-        ModelChapterWorkflowState::SubmissionAuthorized
     );
 }

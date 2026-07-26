@@ -20,6 +20,8 @@ final class SharedAgentConversationSession {
     private var subscriber: SharedAgentConversationSubscriber?
     private var subscriptionID: SubscriptionId?
     private var subscribedConversationID: ConversationId?
+    private var historyTask: Task<Void, Never>?
+    private var subscriptionTask: Task<Void, Never>?
     private(set) var conversation: AgentConversationProjection?
     private(set) var conversationSummaries: [AgentConversationSummaryProjection] = []
     private(set) var conversationHistoryHasMore = false
@@ -39,7 +41,11 @@ final class SharedAgentConversationSession {
         self.onConversationChanged = onConversationChanged
         self.modelReference = modelReference
         refreshConversationHistory()
-        if let resumeConversationID { subscribe(to: resumeConversationID) }
+        if let resumeConversationID {
+            subscriptionTask = Task { @MainActor [weak self] in
+                await self?.subscribe(to: resumeConversationID)
+            }
+        }
     }
 
     var conversationID: ConversationId? { conversation?.conversationId }
@@ -74,7 +80,7 @@ final class SharedAgentConversationSession {
                 phase = .failed("The agent turn did not start")
                 return
             }
-            subscribe(to: conversationID)
+            await subscribe(to: conversationID)
             runtime.executePendingHostRequests()
         } catch {
             phase = .failed("The agent turn could not start")
@@ -95,14 +101,22 @@ final class SharedAgentConversationSession {
     }
 
     func openConversation(_ conversationID: ConversationId) {
-        subscribe(to: conversationID)
+        subscriptionTask?.cancel()
+        subscriptionTask = Task { @MainActor [weak self] in
+            await self?.subscribe(to: conversationID)
+        }
     }
 
     func refreshConversationHistory() {
-        let projection = runtime.agentConversationHistory()
-        conversationSummaries = projection.conversations
-        conversationHistoryHasMore = projection.hasMore
-        conversationHistoryFailure = projection.failure
+        historyTask?.cancel()
+        historyTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let projection = await runtime.agentConversationHistory()
+            guard !Task.isCancelled else { return }
+            conversationSummaries = projection.conversations
+            conversationHistoryHasMore = projection.hasMore
+            conversationHistoryFailure = projection.failure
+        }
     }
 
     func startNewConversation() {
@@ -114,27 +128,39 @@ final class SharedAgentConversationSession {
     }
 
     func stopObserving() {
+        subscriptionTask?.cancel()
+        subscriptionTask = nil
         if let subscriptionID {
-            runtime.unsubscribeAgentConversation(subscriptionID)
+            Task { await runtime.unsubscribeAgentConversation(subscriptionID) }
         }
         subscriptionID = nil
         subscribedConversationID = nil
         subscriber = nil
     }
 
-    private func subscribe(to conversationID: ConversationId) {
+    private func subscribe(to conversationID: ConversationId) async {
         if self.conversationID == conversationID, subscriptionID != nil { return }
-        stopObserving()
+        if let subscriptionID {
+            await runtime.unsubscribeAgentConversation(subscriptionID)
+        }
+        subscriptionID = nil
+        subscribedConversationID = nil
+        subscriber = nil
         let subscriber = SharedAgentConversationSubscriber { [weak self] envelope in
             Task { @MainActor [weak self] in self?.receive(envelope) }
         }
         self.subscriber = subscriber
         subscribedConversationID = conversationID
         onConversationChanged(conversationID)
-        subscriptionID = runtime.subscribeAgentConversation(
+        let subscriptionID = await runtime.subscribeAgentConversation(
             conversationID,
             subscriber: subscriber
         )
+        guard !Task.isCancelled, subscribedConversationID == conversationID else {
+            await runtime.unsubscribeAgentConversation(subscriptionID)
+            return
+        }
+        self.subscriptionID = subscriptionID
     }
 
     private func receive(_ envelope: ProjectionEnvelope) {

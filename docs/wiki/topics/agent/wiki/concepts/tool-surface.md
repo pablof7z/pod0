@@ -61,7 +61,7 @@ These tools are scoped exclusively to the **In-Episode Agent** (UX-16) surface â
 
 ## Safety And Logging
 
-Mutating tools should record agent activity before they are exposed to remote actors. The current direct `AgentTools.dispatchPodcast` implementation returns JSON envelopes and is covered by unit tests, but central audit/activity logging still belongs in the future `ToolGateway` wrapper. Remote Nostr calls should expose a narrower default tool set than local voice or in-app chat. Tools that start playback, send messages, share clips, delegate work, or perform external research should be explicitly classified.
+Mutating tools commit through the Rust Agent authority, where typed proposals, permission grants, execution fences, operation receipts, and conversation projections provide the durable evidence. The retired native Agent activity log is not an audit source and has no writer or UI. Remote Nostr calls expose a narrower default tool set than in-app chat; tools that start playback, send messages, share clips, delegate work, or perform external research remain explicitly classified and fail closed when unavailable.
 
 ## See Also
 

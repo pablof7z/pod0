@@ -4,7 +4,10 @@ use pod0_domain::{CommandId, EpisodeId, ListeningDomainSnapshot, StateRevision};
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, params};
 
 use crate::listening_store_read::read_snapshot;
-use crate::migration_db::{configure, open_connection, user_version, validate_open_database};
+use crate::migration_db::{
+    configure, open_connection, user_version, validate_current_database_identity,
+    validate_open_database,
+};
 use crate::{CURRENT_SCHEMA_VERSION, StorageError};
 
 #[derive(Clone, Debug)]
@@ -19,6 +22,7 @@ impl LibraryStore {
 
     pub fn open_authoritative(path: &Path) -> Result<Self, StorageError> {
         let connection = open_current(path, true)?;
+        validate_open_database(&connection, CURRENT_SCHEMA_VERSION)?;
         require_authoritative(&connection)?;
         Ok(Self {
             path: path.to_owned(),
@@ -219,12 +223,7 @@ pub(crate) fn source_import_id(transaction: &Transaction<'_>) -> Result<Vec<u8>,
 fn open_current(path: &Path, read_only: bool) -> Result<Connection, StorageError> {
     let connection = open_connection(path, read_only)?;
     let version = user_version(&connection)?;
-    validate_open_database(&connection, version)?;
-    if version != CURRENT_SCHEMA_VERSION {
-        return Err(StorageError::CorruptSchema {
-            detail: "library store schema is not current",
-        });
-    }
+    validate_current_database_identity(&connection, version)?;
     Ok(connection)
 }
 

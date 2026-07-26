@@ -5,13 +5,13 @@ extension LiveChapterModelTransport {
         _ status: UInt16,
         retryAfter: String?,
         now: Date
-    ) -> ChapterCapabilityFailure {
-        let code: ChapterCapabilityFailureCode = switch status {
+    ) -> ChapterModelTransportFailure {
+        let code: ChapterModelTransportFailureCode = switch status {
         case 401, 403: .authentication
         case 413: .responseTooLarge
         default: .transport
         }
-        return ChapterCapabilityFailure(
+        return ChapterModelTransportFailure(
             code: code,
             httpStatus: status,
             safeDetail: "Chapter model HTTP \(status)",

@@ -2,7 +2,10 @@ use std::path::{Path, PathBuf};
 
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior};
 
-use crate::migration_db::{configure, open_connection, user_version, validate_open_database};
+use crate::migration_db::{
+    configure, open_connection, user_version, validate_current_database_identity,
+    validate_open_database,
+};
 use crate::transcript_authority::require_transcript_authoritative;
 use crate::{CURRENT_SCHEMA_VERSION, StorageError};
 
@@ -14,6 +17,7 @@ pub struct TranscriptStore {
 impl TranscriptStore {
     pub fn open(path: &Path) -> Result<Self, StorageError> {
         let connection = open_current(path, true)?;
+        validate_open_database(&connection, CURRENT_SCHEMA_VERSION)?;
         require_valid_foreign_keys(&connection)?;
         Ok(Self {
             path: path.to_owned(),
@@ -22,6 +26,7 @@ impl TranscriptStore {
 
     pub fn open_authoritative(path: &Path) -> Result<Self, StorageError> {
         let connection = open_current(path, true)?;
+        validate_open_database(&connection, CURRENT_SCHEMA_VERSION)?;
         require_valid_foreign_keys(&connection)?;
         require_transcript_authoritative(&connection)?;
         Ok(Self {
@@ -56,18 +61,14 @@ impl TranscriptStore {
 
 pub fn transcript_store_is_authoritative(path: &Path) -> Result<bool, StorageError> {
     let connection = open_current(path, true)?;
+    validate_open_database(&connection, CURRENT_SCHEMA_VERSION)?;
     crate::transcript_authority::transcript_is_authoritative(&connection)
 }
 
 fn open_current(path: &Path, read_only: bool) -> Result<Connection, StorageError> {
     let connection = open_connection(path, read_only)?;
     let version = user_version(&connection)?;
-    validate_open_database(&connection, version)?;
-    if version != CURRENT_SCHEMA_VERSION {
-        return Err(StorageError::CorruptSchema {
-            detail: "transcript store schema is not current",
-        });
-    }
+    validate_current_database_identity(&connection, version)?;
     Ok(connection)
 }
 

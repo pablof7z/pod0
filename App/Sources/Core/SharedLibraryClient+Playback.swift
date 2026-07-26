@@ -24,13 +24,7 @@ extension SharedLibraryClient {
     }
 
     func dispatchPlayback(_ command: PlaybackCommand) {
-        facade.dispatch(command: CommandEnvelope(
-            commandId: CommandId(uuid: UUID()),
-            cancellationId: CancellationId(uuid: UUID()),
-            expectedRevision: nil,
-            command: .playback(command: command)
-        ))
-        dispatcher.executePendingRequests(from: facade)
+        dispatchCoreCommand(.playback(command: command))
     }
 
     func dispatchPlay() {
@@ -68,6 +62,5 @@ extension SharedLibraryClient {
                 store?.episode(id: id)
             }
         }
-        dispatcher.executePendingRequests(from: facade)
     }
 }

@@ -11,6 +11,7 @@ use crate::listening_db_codec::{
     decode_transcript_start_policy,
 };
 use crate::listening_store_read_episode::read_episodes;
+use crate::listening_store_read_scalars::{boolean, count, optional_unsigned, unsigned};
 use crate::{LegacyImportPlan, LegacySourceKind, StorageError};
 
 pub(crate) fn read_snapshot(
@@ -272,25 +273,6 @@ fn id(row: &Row<'_>, index: usize) -> Result<[u8; 16], StorageError> {
 }
 fn id_from_bytes(value: Vec<u8>) -> Result<[u8; 16], StorageError> {
     value.try_into().map_err(|_| corrupt("stored ID length"))
-}
-fn unsigned(value: i64, detail: &'static str) -> Result<u64, StorageError> {
-    u64::try_from(value).map_err(|_| corrupt(detail))
-}
-fn optional_unsigned(
-    value: Option<i64>,
-    detail: &'static str,
-) -> Result<Option<u64>, StorageError> {
-    value.map(|value| unsigned(value, detail)).transpose()
-}
-fn count(value: i64, detail: &'static str) -> Result<u32, StorageError> {
-    u32::try_from(value).map_err(|_| corrupt(detail))
-}
-fn boolean(value: i64) -> Result<bool, StorageError> {
-    match value {
-        0 => Ok(false),
-        1 => Ok(true),
-        _ => Err(corrupt("boolean")),
-    }
 }
 fn cutover_is_staged(connection: &Connection) -> Result<bool, StorageError> {
     connection

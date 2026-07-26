@@ -238,7 +238,7 @@ fn approve_next(fixture: &RecallFixture) {
             turn_id: request.turn_id,
             proposal_id: request.proposal.proposal_id,
             proposal_digest: request.proposal.proposal_digest,
-            approved: true,
+            decision: AgentApprovalDecision::Approve,
         },
     ));
 }

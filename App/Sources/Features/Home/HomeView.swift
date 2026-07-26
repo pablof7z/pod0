@@ -5,7 +5,7 @@ import SwiftUI
 // Merged Home — replaces the old Today + Library tabs with a single
 // editorial surface:
 //   • Dateline + active-filter chip strip
-//   • Featured (resume cards + agent picks), collapsible
+//   • Continue Listening for recent in-progress episodes
 //   • Subscription list, recency-sorted, filterable
 //
 // Persistence keys mirror what `LibraryView` used so the user's chosen
@@ -21,13 +21,8 @@ struct HomeView: View {
 
     @AppStorage("library.filter") private var filter: LibraryFilter = .all
     @AppStorage("library.categoryFilterID") private var categoryFilterID: String = ""
-    @AppStorage("home.featuredExpanded") private var featuredExpanded: Bool = true
 
-    @State private var picksService = AgentPicksService.shared
-    @State private var threadingService = ThreadingInferenceService.shared
     @State private var unsubscribeTarget: Podcast?
-    @State private var relatedSheetEpisode: Episode?
-    @State private var threadedTodaySheet: ThreadingInferenceService.ActiveTopic?
     @State private var showAddShowSheet: Bool = false
     @State private var showCategoryPicker: Bool = false
     @State private var showAllContinueListening: Bool = false
@@ -36,8 +31,6 @@ struct HomeView: View {
     /// composition time so a 1Hz playback tick doesn't re-format the
     /// recency pill on every redraw.
     @State private var renderedAt: Date = Date()
-    @State private var cachedTopActiveThread: ThreadingInferenceService.ActiveTopic?
-
     var body: some View {
         scrollContent
             .navigationTitle(navBarTitle)
@@ -45,9 +38,6 @@ struct HomeView: View {
             .toolbar { toolbarContent }
             .background(Color(.systemGroupedBackground).ignoresSafeArea())
             .refreshable { await refreshAllFeeds() }
-            .navigationDestination(for: HomeEpisodeRoute.self) { route in
-                EpisodeDetailView(episodeID: route.episodeID)
-            }
             .navigationDestination(for: Podcast.self) { pod in
                 ShowDetailView(podcast: pod)
             }
@@ -70,19 +60,6 @@ struct HomeView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
-            .sheet(item: $relatedSheetEpisode) { episode in
-                HomeRelatedSheet(
-                    seedEpisode: episode,
-                    seedPodcast: store.podcast(id: episode.podcastID)
-                )
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-            }
-            .sheet(item: $threadedTodaySheet) { active in
-                HomeThreadedTodayView(active: active)
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-            }
             .alert(
                 "Unsubscribe from \(unsubscribeTarget?.title ?? "")?",
                 isPresented: Binding(
@@ -99,52 +76,11 @@ struct HomeView: View {
             } message: { _ in
                 Text("This removes the show and all its episodes from your library.")
             }
-            .task {
-                picksService.ensureFreshPicks(store: store, category: activeCategory)
-                // Bind the threading service to the store so the
-                // "Threaded Today" derivation has somewhere to look.
-                threadingService.attach(store: store)
-            }
-            // Re-curate the featured section whenever the user flips
-            // categories. The picks service treats each category as its
-            // own cache slot, so this either reads a cached bundle or
-            // kicks off a fresh stream. The cross-fade itself is handled
-            // by the `.id`-keyed transition on `HomeFeaturedSection`'s
-            // rail; this `onChange` only owns the data side.
-            .onChange(of: categoryFilterID) { _, _ in
-                picksService.setActiveCategory(selectedCategoryID)
-                picksService.ensureFreshPicks(store: store, category: activeCategory)
-            }
             .onAppear { renderedAt = Date() }
-            .task(id: topActiveThreadKey) {
-                cachedTopActiveThread = threadingService.topActiveTopics(
-                    limit: 1,
-                    subscriptionFilter: allowedSubscriptionIDs
-                ).first
-            }
-    }
-
-    private var topActiveThread: ThreadingInferenceService.ActiveTopic? { cachedTopActiveThread }
-
-    private struct TopActiveThreadKey: Equatable {
-        var episodeCount: Int
-        var totalUnplayed: Int
-        var mentionCount: Int
-        var categoryID: UUID?
-    }
-
-    private var topActiveThreadKey: TopActiveThreadKey {
-        TopActiveThreadKey(
-            episodeCount: store.state.episodes.count,
-            totalUnplayed: store.unplayedCountByShow.values.reduce(0, +),
-            mentionCount: store.state.threadingMentions.count,
-            categoryID: selectedCategoryID
-        )
     }
 
     /// Subscription-id set for the active category, or `nil` for All.
-    /// Resolved once and passed down so the featured surface, dateline,
-    /// and threaded-today rail all narrow to the same set of shows.
+    /// Used to keep Continue Listening aligned with the selected category.
     private var allowedSubscriptionIDs: Set<UUID>? {
         guard let id = selectedCategoryID,
               let category = store.category(id: id) else { return nil }
@@ -169,20 +105,6 @@ struct HomeView: View {
                         onPlay: playEpisode,
                         onRemove: { store.resetEpisodeProgress($0.id) },
                         onSeeAll: { showAllContinueListening = true }
-                    )
-                }
-
-                if shouldShowFeaturedSection {
-                    HomeFeaturedSection(
-                        picksBundle: picksService.bundle(for: selectedCategoryID),
-                        isStreaming: picksService.isStreaming(for: selectedCategoryID),
-                        activeThread: topActiveThread,
-                        activeCategoryID: selectedCategoryID,
-                        activeCategoryName: activeCategory?.name,
-                        isExpanded: $featuredExpanded,
-                        onPlayEpisode: playEpisode,
-                        onLongPressEpisode: { relatedSheetEpisode = $0 },
-                        onOpenThread: { threadedTodaySheet = topActiveThread }
                     )
                 }
 
@@ -260,7 +182,7 @@ struct HomeView: View {
 
     // MARK: - Filter derivation
     //
-    // Filters apply to the subscription list ONLY — featured is curated.
+    // Filters apply to the subscription list only.
     // Pure derivation kept inline so the `body` getter stays straightforward
     // without an extra service indirection for trivial in-memory work.
 
@@ -290,13 +212,6 @@ struct HomeView: View {
 
     private var navBarTitle: String {
         activeCategory?.name ?? "Home"
-    }
-
-    private var shouldShowFeaturedSection: Bool {
-        let bundle = picksService.bundle(for: selectedCategoryID)
-        return !bundle.picks.isEmpty
-            || picksService.isRefreshing(for: selectedCategoryID)
-            || picksService.isStreaming(for: selectedCategoryID)
     }
 
     // MARK: - Toolbar
@@ -333,11 +248,5 @@ struct HomeView: View {
 
     private func refreshAllFeeds() async {
         await SubscriptionRefreshService.shared.refreshAll(store: store)
-        // Library state moved meaningfully — let the agent picks update on
-        // the next turn instead of waiting on the 6h TTL. We blow every
-        // cached category slot away so each section recurates on first
-        // visit; the active section gets its refresh triggered now.
-        picksService.invalidate()
-        picksService.ensureFreshPicks(store: store, category: activeCategory)
     }
 }

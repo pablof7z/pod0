@@ -10,9 +10,6 @@ import sys
 
 
 CAPABILITY_FILES = (
-    "App/Sources/Core/ChapterObservationCapability.swift",
-    "App/Sources/Core/ChapterObservationCapabilityAdapter.swift",
-    "App/Sources/Core/ChapterObservationCapabilityAdapter+Mapping.swift",
     "App/Sources/Core/CorePublisherChapterHost.swift",
     "App/Sources/Core/Pod0NativeHostDispatcher+PublisherChapters.swift",
     "App/Sources/Core/ChapterModelTransport.swift",
@@ -42,25 +39,6 @@ FORBIDDEN = (
 )
 
 REQUIRED_TOKENS = {
-    "App/Sources/Core/ChapterObservationCapability.swift": (
-        "ChapterCapabilityRequestEnvelope",
-        "ChapterCapabilityEvidence",
-        "chapterObservationLimits()",
-        "qualifyAgentComposedChapterObservation",
-    ),
-    "App/Sources/Core/ChapterObservationCapabilityAdapter.swift": (
-        "activeTasks",
-        "completedRequestIDs",
-        "qualifier.limits()",
-        "func cancel(cancellationID:",
-        "func shutdown()",
-        "activeTasks.removeValue",
-    ),
-    "App/Sources/Core/ChapterObservationCapabilityAdapter+Mapping.swift": (
-        "case .agent(let value):",
-        "value.items.count",
-        "limits.agentItems",
-    ),
     "App/Sources/Core/CorePublisherChapterHost.swift": (
         "session.bytes(for:",
         "maximumResponseBytes",
@@ -189,7 +167,7 @@ def self_test() -> None:
         "let generatedAt = Date()",
     )
     for sample in samples:
-        assert findings("App/Sources/Core/ChapterObservationCapabilityAdapter.swift", sample), sample
+        assert findings("App/Sources/Core/CorePublisherChapterHost.swift", sample), sample
     assert findings(MODEL_TRANSPORT, 'let key = "chapters"')
     assert findings(
         MODEL_TRANSPORT,

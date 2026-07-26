@@ -3,7 +3,7 @@ import Observation
 import Pod0Core
 
 /// Native presentation queue for exact Rust-authored proposals. It reports
-/// only approve or deny; it never edits arguments or decides authorization.
+/// approve, deny, or dismissal; it never edits arguments or decides authorization.
 @MainActor
 @Observable
 final class AgentApprovalCoordinator: CoreAgentApprovalPresenting {
@@ -14,9 +14,11 @@ final class AgentApprovalCoordinator: CoreAgentApprovalPresenting {
 
     private(set) var current: PendingApproval?
     @ObservationIgnored private var queue: [PendingApproval] = []
-    @ObservationIgnored private var continuations: [UUID: CheckedContinuation<Bool, Never>] = [:]
+    @ObservationIgnored private var continuations: [
+        UUID: CheckedContinuation<AgentApprovalDecision, Never>
+    ] = [:]
 
-    func requestApproval(_ request: AgentApprovalRequest) async -> Bool {
+    func requestApproval(_ request: AgentApprovalRequest) async -> AgentApprovalDecision {
         let id = UUID()
         return await withTaskCancellationHandler {
             await withCheckedContinuation { continuation in
@@ -25,22 +27,26 @@ final class AgentApprovalCoordinator: CoreAgentApprovalPresenting {
                 if current == nil { current = queue.first }
             }
         } onCancel: {
-            Task { @MainActor [weak self] in self?.resolve(id, approved: false) }
+            Task { @MainActor [weak self] in self?.resolve(id, decision: .dismiss) }
         }
     }
 
     func approve(_ id: UUID) {
-        resolve(id, approved: true)
+        resolve(id, decision: .approve)
     }
 
     func deny(_ id: UUID) {
-        resolve(id, approved: false)
+        resolve(id, decision: .deny)
     }
 
-    private func resolve(_ id: UUID, approved: Bool) {
+    func dismiss(_ id: UUID) {
+        resolve(id, decision: .dismiss)
+    }
+
+    private func resolve(_ id: UUID, decision: AgentApprovalDecision) {
         guard let continuation = continuations.removeValue(forKey: id) else { return }
         queue.removeAll { $0.id == id }
         if current?.id == id { current = queue.first }
-        continuation.resume(returning: approved)
+        continuation.resume(returning: decision)
     }
 }

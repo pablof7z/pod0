@@ -9,7 +9,7 @@ struct JobStore: Sendable {
         _ desired: [DesiredJob],
         afterEach: (Int) throws -> Void = { _ in }
     ) throws -> Int {
-        try withDatabase { db in
+        return try withDatabase { db in
             try WorkflowSQLite.execute("BEGIN IMMEDIATE TRANSACTION", db)
             do {
                 let before = sqlite3_total_changes(db)
@@ -26,7 +26,7 @@ struct JobStore: Sendable {
 
     @discardableResult
     func ensureJob(_ desired: DesiredJob, notBefore: Date = Date()) throws -> Bool {
-        try withDatabase { db in
+        return try withDatabase { db in
             let statement = try WorkflowSQLite.prepare(
                 """
                 INSERT INTO jobs(

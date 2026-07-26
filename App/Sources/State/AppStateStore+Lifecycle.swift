@@ -1,7 +1,7 @@
 import Foundation
 
 extension AppStateStore {
-    static func cleanupOrphanedWikiFilesIfNeeded() {
+    nonisolated static func cleanupOrphanedWikiFilesIfNeeded() {
         let flagKey = "cleanup.wikiFilesRemoved.v1"
         guard !UserDefaults.standard.bool(forKey: flagKey) else { return }
         defer { UserDefaults.standard.set(true, forKey: flagKey) }
@@ -30,7 +30,7 @@ extension AppStateStore {
         mutateState { $0.settings = updated }
     }
 
-    static func migrateLegacyOpenRouterSecretIfNeeded(
+    nonisolated static func migrateLegacyOpenRouterSecretIfNeeded(
         in state: inout AppState,
         persistence: Persistence,
         saveCredential: (String) throws -> Void = OpenRouterCredentialStore.saveAPIKey,

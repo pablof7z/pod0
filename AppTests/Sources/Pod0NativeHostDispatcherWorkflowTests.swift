@@ -55,7 +55,9 @@ final class Pod0NativeHostDispatcherWorkflowTests: XCTestCase {
 
         dispatcher.activateExecution()
         dispatcher.executePendingRequests(from: facade)
-        await Task.yield()
+        for _ in 0 ..< 100 where dispatcher.activeTasks.count < 2 {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
 
         XCTAssertEqual(dispatcher.activeTasks.count, 2)
         XCTAssertEqual(facade.nextHostRequests(maximumCount: 64).count, 1)

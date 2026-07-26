@@ -29,7 +29,6 @@ enum WorkflowDiagnosticPresenter {
 
     static func kindTitle(_ kind: WorkflowProjectionKind) -> String {
         switch kind {
-        case .feedDiscovery: "Feed discovery"
         case .download: "Download"
         case .transcriptIngest: "Transcript ingest"
         case .transcriptIndex: "Transcript index"
@@ -37,14 +36,12 @@ enum WorkflowDiagnosticPresenter {
         case .chapterArtifacts: "Chapter artifacts"
         case .metadataIndex: "Metadata index"
         case .autoDownload: "Auto-download"
-        case .newEpisodeNotification: "New-episode notification"
         case .scheduledAgentRun: "Scheduled agent run"
         }
     }
 
     static func kindIcon(_ kind: WorkflowProjectionKind) -> String {
         switch kind {
-        case .feedDiscovery: "dot.radiowaves.left.and.right"
         case .download: "arrow.down.circle"
         case .transcriptIngest: "waveform.badge.mic"
         case .transcriptIndex: "text.magnifyingglass"
@@ -52,7 +49,6 @@ enum WorkflowDiagnosticPresenter {
         case .chapterArtifacts: "sparkles.rectangle.stack"
         case .metadataIndex: "magnifyingglass.circle"
         case .autoDownload: "arrow.down.to.line.compact"
-        case .newEpisodeNotification: "bell.badge"
         case .scheduledAgentRun: "calendar.badge.clock"
         }
     }

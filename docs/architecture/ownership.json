@@ -61,9 +61,6 @@
         "App/Sources/Core/SharedTranscriptReader.swift",
         "App/Sources/Core/TranscriptObservationMapper.swift",
         "App/Sources/Core/CorePublisherChapterHost.swift",
-        "App/Sources/Core/ChapterObservationCapability.swift",
-        "App/Sources/Core/ChapterObservationCapabilityAdapter.swift",
-        "App/Sources/Core/ChapterObservationCapabilityAdapter+Mapping.swift",
         "App/Sources/Core/ChapterModelTransport.swift",
         "App/Sources/Core/SharedChapterReader.swift",
         "App/Sources/Core/SharedLibraryClient+Chapters.swift",
@@ -82,6 +79,8 @@
         "App/Sources/Core/LegacyAgentHistoryCutover.swift",
         "App/Sources/Core/LegacyAgentHistoryMapper.swift",
         "App/Sources/Core/LegacyChatHistorySource.swift",
+        "App/Sources/Core/LegacyAgentRunLogRetirement.swift",
+        "App/Sources/Core/LegacyAgentActivity.swift",
         "App/Sources/Core/LegacyAgentMemoryBackup.swift",
         "App/Sources/Core/LegacyAgentMemoryCutover.swift"
       ]
@@ -130,11 +129,11 @@
     {
       "id": "temporary-agent-history-cutover",
       "classification": "temporary_swift",
-      "current_owner": "Swift decode-only chat source, immutable rollback manifest, typed mapper, and exact source retirement",
+      "current_owner": "Swift decode-only chat/activity sources, immutable rollback manifest, typed mapper, exact source retirement, and exact removal of retired native diagnostic duplicates",
       "target_owner": "Deleted after the issue #138 rollback support window closes",
-      "reason": "Existing Swift conversations must survive the transition into Rust without preserving a native writer or a long-lived archive store.",
-      "boundary": "Decode and back up the exact legacy file, map supported conversations to typed Rust inputs, delete the exact matching source before Rust authority commits, and expose no restore or mutation API.",
-      "persisted_state": "Versioned integrity-checked rollback manifests only; Rust owns all active and imported conversation history after cutover.",
+      "reason": "Existing Swift conversations must survive the transition into Rust without preserving a native writer or long-lived private activity and diagnostic stores.",
+      "boundary": "Decode and back up the exact legacy conversation file, map supported conversations to typed Rust inputs, delete the exact matching chat source before Rust authority commits, then remove the retired AgentRunLog/runs.json and embedded activity duplicates after conversation and memory authority are verified. Expose no restore or mutation API.",
+      "persisted_state": "Versioned integrity-checked conversation rollback manifests only; Rust owns all active and imported conversation history. The embedded activity payload is decode-only until its verified one-shot retirement.",
       "migration_issues": [138],
       "deletion_target": "Remove the legacy conversation decoder, backup, mapper, and cutover adapter after supported installations are proven across the Rust authority marker; immutable rollback evidence may remain read-only.",
       "priority": "highest",
@@ -143,6 +142,9 @@
         "App/Sources/Core/LegacyAgentHistoryCutover.swift",
         "App/Sources/Core/LegacyAgentHistoryMapper.swift",
         "App/Sources/Core/LegacyChatHistorySource.swift",
+        "App/Sources/Core/LegacyAgentRunLogRetirement.swift",
+        "App/Sources/Core/LegacyAgentActivity.swift",
+        "App/Sources/State/Persistence+LegacyAgentActivity.swift",
         "App/Sources/Features/Agent/ChatConversation.swift"
       ]
     },
@@ -175,23 +177,6 @@
       "includes": [
         "App/Sources/Core/CorePublisherChapterHost.swift",
         "App/Sources/Core/ChapterModelTransport.swift"
-      ]
-    },
-    {
-      "id": "temporary-chapter-observation-orchestration",
-      "classification": "temporary_swift",
-      "current_owner": "Swift transient agent-composition task shell and raw observation mapping",
-      "target_owner": "Pod0 Rust agent workflow/application layer issuing typed native host requests",
-      "reason": "Issue #110 deleted the model branch after its Rust workflow activated; only agent-composed chapter observations remain temporarily outside a Rust-issued host request.",
-      "boundary": "Map a bounded agent composition into a typed observation, call Rust qualification, and retain only bounded in-memory task identities.",
-      "persisted_state": "None; no files, database rows, retry counters, selected artifacts, or canonical mirrors.",
-      "migration_issues": [111],
-      "deletion_target": "Issue #111 replaces the remaining agent composition shell with a Rust-issued agent workflow request; primitive platform capabilities remain native.",
-      "priority": "high",
-      "includes": [
-        "App/Sources/Core/ChapterObservationCapability.swift",
-        "App/Sources/Core/ChapterObservationCapabilityAdapter.swift",
-        "App/Sources/Core/ChapterObservationCapabilityAdapter+Mapping.swift"
       ]
     },
     {
@@ -289,6 +274,7 @@
       "priority": "highest",
       "includes": ["App/Sources/State/"],
       "excludes": [
+        "App/Sources/State/Persistence+LegacyAgentActivity.swift",
         "App/Sources/State/Persistence+SharedMemories.swift",
         "App/Sources/State/Persistence+SharedScheduledAgents.swift"
       ]
@@ -306,23 +292,9 @@
       "priority": "high",
       "includes": ["App/Sources/Workflows/"],
       "excludes": [
-        "App/Sources/Workflows/ArtifactVerificationExecutor.swift",
         "App/Sources/Workflows/JobStore+LegacyChapterRetirement.swift",
         "App/Sources/Workflows/JobStore+LegacyScheduledAgentCutover.swift"
       ]
-    },
-    {
-      "id": "temporary-workflow-verification-executor",
-      "classification": "temporary_swift",
-      "current_owner": "Swift bounded artifact verification executor",
-      "target_owner": "Pod0 Rust workflow and artifact application layer",
-      "reason": "Issue #48 removes visible main-actor stalls without delaying product proof; the typed request/result boundary is explicitly temporary until the workflow slice migrates.",
-      "boundary": "Native callers submit typed file evidence requests; only verified typed results may reach fenced workflow commits.",
-      "persisted_state": "None; exact immutable file identities are cached in memory only.",
-      "migration_issues": [60, 115, 117, 119],
-      "deletion_target": "Issue #119 deletes download verification use after Rust adoption; #60 deletes the executor when the final unmigrated artifact workflow no longer calls it.",
-      "priority": "high",
-      "includes": ["App/Sources/Workflows/ArtifactVerificationExecutor.swift"]
     },
     {
       "id": "shared-transcript-model-and-normalization",
@@ -425,13 +397,13 @@
     {
       "id": "shared-agent-application-policy",
       "classification": "shared_rust_now",
-      "current_owner": "Rust owns interactive and scheduled turn state, conversation history, model usage, generated audio provenance, tool identity, permissions, fences, supported commits, and publication receipts; Swift retains typed provider/platform capabilities, transient presentation streams, bounded local diagnostics, and decode-only rollback compatibility",
+      "current_owner": "Rust owns interactive and scheduled turn state, conversation history, model usage, generated audio provenance, tool identity, permissions, fences, supported commits, and publication receipts; Swift retains typed provider/platform capabilities, transient presentation streams, and decode-only rollback compatibility",
       "target_owner": "Pod0 Rust agent/application layer",
       "reason": "Tool validation, permission, durable commits, jobs, and generated artifact policy must be identical across platforms.",
       "boundary": "ADR-0008 and agent-tool-permissions.json require typed Rust proposals, durable grants, effect fences, commits, and bounded projections. Native presents conversations/approvals and returns raw observations for typed platform capabilities. pod0-nmp alone owns generic NMP engine, signing, routing, and receipt facts; the app facade accepts no relay selection.",
-      "persisted_state": "Rust SQLite owns conversations, turns, model usage, memories, scheduled tasks/occurrences, generated audio and artifact provenance, and publication receipts. Swift retains bounded local diagnostic presentation, platform files awaiting acknowledged adoption, and immutable rollback manifests only.",
+      "persisted_state": "Rust SQLite owns conversations, turns, model usage, memories, scheduled tasks/occurrences, generated audio and artifact provenance, and publication receipts. Swift retains platform files awaiting acknowledged adoption and immutable rollback manifests only.",
       "migration_issues": [60, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138],
-      "deletion_target": "Issues #130, #135, and #136 completed scheduled/conversation/artifact/publication authority cutovers. Facade v45 deleted native catalog and provider-neutral schema ownership. Issues #133 and #134 finish broader commit and capability families, #137 qualifies the physical-device signer, and #138 removes remaining compatibility ownership and decides bounded diagnostic retention.",
+      "deletion_target": "Issues #130, #135, and #136 completed scheduled/conversation/artifact/publication authority cutovers. Facade v45 deleted native catalog and provider-neutral schema ownership. Issue #133 completed the product-proof Rust agent owner; #134 finishes native capability qualification, #137 qualifies the physical-device signer, and #138 removes remaining compatibility ownership.",
       "priority": "high",
       "includes": ["App/Sources/Agent/"]
     },
@@ -487,11 +459,11 @@
     {
       "id": "temporary-shared-services",
       "classification": "temporary_swift",
-      "current_owner": "Swift owns explicitly temporary product-proof services for editorial picks, categorization, cross-episode threading, clip-boundary assistance, and remaining provider/workflow adapters",
+      "current_owner": "Swift owns explicitly temporary categorization, clip-boundary assistance, and remaining provider/workflow adapters",
       "target_owner": "Pod0 Rust domain/application/workflow layers plus thin native capabilities",
       "reason": "The residual mixed service layer contains unsettled product behavior and thin platform executors. Listening, subscription durability, downloads, transcript workflow state, scheduled agents, active conversations, generated audio, and Nostr receipt authority have already moved to Rust and must not reappear here.",
       "boundary": "Migrated domains use typed Rust commands and projections. Temporary behavior writes only through its declared typed owner and may not create a second durable store.",
-      "persisted_state": "Temporary durable Swift state is limited to categories, threading records, agent activity/local diagnostics, and explicitly unmigrated adjuncts. Migrated library, workflow, conversation, memory, artifact, and publication facts remain Rust-owned.",
+      "persisted_state": "Temporary durable Swift state is limited to categories and explicitly unmigrated adjuncts. Migrated library, workflow, conversation, memory, artifact, activity, and publication facts remain Rust-owned or retired.",
       "migration_issues": [58, 59, 60, 69, 79, 80, 81, 82, 83, 94, 95, 96, 97, 115, 116, 117, 118, 119, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138],
       "deletion_target": "Issues #119 and #130 reduced download and scheduled work to typed native capabilities. Issues #60, #133, #134, and #138 migrate or delete each residual temporary policy while retaining capabilities that are native by design.",
       "priority": "high",

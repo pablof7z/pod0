@@ -67,7 +67,7 @@ final class CoreChapterModelHostTests: XCTestCase {
 
     func testFailurePreservesTypedCodeDetailAndRetryAfter() async {
         let transport = RecordingCoreChapterModelTransport(result: .failure(
-            ChapterCapabilityFailure(
+            ChapterModelTransportFailure(
                 code: .transport,
                 httpStatus: 429,
                 safeDetail: "Provider is rate limited",
@@ -180,16 +180,16 @@ final class CoreChapterModelHostTests: XCTestCase {
 }
 
 private actor RecordingCoreChapterModelTransport: CoreChapterModelTransporting {
-    private let result: Result<ChapterModelTransportResponse, ChapterCapabilityFailure>
+    private let result: Result<ChapterModelTransportResponse, ChapterModelTransportFailure>
     private var requests: [ChapterModelExecutionRequest] = []
 
-    init(result: Result<ChapterModelTransportResponse, ChapterCapabilityFailure>) {
+    init(result: Result<ChapterModelTransportResponse, ChapterModelTransportFailure>) {
         self.result = result
     }
 
     func execute(
         _ request: ChapterModelExecutionRequest
-    ) async -> Result<ChapterModelTransportResponse, ChapterCapabilityFailure> {
+    ) async -> Result<ChapterModelTransportResponse, ChapterModelTransportFailure> {
         requests.append(request)
         return result
     }

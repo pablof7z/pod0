@@ -7,14 +7,30 @@ extension AudioEngine {
     /// Activates the audio session lazily so app launch does not preempt audio.
     func play() {
         guard episode != nil else { return }
+        playRequested = true
         do {
             try AudioSessionCoordinator.shared.activate(.podcastPlayback)
         } catch {
+            playRequested = false
             let engineError = EngineError(error)
             logger.error("Audio session activation failed: \(engineError.description, privacy: .public)")
             setState(.failed(engineError))
             return
         }
+        guard pendingInitialSeekTime == nil else {
+            applyEffectiveVolume()
+            // Give AVPlayer a playback demand so a remote item can become
+            // ready. The ready-state observer applies the deferred resume
+            // seek before allowing presentation time to advance.
+            player.playImmediately(atRate: Float(rate))
+            setState(.buffering)
+            publishNowPlaying()
+            return
+        }
+        startPlayerPlayback()
+    }
+
+    func startPlayerPlayback() {
         applyEffectiveVolume()
         player.playImmediately(atRate: Float(rate))
         if state != .buffering { setState(.playing) }
@@ -22,6 +38,7 @@ extension AudioEngine {
     }
 
     func pause() {
+        playRequested = false
         player.pause()
         setState(.paused)
         publishNowPlaying()
@@ -43,6 +60,11 @@ extension AudioEngine {
             didReachNaturalEnd = false
         }
         setCurrentTime(target)
+        guard player.currentItem?.status == .readyToPlay else {
+            pendingInitialSeekTime = target > 0 ? target : nil
+            return
+        }
+        pendingInitialSeekTime = nil
         let time = CMTime(seconds: target, preferredTimescale: 600)
         player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
             Task { @MainActor in

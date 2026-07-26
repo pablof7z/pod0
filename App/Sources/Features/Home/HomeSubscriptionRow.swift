@@ -16,13 +16,17 @@ struct HomeSubscriptionRow: View {
     /// next to the rest of the list state, not inside the row).
     let onRequestUnsubscribe: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         NavigationLink(value: podcast) {
             HStack(alignment: .center, spacing: AppTheme.Spacing.md) {
                 artwork
                 meta
-                Spacer(minLength: AppTheme.Spacing.sm)
-                recencyPill
+                if !dynamicTypeSize.isAccessibilitySize {
+                    Spacer(minLength: AppTheme.Spacing.sm)
+                    recencyPill
+                }
             }
             .contentShape(Rectangle())
         }
@@ -79,12 +83,15 @@ struct HomeSubscriptionRow: View {
             Text(podcast.title)
                 .font(AppTheme.Typography.subheadline.weight(.semibold))
                 .foregroundStyle(.primary)
-                .lineLimit(1)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
             if let preview = mostRecentEpisodePreview {
                 Text(preview)
                     .font(AppTheme.Typography.caption)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+            }
+            if dynamicTypeSize.isAccessibilitySize {
+                recencyPill
             }
         }
     }

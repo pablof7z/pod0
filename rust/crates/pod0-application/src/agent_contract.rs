@@ -8,7 +8,7 @@ use pod0_domain::{
     ConversationId, EpisodeId, GeneratedArtifactId, PodcastId, ScheduledTaskId, StateRevision,
     UnixTimestampMilliseconds,
 };
-pub const AGENT_CONTRACT_VERSION: u32 = 2;
+pub const AGENT_CONTRACT_VERSION: u32 = 3;
 pub const MAX_AGENT_INPUT_BYTES: usize = 32 * 1_024;
 pub const MAX_AGENT_MESSAGE_BYTES: usize = 64 * 1_024;
 pub const MAX_AGENT_MODEL_REFERENCE_BYTES: usize = 256;
@@ -24,6 +24,13 @@ pub enum AgentAuthority {
     DurableTurnGrant,
     DurableScopedGrant,
     OneShotApproval,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
+pub enum AgentApprovalDecision {
+    Approve,
+    Deny,
+    Dismiss,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]

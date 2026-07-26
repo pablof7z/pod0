@@ -1,5 +1,32 @@
 import SwiftUI
 
+enum EpisodeRowAccessibilityPresentation {
+    static func label(for episode: Episode, downloadProgress: Double?) -> String {
+        var parts: [String] = [episode.title, episode.formattedDuration]
+        if episode.played {
+            parts.append("played")
+        } else if episode.isInProgress {
+            parts.append("\(Int((episode.playbackProgress * 100).rounded())) percent listened")
+        } else {
+            parts.append("unplayed")
+        }
+        switch episode.downloadState {
+        case .downloaded:
+            switch episode.transcriptState {
+            case .ready:
+                parts.append("transcript available")
+            case .none:
+                parts.append("downloaded")
+            }
+        case .notDownloaded:
+            if let downloadProgress {
+                parts.append("downloading \(Int((downloadProgress.clamped01 * 100).rounded())) percent")
+            }
+        }
+        return parts.joined(separator: ", ")
+    }
+}
+
 // MARK: - Swipe-action helpers
 //
 // Extracted from `EpisodeRowContextMenu.swift` to keep that file under the

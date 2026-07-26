@@ -64,7 +64,7 @@ extension PlayerChaptersScrollView {
         .padding(.vertical, AppTheme.Spacing.xs)
         .contextMenu {
             Button(role: .destructive) {
-                store.deleteNote(note.id)
+                Task { await store.deleteNote(note.id) }
             } label: {
                 Label("Delete Note", systemImage: "trash")
             }

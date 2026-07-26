@@ -4,6 +4,10 @@ import SwiftUI
 // MARK: - Podcast display helpers
 
 extension Podcast {
+    /// Cached plain-text description for native presentation surfaces.
+    var plainTextDescription: String {
+        EpisodeShowNotesFormatter.plainText(from: description)
+    }
 
     /// Stable per-show accent hue derived from the feed URL string when
     /// present (synthetic podcasts fall back to the title bytes so the
@@ -95,10 +99,12 @@ extension Episode {
     /// inserts — into a single space so the preview fits the row's
     /// `lineLimit(2)` cleanly.
     var plainTextSummary: String {
+        EpisodeShowNotesFormatter.singleLineText(from: description)
+    }
+
+    /// Cached full show-notes body for detail and player surfaces.
+    var plainTextDescription: String {
         EpisodeShowNotesFormatter.plainText(from: description)
-            .components(separatedBy: .whitespacesAndNewlines)
-            .filter { !$0.isEmpty }
-            .joined(separator: " ")
     }
 }
 

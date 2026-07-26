@@ -187,29 +187,37 @@ extension CoreDownloadHost {
         taskID: Int,
         interim: URL
     ) {
-        do {
-            let (staged, byteCount) = try nativeStore.stage(interim, for: identity.attemptID)
-            clearTask(identity: identity, taskID: taskID)
-            emit(
-                requestID: identity.requestID,
-                sequence: 2,
-                observation: .downloadStaged(
-                    episodeId: identity.episodeID,
-                    intentId: identity.intentID,
-                    attemptId: identity.attemptID,
-                    stagedFilePath: staged.path,
-                    byteCount: byteCount
-                ),
-                identity: identity
-            )
-        } catch {
-            try? FileManager.default.removeItem(at: interim)
-            handleFailure(
-                identity: identity,
-                taskID: taskID,
-                code: .platformFailure,
-                safeDetail: "Native download staging failed"
-            )
+        let nativeStore = nativeStore
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let staged = try await Task.detached(priority: .utility) {
+                    try nativeStore.stage(interim, for: identity.attemptID)
+                }.value
+                clearTask(identity: identity, taskID: taskID)
+                emit(
+                    requestID: identity.requestID,
+                    sequence: 2,
+                    observation: .downloadStaged(
+                        episodeId: identity.episodeID,
+                        intentId: identity.intentID,
+                        attemptId: identity.attemptID,
+                        stagedFilePath: staged.0.path,
+                        byteCount: staged.1
+                    ),
+                    identity: identity
+                )
+            } catch {
+                await Task.detached(priority: .utility) {
+                    try? FileManager.default.removeItem(at: interim)
+                }.value
+                handleFailure(
+                    identity: identity,
+                    taskID: taskID,
+                    code: .platformFailure,
+                    safeDetail: "Native download staging failed"
+                )
+            }
         }
     }
 
@@ -221,16 +229,23 @@ extension CoreDownloadHost {
         resumeData: Data?
     ) {
         if cancelledTaskIDs.remove(taskID) != nil { return }
-        nativeStore.saveResumeData(resumeData, for: identity.attemptID)
         let code = httpStatus.map(CoreDownloadCoordinator.failureCode(httpStatus:))
             ?? CoreDownloadCoordinator.failureCode(error)
-        handleFailure(
-            identity: identity,
-            taskID: taskID,
-            code: code,
-            safeDetail: httpStatus.map { "HTTP response \($0)" }
-                ?? "Native transfer failed (\(error.domain):\(error.code))"
-        )
+        let safeDetail = httpStatus.map { "HTTP response \($0)" }
+            ?? "Native transfer failed (\(error.domain):\(error.code))"
+        let nativeStore = nativeStore
+        Task { @MainActor [weak self] in
+            await Task.detached(priority: .utility) {
+                nativeStore.saveResumeData(resumeData, for: identity.attemptID)
+            }.value
+            guard let self else { return }
+            handleFailure(
+                identity: identity,
+                taskID: taskID,
+                code: code,
+                safeDetail: safeDetail
+            )
+        }
     }
 
     func handleFailure(

@@ -22,7 +22,7 @@ extension WorkflowClient {
     func perform(
         _ action: WorkflowJobAction,
         on projection: WorkflowJobProjection
-    ) -> WorkflowJobActionResult {
-        WorkflowRuntime.shared.perform(action, on: projection)
+    ) async -> WorkflowJobActionResult {
+        await WorkflowRuntime.shared.perform(action, on: projection)
     }
 }

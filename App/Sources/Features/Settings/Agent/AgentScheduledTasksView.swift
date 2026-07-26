@@ -108,7 +108,11 @@ struct AgentScheduledTasksView: View {
     }
 
     private func perform(_ action: WorkflowJobAction, on job: WorkflowJobProjection) {
-        workflowActionNotice = .make(for: workflows.perform(action, on: job))
+        Task {
+            workflowActionNotice = .make(
+                for: await workflows.perform(action, on: job)
+            )
+        }
     }
 
     @ToolbarContentBuilder

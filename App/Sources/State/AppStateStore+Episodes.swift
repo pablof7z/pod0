@@ -8,7 +8,13 @@ extension AppStateStore {
 
     /// Returns the live episode record matching `id`, or `nil` when not found.
     func episode(id: UUID) -> Episode? {
-        state.episodes.first(where: { $0.id == id })
+        if let index = episodeIndexByID[id], state.episodes.indices.contains(index),
+           state.episodes[index].id == id {
+            return state.episodes[index]
+        }
+        // Cold safety path for a structurally unusual projection replacement
+        // that preserved the array's cheap didSet fingerprint.
+        return state.episodes.first { $0.id == id }
     }
 
     /// Episodes belonging to the given podcast, newest publish-date first.
@@ -42,11 +48,15 @@ extension AppStateStore {
     }
 
     /// All episodes across every podcast, sorted newest-first.
-    /// Used by the Library "All Episodes" view. Not cached — call sites should
-    /// slice via `prefix(_:)` or paginate to avoid materialising the full array
-    /// on every render.
+    /// Sorting is paid once when the Rust library projection changes.
     var allEpisodesSorted: [Episode] {
-        state.episodes.sorted { $0.pubDate > $1.pubDate }
+        let episodes = state.episodes
+        guard allEpisodeIndexesNewestFirst.count == episodes.count else {
+            return episodes.sorted { $0.pubDate > $1.pubDate }
+        }
+        return allEpisodeIndexesNewestFirst.compactMap {
+            episodes.indices.contains($0) ? episodes[$0] : nil
+        }
     }
 
 }

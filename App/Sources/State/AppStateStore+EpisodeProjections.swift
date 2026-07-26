@@ -52,9 +52,12 @@ extension AppStateStore {
         var unplayed: [UUID: Int] = [:]
         var downloaded: Set<UUID> = []
         var transcribed: Set<UUID> = []
+        var episodeByID: [UUID: Int] = [:]
         var byShow: [UUID: [Int]] = [:]
         var inProgress: [Episode] = []
         var recent: [Episode] = []
+        var downloadedIndexes: [Int] = []
+        var starredIndexes: [Int] = []
 
         // Reserve capacity to avoid the rehash storm when growing through
         // a 10k-episode pass. Conservative bounds: bucket counts ≤ unique
@@ -64,12 +67,16 @@ extension AppStateStore {
         unplayed.reserveCapacity(state.subscriptions.count)
         downloaded.reserveCapacity(state.subscriptions.count)
         transcribed.reserveCapacity(state.subscriptions.count)
+        episodeByID.reserveCapacity(episodes.count)
         byShow.reserveCapacity(state.subscriptions.count)
         inProgress.reserveCapacity(min(64, episodes.count))
         recent.reserveCapacity(min(Self.recentEpisodesCacheLimit, episodes.count))
+        downloadedIndexes.reserveCapacity(min(256, episodes.count))
+        starredIndexes.reserveCapacity(min(256, episodes.count))
 
         for (index, episode) in episodes.enumerated() {
             let podID = episode.podcastID
+            episodeByID[episode.id] = index
 
             // Unplayed-count bucket. Default to 0 so the dict has an entry
             // for every show that has any episode at all (cheaper than
@@ -86,7 +93,9 @@ extension AppStateStore {
             // for the same podID; Set.insert is O(1) amortised.
             if case .downloaded = episode.downloadState {
                 downloaded.insert(podID)
+                downloadedIndexes.append(index)
             }
+            if episode.isStarred { starredIndexes.append(index) }
             if case .ready = episode.transcriptState {
                 transcribed.insert(podID)
             }
@@ -110,23 +119,38 @@ extension AppStateStore {
         }
 
         inProgress.sort { $0.pubDate > $1.pubDate }
+        let allNewestFirst = episodes.indices.sorted {
+            episodes[$0].pubDate > episodes[$1].pubDate
+        }
 
         // recentEpisodesCached: top-N unplayed episodes across all shows.
-        // We do a global sort + prefix here. For 10k episodes this is
-        // still cheap (single 10k sort, no allocation per cell).
-        recent = episodes.indices
+        // Reuse the global ordering that drives All Episodes.
+        recent = allNewestFirst
             .lazy
             .filter { !episodes[$0].played }
-            .sorted { episodes[$0].pubDate > episodes[$1].pubDate }
             .prefix(Self.recentEpisodesCacheLimit)
             .map { episodes[$0] }
 
         unplayedCountByShow = unplayed
         hasDownloadedByShow = downloaded
         hasTranscribedByShow = transcribed
+        episodeIndexByID = episodeByID
+        podcastIndexByID = Dictionary(
+            uniqueKeysWithValues: state.podcasts.indices.map {
+                (state.podcasts[$0].id, $0)
+            }
+        )
+        subscriptionIndexByPodcastID = Dictionary(
+            uniqueKeysWithValues: state.subscriptions.indices.map {
+                (state.subscriptions[$0].podcastID, $0)
+            }
+        )
         episodeIndexesByShow = byShow
+        allEpisodeIndexesNewestFirst = allNewestFirst
         inProgressEpisodesCached = inProgress
         recentEpisodesCached = recent
+        downloadedEpisodeIndexes = downloadedIndexes
+        starredEpisodeIndexes = starredIndexes
     }
 
     /// Alias for `recomputeEpisodeProjections()`. Kept as a separate name
@@ -165,13 +189,33 @@ extension AppStateStore {
     /// Pre-sorted list of episodes for one show.
     /// Backed by `episodeIndexesByShow`; no per-call filter or sort.
     func episodesForShowView(_ id: UUID) -> [Episode] {
-        guard let indexes = episodeIndexesByShow[id] else { return [] }
+        guard let indexes = episodeIndexesByShow[id] else {
+            return state.episodes
+                .filter { $0.podcastID == id }
+                .sorted { $0.pubDate > $1.pubDate }
+        }
         let episodes = state.episodes
         let cached = indexes.compactMap { index -> Episode? in
             guard episodes.indices.contains(index) else { return nil }
             return episodes[index]
         }
         return cached
+    }
+
+    func downloadedEpisodesView() -> [Episode] {
+        episodes(at: downloadedEpisodeIndexes)
+    }
+
+    func starredEpisodesView() -> [Episode] {
+        episodes(at: starredEpisodeIndexes)
+    }
+
+    private func episodes(at indexes: [Int]) -> [Episode] {
+        let episodes = state.episodes
+        return indexes.compactMap { index in
+            guard episodes.indices.contains(index) else { return nil }
+            return episodes[index]
+        }
     }
 
     // MARK: - Fingerprint (didSet safety net)
@@ -191,5 +235,18 @@ extension AppStateStore {
         if lhs.first?.id != rhs.first?.id { return true }
         if lhs.last?.id != rhs.last?.id { return true }
         return false
+    }
+
+    static func podcastStructureChanged(_ lhs: [Podcast], _ rhs: [Podcast]) -> Bool {
+        lhs.count != rhs.count || lhs.first?.id != rhs.first?.id || lhs.last?.id != rhs.last?.id
+    }
+
+    static func subscriptionStructureChanged(
+        _ lhs: [PodcastSubscription],
+        _ rhs: [PodcastSubscription]
+    ) -> Bool {
+        lhs.count != rhs.count
+            || lhs.first?.podcastID != rhs.first?.podcastID
+            || lhs.last?.podcastID != rhs.last?.podcastID
     }
 }

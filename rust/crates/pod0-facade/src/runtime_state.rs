@@ -5,7 +5,7 @@ use pod0_application::{
     Clock, CommandEnvelope, CommandLedger, CommandRegistration, CoreFailure, CoreFailureCode,
     CoreWakeReason, HostCancellationRequest, HostObservation, HostRequestEnvelope,
     HostRequestLedger, OperationProjection, OperationResult, OperationStage, PlaybackPolicyState,
-    SubscriptionRegistry,
+    Projection, SubscriptionRegistry,
 };
 use pod0_domain::{
     CommandId, EpisodeId, HostRequestId, ListeningDomainSnapshot, RecallQueryId, StateRevision,
@@ -19,6 +19,7 @@ use pod0_storage::{
 
 use crate::ProjectionSubscriber;
 use crate::runtime_agent_modules::state::{PendingAgentRecallObservation, PendingAgentRequest};
+use crate::runtime_delivery_content::ProjectionDeliveryContent;
 use crate::runtime_evidence_state::PendingEvidenceIndex;
 pub(super) use crate::runtime_failure::failure;
 use crate::runtime_feed_state::PendingFeed;
@@ -41,6 +42,8 @@ pub(super) struct FacadeState {
     pub(super) clock: Arc<dyn Clock>,
     pub(super) revision: StateRevision,
     pub(super) listening: ListeningDomainSnapshot,
+    pub(super) new_episode_notification_settings:
+        pod0_application::NewEpisodeNotificationSettingsProjection,
     pub(super) notes: pod0_storage::NoteCollectionSnapshot,
     pub(super) memories: pod0_storage::MemoryCollectionSnapshot,
     pub(super) clips: pod0_storage::ClipCollectionSnapshot,
@@ -72,6 +75,10 @@ pub(super) struct FacadeState {
     pub(super) pending_downloads: BTreeMap<HostRequestId, pod0_storage::DownloadHostRequestRecord>,
     pub(super) pending_download_observations:
         BTreeMap<HostRequestId, pod0_application::HostObservationEnvelope>,
+    pub(super) pending_feed_discovery_notifications:
+        BTreeMap<HostRequestId, pod0_storage::FeedDiscoveryEffectRecord>,
+    pub(super) pending_feed_discovery_notification_observations:
+        BTreeMap<HostRequestId, pod0_application::HostObservationEnvelope>,
     pub(super) pending_model_chapters: BTreeMap<HostRequestId, pod0_domain::EpisodeId>,
     pub(super) pending_model_observations:
         BTreeMap<HostRequestId, pod0_application::HostObservationEnvelope>,
@@ -97,6 +104,8 @@ pub(super) struct FacadeState {
     pub(super) operations: Vec<OperationProjection>,
     pub(super) subscriptions: SubscriptionRegistry,
     pub(super) subscribers: BTreeMap<SubscriptionId, Arc<dyn ProjectionSubscriber>>,
+    pub(super) delivered_projections: BTreeMap<SubscriptionId, Projection>,
+    pub(super) delivered_contents: BTreeMap<SubscriptionId, ProjectionDeliveryContent>,
 }
 
 impl FacadeState {
@@ -142,6 +151,7 @@ impl FacadeState {
         let _ = store.clear_session_sleep_timer()?;
         let _ = store.recover_download_artifacts()?;
         let listening = store.snapshot()?;
+        let new_episode_notification_settings = store.new_episode_notification_settings()?;
         let notes = store.note_snapshot()?;
         let memories = store.memory_snapshot()?;
         let clips = store.clip_snapshot()?;
@@ -170,6 +180,7 @@ impl FacadeState {
                     .max(clips.revision.value),
             ),
             listening,
+            new_episode_notification_settings,
             notes,
             memories,
             clips,
@@ -188,6 +199,7 @@ impl FacadeState {
         };
         state.rehydrate_publisher_chapter_workflows()?;
         state.rehydrate_download_workflows()?;
+        state.rehydrate_feed_discovery_workflows()?;
         state.rehydrate_model_chapter_workflows()?;
         state.rehydrate_transcript_workflows()?;
         state.rehydrate_scheduled_agent_workflows()?;

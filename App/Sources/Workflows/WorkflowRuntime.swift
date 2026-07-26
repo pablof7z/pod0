@@ -11,6 +11,8 @@ final class WorkflowRuntime {
     private(set) var artifactRepository: ArtifactRepository?
     private var coordinator: WorkCoordinator?
     private weak var client: WorkflowClient?
+    private var wakeTask: Task<Void, Never>?
+    private var wakeRequested = false
     private lazy var persistenceObserver: NSObjectProtocol = NotificationCenter.default.addObserver(
         forName: .persistenceDidCommitWorkflowJobs,
         object: nil,
@@ -36,18 +38,11 @@ final class WorkflowRuntime {
         if let client { store.sharedLibrary?.attach(workflowClient: client) }
 
         let executors: [WorkJobKind: any JobExecutor] = [
-            .feedDiscovery: FeedDiscoveryJobExecutor(store: store, jobStore: jobs),
             .metadataIndex: MetadataIndexJobExecutor(store: store),
-            .newEpisodeNotification: NewEpisodeNotificationJobExecutor(store: store),
         ]
-        let verifier = WorkflowArtifactVerifier(artifacts: artifacts)
-        let verifiers = Dictionary(
-            uniqueKeysWithValues: executors.keys.map { ($0, verifier as any JobPostconditionVerifier) }
-        )
         coordinator = WorkCoordinator(
             jobStore: jobs,
-            executors: executors,
-            verifiers: verifiers
+            executors: executors
         )
     }
 
@@ -77,50 +72,53 @@ final class WorkflowRuntime {
     func perform(
         _ action: WorkflowJobAction,
         on projection: WorkflowJobProjection
-    ) -> WorkflowJobActionResult {
+    ) async -> WorkflowJobActionResult {
         if projection.authority == .sharedRustPublisherChapters {
-            return appStore?.sharedLibrary?.performPublisherChapterAction(
+            return await appStore?.sharedLibrary?.performPublisherChapterAction(
                 action,
                 on: projection
             ) ?? .failed
         }
         if projection.authority == .sharedRustModelChapters {
-            return appStore?.sharedLibrary?.performModelChapterAction(
+            return await appStore?.sharedLibrary?.performModelChapterAction(
                 action,
                 on: projection
             ) ?? .failed
         }
         if projection.authority == .sharedRustDownloads {
-            return appStore?.sharedLibrary?.performDownloadAction(
+            return await appStore?.sharedLibrary?.performDownloadAction(
                 action,
                 on: projection
             ) ?? .failed
         }
         if projection.authority == .sharedRustTranscripts {
-            return appStore?.sharedLibrary?.performTranscriptAction(
+            return await appStore?.sharedLibrary?.performTranscriptAction(
                 action,
                 on: projection
             ) ?? .failed
         }
         if projection.authority == .sharedRustScheduledAgents {
-            return appStore?.sharedLibrary?.performScheduledAgentAction(
+            return await appStore?.sharedLibrary?.performScheduledAgentAction(
                 action,
                 on: projection
             ) ?? .failed
         }
         guard let jobStore else { return .failed }
+        let result: WorkflowJobActionResult
         do {
-            let result = try jobStore.perform(
-                action,
-                jobID: projection.id,
-                expectedUpdatedAt: projection.updatedAt
-            )
+            result = try await Task.detached(priority: .userInitiated) {
+                try jobStore.perform(
+                    action,
+                    jobID: projection.id,
+                    expectedUpdatedAt: projection.updatedAt
+                )
+            }.value
             if case .accepted = result { wake() }
-            return result
         } catch {
             Self.logger.error("Unable to perform workflow action: \(error, privacy: .public)")
             return .failed
         }
+        return result
     }
 
     func latestJob(kind: WorkJobKind, subjectID: UUID) -> WorkJob? {
@@ -129,11 +127,17 @@ final class WorkflowRuntime {
     }
 
     func wake() {
-        guard let coordinator else { return }
-        Task { @MainActor [weak self] in
+        guard coordinator != nil else { return }
+        wakeRequested = true
+        guard wakeTask == nil else { return }
+        wakeTask = Task { @MainActor [weak self] in
             guard let self else { return }
-            await self.reconcile(signalOnly: true)
-            await coordinator.signal()
+            repeat {
+                wakeRequested = false
+                await reconcile(signalOnly: true)
+            } while wakeRequested && !Task.isCancelled
+            wakeTask = nil
+            if wakeRequested && !Task.isCancelled { wake() }
         }
     }
 
@@ -142,30 +146,48 @@ final class WorkflowRuntime {
     }
 
     private func reconcile(signalOnly: Bool) async {
-        guard let store = appStore, let jobStore, let coordinator else { return }
-        do {
-            store.sharedLibrary?.ensurePublisherChapters(
-                episodeIDs: store.state.episodes.map(\.id)
-            )
-            store.sharedLibrary?.ensureTranscriptWorkflows(
-                episodes: store.state.episodes,
-                settings: store.state.settings
-            )
-            let transcriptSnapshots = store.sharedLibrary?.transcriptWorkflowSnapshots(
-                episodeIDs: store.state.episodes.map(\.id)
-            ) ?? []
-            store.sharedLibrary?.ensureModelChapters(
-                transcripts: transcriptSnapshots,
-                configuredModel: store.state.settings.chapterCompilationModel
-            )
-            store.sharedLibrary?.reconcileScheduledAgents()
-            let reconciler = Reconciler(appStore: store, jobStore: jobStore)
-            _ = try reconciler.reconcile()
-            if signalOnly { await coordinator.signal() }
-            else { await coordinator.drainDueJobs() }
-        } catch {
-            Self.logger.error("Reconciliation failed: \(error, privacy: .public)")
+        guard let store = appStore, let coordinator else { return }
+        let episodes = store.state.episodes
+        let settings = store.state.settings
+        store.sharedLibrary?.ensurePublisherChapters(
+            episodeIDs: episodes.map(\.id)
+        )
+        let transcriptStartPolicies = store.state.subscriptions.reduce(
+            into: [UUID: TranscriptStartPolicy]()
+        ) { policies, subscription in
+            policies[subscription.podcastID] = subscription.transcriptStartPolicy
         }
+        let transcriptOpportunities = await Task.detached(priority: .utility) {
+            SharedLibraryClient.transcriptWorkflowOpportunities(
+                episodes: episodes,
+                settings: settings,
+                startPolicies: transcriptStartPolicies
+            )
+        }.value
+        store.sharedLibrary?.ensureTranscriptWorkflows(transcriptOpportunities)
+        let transcriptSnapshots: [TranscriptWorkflowSnapshot]
+        if let sharedLibrary = store.sharedLibrary {
+            let facade = sharedLibrary.facade
+            let episodeIDs = episodes.compactMap { episode -> UUID? in
+                guard case .ready = episode.transcriptState else { return nil }
+                return episode.id
+            }
+            transcriptSnapshots = await Task.detached(priority: .utility) {
+                SharedLibraryClient.transcriptWorkflowSnapshots(
+                    facade: facade,
+                    episodeIDs: episodeIDs
+                )
+            }.value
+        } else {
+            transcriptSnapshots = []
+        }
+        store.sharedLibrary?.ensureModelChapters(
+            transcripts: transcriptSnapshots,
+            configuredModel: settings.chapterCompilationModel
+        )
+        store.sharedLibrary?.reconcileScheduledAgents()
+        if signalOnly { await coordinator.signal() }
+        else { await coordinator.drainDueJobs() }
     }
 
 }

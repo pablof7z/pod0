@@ -80,14 +80,13 @@ enum AgentOpenRouterClient {
     /// - Returns: The fully accumulated `AgentResult` once the stream ends.
     /// - Throws: `AgentError` on HTTP failure or a malformed response, or
     ///   `CancellationError` if the enclosing task is cancelled.
-    @MainActor
     static func streamCompletion(
         messages: [[String: Any]],
         tools: [[String: Any]],
         apiKey: String,
         model: String,
         feature: String = CostFeature.agentChat,
-        onPartialContent: (String) -> Void
+        onPartialContent: @escaping @MainActor @Sendable (String) -> Void
     ) async throws -> AgentResult {
         var request = URLRequest(url: NetworkConstants.openRouterURL)
         request.httpMethod = "POST"
@@ -112,6 +111,7 @@ enum AgentOpenRouterClient {
         var accumulator = StreamAccumulator()
         var capturedUsage: OpenRouterUsagePayload?
         var capturedModel: String = model
+        var lastPartialPublish = Date.distantPast
 
         for try await line in bytes.lines {
             guard line.hasPrefix("data: ") else { continue }
@@ -141,9 +141,15 @@ enum AgentOpenRouterClient {
             else { continue }
 
             accumulator.applyDelta(delta)
-            if !accumulator.content.isEmpty {
-                onPartialContent(accumulator.content)
+            let now = Date()
+            if !accumulator.content.isEmpty,
+               now.timeIntervalSince(lastPartialPublish) >= 0.05 {
+                await onPartialContent(accumulator.content)
+                lastPartialPublish = now
             }
+        }
+        if !accumulator.content.isEmpty {
+            await onPartialContent(accumulator.content)
         }
 
         let latencyMs = Int(Date().timeIntervalSince(start) * 1000)
@@ -160,7 +166,7 @@ enum AgentOpenRouterClient {
             toolCalls: baseResult.toolCalls,
             tokensUsed: tokensUsed
         )
-        CostLedger.shared.log(
+        await CostLedger.shared.log(
             feature: feature,
             model: capturedModel,
             usage: capturedUsage,

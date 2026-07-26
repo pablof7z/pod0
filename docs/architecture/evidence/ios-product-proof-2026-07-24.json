@@ -1,0 +1,84 @@
+{
+  "evidence_version": 1,
+  "recorded_at": "2026-07-24T09:57:36Z",
+  "commit": "da3556e8a5f0c7000d7f6c74cdf88bb5340fb6f2",
+  "status": "automated_and_simulator_qualified_hardware_and_product_evidence_pending",
+  "environment": {
+    "hardware": "Apple M2 Mac mini, 24 GB RAM",
+    "host_os": "macOS 26.4 (25E246)",
+    "xcode": "26.6 (17F113)",
+    "ios_simulator": "iPhone 17, iOS 26.5, ARM64",
+    "rust": "1.93.0"
+  },
+  "hosted_ci": {
+    "run_id": 30081008161,
+    "url": "https://github.com/pablof7z/pod0/actions/runs/30081008161",
+    "conclusion": "success",
+    "ios_tests": {
+      "passed": 655,
+      "failed": 0,
+      "unexpected": 0,
+      "configuration": "Release with ENABLE_TESTABILITY=YES for XCTest only"
+    },
+    "generated_project_drift": false,
+    "workflow_process_reconstruction": "passed",
+    "non_publishing_release_archive": "passed"
+  },
+  "runtime_smoke": {
+    "search_returned_episode_results": true,
+    "episode_detail_opened": true,
+    "downloaded_episode_resumed": true,
+    "force_quit_and_relaunch": "passed",
+    "restored_episode": "The Walt Disney Company",
+    "restored_position_seconds": 279,
+    "featured_surface_present": false,
+    "app_errors_or_crashes": false
+  },
+  "recall_release_benchmark": {
+    "backend": "rust-sqlite-vec-production",
+    "sqlite_vec_version": "v0.1.9",
+    "spans": 5000,
+    "dimensions": 1024,
+    "samples": 20,
+    "rebuild_milliseconds": 820.892125,
+    "cold_query_milliseconds": 9.418667,
+    "warm_query_p50_milliseconds": 8.65925,
+    "warm_query_p95_milliseconds": 8.813708,
+    "cancellation_response_microseconds": 0.125,
+    "candidate_count": 20,
+    "maximum_candidate_count": 40,
+    "index_bytes": 52908032,
+    "private_text_leaves_process": false,
+    "budgets_passed": true
+  },
+  "architecture_gate": {
+    "production_swift_files_classified": 566,
+    "native_by_design": 397,
+    "shared_rust_now": 125,
+    "temporary_swift": 44,
+    "unclassified_production_swift_files": 0,
+    "ui_direct_durable_store_writes": 0,
+    "single_writer_guards": [
+      "listening",
+      "recall",
+      "transcript",
+      "chapter",
+      "feed_discovery",
+      "scheduled_agent",
+      "agent"
+    ],
+    "single_writer_guards_passed": true,
+    "nmp_domain_boundary_passed": true
+  },
+  "external_gates": {
+    "physical_iphone_connected": false,
+    "physical_playback_issue": 84,
+    "wired_route_qualified": false,
+    "bluetooth_route_qualified": false,
+    "phone_or_siri_interruption_qualified": false,
+    "lock_screen_controls_qualified": false,
+    "product_metric_minimum_cohorts_reached": false,
+    "product_metric_status": "insufficient_evidence",
+    "android_product_investment": "gated"
+  }
+}

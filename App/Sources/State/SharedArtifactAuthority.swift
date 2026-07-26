@@ -8,4 +8,5 @@ struct SharedArtifactAuthority {
     var clips = false
     var scheduledAgents = false
     var memories = false
+    var legacyAgentActivityRetired = false
 }

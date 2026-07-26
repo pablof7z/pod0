@@ -80,11 +80,14 @@ struct CachedAsyncImage<Content: View>: View {
         // The cache key includes any downsampling target size so two callers
         // requesting different sizes for the same URL each get their own
         // memory entry instead of fighting over one decoded variant.
-        let cache = ImageCache.default
         let baseKey = url.absoluteString
-        let cacheKey = targetSize.map { "\(baseKey)|ds=\(Int($0.width))x\(Int($0.height))" } ?? baseKey
-        if cache.isCached(forKey: cacheKey),
-           let cached = cache.retrieveImageInMemoryCache(forKey: cacheKey) {
+        // `ImageCache.isCached` also probes the disk cache synchronously.
+        // This method is main-actor isolated because it publishes SwiftUI
+        // state, so that convenience check showed up as `stat(2)` on the
+        // main thread while opening artwork-heavy lists. Consult memory only;
+        // Kingfisher's async retrieval handles processed-memory and disk hits.
+        if targetSize == nil,
+           let cached = ImageCache.default.retrieveImageInMemoryCache(forKey: baseKey) {
             phase = .success(Image(uiImage: cached))
             return
         }

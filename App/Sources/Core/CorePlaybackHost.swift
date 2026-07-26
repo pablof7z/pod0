@@ -79,7 +79,8 @@ final class CorePlaybackHost: CorePlaybackHosting {
              .executeAgentModelTurn, .presentAgentApproval,
              .executeAgentCapability, .provisionNostrSignerCredential,
              .restoreNostrSignerCredential, .signNostrEvent,
-             .deleteNostrSignerCredential, .scheduleCoreWake:
+             .deleteNostrSignerCredential, .scheduleCoreWake,
+             .deliverNewEpisodeNotification:
             return .failed(code: .invalidResponse, safeDetail: "Core request sent to player")
         case .startEpisodeDownload, .cancelEpisodeDownload,
              .removeEpisodeDownloadArtifact:
@@ -106,10 +107,11 @@ final class CorePlaybackHost: CorePlaybackHosting {
 
         cancelTransition()
         hasIssuedPlay = false
-        engine.load(episode, requestedURL: requestedURL)
-        if startPositionMilliseconds > 0 {
-            engine.seek(to: Self.seconds(startPositionMilliseconds))
-        }
+        engine.load(
+            episode,
+            requestedURL: requestedURL,
+            initialPosition: Self.seconds(startPositionMilliseconds)
+        )
         return .playbackObserved(value: currentObservation())
     }
 

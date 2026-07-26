@@ -22,12 +22,12 @@ final class ProductSignalInstrumentationTests: XCTestCase {
 
         let first = try await service.addSubscription(feedURLString: firstURL)
         _ = try await service.addSubscription(feedURLString: secondURL)
-        _ = made.store.addNote(text: "private user note")
-        _ = made.store.addNote(text: "agent note", author: .agent)
+        _ = await made.store.addNote(text: "private user note")
+        _ = await made.store.addNote(text: "agent note", author: .agent)
         let episode = try XCTUnwrap(
             made.store.state.episodes.first { $0.podcastID == first.id }
         )
-        made.store.addClip(Clip(
+        await made.store.addClip(Clip(
             episodeID: episode.id,
             subscriptionID: first.id,
             startMs: 1_000,
@@ -164,7 +164,10 @@ final class ProductSignalInstrumentationTests: XCTestCase {
     ) {
         let fileURL = AppStateTestSupport.uniqueTempFileURL()
         let mediaURL = fileURL.deletingPathExtension().appendingPathExtension("m4a")
-        try SilentAudioWriter.writeSilence(durationSeconds: 2, to: mediaURL)
+        try SilentAudioWriter.writeSilence(
+            durationSeconds: max(2, position + 2),
+            to: mediaURL
+        )
         let persistence = Persistence(fileURL: fileURL)
         let podcast = Podcast(
             feedURL: URL(string: "https://signals.example/feed.xml")!,
@@ -237,7 +240,7 @@ final class ProductSignalInstrumentationTests: XCTestCase {
         _ count: Int,
         sink: RecordingProductSignalSink
     ) async -> [ProductSignalObservation] {
-        let captured = await sink.waitForCount(count)
+        let captured = await sink.waitForCount(count, timeout: .seconds(10))
         XCTAssertGreaterThanOrEqual(
             captured.count,
             count,

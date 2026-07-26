@@ -23,6 +23,7 @@ pub(super) fn playback_request_episode_id(
         | Request::StartEpisodeDownload { .. }
         | Request::CancelEpisodeDownload { .. }
         | Request::RemoveEpisodeDownloadArtifact { .. }
+        | Request::DeliverNewEpisodeNotification { .. }
         | Request::ExecuteTranscriptCapability { .. }
         | Request::ExecuteScheduledAgentTurn { .. }
         | Request::ExecuteAgentModelTurn { .. }

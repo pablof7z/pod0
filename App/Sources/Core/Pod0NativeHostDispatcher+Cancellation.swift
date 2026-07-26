@@ -31,6 +31,7 @@ extension Pod0NativeHostDispatcher {
         for requestID in taskIDs {
             guard let active = activeTasks.removeValue(forKey: requestID) else { continue }
             if !cancelScheduledAgentTask(active) {
+                cancelNotificationIfNeeded(active.envelope.request)
                 active.task.cancel()
                 finish(
                     active.envelope,
@@ -74,6 +75,7 @@ extension Pod0NativeHostDispatcher {
            active.envelope.cancellationId == cancellationID {
             activeTasks.removeValue(forKey: requestID)
             if !cancelScheduledAgentTask(active) {
+                cancelNotificationIfNeeded(active.envelope.request)
                 active.task.cancel()
                 rememberCompletion(requestID)
             }

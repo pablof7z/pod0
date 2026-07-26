@@ -69,7 +69,7 @@ fn successful_native_action_queues_one_tool_free_final_answer() {
             turn_id: request.turn_id,
             proposal_id: request.proposal.proposal_id,
             proposal_digest: request.proposal.proposal_digest,
-            approved: true,
+            decision: AgentApprovalDecision::Approve,
         },
     ));
     let capability = fixture.facade.next_host_requests(8).remove(0);

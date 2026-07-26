@@ -21,18 +21,20 @@ extension SharedLibraryClient {
     }
 
     func execute(_ command: ApplicationCommand) async throws -> OperationResult? {
+        await subscriptionTask?.value
+        await initialProjectionTask?.value
         let commandID = CommandId(uuid: UUID())
         let cancellationID = CancellationId(uuid: UUID())
-        return try await withCheckedThrowingContinuation { continuation in
+        let result = try await withCheckedThrowingContinuation { continuation in
             waiters[commandID] = Waiter(continuation: continuation)
-            facade.dispatch(command: CommandEnvelope(
-                commandId: commandID,
-                cancellationId: cancellationID,
-                expectedRevision: nil,
-                command: command
-            ))
-            dispatcher.executePendingRequests(from: facade)
+            dispatchCoreCommand(
+                command,
+                commandID: commandID,
+                cancellationID: cancellationID
+            )
         }
+        await libraryProjectionTask?.value
+        return result
     }
 
     func podcast(id: UUID) -> Podcast? {

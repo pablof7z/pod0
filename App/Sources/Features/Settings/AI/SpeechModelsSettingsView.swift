@@ -141,7 +141,7 @@ struct SpeechModelsSettingsView: View {
         } header: {
             Text("Narration")
         } footer: {
-            Text("Used for spoken agent picks and voice previews. AssemblyAI is transcription-only, so narration still uses ElevenLabs.")
+            Text("Used for generated Agent audio and voice previews. AssemblyAI is transcription-only, so speech synthesis still uses ElevenLabs.")
         }
     }
 

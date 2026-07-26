@@ -97,11 +97,9 @@ struct NotificationSettingsView: View {
 
     private var newEpisodesBinding: Binding<Bool> {
         Binding(
-            get: { store.state.settings.notifyOnNewEpisodes },
+            get: { store.newEpisodeNotificationsEnabled },
             set: { v in
-                var s = store.state.settings
-                s.notifyOnNewEpisodes = v
-                store.updateSettings(s)
+                store.setNewEpisodeNotificationsEnabled(v)
                 Haptics.selection()
             }
         )

@@ -7,7 +7,10 @@ use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, 
 use crate::agent_store_codec::{
     AGENT_STATE_SCHEMA_VERSION, decode_state, encode_state, stage_code,
 };
-use crate::migration_db::{configure, open_connection, user_version, validate_open_database};
+use crate::migration_db::{
+    configure, open_connection, user_version, validate_current_database_identity,
+    validate_open_database,
+};
 use crate::{
     AgentAuditKind, AgentCommandContext, AgentMutationOutcome, AgentTurnMutation, AgentTurnPage,
     CURRENT_SCHEMA_VERSION, StorageError,
@@ -23,6 +26,7 @@ type StoredAgentTurnRow = (Vec<u8>, i64, String, u32, Vec<u8>, Vec<u8>);
 impl AgentStore {
     pub fn open(path: &Path) -> Result<Self, StorageError> {
         let connection = open_current(path, true)?;
+        validate_open_database(&connection, CURRENT_SCHEMA_VERSION)?;
         drop(connection);
         Ok(Self {
             path: path.to_owned(),
@@ -273,11 +277,6 @@ fn read_page(
 fn open_current(path: &Path, read_only: bool) -> Result<Connection, StorageError> {
     let connection = open_connection(path, read_only)?;
     let version = user_version(&connection)?;
-    validate_open_database(&connection, version)?;
-    if version != CURRENT_SCHEMA_VERSION {
-        return Err(StorageError::CorruptSchema {
-            detail: "agent store schema is not current",
-        });
-    }
+    validate_current_database_identity(&connection, version)?;
     Ok(connection)
 }

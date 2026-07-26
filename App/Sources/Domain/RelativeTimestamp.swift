@@ -7,8 +7,8 @@ import Foundation
 /// Two display styles are offered so callers don't need to hand-roll
 /// interval arithmetic:
 ///
-/// - **compact** ("5s ago", "3m ago", "2h ago") — for live activity
-///   feeds where items are seconds to hours old (``AgentActivitySheet``).
+/// - **compact** ("5s ago", "3m ago", "2h ago") — for recent items where
+///   second-level recency is useful.
 /// - **extended** ("just now", "5m ago", "2h ago", "3d ago", "2w ago",
 ///   then an absolute date) — for memory / note lists that can span
 ///   weeks or months (``AgentContentRow``).

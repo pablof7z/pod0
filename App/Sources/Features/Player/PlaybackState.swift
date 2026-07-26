@@ -84,7 +84,7 @@ final class PlaybackState {
     /// Wired by `RootView` to the shared-core download command boundary.
     /// The closure keeps `PlaybackState` decoupled from the download service
     /// while still funnelling every playback entry point
-    /// (`play_episode`, Continue Listening, Home featured, deep links)
+    /// (`play_episode`, Continue Listening, deep links)
     /// through a single download trigger.
     ///
     /// Only fires on *new* episode load, never on same-episode reloads —

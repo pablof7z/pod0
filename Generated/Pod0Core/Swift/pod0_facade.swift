@@ -471,6 +471,22 @@ private let UNIFFI_CALLBACK_UNEXPECTED_ERROR: Int32 = 2
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterUInt8: FfiConverterPrimitive {
+    typealias FfiType = UInt8
+    typealias SwiftType = UInt8
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt8 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: UInt8, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterUInt16: FfiConverterPrimitive {
     typealias FfiType = UInt16
     typealias SwiftType = UInt16
@@ -644,6 +660,14 @@ public protocol Pod0FacadeProtocol: AnyObject, Sendable {
     func downloadCutover()  -> LegacyDownloadCutoverProjection
 
     func stageLegacyDownloadCutover(sourceGeneration: UInt64, candidates: [LegacyDownloadCutoverCandidate])  -> LegacyDownloadCutoverProjection
+
+    func commitLegacyFeedDiscoveryCutover(sourceGeneration: UInt64)  -> LegacyFeedDiscoveryCutoverProjection
+
+    func feedDiscoveryCutover()  -> LegacyFeedDiscoveryCutoverProjection
+
+    func inspectLegacyFeedDiscoveryCutover(backupDigest: ContentDigest, backupByteCount: UInt64, notificationsEnabled: Bool, inspectedJobCount: UInt32, blockedCount: UInt32, candidates: [LegacyFeedDiscoveryCandidateInput])  -> LegacyFeedDiscoveryCutoverProjection
+
+    func stageLegacyFeedDiscoveryCutover(backupDigest: ContentDigest, backupByteCount: UInt64, notificationsEnabled: Bool, inspectedJobCount: UInt32, blockedCount: UInt32, candidates: [LegacyFeedDiscoveryCandidateInput])  -> LegacyFeedDiscoveryCutoverProjection
 
     func commitLegacyMemoryCutover(sourceGeneration: UInt64)  -> LegacyMemoryCutoverProjection
 
@@ -878,6 +902,55 @@ open func stageLegacyDownloadCutover(sourceGeneration: UInt64, candidates: [Lega
             self.uniffiCloneHandle(),
         FfiConverterUInt64.lower(sourceGeneration),
         FfiConverterSequenceTypeLegacyDownloadCutoverCandidate.lower(candidates),uniffiCallStatus
+    )
+})
+}
+
+open func commitLegacyFeedDiscoveryCutover(sourceGeneration: UInt64) -> LegacyFeedDiscoveryCutoverProjection  {
+    return try!  FfiConverterTypeLegacyFeedDiscoveryCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_feed_discovery_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt64.lower(sourceGeneration),uniffiCallStatus
+    )
+})
+}
+
+open func feedDiscoveryCutover() -> LegacyFeedDiscoveryCutoverProjection  {
+    return try!  FfiConverterTypeLegacyFeedDiscoveryCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_feed_discovery_cutover(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+
+open func inspectLegacyFeedDiscoveryCutover(backupDigest: ContentDigest, backupByteCount: UInt64, notificationsEnabled: Bool, inspectedJobCount: UInt32, blockedCount: UInt32, candidates: [LegacyFeedDiscoveryCandidateInput]) -> LegacyFeedDiscoveryCutoverProjection  {
+    return try!  FfiConverterTypeLegacyFeedDiscoveryCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_inspect_legacy_feed_discovery_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeContentDigest_lower(backupDigest),
+        FfiConverterUInt64.lower(backupByteCount),
+        FfiConverterBool.lower(notificationsEnabled),
+        FfiConverterUInt32.lower(inspectedJobCount),
+        FfiConverterUInt32.lower(blockedCount),
+        FfiConverterSequenceTypeLegacyFeedDiscoveryCandidateInput.lower(candidates),uniffiCallStatus
+    )
+})
+}
+
+open func stageLegacyFeedDiscoveryCutover(backupDigest: ContentDigest, backupByteCount: UInt64, notificationsEnabled: Bool, inspectedJobCount: UInt32, blockedCount: UInt32, candidates: [LegacyFeedDiscoveryCandidateInput]) -> LegacyFeedDiscoveryCutoverProjection  {
+    return try!  FfiConverterTypeLegacyFeedDiscoveryCutoverProjection_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_feed_discovery_cutover(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeContentDigest_lower(backupDigest),
+        FfiConverterUInt64.lower(backupByteCount),
+        FfiConverterBool.lower(notificationsEnabled),
+        FfiConverterUInt32.lower(inspectedJobCount),
+        FfiConverterUInt32.lower(blockedCount),
+        FfiConverterSequenceTypeLegacyFeedDiscoveryCandidateInput.lower(candidates),uniffiCallStatus
     )
 })
 }
@@ -2570,6 +2643,232 @@ public func FfiConverterTypeLegacyDownloadCutoverProjection_lift(_ buf: RustBuff
 #endif
 public func FfiConverterTypeLegacyDownloadCutoverProjection_lower(_ value: LegacyDownloadCutoverProjection) -> RustBuffer {
     return FfiConverterTypeLegacyDownloadCutoverProjection.lower(value)
+}
+
+
+public struct LegacyFeedDiscoveryCandidateInput: Equatable, Hashable {
+    public let sourceOccurrenceId: CommandId
+    public let podcastId: PodcastId
+    public let episodeId: EpisodeId
+    public let kind: LegacyFeedDiscoveryEffectKindInput
+    public let disposition: LegacyFeedDiscoveryDispositionInput
+    public let observedAt: UnixTimestampMilliseconds
+    public let expiresAt: UnixTimestampMilliseconds
+    public let publishedAt: UnixTimestampMilliseconds
+    public let inputVersion: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sourceOccurrenceId: CommandId, podcastId: PodcastId, episodeId: EpisodeId, kind: LegacyFeedDiscoveryEffectKindInput, disposition: LegacyFeedDiscoveryDispositionInput, observedAt: UnixTimestampMilliseconds, expiresAt: UnixTimestampMilliseconds, publishedAt: UnixTimestampMilliseconds, inputVersion: String) {
+        self.sourceOccurrenceId = sourceOccurrenceId
+        self.podcastId = podcastId
+        self.episodeId = episodeId
+        self.kind = kind
+        self.disposition = disposition
+        self.observedAt = observedAt
+        self.expiresAt = expiresAt
+        self.publishedAt = publishedAt
+        self.inputVersion = inputVersion
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyFeedDiscoveryCandidateInput: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyFeedDiscoveryCandidateInput: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyFeedDiscoveryCandidateInput {
+        return
+            try LegacyFeedDiscoveryCandidateInput(
+                sourceOccurrenceId: FfiConverterTypeCommandId.read(from: &buf),
+                podcastId: FfiConverterTypePodcastId.read(from: &buf),
+                episodeId: FfiConverterTypeEpisodeId.read(from: &buf),
+                kind: FfiConverterTypeLegacyFeedDiscoveryEffectKindInput.read(from: &buf),
+                disposition: FfiConverterTypeLegacyFeedDiscoveryDispositionInput.read(from: &buf),
+                observedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                expiresAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                publishedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                inputVersion: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyFeedDiscoveryCandidateInput, into buf: inout [UInt8]) {
+        FfiConverterTypeCommandId.write(value.sourceOccurrenceId, into: &buf)
+        FfiConverterTypePodcastId.write(value.podcastId, into: &buf)
+        FfiConverterTypeEpisodeId.write(value.episodeId, into: &buf)
+        FfiConverterTypeLegacyFeedDiscoveryEffectKindInput.write(value.kind, into: &buf)
+        FfiConverterTypeLegacyFeedDiscoveryDispositionInput.write(value.disposition, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.observedAt, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.expiresAt, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.publishedAt, into: &buf)
+        FfiConverterString.write(value.inputVersion, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyFeedDiscoveryCandidateInput_lift(_ buf: RustBuffer) throws -> LegacyFeedDiscoveryCandidateInput {
+    return try FfiConverterTypeLegacyFeedDiscoveryCandidateInput.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyFeedDiscoveryCandidateInput_lower(_ value: LegacyFeedDiscoveryCandidateInput) -> RustBuffer {
+    return FfiConverterTypeLegacyFeedDiscoveryCandidateInput.lower(value)
+}
+
+
+public struct LegacyFeedDiscoveryCutoverFailure: Equatable, Hashable {
+    public let code: LegacyFeedDiscoveryCutoverFailureCode
+    public let diagnosticCode: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(code: LegacyFeedDiscoveryCutoverFailureCode, diagnosticCode: String) {
+        self.code = code
+        self.diagnosticCode = diagnosticCode
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyFeedDiscoveryCutoverFailure: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyFeedDiscoveryCutoverFailure: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyFeedDiscoveryCutoverFailure {
+        return
+            try LegacyFeedDiscoveryCutoverFailure(
+                code: FfiConverterTypeLegacyFeedDiscoveryCutoverFailureCode.read(from: &buf),
+                diagnosticCode: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyFeedDiscoveryCutoverFailure, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyFeedDiscoveryCutoverFailureCode.write(value.code, into: &buf)
+        FfiConverterString.write(value.diagnosticCode, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyFeedDiscoveryCutoverFailure_lift(_ buf: RustBuffer) throws -> LegacyFeedDiscoveryCutoverFailure {
+    return try FfiConverterTypeLegacyFeedDiscoveryCutoverFailure.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyFeedDiscoveryCutoverFailure_lower(_ value: LegacyFeedDiscoveryCutoverFailure) -> RustBuffer {
+    return FfiConverterTypeLegacyFeedDiscoveryCutoverFailure.lower(value)
+}
+
+
+public struct LegacyFeedDiscoveryCutoverProjection: Equatable, Hashable {
+    public let stage: LegacyFeedDiscoveryCutoverStage
+    public let sourceGeneration: UInt64?
+    public let sourceFingerprint: ContentDigest?
+    public let backupDigest: ContentDigest?
+    public let backupByteCount: UInt64?
+    public let notificationsEnabled: Bool?
+    public let inspectedJobCount: UInt32
+    public let candidateCount: UInt32
+    public let blockedCount: UInt32
+    public let ambiguousCount: UInt32
+    public let failure: LegacyFeedDiscoveryCutoverFailure?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(stage: LegacyFeedDiscoveryCutoverStage, sourceGeneration: UInt64?, sourceFingerprint: ContentDigest?, backupDigest: ContentDigest?, backupByteCount: UInt64?, notificationsEnabled: Bool?, inspectedJobCount: UInt32, candidateCount: UInt32, blockedCount: UInt32, ambiguousCount: UInt32, failure: LegacyFeedDiscoveryCutoverFailure?) {
+        self.stage = stage
+        self.sourceGeneration = sourceGeneration
+        self.sourceFingerprint = sourceFingerprint
+        self.backupDigest = backupDigest
+        self.backupByteCount = backupByteCount
+        self.notificationsEnabled = notificationsEnabled
+        self.inspectedJobCount = inspectedJobCount
+        self.candidateCount = candidateCount
+        self.blockedCount = blockedCount
+        self.ambiguousCount = ambiguousCount
+        self.failure = failure
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyFeedDiscoveryCutoverProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyFeedDiscoveryCutoverProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyFeedDiscoveryCutoverProjection {
+        return
+            try LegacyFeedDiscoveryCutoverProjection(
+                stage: FfiConverterTypeLegacyFeedDiscoveryCutoverStage.read(from: &buf),
+                sourceGeneration: FfiConverterOptionUInt64.read(from: &buf),
+                sourceFingerprint: FfiConverterOptionTypeContentDigest.read(from: &buf),
+                backupDigest: FfiConverterOptionTypeContentDigest.read(from: &buf),
+                backupByteCount: FfiConverterOptionUInt64.read(from: &buf),
+                notificationsEnabled: FfiConverterOptionBool.read(from: &buf),
+                inspectedJobCount: FfiConverterUInt32.read(from: &buf),
+                candidateCount: FfiConverterUInt32.read(from: &buf),
+                blockedCount: FfiConverterUInt32.read(from: &buf),
+                ambiguousCount: FfiConverterUInt32.read(from: &buf),
+                failure: FfiConverterOptionTypeLegacyFeedDiscoveryCutoverFailure.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LegacyFeedDiscoveryCutoverProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeLegacyFeedDiscoveryCutoverStage.write(value.stage, into: &buf)
+        FfiConverterOptionUInt64.write(value.sourceGeneration, into: &buf)
+        FfiConverterOptionTypeContentDigest.write(value.sourceFingerprint, into: &buf)
+        FfiConverterOptionTypeContentDigest.write(value.backupDigest, into: &buf)
+        FfiConverterOptionUInt64.write(value.backupByteCount, into: &buf)
+        FfiConverterOptionBool.write(value.notificationsEnabled, into: &buf)
+        FfiConverterUInt32.write(value.inspectedJobCount, into: &buf)
+        FfiConverterUInt32.write(value.candidateCount, into: &buf)
+        FfiConverterUInt32.write(value.blockedCount, into: &buf)
+        FfiConverterUInt32.write(value.ambiguousCount, into: &buf)
+        FfiConverterOptionTypeLegacyFeedDiscoveryCutoverFailure.write(value.failure, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyFeedDiscoveryCutoverProjection_lift(_ buf: RustBuffer) throws -> LegacyFeedDiscoveryCutoverProjection {
+    return try FfiConverterTypeLegacyFeedDiscoveryCutoverProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyFeedDiscoveryCutoverProjection_lower(_ value: LegacyFeedDiscoveryCutoverProjection) -> RustBuffer {
+    return FfiConverterTypeLegacyFeedDiscoveryCutoverProjection.lower(value)
 }
 
 
@@ -5306,6 +5605,328 @@ public func FfiConverterTypeLegacyDownloadCutoverStage_lower(_ value: LegacyDown
 
 
 
+
+public enum LegacyFeedDiscoveryCutoverFailureCode: Equatable, Hashable {
+
+    case invalidSource
+    case conflictingCoreState
+    case storageUnavailable
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyFeedDiscoveryCutoverFailureCode: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyFeedDiscoveryCutoverFailureCode: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyFeedDiscoveryCutoverFailureCode
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyFeedDiscoveryCutoverFailureCode {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .invalidSource
+
+        case 2: return .conflictingCoreState
+
+        case 3: return .storageUnavailable
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyFeedDiscoveryCutoverFailureCode, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .invalidSource:
+            writeInt(&buf, Int32(1))
+
+
+        case .conflictingCoreState:
+            writeInt(&buf, Int32(2))
+
+
+        case .storageUnavailable:
+            writeInt(&buf, Int32(3))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyFeedDiscoveryCutoverFailureCode_lift(_ buf: RustBuffer) throws -> LegacyFeedDiscoveryCutoverFailureCode {
+    return try FfiConverterTypeLegacyFeedDiscoveryCutoverFailureCode.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyFeedDiscoveryCutoverFailureCode_lower(_ value: LegacyFeedDiscoveryCutoverFailureCode) -> RustBuffer {
+    return FfiConverterTypeLegacyFeedDiscoveryCutoverFailureCode.lower(value)
+}
+
+
+
+
+public enum LegacyFeedDiscoveryCutoverStage: Equatable, Hashable {
+
+    case notStarted
+    case staged
+    case authoritative
+    case blocked
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyFeedDiscoveryCutoverStage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyFeedDiscoveryCutoverStage: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyFeedDiscoveryCutoverStage
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyFeedDiscoveryCutoverStage {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .notStarted
+
+        case 2: return .staged
+
+        case 3: return .authoritative
+
+        case 4: return .blocked
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyFeedDiscoveryCutoverStage, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .notStarted:
+            writeInt(&buf, Int32(1))
+
+
+        case .staged:
+            writeInt(&buf, Int32(2))
+
+
+        case .authoritative:
+            writeInt(&buf, Int32(3))
+
+
+        case .blocked:
+            writeInt(&buf, Int32(4))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyFeedDiscoveryCutoverStage_lift(_ buf: RustBuffer) throws -> LegacyFeedDiscoveryCutoverStage {
+    return try FfiConverterTypeLegacyFeedDiscoveryCutoverStage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyFeedDiscoveryCutoverStage_lower(_ value: LegacyFeedDiscoveryCutoverStage) -> RustBuffer {
+    return FfiConverterTypeLegacyFeedDiscoveryCutoverStage.lower(value)
+}
+
+
+
+
+public enum LegacyFeedDiscoveryDispositionInput: Equatable, Hashable {
+
+    case pending(attempt: UInt8, notBefore: UnixTimestampMilliseconds?
+    )
+    case succeeded(attempt: UInt8
+    )
+    case obsolete(attempt: UInt8
+    )
+    case failed(attempt: UInt8
+    )
+    case ambiguous(attempt: UInt8
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyFeedDiscoveryDispositionInput: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyFeedDiscoveryDispositionInput: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyFeedDiscoveryDispositionInput
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyFeedDiscoveryDispositionInput {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .pending(attempt: try FfiConverterUInt8.read(from: &buf), notBefore: try FfiConverterOptionTypeUnixTimestampMilliseconds.read(from: &buf)
+        )
+
+        case 2: return .succeeded(attempt: try FfiConverterUInt8.read(from: &buf)
+        )
+
+        case 3: return .obsolete(attempt: try FfiConverterUInt8.read(from: &buf)
+        )
+
+        case 4: return .failed(attempt: try FfiConverterUInt8.read(from: &buf)
+        )
+
+        case 5: return .ambiguous(attempt: try FfiConverterUInt8.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyFeedDiscoveryDispositionInput, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case let .pending(attempt,notBefore):
+            writeInt(&buf, Int32(1))
+            FfiConverterUInt8.write(attempt, into: &buf)
+            FfiConverterOptionTypeUnixTimestampMilliseconds.write(notBefore, into: &buf)
+
+
+        case let .succeeded(attempt):
+            writeInt(&buf, Int32(2))
+            FfiConverterUInt8.write(attempt, into: &buf)
+
+
+        case let .obsolete(attempt):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt8.write(attempt, into: &buf)
+
+
+        case let .failed(attempt):
+            writeInt(&buf, Int32(4))
+            FfiConverterUInt8.write(attempt, into: &buf)
+
+
+        case let .ambiguous(attempt):
+            writeInt(&buf, Int32(5))
+            FfiConverterUInt8.write(attempt, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyFeedDiscoveryDispositionInput_lift(_ buf: RustBuffer) throws -> LegacyFeedDiscoveryDispositionInput {
+    return try FfiConverterTypeLegacyFeedDiscoveryDispositionInput.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyFeedDiscoveryDispositionInput_lower(_ value: LegacyFeedDiscoveryDispositionInput) -> RustBuffer {
+    return FfiConverterTypeLegacyFeedDiscoveryDispositionInput.lower(value)
+}
+
+
+
+
+public enum LegacyFeedDiscoveryEffectKindInput: Equatable, Hashable {
+
+    case download
+    case notification
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LegacyFeedDiscoveryEffectKindInput: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLegacyFeedDiscoveryEffectKindInput: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyFeedDiscoveryEffectKindInput
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LegacyFeedDiscoveryEffectKindInput {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .download
+
+        case 2: return .notification
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LegacyFeedDiscoveryEffectKindInput, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .download:
+            writeInt(&buf, Int32(1))
+
+
+        case .notification:
+            writeInt(&buf, Int32(2))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyFeedDiscoveryEffectKindInput_lift(_ buf: RustBuffer) throws -> LegacyFeedDiscoveryEffectKindInput {
+    return try FfiConverterTypeLegacyFeedDiscoveryEffectKindInput.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLegacyFeedDiscoveryEffectKindInput_lower(_ value: LegacyFeedDiscoveryEffectKindInput) -> RustBuffer {
+    return FfiConverterTypeLegacyFeedDiscoveryEffectKindInput.lower(value)
+}
+
+
+
 public
 enum LegacyListeningMigrationError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
@@ -7071,6 +7692,30 @@ fileprivate struct FfiConverterOptionUInt64: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionBool: FfiConverterRustBuffer {
+    typealias SwiftType = Bool?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterBool.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterBool.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
     typealias SwiftType = String?
 
@@ -7351,6 +7996,30 @@ fileprivate struct FfiConverterOptionTypeLegacyDownloadCutoverFailure: FfiConver
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeLegacyDownloadCutoverFailure.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeLegacyFeedDiscoveryCutoverFailure: FfiConverterRustBuffer {
+    typealias SwiftType = LegacyFeedDiscoveryCutoverFailure?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeLegacyFeedDiscoveryCutoverFailure.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeLegacyFeedDiscoveryCutoverFailure.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -7695,6 +8364,31 @@ fileprivate struct FfiConverterSequenceTypeLegacyDownloadCutoverCandidate: FfiCo
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeLegacyDownloadCutoverCandidate.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeLegacyFeedDiscoveryCandidateInput: FfiConverterRustBuffer {
+    typealias SwiftType = [LegacyFeedDiscoveryCandidateInput]
+
+    public static func write(_ value: [LegacyFeedDiscoveryCandidateInput], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeLegacyFeedDiscoveryCandidateInput.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [LegacyFeedDiscoveryCandidateInput] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [LegacyFeedDiscoveryCandidateInput]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeLegacyFeedDiscoveryCandidateInput.read(from: &buf))
         }
         return seq
     }
@@ -8484,6 +9178,18 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_download_cutover() != 2411) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_feed_discovery_cutover() != 42949) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_feed_discovery_cutover() != 20455) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_inspect_legacy_feed_discovery_cutover() != 56936) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_feed_discovery_cutover() != 62052) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_memory_cutover() != 24077) {

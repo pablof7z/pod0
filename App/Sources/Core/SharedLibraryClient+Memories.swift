@@ -1,7 +1,7 @@
 import Foundation
 import Pod0Core
 
-struct SharedMemorySnapshot {
+struct SharedMemorySnapshot: @unchecked Sendable {
     let collectionRevision: StateRevision
     let memories: [AgentMemory]
     let compiled: CompiledAgentMemory?
@@ -12,44 +12,57 @@ extension SharedLibraryClient {
     func receiveMemories(revision: UInt64) {
         guard revision >= lastMemoriesRevision else { return }
         lastMemoriesRevision = revision
-        let snapshot = loadMemoryPages(scope: .all)
-        cachedMemories = snapshot
-        store?.applySharedMemories(snapshot)
-        resolveWaiters(snapshot.operations)
+        let facade = facade
+        memoryProjectionTask?.cancel()
+        memoryProjectionTask = Task { @MainActor [weak self] in
+            let snapshot = await Task.detached(priority: .utility) {
+                Self.loadMemoryPages(facade: facade, scope: .all)
+            }.value
+            guard !Task.isCancelled, let self, revision == lastMemoriesRevision else { return }
+            cachedMemories = snapshot
+            store?.applySharedMemories(snapshot)
+            resolveWaiters(snapshot.operations)
+        }
     }
 
-    func updateMemory(_ memory: AgentMemory, content: String) throws {
-        _ = try executeMemoryCommand(.updateMemory(
+    func updateMemory(_ memory: AgentMemory, content: String) async throws {
+        _ = try await execute(.updateMemory(
             memoryId: MemoryId(uuid: memory.id),
             expectedMemoryRevision: MemoryRevision(value: memory.revision),
             content: content
         ))
+        _ = await refreshMemorySnapshot()
     }
 
-    func createMemory(content: String) throws -> AgentMemory {
-        let result = try executeMemoryCommand(.createMemory(content: content))
+    func createMemory(content: String) async throws -> AgentMemory {
+        let result = try await execute(.createMemory(content: content))
+        let snapshot = await refreshMemorySnapshot()
         guard case .memoryCreated(let memoryID, _, _) = result,
               let id = memoryID.uuid,
-              let memory = cachedMemories?.memories.first(where: { $0.id == id })
+              let memory = snapshot.memories.first(where: { $0.id == id })
         else { throw SharedLibraryError.unavailable }
         return memory
     }
 
-    func setMemoryDeleted(_ memory: AgentMemory, deleted: Bool) throws {
-        _ = try executeMemoryCommand(.setMemoryDeleted(
+    func setMemoryDeleted(_ memory: AgentMemory, deleted: Bool) async throws {
+        _ = try await execute(.setMemoryDeleted(
             memoryId: MemoryId(uuid: memory.id),
             expectedMemoryRevision: MemoryRevision(value: memory.revision),
             deleted: deleted
         ))
+        _ = await refreshMemorySnapshot()
     }
 
-    func clearMemories() throws {
-        let revision = cachedMemories?.collectionRevision
-            ?? loadMemoryPages(scope: .all).collectionRevision
-        _ = try executeMemoryCommand(.clearMemories(expectedCollectionRevision: revision))
+    func clearMemories() async throws {
+        let revision = await memoryCollectionRevision()
+        _ = try await execute(.clearMemories(expectedCollectionRevision: revision))
+        _ = await refreshMemorySnapshot()
     }
 
-    func loadMemoryPages(scope: MemoryProjectionScope) -> SharedMemorySnapshot {
+    nonisolated static func loadMemoryPages(
+        facade: Pod0Facade,
+        scope: MemoryProjectionScope
+    ) -> SharedMemorySnapshot {
         var offset: UInt32 = 0
         var collectionRevision = StateRevision(value: 1)
         var memories: [AgentMemory] = []
@@ -77,26 +90,24 @@ extension SharedLibraryClient {
         )
     }
 
-    private func executeMemoryCommand(_ command: ApplicationCommand) throws -> OperationResult? {
-        let commandID = CommandId(uuid: UUID())
-        facade.dispatch(command: CommandEnvelope(
-            commandId: commandID,
-            cancellationId: CancellationId(uuid: UUID()),
-            expectedRevision: nil,
-            command: command
-        ))
-        let snapshot = loadMemoryPages(scope: .all)
+    private func memoryCollectionRevision() async -> StateRevision {
+        if let revision = cachedMemories?.collectionRevision { return revision }
+        let facade = facade
+        let snapshot = await Task.detached(priority: .utility) {
+            Self.loadMemoryPages(facade: facade, scope: .all)
+        }.value
         cachedMemories = snapshot
         store?.applySharedMemories(snapshot)
-        guard let operation = snapshot.operations.first(where: { $0.commandId == commandID })
-        else { throw SharedLibraryError.unavailable }
-        switch operation.stage {
-        case .succeeded:
-            return operation.result
-        case .failed, .cancelled, .unsupported:
-            throw SharedLibraryError(operation.failure?.code)
-        case .accepted, .running, .blocked:
-            throw SharedLibraryError.unavailable
-        }
+        return snapshot.collectionRevision
+    }
+
+    private func refreshMemorySnapshot() async -> SharedMemorySnapshot {
+        let facade = facade
+        let snapshot = await Task.detached(priority: .utility) {
+            Self.loadMemoryPages(facade: facade, scope: .all)
+        }.value
+        cachedMemories = snapshot
+        store?.applySharedMemories(snapshot)
+        return snapshot
     }
 }

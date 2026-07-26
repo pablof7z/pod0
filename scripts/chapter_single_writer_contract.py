@@ -86,7 +86,7 @@ REQUIRED_TOKENS = {
     "App/Sources/Features/Player/PlaybackState+Chapters.swift": (
         ".nextChapter(", ".previousChapter(", "chapterContext",
     ),
-    "App/Sources/State/AppStateStore.swift": (
+    "App/Sources/State/AppStateStartupPreparation.swift": (
         "sharedChapterStoreIsAuthoritative(",
         "loadLegacyChapterAdjuncts: !chapterAuthorityActive",
     ),

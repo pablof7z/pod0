@@ -21,6 +21,8 @@ extension EpisodeId {
         ].map(String.init).joined(separator: "-")
         return UUID(uuidString: formatted)
     }
+
+    var stableString: String { coreIdentifier(high: high, low: low) }
 }
 
 extension PodcastId {
@@ -130,6 +132,10 @@ extension DownloadIntentId {
     var stableString: String { coreIdentifier(high: high, low: low) }
 }
 
+extension FeedDiscoveryOccurrenceId {
+    var stableString: String { coreIdentifier(high: high, low: low) }
+}
+
 extension AdSpanId {
     var uuid: UUID? { UUID(coreHigh: high, low: low) }
 }
@@ -163,6 +169,8 @@ extension CommandId {
         let parts = uuid.coreIdentifierParts
         self.init(high: parts.high, low: parts.low)
     }
+
+    var stableString: String { coreIdentifier(high: high, low: low) }
 }
 
 extension CancellationId {

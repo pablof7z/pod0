@@ -140,7 +140,7 @@ final class CoreAgentHostTests: XCTestCase {
         XCTAssertNil(streaming.content)
     }
     func testApprovalObservationEchoesExactRustProposalIdentity() async {
-        let presenter = StubCoreAgentApprovalPresenter(approved: true)
+        let presenter = StubCoreAgentApprovalPresenter(decision: .dismiss)
         let host = makeHost(
             transport: StubCoreAgentModelTransport(result: AgentResult(
                 assistantMessage: [:],
@@ -156,11 +156,11 @@ final class CoreAgentHostTests: XCTestCase {
             let turnID,
             let proposalID,
             let digest,
-            let approved
+            let decision
         ) = observation else {
             return XCTFail("Expected approval observation")
         }
-        XCTAssertTrue(approved)
+        XCTAssertEqual(decision, .dismiss)
         XCTAssertEqual(turnID, request.turnId)
         XCTAssertEqual(proposalID, request.proposal.proposalId)
         XCTAssertEqual(digest, request.proposal.proposalDigest)
@@ -261,7 +261,7 @@ private final class StubCoreAgentModelTransport: CoreAgentModelTransporting {
         tools: [[String: Any]],
         model _: String,
         ollamaChatURL _: URL?,
-        onPartialContent: @escaping (String) -> Void
+        onPartialContent: @escaping @MainActor @Sendable (String) -> Void
     ) async throws -> AgentResult {
         lastMessages = messages
         lastTools = tools
@@ -272,16 +272,16 @@ private final class StubCoreAgentModelTransport: CoreAgentModelTransporting {
 
 @MainActor
 private final class StubCoreAgentApprovalPresenter: CoreAgentApprovalPresenting {
-    let approved: Bool
+    let decision: AgentApprovalDecision
     private(set) var lastRequest: AgentApprovalRequest?
 
-    init(approved: Bool) {
-        self.approved = approved
+    init(decision: AgentApprovalDecision) {
+        self.decision = decision
     }
 
-    func requestApproval(_ request: AgentApprovalRequest) async -> Bool {
+    func requestApproval(_ request: AgentApprovalRequest) async -> AgentApprovalDecision {
         lastRequest = request
-        return approved
+        return decision
     }
 }
 

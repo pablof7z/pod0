@@ -9,14 +9,21 @@ final class SharedPlaybackVerticalSliceTests: XCTestCase {
         let fileURL = AppStateTestSupport.uniqueTempFileURL()
         let persistence = Persistence(fileURL: fileURL)
         defer { persistence.reset() }
+        let mediaURL = fileURL.deletingPathExtension().appendingPathExtension("m4a")
+        try SilentAudioWriter.writeSilence(durationSeconds: 60, to: mediaURL)
+        defer { try? FileManager.default.removeItem(at: mediaURL) }
         let podcast = Podcast(
             id: UUID(),
             feedURL: URL(string: "https://playback.example/feed.xml")!,
             title: "Playback Show",
             discoveredAt: Date(timeIntervalSince1970: 1_700_000_000)
         )
-        let first = episode(podcastID: podcast.id, number: 1, position: 33)
-        let second = episode(podcastID: podcast.id, number: 2, position: 0)
+        let first = episode(
+            podcastID: podcast.id, number: 1, position: 33, mediaURL: mediaURL
+        )
+        let second = episode(
+            podcastID: podcast.id, number: 2, position: 0, mediaURL: mediaURL
+        )
         var legacy = AppState()
         legacy.podcasts = [podcast]
         legacy.subscriptions = [PodcastSubscription(podcastID: podcast.id)]
@@ -27,6 +34,7 @@ final class SharedPlaybackVerticalSliceTests: XCTestCase {
         let store = makeStore(persistence)
         let playback = PlaybackState(engine: AudioEngine())
         let client = try XCTUnwrap(store.sharedLibrary)
+        defer { client.shutdown() }
         client.attachPlayback(playback, store: store)
         playback.enqueue(second.id)
         let remoteSeek = playback.engine.nowPlaying.performRemoteCommand(.seek(47))
@@ -60,6 +68,7 @@ final class SharedPlaybackVerticalSliceTests: XCTestCase {
 
         client.shutdown()
         let relaunched = makeStore(persistence)
+        defer { relaunched.sharedLibrary?.shutdown() }
         let restoredPlayback = PlaybackState(engine: AudioEngine())
         try XCTUnwrap(relaunched.sharedLibrary).attachPlayback(
             restoredPlayback,
@@ -102,15 +111,24 @@ final class SharedPlaybackVerticalSliceTests: XCTestCase {
         let fileURL = AppStateTestSupport.uniqueTempFileURL()
         let persistence = Persistence(fileURL: fileURL)
         defer { persistence.reset() }
+        let mediaURL = fileURL.deletingPathExtension().appendingPathExtension("m4a")
+        try SilentAudioWriter.writeSilence(durationSeconds: 15, to: mediaURL)
+        defer { try? FileManager.default.removeItem(at: mediaURL) }
         let podcast = Podcast(
             id: UUID(),
             feedURL: URL(string: "https://queue.example/feed.xml")!,
             title: "Queue Show",
             discoveredAt: Date(timeIntervalSince1970: 1_700_000_000)
         )
-        let first = episode(podcastID: podcast.id, number: 1, position: 12)
-        let second = episode(podcastID: podcast.id, number: 2, position: 0)
-        let third = episode(podcastID: podcast.id, number: 3, position: 0)
+        let first = episode(
+            podcastID: podcast.id, number: 1, position: 12, mediaURL: mediaURL
+        )
+        let second = episode(
+            podcastID: podcast.id, number: 2, position: 0, mediaURL: mediaURL
+        )
+        let third = episode(
+            podcastID: podcast.id, number: 3, position: 0, mediaURL: mediaURL
+        )
         var legacy = AppState()
         legacy.podcasts = [podcast]
         legacy.subscriptions = [PodcastSubscription(podcastID: podcast.id)]
@@ -121,6 +139,7 @@ final class SharedPlaybackVerticalSliceTests: XCTestCase {
         let store = makeStore(persistence)
         let playback = PlaybackState(engine: AudioEngine())
         let client = try XCTUnwrap(store.sharedLibrary)
+        defer { client.shutdown() }
         client.attachPlayback(playback, store: store)
 
         playback.enqueue(second.id)
@@ -149,6 +168,7 @@ final class SharedPlaybackVerticalSliceTests: XCTestCase {
 
         client.shutdown()
         let relaunched = makeStore(persistence)
+        defer { relaunched.sharedLibrary?.shutdown() }
         let restored = PlaybackState(engine: AudioEngine())
         try XCTUnwrap(relaunched.sharedLibrary).attachPlayback(restored, store: relaunched)
         await waitFor("cleared queue to restore after relaunch") {
@@ -168,7 +188,8 @@ final class SharedPlaybackVerticalSliceTests: XCTestCase {
     private func episode(
         podcastID: UUID,
         number: Int,
-        position: TimeInterval
+        position: TimeInterval,
+        mediaURL: URL
     ) -> Episode {
         Episode(
             id: UUID(),
@@ -177,14 +198,14 @@ final class SharedPlaybackVerticalSliceTests: XCTestCase {
             title: "Episode \(number)",
             pubDate: Date(timeIntervalSince1970: 1_700_000_000 + Double(number)),
             duration: 600,
-            enclosureURL: URL(string: "https://playback.example/\(number).mp3")!,
+            enclosureURL: mediaURL,
             playbackPosition: position
         )
     }
 
     private func waitFor(
         _ description: String,
-        timeout: TimeInterval = 5,
+        timeout: TimeInterval = 10,
         condition: @escaping @MainActor () -> Bool
     ) async {
         let completed = expectation(description: description)

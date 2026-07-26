@@ -222,7 +222,11 @@ struct EpisodeDetailView: View {
         case .retry, .cancel:
             guard let job else { return }
             let workflowAction: WorkflowJobAction = action == .retry ? .retry : .cancel
-            workflowActionNotice = .make(for: workflows.perform(workflowAction, on: job))
+            Task {
+                workflowActionNotice = .make(
+                    for: await workflows.perform(workflowAction, on: job)
+                )
+            }
         }
     }
 

@@ -112,6 +112,7 @@ import uniffi.pod0_domain.FfiConverterTypeEpisodeId
 import uniffi.pod0_domain.FfiConverterTypeListeningDomainSnapshot
 import uniffi.pod0_domain.FfiConverterTypeMemoryId
 import uniffi.pod0_domain.FfiConverterTypeNoteRecord
+import uniffi.pod0_domain.FfiConverterTypePodcastId
 import uniffi.pod0_domain.FfiConverterTypeScheduledTaskId
 import uniffi.pod0_domain.FfiConverterTypeSpeakerId
 import uniffi.pod0_domain.FfiConverterTypeStateRevision
@@ -120,6 +121,7 @@ import uniffi.pod0_domain.FfiConverterTypeUnixTimestampMilliseconds
 import uniffi.pod0_domain.ListeningDomainSnapshot
 import uniffi.pod0_domain.MemoryId
 import uniffi.pod0_domain.NoteRecord
+import uniffi.pod0_domain.PodcastId
 import uniffi.pod0_domain.ScheduledTaskId
 import uniffi.pod0_domain.SpeakerId
 import uniffi.pod0_domain.StateRevision
@@ -167,6 +169,7 @@ import uniffi.pod0_domain.RustBuffer as RustBufferEpisodeId
 import uniffi.pod0_domain.RustBuffer as RustBufferListeningDomainSnapshot
 import uniffi.pod0_domain.RustBuffer as RustBufferMemoryId
 import uniffi.pod0_domain.RustBuffer as RustBufferNoteRecord
+import uniffi.pod0_domain.RustBuffer as RustBufferPodcastId
 import uniffi.pod0_domain.RustBuffer as RustBufferScheduledTaskId
 import uniffi.pod0_domain.RustBuffer as RustBufferSpeakerId
 import uniffi.pod0_domain.RustBuffer as RustBufferStateRevision
@@ -944,6 +947,14 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_download_cutover(
     ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_feed_discovery_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_feed_discovery_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_inspect_legacy_feed_discovery_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_feed_discovery_cutover(
+    ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_memory_cutover(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_memory_cutover(
@@ -1062,6 +1073,14 @@ internal object UniffiLib {
     external fun uniffi_pod0_facade_fn_method_pod0facade_download_cutover(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_download_cutover(`ptr`: Long,`sourceGeneration`: Long,`candidates`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_feed_discovery_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_feed_discovery_cutover(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_inspect_legacy_feed_discovery_cutover(`ptr`: Long,`backupDigest`: RustBufferContentDigest.ByValue,`backupByteCount`: Long,`notificationsEnabled`: Byte,`inspectedJobCount`: Int,`blockedCount`: Int,`candidates`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_feed_discovery_cutover(`ptr`: Long,`backupDigest`: RustBufferContentDigest.ByValue,`backupByteCount`: Long,`notificationsEnabled`: Byte,`inspectedJobCount`: Int,`blockedCount`: Int,`candidates`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_memory_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
@@ -1488,6 +1507,18 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_download_cutover() != 2411) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_feed_discovery_cutover() != 42949) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_feed_discovery_cutover() != 20455) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_inspect_legacy_feed_discovery_cutover() != 56936) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_feed_discovery_cutover() != 62052) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_memory_cutover() != 24077) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1767,6 +1798,33 @@ private class JavaLangRefCleanable(
     val cleanable: java.lang.ref.Cleaner.Cleanable
 ) : UniffiCleaner.Cleanable {
     override fun clean() = cleanable.clean()
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterUByte: FfiConverter<UByte, Byte> {
+    override fun lift(value: Byte): UByte {
+        return value.toUByte()
+    }
+
+    fun lift(value: Int): UByte {
+        return value.toUByte()
+    }
+
+    override fun read(buf: ByteBuffer): UByte {
+        return lift(buf.get())
+    }
+
+    override fun lower(value: UByte): Byte {
+        return value.toByte()
+    }
+
+    override fun allocationSize(value: UByte) = 1UL
+
+    override fun write(value: UByte, buf: ByteBuffer) {
+        buf.put(value.toByte())
+    }
 }
 
 /**
@@ -2082,6 +2140,14 @@ public interface Pod0FacadeInterface {
 
     fun `stageLegacyDownloadCutover`(`sourceGeneration`: kotlin.ULong, `candidates`: List<LegacyDownloadCutoverCandidate>): LegacyDownloadCutoverProjection
 
+    fun `commitLegacyFeedDiscoveryCutover`(`sourceGeneration`: kotlin.ULong): LegacyFeedDiscoveryCutoverProjection
+
+    fun `feedDiscoveryCutover`(): LegacyFeedDiscoveryCutoverProjection
+
+    fun `inspectLegacyFeedDiscoveryCutover`(`backupDigest`: ContentDigest, `backupByteCount`: kotlin.ULong, `notificationsEnabled`: kotlin.Boolean, `inspectedJobCount`: kotlin.UInt, `blockedCount`: kotlin.UInt, `candidates`: List<LegacyFeedDiscoveryCandidateInput>): LegacyFeedDiscoveryCutoverProjection
+
+    fun `stageLegacyFeedDiscoveryCutover`(`backupDigest`: ContentDigest, `backupByteCount`: kotlin.ULong, `notificationsEnabled`: kotlin.Boolean, `inspectedJobCount`: kotlin.UInt, `blockedCount`: kotlin.UInt, `candidates`: List<LegacyFeedDiscoveryCandidateInput>): LegacyFeedDiscoveryCutoverProjection
+
     fun `commitLegacyMemoryCutover`(`sourceGeneration`: kotlin.ULong): LegacyMemoryCutoverProjection
 
     fun `discardStagedLegacyMemoryCutover`(`sourceGeneration`: kotlin.ULong): LegacyMemoryCutoverProjection
@@ -2394,6 +2460,71 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
 
         FfiConverterULong.lower(`sourceGeneration`),
         FfiConverterSequenceTypeLegacyDownloadCutoverCandidate.lower(`candidates`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `commitLegacyFeedDiscoveryCutover`(`sourceGeneration`: kotlin.ULong): LegacyFeedDiscoveryCutoverProjection {
+            return FfiConverterTypeLegacyFeedDiscoveryCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_feed_discovery_cutover(
+        it,
+
+        FfiConverterULong.lower(`sourceGeneration`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `feedDiscoveryCutover`(): LegacyFeedDiscoveryCutoverProjection {
+            return FfiConverterTypeLegacyFeedDiscoveryCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_feed_discovery_cutover(
+        it,
+        _status)
+}
+    }
+    )
+    }
+
+
+    override fun `inspectLegacyFeedDiscoveryCutover`(`backupDigest`: ContentDigest, `backupByteCount`: kotlin.ULong, `notificationsEnabled`: kotlin.Boolean, `inspectedJobCount`: kotlin.UInt, `blockedCount`: kotlin.UInt, `candidates`: List<LegacyFeedDiscoveryCandidateInput>): LegacyFeedDiscoveryCutoverProjection {
+            return FfiConverterTypeLegacyFeedDiscoveryCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_inspect_legacy_feed_discovery_cutover(
+        it,
+
+        FfiConverterTypeContentDigest.lower(`backupDigest`),
+        FfiConverterULong.lower(`backupByteCount`),
+        FfiConverterBoolean.lower(`notificationsEnabled`),
+        FfiConverterUInt.lower(`inspectedJobCount`),
+        FfiConverterUInt.lower(`blockedCount`),
+        FfiConverterSequenceTypeLegacyFeedDiscoveryCandidateInput.lower(`candidates`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `stageLegacyFeedDiscoveryCutover`(`backupDigest`: ContentDigest, `backupByteCount`: kotlin.ULong, `notificationsEnabled`: kotlin.Boolean, `inspectedJobCount`: kotlin.UInt, `blockedCount`: kotlin.UInt, `candidates`: List<LegacyFeedDiscoveryCandidateInput>): LegacyFeedDiscoveryCutoverProjection {
+            return FfiConverterTypeLegacyFeedDiscoveryCutoverProjection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_feed_discovery_cutover(
+        it,
+
+        FfiConverterTypeContentDigest.lower(`backupDigest`),
+        FfiConverterULong.lower(`backupByteCount`),
+        FfiConverterBoolean.lower(`notificationsEnabled`),
+        FfiConverterUInt.lower(`inspectedJobCount`),
+        FfiConverterUInt.lower(`blockedCount`),
+        FfiConverterSequenceTypeLegacyFeedDiscoveryCandidateInput.lower(`candidates`),_status)
 }
     }
     )
@@ -4099,6 +4230,200 @@ public object FfiConverterTypeLegacyDownloadCutoverProjection: FfiConverterRustB
             FfiConverterUInt.write(value.`scheduledRestart`, buf)
             FfiConverterUInt.write(value.`repairedInvalid`, buf)
             FfiConverterOptionalTypeLegacyDownloadCutoverFailure.write(value.`failure`, buf)
+    }
+}
+
+
+
+data class LegacyFeedDiscoveryCandidateInput (
+    val `sourceOccurrenceId`: CommandId
+    ,
+    val `podcastId`: PodcastId
+    ,
+    val `episodeId`: EpisodeId
+    ,
+    val `kind`: LegacyFeedDiscoveryEffectKindInput
+    ,
+    val `disposition`: LegacyFeedDiscoveryDispositionInput
+    ,
+    val `observedAt`: UnixTimestampMilliseconds
+    ,
+    val `expiresAt`: UnixTimestampMilliseconds
+    ,
+    val `publishedAt`: UnixTimestampMilliseconds
+    ,
+    val `inputVersion`: kotlin.String
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyFeedDiscoveryCandidateInput: FfiConverterRustBuffer<LegacyFeedDiscoveryCandidateInput> {
+    override fun read(buf: ByteBuffer): LegacyFeedDiscoveryCandidateInput {
+        return LegacyFeedDiscoveryCandidateInput(
+            FfiConverterTypeCommandId.read(buf),
+            FfiConverterTypePodcastId.read(buf),
+            FfiConverterTypeEpisodeId.read(buf),
+            FfiConverterTypeLegacyFeedDiscoveryEffectKindInput.read(buf),
+            FfiConverterTypeLegacyFeedDiscoveryDispositionInput.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyFeedDiscoveryCandidateInput) = (
+            FfiConverterTypeCommandId.allocationSize(value.`sourceOccurrenceId`) +
+            FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterTypeEpisodeId.allocationSize(value.`episodeId`) +
+            FfiConverterTypeLegacyFeedDiscoveryEffectKindInput.allocationSize(value.`kind`) +
+            FfiConverterTypeLegacyFeedDiscoveryDispositionInput.allocationSize(value.`disposition`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`observedAt`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`expiresAt`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`publishedAt`) +
+            FfiConverterString.allocationSize(value.`inputVersion`)
+    )
+
+    override fun write(value: LegacyFeedDiscoveryCandidateInput, buf: ByteBuffer) {
+            FfiConverterTypeCommandId.write(value.`sourceOccurrenceId`, buf)
+            FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
+            FfiConverterTypeLegacyFeedDiscoveryEffectKindInput.write(value.`kind`, buf)
+            FfiConverterTypeLegacyFeedDiscoveryDispositionInput.write(value.`disposition`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`observedAt`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`expiresAt`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`publishedAt`, buf)
+            FfiConverterString.write(value.`inputVersion`, buf)
+    }
+}
+
+
+
+data class LegacyFeedDiscoveryCutoverFailure (
+    val `code`: LegacyFeedDiscoveryCutoverFailureCode
+    ,
+    val `diagnosticCode`: kotlin.String
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyFeedDiscoveryCutoverFailure: FfiConverterRustBuffer<LegacyFeedDiscoveryCutoverFailure> {
+    override fun read(buf: ByteBuffer): LegacyFeedDiscoveryCutoverFailure {
+        return LegacyFeedDiscoveryCutoverFailure(
+            FfiConverterTypeLegacyFeedDiscoveryCutoverFailureCode.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyFeedDiscoveryCutoverFailure) = (
+            FfiConverterTypeLegacyFeedDiscoveryCutoverFailureCode.allocationSize(value.`code`) +
+            FfiConverterString.allocationSize(value.`diagnosticCode`)
+    )
+
+    override fun write(value: LegacyFeedDiscoveryCutoverFailure, buf: ByteBuffer) {
+            FfiConverterTypeLegacyFeedDiscoveryCutoverFailureCode.write(value.`code`, buf)
+            FfiConverterString.write(value.`diagnosticCode`, buf)
+    }
+}
+
+
+
+data class LegacyFeedDiscoveryCutoverProjection (
+    val `stage`: LegacyFeedDiscoveryCutoverStage
+    ,
+    val `sourceGeneration`: kotlin.ULong?
+    ,
+    val `sourceFingerprint`: ContentDigest?
+    ,
+    val `backupDigest`: ContentDigest?
+    ,
+    val `backupByteCount`: kotlin.ULong?
+    ,
+    val `notificationsEnabled`: kotlin.Boolean?
+    ,
+    val `inspectedJobCount`: kotlin.UInt
+    ,
+    val `candidateCount`: kotlin.UInt
+    ,
+    val `blockedCount`: kotlin.UInt
+    ,
+    val `ambiguousCount`: kotlin.UInt
+    ,
+    val `failure`: LegacyFeedDiscoveryCutoverFailure?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyFeedDiscoveryCutoverProjection: FfiConverterRustBuffer<LegacyFeedDiscoveryCutoverProjection> {
+    override fun read(buf: ByteBuffer): LegacyFeedDiscoveryCutoverProjection {
+        return LegacyFeedDiscoveryCutoverProjection(
+            FfiConverterTypeLegacyFeedDiscoveryCutoverStage.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterOptionalTypeContentDigest.read(buf),
+            FfiConverterOptionalTypeContentDigest.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterOptionalBoolean.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterOptionalTypeLegacyFeedDiscoveryCutoverFailure.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LegacyFeedDiscoveryCutoverProjection) = (
+            FfiConverterTypeLegacyFeedDiscoveryCutoverStage.allocationSize(value.`stage`) +
+            FfiConverterOptionalULong.allocationSize(value.`sourceGeneration`) +
+            FfiConverterOptionalTypeContentDigest.allocationSize(value.`sourceFingerprint`) +
+            FfiConverterOptionalTypeContentDigest.allocationSize(value.`backupDigest`) +
+            FfiConverterOptionalULong.allocationSize(value.`backupByteCount`) +
+            FfiConverterOptionalBoolean.allocationSize(value.`notificationsEnabled`) +
+            FfiConverterUInt.allocationSize(value.`inspectedJobCount`) +
+            FfiConverterUInt.allocationSize(value.`candidateCount`) +
+            FfiConverterUInt.allocationSize(value.`blockedCount`) +
+            FfiConverterUInt.allocationSize(value.`ambiguousCount`) +
+            FfiConverterOptionalTypeLegacyFeedDiscoveryCutoverFailure.allocationSize(value.`failure`)
+    )
+
+    override fun write(value: LegacyFeedDiscoveryCutoverProjection, buf: ByteBuffer) {
+            FfiConverterTypeLegacyFeedDiscoveryCutoverStage.write(value.`stage`, buf)
+            FfiConverterOptionalULong.write(value.`sourceGeneration`, buf)
+            FfiConverterOptionalTypeContentDigest.write(value.`sourceFingerprint`, buf)
+            FfiConverterOptionalTypeContentDigest.write(value.`backupDigest`, buf)
+            FfiConverterOptionalULong.write(value.`backupByteCount`, buf)
+            FfiConverterOptionalBoolean.write(value.`notificationsEnabled`, buf)
+            FfiConverterUInt.write(value.`inspectedJobCount`, buf)
+            FfiConverterUInt.write(value.`candidateCount`, buf)
+            FfiConverterUInt.write(value.`blockedCount`, buf)
+            FfiConverterUInt.write(value.`ambiguousCount`, buf)
+            FfiConverterOptionalTypeLegacyFeedDiscoveryCutoverFailure.write(value.`failure`, buf)
     }
 }
 
@@ -6180,6 +6505,276 @@ public object FfiConverterTypeLegacyDownloadCutoverStage: FfiConverterRustBuffer
 
 
 
+enum class LegacyFeedDiscoveryCutoverFailureCode {
+
+    INVALID_SOURCE,
+    CONFLICTING_CORE_STATE,
+    STORAGE_UNAVAILABLE;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyFeedDiscoveryCutoverFailureCode: FfiConverterRustBuffer<LegacyFeedDiscoveryCutoverFailureCode> {
+    override fun read(buf: ByteBuffer) = try {
+
+        LegacyFeedDiscoveryCutoverFailureCode.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: LegacyFeedDiscoveryCutoverFailureCode) = 4UL
+
+    override fun write(value: LegacyFeedDiscoveryCutoverFailureCode, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+enum class LegacyFeedDiscoveryCutoverStage {
+
+    NOT_STARTED,
+    STAGED,
+    AUTHORITATIVE,
+    BLOCKED;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyFeedDiscoveryCutoverStage: FfiConverterRustBuffer<LegacyFeedDiscoveryCutoverStage> {
+    override fun read(buf: ByteBuffer) = try {
+
+        LegacyFeedDiscoveryCutoverStage.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: LegacyFeedDiscoveryCutoverStage) = 4UL
+
+    override fun write(value: LegacyFeedDiscoveryCutoverStage, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+sealed class LegacyFeedDiscoveryDispositionInput {
+
+    data class Pending(
+        val `attempt`: kotlin.UByte,
+        val `notBefore`: uniffi.pod0_domain.UnixTimestampMilliseconds?) : LegacyFeedDiscoveryDispositionInput()
+
+    {
+
+
+        companion object
+    }
+
+    data class Succeeded(
+        val `attempt`: kotlin.UByte) : LegacyFeedDiscoveryDispositionInput()
+
+    {
+
+
+        companion object
+    }
+
+    data class Obsolete(
+        val `attempt`: kotlin.UByte) : LegacyFeedDiscoveryDispositionInput()
+
+    {
+
+
+        companion object
+    }
+
+    data class Failed(
+        val `attempt`: kotlin.UByte) : LegacyFeedDiscoveryDispositionInput()
+
+    {
+
+
+        companion object
+    }
+
+    data class Ambiguous(
+        val `attempt`: kotlin.UByte) : LegacyFeedDiscoveryDispositionInput()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyFeedDiscoveryDispositionInput : FfiConverterRustBuffer<LegacyFeedDiscoveryDispositionInput>{
+    override fun read(buf: ByteBuffer): LegacyFeedDiscoveryDispositionInput {
+        return when(buf.getInt()) {
+            1 -> LegacyFeedDiscoveryDispositionInput.Pending(
+                FfiConverterUByte.read(buf),
+                FfiConverterOptionalTypeUnixTimestampMilliseconds.read(buf),
+                )
+            2 -> LegacyFeedDiscoveryDispositionInput.Succeeded(
+                FfiConverterUByte.read(buf),
+                )
+            3 -> LegacyFeedDiscoveryDispositionInput.Obsolete(
+                FfiConverterUByte.read(buf),
+                )
+            4 -> LegacyFeedDiscoveryDispositionInput.Failed(
+                FfiConverterUByte.read(buf),
+                )
+            5 -> LegacyFeedDiscoveryDispositionInput.Ambiguous(
+                FfiConverterUByte.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: LegacyFeedDiscoveryDispositionInput): ULong = when(value) {
+        is LegacyFeedDiscoveryDispositionInput.Pending -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUByte.allocationSize(value.`attempt`)
+                + FfiConverterOptionalTypeUnixTimestampMilliseconds.allocationSize(value.`notBefore`)
+            )
+        }
+        is LegacyFeedDiscoveryDispositionInput.Succeeded -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUByte.allocationSize(value.`attempt`)
+            )
+        }
+        is LegacyFeedDiscoveryDispositionInput.Obsolete -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUByte.allocationSize(value.`attempt`)
+            )
+        }
+        is LegacyFeedDiscoveryDispositionInput.Failed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUByte.allocationSize(value.`attempt`)
+            )
+        }
+        is LegacyFeedDiscoveryDispositionInput.Ambiguous -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUByte.allocationSize(value.`attempt`)
+            )
+        }
+    }
+
+    override fun write(value: LegacyFeedDiscoveryDispositionInput, buf: ByteBuffer) {
+        when(value) {
+            is LegacyFeedDiscoveryDispositionInput.Pending -> {
+                buf.putInt(1)
+                FfiConverterUByte.write(value.`attempt`, buf)
+                FfiConverterOptionalTypeUnixTimestampMilliseconds.write(value.`notBefore`, buf)
+                Unit
+            }
+            is LegacyFeedDiscoveryDispositionInput.Succeeded -> {
+                buf.putInt(2)
+                FfiConverterUByte.write(value.`attempt`, buf)
+                Unit
+            }
+            is LegacyFeedDiscoveryDispositionInput.Obsolete -> {
+                buf.putInt(3)
+                FfiConverterUByte.write(value.`attempt`, buf)
+                Unit
+            }
+            is LegacyFeedDiscoveryDispositionInput.Failed -> {
+                buf.putInt(4)
+                FfiConverterUByte.write(value.`attempt`, buf)
+                Unit
+            }
+            is LegacyFeedDiscoveryDispositionInput.Ambiguous -> {
+                buf.putInt(5)
+                FfiConverterUByte.write(value.`attempt`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+
+enum class LegacyFeedDiscoveryEffectKindInput {
+
+    DOWNLOAD,
+    NOTIFICATION;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLegacyFeedDiscoveryEffectKindInput: FfiConverterRustBuffer<LegacyFeedDiscoveryEffectKindInput> {
+    override fun read(buf: ByteBuffer) = try {
+
+        LegacyFeedDiscoveryEffectKindInput.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: LegacyFeedDiscoveryEffectKindInput) = 4UL
+
+    override fun write(value: LegacyFeedDiscoveryEffectKindInput, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
 
 sealed class LegacyListeningMigrationException: kotlin.Exception() {
 
@@ -7920,6 +8515,38 @@ public object FfiConverterOptionalULong: FfiConverterRustBuffer<kotlin.ULong?> {
 /**
  * @suppress
  */
+public object FfiConverterOptionalBoolean: FfiConverterRustBuffer<kotlin.Boolean?> {
+    override fun read(buf: ByteBuffer): kotlin.Boolean? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterBoolean.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.Boolean?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterBoolean.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.Boolean?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterBoolean.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?> {
     override fun read(buf: ByteBuffer): kotlin.String? {
         if (buf.get().toInt() == 0) {
@@ -8294,6 +8921,38 @@ public object FfiConverterOptionalTypeLegacyDownloadCutoverFailure: FfiConverter
         } else {
             buf.put(1)
             FfiConverterTypeLegacyDownloadCutoverFailure.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeLegacyFeedDiscoveryCutoverFailure: FfiConverterRustBuffer<LegacyFeedDiscoveryCutoverFailure?> {
+    override fun read(buf: ByteBuffer): LegacyFeedDiscoveryCutoverFailure? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeLegacyFeedDiscoveryCutoverFailure.read(buf)
+    }
+
+    override fun allocationSize(value: LegacyFeedDiscoveryCutoverFailure?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeLegacyFeedDiscoveryCutoverFailure.allocationSize(value)
+        }
+    }
+
+    override fun write(value: LegacyFeedDiscoveryCutoverFailure?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeLegacyFeedDiscoveryCutoverFailure.write(value, buf)
         }
     }
 }
@@ -8720,6 +9379,34 @@ public object FfiConverterSequenceTypeLegacyDownloadCutoverCandidate: FfiConvert
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeLegacyFeedDiscoveryCandidateInput: FfiConverterRustBuffer<List<LegacyFeedDiscoveryCandidateInput>> {
+    override fun read(buf: ByteBuffer): List<LegacyFeedDiscoveryCandidateInput> {
+        val len = buf.getInt()
+        return List<LegacyFeedDiscoveryCandidateInput>(len) {
+            FfiConverterTypeLegacyFeedDiscoveryCandidateInput.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<LegacyFeedDiscoveryCandidateInput>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeLegacyFeedDiscoveryCandidateInput.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<LegacyFeedDiscoveryCandidateInput>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeLegacyFeedDiscoveryCandidateInput.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeLegacyMemoryInput: FfiConverterRustBuffer<List<LegacyMemoryInput>> {
     override fun read(buf: ByteBuffer): List<LegacyMemoryInput> {
         val len = buf.getInt()
@@ -8881,6 +9568,8 @@ public object FfiConverterSequenceTypeLegacyTranscriptWorkflowCutoverCandidate: 
         }
     }
 }
+
+
 
 
 

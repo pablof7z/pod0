@@ -87,7 +87,7 @@ final class SharedClipVerticalSliceTests: XCTestCase {
         XCTAssertEqual(rewritten.clips.count, 1, "Failed clip import remains rollback evidence")
     }
 
-    func testLegacyClipsCutOverLosslesslyAndCommandsSurviveRelaunch() throws {
+    func testLegacyClipsCutOverLosslesslyAndCommandsSurviveRelaunch() async throws {
         let fileURL = AppStateTestSupport.uniqueTempFileURL()
         let persistence = Persistence(fileURL: fileURL)
         defer { persistence.reset() }
@@ -157,7 +157,13 @@ final class SharedClipVerticalSliceTests: XCTestCase {
         XCTAssertNil(store?.sharedLibraryUnavailableReason)
         XCTAssertEqual(try Data(contentsOf: persistence.sharedCoreSchemaBackupURL), staleBackup)
         XCTAssertEqual(store?.state.clips.map(\.id), [firstID])
-        let importedAll = try XCTUnwrap(store?.sharedLibrary).loadClipPages(scope: .all).clips
+        let importedClient = try XCTUnwrap(store?.sharedLibrary)
+        let importedAll = await Task.detached {
+            SharedLibraryClient.loadClipPages(
+                facade: importedClient.facade,
+                scope: .all
+            ).clips
+        }.value
         XCTAssertEqual(importedAll.prefix(2).map(\.id), [secondID, firstID])
         let imported = try XCTUnwrap(importedAll.first(where: { $0.id == firstID }))
         XCTAssertEqual(imported.revision, 1)
@@ -177,7 +183,7 @@ final class SharedClipVerticalSliceTests: XCTestCase {
         XCTAssertTrue(try XCTUnwrap(importedAll.first(where: { $0.id == secondID })).deleted)
         XCTAssertTrue(try persistence.load().clips.isEmpty, "Swift metadata must stop persisting clips")
 
-        let created = try XCTUnwrap(store?.addClip(
+        let createdClip = await store?.addClip(
             episodeID: episodeID,
             subscriptionID: podcastID,
             startMs: 40_000,
@@ -186,15 +192,17 @@ final class SharedClipVerticalSliceTests: XCTestCase {
             speakerID: speakerID,
             source: .agent,
             caption: "Agent moment"
-        ))
+        )
+        let created = try XCTUnwrap(createdClip)
         let stale = created
-        XCTAssertTrue(store?.updateClipBoundaries(
+        let didRefine = await store?.updateClipBoundaries(
             id: created.id,
             startMs: 39_500,
             endMs: 44_500,
             transcriptText: "Captured and refined exact words.",
             speakerID: speakerID
-        ) == true)
+        )
+        XCTAssertTrue(didRefine == true)
         let refined = try XCTUnwrap(store?.clip(id: created.id))
         XCTAssertEqual(refined.revision, 2)
         XCTAssertEqual(refined.startMs, 39_500)
@@ -202,11 +210,15 @@ final class SharedClipVerticalSliceTests: XCTestCase {
         XCTAssertEqual(refined.transcriptText, "Captured and refined exact words.")
         XCTAssertEqual(store?.clips(forEpisode: episodeID).map(\.id), [created.id, firstID])
         let sharedLibrary = try XCTUnwrap(store?.sharedLibrary)
-        XCTAssertThrowsError(try sharedLibrary.updateClip(stale)) { error in
+        do {
+            try await sharedLibrary.updateClip(stale)
+            XCTFail("Expected stale clip update to fail")
+        } catch {
             XCTAssertEqual(error as? SharedLibraryError, .revisionConflict)
         }
         XCTAssertEqual(store?.clip(id: created.id)?.revision, 2)
-        XCTAssertTrue(store?.deleteClip(id: created.id) == true)
+        let didDelete = await store?.deleteClip(id: created.id)
+        XCTAssertTrue(didDelete == true)
         XCTAssertNil(store?.clip(id: created.id))
 
         store = nil
@@ -216,12 +228,19 @@ final class SharedClipVerticalSliceTests: XCTestCase {
             startSubscriptionRefresh: false
         )
         XCTAssertNil(store?.sharedLibraryUnavailableReason)
-        let recoveredAll = try XCTUnwrap(store?.sharedLibrary).loadClipPages(scope: .all).clips
+        let recoveredClient = try XCTUnwrap(store?.sharedLibrary)
+        let recoveredAll = await Task.detached {
+            SharedLibraryClient.loadClipPages(
+                facade: recoveredClient.facade,
+                scope: .all
+            ).clips
+        }.value
         XCTAssertEqual(Set(recoveredAll.map(\.id)), Set([firstID, secondID, created.id]))
         XCTAssertTrue(try XCTUnwrap(recoveredAll.first(where: { $0.id == created.id })).deleted)
         XCTAssertEqual(store?.allClips().map(\.id), [firstID])
 
-        XCTAssertTrue(store?.clearAllClips() == true)
+        let didClear = await store?.clearAllClips()
+        XCTAssertTrue(didClear == true)
         XCTAssertTrue(store?.allClips().isEmpty == true)
         store = nil
         let relaunched = AppStateStore(
@@ -232,7 +251,13 @@ final class SharedClipVerticalSliceTests: XCTestCase {
         XCTAssertNil(relaunched.sharedLibraryUnavailableReason)
         XCTAssertTrue(relaunched.allClips().isEmpty)
         XCTAssertTrue(relaunched.state.clips.isEmpty)
-        let tombstones = try XCTUnwrap(relaunched.sharedLibrary).loadClipPages(scope: .all).clips
+        let tombstoneClient = try XCTUnwrap(relaunched.sharedLibrary)
+        let tombstones = await Task.detached {
+            SharedLibraryClient.loadClipPages(
+                facade: tombstoneClient.facade,
+                scope: .all
+            ).clips
+        }.value
         XCTAssertEqual(tombstones.count, 3, "Rust clear preserves revisioned tombstones")
         XCTAssertTrue(tombstones.allSatisfy(\.deleted))
     }

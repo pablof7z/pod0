@@ -124,15 +124,11 @@ final class SharedProjectionPersistenceBoundaryTests: XCTestCase {
         let persistence = Persistence(fileURL: AppStateTestSupport.uniqueTempFileURL())
         defer { persistence.reset() }
         var state = AppState()
-        state.agentActivity = [AgentActivityEntry(
-            batchID: UUID(),
-            kind: .noteCreated(noteID: UUID()),
-            summary: "revision handoff"
-        )]
+        state.settings.hasCompletedOnboarding = true
 
         XCTAssertTrue(persistence.write(state, revision: 7))
-        state.agentActivity = []
+        state.settings.hasCompletedOnboarding = false
         XCTAssertEqual(persistence.save(state), 8)
-        XCTAssertTrue(try persistence.load().agentActivity.isEmpty)
+        XCTAssertFalse(try persistence.load().settings.hasCompletedOnboarding)
     }
 }

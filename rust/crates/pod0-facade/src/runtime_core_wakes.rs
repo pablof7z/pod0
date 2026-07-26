@@ -141,6 +141,10 @@ impl FacadeState {
                 }
                 true
             }
+            CoreWakeReason::FeedDiscoveryNotificationRetry { .. } => {
+                let _ = self.reconcile_feed_discovery_workflows();
+                true
+            }
             CoreWakeReason::Unsupported { .. } => true,
         }
     }
@@ -221,69 +225,4 @@ impl FacadeState {
     }
 }
 
-fn reason_matches_record(reason: CoreWakeReason, record: &ModelChapterWorkflowRecord) -> bool {
-    match reason {
-        CoreWakeReason::ModelChapterRetry { episode_id, .. } => episode_id == record.episode_id,
-        CoreWakeReason::ModelChapterFinalization { request_id } => {
-            Some(request_id) == record.request_id
-        }
-        CoreWakeReason::TranscriptProviderRecovery { .. }
-        | CoreWakeReason::TranscriptRetry { .. }
-        | CoreWakeReason::TranscriptFinalization { .. } => false,
-        CoreWakeReason::Unsupported { .. } => false,
-    }
-}
-
-fn wake_request_id(reason: CoreWakeReason, wake_at_ms: i64) -> HostRequestId {
-    let mut hash = Sha256::new();
-    hash.update(b"pod0-core-wake-v1\0");
-    hash.update(wake_at_ms.to_be_bytes());
-    match reason {
-        CoreWakeReason::ModelChapterRetry {
-            episode_id,
-            generation,
-            submission_fence_id,
-        } => {
-            hash.update([1]);
-            hash.update(episode_id.into_bytes());
-            hash.update(generation.to_be_bytes());
-            hash.update(submission_fence_id.into_bytes());
-        }
-        CoreWakeReason::ModelChapterFinalization { request_id } => {
-            hash.update([2]);
-            hash.update(request_id.into_bytes());
-        }
-        CoreWakeReason::TranscriptProviderRecovery {
-            episode_id,
-            attempt_id,
-            submission_fence_id,
-        } => {
-            hash.update([3]);
-            hash.update(episode_id.into_bytes());
-            hash.update(attempt_id.into_bytes());
-            hash.update(submission_fence_id.into_bytes());
-        }
-        CoreWakeReason::TranscriptRetry {
-            episode_id,
-            attempt_id,
-            submission_fence_id,
-        } => {
-            hash.update([4]);
-            hash.update(episode_id.into_bytes());
-            hash.update(attempt_id.into_bytes());
-            hash.update(submission_fence_id.into_bytes());
-        }
-        CoreWakeReason::TranscriptFinalization { request_id } => {
-            hash.update([5]);
-            hash.update(request_id.into_bytes());
-        }
-        CoreWakeReason::Unsupported { wire_code } => {
-            hash.update([255]);
-            hash.update(wire_code.to_be_bytes());
-        }
-    }
-    let digest = hash.finalize();
-    let mut bytes = [0_u8; 16];
-    bytes.copy_from_slice(&digest[..16]);
-    HostRequestId::from_bytes(bytes)
-}
+include!("runtime_core_wake_identity.rs");

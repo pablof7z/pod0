@@ -7,14 +7,7 @@ use crate::{
     chapter_store_is_authoritative, verify_backup,
 };
 
-#[derive(Clone, Copy)]
-struct FixedClock;
-
-impl MigrationClock for FixedClock {
-    fn now_milliseconds(&self) -> i64 {
-        1_800_000_000_000
-    }
-}
+include!("migration_chapter_test_clock.rs");
 
 #[test]
 fn chapter_artifact_upgrade_is_one_step_and_keeps_authority_inactive() {
@@ -186,7 +179,15 @@ fn schema_13_imported_history_revalidates_and_activates_after_upgrade() {
     rusqlite::Connection::open(&fixture.target)
         .unwrap()
         .execute_batch(
-            "DROP TABLE pod0_compiled_memory_sources;
+            "DROP TABLE pod0_feed_discovery_cutover_candidates;
+             DROP TABLE pod0_feed_discovery_cutover;
+             DROP TABLE pod0_feed_apply_receipts;
+             DROP TABLE pod0_feed_discovery_effects;
+             DROP TABLE pod0_feed_discovery_workflows;
+             DROP TABLE pod0_new_episode_notification_settings;
+             DROP TABLE pod0_feed_discovery_items;
+             DROP TABLE pod0_feed_discovery_occurrences;
+             DROP TABLE pod0_compiled_memory_sources;
              DROP TABLE pod0_compiled_memory;
              DROP TABLE pod0_memories;
              DROP TABLE pod0_memory_cutover_evidence;

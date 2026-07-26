@@ -68,9 +68,43 @@ extension SharedLibraryClient {
         }
     }
 
+    /// Bounded set of episodes whose workflow still needs presentation.
+    /// Historical succeeded/cancelled workflows stay out so download progress
+    /// updates never make a SwiftUI screen rescan the whole episode library.
+    func downloadManagerEpisodeIDs() -> Set<UUID> {
+        var episodeIDs = Set(cachedDownloadWorkflows.compactMap { episodeID, workflow in
+            switch workflow.stage {
+            case .waitingForEnvironment, .requested, .hostAccepted, .transferring,
+                 .staged, .retryScheduled, .removing, .failed, .unsupported:
+                episodeID
+            case .cancelled, .succeeded:
+                nil
+            }
+        })
+        episodeIDs.formUnion(CoreDownloadHost.shared.progress.keys.compactMap(\.uuid))
+        return episodeIDs
+    }
+
     func receiveDownloads(revision: UInt64) {
         guard revision >= lastDownloadsRevision else { return }
         lastDownloadsRevision = revision
+        let facade = facade
+        downloadProjectionTask?.cancel()
+        downloadProjectionTask = Task { @MainActor [weak self] in
+            let workflows = await Task.detached(priority: .utility) {
+                Self.loadDownloadWorkflowPages(facade: facade)
+            }.value
+            guard !Task.isCancelled, let self, revision == lastDownloadsRevision else {
+                return
+            }
+            cachedDownloadWorkflows = workflows
+            workflowClient?.refresh(immediately: true)
+        }
+    }
+
+    nonisolated private static func loadDownloadWorkflowPages(
+        facade: Pod0Facade
+    ) -> [UUID: DownloadWorkflowProjection] {
         var offset: UInt32 = 0
         var workflows: [UUID: DownloadWorkflowProjection] = [:]
         while true {
@@ -86,28 +120,33 @@ extension SharedLibraryClient {
             guard page.hasMore, offset <= UInt32.max - 200 else { break }
             offset += 200
         }
-        cachedDownloadWorkflows = workflows
-        store?.applySharedLibrary(loadAllPages())
-        workflowClient?.refresh(immediately: true)
-        dispatcher.executePendingRequests(from: facade)
+        return workflows
     }
 
     func performDownloadAction(
         _ action: WorkflowJobAction,
         on projection: WorkflowJobProjection
-    ) -> WorkflowJobActionResult {
+    ) async -> WorkflowJobActionResult {
         guard projection.authority == .sharedRustDownloads,
               projection.allowedActions.contains(action),
-              cachedDownloadWorkflows[projection.subjectID]?.workflowRevision.value
-                == projection.coreWorkflowRevision
+              let workflow = cachedDownloadWorkflows[projection.subjectID],
+              workflow.workflowRevision.value == projection.coreWorkflowRevision
         else { return .stale }
-        switch action {
+        let command: ApplicationCommand = switch action {
         case .retry:
-            retryDownload(episodeID: projection.subjectID)
+            .requestEpisodeDownload(
+                episodeId: workflow.episodeId,
+                origin: workflow.origin
+            )
         case .cancel:
-            cancelDownload(episodeID: projection.subjectID)
+            .cancelEpisodeDownload(
+                episodeId: workflow.episodeId,
+                expectedWorkflowRevision: workflow.workflowRevision
+            )
         }
-        return .accepted(action)
+        let result = await executeWorkflowAction(command, action: action)
+        if case .accepted = result { workflowClient?.refresh(immediately: true) }
+        return result
     }
 
     nonisolated static func downloadWorkflows(
@@ -154,28 +193,18 @@ extension SharedLibraryClient {
         let capacity = availableCapacityBytes.flatMap { value in
             value >= 0 ? UInt64(value) : nil
         }
-        facade.dispatch(command: CommandEnvelope(
-            commandId: CommandId(uuid: UUID()),
-            cancellationId: CancellationId(uuid: UUID()),
-            expectedRevision: nil,
-            command: .observeDownloadEnvironment(
+        dispatchCoreCommand(
+            .observeDownloadEnvironment(
                 observation: DownloadEnvironmentObservation(
                     network: mappedNetwork,
                     availableCapacityBytes: capacity
                 )
             )
-        ))
-        dispatcher.executePendingRequests(from: facade)
+        )
     }
 
     private func dispatchDownload(_ command: ApplicationCommand) {
-        facade.dispatch(command: CommandEnvelope(
-            commandId: CommandId(uuid: UUID()),
-            cancellationId: CancellationId(uuid: UUID()),
-            expectedRevision: nil,
-            command: command
-        ))
-        dispatcher.executePendingRequests(from: facade)
+        dispatchCoreCommand(command)
     }
 }
 

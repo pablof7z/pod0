@@ -5,8 +5,8 @@ import SwiftUI
 // Modal surface presented after the composer commits a `Clip`. Hosts:
 //   - A live preview of the image card (re-renders when the user toggles
 //     subtitle style).
-//   - Three primary share actions: image (PNG), video (MP4), link (URL).
-//   - Segmented controls for subtitle style + video aspect ratio.
+//   - Three share actions: image (PNG), audio (M4A), and link (URL).
+//   - A segmented control for the image's subtitle style.
 //
 // Each action produces a temp file via `ClipExporter`, then hands the URL
 // to a `ShareLink`. We use `ShareLink` (not `UIActivityViewController`) for
@@ -17,7 +17,6 @@ struct ClipShareSheet: View {
     let podcast: Podcast
 
     @State private var style: ClipExporter.SubtitleStyle = .editorial
-    @State private var aspect: ClipVideo.Aspect = .square
 
     @State private var imageURL: URL?
     @State private var isRenderingImage = false
@@ -33,7 +32,6 @@ struct ClipShareSheet: View {
                 VStack(spacing: AppTheme.Spacing.lg) {
                     preview
                     styleSection
-                    aspectSection
                     actionGrid
                     if let lastError {
                         Text(lastError)
@@ -85,26 +83,12 @@ struct ClipShareSheet: View {
         }
     }
 
-    private var aspectSection: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            Text("Video aspect ratio")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
-            LiquidGlassSegmentedPicker(
-                "Aspect",
-                selection: $aspect,
-                segments: ClipVideo.Aspect.allCases.map { ($0, $0.displayName) }
-            )
-        }
-    }
-
     // MARK: - Actions
 
     private var actionGrid: some View {
         VStack(spacing: AppTheme.Spacing.md) {
             imageAction
             audioAction
-            videoAction
             linkAction
         }
     }
@@ -163,20 +147,6 @@ struct ClipShareSheet: View {
         let m = total / 60
         let s = total % 60
         return String(format: "%d:%02d · M4A", m, s)
-    }
-
-    private var videoAction: some View {
-        // Video export is intentionally stubbed in this build (see
-        // the punt details in `ClipExporter.exportVideo`). Surface as
-        // disabled "Coming soon" rather than letting taps surface a raw
-        // `notImplemented` error in the user's face.
-        actionRow(
-            systemImage: "waveform",
-            title: "Share video",
-            subtitle: "MP4 with subtitles",
-            trailing: "Soon"
-        )
-        .opacity(0.55)
     }
 
     private var linkAction: some View {
@@ -262,9 +232,6 @@ struct ClipShareSheet: View {
         }
     }
 
-    // Video render orchestration intentionally omitted — see
-    // `ClipExporter.exportVideo` for the punt details. The button is
-    // disabled in `videoAction` so this code path isn't exercised.
 }
 
 // MARK: - Preview

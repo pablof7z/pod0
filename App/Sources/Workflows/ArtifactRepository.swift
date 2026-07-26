@@ -8,8 +8,6 @@ enum ArtifactKind: String, CaseIterable, Codable, Sendable {
     case semanticIndex
     case metadataIndex
     case scheduledOutput
-    case notificationDelivery
-    case feedDiscovery
     /// Decode-only evidence imported by the one-shot download cutover.
     case autoDownloadDecision
 }

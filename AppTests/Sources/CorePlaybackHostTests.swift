@@ -1,3 +1,4 @@
+import AVFoundation
 import Pod0Core
 import XCTest
 @testable import Podcastr
@@ -31,7 +32,9 @@ final class CorePlaybackHostTests: XCTestCase {
         guard case .playbackObserved(let playObservation) = played else {
             return XCTFail("Expected a typed play observation")
         }
-        XCTAssertEqual(playObservation.state, .playing)
+        XCTAssertEqual(playObservation.state, .buffering)
+        XCTAssertEqual(engine.pendingInitialSeekTime, 12.5)
+        XCTAssertTrue(engine.playRequested)
 
         let chapterContext = ChapterPlaybackContext(
             episodeId: episodeID,
@@ -60,6 +63,8 @@ final class CorePlaybackHostTests: XCTestCase {
         XCTAssertEqual(engine.rate, 1.75, accuracy: 0.001)
         XCTAssertEqual(engine.sleepTimer.mode, .duration(60))
         XCTAssertEqual(engine.state, .paused)
+        XCTAssertFalse(engine.playRequested)
+        XCTAssertEqual(engine.pendingInitialSeekTime, 21.25)
         _ = host.execute(.cancelNativeTimer(episodeId: episodeID))
         XCTAssertEqual(engine.sleepTimer.mode, .off)
     }
@@ -126,6 +131,22 @@ final class CorePlaybackHostTests: XCTestCase {
         guard case .failed(code: .invalidResponse, safeDetail: _) = unsupported else {
             return XCTFail("Expected unsupported timer rejection")
         }
+    }
+
+    func testOpaqueLocalDownloadUsesFeedMIMETypeForAVFoundation() {
+        var episode = makeEpisode()
+        episode.enclosureMimeType = "audio/mpeg"
+        let localURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("opaque-download.media")
+
+        let localOptions = AudioEngine.assetOptions(for: episode, sourceURL: localURL)
+        XCTAssertEqual(
+            localOptions[AVURLAssetOverrideMIMETypeKey] as? String,
+            "audio/mpeg"
+        )
+        XCTAssertTrue(
+            AudioEngine.assetOptions(for: episode, sourceURL: episode.enclosureURL).isEmpty
+        )
     }
 
     private func makeEpisode() -> Episode {

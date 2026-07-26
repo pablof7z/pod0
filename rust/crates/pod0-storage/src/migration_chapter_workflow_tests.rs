@@ -29,7 +29,15 @@ fn schema_14_through_current_preserves_and_adopts_current_publisher_chapters() {
     rusqlite::Connection::open(&fixture.target)
         .unwrap()
         .execute_batch(
-            "DROP TABLE pod0_compiled_memory_sources;
+            "DROP TABLE pod0_feed_discovery_cutover_candidates;
+             DROP TABLE pod0_feed_discovery_cutover;
+             DROP TABLE pod0_feed_apply_receipts;
+             DROP TABLE pod0_feed_discovery_effects;
+             DROP TABLE pod0_feed_discovery_workflows;
+             DROP TABLE pod0_new_episode_notification_settings;
+             DROP TABLE pod0_feed_discovery_items;
+             DROP TABLE pod0_feed_discovery_occurrences;
+             DROP TABLE pod0_compiled_memory_sources;
              DROP TABLE pod0_compiled_memory;
              DROP TABLE pod0_memories;
              DROP TABLE pod0_memory_cutover_evidence;
@@ -103,7 +111,15 @@ fn schema_15_to_current_preserves_publisher_state_and_adds_fenced_model_storage(
     let connection = rusqlite::Connection::open(&fixture.target).unwrap();
     connection
         .execute_batch(
-            "DROP TABLE pod0_compiled_memory_sources;
+            "DROP TABLE pod0_feed_discovery_cutover_candidates;
+             DROP TABLE pod0_feed_discovery_cutover;
+             DROP TABLE pod0_feed_apply_receipts;
+             DROP TABLE pod0_feed_discovery_effects;
+             DROP TABLE pod0_feed_discovery_workflows;
+             DROP TABLE pod0_new_episode_notification_settings;
+             DROP TABLE pod0_feed_discovery_items;
+             DROP TABLE pod0_feed_discovery_occurrences;
+             DROP TABLE pod0_compiled_memory_sources;
              DROP TABLE pod0_compiled_memory;
              DROP TABLE pod0_memories;
              DROP TABLE pod0_memory_cutover_evidence;
@@ -158,7 +174,7 @@ fn schema_15_to_current_preserves_publisher_state_and_adds_fenced_model_storage(
         .unwrap();
     assert_eq!(
         report.applied_versions,
-        [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+        [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
     );
 
     let reopened = crate::LibraryStore::open_authoritative(&fixture.target).unwrap();

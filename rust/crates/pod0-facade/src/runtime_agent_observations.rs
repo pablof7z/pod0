@@ -179,7 +179,7 @@ impl FacadeState {
             HostObservation::AgentApprovalObserved {
                 proposal_id,
                 proposal_digest,
-                approved,
+                decision,
                 ..
             } => {
                 let authority = before
@@ -193,7 +193,7 @@ impl FacadeState {
                         proposal_digest: *proposal_digest,
                         authority,
                         authorization_id: agent_authorization_id(envelope.request_id),
-                        approved: *approved,
+                        decision: *decision,
                         observed_at: envelope.observed_at,
                     }),
                     AgentAuditKind::AuthorizationObserved,

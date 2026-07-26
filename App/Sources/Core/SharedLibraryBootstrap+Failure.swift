@@ -84,6 +84,8 @@ enum SharedLibraryBootstrapFailureCode: String {
              LegacyScheduledAgentWorkflowBackupError.evidenceMismatch,
              LegacyScheduledAgentWorkflowCutoverError.verificationFailed,
              LegacyAgentHistoryCutoverError.verificationFailed,
+             LegacyAgentRunLogRetirementError.verificationFailed,
+             LegacyAgentActivityRetirementError.verificationFailed,
              LegacyScheduledAgentWorkflowRetirementError.verificationFailed:
             .verificationFailed
         default:

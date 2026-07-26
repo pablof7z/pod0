@@ -3,7 +3,9 @@ use pod0_domain::{
     ContentDigest, ConversationId, GeneratedArtifactId, UnixTimestampMilliseconds,
 };
 
-use crate::{AgentAuthority, AgentToolAction, AgentToolName, AgentTurnProjection};
+use crate::{
+    AgentApprovalDecision, AgentAuthority, AgentToolAction, AgentToolName, AgentTurnProjection,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct AgentTurnState {
@@ -45,7 +47,7 @@ pub struct AgentAuthorizationObservation {
     pub proposal_digest: ContentDigest,
     pub authority: AgentAuthority,
     pub authorization_id: AgentAuthorizationId,
-    pub approved: bool,
+    pub decision: AgentApprovalDecision,
     pub observed_at: UnixTimestampMilliseconds,
 }
 

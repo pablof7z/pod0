@@ -148,6 +148,13 @@ pub enum HostRequest {
         episode_id: EpisodeId,
         artifact_key: String,
     },
+    DeliverNewEpisodeNotification {
+        occurrence_id: pod0_domain::FeedDiscoveryOccurrenceId,
+        episode_id: EpisodeId,
+        podcast_id: pod0_domain::PodcastId,
+        podcast_title: String,
+        episode_title: String,
+    },
     ExecuteTranscriptCapability {
         capability: crate::TranscriptCapabilityRequest,
     },

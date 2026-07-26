@@ -137,13 +137,7 @@ pub(crate) fn verified_file(
     expected_count: u64,
     expected_digest: [u8; 32],
 ) -> Result<bool, StorageError> {
-    let metadata = match fs::symlink_metadata(path) {
-        Ok(value) => value,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
-        Err(error) => return Err(StorageError::io("inspect download artifact", error)),
-    };
-    if metadata.file_type().is_symlink() || !metadata.is_file() || metadata.len() != expected_count
-    {
+    if !file_metadata_matches(path, expected_count)? {
         return Ok(false);
     }
     let mut file =
@@ -160,6 +154,22 @@ pub(crate) fn verified_file(
         hash.update(&buffer[..read]);
     }
     Ok(<[u8; 32]>::from(hash.finalize()) == expected_digest)
+}
+
+pub(crate) fn file_metadata_matches(
+    path: &Path,
+    expected_count: u64,
+) -> Result<bool, StorageError> {
+    let metadata = match fs::symlink_metadata(path) {
+        Ok(value) => value,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(error) => return Err(StorageError::io("inspect download artifact", error)),
+    };
+    Ok(
+        !metadata.file_type().is_symlink()
+            && metadata.is_file()
+            && metadata.len() == expected_count,
+    )
 }
 
 fn download_root(store: &Path) -> PathBuf {

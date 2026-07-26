@@ -1,5 +1,22 @@
 import Foundation
 
+private final class ShowNotesTextCache: @unchecked Sendable {
+    private let storage = NSCache<NSString, NSString>()
+
+    init(countLimit: Int, totalCostLimit: Int) {
+        storage.countLimit = countLimit
+        storage.totalCostLimit = totalCostLimit
+    }
+
+    func value(for key: NSString) -> String? {
+        storage.object(forKey: key) as String?
+    }
+
+    func insert(_ value: String, for key: NSString, cost: Int) {
+        storage.setObject(value as NSString, forKey: key, cost: cost)
+    }
+}
+
 /// Helpers for rendering an `Episode.description` value, which may be HTML,
 /// plain text, or a mix. We do the cheap thing: strip tags for the body text
 /// surface, and decode the most common HTML entities so apostrophes and dashes
@@ -11,20 +28,66 @@ import Foundation
 /// proper attributed renderer once the in-app HTML→AttributedString utility
 /// in `Design/MarkdownView.swift` is generalized.
 enum EpisodeShowNotesFormatter {
+    private static let plainTextCache = ShowNotesTextCache(
+        countLimit: 2_000,
+        totalCostLimit: 24 * 1_024 * 1_024
+    )
+
+    private static let singleLineCache = ShowNotesTextCache(
+        countLimit: 2_000,
+        totalCostLimit: 12 * 1_024 * 1_024
+    )
 
     /// Plain-text projection of an episode description. Tag stripping +
     /// entity decoding + whitespace normalization, plus a fix-up pass that
     /// removes the spurious space `stripTags` injects before trailing
     /// punctuation (`<b>word</b>.` → `word .` → `word.`).
     static func plainText(from raw: String) -> String {
+        guard !raw.isEmpty else { return "" }
+        let key = raw as NSString
+        if let cached = plainTextCache.value(for: key) { return cached }
         let stripped = stripTags(raw)
         let decoded = decodeEntities(stripped)
         let collapsed = collapseWhitespace(decoded)
-        return collapsed.replacingOccurrences(
+        let result = collapsed.replacingOccurrences(
             of: "\\s+([.,!?;:])",
             with: "$1",
             options: .regularExpression
         )
+        plainTextCache.insert(
+            result,
+            for: key,
+            cost: raw.utf8.count + result.utf8.count
+        )
+        return result
+    }
+
+    /// Compact projection for list rows and search fields. This has a
+    /// separate bounded cache because collapsing a multi-paragraph body on
+    /// every SwiftUI update was visible in samples during download progress
+    /// updates and playback ticks.
+    static func singleLineText(from raw: String) -> String {
+        guard !raw.isEmpty else { return "" }
+        let key = raw as NSString
+        if let cached = singleLineCache.value(for: key) { return cached }
+        let result = plainText(from: raw)
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        singleLineCache.insert(
+            result,
+            for: key,
+            cost: result.utf8.count
+        )
+        return result
+    }
+
+    /// Warms the bounded presentation cache from a worker task before the
+    /// corresponding episode rows reach SwiftUI.
+    static func prewarm<S: Sequence>(_ descriptions: S) where S.Element == String {
+        for description in descriptions {
+            _ = singleLineText(from: description)
+        }
     }
 
     private static func stripTags(_ input: String) -> String {

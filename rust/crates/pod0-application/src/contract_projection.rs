@@ -21,6 +21,7 @@ pub enum ProjectionScope {
         episode_id: EpisodeId,
     },
     Playback,
+    NewEpisodeNotificationSettings,
     RecallConfiguration,
     Recall {
         query_id: RecallQueryId,
@@ -93,6 +94,11 @@ impl ProjectionRequest {
 pub struct ProjectionEnvelope {
     pub contract_version: u32,
     pub state_revision: StateRevision,
+    /// True when the requested projection's read model changed since the
+    /// subscriber's previous delivery. Operation-only library deliveries set
+    /// this to false so native clients can resolve commands without reloading
+    /// durable state.
+    pub content_changed: bool,
     pub projection: Projection,
 }
 
@@ -113,6 +119,9 @@ pub enum Projection {
     },
     Playback {
         value: PlaybackProjection,
+    },
+    NewEpisodeNotificationSettings {
+        value: crate::NewEpisodeNotificationSettingsProjection,
     },
     RecallConfiguration {
         value: pod0_domain::RecallConfiguration,

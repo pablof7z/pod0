@@ -127,12 +127,26 @@ extension Persistence {
         episodeStore.fileURL.appendingPathExtension("download-workflow-backup-v1.json")
     }
 
+    var legacyFeedDiscoveryWorkflowBackupRootURL: URL {
+        episodeStore.fileURL.appendingPathExtension("feed-discovery-workflow-backups")
+    }
+
     var legacyScheduledAgentWorkflowBackupRootURL: URL {
         episodeStore.fileURL.appendingPathExtension("scheduled-agent-workflow-backups")
     }
 
     var legacyAgentHistoryBackupRootURL: URL {
         episodeStore.fileURL.appendingPathExtension("agent-history-backups")
+    }
+
+    var legacyAgentRunLogURL: URL {
+        let support = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first ?? FileManager.default.temporaryDirectory
+        return support
+            .appendingPathComponent("AgentRunLog", isDirectory: true)
+            .appendingPathComponent("runs.json", isDirectory: false)
     }
 
     var legacyAgentMemoryBackupRootURL: URL {
@@ -174,8 +188,10 @@ extension Persistence {
             legacyPublisherChapterWorkflowBackupRootURL,
             legacyTranscriptWorkflowBackupRootURL,
             legacyDownloadWorkflowBackupURL,
+            legacyFeedDiscoveryWorkflowBackupRootURL,
             legacyScheduledAgentWorkflowBackupRootURL,
             legacyAgentHistoryBackupRootURL,
+            legacyAgentRunLogURL,
             legacyAgentMemoryBackupRootURL
         ]
         urls.append(contentsOf: (1...32).map {

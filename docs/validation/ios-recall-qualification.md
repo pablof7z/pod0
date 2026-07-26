@@ -33,6 +33,23 @@ below 100 ms, index below 75 MB, and at most 40 candidates. Provider time is
 measured separately because it depends on the selected service and network.
 Provider failures become typed state and never fall back to a Swift result.
 
+## Latest production benchmark
+
+The 2026-07-24 release benchmark is recorded in
+[`ios-product-proof-2026-07-24.json`](../architecture/evidence/ios-product-proof-2026-07-24.json).
+For 5,000 spans at 1,024 dimensions and 20 samples it measured:
+
+| Measure | Result | Budget |
+| --- | ---: | ---: |
+| Rebuild | 820.9 ms | <5,000 ms |
+| Cold query | 9.4 ms | <150 ms |
+| Warm query p95 | 8.8 ms | <100 ms |
+| Index size | 52.9 MB | <75 MB |
+| Candidates | 20 | ≤40 |
+
+The production backend reported that private text did not leave the process.
+All recall budgets passed.
+
 ## Required automated evidence
 
 - The golden fixture preserves candidate identities and raw lane ranks; Rust

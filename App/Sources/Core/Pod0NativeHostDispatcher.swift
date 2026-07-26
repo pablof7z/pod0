@@ -8,48 +8,22 @@ import Pod0Core
 final class Pod0NativeHostDispatcher {
     typealias Delivery = @MainActor (HostObservationEnvelope) -> Void
 
-    struct ActiveTask {
-        let envelope: HostRequestEnvelope
-        let task: Task<Void, Never>
-        let delivery: Delivery
-    }
-
-    struct PendingScheduledAgentExecution {
-        let envelope: HostRequestEnvelope
-        let execution: ScheduledAgentExecutionRequest
-        let delivery: Delivery
-    }
-
-    struct AcknowledgementTask {
-        let envelope: HostRequestEnvelope
-        let observation: HostObservationEnvelope
-        let completion: @MainActor () -> Void
-        let task: Task<Void, Never>
-    }
-
-    struct PlaybackStream {
-        let envelope: HostRequestEnvelope
-        let episodeID: EpisodeId?
-        let minimumInterval: TimeInterval
-        let delivery: Delivery
-        var sequenceNumber: UInt64 = 0
-        var lastDeliveryAt: Date?
-        var lastObservation: PlaybackLifecycleObservation?
-    }
-
     let feedHost: any CoreFeedHosting
     let downloadHost: any CoreDownloadHosting
+    let notificationHost: any CoreNotificationHosting
     let publisherChapterHost: any CorePublisherChapterHosting
     let chapterModelHost: any CoreChapterModelHosting
     let agentHost: any CoreAgentHosting
     let nostrSignerHost: any CoreNostrSignerHosting
     let playbackHost: any CorePlaybackHosting
-    private let maximumConcurrentTasks: Int
+    let maximumConcurrentTasks: Int
     let recallHost: any CoreRecallHosting
     let scheduledAgentHost: any CoreScheduledAgentHosting
     let transcriptHost: any CoreTranscriptHosting
     let recallObservationRecorder = CoreRecallObservationRecorder()
     let publisherObservationRecorder = CorePublisherChapterObservationRecorder()
+    let transientObservationRecorder = CoreTransientObservationRecorder()
+    let hostRequestReader = CoreHostRequestReader()
     let durableObservationRecorder: CoreDurableObservationRecorder
     let observationOutbox: NativeHostObservationOutbox?
     let now: @MainActor () -> Date
@@ -70,10 +44,13 @@ final class Pod0NativeHostDispatcher {
     var observationRecoveryReady: Bool
     var completedRequestIDs: Set<HostRequestId> = []
     var completionOrder: [HostRequestId] = []
-    private var executionEnabled = false
+    var requestDrainTask: Task<Void, Never>?
+    var requestDrainRequested = false
+    var executionEnabled = false
     init(
         feedHost: any CoreFeedHosting,
         downloadHost: any CoreDownloadHosting = UnavailableCoreDownloadHost(),
+        notificationHost: any CoreNotificationHosting = UnavailableCoreNotificationHost(),
         publisherChapterHost: any CorePublisherChapterHosting = CorePublisherChapterHost(),
         chapterModelHost: any CoreChapterModelHosting = CoreChapterModelHost(),
         agentHost: any CoreAgentHosting = UnavailableCoreAgentHost(),
@@ -88,6 +65,7 @@ final class Pod0NativeHostDispatcher {
     ) {
         self.feedHost = feedHost
         self.downloadHost = downloadHost
+        self.notificationHost = notificationHost
         self.publisherChapterHost = publisherChapterHost
         self.chapterModelHost = chapterModelHost
         self.agentHost = agentHost
@@ -105,38 +83,6 @@ final class Pod0NativeHostDispatcher {
         self.now = now
         playbackHost.installObservationSink { [weak self] observation in
             self?.receivePlaybackObservation(observation)
-        }
-    }
-
-    func executePendingRequests(from facade: Pod0Facade, maximumCount: UInt16 = 64) {
-        guard executionEnabled else { return }
-        guard observationRecoveryReady else {
-            startObservationRecovery(from: facade, maximumCount: maximumCount)
-            return
-        }
-        if retryRetainedObservations(in: facade) { return }
-        if retryRetainedScheduledAgentObservations(in: facade) { return }
-        for cancellation in facade.nextHostCancellations(maximumCount: maximumCount) {
-            cancel(
-                requestID: cancellation.requestId,
-                cancellationID: cancellation.cancellationId
-            )
-        }
-        let capacity = max(
-            0,
-            maximumConcurrentTasks - activeTasks.count - acknowledgementTasks.count
-                - downloadRequests.count - scheduledAgentAcknowledgementTasks.count
-                - pendingScheduledAgentExecutions.count
-        )
-        let boundedCount = min(Int(maximumCount), capacity)
-        guard boundedCount > 0 else { return }
-        for envelope in facade.nextHostRequests(maximumCount: UInt16(boundedCount)) {
-            execute(envelope) { [weak self] observation in
-                guard let self else { return }
-                record(observation, for: envelope, in: facade) { [weak self] in
-                    self?.executePendingRequests(from: facade, maximumCount: maximumCount)
-                }
-            }
         }
     }
 
@@ -286,6 +232,22 @@ final class Pod0NativeHostDispatcher {
         case .startEpisodeDownload, .cancelEpisodeDownload,
              .removeEpisodeDownloadArtifact:
             startDownloadRequest(envelope, delivery: delivery)
+        case let .deliverNewEpisodeNotification(
+            occurrenceID,
+            episodeID,
+            podcastID,
+            podcastTitle,
+            episodeTitle
+        ):
+            startNotificationTask(
+                envelope,
+                occurrenceID: occurrenceID,
+                episodeID: episodeID,
+                podcastID: podcastID,
+                podcastTitle: podcastTitle,
+                episodeTitle: episodeTitle,
+                delivery: delivery
+            )
         default:
             finish(
                 envelope,

@@ -46,6 +46,7 @@ LEGACY_CONFIGURATION_ALLOWLIST = {
     "App/Sources/Domain/Settings+LegacyRecall.swift",
     "App/Sources/Core/SharedLibraryBootstrap.swift",
     "App/Sources/State/AppStateStore.swift",
+    "App/Sources/State/AppStateStartupPreparation.swift",
     "App/Sources/Services/iCloudSettingsSync.swift",
 }
 
@@ -53,6 +54,11 @@ REQUIRED_TOKENS = {
     "App/Sources/Core/SharedLibraryClient+Recall.swift": (
         ".recallQuery(",
         ".cancelOperation(",
+        "dispatchThenSubscribe(",
+    ),
+    "App/Sources/Core/SharedLibraryClient+CoreCommands.swift": (
+        "func dispatchThenSubscribe(",
+        "facade.dispatch(command: envelope)",
         "facade.subscribe(",
     ),
     "App/Sources/Features/Recall/RecallAnswerService.swift": (
