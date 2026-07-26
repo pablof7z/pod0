@@ -6,7 +6,16 @@ final class SharedNoteMappingTests: XCTestCase {
     func testUnsupportedFutureNoteValuesFailClosedInNativeProjection() {
         XCTAssertNil(record(kind: .unsupported(wireCode: 41)).swiftValue)
         XCTAssertNil(record(author: .unsupported(wireCode: 42)).swiftValue)
-        XCTAssertNil(record(target: .unsupported(wireCode: 43)).swiftValue)
+    }
+
+    /// An unknown target degrades the anchor; it must not remove the note.
+    /// A build older than the version that wrote the target still shows the
+    /// text. Dropping the record reads to the user as their note being deleted.
+    func testUnsupportedTargetKeepsTheNoteAndDropsOnlyTheAnchor() {
+        let note = record(target: .unsupported(wireCode: 43)).swiftValue
+        XCTAssertNotNil(note)
+        XCTAssertEqual(note?.text, "Future-safe note")
+        XCTAssertNil(note?.target)
     }
 
     private func record(

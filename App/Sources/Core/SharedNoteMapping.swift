@@ -11,14 +11,16 @@ extension NoteRecord {
               let kind = kind.swiftValue,
               let author = author.swiftValue
         else { return nil }
-        let target: Anchor?
-        switch self.target {
-        case nil:
-            target = nil
-        case .some(let value):
-            guard let mapped = value.swiftValue else { return nil }
-            target = mapped
-        }
+        // Degrade, never drop. A target this build cannot name — one written by
+        // a newer version — costs the note its anchor, not its existence. The
+        // previous `return nil` removed the whole record from the projection,
+        // which the user reads as their note being deleted. Losing where a note
+        // pointed is recoverable; losing what it said is not.
+        //
+        // `kind` and `author` above still drop the record on an unknown value.
+        // Same hazard, but neither is Optional, so degrading them means picking
+        // a default that lies about the stored value — left alone deliberately.
+        let target = self.target.flatMap(\.swiftValue)
         return Note(
             id: id,
             revision: revision.value,
