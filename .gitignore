@@ -14,3 +14,4 @@ DerivedDevice/
 rust/target/
 .build/pod0core/
 .build/pod0-tools/
+__pycache__/
