@@ -137,6 +137,8 @@ mod transcript_workflow_identity;
 mod transcript_workflow_identity_tests;
 mod transcript_workflow_policy;
 #[cfg(test)]
+mod transcript_workflow_projection_tests;
+#[cfg(test)]
 mod transcript_workflow_tests;
 
 pub use agent_action_hash::*;

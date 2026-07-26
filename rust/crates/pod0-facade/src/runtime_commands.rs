@@ -41,6 +41,13 @@ impl FacadeState {
             ApplicationCommand::SetSubscriptionAutoDownload { podcast_id, policy } => {
                 self.set_subscription_auto_download(&envelope, &fingerprint, podcast_id, policy)
             }
+            ApplicationCommand::SetSubscriptionTranscriptStartPolicy { podcast_id, policy } => self
+                .set_subscription_transcript_start_policy(
+                    &envelope,
+                    &fingerprint,
+                    podcast_id,
+                    policy,
+                ),
             ApplicationCommand::SetEpisodeStarred {
                 episode_id,
                 starred,
@@ -226,62 +233,12 @@ impl FacadeState {
             ApplicationCommand::ClearMemories {
                 expected_collection_revision,
             } => self.clear_memories(&envelope, &fingerprint, expected_collection_revision),
-            ApplicationCommand::CreateClip {
-                clip_id,
-                episode_id,
-                podcast_id,
-                start_milliseconds,
-                end_milliseconds,
-                caption,
-                speaker_id,
-                frozen_transcript_text,
-                source,
-            } => self.create_clip(
-                &envelope,
-                &fingerprint,
-                clip_id,
-                episode_id,
-                podcast_id,
-                start_milliseconds,
-                end_milliseconds,
-                caption.as_deref(),
-                speaker_id,
-                &frozen_transcript_text,
-                source,
-            ),
-            ApplicationCommand::UpdateClip {
-                clip_id,
-                expected_clip_revision,
-                start_milliseconds,
-                end_milliseconds,
-                caption,
-                speaker_id,
-                frozen_transcript_text,
-            } => self.update_clip(
-                &envelope,
-                &fingerprint,
-                clip_id,
-                expected_clip_revision,
-                start_milliseconds,
-                end_milliseconds,
-                caption.as_deref(),
-                speaker_id,
-                &frozen_transcript_text,
-            ),
-            ApplicationCommand::SetClipDeleted {
-                clip_id,
-                expected_clip_revision,
-                deleted,
-            } => self.set_clip_deleted(
-                &envelope,
-                &fingerprint,
-                clip_id,
-                expected_clip_revision,
-                deleted,
-            ),
-            ApplicationCommand::ClearClips {
-                expected_collection_revision,
-            } => self.clear_clips(&envelope, &fingerprint, expected_collection_revision),
+            command @ (ApplicationCommand::CreateClip { .. }
+            | ApplicationCommand::UpdateClip { .. }
+            | ApplicationCommand::SetClipDeleted { .. }
+            | ApplicationCommand::ClearClips { .. }) => {
+                self.route_clip_command(&envelope, &fingerprint, command)
+            }
             ApplicationCommand::Unsupported { wire_code } => {
                 self.reject_unsupported(envelope.command_id, wire_code)
             }

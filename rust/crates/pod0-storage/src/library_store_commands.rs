@@ -1,11 +1,13 @@
-use pod0_domain::{AutoDownloadPolicy, CommandId, EpisodeId, PodcastId, StateRevision};
+use pod0_domain::{
+    AutoDownloadPolicy, CommandId, EpisodeId, PodcastId, StateRevision, TranscriptStartPolicy,
+};
 use rusqlite::{OptionalExtension, params};
 
 use crate::StorageError;
 use crate::library_store::{LibraryStore, command_was_applied, finish_command};
 use crate::library_store_clip_support::set_clip_revision;
 use crate::library_store_note_support::finish_note_command;
-use crate::listening_db_codec::{auto_download, bool_value};
+use crate::listening_db_codec::{auto_download, bool_value, transcript_start_policy};
 
 impl LibraryStore {
     pub fn set_episode_starred(
@@ -185,6 +187,7 @@ impl LibraryStore {
         podcast_id: PodcastId,
         auto_download_policy: Option<AutoDownloadPolicy>,
         notifications_enabled: Option<bool>,
+        transcript_policy: Option<TranscriptStartPolicy>,
         observed_at_ms: i64,
     ) -> Result<StateRevision, StorageError> {
         self.write(|transaction| {
@@ -220,6 +223,21 @@ impl LibraryStore {
                     "UPDATE pod0_subscriptions SET notifications_enabled=?1 WHERE podcast_id=?2",
                     params![bool_value(enabled), podcast_id.into_bytes().as_slice()],
                 ).map_err(|error| StorageError::sqlite("update notification preference", error))?;
+                if changed != 1 {
+                    return Err(StorageError::EntityNotFound);
+                }
+            }
+            if let Some(policy) = transcript_policy {
+                let (code, wire) = transcript_start_policy(&policy);
+                let changed = transaction
+                    .execute(
+                        "UPDATE pod0_subscriptions SET transcript_start_policy_code=?1,\
+                     transcript_start_policy_wire_code=?2 WHERE podcast_id=?3",
+                        params![code, wire, podcast_id.into_bytes().as_slice()],
+                    )
+                    .map_err(|error| {
+                        StorageError::sqlite("update transcript start preference", error)
+                    })?;
                 if changed != 1 {
                     return Err(StorageError::EntityNotFound);
                 }

@@ -162,9 +162,8 @@ Non-publishing release archive:
 ./ci_scripts/archive_without_upload.sh
 ```
 
-Every user-facing iPhone change also updates
-`App/Resources/whats-new.json`. Repository-wide typography and file-length
-rules live in [AGENTS.md](AGENTS.md).
+Repository-wide typography and file-length rules live in
+[AGENTS.md](AGENTS.md).
 
 ## Delivery
 

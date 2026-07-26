@@ -22,6 +22,7 @@ fn off_and_all_new_download_policies_apply_to_the_original_batch() {
                 wifi_only: false,
             }),
             None,
+            None,
             BASE_TIME + 1,
         )
         .unwrap();
@@ -52,6 +53,7 @@ fn off_and_all_new_download_policies_apply_to_the_original_batch() {
                 mode: AutoDownloadMode::AllNew,
                 wifi_only: true,
             }),
+            None,
             None,
             BASE_TIME + 1,
         )
@@ -140,6 +142,7 @@ fn disabling_per_show_notifications_obsoletes_pending_delivery() {
             podcast.podcast_id,
             None,
             Some(false),
+            None,
             BASE_TIME + 4,
         )
         .unwrap();
@@ -164,6 +167,7 @@ fn enable_notifications(
                 wifi_only: false,
             }),
             Some(true),
+            None,
             BASE_TIME + 1,
         )
         .unwrap();

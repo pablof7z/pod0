@@ -264,15 +264,15 @@ fn committed_step_and_backup_evidence_are_atomic_across_restart() {
     assert_eq!(verify_backup(&fixture.backup).unwrap().schema_version, 2);
 }
 
-struct Fixture {
+pub(crate) struct Fixture {
     _directory: TempDir,
-    store: std::path::PathBuf,
+    pub(crate) store: std::path::PathBuf,
     backup: std::path::PathBuf,
     migrator: CoreStoreMigrator<FixedClock>,
 }
 
 impl Fixture {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let directory = tempfile::tempdir().unwrap();
         Self {
             store: directory.path().join("core.sqlite"),
@@ -282,7 +282,11 @@ impl Fixture {
         }
     }
 
-    fn migrate_to(&self, version: u32, id: u64) -> Result<MigrationReport, StorageError> {
+    pub(crate) fn migrate_to(
+        &self,
+        version: u32,
+        id: u64,
+    ) -> Result<MigrationReport, StorageError> {
         self.migrator
             .migrate(&self.store, version, &self.backup, command_id(id))
     }

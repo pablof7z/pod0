@@ -5,6 +5,7 @@ enum RecallPlaybackHandoff {
     @discardableResult
     static func open(
         _ evidence: RecallEvidence,
+        responseID: UUID,
         store: AppStateStore,
         playback: PlaybackState
     ) -> Bool {
@@ -13,7 +14,11 @@ enum RecallPlaybackHandoff {
         playback.seek(to: Double(evidence.startMilliseconds) / 1_000)
         if !playback.isPlaying { playback.play() }
         RecallQualityLogger.citationTapped()
-        store.recordProductSignal(.init(name: .recallCitationOpened, outcome: .opened))
+        store.recordProductSignal(.once(
+            name: .recallCitationOpened,
+            subjectID: responseID,
+            outcome: .opened
+        ))
         return true
     }
 }

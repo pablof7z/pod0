@@ -44,11 +44,19 @@ fn hash_configuration(
     match origin {
         Origin::User => hash.update([1]),
         Origin::Automatic => hash.update([2]),
+        Origin::Playback => hash.update([3]),
         Origin::Unsupported { wire_code } => {
             hash.update([255]);
             hash.update(wire_code.to_be_bytes());
         }
     }
+    hash_transcript_configuration(hash, configuration);
+}
+
+pub(super) fn hash_transcript_configuration(
+    hash: &mut Sha256,
+    configuration: &pod0_application::TranscriptWorkflowConfiguration,
+) {
     match configuration.provider {
         Provider::AssemblyAi => hash.update([1]),
         Provider::ElevenLabsScribe => hash.update([2]),

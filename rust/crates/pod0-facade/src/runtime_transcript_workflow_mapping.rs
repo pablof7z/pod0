@@ -115,6 +115,7 @@ const fn origin_wire(value: TranscriptWorkflowOrigin) -> &'static str {
     match value {
         TranscriptWorkflowOrigin::User => "user",
         TranscriptWorkflowOrigin::Automatic => "automatic",
+        TranscriptWorkflowOrigin::Playback => "playback",
         TranscriptWorkflowOrigin::Unsupported { .. } => "unsupported",
     }
 }

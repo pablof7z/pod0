@@ -19,7 +19,7 @@ extension PlaybackState {
         guard let sharedCore else { return }
         pendingPlaySignal = true
         Haptics.medium()
-        sharedCore.dispatchPlayback(.play)
+        sharedCore.dispatchPlay()
     }
 
     func pause() {

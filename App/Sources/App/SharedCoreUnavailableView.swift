@@ -3,21 +3,14 @@ import SwiftUI
 /// Fail-closed recovery surface. The app does not render or mutate legacy
 /// domain state while the authoritative Rust store is unavailable.
 struct SharedCoreUnavailableView: View {
-    let reason: String
-    let stage: String?
-
     var body: some View {
         ContentUnavailableView {
-            Label("Pod0 needs to recover its library", systemImage: "externaldrive.badge.exclamationmark")
-        } description: {
-            Text(
-                "Your existing data has been left untouched. Close and reopen Pod0 to retry recovery."
+            Label(
+                "Pod0 couldn’t finish updating",
+                systemImage: "arrow.clockwise.circle"
             )
-        } actions: {
-            Text("Diagnostic: \(reason)\(stage.map { " · \($0)" } ?? "")")
-                .font(.footnote.monospaced())
-                .foregroundStyle(.secondary)
-                .textSelection(.enabled)
+        } description: {
+            Text("Your library is safe. Close and reopen Pod0 to try again.")
         }
         .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

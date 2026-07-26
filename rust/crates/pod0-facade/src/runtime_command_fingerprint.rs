@@ -2,11 +2,11 @@ use crate::runtime_agent_command_fingerprint::hash_agent_command;
 use crate::runtime_artifact_command_fingerprint::{hash_chapter_commit, hash_transcript_commit};
 use crate::runtime_clip_command_fingerprint::hash_clip_command;
 use crate::runtime_command_fingerprint_values::{
-    finish_command_hash, hash_command_tail, hash_evidence_input, hash_note_author, hash_note_kind,
-    hash_note_target, hash_optional, hash_policy,
+    finish_command_hash, hash_command_tail, hash_evidence_input, hash_optional, hash_policy,
 };
 use crate::runtime_cross_platform_fingerprint::{hash_publication, hash_recall_query};
 use crate::runtime_download_command_fingerprint::hash_download_command;
+use crate::runtime_note_command_fingerprint::hash_note_command;
 use crate::runtime_playback_fingerprint::hash_playback;
 use crate::runtime_scheduled_agent::command_fingerprint::hash_scheduled_agent_command;
 use crate::runtime_transcript_workflow_fingerprint::hash_transcript_workflow_command;
@@ -56,6 +56,18 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
             hash.update(b"auto-download\0");
             hash.update(podcast_id.into_bytes());
             hash_policy(&mut hash, policy);
+        }
+        ApplicationCommand::SetSubscriptionTranscriptStartPolicy { podcast_id, policy } => {
+            hash.update(b"transcript-start-policy\0");
+            hash.update(podcast_id.into_bytes());
+            match policy {
+                pod0_domain::TranscriptStartPolicy::Automatic => hash.update([1]),
+                pod0_domain::TranscriptStartPolicy::WhenPlayed => hash.update([2]),
+                pod0_domain::TranscriptStartPolicy::Unsupported { wire_code } => {
+                    hash.update([255]);
+                    hash.update(wire_code.to_be_bytes());
+                }
+            }
         }
         ApplicationCommand::SetEpisodeStarred {
             episode_id,
@@ -199,82 +211,14 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
             hash.update(episode_id.into_bytes());
             hash.update(expected_workflow_revision.value.to_be_bytes());
         }
-        ApplicationCommand::CreateNote {
-            text,
-            kind,
-            author,
-            target,
-        } => {
-            hash.update(b"create-note\0");
-            hash.update(text.as_bytes());
-            hash.update([0]);
-            hash_note_kind(&mut hash, *kind);
-            hash_note_author(&mut hash, *author);
-            hash_note_target(&mut hash, *target);
-        }
-        ApplicationCommand::UpdateNote {
-            note_id,
-            expected_note_revision,
-            text,
-            kind,
-            target,
-        } => {
-            hash.update(b"update-note\0");
-            hash.update(note_id.into_bytes());
-            hash.update(expected_note_revision.value.to_be_bytes());
-            hash.update(text.as_bytes());
-            hash.update([0]);
-            hash_note_kind(&mut hash, *kind);
-            hash_note_target(&mut hash, *target);
-        }
-        ApplicationCommand::SetNoteDeleted {
-            note_id,
-            expected_note_revision,
-            deleted,
-        } => {
-            hash.update(b"delete-note\0");
-            hash.update(note_id.into_bytes());
-            hash.update(expected_note_revision.value.to_be_bytes());
-            hash.update([u8::from(*deleted)]);
-        }
-        ApplicationCommand::ClearNotes {
-            expected_collection_revision,
-        } => {
-            hash.update(b"clear-notes\0");
-            hash.update(expected_collection_revision.value.to_be_bytes());
-        }
-        ApplicationCommand::CreateMemory { content } => {
-            hash.update(b"create-memory\0");
-            hash.update(content.as_bytes());
-            hash.update([0]);
-        }
-        ApplicationCommand::UpdateMemory {
-            memory_id,
-            expected_memory_revision,
-            content,
-        } => {
-            hash.update(b"update-memory\0");
-            hash.update(memory_id.into_bytes());
-            hash.update(expected_memory_revision.value.to_be_bytes());
-            hash.update(content.as_bytes());
-            hash.update([0]);
-        }
-        ApplicationCommand::SetMemoryDeleted {
-            memory_id,
-            expected_memory_revision,
-            deleted,
-        } => {
-            hash.update(b"delete-memory\0");
-            hash.update(memory_id.into_bytes());
-            hash.update(expected_memory_revision.value.to_be_bytes());
-            hash.update([u8::from(*deleted)]);
-        }
-        ApplicationCommand::ClearMemories {
-            expected_collection_revision,
-        } => {
-            hash.update(b"clear-memories\0");
-            hash.update(expected_collection_revision.value.to_be_bytes());
-        }
+        ApplicationCommand::CreateNote { .. }
+        | ApplicationCommand::UpdateNote { .. }
+        | ApplicationCommand::SetNoteDeleted { .. }
+        | ApplicationCommand::ClearNotes { .. }
+        | ApplicationCommand::CreateMemory { .. }
+        | ApplicationCommand::UpdateMemory { .. }
+        | ApplicationCommand::SetMemoryDeleted { .. }
+        | ApplicationCommand::ClearMemories { .. } => hash_note_command(&mut hash, command),
         ApplicationCommand::CreateClip { .. }
         | ApplicationCommand::UpdateClip { .. }
         | ApplicationCommand::SetClipDeleted { .. }

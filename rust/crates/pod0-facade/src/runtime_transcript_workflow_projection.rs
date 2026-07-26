@@ -124,6 +124,7 @@ fn origin(value: &str) -> TranscriptWorkflowOrigin {
     match value {
         "user" => TranscriptWorkflowOrigin::User,
         "automatic" => TranscriptWorkflowOrigin::Automatic,
+        "playback" => TranscriptWorkflowOrigin::Playback,
         _ => TranscriptWorkflowOrigin::Unsupported { wire_code: 1 },
     }
 }

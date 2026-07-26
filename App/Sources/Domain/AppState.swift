@@ -188,7 +188,8 @@ private struct LegacyPodcastSubscriptionRow: Decodable {
             subscribedAt: subscribedAt ?? Date(),
             autoDownload: autoDownload ?? .default,
             notificationsEnabled: notificationsEnabled ?? true,
-            defaultPlaybackRate: defaultPlaybackRate
+            defaultPlaybackRate: defaultPlaybackRate,
+            transcriptStartPolicy: .automatic
         )
     }
 }

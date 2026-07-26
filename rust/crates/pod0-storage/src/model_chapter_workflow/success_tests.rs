@@ -212,6 +212,8 @@ fn schema_16_completion_is_preserved_and_no_longer_pins_the_current_request() {
              INSERT INTO pod0_model_chapter_completions SELECT *
                  FROM pod0_model_chapter_completions_v17;
              DROP TABLE pod0_model_chapter_completions_v17;
+             ALTER TABLE pod0_subscriptions DROP COLUMN transcript_start_policy_wire_code;
+             ALTER TABLE pod0_subscriptions DROP COLUMN transcript_start_policy_code;
              UPDATE pod0_schema_versions SET version=16 WHERE component='kernel';
              PRAGMA user_version=16;",
         )
@@ -228,7 +230,9 @@ fn schema_16_completion_is_preserved_and_no_longer_pins_the_current_request() {
         .unwrap();
     assert_eq!(
         report.applied_versions,
-        [17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
+        [
+            17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
+        ]
     );
     let connection = rusqlite::Connection::open(&path).unwrap();
     connection.execute("PRAGMA foreign_keys=ON", []).unwrap();
@@ -257,41 +261,5 @@ fn schema_16_completion_is_preserved_and_no_longer_pins_the_current_request() {
             .model_chapter_completion(completion.request_id)
             .unwrap(),
         Some(completion)
-    );
-}
-
-#[test]
-fn post_claim_replan_requires_durable_completion_evidence() {
-    let fixture = Fixture::new();
-    let requested = fixture.ensure(10, None);
-    let ModelChapterSubmissionClaim::Authorized(authorized) =
-        fixture.claim(&requested, 1_800_000_100_030)
-    else {
-        panic!("claim must authorize")
-    };
-    assert_eq!(
-        fixture
-            .store
-            .fail_model_chapter_workflow(ModelChapterFailureInput {
-                episode_id: authorized.episode_id,
-                request_id: authorized.request_id.unwrap(),
-                generation: authorized.generation,
-                submission_fence_id: authorized.submission_fence_id.unwrap(),
-                failure_code: "stale_transcript".to_owned(),
-                failure_detail: None,
-                may_have_submitted: true,
-                disposition: ModelChapterFailureDisposition::Replan,
-                observed_at_ms: 1_800_000_100_031,
-            }),
-        Err(crate::StorageError::ChapterWorkflowConflict)
-    );
-    assert_eq!(
-        fixture
-            .store
-            .model_chapter_workflow(fixture.episode_id)
-            .unwrap()
-            .unwrap()
-            .state,
-        ModelChapterWorkflowState::SubmissionAuthorized
     );
 }

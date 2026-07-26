@@ -270,7 +270,6 @@ Nothing to do. Per-show skip-button intervals were dropped, so `MPRemoteCommandC
 - Add `playbackProfile` field on `PodcastSubscription` with Codable migration of orphan `defaultPlaybackRate`.
 - Add `ShowPlaybackProfileTests` (Codable + migration cases).
 - No callers yet — field is dormant.
-- **Whats-new:** skip (internal-only).
 
 ### Commit 2 — Resolver + `applyPreferences` wiring + `RootView` autoplay gate
 
@@ -279,20 +278,17 @@ Nothing to do. Per-show skip-button intervals were dropped, so `MPRemoteCommandC
 - Update `RootView.onAppear` (resolver + applyPreferences calls) and `onEpisodeFinished` (autoplay gate reads override first).
 - Add the `applyPreferences` integration tests.
 - **Behavior change:** any user with a legacy `defaultPlaybackRate` set now actually sees it apply on episode load (today: dead data).
-- **Whats-new:** "Per-show playback speed (if previously set) now applies when you start an episode."
 
 ### Commit 3 — Store setters + `PlayerSpeedSheet` "Save as default"
 
 - `AppStateStore+Podcasts` setters: `setSubscriptionPlaybackProfile`, `setSubscriptionPlaybackProfileSpeed`, `setSubscriptionPlaybackProfileAutoPlayNext`.
 - Bottom-anchored button in `PlayerSpeedSheet`, visible only when subscription resolves; haptic + toast on save.
-- **Whats-new:** "Save a default playback speed for each show right from the speed sheet."
 
 ### Commit 4 — `ShowDetailSettingsSheet` row + `ShowPlaybackProfileEditor`
 
 - New "Playback" section in `ShowDetailSettingsSheet` with a `NavigationLink`.
 - Editor: speed picker, `autoPlayNext` toggle, "Reset to defaults" button.
 - ~3 rows, ~120 lines. Stays well under any size cap.
-- **Whats-new:** "Long-press a show → 'Settings for this show' → 'Playback' to set per-show speed and auto-play."
 
 ### Commit 5 — Intro/outro detection sub-feature
 
@@ -303,7 +299,6 @@ This is the biggest commit and may split if review prefers. Order within:
 - **5c (playback wiring):** Add intro/outro fields and toggles to `PlaybackState`. Add `PlaybackState+IntroOutroSkip.swift`. Call from `tickPersistence`. Reset `skippedIntroForCurrentEpisode` in `setEpisode`.
 - **5d (live-data bridge):** Add the `RootView` `.onChange(of: store.episode(id:))` bridge that pushes fresh `adSegments` + intro/outro markers into `PlaybackState` (this also fixes the preexisting ad-skip-after-detect bug — call out in PR description).
 - **5e (per-show UI):** Extend `ShowPlaybackProfile` with `autoSkipIntro: Bool?` and `autoSkipOutro: Bool?`. Add the two toggles to `ShowPlaybackProfileEditor`. Add `setSubscriptionPlaybackProfileAutoSkipIntro/Outro` store setters. Wire `autoSkipIntroEnabled` / `autoSkipOutroEnabled` flags in `PlaybackState.applyPreferences` from the profile.
-- **Whats-new:** "Auto-skip intros and outros: in each show's playback settings, toggle on and the player will jump past detected intros and end episodes early when the outro begins."
 
 5a–5b together produce data but no behavior. 5c–5d wire playback. 5e adds the per-show toggles. Each sub-commit compiles. Reviewer may prefer them merged; suggested split is for diff readability.
 
@@ -327,9 +322,7 @@ This is the biggest commit and may split if review prefers. Order within:
 
 8. **iCloud sync of profiles.** Out of scope. `iCloudSettingsSync` only handles `Settings`. Per-show profiles and intro/outro markers (on `Episode`) don't sync across devices today. Follow-up if desired — separate design exercise.
 
-9. **Whats-new entries.** Per AGENTS.md, each user-facing commit needs an entry in `App/Resources/whats-new.json`. Commit 1 is internal-only (no entry); commits 2, 3, 4, and 5 each get one. Impl agent should keep entries short and user-meaningful.
-
-10. **Editor file size after commit 5.** `ShowPlaybackProfileEditor.swift` with four rows + reset + footers should land around 130–150 lines. Well under 300-line soft cap.
+9. **Editor file size after commit 5.** `ShowPlaybackProfileEditor.swift` with four rows + reset + footers should land around 130–150 lines. Well under 300-line soft cap.
 
 ---
 

@@ -48,7 +48,7 @@ fun main(args: Array<String>) {
         check(subscriber.revisions == listOf(0UL, 1UL))
 
         val projection = facade.snapshot(request).projection
-        check(facade.snapshot(request).contractVersion == 49u)
+        check(facade.snapshot(request).contractVersion == 50u)
         check(projection is Projection.Library)
         val unsupportedOperation = projection.value.operations.single()
         check(unsupportedOperation.commandId == CommandId(0UL, 1UL))
@@ -240,6 +240,7 @@ private fun qualifyListeningDomain(fixture: Map<String, String>) {
                 ),
                 fixture.getValue("notifications_enabled").toBooleanStrict(),
                 PlaybackRatePermille(fixture.getValue("default_playback_rate_permille").toUShort()),
+                TranscriptStartPolicy.Automatic,
             ),
         ),
         episodes = listOf(

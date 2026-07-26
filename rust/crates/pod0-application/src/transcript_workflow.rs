@@ -20,6 +20,7 @@ pub const MAX_TRANSCRIPT_CAPABILITY_RESPONSE_BYTES: u64 = 32 * 1_024 * 1_024;
 pub enum TranscriptWorkflowOrigin {
     User,
     Automatic,
+    Playback,
     Unsupported { wire_code: u32 },
 }
 

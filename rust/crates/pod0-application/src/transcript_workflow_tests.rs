@@ -1,7 +1,6 @@
 use pod0_domain::{
-    ContentDigest, EpisodeId, PodcastId, StateRevision, TranscriptAttemptId,
-    TranscriptSubmissionFenceId, TranscriptVersionId, TranscriptWorkflowId,
-    UnixTimestampMilliseconds,
+    ContentDigest, EpisodeId, PodcastId, TranscriptAttemptId, TranscriptSubmissionFenceId,
+    TranscriptVersionId, UnixTimestampMilliseconds,
 };
 
 use super::*;
@@ -64,6 +63,31 @@ fn automatic_remote_work_is_not_created_without_a_credential() {
     let plan = plan_transcript_workflow(value);
     assert_eq!(plan.generation, TranscriptGenerationDecision::NotRequested);
     assert!(plan.request.is_none());
+}
+
+#[test]
+fn playback_request_starts_provider_work_even_when_background_fallback_is_off() {
+    let mut value = input(TranscriptWorkflowOrigin::Playback);
+    value.auto_provider_enabled = false;
+
+    let plan = plan_transcript_workflow(value);
+    assert_eq!(plan.generation, TranscriptGenerationDecision::Ensure);
+    let request = plan.request.unwrap();
+    assert!(!request.publisher_first);
+    assert!(request.provider_fallback_enabled);
+}
+
+#[test]
+fn playback_request_surfaces_a_missing_provider_credential() {
+    let mut value = input(TranscriptWorkflowOrigin::Playback);
+    value.credential_available = false;
+
+    assert_eq!(
+        plan_transcript_workflow(value).generation,
+        TranscriptGenerationDecision::AwaitingCredential {
+            provider: TranscriptProvider::AssemblyAi,
+        }
+    );
 }
 
 #[test]
@@ -241,37 +265,4 @@ fn capability_validation_rejects_unbounded_or_unsupported_requests() {
         validate_transcript_capability_request(recovery),
         TranscriptCapabilityValidation::Accepted
     );
-}
-
-#[test]
-fn workflow_projection_is_bounded() {
-    let workflow_id = TranscriptWorkflowId::from_bytes([7; 16]);
-    let mut page = TranscriptWorkflowsProjection {
-        workflows: (0..205)
-            .map(|index| TranscriptWorkflowProjection {
-                episode_id: EpisodeId::from_parts(0, index),
-                workflow_id,
-                source_revision: "audio-v1".to_owned(),
-                origin: TranscriptWorkflowOrigin::Automatic,
-                provider: TranscriptProvider::AssemblyAi,
-                model: "model".to_owned(),
-                stage: TranscriptWorkflowStage::Requested,
-                workflow_revision: StateRevision::new(index),
-                attempt: 0,
-                attempt_id: None,
-                submission_fence_id: None,
-                request_id: None,
-                external_operation_present: false,
-                not_before: None,
-                failure: None,
-                updated_at: UnixTimestampMilliseconds::new(index as i64),
-                allowed_actions: transcript_allowed_actions(TranscriptWorkflowStage::Requested),
-            })
-            .collect(),
-        has_more: false,
-        failure: None,
-    };
-    page.enforce_bounds(2, u16::MAX as usize);
-    assert_eq!(page.workflows.len(), 200);
-    assert!(page.has_more);
 }

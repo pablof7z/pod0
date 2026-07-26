@@ -189,7 +189,8 @@ final class Pod0ListeningDomainBindingTests: XCTestCase {
                     wifiOnly: subscription.autoDownload.wifiOnly
                 ),
                 notificationsEnabled: subscription.notificationsEnabled,
-                defaultPlaybackRate: .init(value: UInt16(fixture["default_playback_rate_permille"]!)!)
+                defaultPlaybackRate: .init(value: UInt16(fixture["default_playback_rate_permille"]!)!),
+                transcriptStartPolicy: .automatic
             )],
             episodes: [EpisodeRecord(
                 episodeId: episodeID,

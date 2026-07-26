@@ -27,6 +27,18 @@ extension SharedLibraryClient {
         dispatchCoreCommand(.playback(command: command))
     }
 
+    func dispatchPlay() {
+        let configuration = playbackState?.episode.flatMap { episode in
+            store.map {
+                NativeTranscriptWorkflowConfiguration.make(
+                    episode: episode,
+                    settings: $0.state.settings
+                )
+            }
+        }
+        dispatchPlayback(.play(transcriptConfiguration: configuration))
+    }
+
     func receivePlayback(_ projection: PlaybackProjection, revision: UInt64) {
         guard revision >= lastPlaybackRevision else { return }
         lastPlaybackRevision = revision

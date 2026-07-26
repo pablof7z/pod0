@@ -7,7 +7,7 @@ enum AllEpisodesFilter: String, CaseIterable, Identifiable {
     case unplayed
     case inProgress
     case downloaded
-    case starred
+    case bookmarked
 
     var id: String { rawValue }
 
@@ -17,17 +17,7 @@ enum AllEpisodesFilter: String, CaseIterable, Identifiable {
         case .unplayed:   return "Unplayed"
         case .inProgress: return "In Progress"
         case .downloaded: return "Downloaded"
-        case .starred:    return "Starred"
-        }
-    }
-
-    var systemImage: String? {
-        switch self {
-        case .all:        return nil
-        case .unplayed:   return "circle.fill"
-        case .inProgress: return "circle.lefthalf.filled"
-        case .downloaded: return "arrow.down.circle.fill"
-        case .starred:    return "star.fill"
+        case .bookmarked: return "Bookmarked"
         }
     }
 
@@ -39,7 +29,7 @@ enum AllEpisodesFilter: String, CaseIterable, Identifiable {
         case .downloaded:
             if case .downloaded = episode.downloadState { return true }
             return false
-        case .starred:    return episode.isStarred
+        case .bookmarked: return episode.isStarred
         }
     }
 }
@@ -47,14 +37,15 @@ enum AllEpisodesFilter: String, CaseIterable, Identifiable {
 // MARK: - AllEpisodesView
 
 /// Library screen showing every episode across all subscriptions, newest
-/// first, with filter chips and scroll-triggered pagination so large libraries
-/// never render more rows than are needed.
+/// first, with a toolbar filter menu and scroll-triggered pagination so large
+/// libraries never render more rows than are needed.
 struct AllEpisodesView: View {
     @Environment(AppStateStore.self) private var store
 
     @State private var filter: AllEpisodesFilter = .all
     @State private var searchText: String = ""
-    @State private var isSearchActive: Bool = false
+    @State private var showsSearch = false
+    @State private var isSearchPresented = false
     @State private var visibleCount: Int = 50
     @State private var voiceOverDetailRoute: LibraryEpisodeRoute?
 
@@ -63,25 +54,28 @@ struct AllEpisodesView: View {
         let filtered = filteredEpisodes
         let visible = Array(filtered.prefix(visibleCount))
 
-        List {
-            filterRailSection
-            episodeListSection(
-                visible: visible,
-                totalCount: filtered.count,
-                podcasts: podcasts
-            )
+        ZStack {
+            if showsSearch {
+                libraryList(visible: visible, totalCount: filtered.count, podcasts: podcasts)
+                    .searchable(
+                        text: $searchText,
+                        isPresented: $isSearchPresented,
+                        placement: .navigationBarDrawer(displayMode: .automatic),
+                        prompt: "Search episodes"
+                    )
+            } else {
+                libraryList(visible: visible, totalCount: filtered.count, podcasts: podcasts)
+            }
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .background(Color(.systemGroupedBackground).ignoresSafeArea())
-        .navigationTitle("Library")
-        .navigationBarTitleDisplayMode(.large)
-        .searchable(
-            text: $searchText,
-            isPresented: $isSearchActive,
-            placement: .navigationBarDrawer(displayMode: .always),
-            prompt: "Search episodes"
-        )
+        .background(Color(.systemBackground).ignoresSafeArea())
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color(.systemBackground), for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                filterMenu
+            }
+        }
         .navigationDestination(for: LibraryEpisodeRoute.self) { route in
             LibraryEpisodePlaceholder(route: route)
         }
@@ -90,6 +84,60 @@ struct AllEpisodesView: View {
         }
         .onChange(of: filter) { _, _ in visibleCount = 50 }
         .onChange(of: searchText) { _, _ in visibleCount = 50 }
+        .onChange(of: isSearchPresented) { _, presented in
+            if !presented, searchText.isEmpty {
+                showsSearch = false
+            }
+        }
+    }
+
+    private func libraryList(
+        visible: [Episode],
+        totalCount: Int,
+        podcasts: [UUID: Podcast]
+    ) -> some View {
+        List {
+            screenTitle("Library")
+            episodeListSection(
+                visible: visible,
+                totalCount: totalCount,
+                podcasts: podcasts
+            )
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Color(.systemBackground))
+        .scrollBounceBehavior(.always)
+        .onScrollGeometryChange(for: Bool.self) { geometry in
+            geometry.contentOffset.y + geometry.contentInsets.top < -44
+        } action: { _, pulledPastSearchThreshold in
+            if pulledPastSearchThreshold {
+                revealSearch()
+            }
+        }
+    }
+
+    private func screenTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 34, weight: .bold))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .listRowInsets(EdgeInsets(
+                top: AppTheme.Spacing.sm,
+                leading: AppTheme.Spacing.md,
+                bottom: AppTheme.Spacing.sm,
+                trailing: AppTheme.Spacing.md
+            ))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color(.systemBackground))
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private func revealSearch() {
+        guard !showsSearch else { return }
+        showsSearch = true
+        Task { @MainActor in
+            isSearchPresented = true
+        }
     }
 
     // MARK: - Computed data
@@ -109,50 +157,21 @@ struct AllEpisodesView: View {
 
     // MARK: - Sections
 
-    private var filterRailSection: some View {
-        Section {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    ForEach(AllEpisodesFilter.allCases) { f in
-                        filterChip(f)
-                    }
+    private var filterMenu: some View {
+        Menu {
+            Picker("Filter episodes", selection: $filter) {
+                ForEach(AllEpisodesFilter.allCases) { filter in
+                    Text(filter.label)
+                        .tag(filter)
                 }
-                .padding(.horizontal, AppTheme.Spacing.md)
-                .padding(.vertical, AppTheme.Spacing.sm)
             }
-        }
-        .listRowInsets(EdgeInsets())
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color(.systemGroupedBackground))
-    }
-
-    private func filterChip(_ f: AllEpisodesFilter) -> some View {
-        Button {
-            Haptics.selection()
-            withAnimation(AppTheme.Animation.springFast) { filter = f }
         } label: {
-            HStack(spacing: AppTheme.Spacing.xs) {
-                if let symbol = f.systemImage {
-                    Image(systemName: symbol)
-                        .font(.caption2.weight(.semibold))
-                }
-                Text(f.label)
-                    .font(AppTheme.Typography.caption)
-            }
-            .padding(.horizontal, AppTheme.Spacing.md)
-            .padding(.vertical, AppTheme.Spacing.sm)
-            .foregroundStyle(filter == f ? Color.white : Color.primary)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(filter == f
-                          ? AnyShapeStyle(Color.accentColor)
-                          : AnyShapeStyle(Color(.tertiarySystemFill)))
-            )
-            .contentShape(Capsule())
+            Image(systemName: filter == .all
+                  ? "line.3.horizontal.decrease.circle"
+                  : "line.3.horizontal.decrease.circle.fill")
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(f.label)
-        .accessibilityAddTraits(filter == f ? .isSelected : [])
+        .accessibilityLabel("Filter episodes")
+        .accessibilityValue(filter.label)
     }
 
     @ViewBuilder
@@ -209,7 +228,7 @@ struct AllEpisodesView: View {
         case .unplayed:   return "Nothing unplayed."
         case .inProgress: return "Nothing in progress."
         case .downloaded: return "No downloads."
-        case .starred:    return "No starred episodes."
+        case .bookmarked: return "No bookmarked episodes."
         }
     }
 
@@ -219,7 +238,7 @@ struct AllEpisodesView: View {
         case .unplayed:   return "circle.dashed"
         case .inProgress: return "circle.lefthalf.filled"
         case .downloaded: return "arrow.down.circle"
-        case .starred:    return "star"
+        case .bookmarked: return "bookmark"
         }
     }
 
@@ -233,8 +252,8 @@ struct AllEpisodesView: View {
             return "Start listening to an episode to see it here."
         case .downloaded:
             return "Download episodes for offline listening."
-        case .starred:
-            return "Star episodes from the episode detail view."
+        case .bookmarked:
+            return "Bookmark episodes from an episode's menu."
         }
     }
 }

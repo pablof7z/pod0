@@ -11,7 +11,9 @@ pub enum PlaybackCommand {
         label: Option<String>,
     },
     Restore,
-    Play,
+    Play {
+        transcript_configuration: Option<crate::TranscriptWorkflowConfiguration>,
+    },
     Pause,
     Seek {
         position_milliseconds: u64,

@@ -1,5 +1,6 @@
 use pod0_application::{
     CommandEnvelope, CoreFailureCode, HostRequest, OperationResult, PlaybackTransitionCue,
+    TranscriptWorkflowConfiguration,
 };
 use pod0_domain::{EpisodeId, PlaybackSleepMode};
 use pod0_storage::PlaybackMutation;
@@ -8,7 +9,12 @@ use crate::runtime_state::FacadeState;
 use crate::runtime_storage_commands::storage_failure;
 
 impl FacadeState {
-    pub(super) fn play(&mut self, envelope: &CommandEnvelope, fingerprint: &str) {
+    pub(super) fn play(
+        &mut self,
+        envelope: &CommandEnvelope,
+        fingerprint: &str,
+        transcript_configuration: Option<TranscriptWorkflowConfiguration>,
+    ) {
         let Some(episode_id) = self.listening.playback.active_episode_id else {
             self.fail(envelope.command_id, CoreFailureCode::NotFound);
             return;
@@ -25,6 +31,11 @@ impl FacadeState {
             self.playback.desired_playing = true;
             self.playback.timer_fired = false;
             self.playback.policy_state = pod0_application::PlaybackPolicyState::AwaitingHost;
+            self.start_playback_transcript_if_needed(
+                envelope,
+                episode_id,
+                transcript_configuration,
+            );
             let must_reload = self.playback.media_episode_id != Some(episode_id)
                 || self
                     .playback

@@ -70,7 +70,9 @@ impl FacadeState {
                     self.load_active(envelope, false, PlaybackTransitionCue::Immediate);
                 }
             }
-            PlaybackCommand::Play => self.play(envelope, fingerprint),
+            PlaybackCommand::Play {
+                transcript_configuration,
+            } => self.play(envelope, fingerprint, transcript_configuration),
             PlaybackCommand::Pause => self.pause(envelope, fingerprint),
             PlaybackCommand::Seek {
                 position_milliseconds,

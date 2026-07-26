@@ -152,10 +152,16 @@ final class WorkflowRuntime {
         store.sharedLibrary?.ensurePublisherChapters(
             episodeIDs: episodes.map(\.id)
         )
+        let transcriptStartPolicies = store.state.subscriptions.reduce(
+            into: [UUID: TranscriptStartPolicy]()
+        ) { policies, subscription in
+            policies[subscription.podcastID] = subscription.transcriptStartPolicy
+        }
         let transcriptOpportunities = await Task.detached(priority: .utility) {
             SharedLibraryClient.transcriptWorkflowOpportunities(
                 episodes: episodes,
-                settings: settings
+                settings: settings,
+                startPolicies: transcriptStartPolicies
             )
         }.value
         store.sharedLibrary?.ensureTranscriptWorkflows(transcriptOpportunities)

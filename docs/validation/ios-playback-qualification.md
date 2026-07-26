@@ -45,22 +45,27 @@ Native executor: Swift `AudioEngine` / AVFoundation through `CorePlaybackHost`
 ## Latest automated evidence
 
 Current `master` evidence is recorded in
-[`ios-product-proof-2026-07-24.json`](../architecture/evidence/ios-product-proof-2026-07-24.json).
-At commit `da3556e8a5f0c7000d7f6c74cdf88bb5340fb6f2`:
+[`ios-product-proof-2026-07-26.json`](../architecture/evidence/ios-product-proof-2026-07-26.json).
+Qualified head `7c83a1e2` merged as `806f7170`:
 
 - Hosted CI run
-  [30081008161](https://github.com/pablof7z/pod0/actions/runs/30081008161)
-  passed 655 optimized iOS tests with zero failures, generated-project drift,
+  [30205632299](https://github.com/pablof7z/pod0/actions/runs/30205632299)
+  passed 660 iOS tests with zero failures, 530 Rust tests, the product-proof
+  evaluator, generated-project and binding drift, Apple/Android portability,
   workflow reconstruction across process termination, and a non-publishing
   Release archive.
-- A hands-on iPhone 17 / iOS 26.5 simulator smoke completed
+- The latest hands-on iPhone 17 / iOS 26.5 simulator smoke, carried forward
+  from the July 24 evidence at `da3556e8`, completed
   search → episode detail → downloaded-episode resume → force-quit → relaunch.
   The same episode returned at 4:39, inside the 30-second loss budget, and the
   Home surface rendered without Featured.
-- The architecture ratchet classified all 566 production Swift files; UI/storage
-  and listening, recall, transcript, chapter, feed-discovery, scheduled-agent,
-  and agent single-writer checks passed.
-- No physical iPhone was connected. Issue #84 remains open for wired,
+- The architecture ratchet classified all 571 production Swift files;
+  UI/storage and main-actor core-I/O boundaries plus listening, recall,
+  transcript, chapter, feed-discovery, scheduled-agent, and agent single-writer
+  checks passed.
+- The physical-device runner made 90 unavailable-tunnel checks and aborted
+  before install, producing no partial evidence and modifying no device. Issue
+  #84 remains open for built-in speaker, airplane-mode download, wired,
   Bluetooth, phone/Siri, and lock-screen evidence.
 
 Historical evidence from the first shared-playback qualification follows.
@@ -71,9 +76,8 @@ Validated on 2026-07-20 against an iPhone 17 Pro simulator running iOS 26.5:
   Debug and again with whole-module Release optimization. The Release test
   invocation used the test-only `ENABLE_TESTABILITY=YES` override required by
   the suite's `@testable import`; the shipping Release launch did not.
-- Debug and shipping Release builds installed, launched, and rendered the
-  first-launch What's New surface without a crash or shared-store bootstrap
-  error.
+- Debug and shipping Release builds installed and launched without a crash or
+  shared-store bootstrap error.
 - The locked Rust workspace passed formatting, Clippy with warnings denied,
   all 232 unit tests, dependency/facade/schema policies, license/source checks,
   and the configured security audit.

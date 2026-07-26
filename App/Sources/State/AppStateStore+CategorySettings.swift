@@ -43,15 +43,4 @@ extension AppStateStore {
         let settings = state.categorySettings[category.id] ?? .default(for: category.id)
         return settings.autoDownloadOverride ?? fallback
     }
-
-    /// True when transcription should run for episodes of `podcastID`.
-    /// Defaults to `true` in every "no category info yet" path so users
-    /// who haven't run the categorizer still see transcripts ingested.
-    func effectiveTranscriptionEnabled(forPodcast podcastID: UUID) -> Bool {
-        guard let category = state.categories.first(where: { $0.subscriptionIDs.contains(podcastID) }) else {
-            return true
-        }
-        let settings = state.categorySettings[category.id] ?? .default(for: category.id)
-        return settings.transcriptionEnabled
-    }
 }

@@ -35,8 +35,10 @@ Provider failures become typed state and never fall back to a Swift result.
 
 ## Latest production benchmark
 
-The 2026-07-24 release benchmark is recorded in
-[`ios-product-proof-2026-07-24.json`](../architecture/evidence/ios-product-proof-2026-07-24.json).
+The current aggregate evidence is
+[`ios-product-proof-2026-07-26.json`](../architecture/evidence/ios-product-proof-2026-07-26.json).
+It carries forward the unchanged 2026-07-24 release benchmark at source commit
+`da3556e8` and records the July 26 evaluator, signal, and hosted qualification.
 For 5,000 spans at 1,024 dimensions and 20 samples it measured:
 
 | Measure | Result | Budget |
