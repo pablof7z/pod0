@@ -11,6 +11,8 @@ struct PodcastrApp: App {
     /// the same sheet even when the user is on Home / Library / Clippings.
     /// Mounted on `RootView` via `agentAskPresenter(coordinator:)`.
     @State private var askCoordinator = AgentAskCoordinator()
+    /// Owns the only strong reference to the agent approval decider, which
+    /// `CoreAgentHost` holds weakly. It presents nothing — see the type.
     @State private var approvalCoordinator = AgentApprovalCoordinator()
     @State private var workflows = WorkflowClient()
     @State private var suspensionPersistence = AppSuspensionPersistenceCoordinator()
@@ -18,10 +20,9 @@ struct PodcastrApp: App {
     var body: some Scene {
         WindowGroup {
             if let store {
-                RootView()
+                RootView(approvalCoordinator: approvalCoordinator)
                     .environment(store)
                     .environment(askCoordinator)
-                    .environment(approvalCoordinator)
                     .environment(workflows)
                     .task { await workflows.startAndReconcile() }
                     .onChange(of: scenePhase, initial: true) { _, phase in
@@ -37,12 +38,23 @@ struct PodcastrApp: App {
             } else {
                 Pod0LaunchView()
                     .task {
+                        guard AppLaunchEnvironment.shouldLoadProductionState() else {
+                            return
+                        }
                         store = await AppStateStore.production(
                             productSignals: ProductSignalStore.shared
                         )
                     }
             }
         }
+    }
+}
+
+enum AppLaunchEnvironment {
+    static func shouldLoadProductionState(
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> Bool {
+        environment["XCTestConfigurationFilePath"] == nil
     }
 }
 

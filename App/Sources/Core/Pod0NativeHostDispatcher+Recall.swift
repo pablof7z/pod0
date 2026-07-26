@@ -249,12 +249,18 @@ actor CoreDurableObservationRecorder {
             } catch {
                 return .retainAndRetry(requestId: observation.requestId)
             }
+            // Records that have already killed the process mid-call are never
+            // handed back to Rust; delivering one again would abort the launch.
+            guard await outbox.beginDelivery(of: observation) else {
+                return .retainAndRetry(requestId: observation.requestId)
+            }
         }
         guard !Task.isCancelled else {
             return .retainAndRetry(requestId: observation.requestId)
         }
         let receipt = facade.recordHostObservation(observation: observation)
         if persistForRelaunch, let outbox {
+            await outbox.finishDelivery(of: observation)
             _ = try? await outbox.acknowledge(receipt)
         }
         return receipt
@@ -267,7 +273,9 @@ actor CoreDurableObservationRecorder {
         var replayed: [(HostObservationEnvelope, HostObservationReceipt)] = []
         for observation in await outbox.pendingObservations() {
             guard !Task.isCancelled else { return replayed }
+            guard await outbox.beginDelivery(of: observation) else { continue }
             let receipt = facade.recordHostObservation(observation: observation)
+            await outbox.finishDelivery(of: observation)
             guard !Task.isCancelled else { return replayed }
             _ = try? await outbox.acknowledge(receipt)
             replayed.append((observation, receipt))

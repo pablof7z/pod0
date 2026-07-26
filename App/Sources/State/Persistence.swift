@@ -5,9 +5,9 @@ import os.log
 /// SQLite-authoritative app-state persistence. JSON is migration-only.
 final class Persistence: Sendable {
 
-    /// Shared, production-default instance writing to the App Group container.
+    /// Production-default instance writing to the app's private container.
     static let shared = Persistence(
-        fileURL: Persistence.appGroupStateFileURL,
+        fileURL: Persistence.applicationStateFileURL,
         writeMode: .background
     )
 
@@ -229,11 +229,6 @@ final class Persistence: Sendable {
 
     // MARK: - Static helpers
     static let logger = Logger.app("Persistence")
-    /// Prior-art `UserDefaults` key the file backend migrates from on first
-    /// run. Kept as a string constant (not exposed) so the migration path
-    /// stays self-documenting.
-    static let legacyStateKey = "podcastr.state.v1"
-
     private static let encoder: JSONEncoder = {
         let e = JSONEncoder()
         e.dateEncodingStrategy = .iso8601

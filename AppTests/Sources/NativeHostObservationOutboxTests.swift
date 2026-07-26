@@ -184,6 +184,56 @@ final class NativeHostObservationOutboxTests: XCTestCase {
         XCTAssertEqual(pending, [expected])
     }
 
+    /// A record whose delivery aborts the process must not be replayed forever.
+    /// Without this fence an undeliverable envelope relaunches straight back
+    /// into the same abort, leaving the app permanently unopenable.
+    func testEvidenceAbandonedInDeliveryIsQuarantinedInsteadOfReplayedForever() async throws {
+        let fileURL = temporaryFileURL()
+        defer { try? FileManager.default.removeItem(at: fileURL.deletingLastPathComponent()) }
+        let poison = envelope(requestLow: 11, sequence: 0, observation: completion())
+
+        // Each launch marks the delivery as started and then "dies" inside the
+        // call, so the mark is never cleared.
+        for _ in 0 ..< 2 {
+            let launch = try NativeHostObservationOutbox(fileURL: fileURL)
+            _ = try await launch.persistBeforeDelivery(poison)
+            let pending = await launch.pendingObservations()
+            XCTAssertEqual(pending, [poison])
+            let began = await launch.beginDelivery(of: poison)
+            XCTAssertTrue(began)
+        }
+
+        let relaunched = try NativeHostObservationOutbox(fileURL: fileURL)
+        let began = await relaunched.beginDelivery(of: poison)
+        XCTAssertFalse(began)
+        let remaining = await relaunched.pendingCount()
+        XCTAssertEqual(remaining, 0)
+    }
+
+    /// Ordinary `retainAndRetry` churn returns a receipt, so it must never
+    /// count against a record no matter how many launches it survives.
+    func testReturnedReceiptsNeverAccumulateTowardQuarantine() async throws {
+        let fileURL = temporaryFileURL()
+        defer { try? FileManager.default.removeItem(at: fileURL.deletingLastPathComponent()) }
+        let retained = envelope(requestLow: 12, sequence: 0, observation: completion())
+
+        for _ in 0 ..< 5 {
+            let launch = try NativeHostObservationOutbox(fileURL: fileURL)
+            _ = try await launch.persistBeforeDelivery(retained)
+            let began = await launch.beginDelivery(of: retained)
+            XCTAssertTrue(began)
+            await launch.finishDelivery(of: retained)
+        }
+
+        let relaunched = try NativeHostObservationOutbox(fileURL: fileURL)
+        let pending = await relaunched.pendingObservations()
+        XCTAssertEqual(pending, [retained])
+        let delivered = try await relaunched.deliverPending { observation in
+            .persisted(requestId: observation.requestId, terminal: true)
+        }
+        XCTAssertEqual(delivered, 1)
+    }
+
     private func envelope(
         requestLow: UInt64,
         sequence: UInt64,

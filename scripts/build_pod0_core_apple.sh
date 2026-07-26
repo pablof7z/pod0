@@ -45,6 +45,10 @@ plutil -lint "$TEMP_ROOT/Info.plist"
 lipo "$TEMP_ROOT/ios-arm64/libpod0_facade.a" -verify_arch arm64
 lipo "$TEMP_ROOT/ios-arm64_x86_64-simulator/libpod0_facade.a" \
   -verify_arch arm64 x86_64
+# Stamp the exact bindings this library was compiled against so
+# check_core_binding_freshness.sh can reject a stale link before it ships.
+cp "$REPO_ROOT/Generated/Pod0Core/bindings.fingerprint" "$TEMP_ROOT/bindings.fingerprint"
+
 mkdir -p "$OUTPUT_ROOT"
 rsync -a --delete "$TEMP_ROOT/" "$OUTPUT_ROOT/"
 echo "Built $OUTPUT_ROOT"

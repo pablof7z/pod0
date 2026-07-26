@@ -60,6 +60,26 @@ let project = Project(
             deploymentTargets: deploymentTarget,
             infoPlist: .default,
             sources: ["Generated/Pod0Core/Swift/*.swift"],
+            // The xcframework is an untracked local artifact Xcode has no
+            // dependency edge to, so a stale Rust core links silently against
+            // regenerated bindings and only aborts at runtime. Fail the build
+            // instead.
+            scripts: [
+                .pre(
+                    script: """
+                    "$SRCROOT/scripts/check_core_binding_freshness.sh"
+                    """,
+                    name: "Check Pod0Core binding freshness",
+                    // Declared so user-script sandboxing grants read access;
+                    // the check itself always runs.
+                    inputPaths: [
+                        "$(SRCROOT)/scripts/check_core_binding_freshness.sh",
+                        "$(SRCROOT)/Generated/Pod0Core/bindings.fingerprint",
+                        "$(SRCROOT)/.build/pod0core/Pod0CoreFFI.xcframework/bindings.fingerprint",
+                    ],
+                    basedOnDependencyAnalysis: false
+                )
+            ],
             dependencies: [
                 .xcframework(
                     path: .relativeToRoot(".build/pod0core/Pod0CoreFFI.xcframework")

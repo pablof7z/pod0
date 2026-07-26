@@ -49,26 +49,6 @@ extension Persistence {
             }
             return state
         }
-        // One-shot migration from the pre-file UserDefaults backend. Isolated
-        // stores never enter this production-only path.
-        if fileURL == Self.appGroupStateFileURL,
-           let legacyData = Self.appGroupDefaults.data(forKey: Self.legacyStateKey) {
-            var migrated = try decoder.decode(AppState.self, from: legacyData)
-            try hydrateEpisodes(
-                into: &migrated,
-                loadLegacyChapterAdjuncts: loadLegacyChapterAdjuncts
-            )
-            let generation = max(migrated.persistenceGeneration, 1)
-            migrated.persistenceGeneration = generation
-            guard write(migrated, revision: generation) else {
-                throw EpisodeSQLiteStoreError.execute("Unable to commit UserDefaults migration")
-            }
-            Self.appGroupDefaults.removeObject(forKey: Self.legacyStateKey)
-            Self.logger.info(
-                "Persistence.load: migrated \(legacyData.count, privacy: .public) bytes from legacy UserDefaults key"
-            )
-            return migrated
-        }
         return AppState()
     }
 

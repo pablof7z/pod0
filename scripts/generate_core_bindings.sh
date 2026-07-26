@@ -39,4 +39,8 @@ done < <(find "$TEMP_ROOT/Swift" "$TEMP_ROOT/Kotlin" -type f -print0)
 
 rsync -a --delete "$TEMP_ROOT/Swift/" "$OUTPUT_ROOT/Swift/"
 rsync -a --delete "$TEMP_ROOT/Kotlin/" "$OUTPUT_ROOT/Kotlin/"
+# Fingerprints the Swift bindings so a Rust core built against a different
+# shape can be rejected before it links. See check_core_binding_freshness.sh.
+"$SCRIPT_DIR/core_bindings_fingerprint.sh" "$OUTPUT_ROOT/Swift" \
+  > "$OUTPUT_ROOT/bindings.fingerprint"
 echo "Generated Swift and Kotlin bindings in $OUTPUT_ROOT"

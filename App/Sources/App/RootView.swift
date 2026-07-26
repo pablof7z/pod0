@@ -7,8 +7,11 @@ import SwiftUI
 struct RootView: View {
     @Environment(AppStateStore.self) var store
     @Environment(AgentAskCoordinator.self) var askCoordinator
-    @Environment(AgentApprovalCoordinator.self) var approvalCoordinator
     @Environment(WorkflowClient.self) var workflows
+    /// Stateless auto-approver handed to the Rust agent host. Not in the
+    /// environment: nothing observes it, and `CoreAgentHost` holds it weakly,
+    /// so `AppMain` owns the only strong reference.
+    let approvalCoordinator: AgentApprovalCoordinator
     @State var selectedTab: RootTab = .home
     @State var showAgentChat = false
     @State var showSidebar = false
@@ -72,7 +75,6 @@ struct RootView: View {
                                 }
                         }
                         .environment(playbackState)
-                        .agentApprovalPresenter(coordinator: approvalCoordinator)
                     }
                 }
                 .onChange(of: showAgentChat) { _, _ in
@@ -119,10 +121,6 @@ struct RootView: View {
                     store: store
                 ))
                 .agentAskPresenter(coordinator: askCoordinator)
-                .agentApprovalPresenter(
-                    coordinator: approvalCoordinator,
-                    isEnabled: !showAgentChat
-                )
                 .onOpenURL { handleDeepLink($0) }
                 .onReceive(
                     NotificationCenter.default.publisher(for: AppDelegate.shortcutURLNotification)
