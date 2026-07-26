@@ -30,6 +30,46 @@ final class SharedAgentConversationSessionTests: XCTestCase {
         )
     }
 
+    func testCommittedProjectionEmitsIdempotentAgentCompletionSignal() async {
+        let runtime = StubSharedAgentConversationRuntime()
+        let signals = RecordingProductSignalSink()
+        let session = SharedAgentConversationSession(
+            runtime: runtime,
+            productSignals: signals,
+            modelReference: { "openrouter/test" }
+        )
+        await session.startTurn("What should I hear next?")
+        let projection = conversation(stage: .completed, revision: 2)
+
+        runtime.emit(projection)
+        runtime.emit(projection)
+        let captured = await signals.waitForCount(1)
+
+        XCTAssertEqual(captured.map(\.name), [.agentTurnCompleted])
+        await Task.yield()
+        let replayed = await signals.captured()
+        XCTAssertEqual(replayed.count, 1)
+    }
+
+    func testHistoricalTerminalTurnDoesNotBackfillAfterSubscription() async throws {
+        let runtime = StubSharedAgentConversationRuntime()
+        let signals = RecordingProductSignalSink()
+        let session = SharedAgentConversationSession(
+            runtime: runtime,
+            productSignals: signals,
+            resumeConversationID: ConversationId(high: 1, low: 2),
+            modelReference: { "openrouter/test" }
+        )
+        try await waitUntil { runtime.subscribedConversationID != nil }
+
+        runtime.emit(conversation(stage: .completed, revision: 2))
+        await Task.yield()
+
+        let captured = await signals.captured()
+        XCTAssertTrue(captured.isEmpty)
+        _ = session
+    }
+
     func testCancellationUsesExactActiveTurnRevision() async {
         let runtime = StubSharedAgentConversationRuntime()
         let session = SharedAgentConversationSession(

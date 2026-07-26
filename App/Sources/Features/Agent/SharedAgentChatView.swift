@@ -238,8 +238,13 @@ struct SharedAgentChatView: View {
         Task { await session.startTurn(input) }
     }
 
-    private func openRecallEvidence(_ evidence: RecallEvidence) {
-        _ = RecallPlaybackHandoff.open(evidence, store: store, playback: playback)
+    private func openRecallEvidence(_ evidence: RecallEvidence, responseID: UUID) {
+        _ = RecallPlaybackHandoff.open(
+            evidence,
+            responseID: responseID,
+            store: store,
+            playback: playback
+        )
     }
 
     private func startNewConversation() {

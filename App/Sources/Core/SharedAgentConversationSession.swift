@@ -14,6 +14,7 @@ final class SharedAgentConversationSession {
     }
 
     private let runtime: any SharedAgentConversationRuntime
+    private let productSignals: any ProductSignalSink
     let streamingState: CoreAgentStreamingState
     private let modelReference: @MainActor () -> String
     private let onConversationChanged: @MainActor (ConversationId?) -> Void
@@ -22,6 +23,9 @@ final class SharedAgentConversationSession {
     private var subscribedConversationID: ConversationId?
     private var historyTask: Task<Void, Never>?
     private var subscriptionTask: Task<Void, Never>?
+    private var turnStartInstants: [AgentTurnId: ContinuousClock.Instant] = [:]
+    private var observedTurnIDs: Set<AgentTurnId> = []
+    private var emittedProductSignalIDs: Set<UUID> = []
     private(set) var conversation: AgentConversationProjection?
     private(set) var conversationSummaries: [AgentConversationSummaryProjection] = []
     private(set) var conversationHistoryHasMore = false
@@ -32,12 +36,14 @@ final class SharedAgentConversationSession {
     init(
         runtime: any SharedAgentConversationRuntime,
         streamingState: CoreAgentStreamingState = CoreAgentStreamingState(),
+        productSignals: any ProductSignalSink = DiscardingProductSignalSink.shared,
         resumeConversationID: ConversationId? = nil,
         onConversationChanged: @escaping @MainActor (ConversationId?) -> Void = { _ in },
         modelReference: @escaping @MainActor () -> String
     ) {
         self.runtime = runtime
         self.streamingState = streamingState
+        self.productSignals = productSignals
         self.onConversationChanged = onConversationChanged
         self.modelReference = modelReference
         refreshConversationHistory()
@@ -69,6 +75,7 @@ final class SharedAgentConversationSession {
     func startTurn(_ userInput: String) async {
         let input = userInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !input.isEmpty, canSend else { return }
+        let startedAt = ContinuousClock.now
         phase = .running
         do {
             let result = try await runtime.execute(.startAgentTurn(
@@ -76,10 +83,11 @@ final class SharedAgentConversationSession {
                 userInput: input,
                 modelReference: modelReference()
             ))
-            guard case .agentTurnStarted(let conversationID, _) = result else {
+            guard case .agentTurnStarted(let conversationID, let turnID) = result else {
                 phase = .failed("The agent turn did not start")
                 return
             }
+            turnStartInstants[turnID] = startedAt
             await subscribe(to: conversationID)
             runtime.executePendingHostRequests()
         } catch {
@@ -169,6 +177,7 @@ final class SharedAgentConversationSession {
               conversation.conversationId == subscribedConversationID else { return }
         stateRevision = envelope.stateRevision.value
         self.conversation = conversation
+        recordProductSignals(in: conversation)
         for turn in conversation.turns where turn.stage.isTerminal {
             streamingState.clear(turnID: turn.turnId)
         }
@@ -184,6 +193,41 @@ final class SharedAgentConversationSession {
         }
         refreshConversationHistory()
         runtime.executePendingHostRequests()
+    }
+
+    private func recordProductSignals(in conversation: AgentConversationProjection) {
+        let now = ContinuousClock.now
+        for turn in conversation.turns {
+            let isFirstObservation = observedTurnIDs.insert(turn.turnId).inserted
+            let latencyBucket = turnStartInstants[turn.turnId].map {
+                ProductSignalLatencyBucket.bucket(now - $0)
+            }
+            var observations = AgentTurnProductSignalMapper.observations(
+                for: turn,
+                latencyBucket: latencyBucket
+            )
+            if isFirstObservation,
+               turn.stage.isTerminal,
+               turnStartInstants[turn.turnId] == nil {
+                emittedProductSignalIDs.formUnion(observations.map(\.signalID))
+                observations.removeAll()
+            } else {
+                observations = observations.filter {
+                    emittedProductSignalIDs.insert($0.signalID).inserted
+                }
+            }
+            let pendingObservations = observations
+            if !pendingObservations.isEmpty {
+                Task {
+                    for observation in pendingObservations {
+                        await productSignals.record(observation)
+                    }
+                }
+            }
+            if turn.stage.isTerminal {
+                turnStartInstants[turn.turnId] = nil
+            }
+        }
     }
 }
 

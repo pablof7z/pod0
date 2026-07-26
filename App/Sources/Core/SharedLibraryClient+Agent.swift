@@ -24,6 +24,7 @@ extension SharedLibraryClient {
         SharedAgentConversationSession(
             runtime: self,
             streamingState: agentStreamingState,
+            productSignals: store?.productSignals ?? DiscardingProductSignalSink.shared,
             resumeConversationID: AgentConversationPointerStore().load(),
             onConversationChanged: { conversationID in
                 AgentConversationPointerStore().save(conversationID)

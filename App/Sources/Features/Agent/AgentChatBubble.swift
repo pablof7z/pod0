@@ -64,7 +64,7 @@ struct AgentChatBubble: View {
     /// Called when the user requests regeneration of the last assistant response.
     /// When `nil`, no Regenerate action appears in the context menu.
     var onRegenerate: (() -> Void)? = nil
-    var onOpenRecallEvidence: (RecallEvidence) -> Void = { _ in }
+    var onOpenRecallEvidence: (RecallEvidence, UUID) -> Void = { _, _ in }
 
     // MARK: - Pluralization helpers
 

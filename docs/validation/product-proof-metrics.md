@@ -9,6 +9,22 @@ later change must be recorded before viewing gate results; thresholds are not
 relaxed after the fact. Each manually exported archive is grouped by its random
 anonymous install ID. No signal is transmitted automatically.
 
+The repository evaluator applies these rules without emitting install IDs or
+raw observations:
+
+```sh
+python3 scripts/evaluate_product_proof.py \
+  /path/to/consented-exports \
+  --output /path/to/product-proof-cohort.json
+```
+
+It validates the schema and content-free field allowlist, merges overlapping
+exports by anonymous install ID, deduplicates identical signal IDs, and rejects
+conflicting duplicates. Its aggregate report distinguishes `passes`,
+`misses_threshold`, and `insufficient_evidence` for every measure. The report
+does not compute an Android decision because physical-device, CI, migration,
+and architecture evidence remain separate required inputs.
+
 ## Cohorts and confidence
 
 - An **evaluated install** has at least one `appLaunch` signal and an explicit

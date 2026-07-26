@@ -3,7 +3,7 @@ import SwiftUI
 struct AgentAssistantMessageView: View {
     let message: ChatMessage
     let onRegenerate: (() -> Void)?
-    let onOpenEvidence: (RecallEvidence) -> Void
+    let onOpenEvidence: (RecallEvidence, UUID) -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: AppTheme.Spacing.sm) {
@@ -13,7 +13,7 @@ struct AgentAssistantMessageView: View {
                 if let answer = message.recallAnswer {
                     ForEach(answer.evidence) { evidence in
                         RecallEvidenceCard(evidence: evidence) {
-                            onOpenEvidence(evidence)
+                            onOpenEvidence(evidence, message.id)
                         }
                     }
                 }
