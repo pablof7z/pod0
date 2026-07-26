@@ -25,9 +25,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
         UNUserNotificationCenter.current().delegate = self
-#if DEBUG
-        if WorkflowProcessReconstructionHarness.runIfRequested() { return true }
-#endif
         BackgroundWorkScheduler.shared.register()
         // Bound Kingfisher's memory + disk caches so artwork doesn't grow
         // unchecked. See KingfisherConfiguration for the rationale.

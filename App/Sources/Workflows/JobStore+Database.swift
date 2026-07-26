@@ -2,8 +2,9 @@ import CSQLite3
 import Foundation
 
 extension JobStore {
-    /// SQL literal assembled only from the closed native enum. Legacy or
-    /// unknown raw kinds are never eligible for generic scheduler mutation.
+    /// Compatibility SQL used by legacy JobStore tests and support-window
+    /// readers. The product runtime has no native coordinator or caller.
+    /// Migrated Rust-owned kinds remain ineligible for generic mutation.
     static let supportedKindSQL = WorkJobKind.allCases
         .filter {
             $0 != .download && $0 != .autoDownload

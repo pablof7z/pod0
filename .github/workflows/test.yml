@@ -83,8 +83,8 @@ jobs:
       - name: Build and test
         run: ./ci_scripts/run_tests.sh
 
-      - name: Reconstruct workflow across process termination
-        run: ./scripts/test-workflow-process-reconstruction.sh
+      - name: Verify shared workflow recovery across restarts
+        run: ./scripts/test-shared-workflow-recovery.sh
 
       - name: Create non-publishing release archive
         run: ./ci_scripts/archive_without_upload.sh

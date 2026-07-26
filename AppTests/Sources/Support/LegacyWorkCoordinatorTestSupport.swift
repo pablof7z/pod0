@@ -1,5 +1,28 @@
 import Foundation
 import os.log
+@testable import Podcastr
+
+/// Test-only coverage for the retired native coordinator and its legacy
+/// JobStore fencing semantics. Product workflow execution is Rust-owned.
+struct JobAttemptContext: Sendable {
+    let job: WorkJob
+    let leaseToken: UUID
+    let deadline: Date?
+}
+
+enum JobOutcome: Sendable, Equatable {
+    case succeeded(outputVersion: String?)
+    case retry(notBefore: Date, error: JobFailure)
+    case blocked(reason: JobFailure)
+    case waitingForDependency(JobFailure)
+    case obsolete
+    case cancelled
+    case failedPermanent(JobFailure)
+}
+
+protocol JobExecutor: Sendable {
+    func run(_ context: JobAttemptContext) async throws -> JobOutcome
+}
 
 protocol JobPostconditionVerifier: Sendable {
     /// Verifies the output and atomically commits both its artifact fact and

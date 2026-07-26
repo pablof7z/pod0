@@ -40,10 +40,9 @@ already migrated. `current_owner`, `target_owner`, `migration_issues`, and
 3. Download intent and recovery: #115–#119; scheduled-agent workflow and
    artifact ownership: #125–#130. Rust now owns active agent conversations,
    memories, scheduled state, model usage, generated audio provenance, and
-   tracked NMP publication after #135/#136. Remaining work is the broader
-   commit families in #133, native capability and integration coverage in
-   #134, physical-device signer qualification in #137, and final compatibility
-   cleanup in #138 under #60.
+   tracked NMP publication after #135/#136. The #131 cohort completed agent,
+   Nostr, signer, and compatibility ownership through #138. Quarantined
+   rollback readers remain only for their documented support windows.
 4. Native UI and platform capabilities remain native and converge on typed
    host/projection boundaries as their domains migrate.
 

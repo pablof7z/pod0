@@ -126,6 +126,14 @@ final class WorkflowJobActionTests: XCTestCase {
         XCTAssertEqual(try store.job(id: blocked.id)?.state, .blocked)
     }
 
+    @MainActor
+    func testRuntimeRejectsDecodeOnlySwiftJobActions() async {
+        let legacy = projection(state: .blocked)
+        let result = await WorkflowRuntime.shared.perform(.retry, on: legacy)
+
+        XCTAssertEqual(result, .notAllowed)
+    }
+
     private func desired(subjectID: UUID) -> DesiredJob {
         DesiredJob(
             idempotencyKey: "action",

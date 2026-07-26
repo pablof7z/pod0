@@ -7,8 +7,8 @@ extension WorkflowClient {
         await WorkflowRuntime.shared.startAndReconcile()
     }
 
-    func reconcileAndDrain() async {
-        await WorkflowRuntime.shared.reconcileAndDrain()
+    func reconcileOpportunity() async {
+        await WorkflowRuntime.shared.reconcileOpportunity()
     }
 
     func wake() {

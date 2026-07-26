@@ -2,6 +2,7 @@ import Foundation
 import Pod0Core
 
 enum WorkflowProjectionAuthority: Sendable, Equatable {
+    /// Decode-only compatibility projection; never actionable product work.
     case swiftJobStore
     case sharedRustPublisherChapters
     case sharedRustModelChapters
@@ -66,7 +67,7 @@ extension WorkflowJobProjection {
 
 /// Read-only semantic kinds rendered by native workflow surfaces. Chapter
 /// kinds exist only here because their durable rows and actions are owned by
-/// Rust; `WorkJobKind` remains limited to mutable Swift job-store records.
+/// Rust; `WorkJobKind` remains only for decoding quarantined legacy rows.
 enum WorkflowProjectionKind: String, CaseIterable, Sendable {
     case download
     case transcriptIngest

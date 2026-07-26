@@ -7,9 +7,11 @@ enum WorkJobKind: String, CaseIterable, Codable, Sendable {
     case transcriptIngest
     /// Decode-only legacy cutover value. Rust owns evidence indexing.
     case transcriptIndex
+    /// Decode-only value from the retired generic native coordinator.
     case metadataIndex
     /// Decode-only legacy cutover value. Selection now runs in Rust.
     case autoDownload
+    /// Decode-only legacy cutover value. Rust owns scheduled-agent workflows.
     case scheduledAgentRun
 }
 
@@ -176,26 +178,6 @@ struct WorkJob: Identifiable, Codable, Sendable, Equatable {
     let lastErrorMessage: String?
     let createdAt: Date
     let updatedAt: Date
-}
-
-struct JobAttemptContext: Sendable {
-    let job: WorkJob
-    let leaseToken: UUID
-    let deadline: Date?
-}
-
-enum JobOutcome: Sendable, Equatable {
-    case succeeded(outputVersion: String?)
-    case retry(notBefore: Date, error: JobFailure)
-    case blocked(reason: JobFailure)
-    case waitingForDependency(JobFailure)
-    case obsolete
-    case cancelled
-    case failedPermanent(JobFailure)
-}
-
-protocol JobExecutor: Sendable {
-    func run(_ context: JobAttemptContext) async throws -> JobOutcome
 }
 
 enum JobStoreError: LocalizedError {

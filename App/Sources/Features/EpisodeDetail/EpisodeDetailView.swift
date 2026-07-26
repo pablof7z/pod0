@@ -50,7 +50,7 @@ struct EpisodeDetailView: View {
             subjectIDs: [episodeID],
             kinds: [
                 .download, .transcriptIngest, .transcriptIndex,
-                .publisherChapters, .chapterArtifacts, .metadataIndex,
+                .publisherChapters, .chapterArtifacts,
             ]
         )
         .chapterProjectionScope(episodeID: episodeID)
@@ -203,7 +203,7 @@ struct EpisodeDetailView: View {
     private func preparationStatus(for episode: Episode) -> EpisodePreparationStatus? {
         let kinds: [WorkflowProjectionKind] = [
             .transcriptIngest, .transcriptIndex, .publisherChapters,
-            .chapterArtifacts, .metadataIndex,
+            .chapterArtifacts,
         ]
         let jobs = kinds.compactMap { workflows.latest(kind: $0, subjectID: episode.id) }
         return EpisodePreparationPresenter.make(episode: episode, jobs: jobs)
