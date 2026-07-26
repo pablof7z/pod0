@@ -189,8 +189,6 @@ End-to-end checks before merge:
    - Start a new conversation — `enabledSkills` resets to `[]`; the agent must opt-in again.
    - Force-quit the app mid-conversation, relaunch within 3h — auto-resumed conversation retains `enabledSkills`.
 
-5. **Whats-new entry**: per `AGENTS.md` line 5, add a one-liner to `App/Resources/whats-new.json` for the commit shipping the change (e.g. "Agent now has opt-in skills, starting with podcast generation").
-
 ## What we are NOT doing
 
 - Not adding a Settings UI for skills (out of scope — the agent enables skills itself in-band; a future skill toggle UI is a separate change).

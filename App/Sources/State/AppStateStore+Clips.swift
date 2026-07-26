@@ -108,7 +108,7 @@ extension AppStateStore {
         state.clips.first { $0.id == id && !$0.deleted }
     }
 
-    /// All clips, newest first. Used by the Saved screen's Clips segment.
+    /// All clips, newest first. Used by the Clips screen.
     func allClips() -> [Clip] {
         state.clips.filter { !$0.deleted }
     }

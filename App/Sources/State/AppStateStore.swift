@@ -15,7 +15,6 @@ final class AppStateStore {
     let productSignals: any ProductSignalSink
     @ObservationIgnored private(set) var sharedLibrary: SharedLibraryClient?
     @ObservationIgnored private(set) var sharedLibraryUnavailableReason: String?
-    @ObservationIgnored private(set) var sharedLibraryUnavailableStage: SharedLibraryBootstrapStage?
     @ObservationIgnored private(set) var startupRecoveryRequired = false
     /// Bounded Rust projection; never persisted as native durable state.
     var newEpisodeNotificationsEnabled = true
@@ -198,9 +197,8 @@ final class AppStateStore {
                 let retirementState = state
                 persistence.commitStartupRetirement(retirementState)
             }
-        case .authoritativeUnavailable(let reason, let stage):
+        case .authoritativeUnavailable(let reason, _):
             sharedLibraryUnavailableReason = reason
-            sharedLibraryUnavailableStage = stage
         }
         // The `state.didSet` above doesn't fire from inside `init` until all
         // stored properties are initialised, and even then it skips the very
