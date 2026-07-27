@@ -44,7 +44,9 @@ final class PlaybackState {
     /// Back-navigation stack populated by `navigationalSeek(to:)`.
     /// In-memory only (session-scoped, like browser history).
     var seekHistory: [SeekHistoryEntry] = []
+    var jumpForwardEntry: SeekHistoryEntry?
     var canJumpBack: Bool { !seekHistory.isEmpty }
+    var canJumpForward: Bool { jumpForwardEntry != nil }
 
     /// Mirrors `AudioEngine.state` semantics through the lens the UI cares
     /// about: `playing` and `buffering` both render as "playing" so the
@@ -60,8 +62,7 @@ final class PlaybackState {
     var currentTime: TimeInterval { engine.currentTime }
 
     /// Engine duration. Falls back to the feed-supplied `Episode.duration` so
-    /// the scrubber renders a sane width before `AVAsset` resolves the asset
-    /// duration.
+    /// progress renders before `AVAsset` resolves the asset duration.
     var duration: TimeInterval {
         if engine.duration > 0 { return engine.duration }
         return episode?.duration ?? 0
@@ -126,6 +127,7 @@ final class PlaybackState {
     @ObservationIgnored var pendingPlaySignal = false
     @ObservationIgnored var pendingResumeSignal: (episodeID: UUID, position: TimeInterval)?
     @ObservationIgnored var recordedMeaningfulEpisodeIDs: Set<UUID> = []
+    @ObservationIgnored var jumpForwardExpiryTask: Task<Void, Never>?
 
     var playbackFailure: UserFacingFailure? {
         guard case .failed(let error) = engine.state else { return nil }

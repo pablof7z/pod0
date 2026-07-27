@@ -6,55 +6,57 @@ import SwiftUI
 /// list of followed podcasts, recency-sorted, honouring the active
 /// LibraryFilter + category filter the parent owns.
 ///
-/// The header carries a "See all" affordance that pushes
-/// `AllPodcastsListView` — a separate screen that lists every known
-/// podcast (followed AND unfollowed) with swipe-to-delete. Home keeps
-/// showing only followed shows so the everyday surface stays focused on
-/// what the user actually follows.
+/// Podcasts the app knows about but the user does NOT follow are appended
+/// below the followed ones, under their own "Not Following" heading. They
+/// are reachable nowhere else, so without this they would be stranded in
+/// the store — see `sortedUnfollowedPodcastsByRecency`.
 struct HomeSubscriptionListSection: View {
     let podcasts: [Podcast]
+    let unfollowedPodcasts: [Podcast]
     let now: Date
     let onRequestUnsubscribe: (Podcast) -> Void
-    let onSeeAllPodcasts: () -> Void
+    let onRequestDelete: (Podcast) -> Void
 
     @Environment(AppStateStore.self) private var store
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            header
-            rowList
-        }
-    }
-
-    private var header: some View {
-        HStack(spacing: AppTheme.Spacing.sm) {
-            Text("Podcasts")
-                .font(AppTheme.Typography.title3)
-                .foregroundStyle(.primary)
-            Spacer(minLength: 0)
-            Button(action: {
-                Haptics.selection()
-                onSeeAllPodcasts()
-            }) {
-                Text("See All")
-                    .font(AppTheme.Typography.subheadline)
-                    .foregroundStyle(.tint)
+            if !podcasts.isEmpty {
+                heading("Podcasts")
+                rowList(podcasts, isFollowed: true)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("See all podcasts")
+            if !unfollowedPodcasts.isEmpty {
+                heading("Not Following")
+                    .padding(.top, podcasts.isEmpty ? 0 : AppTheme.Spacing.lg)
+                rowList(unfollowedPodcasts, isFollowed: false)
+            }
         }
-        .padding(.horizontal, AppTheme.Spacing.md)
-        .padding(.bottom, AppTheme.Spacing.xs)
     }
 
-    private var rowList: some View {
+    private func heading(_ title: String) -> some View {
+        Text(title)
+            .font(AppTheme.Typography.title3)
+            .foregroundStyle(.primary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, AppTheme.Spacing.md)
+            .padding(.bottom, AppTheme.Spacing.xs)
+    }
+
+    private func rowList(_ rows: [Podcast], isFollowed: Bool) -> some View {
         LazyVStack(alignment: .leading, spacing: 0) {
-            ForEach(podcasts) { sub in
+            ForEach(rows) { sub in
                 HomeSubscriptionRow(
                     podcast: sub,
                     mostRecentEpisode: store.mostRecentEpisode(forPodcast: sub.id),
                     now: now,
-                    onRequestUnsubscribe: { onRequestUnsubscribe(sub) }
+                    isFollowed: isFollowed,
+                    onRequestRemove: {
+                        if isFollowed {
+                            onRequestUnsubscribe(sub)
+                        } else {
+                            onRequestDelete(sub)
+                        }
+                    }
                 )
                 .padding(.horizontal, AppTheme.Spacing.md)
                 .padding(.vertical, AppTheme.Spacing.sm)

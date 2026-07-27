@@ -26,16 +26,46 @@ extension AppStateStore {
         let podcastByID = Dictionary(uniqueKeysWithValues: state.podcasts.map { ($0.id, $0) })
         let followed = state.subscriptions.compactMap { podcastByID[$0.podcastID] }
             .filter { $0.kind == .rss }
+        return recencySorted(followed)
+    }
+
+    /// Podcasts the app knows about but the user does NOT follow, sorted by
+    /// the same recency rule as `sortedFollowedPodcastsByRecency`.
+    ///
+    /// These rows exist because knowing about a podcast is decoupled from
+    /// following it: the agent's external-play flow attaches episodes to a
+    /// real show without forcing a follow, and unfollowing a show keeps its
+    /// podcast row and episodes. Home renders them below the followed shows
+    /// so that content stays reachable instead of being stranded in the
+    /// store with no surface.
+    ///
+    /// The Unknown sentinel is excluded — it is an implementation detail of
+    /// the external-play fallback, and offering it as a deletable row would
+    /// let the user break subsequent external plays.
+    var sortedUnfollowedPodcastsByRecency: [Podcast] {
+        let followedIDs = Set(state.subscriptions.map(\.podcastID))
+        let unfollowed = state.podcasts.filter {
+            $0.id != Podcast.unknownID && !followedIDs.contains($0.id)
+        }
+        return recencySorted(unfollowed)
+    }
+
+    /// Orders podcasts by their most-recent-episode `pubDate`, descending.
+    /// Podcasts with no known episode sink to the bottom and fall back to
+    /// alphabetical order so the list never collapses to a random
+    /// arrangement. Per-show recency is read from the precomputed
+    /// `episodeIndexesByShow` projection, so the lookup is O(1) per podcast.
+    private func recencySorted(_ podcasts: [Podcast]) -> [Podcast] {
         let episodes = state.episodes
         var lookup: [UUID: Date] = [:]
-        lookup.reserveCapacity(followed.count)
-        for podcast in followed {
+        lookup.reserveCapacity(podcasts.count)
+        for podcast in podcasts {
             if let firstIdx = episodeIndexesByShow[podcast.id]?.first,
                episodes.indices.contains(firstIdx) {
                 lookup[podcast.id] = episodes[firstIdx].pubDate
             }
         }
-        return followed.sorted { lhs, rhs in
+        return podcasts.sorted { lhs, rhs in
             switch (lookup[lhs.id], lookup[rhs.id]) {
             case let (l?, r?):
                 if l == r {

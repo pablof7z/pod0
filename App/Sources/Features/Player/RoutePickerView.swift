@@ -12,21 +12,37 @@ import UIKit
 /// Tints are exposed so callers can render the glyph against the
 /// surrounding chrome. By default the inner button's icon is a clear
 /// AirPlay glyph the OS draws; pass `tintColor: .clear` to suppress it
-/// when overlaying the picker on top of a custom chip (the picker still
-/// captures taps even when its glyph is invisible).
+/// when presenting from a custom control.
 struct RoutePickerView: UIViewRepresentable {
     var activeTintColor: UIColor = .tintColor
     var tintColor: UIColor = .label
+    var accessibilityName: String? = nil
 
     func makeUIView(context: Context) -> AVRoutePickerView {
         let view = AVRoutePickerView()
         view.prioritizesVideoDevices = false
         view.backgroundColor = .clear
+        configureAccessibility(in: view)
         return view
     }
 
     func updateUIView(_ uiView: AVRoutePickerView, context: Context) {
         uiView.activeTintColor = activeTintColor
         uiView.tintColor = tintColor
+        configureAccessibility(in: uiView)
+    }
+
+    private func configureAccessibility(in routePicker: AVRoutePickerView) {
+        guard let accessibilityName else { return }
+        DispatchQueue.main.async {
+            routePicker.firstDescendantButton?.accessibilityLabel = accessibilityName
+        }
+    }
+}
+
+private extension UIView {
+    var firstDescendantButton: UIButton? {
+        if let button = self as? UIButton { return button }
+        return subviews.lazy.compactMap(\.firstDescendantButton).first
     }
 }

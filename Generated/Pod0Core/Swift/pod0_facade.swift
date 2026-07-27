@@ -4433,7 +4433,8 @@ enum FacadeOpenError: Swift.Error, Equatable, Hashable, Foundation.LocalizedErro
 
 
     case NotAuthoritative
-    case SchemaBlocked
+    case SchemaBlocked(reason: SchemaBlockReason
+    )
     case StorageUnavailable
 
 
@@ -4465,7 +4466,9 @@ public struct FfiConverterTypeFacadeOpenError: FfiConverterRustBuffer {
 
 
         case 1: return .NotAuthoritative
-        case 2: return .SchemaBlocked
+        case 2: return .SchemaBlocked(
+            reason: try FfiConverterTypeSchemaBlockReason.read(from: &buf)
+            )
         case 3: return .StorageUnavailable
 
          default: throw UniffiInternalError.unexpectedEnumCase
@@ -4483,8 +4486,9 @@ public struct FfiConverterTypeFacadeOpenError: FfiConverterRustBuffer {
             writeInt(&buf, Int32(1))
 
 
-        case .SchemaBlocked:
+        case let .SchemaBlocked(reason):
             writeInt(&buf, Int32(2))
+            FfiConverterTypeSchemaBlockReason.write(reason, into: &buf)
 
 
         case .StorageUnavailable:
@@ -7155,6 +7159,100 @@ public func FfiConverterTypeLegacyTranscriptWorkflowRowClassification_lower(_ va
 }
 
 
+
+/**
+ * Why a blocked store cannot be opened, in terms a recovery surface can act
+ * on. Six distinct `StorageError` cases collapse into three remedies; the
+ * host needs the remedy, not the cause.
+ *
+ * None of these are fixed by relaunching. That is the point of carrying the
+ * reason: without it the host can only offer one recovery instruction, and
+ * for every case here "close and reopen" is false.
+ */
+
+public enum SchemaBlockReason: Equatable, Hashable {
+
+    /**
+     * The store was written by a newer build than this one. Downgrade is
+     * refused, so the store is never rewritten back down — the only remedy
+     * is a build at least as new as the data.
+     */
+    case storeNewerThanApp
+    /**
+     * A migration started and did not finish. A verified backup was taken
+     * before it began.
+     */
+    case migrationFailed
+    /**
+     * The store is corrupt, or belongs to another application.
+     */
+    case storeUnreadable
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension SchemaBlockReason: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSchemaBlockReason: FfiConverterRustBuffer {
+    typealias SwiftType = SchemaBlockReason
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SchemaBlockReason {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .storeNewerThanApp
+
+        case 2: return .migrationFailed
+
+        case 3: return .storeUnreadable
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: SchemaBlockReason, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .storeNewerThanApp:
+            writeInt(&buf, Int32(1))
+
+
+        case .migrationFailed:
+            writeInt(&buf, Int32(2))
+
+
+        case .storeUnreadable:
+            writeInt(&buf, Int32(3))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSchemaBlockReason_lift(_ buf: RustBuffer) throws -> SchemaBlockReason {
+    return try FfiConverterTypeSchemaBlockReason.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSchemaBlockReason_lower(_ value: SchemaBlockReason) -> RustBuffer {
+    return FfiConverterTypeSchemaBlockReason.lower(value)
+}
+
+
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -8735,7 +8833,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_pod0_facade_checksum_constructor_pod0facade_new() != 63792) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_constructor_pod0facade_open() != 22335) {
+    if (uniffi_pod0_facade_checksum_constructor_pod0facade_open() != 33565) {
         return InitializationResult.apiChecksumMismatch
     }
 

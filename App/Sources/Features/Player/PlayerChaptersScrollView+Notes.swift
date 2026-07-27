@@ -57,7 +57,7 @@ extension PlayerChaptersScrollView {
             Spacer(minLength: 0)
 
             Text(formatNoteTimestamp(positionSeconds))
-                .font(.system(.caption, design: .monospaced).weight(.medium))
+                .font(.caption.weight(.medium))
                 .foregroundStyle(.tertiary)
         }
         .padding(.horizontal, AppTheme.Spacing.sm)

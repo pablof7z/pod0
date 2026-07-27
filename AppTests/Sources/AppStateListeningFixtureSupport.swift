@@ -30,6 +30,17 @@ extension AppStateStore {
         return true
     }
 
+    /// Drops the follow row while leaving the podcast and its episodes in
+    /// place — the state a podcast lands in after an unsubscribe.
+    @discardableResult
+    func removeSubscriptionFixture(podcastID: UUID) -> Bool {
+        guard state.subscriptions.contains(where: { $0.podcastID == podcastID }) else {
+            return false
+        }
+        mutateState { $0.subscriptions.removeAll { $0.podcastID == podcastID } }
+        return true
+    }
+
     @discardableResult
     func installEpisodeFixtures(
         _ incoming: [Episode],

@@ -72,18 +72,18 @@ struct PlayerNoChaptersPlaceholder: View {
     }
 
     private var subhead: String {
-        guard let episode else { return "Use the scrubber to navigate this episode." }
+        guard let episode else { return "Tap the progress bar to navigate." }
         if let job = workflowJob(for: episode) {
             if job.state == .blocked || job.state == .failedPermanent {
                 return WorkflowPresentationCopy.failureDetail(for: job)
             }
             if job.state.isActive {
                 return job.kind == .chapterArtifacts
-                    ? "AI chapters are compiling. Use the scrubber until they arrive."
+                    ? "AI chapters are compiling. The progress bar remains available."
                     : "We're preparing the transcript that powers AI chapters."
             }
         }
-        return "This episode has no published chapters. Use the scrubber to navigate."
+        return "This episode has no published chapters. Tap the progress bar to navigate."
     }
 
     private func workflowJob(for episode: Episode) -> WorkflowJobProjection? {
