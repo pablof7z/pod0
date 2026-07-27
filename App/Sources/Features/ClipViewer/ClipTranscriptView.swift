@@ -140,19 +140,12 @@ struct ClipTranscriptView: View {
 
     // MARK: - Notes
 
-    /// Moment-notes falling inside the clip's span.
+    /// The margin for this clip.
     ///
-    /// The existing store accessors filter on `.episode` targets, which is right
-    /// for them and wrong here — so this reads `state.notes` directly. When the
-    /// kernel gains a clip target this becomes a filter on `.clip(id:)` and the
-    /// call sites above do not change.
+    /// `notes(forClip:)` returns newest first; the sheet stacks oldest first so
+    /// returning to a clip months later reads as strata rather than a feed.
     private func notes(inside clip: Clip) -> [Note] {
-        store.notes(forEpisode: clip.episodeID)
-            .filter { note in
-                guard case .episode(_, let position) = note.target else { return false }
-                return position >= clip.startSeconds && position <= clip.endSeconds
-            }
-            .sorted { $0.createdAt < $1.createdAt }
+        store.notes(forClip: clip.id).reversed()
     }
 
     // MARK: - Chrome

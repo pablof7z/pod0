@@ -111,39 +111,52 @@ struct NotesSegment: View {
         var id: UUID { note.id }
     }
 
-    /// Pairs every episode-anchored note with the clip whose span contains it,
-    /// when there is one. Once the kernel can target a clip directly this reads
-    /// the clip target first and falls back to this containment check for notes
-    /// written before the variant existed.
+    /// Resolves each note to the passage it was written against.
+    ///
+    /// A clip-targeted note names its clip outright. An episode-anchored
+    /// moment-note has no clip, but if one of the reader's clips happens to
+    /// span its position we show that passage anyway — the note was written
+    /// about that moment, and seeing it beside the words is the whole point.
     private func allEntries() -> [NoteEntry] {
         let clips = store.allClips()
         return store.state.notes
             .filter { !$0.deleted && $0.author == .user }
             .sorted { $0.createdAt > $1.createdAt }
-            .map { note in
-                guard case .episode(let episodeID, let position) = note.target else {
-                    return NoteEntry(
-                        note: note,
-                        clipID: nil,
-                        episodeID: nil,
-                        passage: nil,
-                        showTitle: nil
-                    )
-                }
-                let clip = clips.first {
-                    $0.episodeID == episodeID
-                        && position >= $0.startSeconds
-                        && position <= $0.endSeconds
-                }
-                return NoteEntry(
-                    note: note,
-                    clipID: clip?.id,
-                    episodeID: episodeID,
-                    passage: clip?.transcriptText,
-                    showTitle: store.episode(id: episodeID)
-                        .flatMap { store.podcast(id: $0.podcastID)?.title }
-                )
+            .map { note in entry(for: note, clips: clips) }
+    }
+
+    private func entry(for note: Note, clips: [Clip]) -> NoteEntry {
+        switch note.target {
+        case .clip(let clipID):
+            let clip = clips.first { $0.id == clipID }
+            return NoteEntry(
+                note: note,
+                clipID: clipID,
+                episodeID: clip?.episodeID,
+                passage: clip?.transcriptText,
+                showTitle: showTitle(episodeID: clip?.episodeID)
+            )
+        case .episode(let episodeID, let position):
+            let clip = clips.first {
+                $0.episodeID == episodeID
+                    && position >= $0.startSeconds
+                    && position <= $0.endSeconds
             }
+            return NoteEntry(
+                note: note,
+                clipID: clip?.id,
+                episodeID: episodeID,
+                passage: clip?.transcriptText,
+                showTitle: showTitle(episodeID: episodeID)
+            )
+        case .note, .none:
+            return NoteEntry(note: note, clipID: nil, episodeID: nil, passage: nil, showTitle: nil)
+        }
+    }
+
+    private func showTitle(episodeID: UUID?) -> String? {
+        guard let episodeID else { return nil }
+        return store.episode(id: episodeID).flatMap { store.podcast(id: $0.podcastID)?.title }
     }
 
     private func filtered(_ entries: [NoteEntry]) -> [NoteEntry] {
