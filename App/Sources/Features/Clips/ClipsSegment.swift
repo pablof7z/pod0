@@ -11,6 +11,7 @@ struct ClipsSegment: View {
 
     let searchQuery: String
     let onOpenEpisode: (UUID) -> Void
+    let onOpenClip: (UUID) -> Void
     let onPullToSearch: () -> Void
 
     var body: some View {
@@ -82,6 +83,7 @@ struct ClipsSegment: View {
             clip: clip,
             episode: episode,
             podcast: podcast,
+            onOpen: { onOpenClip(clip.id) },
             onPlay: { playClip(clip, episode: episode) },
             onOpenEpisode: {
                 if let episode { onOpenEpisode(episode.id) }

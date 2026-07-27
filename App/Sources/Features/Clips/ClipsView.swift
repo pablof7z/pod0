@@ -2,32 +2,48 @@ import SwiftUI
 
 // MARK: - ClipsView
 
+/// Two segments over the same material: the clips you kept, and everything
+/// you have written against them. Tapping a clip opens it inside the
+/// conversation it came from rather than seeking the player there — playing is
+/// a separate, deliberate act.
 struct ClipsView: View {
+
+    private enum Segment: Hashable {
+        case clips
+        case notes
+    }
+
+    @State private var segment: Segment = .clips
     @State private var searchQuery = ""
     @State private var showsSearch = false
     @State private var isSearchPresented = false
     @State private var episodeNavTarget: UUID?
+    @State private var clipNavTarget: UUID?
 
     var body: some View {
         ZStack {
             if showsSearch {
-                clipsContent
+                content
                     .searchable(
                         text: $searchQuery,
                         isPresented: $isSearchPresented,
                         placement: .navigationBarDrawer(displayMode: .automatic),
-                        prompt: "Search clips"
+                        prompt: searchPrompt
                     )
             } else {
-                clipsContent
+                content
             }
         }
         .background(Color(.systemBackground).ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color(.systemBackground), for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
+        .toolbar { ToolbarItem(placement: .principal) { picker } }
         .navigationDestination(item: $episodeNavTarget) { id in
             EpisodeDetailView(episodeID: id)
+        }
+        .navigationDestination(item: $clipNavTarget) { id in
+            ClipTranscriptView(clipID: id)
         }
         .onChange(of: isSearchPresented) { _, presented in
             if !presented, searchQuery.isEmpty {
@@ -36,18 +52,50 @@ struct ClipsView: View {
         }
     }
 
-    private var clipsContent: some View {
-        ClipsSegment(
-            searchQuery: searchQuery,
-            onOpenEpisode: { episodeNavTarget = $0 },
-            onPullToSearch: {
-                guard !showsSearch else { return }
-                showsSearch = true
-                Task { @MainActor in
-                    isSearchPresented = true
-                }
-            }
+    // MARK: - Segments
+
+    /// Lives in the navigation toolbar rather than inline above the list. The
+    /// inline segmented control was deliberately removed from this screen when
+    /// Clips stopped carrying the old Saved/Starred split, and putting a new
+    /// one back in the content would undo that cleanup.
+    private var picker: some View {
+        LiquidGlassSegmentedPicker(
+            "Clips segment",
+            selection: $segment,
+            segments: [(.clips, "Clips"), (.notes, "Notes")]
         )
+        .frame(width: 190)
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch segment {
+        case .clips:
+            ClipsSegment(
+                searchQuery: searchQuery,
+                onOpenEpisode: { episodeNavTarget = $0 },
+                onOpenClip: { clipNavTarget = $0 },
+                onPullToSearch: revealSearch
+            )
+        case .notes:
+            NotesSegment(
+                searchQuery: searchQuery,
+                onOpenEpisode: { episodeNavTarget = $0 },
+                onOpenClip: { clipNavTarget = $0 }
+            )
+        }
+    }
+
+    private var searchPrompt: String {
+        segment == .clips ? "Search clips" : "Search notes"
+    }
+
+    private func revealSearch() {
+        guard !showsSearch else { return }
+        showsSearch = true
+        Task { @MainActor in
+            isSearchPresented = true
+        }
     }
 }
 

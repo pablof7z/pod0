@@ -164,8 +164,13 @@ final class UserFacingFailureTests: XCTestCase {
         XCTAssertTrue(source.contains(".navigationBarDrawer(displayMode: .automatic)"))
         XCTAssertTrue(source.contains("Color(.systemBackground)"))
         XCTAssertFalse(source.contains("Color(.systemGroupedBackground)"))
-        XCTAssertFalse(source.contains("LiquidGlassSegmentedPicker"))
         XCTAssertFalse(source.contains("StarredSegment"))
+        // The Saved/Starred split is what this screen dropped, and it stays
+        // dropped. The Clips/Notes switch that replaced it belongs in the
+        // navigation toolbar, never inline above the list where the old
+        // segmented control sat.
+        XCTAssertFalse(source.contains(".safeAreaInset(edge: .top)"))
+        XCTAssertTrue(source.contains("ToolbarItem(placement: .principal)"))
     }
 
     func testSettingsEntryLivesInSidebarNotSharedToolbar() throws {

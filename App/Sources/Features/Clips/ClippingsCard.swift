@@ -10,6 +10,7 @@ struct ClippingsCard: View {
     let clip: Clip
     let episode: Episode?
     let podcast: Podcast?
+    let onOpen: () -> Void
     let onPlay: () -> Void
     let onOpenEpisode: () -> Void
     let onDelete: () -> Void
@@ -19,7 +20,7 @@ struct ClippingsCard: View {
     var body: some View {
         Group {
             if episode != nil {
-                Button(action: { Haptics.selection(); onPlay() }) {
+                Button(action: { Haptics.selection(); onOpen() }) {
                     cardContent
                 }
             } else {
@@ -274,6 +275,7 @@ struct ClippingsCard: View {
         clip: clip,
         episode: episode,
         podcast: podcast,
+        onOpen: {},
         onPlay: {},
         onOpenEpisode: {},
         onDelete: {}
