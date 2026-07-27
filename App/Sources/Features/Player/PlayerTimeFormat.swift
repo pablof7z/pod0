@@ -2,8 +2,7 @@ import Foundation
 
 /// Formatting helpers for player time codes (`hh:mm:ss` / `mm:ss`).
 ///
-/// Centralised so every subview renders timestamps identically — matters for
-/// the brief's "tabular numerals, never jitters" rule.
+/// Centralised so every subview renders timestamps identically.
 enum PlayerTimeFormat {
 
     /// Renders `seconds` as `mm:ss` for episodes under one hour, `h:mm:ss`
@@ -31,5 +30,18 @@ enum PlayerTimeFormat {
         guard duration > 0 else { return "" }
         let rem = max(0, duration - current)
         return "-\(clock(rem))"
+    }
+
+    /// A compact, deliberately approximate duration for chapter rows.
+    /// Values below an hour render as whole minutes; longer values retain
+    /// only useful hour/minute precision.
+    static func approximateDuration(_ seconds: TimeInterval) -> String? {
+        guard seconds.isFinite, seconds > 0 else { return nil }
+        let totalMinutes = max(1, Int((seconds / 60).rounded()))
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        if hours == 0 { return "\(totalMinutes)m" }
+        if minutes == 0 { return "\(hours)h" }
+        return "\(hours)h \(minutes)m"
     }
 }

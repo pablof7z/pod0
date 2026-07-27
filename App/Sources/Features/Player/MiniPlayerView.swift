@@ -170,7 +170,7 @@ struct MiniPlayerView: View {
         }
     }
 
-    /// Compact mono-digit playhead surfaced inline so the collapsed pill
+    /// Compact playhead surfaced inline so the collapsed pill
     /// keeps a glanceable cue without the full metadata line. Hidden when
     /// no episode is loaded (the artwork+title row already conveys "no
     /// playback") to avoid an empty 0:00 leaking into the layout.
@@ -178,9 +178,8 @@ struct MiniPlayerView: View {
     private var inlineClock: some View {
         if state.episode != nil {
             Text(PlayerTimeFormat.clock(state.currentTime))
-                .font(.system(size: 11, weight: .regular, design: .monospaced))
+                .font(.system(size: 11, weight: .regular))
                 .foregroundStyle(.secondary)
-                .monospacedDigit()
                 .lineLimit(1)
         }
     }

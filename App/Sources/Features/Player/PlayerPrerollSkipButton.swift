@@ -2,13 +2,13 @@ import SwiftUI
 
 // MARK: - PlayerPrerollSkipButton
 //
-// Transient "Skip 30s ad" button anchored above the scrubber when the
+// Transient "Skip 30s ad" button anchored above the transport when the
 // currently-loaded episode has a pre-roll ad and the playhead is still
 // inside it. Auto-hides when the playhead moves past the segment's `end`.
 //
 // Tapping calls `state.seek(to:)` with `segment.end` directly — that goes
 // through the normal seek + flush path (haptic, persist, widget snapshot)
-// so the user gets the same feedback as any other manual scrub.
+// so the user gets the same feedback as any other manual seek.
 
 struct PlayerPrerollSkipButton: View {
     @Bindable var state: PlaybackState

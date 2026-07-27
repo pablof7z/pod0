@@ -1,3 +1,4 @@
+import AVKit
 import SwiftUI
 
 // MARK: - PlayerTopBar
@@ -26,8 +27,8 @@ struct PlayerTopBar: View {
 
     var body: some View {
         HStack(spacing: AppTheme.Spacing.xs) {
-            jumpBackButton
-                .animation(AppTheme.Animation.spring, value: state.canJumpBack)
+            historyButton
+                .animation(AppTheme.Animation.spring, value: historyButtonState)
 
             Spacer(minLength: AppTheme.Spacing.sm)
 
@@ -65,6 +66,8 @@ struct PlayerTopBar: View {
                     }
                     .buttonStyle(.pressable)
                     .accessibilityLabel("Share episode")
+
+                    routePicker
                 }
 
                 if let episode = state.episode {
@@ -85,12 +88,27 @@ struct PlayerTopBar: View {
         .padding(.bottom, AppTheme.Spacing.xs)
     }
 
-    /// Shows a "<" button when there is navigation history,
-    /// otherwise renders an empty fixed-size slot so the centre title stays
-    /// centred. The drag indicator on the sheet already handles dismiss.
+    /// Uses one fixed-size slot for back and the temporary forward recovery
+    /// action, so neither state shifts the centred title.
     @ViewBuilder
-    private var jumpBackButton: some View {
-        if state.canJumpBack {
+    private var historyButton: some View {
+        if state.canJumpForward {
+            Button {
+                state.jumpForward()
+                Haptics.selection()
+            } label: {
+                Image(systemName: "chevron.right")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Circle())
+                    .glassEffect(.regular.interactive(), in: .circle)
+            }
+            .buttonStyle(.pressable)
+            .accessibilityLabel("Return to listening position")
+            .accessibilityHint("Returns to the position before the last jump back")
+            .transition(.opacity.combined(with: .scale(scale: 0.85, anchor: .leading)))
+        } else if state.canJumpBack {
             Button {
                 state.jumpBack()
                 Haptics.selection()
@@ -112,4 +130,26 @@ struct PlayerTopBar: View {
         }
     }
 
+    private var historyButtonState: Int {
+        state.canJumpForward ? 2 : (state.canJumpBack ? 1 : 0)
+    }
+
+    private var routePicker: some View {
+        ZStack {
+            Image(systemName: "airplayaudio")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.primary)
+                .frame(width: 44, height: 44)
+                .contentShape(Circle())
+                .glassEffect(.regular.interactive(), in: .circle)
+                .accessibilityHidden(true)
+            RoutePickerView(activeTintColor: .clear, tintColor: .clear)
+                .allowsHitTesting(true)
+                .accessibilityHidden(true)
+        }
+        .frame(width: 44, height: 44)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Audio output")
+        .accessibilityHint("Opens system output picker")
+    }
 }
