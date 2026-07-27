@@ -53,6 +53,8 @@ PROJECT_PATH="${PROJECT_PATH:-Podcastr.xcodeproj}"
 APP_INFO_PLIST="${APP_INFO_PLIST:-App/Resources/Info.plist}"
 WIDGET_INFO_PLIST="${WIDGET_INFO_PLIST:-App/Widget/Resources/Info.plist}"
 WIDGET_EXTENSION_NAME="${WIDGET_EXTENSION_NAME:-${APP_PRODUCT_NAME}Widget}"
+SHARE_INFO_PLIST="${SHARE_INFO_PLIST:-App/ShareExtension/Resources/Info.plist}"
+SHARE_EXTENSION_NAME="${SHARE_EXTENSION_NAME:-${APP_PRODUCT_NAME}Share}"
 APPLE_TEAM_ID="${APPLE_TEAM_ID:-456SHKPP26}"
 BUILD_ROOT="${BUILD_ROOT:-$PWD/build}"
 ARCHIVE_PATH="${ARCHIVE_PATH:-$BUILD_ROOT/Podcastr.xcarchive}"
@@ -78,7 +80,7 @@ if [[ -z "$MARKETING_VERSION" ]]; then
 fi
 
 BUILD_NUMBER="${BUILD_NUMBER:-$(date -u +%Y%m%d%H%M)}"
-VERSION_PLISTS=("$APP_INFO_PLIST" "$WIDGET_INFO_PLIST")
+VERSION_PLISTS=("$APP_INFO_PLIST" "$WIDGET_INFO_PLIST" "$SHARE_INFO_PLIST")
 
 mkdir -p "$BUILD_ROOT" "$DERIVED_DATA_PATH"
 rm -rf "$ARCHIVE_PATH" "$EXPORT_PATH"
@@ -103,6 +105,7 @@ if [[ -n "${KEYCHAIN_PATH:-}" ]]; then
     "CODE_SIGN_IDENTITY=Apple Distribution"
     "CI_APP_PROFILE_SPECIFIER=${CI_APP_PROFILE_SPECIFIER:-}"
     "CI_WIDGET_PROFILE_SPECIFIER=${CI_WIDGET_PROFILE_SPECIFIER:-}"
+    "CI_SHARE_PROFILE_SPECIFIER=${CI_SHARE_PROFILE_SPECIFIER:-}"
   )
 fi
 
@@ -110,6 +113,7 @@ PROVISIONING_PROFILES_XML=""
 if [[ "$SIGNING_STYLE" == "manual" ]] && [[ -n "${CI_APP_PROFILE_SPECIFIER:-}" ]]; then
   APP_BUNDLE_ID="${APP_BUNDLE_ID:-io.f7z.podcast}"
   WIDGET_BUNDLE_ID="${WIDGET_BUNDLE_ID:-io.f7z.podcast.widget}"
+  SHARE_BUNDLE_ID="${SHARE_BUNDLE_ID:-io.f7z.podcast.share}"
   PROVISIONING_PROFILES_XML="
   <key>provisioningProfiles</key>
   <dict>
@@ -119,6 +123,11 @@ if [[ "$SIGNING_STYLE" == "manual" ]] && [[ -n "${CI_APP_PROFILE_SPECIFIER:-}" ]
     PROVISIONING_PROFILES_XML="${PROVISIONING_PROFILES_XML}
     <key>${WIDGET_BUNDLE_ID}</key>
     <string>${CI_WIDGET_PROFILE_SPECIFIER}</string>"
+  fi
+  if [[ -n "${CI_SHARE_PROFILE_SPECIFIER:-}" ]]; then
+    PROVISIONING_PROFILES_XML="${PROVISIONING_PROFILES_XML}
+    <key>${SHARE_BUNDLE_ID}</key>
+    <string>${CI_SHARE_PROFILE_SPECIFIER}</string>"
   fi
   PROVISIONING_PROFILES_XML="${PROVISIONING_PROFILES_XML}
   </dict>"
@@ -164,10 +173,13 @@ xcodebuild \
 
 ARCHIVED_APP_INFO_PLIST="$ARCHIVE_PATH/Products/Applications/${APP_PRODUCT_NAME}.app/Info.plist"
 ARCHIVED_WIDGET_INFO_PLIST="$ARCHIVE_PATH/Products/Applications/${APP_PRODUCT_NAME}.app/PlugIns/${WIDGET_EXTENSION_NAME}.appex/Info.plist"
+ARCHIVED_SHARE_INFO_PLIST="$ARCHIVE_PATH/Products/Applications/${APP_PRODUCT_NAME}.app/PlugIns/${SHARE_EXTENSION_NAME}.appex/Info.plist"
 require_file "$ARCHIVED_APP_INFO_PLIST"
 require_file "$ARCHIVED_WIDGET_INFO_PLIST"
+require_file "$ARCHIVED_SHARE_INFO_PLIST"
 assert_bundle_version "$ARCHIVED_APP_INFO_PLIST" "App archive"
 assert_bundle_version "$ARCHIVED_WIDGET_INFO_PLIST" "Widget archive"
+assert_bundle_version "$ARCHIVED_SHARE_INFO_PLIST" "Share extension archive"
 
 xcodebuild \
   -exportArchive \

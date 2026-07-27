@@ -7,7 +7,8 @@
 #   [--p12-password password] \
 #   [--keychain-password password] \
 #   [--app-profile path/to/Podcastr.mobileprovision] \
-#   [--widget-profile path/to/PodcastrWidget.mobileprovision]
+#   [--widget-profile path/to/PodcastrWidget.mobileprovision] \
+#   [--share-profile path/to/PodcastrShare.mobileprovision]
 set -euo pipefail
 
 REPO=""
@@ -18,6 +19,7 @@ P12_PASSWORD=""
 KEYCHAIN_PASSWORD=""
 APP_PROFILE_PATH=""
 WIDGET_PROFILE_PATH=""
+SHARE_PROFILE_PATH=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -29,6 +31,7 @@ while [[ $# -gt 0 ]]; do
     --keychain-password) KEYCHAIN_PASSWORD="$2"; shift 2 ;;
     --app-profile) APP_PROFILE_PATH="$2"; shift 2 ;;
     --widget-profile) WIDGET_PROFILE_PATH="$2"; shift 2 ;;
+    --share-profile) SHARE_PROFILE_PATH="$2"; shift 2 ;;
     *) echo "Unknown flag: $1" >&2; exit 1 ;;
   esac
 done
@@ -87,5 +90,6 @@ upload_profile_secret() {
 
 upload_profile_secret "$APP_PROFILE_PATH" "APP_PROVISION_PROFILE_BASE64" "app"
 upload_profile_secret "$WIDGET_PROFILE_PATH" "WIDGET_PROVISION_PROFILE_BASE64" "widget"
+upload_profile_secret "$SHARE_PROFILE_PATH" "SHARE_PROVISION_PROFILE_BASE64" "share extension"
 
 echo "Done. GitHub secrets updated for $REPO."
