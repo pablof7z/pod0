@@ -21,7 +21,7 @@ configuration, indexing, and retrieval; publisher and model chapter workflows;
 scheduled-agent definitions, occurrences, and artifacts; interactive
 product-proof agent conversations, proposals, permissions, recall citations,
 model usage, generated audio provenance, tracked NMP publication receipts, and
-feed-discovery download/notification policy with durable recovery. The facade contract is now version 50. It exposes bounded commands,
+feed-discovery download/notification policy with durable recovery. The facade contract is now version 51. It exposes bounded commands,
 projections, domain events, and correlated host requests across those migrated
 domains. Exact integer milliseconds, stable identifiers, explicit revisions,
 effect fences, cancellation, and typed failure states prevent native adapters
@@ -31,7 +31,7 @@ Cancellable native host adapters execute URLSession/provider primitives,
 AVFoundation playback, Keychain/security prompts, platform files,
 notifications, speech, and other Apple capabilities. Swift renders Rust
 projections and retains durable authority only for explicitly unmigrated
-settings and categories, plus supported rollback evidence. Pod0-specific Nostr
+settings and categories, plus temporary development migration inputs. Pod0-specific Nostr
 publication semantics and receipts are Rust-owned over the exactly pinned
 generic NMP dependency. There is no Android product project; Kotlin binding
 smoke tests and Android-compatible Rust builds are readiness checks only.
@@ -47,7 +47,7 @@ call typed methods; migrated commands dispatch to the shared facade, and direct
 episodes, notes, clips, memories, and scheduled tasks. Those projections are
 not written back as native durable authority. Swift remains authoritative for
 settings and categories/category settings, plus explicitly retained
-compatibility evidence. The former Agent activity log has no live native
+development migration inputs. The former Agent activity log has no live native
 writer or UI; its decode-only payload is removed after Rust conversation and
 memory authority are verified and is then excluded from every native write.
 
@@ -94,8 +94,8 @@ The Swift `WorkflowRuntime` is now an opportunity adapter only. It announces
 foreground/BGTask and input changes to the Rust facade; typed native hosts
 execute bounded URLSession, notification, model-provider, signer, and other
 platform capabilities and return correlated observations. Swift has no active
-job executor or coordinator. Its versioned workflow/artifact tables remain
-quarantined decode-only rollback evidence until their support windows close.
+job executor or coordinator. Residual one-shot readers for other development
+cutovers are temporary cleanup debt, not a released-installation commitment.
 
 CI runs the full Rust workspace plus named restart tests spanning chapter,
 download, transcript, feed-discovery, scheduled-agent, native-effect fencing,
@@ -190,31 +190,16 @@ Swift and Kotlin bindings. CI rejects drift from Rust metadata.
   staged-completion recovery event-driven without native polling. Swift and
   Kotlin receive only the minimum provider execution/recovery contract; secrets
   remain native.
-- Version 25 activates that workflow in production iOS. A typed, restartable
-  cutover adopts exact current successful legacy receipts and reconstructable
-  interrupted, uncertain, or terminal state without reposting paid work. Stale
-  or unplannable rows remain rollback evidence rather than becoming a second
-  Rust workflow format. Before deletion it durably writes a content-qualified,
-  integrity-checked classification manifest containing every legacy job row. The no-clobber
-  manifest is retained beside the episode store under the
-  `model-chapter-workflow-backups` suffix through the documented rollback
-  support window. Only after the manifest is re-read and verified may the
-  cutover delete legacy rows and commit the Rust authority marker; staged
-  restarts verify the exact source. A changed, still-present legacy source
-  discards only the generation-fenced Rust stage and restages from the new
-  snapshot; missing rows without the verified backup fail closed.
-  The former Swift planner, executor, verifier, and receipt writer are no longer
-  authoritative or executable.
-- Version 26 removes both chapter kinds from the mutable Swift job model. A
-  quarantined compatibility decoder preserves every pre-cutover model and
-  publisher row in immutable, integrity-checked manifests; it never feeds the
-  native scheduler or UI. After Rust model authority is verified, one immediate
-  SQLite transaction proves model rows absent, compare-deletes the exact
-  publisher source, and commits `legacy_chapter_workflow_retirement`. Generic
-  native recovery and claim SQL accepts only current `WorkJobKind` values, while
-  UI status and actions use read-only Rust publisher/model projections. The
-  compatibility bridge remains only for supported direct upgrades and is
-  deleted under issue #114 after the two-release/90-day support gate.
+- Version 25 activates that workflow in production iOS. Rust owns restartable
+  model workflow authority, including successful receipts and interrupted,
+  uncertain, or terminal state, without reposting paid work. The former Swift
+  planner, executor, verifier, and receipt writer are not authoritative or
+  executable.
+- Version 26 removed both chapter kinds from the mutable Swift job model.
+  Issue #114 then deleted the development-only Swift decoder, manifests,
+  compare-delete mutation, backup locations, bootstrap stages, and retirement
+  marker schema. The current tree cannot decode or restore those raw job kinds;
+  UI status and actions use bounded Rust publisher/model projections.
 - Versions 27–46 extend the same typed, single-writer pattern through download
   workflows, recall configuration/indexing/retrieval, scheduled agents,
   interactive conversations and permissions, model-usage evidence, generated
@@ -233,6 +218,10 @@ Swift and Kotlin bindings. CI rejects drift from Rust metadata.
   workflows and notification setting. The native scheduler, reconciler,
   payloads, executors, settings persistence, and UI job projection can no
   longer create or mutate feed-discovery authority.
+- Version 51 removes the model-chapter legacy cutover contract completely:
+  no facade cutover methods or types, no storage authority gate, and no
+  generated Swift/Kotlin bridge API remain. Model workflows operate directly
+  from the Rust store.
 - Open views receive bounded, revisioned, screen-shaped projections.
 - Operation failure and cancellation appear in projection state, not thrown
   per-operation FFI results.

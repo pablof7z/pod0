@@ -52,13 +52,10 @@ Current versions:
   provider recovery identity, staged completion artifacts, evidence admission,
   and verified legacy workflow cutover evidence.
 
-The separate native workflow database remains authoritative only for workflow
-kinds that are native or not yet migrated. Its `jobs` component is schema v1.
-Its versioned `chapter_retirement` component is schema v1 and contains exactly
-one optional `legacy_chapter_workflow_retirement` marker. The marker and exact
-publisher-row deletion commit in one immediate transaction after the Rust model
-cutover is authoritative and both immutable manifests have been verified. No
-normal scheduler query decodes or mutates the retired raw kinds.
+The separate native workflow database remains available only to isolated legacy
+tests and development importers for workflows not yet cleaned up. Its `jobs`
+component is schema v1. It has no chapter-retirement component, and production
+Swift contains no decoder or mutation path for retired chapter job kinds.
 
 ADR-0007 reserves scheduled-agent state for the next ownership-complete Rust
 workflow schema extension (#128). It must persist recurring definitions,

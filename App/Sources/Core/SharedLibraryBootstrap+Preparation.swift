@@ -19,7 +19,6 @@ extension SharedLibraryBootstrap {
         persistence: Persistence,
         legacyState: AppState,
         feedHost: any CoreFeedHosting = CoreFeedHost(),
-        chapterCompilationModel: String = Settings().chapterCompilationModel,
         legacyRecallConfiguration: LegacyRecallConfigurationSeed? = nil
     ) -> SharedLibraryBootstrapOutcome {
         finish(
@@ -27,7 +26,6 @@ extension SharedLibraryBootstrap {
                 persistence: persistence,
                 legacyState: legacyState,
                 feedHost: feedHost,
-                chapterCompilationModel: chapterCompilationModel,
                 legacyRecallConfiguration: legacyRecallConfiguration
             ),
             persistence: persistence

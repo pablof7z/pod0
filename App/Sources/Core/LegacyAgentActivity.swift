@@ -1,6 +1,6 @@
 import Foundation
 
-/// Decode-only shape retained for one support window so older AppState
+/// Temporary decode-only shape for current development migration so older AppState
 /// metadata can be retired explicitly after shared Agent authority is ready.
 /// No product path may create or render these records.
 enum LegacyAgentActivityKind: Codable, Equatable, Sendable {

@@ -56,7 +56,6 @@ enum AppStateStartupPreparer {
             persistence: persistence,
             legacyState: loadedState,
             feedHost: sharedFeedHost ?? CoreFeedHost(),
-            chapterCompilationModel: loadedState.settings.chapterCompilationModel,
             legacyRecallConfiguration: loadedState.settings.legacyRecallConfigurationSeed
         )
         return AppStateStartupPreparation(

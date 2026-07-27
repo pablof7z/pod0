@@ -2,8 +2,8 @@ import CSQLite3
 import Foundation
 
 extension JobStore {
-    /// Compatibility SQL used by legacy JobStore tests and support-window
-    /// readers. The product runtime has no native coordinator or caller.
+    /// SQL used by isolated legacy JobStore tests. The product runtime has no
+    /// native coordinator or caller, and migrated Rust-owned kinds are excluded.
     /// Migrated Rust-owned kinds remain ineligible for generic mutation.
     static let supportedKindSQL = WorkJobKind.allCases
         .filter {
@@ -40,7 +40,6 @@ extension JobStore {
 
     func ensureSchema(_ db: OpaquePointer) throws {
         try WorkflowSchemaMigrations.ensureJobs(db)
-        try WorkflowSchemaMigrations.ensureChapterRetirement(db)
     }
 
     func reclaimExpiredLeases(

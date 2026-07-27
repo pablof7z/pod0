@@ -20,6 +20,25 @@ DELETED_PATHS = (
     "App/Sources/Features/Player/PlaybackState+AdSkip.swift",
     "App/Sources/Core/ChapterModelPromptBuilder.swift",
     "App/Sources/Workflows/ChapterWorkflowExecutors.swift",
+    "App/Sources/Core/LegacyChapterWorkflowJob.swift",
+    "App/Sources/Core/LegacyModelChapterWorkflowBackup.swift",
+    "App/Sources/Core/LegacyModelChapterWorkflowCutover.swift",
+    "App/Sources/Core/LegacyModelChapterWorkflowSnapshot.swift",
+    "App/Sources/Core/LegacyPublisherChapterWorkflowRetirement.swift",
+    "App/Sources/Workflows/JobStore+LegacyChapterRetirement.swift",
+    "App/Sources/Workflows/WorkflowSchemaMigrations+ChapterRetirement.swift",
+    "rust/crates/pod0-facade/src/model_chapter_cutover.rs",
+    "rust/crates/pod0-facade/src/model_chapter_cutover_types.rs",
+    "rust/crates/pod0-storage/src/model_chapter_workflow/cutover.rs",
+    "rust/crates/pod0-storage/src/model_chapter_workflow/cutover_adoption.rs",
+    "rust/crates/pod0-storage/src/model_chapter_workflow/cutover_discard.rs",
+)
+
+RETIRED_BRIDGE_TOKENS = (
+    "LegacyModelChapterCutover",
+    "LegacyModelChapterWorkflowCutover",
+    "model_chapter_workflow_authority",
+    "legacy_model_chapter_workflow_cutover",
 )
 
 FORBIDDEN = (
@@ -31,6 +50,18 @@ FORBIDDEN = (
         "retired Swift publisher workflow authority",
     ),
     (re.compile(r"\bChapterArtifactsJobExecutor\b"), "retired Swift model workflow authority"),
+    (
+        re.compile(r"\bLegacy(?:Chapter|ModelChapter|PublisherChapter)Workflow\w*\b"),
+        "deleted Swift chapter workflow bridge",
+    ),
+    (
+        re.compile(r"""["'](?:publisherChapters|chapterArtifacts)["']"""),
+        "retired Swift chapter job raw kind",
+    ),
+    (
+        re.compile(r"\b(?:legacy_chapter_workflow_retirement|chapter_retirement)\b"),
+        "deleted Swift chapter retirement schema",
+    ),
     (
         re.compile(r"\b(?:ModelChapterCapabilityRequest|ChapterModelTransporting)\b"),
         "retired parallel Swift model capability path",
@@ -104,6 +135,15 @@ def validate(root: Path) -> list[str]:
     }
     for relative, source in sources.items():
         errors.extend(findings(relative, source))
+    for search_root in ("rust/crates", "Generated/Pod0Core", "BindingsSmoke"):
+        for path in (root / search_root).rglob("*"):
+            if not path.is_file() or path.suffix not in {".rs", ".swift", ".kt", ".h"}:
+                continue
+            source = path.read_text(encoding="utf-8")
+            for token in RETIRED_BRIDGE_TOKENS:
+                if token in source:
+                    relative = path.relative_to(root).as_posix()
+                    errors.append(f"{relative}: retired chapter bridge token {token!r} exists")
     repository = sources.get("App/Sources/Workflows/ArtifactRepository.swift", "")
     kind_body = re.search(r"enum\s+ArtifactKind\b[^\{]*\{(?P<body>.*?)\n\}", repository, re.S)
     if kind_body and re.search(r"\bcase\s+(?:chapters|adSegments)\b", kind_body.group("body")):
@@ -142,6 +182,9 @@ def self_test() -> None:
         "applyAutoSkipAdsIfNeeded(at: time)",
         "let executor = PublisherChaptersJobExecutor()",
         "let executor = ChapterArtifactsJobExecutor()",
+        "let row: LegacyChapterWorkflowJob",
+        "let retiredKind = \"publisherChapters\"",
+        "SELECT * FROM legacy_chapter_workflow_retirement",
         "let request = ModelChapterCapabilityRequest(planned: plan)",
         "let transport: any ChapterModelTransporting",
         "PublisherChapterRequestPayload(sourceURL: url)",

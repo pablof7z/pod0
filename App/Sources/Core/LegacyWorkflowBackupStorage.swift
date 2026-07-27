@@ -1,6 +1,13 @@
 import Darwin
 import Foundation
 
+enum LegacyWorkflowBackupError: Error, Equatable {
+    case backupMissing
+    case backupConflict
+    case invalidBackup
+    case durabilityFailed
+}
+
 /// Shared durability primitive for immutable, content-qualified workflow
 /// migration manifests. Publication is no-clobber and flushes both the file
 /// and directory entry before any source-row deletion may begin.
@@ -22,7 +29,7 @@ enum LegacyWorkflowBackupStorage {
             validate: validate
         ) {
             guard existing == manifest else {
-                throw LegacyChapterWorkflowBackupError.backupConflict
+                throw LegacyWorkflowBackupError.backupConflict
             }
             try synchronizePublishedFile(at: destination, in: root)
             return
@@ -50,7 +57,7 @@ enum LegacyWorkflowBackupStorage {
                 try synchronizePublishedFile(at: destination, in: root)
                 return
             }
-            throw LegacyChapterWorkflowBackupError.backupConflict
+            throw LegacyWorkflowBackupError.backupConflict
         }
         try synchronizePublishedFile(at: destination, in: root)
         let verified: Manifest? = try load(
@@ -59,7 +66,7 @@ enum LegacyWorkflowBackupStorage {
             validate: validate
         )
         guard verified == manifest else {
-            throw LegacyChapterWorkflowBackupError.invalidBackup
+            throw LegacyWorkflowBackupError.invalidBackup
         }
     }
 
@@ -76,10 +83,10 @@ enum LegacyWorkflowBackupStorage {
             $0.lastPathComponent.hasPrefix(matchingPrefix) && $0.pathExtension == "json"
         } ?? []
         guard files.count <= 1 else {
-            throw LegacyChapterWorkflowBackupError.backupConflict
+            throw LegacyWorkflowBackupError.backupConflict
         }
         guard let file = files.first else {
-            if required { throw LegacyChapterWorkflowBackupError.backupMissing }
+            if required { throw LegacyWorkflowBackupError.backupMissing }
             return nil
         }
         let envelope: LegacyWorkflowBackupEnvelope<Manifest>
@@ -89,11 +96,11 @@ enum LegacyWorkflowBackupStorage {
                 from: Data(contentsOf: file)
             )
         } catch {
-            throw LegacyChapterWorkflowBackupError.invalidBackup
+            throw LegacyWorkflowBackupError.invalidBackup
         }
         guard ArtifactRepository.hash(try encodedData(envelope.manifest))
                 == envelope.integrityDigest
-        else { throw LegacyChapterWorkflowBackupError.invalidBackup }
+        else { throw LegacyWorkflowBackupError.invalidBackup }
         try validate(envelope.manifest)
         return envelope.manifest
     }
@@ -114,12 +121,12 @@ private extension LegacyWorkflowBackupStorage {
     static func synchronize(_ url: URL, requestFullSync: Bool) throws {
         let descriptor = Darwin.open(url.path, O_RDONLY)
         guard descriptor >= 0 else {
-            throw LegacyChapterWorkflowBackupError.durabilityFailed
+            throw LegacyWorkflowBackupError.durabilityFailed
         }
         defer { _ = Darwin.close(descriptor) }
         if requestFullSync, Darwin.fcntl(descriptor, F_FULLFSYNC) == 0 { return }
         guard Darwin.fsync(descriptor) == 0 else {
-            throw LegacyChapterWorkflowBackupError.durabilityFailed
+            throw LegacyWorkflowBackupError.durabilityFailed
         }
     }
 }
