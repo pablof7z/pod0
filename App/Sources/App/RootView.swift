@@ -52,8 +52,11 @@ struct RootView: View {
                 .onChange(of: store.state.settings) { _, new in
                     playbackState.applyPreferences(from: new)
                 }
-                .fullScreenCover(isPresented: $showFullPlayer) {
+                .sheet(isPresented: $showFullPlayer) {
                     PlayerView(state: playbackState, glassNamespace: playerNamespace)
+                        .presentationDetents([.large])
+                        .presentationDragIndicator(.visible)
+                        .presentationBackgroundInteraction(.disabled)
                 }
                 .sheet(isPresented: $showAgentChat) {
                     if let session = agentSession {

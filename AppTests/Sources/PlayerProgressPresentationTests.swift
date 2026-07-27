@@ -3,7 +3,7 @@ import XCTest
 @testable import Podcastr
 
 final class PlayerProgressPresentationTests: XCTestCase {
-    func testPlayerUsesFullScreenPresentationWithExplicitDismiss() throws {
+    func testPlayerUsesSwipeDismissableLargeSheetWithoutCloseButton() throws {
         let root = repositoryRoot()
         let rootSource = try String(
             contentsOf: root.appendingPathComponent("App/Sources/App/RootView.swift"),
@@ -16,10 +16,34 @@ final class PlayerProgressPresentationTests: XCTestCase {
             encoding: .utf8
         )
 
-        XCTAssertTrue(rootSource.contains(".fullScreenCover(isPresented: $showFullPlayer)"))
-        XCTAssertFalse(rootSource.contains(".sheet(isPresented: $showFullPlayer)"))
-        XCTAssertTrue(topBarSource.contains(".accessibilityLabel(\"Close player\")"))
-        XCTAssertTrue(topBarSource.contains("onDismiss()"))
+        XCTAssertTrue(rootSource.contains(".sheet(isPresented: $showFullPlayer)"))
+        XCTAssertTrue(rootSource.contains(".presentationDetents([.large])"))
+        XCTAssertTrue(rootSource.contains(".presentationDragIndicator(.visible)"))
+        XCTAssertFalse(rootSource.contains(".fullScreenCover(isPresented: $showFullPlayer)"))
+        XCTAssertFalse(topBarSource.contains(".accessibilityLabel(\"Close player\")"))
+        XCTAssertFalse(topBarSource.contains("onDismiss"))
+    }
+
+    func testShareAndAudioOutputLiveInPlayerMoreMenu() throws {
+        let root = repositoryRoot()
+        let topBarSource = try String(
+            contentsOf: root.appendingPathComponent(
+                "App/Sources/Features/Player/PlayerTopBar.swift"
+            ),
+            encoding: .utf8
+        )
+        let menuSource = try String(
+            contentsOf: root.appendingPathComponent(
+                "App/Sources/Features/Player/PlayerMoreMenu.swift"
+            ),
+            encoding: .utf8
+        )
+
+        XCTAssertFalse(topBarSource.contains(".accessibilityLabel(\"Share episode\")"))
+        XCTAssertFalse(topBarSource.contains(".accessibilityLabel(\"Audio output\")"))
+        XCTAssertTrue(menuSource.contains("menuButton(\"Share Episode\""))
+        XCTAssertTrue(menuSource.contains("menuLabel(\"Audio Output\""))
+        XCTAssertTrue(menuSource.contains("RoutePickerView("))
     }
 
     func testPersistentPlayerButtonsHaveNoRenderedGlassContainers() throws {
@@ -96,6 +120,32 @@ final class PlayerProgressPresentationTests: XCTestCase {
                 episodeDuration: 300
             ),
             30
+        )
+    }
+
+    func testChapterDurationFractionIsRelativeToEpisodeLength() {
+        let chapters = [
+            Episode.Chapter(startTime: 0, title: "Short"),
+            Episode.Chapter(startTime: 90, title: "Long"),
+        ]
+
+        XCTAssertEqual(
+            PlayerChapterPresentation.durationFraction(
+                for: chapters[0],
+                in: chapters,
+                episodeDuration: 300
+            ),
+            0.3,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            PlayerChapterPresentation.durationFraction(
+                for: chapters[1],
+                in: chapters,
+                episodeDuration: 300
+            ),
+            0.7,
+            accuracy: 0.001
         )
     }
 
