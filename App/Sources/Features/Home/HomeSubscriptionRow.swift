@@ -2,8 +2,8 @@ import SwiftUI
 
 // MARK: - HomeSubscriptionRow
 
-/// Compact list row for the merged Home subscription list. 40-pt artwork on
-/// the leading edge, show title + most-recent-episode preview in the
+/// Compact list row for the merged Home subscription list. `AppTheme.Layout.iconLg`
+/// artwork on the leading edge, show title + most-recent-episode preview in the
 /// middle, and a recency pill on the trailing edge. Long-press surfaces
 /// the same context menu (Refresh / Unsubscribe) the old grid used so the
 /// existing muscle memory carries over.
@@ -58,7 +58,7 @@ struct HomeSubscriptionRow: View {
                     )
                 )
             if let url = podcast.imageURL {
-                CachedAsyncImage(url: url, targetSize: CGSize(width: 106, height: 106)) { phase in
+                CachedAsyncImage(url: url, targetSize: CGSize(width: AppTheme.Layout.iconLg * 2, height: AppTheme.Layout.iconLg * 2)) { phase in
                     switch phase {
                     case .success(let image):
                         image.resizable().scaledToFill()
@@ -74,7 +74,7 @@ struct HomeSubscriptionRow: View {
                     .foregroundStyle(.white.opacity(0.92))
             }
         }
-        .frame(width: 53, height: 53)
+        .frame(width: AppTheme.Layout.iconLg, height: AppTheme.Layout.iconLg)
         .clipShape(RoundedRectangle(cornerRadius: AppTheme.Corner.sm, style: .continuous))
     }
 

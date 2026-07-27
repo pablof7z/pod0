@@ -200,7 +200,7 @@ struct RootView: View {
 
     @ToolbarContentBuilder
     private func sharedToolbar() -> some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
+        ToolbarItem(placement: .topBarTrailing) {
             let settings = store.state.settings
             let name = settings.agentDisplayName.trimmed
             Button {

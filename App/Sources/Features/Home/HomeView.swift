@@ -34,8 +34,7 @@ struct HomeView: View {
     var body: some View {
         scrollContent
             .navigationTitle(navBarTitle)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { toolbarContent }
+            .navigationBarTitleDisplayMode(.large)
             .background(Color(.systemGroupedBackground).ignoresSafeArea())
             .refreshable { await refreshAllFeeds() }
             .navigationDestination(for: Podcast.self) { pod in
@@ -212,30 +211,6 @@ struct HomeView: View {
 
     private var navBarTitle: String {
         activeCategory?.name ?? "Home"
-    }
-
-    // MARK: - Toolbar
-
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .principal) {
-            Button {
-                Haptics.light()
-                showCategoryPicker = true
-            } label: {
-                HStack(spacing: 3) {
-                    Text(navBarTitle)
-                        .font(.system(.headline, design: .rounded, weight: .semibold))
-                        .foregroundStyle(.primary)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Browse categories")
-            .accessibilityHint("Opens category picker")
-        }
     }
 
     // MARK: - Actions
