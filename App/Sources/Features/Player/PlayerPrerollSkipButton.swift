@@ -29,7 +29,7 @@ struct PlayerPrerollSkipButton: View {
                 .foregroundStyle(.primary)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 9)
-                .glassEffect(.regular.interactive(), in: .capsule)
+                .contentShape(Capsule())
             }
             .buttonStyle(.plain)
             .transition(.asymmetric(

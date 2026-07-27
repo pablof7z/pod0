@@ -6,8 +6,7 @@ import UIKit
 /// Top-bar "More" pull-down for the full-screen `PlayerView`.
 ///
 /// Apple's standard `Menu` ergonomics fit better here than a sheet — short
-/// list, one tap to dispatch, no transient state between selections. Render
-/// is wrapped in a glass capsule so it matches the surrounding chrome.
+/// list, one tap to dispatch, no transient state between selections.
 ///
 /// Navigation items (Go to episode / Go to show) post a notification that
 /// `RootView` observes; the handler flips `showFullPlayer = false` and the
@@ -113,7 +112,6 @@ struct PlayerMoreMenu: View {
                 .foregroundStyle(.primary)
                 .frame(width: 44, height: 44)
                 .contentShape(Circle())
-                .glassEffect(.regular.interactive(), in: .circle)
         }
         .buttonStyle(.pressable)
         .accessibilityLabel("More options")

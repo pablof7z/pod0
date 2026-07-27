@@ -4,13 +4,12 @@ import SwiftUI
 //
 // Cinematic full-bleed backdrop for the Now-Playing surface. Takes the same
 // `artworkURL` the hero uses, scales it up, heavy-blurs it, and washes it out
-// with a vertical gradient so foreground text + Liquid Glass controls always
-// have the contrast they need. This is what gives Castro / Apple Music their
-// signature "the cover IS the room" identity — Liquid Glass leapfrogs them
-// because the blurred art layers correctly with `.glassEffect()` on top.
+// with a vertical gradient so foreground text and controls retain contrast.
+// This is what gives Castro / Apple Music their signature "the cover IS the
+// room" identity.
 //
-// The backdrop is its own file so `PlayerView` (314 lines, near the soft cap)
-// stays small and the backdrop can be unit-tested or swapped per-style later
+// The backdrop is its own file so `PlayerView` stays small and the backdrop
+// can be unit-tested or swapped per-style later
 // (e.g. an "Editorial Off" preference, or a per-show override that uses a
 // solid color instead of the cover).
 //
@@ -59,7 +58,7 @@ struct PlayerEditorialBackdrop: View {
             // Vertical wash. Top stays artwork-forward (we want to see the
             // color identity behind the editorial header). Bottom darkens
             // toward the system background so the transport controls never
-            // sit on a hot saturated band that fights their glass material.
+            // sit on a hot saturated band that competes with their glyphs.
             LinearGradient(
                 colors: [
                     Color(uiColor: .systemBackground).opacity(0.10),

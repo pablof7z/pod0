@@ -3,7 +3,7 @@ import SwiftUI
 /// Full-screen Now Playing surface.
 ///
 /// The top bar floats above a paged chapters/show-notes surface. The playback
-/// transport and action cluster floats at the bottom in a single glass island
+/// transport and action cluster floats at the bottom without a visual container
 /// via `safeAreaInset(edge: .bottom)`. Colors and fonts
 /// use semantic / Dynamic Type styles so the surface adapts to the user's
 /// appearance settings and accent color.
@@ -283,7 +283,6 @@ struct PlayerView: View {
     private var floatingChrome: some View {
         PlayerPlaybackChrome(
             state: state,
-            glassNamespace: glassNamespace,
             sourceEpisodeID: activeChapterSourceEpisodeID,
             episode: liveEpisode,
             chapters: navigableChapters ?? [],

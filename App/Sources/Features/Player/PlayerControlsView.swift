@@ -3,7 +3,7 @@ import SwiftUI
 /// Primary transport row — speed / skip-back / play-pause / skip-forward / mic / snip.
 ///
 /// All controls sit in a single `HStack` so the row stays at one vertical
-/// height while the play/pause circle dominates the center. Speed chip flanks
+/// height while the play/pause glyph dominates the center. Speed chip flanks
 /// the transport on the left; voice-note mic and auto-snip bookmark flank on
 /// the right.
 ///
@@ -13,7 +13,6 @@ import SwiftUI
 struct PlayerControlsView: View {
 
     @Bindable var state: PlaybackState
-    let glassNamespace: Namespace.ID
     var chapters: [Episode.Chapter] = []
     @Binding var showVoiceNoteSheet: Bool
 
@@ -73,8 +72,6 @@ struct PlayerControlsView: View {
                 .foregroundStyle(.primary)
                 .frame(width: 76, height: 76)
                 .contentShape(Circle())
-                .glassEffect(.regular.interactive(), in: .circle)
-                .glassEffectID("player.play", in: glassNamespace)
                 .accessibilityLabel(state.isPlaying ? "Pause" : "Play")
         }
         .buttonStyle(.pressable(scale: 0.94, opacity: 0.9))
@@ -92,7 +89,6 @@ struct PlayerControlsView: View {
                 .foregroundStyle(.primary)
                 .frame(width: 44, height: 44)
                 .contentShape(Circle())
-                .glassEffect(.regular.interactive(), in: .circle)
         }
         .buttonStyle(.pressable)
         .accessibilityElement(children: .ignore)
@@ -132,7 +128,6 @@ private struct SkipButton: View {
             .foregroundStyle(.primary)
             .frame(width: 56, height: 56)
             .contentShape(Circle())
-            .glassEffect(.regular.interactive(), in: .circle)
 
         let baseLabel: String = direction == .backward
             ? "Skip back \(seconds) seconds"

@@ -3,6 +3,49 @@ import XCTest
 @testable import Podcastr
 
 final class PlayerProgressPresentationTests: XCTestCase {
+    func testPlayerUsesFullScreenPresentationWithExplicitDismiss() throws {
+        let root = repositoryRoot()
+        let rootSource = try String(
+            contentsOf: root.appendingPathComponent("App/Sources/App/RootView.swift"),
+            encoding: .utf8
+        )
+        let topBarSource = try String(
+            contentsOf: root.appendingPathComponent(
+                "App/Sources/Features/Player/PlayerTopBar.swift"
+            ),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(rootSource.contains(".fullScreenCover(isPresented: $showFullPlayer)"))
+        XCTAssertFalse(rootSource.contains(".sheet(isPresented: $showFullPlayer)"))
+        XCTAssertTrue(topBarSource.contains(".accessibilityLabel(\"Close player\")"))
+        XCTAssertTrue(topBarSource.contains("onDismiss()"))
+    }
+
+    func testPersistentPlayerButtonsHaveNoRenderedGlassContainers() throws {
+        let root = repositoryRoot()
+        let paths = [
+            "App/Sources/Features/Player/PlayerTopBar.swift",
+            "App/Sources/Features/Player/PlayerControlsView.swift",
+            "App/Sources/Features/Player/PlayerPlaybackChrome.swift",
+            "App/Sources/Features/Player/PlayerMoreMenu.swift",
+            "App/Sources/Features/Player/PlayerPrerollSkipButton.swift",
+            "App/Sources/Features/Player/PlayerClipSourceChip.swift",
+            "App/Sources/Features/Player/PlayerGenerationSourceChip.swift",
+            "App/Sources/Features/Player/AutoSnip/AutoSnipButton.swift",
+        ]
+
+        for path in paths {
+            let source = try String(
+                contentsOf: root.appendingPathComponent(path),
+                encoding: .utf8
+            )
+            XCTAssertFalse(source.contains(".glassEffect("), path)
+            XCTAssertFalse(source.contains(".glassSurface("), path)
+            XCTAssertFalse(source.contains("GlassEffectContainer("), path)
+        }
+    }
+
     func testApproximateDurationUsesCompactWholeUnits() {
         XCTAssertEqual(PlayerTimeFormat.approximateDuration(30), "1m")
         XCTAssertEqual(PlayerTimeFormat.approximateDuration(60), "1m")
@@ -88,6 +131,13 @@ final class PlayerProgressPresentationTests: XCTestCase {
             ),
             1
         )
+    }
+
+    private func repositoryRoot() -> URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
     }
 }
 
