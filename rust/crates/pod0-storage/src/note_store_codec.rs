@@ -1,5 +1,5 @@
 use pod0_domain::{
-    ContentDigest, EpisodeId, EvidenceGenerationId, EvidenceSpanId, NoteAuthor,
+    ClipId, ContentDigest, EpisodeId, EvidenceGenerationId, EvidenceSpanId, NoteAuthor,
     NoteEvidenceReference, NoteId, NoteKind, NoteRevision, NoteTarget, TranscriptVersionId,
 };
 
@@ -63,6 +63,7 @@ pub(crate) struct EncodedTarget {
     pub note_id: Option<Vec<u8>>,
     pub episode_id: Option<Vec<u8>>,
     pub position_ms: Option<i64>,
+    pub clip_id: Option<Vec<u8>>,
 }
 
 pub(crate) fn encode_target(value: Option<NoteTarget>) -> Result<EncodedTarget, StorageError> {
@@ -73,6 +74,7 @@ pub(crate) fn encode_target(value: Option<NoteTarget>) -> Result<EncodedTarget, 
             note_id: None,
             episode_id: None,
             position_ms: None,
+            clip_id: None,
         },
         Some(NoteTarget::Note { note_id }) => EncodedTarget {
             code: 1,
@@ -80,6 +82,7 @@ pub(crate) fn encode_target(value: Option<NoteTarget>) -> Result<EncodedTarget, 
             note_id: Some(note_id.into_bytes().to_vec()),
             episode_id: None,
             position_ms: None,
+            clip_id: None,
         },
         Some(NoteTarget::Episode {
             episode_id,
@@ -92,6 +95,15 @@ pub(crate) fn encode_target(value: Option<NoteTarget>) -> Result<EncodedTarget, 
             position_ms: Some(
                 i64::try_from(position_milliseconds).map_err(|_| StorageError::InvalidNote)?,
             ),
+            clip_id: None,
+        },
+        Some(NoteTarget::Clip { clip_id }) => EncodedTarget {
+            code: 3,
+            wire: None,
+            note_id: None,
+            episode_id: None,
+            position_ms: None,
+            clip_id: Some(clip_id.into_bytes().to_vec()),
         },
         Some(NoteTarget::Unsupported { wire_code }) => EncodedTarget {
             code: 255,
@@ -99,6 +111,7 @@ pub(crate) fn encode_target(value: Option<NoteTarget>) -> Result<EncodedTarget, 
             note_id: None,
             episode_id: None,
             position_ms: None,
+            clip_id: None,
         },
     })
 }
@@ -109,17 +122,21 @@ pub(crate) fn decode_target(
     note: Option<Vec<u8>>,
     episode: Option<Vec<u8>>,
     position: Option<i64>,
+    clip: Option<Vec<u8>>,
 ) -> Result<Option<NoteTarget>, StorageError> {
-    match (code, wire, note, episode, position) {
-        (0, None, None, None, None) => Ok(None),
-        (1, None, Some(note), None, None) => Ok(Some(NoteTarget::Note {
+    match (code, wire, note, episode, position, clip) {
+        (0, None, None, None, None, None) => Ok(None),
+        (1, None, Some(note), None, None, None) => Ok(Some(NoteTarget::Note {
             note_id: note_id(&note)?,
         })),
-        (2, None, None, Some(episode), Some(position)) => Ok(Some(NoteTarget::Episode {
+        (2, None, None, Some(episode), Some(position), None) => Ok(Some(NoteTarget::Episode {
             episode_id: EpisodeId::from_bytes(id(&episode, "note episode identity")?),
             position_milliseconds: u64::try_from(position).map_err(|_| corrupt("note position"))?,
         })),
-        (255, Some(wire), None, None, None) => Ok(Some(NoteTarget::Unsupported {
+        (3, None, None, None, None, Some(clip)) => Ok(Some(NoteTarget::Clip {
+            clip_id: ClipId::from_bytes(id(&clip, "note clip identity")?),
+        })),
+        (255, Some(wire), None, None, None, None) => Ok(Some(NoteTarget::Unsupported {
             wire_code: u32::try_from(wire).map_err(|_| corrupt("note target"))?,
         })),
         _ => Err(corrupt("note target")),

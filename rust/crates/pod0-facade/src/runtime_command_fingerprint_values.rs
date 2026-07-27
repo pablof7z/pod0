@@ -63,6 +63,10 @@ pub(super) fn hash_note_target(hash: &mut Sha256, value: Option<pod0_domain::Not
             hash.update(episode_id.into_bytes());
             hash.update(position_milliseconds.to_be_bytes());
         }
+        Some(pod0_domain::NoteTarget::Clip { clip_id }) => {
+            hash.update([3]);
+            hash.update(clip_id.into_bytes());
+        }
         Some(pod0_domain::NoteTarget::Unsupported { wire_code }) => {
             hash.update([255]);
             hash.update(wire_code.to_be_bytes());

@@ -41,6 +41,7 @@ mod migration_subscription_policy_tests;
 mod migration_tests;
 mod migration_transcript_history_tests;
 mod note_import_tests;
+mod note_schema_test_support;
 mod recovery_test_support;
 mod recovery_tests;
 mod scheduled_agent_cutover_tests;

@@ -245,6 +245,13 @@ fn digest(notes: &[NoteRecord]) -> String {
                 hash.update(episode_id.into_bytes());
                 hash.update(position_milliseconds.to_be_bytes());
             }
+            // Legacy imports predate clip targets, so this arm is unreachable
+            // for real legacy data. It uses the same discriminant as the
+            // storage codec so the digest stays consistent if that ever changes.
+            Some(NoteTarget::Clip { clip_id }) => {
+                hash.update([3]);
+                hash.update(clip_id.into_bytes());
+            }
             Some(NoteTarget::Unsupported { wire_code }) => {
                 hash.update([255]);
                 hash.update(wire_code.to_be_bytes());

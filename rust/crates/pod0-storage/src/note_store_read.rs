@@ -40,7 +40,7 @@ pub(crate) fn read_note_snapshot(
             "SELECT note_id,note_revision,text,kind_code,kind_wire_code,author_code,author_wire_code,\
              target_code,target_wire_code,target_note_id,episode_id,position_ms,created_at_ms,deleted,\
              evidence_generation_id,evidence_transcript_version_id,evidence_content_digest,\
-             evidence_span_id FROM pod0_notes ORDER BY created_at_ms DESC,note_id ASC",
+             evidence_span_id,target_clip_id FROM pod0_notes ORDER BY created_at_ms DESC,note_id ASC",
         )
         .map_err(|error| StorageError::sqlite("prepare note projection", error))?;
     let rows = statement
@@ -64,6 +64,7 @@ pub(crate) fn read_note_snapshot(
                 row.get::<_, Option<Vec<u8>>>(15)?,
                 row.get::<_, Option<Vec<u8>>>(16)?,
                 row.get::<_, Option<Vec<u8>>>(17)?,
+                row.get::<_, Option<Vec<u8>>>(18)?,
             ))
         })
         .map_err(|error| StorageError::sqlite("read note projection", error))?;
@@ -76,7 +77,7 @@ pub(crate) fn read_note_snapshot(
                 text: row.2,
                 kind: decode_kind(row.3, row.4)?,
                 author: decode_author(row.5, row.6)?,
-                target: decode_target(row.7, row.8, row.9, row.10, row.11)?,
+                target: decode_target(row.7, row.8, row.9, row.10, row.11, row.18)?,
                 created_at: UnixTimestampMilliseconds::new(row.12),
                 deleted: match row.13 {
                     0 => false,

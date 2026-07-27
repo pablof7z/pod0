@@ -79,7 +79,7 @@ pub(crate) fn note_mutation_state(
     let row = transaction
         .query_row(
             "SELECT note_revision,author_code,author_wire_code,target_code,target_wire_code,\
-             target_note_id,episode_id,position_ms FROM pod0_notes WHERE note_id=?1",
+             target_note_id,episode_id,position_ms,target_clip_id FROM pod0_notes WHERE note_id=?1",
             [note_id.into_bytes().as_slice()],
             |row| {
                 Ok((
@@ -91,6 +91,7 @@ pub(crate) fn note_mutation_state(
                     row.get::<_, Option<Vec<u8>>>(5)?,
                     row.get::<_, Option<Vec<u8>>>(6)?,
                     row.get::<_, Option<i64>>(7)?,
+                    row.get::<_, Option<Vec<u8>>>(8)?,
                 ))
             },
         )
@@ -102,7 +103,7 @@ pub(crate) fn note_mutation_state(
             detail: "note revision is malformed",
         })?,
         note_store_codec::decode_author(row.1, row.2)?,
-        note_store_codec::decode_target(row.3, row.4, row.5, row.6, row.7)?,
+        note_store_codec::decode_target(row.3, row.4, row.5, row.6, row.7, row.8)?,
     ))
 }
 
@@ -154,6 +155,13 @@ pub(crate) fn validate_target_reference(
                 |row| row.get(0),
             )
             .map_err(|error| StorageError::sqlite("validate note episode target", error))?,
+        Some(NoteTarget::Clip { clip_id }) => transaction
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM pod0_clips WHERE clip_id=?1)",
+                [clip_id.into_bytes().as_slice()],
+                |row| row.get(0),
+            )
+            .map_err(|error| StorageError::sqlite("validate note clip target", error))?,
         Some(NoteTarget::Unsupported { .. }) => false,
     };
     if exists {
