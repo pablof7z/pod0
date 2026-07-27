@@ -2,7 +2,7 @@ import SwiftUI
 
 // MARK: - AutoSnipButton
 //
-// Compact glass button that captures a snip via `AutoSnipController.shared`.
+// Compact button that captures a snip via `AutoSnipController.shared`.
 // Designed to drop into the player controls row as a single-line modifier
 // — see the call site in `PlayerControlsView`.
 //
@@ -22,7 +22,7 @@ struct AutoSnipButton: View {
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(.primary)
                 .frame(width: 44, height: 44)
-                .glassEffect(.regular.interactive(), in: .circle)
+                .contentShape(Circle())
         }
         .buttonStyle(.pressable)
         .accessibilityLabel("Snip last 30 seconds")

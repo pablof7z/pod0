@@ -27,32 +27,11 @@ struct PlayerTopBar: View {
 
     var body: some View {
         HStack(spacing: AppTheme.Spacing.xs) {
+            dismissButton
             historyButton
                 .animation(AppTheme.Animation.spring, value: historyButtonState)
 
-            Spacer(minLength: AppTheme.Spacing.sm)
-
-            ZStack {
-                if titleCollapsed, let episode = state.episode {
-                    PlayerCompactTitleView(
-                        artworkURL: artworkURL,
-                        episodeTitle: episode.title,
-                        showName: showName
-                    )
-                    .transition(.opacity)
-                } else if !showName.isEmpty {
-                    Text(showName)
-                        .font(AppTheme.Typography.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .transition(.opacity)
-                }
-            }
-            .animation(.easeInOut(duration: 0.2), value: titleCollapsed)
-            .frame(maxWidth: .infinity)
-
-            Spacer(minLength: AppTheme.Spacing.sm)
+            Spacer(minLength: 0)
 
             HStack(spacing: AppTheme.Spacing.xs) {
                 if state.episode != nil {
@@ -62,7 +41,6 @@ struct PlayerTopBar: View {
                             .foregroundStyle(.primary)
                             .frame(width: 44, height: 44)
                             .contentShape(Circle())
-                            .glassEffect(.regular.interactive(), in: .circle)
                     }
                     .buttonStyle(.pressable)
                     .accessibilityLabel("Share episode")
@@ -83,9 +61,47 @@ struct PlayerTopBar: View {
                 }
             }
         }
+        .overlay {
+            ZStack {
+                if titleCollapsed, let episode = state.episode {
+                    PlayerCompactTitleView(
+                        artworkURL: artworkURL,
+                        episodeTitle: episode.title,
+                        showName: showName
+                    )
+                    .transition(.opacity)
+                } else if !showName.isEmpty {
+                    Text(showName)
+                        .font(AppTheme.Typography.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .transition(.opacity)
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: titleCollapsed)
+            .padding(.horizontal, 140)
+            .frame(maxWidth: .infinity)
+            .allowsHitTesting(false)
+        }
         .padding(.horizontal, AppTheme.Spacing.md)
         .padding(.top, AppTheme.Spacing.sm)
         .padding(.bottom, AppTheme.Spacing.xs)
+    }
+
+    private var dismissButton: some View {
+        Button {
+            Haptics.selection()
+            onDismiss()
+        } label: {
+            Image(systemName: "xmark")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.primary)
+                .frame(width: 44, height: 44)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.pressable)
+        .accessibilityLabel("Close player")
     }
 
     /// Uses one fixed-size slot for back and the temporary forward recovery
@@ -102,7 +118,6 @@ struct PlayerTopBar: View {
                     .foregroundStyle(.primary)
                     .frame(width: 44, height: 44)
                     .contentShape(Circle())
-                    .glassEffect(.regular.interactive(), in: .circle)
             }
             .buttonStyle(.pressable)
             .accessibilityLabel("Return to listening position")
@@ -118,7 +133,6 @@ struct PlayerTopBar: View {
                     .foregroundStyle(.primary)
                     .frame(width: 44, height: 44)
                     .contentShape(Circle())
-                    .glassEffect(.regular.interactive(), in: .circle)
             }
             .buttonStyle(.pressable)
             .accessibilityLabel("Jump back")
@@ -141,7 +155,6 @@ struct PlayerTopBar: View {
                 .foregroundStyle(.primary)
                 .frame(width: 44, height: 44)
                 .contentShape(Circle())
-                .glassEffect(.regular.interactive(), in: .circle)
                 .accessibilityHidden(true)
             RoutePickerView(activeTintColor: .clear, tintColor: .clear)
                 .allowsHitTesting(true)
