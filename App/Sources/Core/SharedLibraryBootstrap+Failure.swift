@@ -10,7 +10,13 @@ enum SharedLibraryBootstrapFailureCode: String {
     case targetBlocked = "TargetBlocked"
     case interrupted = "Interrupted"
     case notAuthoritative = "NotAuthoritative"
-    case schemaBlocked = "SchemaBlocked"
+    /// The store is ahead of this build. No relaunch fixes this — downgrade is
+    /// refused, so the store is never rewritten back down.
+    case storeNewerThanApp = "StoreNewerThanApp"
+    /// A migration started and did not finish. A backup was taken first.
+    case migrationFailed = "MigrationFailed"
+    /// The store is corrupt, or belongs to another application.
+    case storeUnreadable = "StoreUnreadable"
     case storageUnavailable = "StorageUnavailable"
     case verificationFailed = "VerificationFailed"
     case unexpected = "Unexpected"
@@ -62,8 +68,12 @@ enum SharedLibraryBootstrapFailureCode: String {
             .interrupted
         case FacadeOpenError.NotAuthoritative:
             .notAuthoritative
-        case FacadeOpenError.SchemaBlocked:
-            .schemaBlocked
+        case FacadeOpenError.SchemaBlocked(reason: .storeNewerThanApp):
+            .storeNewerThanApp
+        case FacadeOpenError.SchemaBlocked(reason: .migrationFailed):
+            .migrationFailed
+        case FacadeOpenError.SchemaBlocked(reason: .storeUnreadable):
+            .storeUnreadable
         case LegacyClipMigrationError.StorageUnavailable,
              LegacyListeningMigrationError.StorageUnavailable,
              LegacyNoteMigrationError.StorageUnavailable,

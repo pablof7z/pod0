@@ -12,6 +12,7 @@ use std::path::Path;
 
 use crate::ProjectionSubscriber;
 use crate::runtime_clock::SystemClock;
+use crate::runtime_open_error::FacadeOpenError;
 use crate::runtime_recall_interrupts::RecallInterruptRegistry;
 use crate::runtime_state::{FacadeState, FacadeStores};
 
@@ -25,26 +26,6 @@ pub struct Pod0Facade {
     pub(super) nmp: Mutex<Option<pod0_nmp::NmpRuntime>>,
     pub(super) nmp_dispatcher: Mutex<Option<JoinHandle<()>>>,
 }
-
-#[derive(Debug, uniffi::Error)]
-pub enum FacadeOpenError {
-    NotAuthoritative,
-    SchemaBlocked,
-    StorageUnavailable,
-}
-
-impl std::fmt::Display for FacadeOpenError {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter.write_str(match self {
-            Self::NotAuthoritative => "shared listening store is not authoritative",
-            Self::SchemaBlocked => "shared listening store schema is blocked",
-            Self::StorageUnavailable => "shared listening store is unavailable",
-        })
-    }
-}
-
-impl std::error::Error for FacadeOpenError {}
-
 impl Pod0Facade {
     #[cfg(test)]
     pub(super) fn with_clock(clock: Arc<dyn pod0_application::Clock>) -> Arc<Self> {
