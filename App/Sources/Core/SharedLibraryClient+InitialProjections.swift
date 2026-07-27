@@ -14,7 +14,7 @@ struct SharedInitialProjections: @unchecked Sendable {
 extension SharedLibraryClient {
     func refreshInitialProjections() {
         let facade = facade
-        let activeEpisodeIDs = Set(chapterScopeCounts.keys)
+        let activeEpisodeIDs = chapterScopes.retainedEpisodeIDs
         let chapterReader = authoritativeChapterReader
         initialProjectionTask?.cancel()
         initialProjectionTask = Task { @MainActor [weak self] in
@@ -36,7 +36,7 @@ extension SharedLibraryClient {
         guard let store else { return }
         let projections = Self.loadInitialProjections(
             facade: facade,
-            activeEpisodeIDs: Set(chapterScopeCounts.keys),
+            activeEpisodeIDs: chapterScopes.retainedEpisodeIDs,
             chapterReader: authoritativeChapterReader
         )
         applyInitialProjections(projections, to: store, force: true)
