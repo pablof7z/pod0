@@ -4,8 +4,8 @@ import SwiftUI
 
 /// Compact "Continue Listening" strip at the top of Home. Shows up to 3
 /// in-progress episodes (pubDate within the last 2 weeks) as vertical rows,
-/// with a "See All" button when the full list has more. Swipe any row left
-/// to remove it from the list without marking it played.
+/// with a "See All" button when the full list has more. Swipe any row
+/// trailing to remove it from the list without marking it played.
 struct HomeContinueListeningSection: View {
     let episodes: [Episode]
     let onPlay: (Episode) -> Void
@@ -13,6 +13,25 @@ struct HomeContinueListeningSection: View {
     let onSeeAll: () -> Void
 
     @Environment(AppStateStore.self) private var store
+
+    /// Sum of every visible row's own content height, reported by each row's
+    /// `RowHeightReader` background and combined via `RowContentHeightKey`.
+    /// Drives `rowList`'s explicit `.frame(height:)` — see that property's
+    /// doc comment for why a plain `List` can't size itself here.
+    @State private var summedRowContentHeight: CGFloat = 0
+
+    private static let rowVerticalInset = AppTheme.Spacing.sm * 2
+    private static let separatorHeight: CGFloat = 0.5
+
+    private var visible: [Episode] {
+        Array(episodes.prefix(3))
+    }
+
+    private var listHeight: CGFloat {
+        let insets = CGFloat(visible.count) * Self.rowVerticalInset
+        let separators = CGFloat(max(0, visible.count - 1)) * Self.separatorHeight
+        return summedRowContentHeight + insets + separators
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -40,91 +59,63 @@ struct HomeContinueListeningSection: View {
         .padding(.bottom, AppTheme.Spacing.xs)
     }
 
+    /// A real `List` (not a hand-rolled `DragGesture`) so removal uses
+    /// genuine `.swipeActions()` — same primitive as `ContinueListeningView`
+    /// and `AllPodcastsListView`. Scrolling is disabled because this strip
+    /// is embedded inside Home's own outer `ScrollView`, but a `List` given
+    /// `.scrollDisabled(true)` does not shrink to fit its content on its
+    /// own — it still collapses to zero height unless told an explicit
+    /// height. Each row reports its own rendered height via a
+    /// `GeometryReader` background (`RowContentHeightKey`); `listHeight`
+    /// sums those plus the fixed insets/separators to get the real total,
+    /// so the strip grows correctly under larger Dynamic Type instead of
+    /// clipping or leaving dead space.
     @ViewBuilder
     private var rowList: some View {
-        let visible = Array(episodes.prefix(3))
-        VStack(spacing: 0) {
+        List {
             ForEach(Array(visible.enumerated()), id: \.element.id) { index, ep in
-                ContinueListeningSwipeRow(
+                ContinueListeningRow(
                     episode: ep,
                     podcast: store.podcast(id: ep.podcastID),
-                    onPlay: { onPlay(ep) },
-                    onRemove: { onRemove(ep) }
+                    onPlay: { onPlay(ep) }
                 )
-                if index < visible.count - 1 {
-                    Divider()
-                        .background(AppTheme.Tint.hairline)
-                        .padding(.leading, AppTheme.Spacing.md + 44 + AppTheme.Spacing.sm)
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear.preference(key: RowContentHeightKey.self, value: proxy.size.height)
+                    }
+                )
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        Haptics.warning()
+                        onRemove(ep)
+                    } label: {
+                        Label("Remove", systemImage: "xmark.circle")
+                    }
                 }
+                .listRowInsets(EdgeInsets(
+                    top: AppTheme.Spacing.sm,
+                    leading: AppTheme.Spacing.md,
+                    bottom: AppTheme.Spacing.sm,
+                    trailing: AppTheme.Spacing.md
+                ))
+                .listRowBackground(Color(.systemGroupedBackground))
+                .listRowSeparatorTint(AppTheme.Tint.hairline)
+                .listRowSeparator(index < visible.count - 1 ? .visible : .hidden, edges: .bottom)
             }
         }
+        .listStyle(.plain)
+        .scrollDisabled(true)
+        .scrollContentBackground(.hidden)
+        .frame(height: listHeight)
+        .onPreferenceChange(RowContentHeightKey.self) { summedRowContentHeight = $0 }
     }
 }
 
-// MARK: - ContinueListeningSwipeRow
-
-/// Wraps a `ContinueListeningRow` with a swipe-left gesture that reveals a
-/// red Remove button. Removing resets playback position to zero so the
-/// episode leaves the "Continue Listening" strip but stays in the library.
-private struct ContinueListeningSwipeRow: View {
-    let episode: Episode
-    let podcast: Podcast?
-    let onPlay: () -> Void
-    let onRemove: () -> Void
-
-    @State private var isRevealed = false
-    @State private var dragExtra: CGFloat = 0
-
-    private let revealWidth: CGFloat = 80
-
-    var body: some View {
-        let offset = (isRevealed ? -revealWidth : 0) + dragExtra
-
-        ZStack(alignment: .trailing) {
-            Button(role: .destructive) {
-                withAnimation(.spring(response: 0.25)) {
-                    isRevealed = false
-                    dragExtra = 0
-                }
-                onRemove()
-            } label: {
-                VStack(spacing: 4) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title3)
-                    Text("Remove")
-                        .font(.caption2.weight(.semibold))
-                }
-                .foregroundStyle(.white)
-                .frame(width: revealWidth)
-                .frame(maxHeight: .infinity)
-                .background(Color.red)
-            }
-            .buttonStyle(.plain)
-
-            ContinueListeningRow(episode: episode, podcast: podcast, onPlay: onPlay)
-                .padding(.horizontal, AppTheme.Spacing.md)
-                .padding(.vertical, AppTheme.Spacing.sm)
-                .background(Color(.systemGroupedBackground))
-                .offset(x: offset)
-                .gesture(
-                    DragGesture(minimumDistance: 10)
-                        .onChanged { value in
-                            guard abs(value.translation.height) < abs(value.translation.width) else { return }
-                            let start: CGFloat = isRevealed ? -revealWidth : 0
-                            let proposed = start + value.translation.width
-                            dragExtra = max(-revealWidth, min(0, proposed)) - start
-                        }
-                        .onEnded { value in
-                            let start: CGFloat = isRevealed ? -revealWidth : 0
-                            let final = start + value.translation.width
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                dragExtra = 0
-                                isRevealed = final < -(revealWidth * 0.5)
-                            }
-                        }
-                )
-        }
-        .clipped()
+/// Sums every row's reported content height (see `rowList`'s doc comment).
+private struct RowContentHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value += nextValue()
     }
 }
 
