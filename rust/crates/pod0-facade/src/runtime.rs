@@ -10,9 +10,9 @@ use pod0_recall_index::{RECALL_INDEX_DIMENSIONS, RecallIndex, recall_index_path_
 use pod0_storage::{EvidenceStore, LibraryStore, TranscriptStore};
 use std::path::Path;
 
-use crate::runtime_open_error::FacadeOpenError;
 use crate::ProjectionSubscriber;
 use crate::runtime_clock::SystemClock;
+use crate::runtime_open_error::FacadeOpenError;
 use crate::runtime_recall_interrupts::RecallInterruptRegistry;
 use crate::runtime_state::{FacadeState, FacadeStores};
 
