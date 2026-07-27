@@ -23,6 +23,10 @@ struct HomeView: View {
     @AppStorage("library.categoryFilterID") private var categoryFilterID: String = ""
 
     @State private var unsubscribeTarget: Podcast?
+    /// Set when the user asks to remove an *unfollowed* podcast. Kept
+    /// separate from `unsubscribeTarget` so each confirmation can use the
+    /// wording that matches what actually happens.
+    @State private var deleteTarget: Podcast?
     @State private var showAddShowSheet: Bool = false
     @State private var showCategoryPicker: Bool = false
     @State private var showAllContinueListening: Bool = false
@@ -71,6 +75,22 @@ struct HomeView: View {
                 }
             } message: { _ in
                 Text("This removes the show and all its episodes from your library.")
+            }
+            .alert(
+                "Delete \(deleteTarget?.title ?? "")?",
+                isPresented: Binding(
+                    get: { deleteTarget != nil },
+                    set: { if !$0 { deleteTarget = nil } }
+                ),
+                presenting: deleteTarget
+            ) { pod in
+                Button("Cancel", role: .cancel) {}
+                Button("Delete", role: .destructive) {
+                    Haptics.warning()
+                    store.deletePodcast(podcastID: pod.id)
+                }
+            } message: { _ in
+                Text("This removes the podcast and all its episodes from your library.")
             }
             .onAppear { renderedAt = Date() }
     }
@@ -125,10 +145,18 @@ struct HomeView: View {
 
     @ViewBuilder
     private var subscriptionsSurface: some View {
-        if store.state.subscriptions.isEmpty {
+        if !filteredSubs.isEmpty || !filteredUnfollowed.isEmpty {
+            HomeSubscriptionListSection(
+                podcasts: filteredSubs,
+                unfollowedPodcasts: filteredUnfollowed,
+                now: renderedAt,
+                onRequestUnsubscribe: { unsubscribeTarget = $0 },
+                onRequestDelete: { deleteTarget = $0 }
+            )
+        } else if store.state.subscriptions.isEmpty && unfollowedPodcasts.isEmpty {
             HomeFirstRunEmptyState(onAddShow: { showAddShowSheet = true })
                 .padding(.top, AppTheme.Spacing.xl)
-        } else if filteredSubs.isEmpty {
+        } else {
             HomeFilteredEmptyState(
                 filter: filter,
                 categoryName: activeCategory?.name,
@@ -138,12 +166,6 @@ struct HomeView: View {
                 }
             )
             .padding(.top, AppTheme.Spacing.xl)
-        } else {
-            HomeSubscriptionListSection(
-                podcasts: filteredSubs,
-                now: renderedAt,
-                onRequestUnsubscribe: { unsubscribeTarget = $0 }
-            )
         }
     }
 
@@ -154,8 +176,25 @@ struct HomeView: View {
     // without an extra service indirection for trivial in-memory work.
 
     private var filteredSubs: [Podcast] {
-        let recencySorted = store.sortedFollowedPodcastsByRecency
-        let categoryScoped = applyCategoryFilter(recencySorted)
+        applyFilters(store.sortedFollowedPodcastsByRecency)
+    }
+
+    /// Podcasts in the library the user does not follow, recency-sorted.
+    /// Rendered below the followed shows so they stay reachable — nothing
+    /// else in the app lists them.
+    private var unfollowedPodcasts: [Podcast] {
+        store.sortedUnfollowedPodcastsByRecency
+    }
+
+    /// Unfollowed rows under the active filters. A category holds
+    /// *subscription* ids, so selecting one necessarily empties this list —
+    /// an unfollowed podcast cannot be filed in a category.
+    private var filteredUnfollowed: [Podcast] {
+        applyFilters(unfollowedPodcasts)
+    }
+
+    private func applyFilters(_ podcasts: [Podcast]) -> [Podcast] {
+        let categoryScoped = applyCategoryFilter(podcasts)
         switch filter {
         case .all:         return categoryScoped
         case .unplayed:    return categoryScoped.filter { store.unplayedCount(forPodcast: $0.id) > 0 }
@@ -202,6 +241,19 @@ struct HomeView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Browse categories")
             .accessibilityHint("Opens category picker")
+        }
+        // The first-run empty state also offers "Add show", but it only
+        // renders when the library is completely empty — a library holding
+        // nothing but unfollowed podcasts would otherwise have no way to
+        // add one.
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                Haptics.light()
+                showAddShowSheet = true
+            } label: {
+                Image(systemName: "plus")
+            }
+            .accessibilityLabel("Add show")
         }
     }
 
