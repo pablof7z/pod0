@@ -259,6 +259,7 @@ fn schema_13_imported_history_revalidates_and_activates_after_upgrade() {
              PRAGMA user_version=13;",
         )
         .unwrap();
+    crate::note_schema_test_support::revert_notes_below_v33(&fixture.target);
 
     let upgrade_backup = fixture.target.with_extension("upgrade-backup.sqlite");
     CoreStoreMigrator::new(FixedClock)

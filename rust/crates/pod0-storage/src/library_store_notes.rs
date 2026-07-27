@@ -51,10 +51,10 @@ impl LibraryStore {
             transaction.execute(
                 "INSERT INTO pod0_notes(note_id,note_revision,text,kind_code,kind_wire_code,\
                  author_code,author_wire_code,target_code,target_wire_code,target_note_id,episode_id,\
-                 position_ms,created_at_ms,deleted,evidence_generation_id,\
+                 position_ms,target_clip_id,created_at_ms,deleted,evidence_generation_id,\
                  evidence_transcript_version_id,evidence_content_digest,evidence_span_id,\
                  source_import_id,created_command_id) \
-                 VALUES(?1,1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,0,?13,?14,?15,?16,NULL,?17)",
+                 VALUES(?1,1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,0,?14,?15,?16,?17,NULL,?18)",
                 params![
                     note_id.into_bytes().as_slice(),
                     text,
@@ -67,6 +67,7 @@ impl LibraryStore {
                     encoded_target.note_id,
                     encoded_target.episode_id,
                     encoded_target.position_ms,
+                    encoded_target.clip_id,
                     observed_at_ms,
                     evidence_generation,
                     evidence_version,
@@ -122,12 +123,12 @@ impl LibraryStore {
             let changed = transaction.execute(
                 "UPDATE pod0_notes SET text=?1,kind_code=?2,kind_wire_code=?3,target_code=?4,\
                  target_wire_code=?5,target_note_id=?6,episode_id=?7,position_ms=?8,\
-                 note_revision=note_revision+1,\
-                 evidence_generation_id=CASE WHEN ?9 THEN ?10 ELSE evidence_generation_id END,\
-                 evidence_transcript_version_id=CASE WHEN ?9 THEN ?11 ELSE evidence_transcript_version_id END,\
-                 evidence_content_digest=CASE WHEN ?9 THEN ?12 ELSE evidence_content_digest END,\
-                 evidence_span_id=CASE WHEN ?9 THEN ?13 ELSE evidence_span_id END \
-                 WHERE note_id=?14 AND note_revision=?15",
+                 target_clip_id=?9,note_revision=note_revision+1,\
+                 evidence_generation_id=CASE WHEN ?10 THEN ?11 ELSE evidence_generation_id END,\
+                 evidence_transcript_version_id=CASE WHEN ?10 THEN ?12 ELSE evidence_transcript_version_id END,\
+                 evidence_content_digest=CASE WHEN ?10 THEN ?13 ELSE evidence_content_digest END,\
+                 evidence_span_id=CASE WHEN ?10 THEN ?14 ELSE evidence_span_id END \
+                 WHERE note_id=?15 AND note_revision=?16",
                 params![
                     text,
                     kind_code,
@@ -137,6 +138,7 @@ impl LibraryStore {
                     encoded_target.note_id,
                     encoded_target.episode_id,
                     encoded_target.position_ms,
+                    encoded_target.clip_id,
                     i64::from(target_changed),
                     evidence.map(|value| value.generation_id.into_bytes().to_vec()),
                     evidence.map(|value| value.transcript_version_id.into_bytes().to_vec()),

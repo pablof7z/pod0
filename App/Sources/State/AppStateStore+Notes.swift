@@ -61,6 +61,20 @@ extension AppStateStore {
         }
     }
 
+    /// All non-deleted notes written about a clip, newest first — the margin.
+    ///
+    /// Deliberately *not* built on `notes(forEpisode:)`: that accessor filters
+    /// on `.episode` targets, which is correct for the chapter rail and would
+    /// silently exclude every clip note. These are the two registers — an
+    /// `.episode` note is an underline at a moment, a `.clip` note is written
+    /// about the artifact — and nothing should blur them by accident.
+    func notes(forClip clipID: UUID) -> [Note] {
+        state.notes.filter {
+            guard !$0.deleted, case .clip(let id) = $0.target else { return false }
+            return id == clipID
+        }.sorted { $0.createdAt > $1.createdAt }
+    }
+
     @discardableResult
     func deleteNote(_ id: UUID) async -> Bool {
         await setNoteDeleted(id, deleted: true)

@@ -261,7 +261,7 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
         crate::schema_feed_discoveries::validate_feed_discovery_schema(connection, version)?;
     }
     if version >= 8 {
-        crate::schema_notes::validate_notes_schema(connection)?;
+        crate::schema_notes::validate_notes_schema(connection, version)?;
     }
     if version >= 9 {
         crate::schema_clips::validate_clips_schema(connection)?;
