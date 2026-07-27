@@ -1,11 +1,10 @@
-import AVKit
 import SwiftUI
 
 /// Full-screen Now Playing surface.
 ///
 /// The top bar floats above a paged chapters/show-notes surface. The playback
-/// chrome (scrubber + transport + action cluster) floats at the bottom in a
-/// single glass island via `safeAreaInset(edge: .bottom)`. Colors and fonts
+/// transport and action cluster floats at the bottom in a single glass island
+/// via `safeAreaInset(edge: .bottom)`. Colors and fonts
 /// use semantic / Dynamic Type styles so the surface adapts to the user's
 /// appearance settings and accent color.
 struct PlayerView: View {
@@ -14,17 +13,12 @@ struct PlayerView: View {
     @Bindable var state: PlaybackState
     @Environment(\.dismiss) private var dismiss
     let glassNamespace: Namespace.ID
-    @State private var isScrubbing: Bool = false
     @State private var showSpeedSheet: Bool = false
     @State private var showSleepSheet: Bool = false
     @State private var showShareSheet: Bool = false
     @State private var showVoiceNoteSheet: Bool = false
     @State private var showingShowNotes: Bool = false
     @State private var episodeDetailTarget: UUID? = nil
-    /// Tracks the playhead position captured at the moment the "Add Note"
-    /// button was tapped — used as the anchor position for the new note.
-    @State private var showAddNoteSheet: Bool = false
-    @State private var noteAnchorTime: TimeInterval = 0
     private var podcast: Podcast? {
         guard let podID = state.episode?.podcastID else { return nil }
         return store.podcast(id: podID)
@@ -38,7 +32,8 @@ struct PlayerView: View {
             episodeHeader
                 .padding(.horizontal, AppTheme.Spacing.md)
                 .padding(.top, AppTheme.Spacing.sm)
-                .padding(.bottom, AppTheme.Spacing.sm)
+            PlayerEpisodeProgressView(state: state)
+                .padding(.horizontal, AppTheme.Spacing.md)
             carouselPageIndicator
                 .padding(.horizontal, AppTheme.Spacing.md)
             TabView(selection: $showingShowNotes) {
@@ -74,23 +69,6 @@ struct PlayerView: View {
         .sheet(isPresented: $showVoiceNoteSheet) {
             VoiceNoteRecordingSheet(state: state)
                 .environment(store)
-        }
-        .sheet(isPresented: $showAddNoteSheet) {
-            if let episode = state.episode {
-                let capturedEpisodeID = episode.id
-                let capturedTime = noteAnchorTime
-                EditTextSheet(title: "Add Note", initialText: "") { text in
-                    Task {
-                        let target = Anchor.episode(
-                            id: capturedEpisodeID,
-                            positionSeconds: capturedTime
-                        )
-                        if await store.addNote(text: text, target: target) != nil {
-                            Haptics.success()
-                        }
-                    }
-                }
-            }
         }
         .sheet(isPresented: $showShareSheet) {
             if let episode = state.episode {
@@ -167,7 +145,7 @@ struct PlayerView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Button {
                         Haptics.selection()
-                        openEpisodeDetail(episode)
+                        episodeDetailTarget = episode.id
                     } label: {
                         Text(episode.title)
                             .font(AppTheme.Typography.title)
@@ -214,9 +192,7 @@ struct PlayerView: View {
         }
         .frame(width: 110, height: 110)
         .clipShape(RoundedRectangle(cornerRadius: AppTheme.Corner.lg, style: .continuous))
-        .blur(radius: isScrubbing ? 4 : 0)
         .glassEffectID("player.artwork", in: glassNamespace)
-        .animation(AppTheme.Animation.spring, value: isScrubbing)
         .animation(.easeInOut(duration: 0.35), value: artworkURL)
         .accessibilityHidden(true)
     }
@@ -248,36 +224,16 @@ struct PlayerView: View {
     // MARK: - Carousel page indicator
 
     private var carouselPageIndicator: some View {
-        HStack(spacing: 0) {
-            Spacer()
-            HStack(spacing: 5) {
-                Capsule()
-                    .fill(!showingShowNotes ? Color.primary.opacity(0.7) : Color.secondary.opacity(0.25))
-                    .frame(width: !showingShowNotes ? 16 : 6, height: 5)
-                Capsule()
-                    .fill(showingShowNotes ? Color.primary.opacity(0.7) : Color.secondary.opacity(0.25))
-                    .frame(width: showingShowNotes ? 16 : 6, height: 5)
-            }
-            .animation(AppTheme.Animation.spring, value: showingShowNotes)
-            Spacer()
-            if !showingShowNotes, state.episode != nil {
-                Button {
-                    noteAnchorTime = state.currentTime
-                    showAddNoteSheet = true
-                    Haptics.selection()
-                } label: {
-                    Image(systemName: "note.text.badge.plus")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 28, height: 28)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add note at current position")
-            } else {
-                Color.clear.frame(width: 28, height: 28)
-            }
+        HStack(spacing: 5) {
+            Capsule()
+                .fill(!showingShowNotes ? Color.primary.opacity(0.7) : Color.secondary.opacity(0.25))
+                .frame(width: !showingShowNotes ? 16 : 6, height: 5)
+            Capsule()
+                .fill(showingShowNotes ? Color.primary.opacity(0.7) : Color.secondary.opacity(0.25))
+                .frame(width: showingShowNotes ? 16 : 6, height: 5)
         }
+        .frame(maxWidth: .infinity)
+        .animation(AppTheme.Animation.spring, value: showingShowNotes)
         .padding(.bottom, 2)
     }
 
@@ -311,24 +267,6 @@ struct PlayerView: View {
         return liveEpisode?.chapters?.filter(\.includeInTableOfContents)
     }
 
-    // MARK: - Download fraction (for scrubber shade)
-
-    private var downloadFraction: Double? {
-        guard let id = state.episode?.id,
-              let episode = store.episode(id: id) ?? state.episode else { return nil }
-        if let progress = store.sharedLibrary?.downloadProgress(episodeID: id) {
-            return progress.clamped01
-        }
-        if case .downloaded = episode.downloadState { return 1.0 }
-        return nil
-    }
-
-    // MARK: - Navigation
-
-    private func openEpisodeDetail(_ episode: Episode) {
-        episodeDetailTarget = episode.id
-    }
-
     // MARK: - Generation source chip
 
     @ViewBuilder
@@ -340,73 +278,17 @@ struct PlayerView: View {
         }
     }
 
-    // MARK: - Route picker
+    // MARK: - Floating playback chrome
 
-    private var routePicker: some View {
-        ZStack {
-            Image(systemName: "airplayaudio")
-                .font(.body.weight(.semibold))
-                .foregroundStyle(.primary)
-                .frame(width: 44, height: 44)
-                .contentShape(Circle())
-                .glassEffect(.regular.interactive(), in: .circle)
-                .accessibilityHidden(true)
-            RoutePickerView(activeTintColor: .clear, tintColor: .clear)
-                .allowsHitTesting(true)
-                .accessibilityHidden(true)
-        }
-        .frame(width: 44, height: 44)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Audio output")
-        .accessibilityHint("Opens system output picker")
-    }
-
-    // MARK: - Floating playback chrome (scrubber + transport + actions)
-
-    private var episodeClips: [Clip] {
-        guard let id = state.episode?.id else { return [] }
-        return store.clips(forEpisode: id)
-    }
-
-    /// Attached via `safeAreaInset(edge: .bottom)` so chapters scroll under it.
-    /// The controls are the glass, each its own body in the container so they
-    /// morph together on press. Deliberately **no** outer glass card: the old
-    /// `glassSurface` wrapper put a second blur under five more, and stacked
-    /// glass goes opaque — that is what rendered the buttons as flat grey discs.
     private var floatingChrome: some View {
-        GlassEffectContainer(spacing: AppTheme.Spacing.md) {
-            VStack(spacing: AppTheme.Spacing.md) {
-                if let sourceID = activeChapterSourceEpisodeID {
-                    PlayerClipSourceChip(sourceEpisodeID: sourceID)
-                        .animation(.easeInOut(duration: 0.25), value: sourceID)
-                }
-                PlayerPrerollSkipButton(state: state, episode: liveEpisode)
-                    .animation(AppTheme.Animation.spring, value: state.currentTime)
-                HStack(alignment: .center, spacing: AppTheme.Spacing.sm) {
-                    PlayerScrubberView(
-                        state: state,
-                        isScrubbing: $isScrubbing,
-                        chapters: navigableChapters ?? [],
-                        clips: episodeClips,
-                        onClipTap: { clip in state.navigationalSeek(to: clip.startSeconds) },
-                        downloadFraction: downloadFraction
-                    )
-                    // Thin ticks over a moving list need a body of their own.
-                    .padding(.horizontal, AppTheme.Spacing.md)
-                    .padding(.vertical, AppTheme.Spacing.sm)
-                    .glassEffect(.regular, in: .rect(cornerRadius: AppTheme.Corner.xl))
-                    routePicker
-                }
-                PlayerControlsView(
-                    state: state,
-                    glassNamespace: glassNamespace,
-                    chapters: navigableChapters ?? [],
-                    showVoiceNoteSheet: $showVoiceNoteSheet
-                )
-            }
-        }
-        .padding(.horizontal, AppTheme.Spacing.md)
-        .padding(.bottom, AppTheme.Spacing.md)
+        PlayerPlaybackChrome(
+            state: state,
+            glassNamespace: glassNamespace,
+            sourceEpisodeID: activeChapterSourceEpisodeID,
+            episode: liveEpisode,
+            chapters: navigableChapters ?? [],
+            showVoiceNoteSheet: $showVoiceNoteSheet
+        )
     }
 
     private struct EpisodeDetailTarget: Identifiable {

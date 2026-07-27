@@ -237,12 +237,10 @@ struct PlayerQueueRow: View {
                     Text(range)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                        .monospacedDigit()
                 } else if let runtime = formattedRuntime {
                     Text(runtime)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                        .monospacedDigit()
                 }
             }
             Spacer(minLength: 0)
