@@ -13,7 +13,7 @@ extension SharedLibraryClient {
         let previous = cachedSnapshot
         let revision = envelope.stateRevision.value
         let facade = facade
-        let activeEpisodeIDs = Set(chapterScopeCounts.keys)
+        let activeEpisodeIDs = chapterScopes.retainedEpisodeIDs
         let chapterReader = authoritativeChapterReader
         libraryProjectionTask?.cancel()
         libraryProjectionTask = Task { @MainActor [weak self] in

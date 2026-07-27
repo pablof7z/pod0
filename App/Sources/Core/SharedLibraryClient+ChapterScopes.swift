@@ -11,13 +11,26 @@ extension SharedLibraryClient {
         releaseChapterProjection(episodeID: episodeID)
     }
 
+    /// Always admits the requested episode. Capacity evicts the coldest scope
+    /// rather than refusing this one — refusing left the player rendering its
+    /// "no chapters" placeholder over an episode whose chapters were present
+    /// and selected, with nothing to retry it.
     func retainChapterProjection(episodeID: UUID) {
-        guard chapterScopeCounts[episodeID] != nil
-                || chapterScopeCounts.count < Self.maximumActiveChapterProjections else {
+        switch chapterScopes.retain(episodeID) {
+        case .alreadyRetained:
             return
+        case .load(let evicted):
+            if let evicted { tearDownChapterProjection(episodeID: evicted) }
+            loadChapterProjection(episodeID: episodeID)
         }
-        chapterScopeCounts[episodeID, default: 0] += 1
-        guard chapterScopeCounts[episodeID] == 1 else { return }
+    }
+
+    func releaseChapterProjection(episodeID: UUID) {
+        guard chapterScopes.release(episodeID) else { return }
+        tearDownChapterProjection(episodeID: episodeID)
+    }
+
+    private func loadChapterProjection(episodeID: UUID) {
         let reader = authoritativeChapterReader
         chapterProjectionTasks[episodeID]?.cancel()
         chapterProjectionTasks[episodeID] = Task { @MainActor [weak self] in
@@ -26,7 +39,7 @@ extension SharedLibraryClient {
             }.value
             guard !Task.isCancelled,
                   let self,
-                  chapterScopeCounts[episodeID] != nil
+                  chapterScopes.isRetained(episodeID)
             else { return }
             chapterProjectionTasks[episodeID] = nil
             guard let snapshot else {
@@ -39,15 +52,9 @@ extension SharedLibraryClient {
         }
     }
 
-    func releaseChapterProjection(episodeID: UUID) {
-        guard let count = chapterScopeCounts[episodeID] else { return }
-        if count > 1 {
-            chapterScopeCounts[episodeID] = count - 1
-            return
-        }
+    private func tearDownChapterProjection(episodeID: UUID) {
         chapterProjectionTasks[episodeID]?.cancel()
         chapterProjectionTasks[episodeID] = nil
-        chapterScopeCounts[episodeID] = nil
         chapterSnapshots[episodeID] = nil
         store?.clearSharedChapter(episodeID: episodeID)
     }
