@@ -5,6 +5,18 @@ import XCTest
 
 @MainActor
 final class CoreDownloadHostTests: XCTestCase {
+
+    /// These tests issue real `URLSession` requests at `example.test`, a
+    /// reserved TLD that resolves nowhere. The observation they wait for is
+    /// therefore gated on a DNS failure, which is instant on a developer
+    /// machine and can take seconds on a contended CI runner.
+    ///
+    /// The budget is generous on purpose: expectations fulfil as soon as the
+    /// observation lands, so a high ceiling costs nothing on a normal run and
+    /// only stops the suite failing on runner latency. A 2-second ceiling
+    /// turned master red on 2026-07-27 during a burst of concurrent merges.
+    private let networkObservationTimeout: TimeInterval = 20
+
     func testSuccessfulTransferEmitsAcceptedThenStableStagedAndReplaysAfterRelaunch() async throws {
         let root = temporaryDirectory("success")
         defer { try? FileManager.default.removeItem(at: root) }
@@ -22,7 +34,7 @@ final class CoreDownloadHostTests: XCTestCase {
             if case .downloadStaged = observation { staged.fulfill() }
         }
         host.execute(request) { _, _ in XCTFail("Duplicate request executed") }
-        await fulfillment(of: [staged], timeout: 2)
+        await fulfillment(of: [staged], timeout: networkObservationTimeout)
 
         XCTAssertEqual(events.map(\.0), [1, 2])
         guard case let .downloadAccepted(_, _, _, externalTaskKey, resumeKey) = events[0].1 else {
@@ -71,7 +83,7 @@ final class CoreDownloadHostTests: XCTestCase {
             observations.append(observation)
             if case .downloadCancelled = observation { cancelled.fulfill() }
         }
-        await fulfillment(of: [cancelled], timeout: 2)
+        await fulfillment(of: [cancelled], timeout: networkObservationTimeout)
 
         XCTAssertEqual(observations.count, 1)
         guard case let .downloadCancelled(episodeID, intentID, attemptID) = observations[0] else {
@@ -99,7 +111,7 @@ final class CoreDownloadHostTests: XCTestCase {
                 failed.fulfill()
             }
         }
-        await fulfillment(of: [failed], timeout: 2)
+        await fulfillment(of: [failed], timeout: networkObservationTimeout)
 
         guard case .failed(code: .providerUnavailable, safeDetail: _) = terminal else {
             return XCTFail("Expected provider-unavailable raw failure")
