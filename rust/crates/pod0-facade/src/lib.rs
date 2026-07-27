@@ -29,6 +29,7 @@ mod memory_cutover;
 mod memory_cutover_types;
 mod note_migration;
 mod runtime;
+mod runtime_open_error;
 include!("runtime_split_modules.rs");
 #[cfg(test)]
 mod runtime_cancellation_tests;
@@ -155,7 +156,8 @@ pub use note_migration::{
     LegacyNoteImportVerification, LegacyNoteMigrationError, commit_staged_legacy_note_import,
     inspect_legacy_note_source, read_staged_legacy_note_import, stage_legacy_note_import,
 };
-pub use runtime::{FacadeOpenError, Pod0Facade};
+pub use runtime::Pod0Facade;
+pub use runtime_open_error::{FacadeOpenError, SchemaBlockReason};
 pub use scheduled_agent_cutover_types::*;
 pub use transcript_migration::{
     LegacyTranscriptBackupEvidence, LegacyTranscriptImportPlan, LegacyTranscriptImportReport,

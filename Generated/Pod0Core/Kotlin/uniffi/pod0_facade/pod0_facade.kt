@@ -1578,7 +1578,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_pod0_facade_checksum_constructor_pod0facade_new() != 63792) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_constructor_pod0facade_open() != 22335) {
+    if (lib.uniffi_pod0_facade_checksum_constructor_pod0facade_open() != 33565) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -5641,9 +5641,11 @@ sealed class FacadeOpenException: kotlin.Exception() {
     }
 
     class SchemaBlocked(
+
+        val `reason`: SchemaBlockReason
         ) : FacadeOpenException() {
         override val message
-            get() = ""
+            get() = "reason=${ `reason` }"
     }
 
     class StorageUnavailable(
@@ -5672,7 +5674,9 @@ public object FfiConverterTypeFacadeOpenError : FfiConverterRustBuffer<FacadeOpe
 
         return when(buf.getInt()) {
             1 -> FacadeOpenException.NotAuthoritative()
-            2 -> FacadeOpenException.SchemaBlocked()
+            2 -> FacadeOpenException.SchemaBlocked(
+                FfiConverterTypeSchemaBlockReason.read(buf),
+                )
             3 -> FacadeOpenException.StorageUnavailable()
             else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
         }
@@ -5687,6 +5691,7 @@ public object FfiConverterTypeFacadeOpenError : FfiConverterRustBuffer<FacadeOpe
             is FacadeOpenException.SchemaBlocked -> (
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
                 4UL
+                + FfiConverterTypeSchemaBlockReason.allocationSize(value.`reason`)
             )
             is FacadeOpenException.StorageUnavailable -> (
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
@@ -5703,6 +5708,7 @@ public object FfiConverterTypeFacadeOpenError : FfiConverterRustBuffer<FacadeOpe
             }
             is FacadeOpenException.SchemaBlocked -> {
                 buf.putInt(2)
+                FfiConverterTypeSchemaBlockReason.write(value.`reason`, buf)
                 Unit
             }
             is FacadeOpenException.StorageUnavailable -> {
@@ -7961,6 +7967,64 @@ public object FfiConverterTypeLegacyTranscriptWorkflowRowClassification: FfiConv
     override fun allocationSize(value: LegacyTranscriptWorkflowRowClassification) = 4UL
 
     override fun write(value: LegacyTranscriptWorkflowRowClassification, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * Why a blocked store cannot be opened, in terms a recovery surface can act
+ * on. Six distinct `StorageError` cases collapse into three remedies; the
+ * host needs the remedy, not the cause.
+ *
+ * None of these are fixed by relaunching. That is the point of carrying the
+ * reason: without it the host can only offer one recovery instruction, and
+ * for every case here "close and reopen" is false.
+ */
+
+enum class SchemaBlockReason {
+
+    /**
+     * The store was written by a newer build than this one. Downgrade is
+     * refused, so the store is never rewritten back down — the only remedy
+     * is a build at least as new as the data.
+     */
+    STORE_NEWER_THAN_APP,
+    /**
+     * A migration started and did not finish. A verified backup was taken
+     * before it began.
+     */
+    MIGRATION_FAILED,
+    /**
+     * The store is corrupt, or belongs to another application.
+     */
+    STORE_UNREADABLE;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSchemaBlockReason: FfiConverterRustBuffer<SchemaBlockReason> {
+    override fun read(buf: ByteBuffer) = try {
+
+        SchemaBlockReason.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: SchemaBlockReason) = 4UL
+
+    override fun write(value: SchemaBlockReason, buf: ByteBuffer) {
         buf.putInt(value.ordinal + 1)
     }
 }
