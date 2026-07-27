@@ -47,5 +47,6 @@ extension AppStateStorePerformanceTests {
             )
         )
         client.attach(store: store)
+        client.hydrateSynchronouslyForTesting()
     }
 }

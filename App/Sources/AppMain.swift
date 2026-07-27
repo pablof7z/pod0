@@ -38,12 +38,23 @@ struct PodcastrApp: App {
             } else {
                 Pod0LaunchView()
                     .task {
+                        guard AppLaunchEnvironment.shouldLoadProductionState() else {
+                            return
+                        }
                         store = await AppStateStore.production(
                             productSignals: ProductSignalStore.shared
                         )
                     }
             }
         }
+    }
+}
+
+enum AppLaunchEnvironment {
+    static func shouldLoadProductionState(
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> Bool {
+        environment["XCTestConfigurationFilePath"] == nil
     }
 }
 

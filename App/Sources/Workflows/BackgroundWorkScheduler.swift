@@ -77,11 +77,11 @@ final class BackgroundWorkScheduler {
         let opportunity = BackgroundOpportunity(
             resubmit: { [weak self] in self?.schedule() },
             complete: { success in task.setTaskCompleted(success: success) },
-            cancel: { await WorkflowRuntime.shared.cancelActive() }
+            cancel: {}
         )
         opportunity.start {
             await SubscriptionRefreshService.shared.refreshAll(store: store)
-            await WorkflowRuntime.shared.reconcileAndDrain()
+            await WorkflowRuntime.shared.reconcileOpportunity()
             return !Task.isCancelled
         }
         task.expirationHandler = {
@@ -93,10 +93,10 @@ final class BackgroundWorkScheduler {
         let opportunity = BackgroundOpportunity(
             resubmit: { [weak self] in self?.schedule() },
             complete: { success in task.setTaskCompleted(success: success) },
-            cancel: { await WorkflowRuntime.shared.cancelActive() }
+            cancel: {}
         )
         opportunity.start {
-            await WorkflowRuntime.shared.reconcileAndDrain()
+            await WorkflowRuntime.shared.reconcileOpportunity()
             return !Task.isCancelled
         }
         task.expirationHandler = {

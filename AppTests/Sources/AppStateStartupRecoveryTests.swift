@@ -3,6 +3,18 @@ import XCTest
 
 @MainActor
 final class AppStateStartupRecoveryTests: XCTestCase {
+    func testProductionStateDoesNotLoadInHostedUnitTests() {
+        XCTAssertFalse(
+            AppLaunchEnvironment.shouldLoadProductionState(
+                environment: ["XCTestConfigurationFilePath": "/tmp/tests.xctestconfiguration"]
+            )
+        )
+    }
+
+    func testProductionStateLoadsOutsideHostedUnitTests() {
+        XCTAssertTrue(AppLaunchEnvironment.shouldLoadProductionState(environment: [:]))
+    }
+
     func testCorruptMetadataBlocksStartupWithoutOverwritingSource() throws {
         let url = AppStateTestSupport.uniqueTempFileURL()
         defer { AppStateTestSupport.disposeIsolatedStore(at: url) }
