@@ -30,7 +30,7 @@ impl FacadeState {
         configured_model: String,
         expected_revision: StateRevision,
     ) {
-        if self.authoritative_model_chapter_store(envelope).is_none() {
+        if self.model_chapter_store(envelope).is_none() {
             return;
         }
         let record = self
@@ -71,7 +71,7 @@ impl FacadeState {
         episode_id: EpisodeId,
         expected_revision: StateRevision,
     ) {
-        let Some(store) = self.authoritative_model_chapter_store(envelope) else {
+        let Some(store) = self.model_chapter_store(envelope) else {
             return;
         };
         let existing = match store.model_chapter_workflow(episode_id) {
@@ -102,7 +102,7 @@ impl FacadeState {
         configured_model: String,
         force_retry_from_revision: Option<StateRevision>,
     ) -> bool {
-        let Some(store) = self.authoritative_model_chapter_store(envelope) else {
+        let Some(store) = self.model_chapter_store(envelope) else {
             return false;
         };
         if let Err(error) = self.reload_listening() {
@@ -183,7 +183,7 @@ impl FacadeState {
         }
     }
 
-    fn authoritative_model_chapter_store(
+    fn model_chapter_store(
         &mut self,
         envelope: &CommandEnvelope,
     ) -> Option<LibraryStore> {
@@ -191,17 +191,7 @@ impl FacadeState {
             self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
             return None;
         };
-        match store.model_chapter_workflow_authority() {
-            Ok(state) if state.is_authoritative() => Some(store),
-            Ok(_) => {
-                self.fail(envelope.command_id, CoreFailureCode::HostUnavailable);
-                None
-            }
-            Err(error) => {
-                self.fail(envelope.command_id, storage_failure(error));
-                None
-            }
-        }
+        Some(store)
     }
 
     fn model_desired_plan(

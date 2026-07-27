@@ -100,6 +100,60 @@ final class SortedSubscriptionsByRecencyTests: XCTestCase {
         XCTAssertEqual(recent?.guid, "newer")
     }
 
+    // MARK: - Unfollowed podcasts
+
+    func testUnfollowedPodcastsExcludeFollowedOnesAndSortByRecency() {
+        let followed = makeSubscription(title: "Followed")
+        let staleUnfollowed = makeSubscription(title: "Stale")
+        let freshUnfollowed = makeSubscription(title: "Fresh")
+        store.installPodcastFixture(followed); store.installSubscriptionFixture(podcastID: followed.id)
+        store.installPodcastFixture(staleUnfollowed)
+        store.installPodcastFixture(freshUnfollowed)
+
+        let now = Date()
+        store.installEpisodeFixtures(
+            [makeEpisode(subID: followed.id, guid: "f-1", pubDate: now)],
+            forPodcast: followed.id
+        )
+        store.installEpisodeFixtures(
+            [makeEpisode(subID: staleUnfollowed.id, guid: "s-1", pubDate: now.addingTimeInterval(-86_400))],
+            forPodcast: staleUnfollowed.id
+        )
+        store.installEpisodeFixtures(
+            [makeEpisode(subID: freshUnfollowed.id, guid: "x-1", pubDate: now)],
+            forPodcast: freshUnfollowed.id
+        )
+
+        XCTAssertEqual(store.sortedUnfollowedPodcastsByRecency.map(\.title), ["Fresh", "Stale"])
+        XCTAssertEqual(store.sortedFollowedPodcastsByRecency.map(\.title), ["Followed"])
+    }
+
+    /// The Unknown sentinel backs episodes the agent added without a feed
+    /// URL. Surfacing it in Home would offer the user a delete action that
+    /// breaks subsequent external plays.
+    func testUnfollowedPodcastsExcludeTheUnknownSentinel() {
+        store.installPodcastFixture(Podcast.unknown)
+        let real = makeSubscription(title: "Real")
+        store.installPodcastFixture(real)
+
+        let titles = store.sortedUnfollowedPodcastsByRecency.map(\.title)
+        XCTAssertEqual(titles, ["Real"])
+        XCTAssertFalse(store.sortedUnfollowedPodcastsByRecency.contains { $0.id == Podcast.unknownID })
+    }
+
+    func testUnfollowingAPodcastMovesItIntoTheUnfollowedList() {
+        let pod = makeSubscription(title: "Alpha")
+        store.installPodcastFixture(pod)
+        store.installSubscriptionFixture(podcastID: pod.id)
+        XCTAssertEqual(store.sortedFollowedPodcastsByRecency.map(\.title), ["Alpha"])
+        XCTAssertTrue(store.sortedUnfollowedPodcastsByRecency.isEmpty)
+
+        store.removeSubscriptionFixture(podcastID: pod.id)
+
+        XCTAssertTrue(store.sortedFollowedPodcastsByRecency.isEmpty)
+        XCTAssertEqual(store.sortedUnfollowedPodcastsByRecency.map(\.title), ["Alpha"])
+    }
+
     // MARK: - Fixtures
 
     private func makeSubscription(title: String) -> Podcast {

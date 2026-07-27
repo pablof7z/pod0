@@ -2,10 +2,10 @@ import SwiftUI
 
 // MARK: - PlayerTopBar
 //
-// Top bar for the full-screen `PlayerView`. Holds the dismiss button on
-// the leading edge, the share / AirPlay / more cluster on the trailing
-// edge, and a middle slot that crossfades between the show name and a
-// compact artwork+title once the hero header has scrolled offscreen.
+// Top bar for the full-height `PlayerView`. Holds listening history on the
+// leading edge, one overflow menu on the trailing edge, and a middle slot
+// that crossfades between the show name and a compact artwork+title once the
+// hero header has scrolled offscreen. The sheet itself owns dismissal.
 //
 // All state lives in `PlayerView`; this view is a pure layout container
 // driven by the bindings/closures the parent passes in.
@@ -17,7 +17,6 @@ struct PlayerTopBar: View {
     let artworkURL: URL?
     let titleCollapsed: Bool
 
-    let onDismiss: () -> Void
     let onShare: () -> Void
     let onShowSleepTimer: () -> Void
     let onShowSpeed: () -> Void
@@ -26,11 +25,25 @@ struct PlayerTopBar: View {
 
     var body: some View {
         HStack(spacing: AppTheme.Spacing.xs) {
-            jumpBackButton
-                .animation(AppTheme.Animation.spring, value: state.canJumpBack)
+            historyButton
+                .animation(AppTheme.Animation.spring, value: historyButtonState)
 
-            Spacer(minLength: AppTheme.Spacing.sm)
+            Spacer(minLength: 0)
 
+            if let episode = state.episode {
+                PlayerMoreMenu(
+                    episode: episode,
+                    podcast: podcast,
+                    speedLabel: state.rate.label,
+                    onShare: onShare,
+                    onMarkPlayed: { store.markEpisodePlayed(episode.id) },
+                    onMarkUnplayed: { store.markEpisodeUnplayed(episode.id) },
+                    onShowSleepTimer: onShowSleepTimer,
+                    onShowSpeed: onShowSpeed
+                )
+            }
+        }
+        .overlay {
             ZStack {
                 if titleCollapsed, let episode = state.episode {
                     PlayerCompactTitleView(
@@ -49,48 +62,35 @@ struct PlayerTopBar: View {
                 }
             }
             .animation(.easeInOut(duration: 0.2), value: titleCollapsed)
+            .padding(.horizontal, 88)
             .frame(maxWidth: .infinity)
-
-            Spacer(minLength: AppTheme.Spacing.sm)
-
-            HStack(spacing: AppTheme.Spacing.xs) {
-                if state.episode != nil {
-                    Button(action: onShare) {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(.primary)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Circle())
-                            .glassEffect(.regular.interactive(), in: .circle)
-                    }
-                    .buttonStyle(.pressable)
-                    .accessibilityLabel("Share episode")
-                }
-
-                if let episode = state.episode {
-                    PlayerMoreMenu(
-                        episode: episode,
-                        podcast: podcast,
-                        speedLabel: state.rate.label,
-                        onMarkPlayed: { store.markEpisodePlayed(episode.id) },
-                        onMarkUnplayed: { store.markEpisodeUnplayed(episode.id) },
-                        onShowSleepTimer: onShowSleepTimer,
-                        onShowSpeed: onShowSpeed
-                    )
-                }
-            }
+            .allowsHitTesting(false)
         }
         .padding(.horizontal, AppTheme.Spacing.md)
         .padding(.top, AppTheme.Spacing.sm)
         .padding(.bottom, AppTheme.Spacing.xs)
     }
 
-    /// Shows a "<" button when there is navigation history,
-    /// otherwise renders an empty fixed-size slot so the centre title stays
-    /// centred. The drag indicator on the sheet already handles dismiss.
+    /// Uses one fixed-size slot for back and the temporary forward recovery
+    /// action, so neither state shifts the centred title.
     @ViewBuilder
-    private var jumpBackButton: some View {
-        if state.canJumpBack {
+    private var historyButton: some View {
+        if state.canJumpForward {
+            Button {
+                state.jumpForward()
+                Haptics.selection()
+            } label: {
+                Image(systemName: "chevron.right")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.pressable)
+            .accessibilityLabel("Return to listening position")
+            .accessibilityHint("Returns to the position before the last jump back")
+            .transition(.opacity.combined(with: .scale(scale: 0.85, anchor: .leading)))
+        } else if state.canJumpBack {
             Button {
                 state.jumpBack()
                 Haptics.selection()
@@ -100,7 +100,6 @@ struct PlayerTopBar: View {
                     .foregroundStyle(.primary)
                     .frame(width: 44, height: 44)
                     .contentShape(Circle())
-                    .glassEffect(.regular.interactive(), in: .circle)
             }
             .buttonStyle(.pressable)
             .accessibilityLabel("Jump back")
@@ -112,4 +111,7 @@ struct PlayerTopBar: View {
         }
     }
 
+    private var historyButtonState: Int {
+        state.canJumpForward ? 2 : (state.canJumpBack ? 1 : 0)
+    }
 }

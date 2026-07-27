@@ -11,10 +11,14 @@ struct HomeSubscriptionRow: View {
     let podcast: Podcast
     let mostRecentEpisode: Episode?
     let now: Date
-    /// Fired when the user picks "Unsubscribe" from the context menu. The
-    /// parent owns the confirmation alert (so the destructive flow lives
-    /// next to the rest of the list state, not inside the row).
-    let onRequestUnsubscribe: () -> Void
+    /// `false` for podcasts the app knows about but the user does not
+    /// follow. Drives the destructive action's wording — there is no
+    /// subscription to leave, so the menu offers "Delete" instead.
+    var isFollowed: Bool = true
+    /// Fired when the user picks the destructive action from the context
+    /// menu. The parent owns the confirmation alert (so the destructive
+    /// flow lives next to the rest of the list state, not inside the row).
+    let onRequestRemove: () -> Void
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -34,7 +38,8 @@ struct HomeSubscriptionRow: View {
         .contextMenu {
             SubscriptionContextMenu(
                 podcast: podcast,
-                onRequestUnsubscribe: onRequestUnsubscribe
+                isFollowed: isFollowed,
+                onRequestRemove: onRequestRemove
             )
         }
         .accessibilityElement(children: .combine)

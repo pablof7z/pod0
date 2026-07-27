@@ -130,26 +130,13 @@ slices land. The audited NMP pin is available only through the isolated
 `pod0-nmp` adapter until a Pod0-specific Nostr vertical slice composes it into
 this facade.
 
-Canonical chapter artifacts and selections are Rust-owned after the chapter
-cutover. Contract version 24 adds durable source-version provenance to the
-model-chapter command, projection, host-request, observation, and receipt
-surface. Contract version 25 adds the typed legacy-workflow authority cutover:
-iOS stages current, reconstructable semantic candidates in Rust while a native
-rollback manifest preserves every exact legacy row. It durably verifies that
-manifest, atomically compare-deletes only the matching Swift chapter-model jobs,
-verifies their absence, and only then commits the Rust authority marker. Exact
-current success receipts are adopted; reconstructable interrupted or otherwise
-uncertain submissions remain explicitly ambiguous and dormant until a
-user-authorized retry. Stale and unplannable rows remain only as rollback evidence
-instead of becoming a second Rust workflow format. Startup resumes a staged
-cutover before the native dispatcher can execute any request.
-If the legacy source changes before commit, native may discard only the exact
-staged source generation. Rust atomically verifies and removes only records
-attributed to that stage plus its marker; a missing, mismatched, or authoritative
-stage fails closed. Both staged and not-started states reject model workflow
-commands and host dispatch, so discard never opens a temporary authority window.
-The native iOS model adapter remains native by design, while all durable model
-workflow decisions now have one Rust source of truth.
+Canonical chapter artifacts, selections, and workflows are Rust-owned. Contract
+version 24 adds durable source-version provenance to the model-chapter command,
+projection, host request, observation, and receipt surface. Contract version 51
+deletes the development-only legacy cutover methods, types, storage gate, and
+generated native API. Model workflows operate directly from the Rust store.
+The native iOS model adapter remains native by design and executes only bounded
+provider requests.
 
 Contract version 30 defines the next transcript-workflow boundary before its
 durable cutover. Stable workflow, attempt, and submission-fence identities;

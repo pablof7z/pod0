@@ -14,7 +14,6 @@ enum SharedLibraryBootstrap {
         persistence: Persistence,
         legacyState: AppState,
         feedHost: any CoreFeedHosting = CoreFeedHost(),
-        chapterCompilationModel: String = Settings().chapterCompilationModel,
         legacyRecallConfiguration: LegacyRecallConfigurationSeed? = nil
     ) -> SharedLibraryBootstrapPreparationOutcome {
         persistence.withSharedArtifactMigrationLock {
@@ -22,7 +21,6 @@ enum SharedLibraryBootstrap {
                 persistence: persistence,
                 legacyState: legacyState,
                 feedHost: feedHost,
-                chapterCompilationModel: chapterCompilationModel,
                 legacyRecallConfiguration: legacyRecallConfiguration
             )
         }
@@ -32,7 +30,6 @@ enum SharedLibraryBootstrap {
         persistence: Persistence,
         legacyState: AppState,
         feedHost: any CoreFeedHosting,
-        chapterCompilationModel: String,
         legacyRecallConfiguration: LegacyRecallConfigurationSeed?
     ) -> SharedLibraryBootstrapPreparationOutcome {
         let target = persistence.sharedCoreStoreURL
@@ -214,23 +211,6 @@ enum SharedLibraryBootstrap {
                 state: legacyState,
                 jobStore: legacyJobStore,
                 backupRoot: persistence.legacyTranscriptWorkflowBackupRootURL
-            )
-            stage = .modelChapterWorkflowCutover
-            try LegacyModelChapterWorkflowCutover.run(
-                facade: facade,
-                jobStore: legacyJobStore,
-                backupRoot: persistence.legacyModelChapterWorkflowBackupRootURL,
-                configuredModel: chapterCompilationModel
-            )
-            let modelCutover = facade.modelChapterCutover()
-            guard modelCutover.stage == .authoritative,
-                  let modelSourceGeneration = modelCutover.sourceGeneration
-            else { throw SharedLibraryBootstrapError.verificationFailed }
-            stage = .chapterWorkflowRetirement
-            try LegacyPublisherChapterWorkflowRetirement.run(
-                jobStore: legacyJobStore,
-                backupRoot: persistence.legacyPublisherChapterWorkflowBackupRootURL,
-                modelSourceGeneration: modelSourceGeneration
             )
             stage = .scheduledAgentWorkflowCutover
             let legacyChatHistory = try LegacyChatHistorySource()

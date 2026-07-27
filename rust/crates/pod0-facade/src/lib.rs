@@ -27,16 +27,9 @@ mod listening_migration;
 mod listening_migration_error;
 mod memory_cutover;
 mod memory_cutover_types;
-mod model_chapter_cutover;
-#[cfg(test)]
-mod model_chapter_cutover_discard_tests;
-#[cfg(test)]
-mod model_chapter_cutover_success_tests;
-#[cfg(test)]
-mod model_chapter_cutover_tests;
-mod model_chapter_cutover_types;
 mod note_migration;
 mod runtime;
+mod runtime_open_error;
 include!("runtime_split_modules.rs");
 #[cfg(test)]
 mod runtime_cancellation_tests;
@@ -158,17 +151,13 @@ pub use listening_migration::{
     stage_legacy_listening_import,
 };
 pub use memory_cutover_types::*;
-pub use model_chapter_cutover_types::{
-    LegacyModelChapterCutoverCandidate, LegacyModelChapterCutoverDisposition,
-    LegacyModelChapterCutoverFailure, LegacyModelChapterCutoverFailureCode,
-    LegacyModelChapterCutoverProjection, LegacyModelChapterCutoverStage,
-};
 pub use note_migration::{
     LegacyNoteBackupEvidence, LegacyNoteImportPlan, LegacyNoteImportReport,
     LegacyNoteImportVerification, LegacyNoteMigrationError, commit_staged_legacy_note_import,
     inspect_legacy_note_source, read_staged_legacy_note_import, stage_legacy_note_import,
 };
-pub use runtime::{FacadeOpenError, Pod0Facade};
+pub use runtime::Pod0Facade;
+pub use runtime_open_error::{FacadeOpenError, SchemaBlockReason};
 pub use scheduled_agent_cutover_types::*;
 pub use transcript_migration::{
     LegacyTranscriptBackupEvidence, LegacyTranscriptImportPlan, LegacyTranscriptImportReport,

@@ -1,10 +1,8 @@
 use pod0_application::{
     ChapterModelEpisodeInput, ChapterModelPlan, ChapterModelPlanInput, ChapterModelTranscriptInput,
-    ChapterModelTranscriptSegmentInput, PlannedChapterModelRequest,
+    ChapterModelTranscriptSegmentInput,
 };
-use pod0_domain::{
-    ChapterArtifactId, ChapterArtifactInput, ChapterArtifactSource, EpisodeId, StateRevision,
-};
+use pod0_domain::{ChapterArtifactInput, ChapterArtifactSource, EpisodeId, StateRevision};
 
 use crate::Pod0Facade;
 use crate::runtime_state::FacadeState;
@@ -26,34 +24,13 @@ impl FacadeState {
         episode_id: EpisodeId,
         configured_model: String,
     ) -> ChapterModelPlan {
-        self.chapter_model_plan_for_selection(
-            episode_id,
-            configured_model,
-            ModelPlanSelection::Current,
-        )
-    }
-
-    pub(super) fn legacy_success_model_chapter_request(
-        &self,
-        episode_id: EpisodeId,
-        configured_model: String,
-        artifact_id: ChapterArtifactId,
-    ) -> Option<PlannedChapterModelRequest> {
-        match self.chapter_model_plan_for_selection(
-            episode_id,
-            configured_model,
-            ModelPlanSelection::LegacySuccess { artifact_id },
-        ) {
-            ChapterModelPlan::Ready { request } => Some(request),
-            _ => None,
-        }
+        self.chapter_model_plan_for_selection(episode_id, configured_model)
     }
 
     fn chapter_model_plan_for_selection(
         &self,
         episode_id: EpisodeId,
         configured_model: String,
-        selection: ModelPlanSelection,
     ) -> ChapterModelPlan {
         let Some(episode) = self
             .listening
@@ -81,41 +58,14 @@ impl FacadeState {
         let selected_artifact = selected_chapter
             .as_ref()
             .map(|selection| selection.artifact.as_input());
-        let publisher_base = match selection {
-            ModelPlanSelection::Current => match self.publisher_base_for_model_plan(
-                episode_id,
-                selected_chapter
-                    .as_ref()
-                    .map(|selection| &selection.artifact),
-            ) {
-                Ok(value) => value,
-                Err(()) => return ChapterModelPlan::CoreUnavailable,
-            },
-            ModelPlanSelection::LegacySuccess { artifact_id } => {
-                let Some(selected) = selected_chapter.as_ref() else {
-                    return ChapterModelPlan::UnsupportedArtifact;
-                };
-                if selected.artifact.artifact_id != artifact_id {
-                    return ChapterModelPlan::UnsupportedArtifact;
-                }
-                match selected.artifact.provenance.source {
-                    ChapterArtifactSource::Generated => None,
-                    ChapterArtifactSource::PublisherEnriched => {
-                        match self
-                            .publisher_base_for_model_plan(episode_id, Some(&selected.artifact))
-                        {
-                            Ok(Some(base)) => Some(base),
-                            Ok(None) => return ChapterModelPlan::UnsupportedArtifact,
-                            Err(()) => return ChapterModelPlan::CoreUnavailable,
-                        }
-                    }
-                    _ => return ChapterModelPlan::UnsupportedArtifact,
-                }
-            }
-        };
-        let selected_artifact = match selection {
-            ModelPlanSelection::Current => selected_artifact,
-            ModelPlanSelection::LegacySuccess { .. } => publisher_base.clone(),
+        let publisher_base = match self.publisher_base_for_model_plan(
+            episode_id,
+            selected_chapter
+                .as_ref()
+                .map(|selection| &selection.artifact),
+        ) {
+            Ok(value) => value,
+            Err(()) => return ChapterModelPlan::CoreUnavailable,
         };
         let selected_transcript = ChapterModelTranscriptInput {
             transcript_version_id: transcript.transcript_version_id,
@@ -183,10 +133,4 @@ impl FacadeState {
             _ => Ok(None),
         }
     }
-}
-
-#[derive(Clone, Copy)]
-enum ModelPlanSelection {
-    Current,
-    LegacySuccess { artifact_id: ChapterArtifactId },
 }

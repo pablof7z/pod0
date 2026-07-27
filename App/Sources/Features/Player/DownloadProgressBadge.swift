@@ -35,7 +35,6 @@ struct DownloadProgressBadge: View {
                 if let label = render.label {
                     Text(label)
                         .font(AppTheme.Typography.caption)
-                        .monospacedDigit()
                         .lineLimit(1)
                 }
             }

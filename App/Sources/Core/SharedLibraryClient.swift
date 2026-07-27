@@ -38,7 +38,9 @@ final class SharedLibraryClient {
     weak var store: AppStateStore?
     weak var playbackState: PlaybackState?
     var cachedSnapshot: SharedLibrarySnapshot?
-    var chapterScopeCounts: [UUID: Int] = [:]
+    var chapterScopes = ChapterProjectionScopes(
+        capacity: SharedLibraryClient.maximumActiveChapterProjections
+    )
     var chapterSnapshots: [UUID: SharedChapterSnapshot] = [:]
     var chapterProjectionTasks: [UUID: Task<Void, Never>] = [:]
     var announcedPublisherChapterEpisodeIDs: Set<UUID> = []
@@ -243,7 +245,7 @@ final class SharedLibraryClient {
         nostrSignerSubscriptionID = nil
         cachedNostrSigner = nil
         cachedScheduledAgent = nil
-        chapterScopeCounts.removeAll()
+        chapterScopes.removeAll()
         chapterSnapshots.removeAll()
         announcedPublisherChapterEpisodeIDs.removeAll()
         announcedModelChapterVersions.removeAll()

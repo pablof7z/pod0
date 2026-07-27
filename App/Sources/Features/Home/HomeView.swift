@@ -23,10 +23,13 @@ struct HomeView: View {
     @AppStorage("library.categoryFilterID") private var categoryFilterID: String = ""
 
     @State private var unsubscribeTarget: Podcast?
+    /// Set when the user asks to remove an *unfollowed* podcast. Kept
+    /// separate from `unsubscribeTarget` so each confirmation can use the
+    /// wording that matches what actually happens.
+    @State private var deleteTarget: Podcast?
     @State private var showAddShowSheet: Bool = false
     @State private var showCategoryPicker: Bool = false
     @State private var showAllContinueListening: Bool = false
-    @State private var showAllPodcasts: Bool = false
     /// Cached "now" used by the dateline + recency pills. Pinned at body
     /// composition time so a 1Hz playback tick doesn't re-format the
     /// recency pill on every redraw.
@@ -35,6 +38,7 @@ struct HomeView: View {
         scrollContent
             .navigationTitle(navBarTitle)
             .navigationBarTitleDisplayMode(.large)
+            .toolbar { toolbarContent }
             .background(Color(.systemGroupedBackground).ignoresSafeArea())
             .refreshable { await refreshAllFeeds() }
             .navigationDestination(for: Podcast.self) { pod in
@@ -42,9 +46,6 @@ struct HomeView: View {
             }
             .navigationDestination(isPresented: $showAllContinueListening) {
                 ContinueListeningView(episodes: continueListeningEpisodes)
-            }
-            .navigationDestination(isPresented: $showAllPodcasts) {
-                AllPodcastsListView()
             }
             .sheet(isPresented: $showAddShowSheet) {
                 AddShowSheet(store: store, onDismiss: { showAddShowSheet = false })
@@ -74,6 +75,22 @@ struct HomeView: View {
                 }
             } message: { _ in
                 Text("This removes the show and all its episodes from your library.")
+            }
+            .alert(
+                "Delete \(deleteTarget?.title ?? "")?",
+                isPresented: Binding(
+                    get: { deleteTarget != nil },
+                    set: { if !$0 { deleteTarget = nil } }
+                ),
+                presenting: deleteTarget
+            ) { pod in
+                Button("Cancel", role: .cancel) {}
+                Button("Delete", role: .destructive) {
+                    Haptics.warning()
+                    store.deletePodcast(podcastID: pod.id)
+                }
+            } message: { _ in
+                Text("This removes the podcast and all its episodes from your library.")
             }
             .onAppear { renderedAt = Date() }
     }
@@ -128,26 +145,18 @@ struct HomeView: View {
 
     @ViewBuilder
     private var subscriptionsSurface: some View {
-        if store.state.subscriptions.isEmpty {
-            VStack(spacing: AppTheme.Spacing.lg) {
-                HomeFirstRunEmptyState(onAddShow: { showAddShowSheet = true })
-                // Even with zero follows the user can have podcasts in the
-                // library — agent external plays, OPML rows whose subs were
-                // later removed, etc. Surface an "All Podcasts" entry so the
-                // new screen is reachable in that case too.
-                if hasUnfollowedPodcasts {
-                    Button {
-                        Haptics.selection()
-                        showAllPodcasts = true
-                    } label: {
-                        Label("See all podcasts", systemImage: "list.bullet.rectangle")
-                            .font(AppTheme.Typography.subheadline.weight(.semibold))
-                    }
-                    .buttonStyle(.bordered)
-                }
-            }
-            .padding(.top, AppTheme.Spacing.xl)
-        } else if filteredSubs.isEmpty {
+        if !filteredSubs.isEmpty || !filteredUnfollowed.isEmpty {
+            HomeSubscriptionListSection(
+                podcasts: filteredSubs,
+                unfollowedPodcasts: filteredUnfollowed,
+                now: renderedAt,
+                onRequestUnsubscribe: { unsubscribeTarget = $0 },
+                onRequestDelete: { deleteTarget = $0 }
+            )
+        } else if store.state.subscriptions.isEmpty && unfollowedPodcasts.isEmpty {
+            HomeFirstRunEmptyState(onAddShow: { showAddShowSheet = true })
+                .padding(.top, AppTheme.Spacing.xl)
+        } else {
             HomeFilteredEmptyState(
                 filter: filter,
                 categoryName: activeCategory?.name,
@@ -157,25 +166,6 @@ struct HomeView: View {
                 }
             )
             .padding(.top, AppTheme.Spacing.xl)
-        } else {
-            HomeSubscriptionListSection(
-                podcasts: filteredSubs,
-                now: renderedAt,
-                onRequestUnsubscribe: { unsubscribeTarget = $0 },
-                onSeeAllPodcasts: { showAllPodcasts = true }
-            )
-        }
-    }
-
-    /// `true` when the library contains at least one real podcast row the
-    /// user does NOT actively follow. Drives the All-Podcasts affordance in
-    /// the no-subscriptions empty state — without this, the screen would
-    /// be reachable only after the user follows something, which defeats
-    /// the point of surfacing unfollowed shows.
-    private var hasUnfollowedPodcasts: Bool {
-        let followed = Set(store.state.subscriptions.map(\.podcastID))
-        return store.allPodcasts.contains {
-            $0.id != Podcast.unknownID && !followed.contains($0.id)
         }
     }
 
@@ -186,8 +176,25 @@ struct HomeView: View {
     // without an extra service indirection for trivial in-memory work.
 
     private var filteredSubs: [Podcast] {
-        let recencySorted = store.sortedFollowedPodcastsByRecency
-        let categoryScoped = applyCategoryFilter(recencySorted)
+        applyFilters(store.sortedFollowedPodcastsByRecency)
+    }
+
+    /// Podcasts in the library the user does not follow, recency-sorted.
+    /// Rendered below the followed shows so they stay reachable — nothing
+    /// else in the app lists them.
+    private var unfollowedPodcasts: [Podcast] {
+        store.sortedUnfollowedPodcastsByRecency
+    }
+
+    /// Unfollowed rows under the active filters. A category holds
+    /// *subscription* ids, so selecting one necessarily empties this list —
+    /// an unfollowed podcast cannot be filed in a category.
+    private var filteredUnfollowed: [Podcast] {
+        applyFilters(unfollowedPodcasts)
+    }
+
+    private func applyFilters(_ podcasts: [Podcast]) -> [Podcast] {
+        let categoryScoped = applyCategoryFilter(podcasts)
         switch filter {
         case .all:         return categoryScoped
         case .unplayed:    return categoryScoped.filter { store.unplayedCount(forPodcast: $0.id) > 0 }
@@ -211,6 +218,31 @@ struct HomeView: View {
 
     private var navBarTitle: String {
         activeCategory?.name ?? "Home"
+    }
+
+    // MARK: - Toolbar
+    //
+    // The old tappable "Home ⌄" title (which opened the category picker)
+    // is gone in favor of a standard large left-aligned title — see
+    // `navigationBarTitleDisplayMode(.large)` above. `showCategoryPicker`
+    // and its sheet still exist below but have no trigger right now; the
+    // category picker needs a new entry point, which isn't in scope here.
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        // The first-run empty state also offers "Add show", but it only
+        // renders when the library is completely empty — a library holding
+        // nothing but unfollowed podcasts would otherwise have no way to
+        // add one.
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                Haptics.light()
+                showAddShowSheet = true
+            } label: {
+                Image(systemName: "plus")
+            }
+            .accessibilityLabel("Add show")
+        }
     }
 
     // MARK: - Actions

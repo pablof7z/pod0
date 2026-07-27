@@ -14,41 +14,6 @@ REQUIRED_TOKENS = {
     "App/Sources/Workflows/ArtifactRepository.swift": (
         "kind NOT IN ('transcript','chapters','adSegments')",
     ),
-    "App/Sources/Core/LegacyModelChapterWorkflowCutover.swift": (
-        "facade.modelChapterCutover()", "facade.stageLegacyModelChapterCutover(",
-        "facade.discardStagedLegacyModelChapterCutover(",
-        "LegacyModelChapterWorkflowBackupManifest.load(",
-        "snapshot.backup.publish(to: backupRoot)", "removeLegacyChapterJobs(",
-        "matching: jobs", "facade.commitLegacyModelChapterCutover(",
-    ),
-    "App/Sources/Core/LegacyModelChapterWorkflowBackup.swift": (
-        "LegacyModelChapterWorkflowBackupClassification",
-        "LegacyWorkflowBackupStorage.publish(",
-        "jobs.allSatisfy({ $0.kind == .chapterArtifacts })",
-    ),
-    "App/Sources/Core/LegacyModelChapterWorkflowSnapshot.swift": (
-        "LegacyModelChapterCutoverCandidate(",
-        "LegacySharedChapterWorkflowReceiptV1.self", ".ambiguous",
-    ),
-    "App/Sources/Core/LegacyPublisherChapterWorkflowRetirement.swift": (
-        "safeIdempotentRederivation", "corruptUnsupportedEvidence",
-        "LegacyWorkflowBackupStorage.publish(",
-        "commitLegacyChapterWorkflowRetirement(",
-        "verifyLegacyChapterWorkflowRetirement(",
-    ),
-    "App/Sources/Core/LegacyWorkflowBackupStorage.swift": (
-        "FileManager.default.linkItem(",
-        "integrityDigest: ArtifactRepository.hash(", "synchronizePublishedFile(",
-    ),
-    "App/Sources/Workflows/JobStore+LegacyChapterRetirement.swift": (
-        "LegacyChapterWorkflowRetirementMarker", "BEGIN IMMEDIATE TRANSACTION",
-        "DELETE FROM jobs WHERE kind=?",
-        "insertLegacyChapterWorkflowRetirementMarker(",
-    ),
-    "App/Sources/Core/SharedLibraryBootstrap.swift": (
-        "stage = .chapterWorkflowRetirement",
-        "LegacyPublisherChapterWorkflowRetirement.run(",
-    ),
     "App/Sources/Core/SharedLibraryClient+Commands.swift": (
         "facade.planChapterModelRequest(",
         "episodeId: EpisodeId(uuid: episodeID)",

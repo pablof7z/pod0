@@ -59,7 +59,7 @@ final class ScheduledAgentContractBindingTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(envelope.contractVersion, 50)
+        XCTAssertEqual(envelope.contractVersion, 52)
         guard case let .scheduledAgent(projection) = envelope.projection else {
             return XCTFail("Expected a scheduled-agent projection")
         }

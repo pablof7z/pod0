@@ -65,6 +65,22 @@ struct PlayerChaptersScrollView: View {
     @ViewBuilder
     private func chapterRow(_ chapter: Episode.Chapter, isActive: Bool) -> some View {
         let overlapsAd = chapter.overlapsAd(in: chapters, adSegments: adSegments)
+        let duration = PlayerChapterPresentation.duration(
+            for: chapter,
+            in: chapters,
+            episodeDuration: state.duration
+        )
+        let playedFraction = PlayerChapterPresentation.progress(
+            for: chapter,
+            in: chapters,
+            episodeDuration: state.duration,
+            currentTime: state.currentTime
+        )
+        let durationFraction = PlayerChapterPresentation.durationFraction(
+            for: chapter,
+            in: chapters,
+            episodeDuration: state.duration
+        )
         Button {
             handleTap(chapter)
         } label: {
@@ -81,12 +97,21 @@ struct PlayerChaptersScrollView: View {
                         .foregroundStyle(AppTheme.Tint.warning)
                         .accessibilityLabel("Contains an ad")
                 }
-                Text(formatTimestamp(chapter.startTime))
-                    .font(.system(.footnote, design: .monospaced).weight(.medium))
-                    .foregroundStyle(Color.secondary)
+                if let duration, let label = PlayerTimeFormat.approximateDuration(duration) {
+                    Text(label)
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(Color.secondary)
+                }
             }
             .padding(.horizontal, AppTheme.Spacing.sm)
             .padding(.vertical, AppTheme.Spacing.sm)
+            .background {
+                chapterProgressBackground(
+                    playedFraction: playedFraction,
+                    durationFraction: durationFraction,
+                    isActive: isActive
+                )
+            }
             .overlay(alignment: .leading) {
                 if overlapsAd {
                     RoundedRectangle(cornerRadius: 1.5, style: .continuous)
@@ -100,7 +125,13 @@ struct PlayerChaptersScrollView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(chapter.title)
-        .accessibilityValue(isActive ? "Active chapter, \(formatTimestamp(chapter.startTime))" : formatTimestamp(chapter.startTime))
+        .accessibilityValue(
+            accessibilityValue(
+                duration: duration,
+                playedFraction: playedFraction,
+                isActive: isActive
+            )
+        )
         .accessibilityHint("Seeks playback to this chapter")
         .contextMenu {
             Button {
@@ -109,6 +140,44 @@ struct PlayerChaptersScrollView: View {
                 Label("Ask agent about this chapter", systemImage: "sparkles")
             }
         }
+    }
+
+    private func chapterProgressBackground(
+        playedFraction: Double,
+        durationFraction: Double,
+        isActive: Bool
+    ) -> some View {
+        GeometryReader { proxy in
+            let durationWidth = max(4, proxy.size.width * durationFraction.clamped01)
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: AppTheme.Corner.md, style: .continuous)
+                    .fill(Color.primary.opacity(isActive ? 0.045 : 0.018))
+                Rectangle()
+                    .fill(Color.accentColor.opacity(isActive ? 0.10 : 0.045))
+                    .frame(width: durationWidth * playedFraction.clamped01)
+            }
+            .frame(width: durationWidth, alignment: .leading)
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.Corner.md, style: .continuous))
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func accessibilityValue(
+        duration: TimeInterval?,
+        playedFraction: Double,
+        isActive: Bool
+    ) -> String {
+        var details: [String] = []
+        if isActive { details.append("Active chapter") }
+        if let duration, let label = PlayerTimeFormat.approximateDuration(duration) {
+            details.append("About \(label)")
+        }
+        if playedFraction >= 1 {
+            details.append("Played")
+        } else if playedFraction > 0 {
+            details.append("\(Int((playedFraction * 100).rounded())) percent played")
+        }
+        return details.joined(separator: ", ")
     }
 
     private func askAgent(about chapter: Episode.Chapter) {
@@ -131,14 +200,68 @@ struct PlayerChaptersScrollView: View {
         }
     }
 
-    private func formatTimestamp(_ t: TimeInterval) -> String {
-        guard t.isFinite, t >= 0 else { return "0:00" }
-        let total = Int(t)
-        let h = total / 3600
-        let m = (total % 3600) / 60
-        let s = total % 60
-        return h > 0
-            ? String(format: "%02d:%02d:%02d", h, m, s)
-            : String(format: "%02d:%02d", m, s)
+}
+
+enum PlayerChapterPresentation {
+    static func durationFraction(
+        for chapter: Episode.Chapter,
+        in chapters: [Episode.Chapter],
+        episodeDuration: TimeInterval
+    ) -> Double {
+        guard episodeDuration.isFinite, episodeDuration > 0,
+              let chapterDuration = Self.duration(
+                for: chapter,
+                in: chapters,
+                episodeDuration: episodeDuration
+              ) else { return 0 }
+        return (chapterDuration / episodeDuration).clamped01
+    }
+
+    static func duration(
+        for chapter: Episode.Chapter,
+        in chapters: [Episode.Chapter],
+        episodeDuration: TimeInterval
+    ) -> TimeInterval? {
+        resolvedEnd(
+            for: chapter,
+            in: chapters,
+            episodeDuration: episodeDuration
+        ).map { $0 - chapter.startTime }
+    }
+
+    static func progress(
+        for chapter: Episode.Chapter,
+        in chapters: [Episode.Chapter],
+        episodeDuration: TimeInterval,
+        currentTime: TimeInterval
+    ) -> Double {
+        guard currentTime.isFinite, currentTime > chapter.startTime,
+              let end = resolvedEnd(
+                for: chapter,
+                in: chapters,
+                episodeDuration: episodeDuration
+              ) else { return 0 }
+        return ((currentTime - chapter.startTime) / (end - chapter.startTime)).clamped01
+    }
+
+    private static func resolvedEnd(
+        for chapter: Episode.Chapter,
+        in chapters: [Episode.Chapter],
+        episodeDuration: TimeInterval
+    ) -> TimeInterval? {
+        var candidates: [TimeInterval] = []
+        if let explicitEnd = chapter.endTime {
+            candidates.append(explicitEnd)
+        }
+        if let index = chapters.firstIndex(where: { $0.id == chapter.id }) {
+            let next = chapters.index(after: index)
+            if next < chapters.endIndex {
+                candidates.append(chapters[next].startTime)
+            }
+        }
+        candidates.append(episodeDuration)
+        return candidates
+            .filter { $0.isFinite && $0 > chapter.startTime }
+            .min()
     }
 }

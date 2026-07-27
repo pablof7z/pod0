@@ -34,10 +34,7 @@ struct PlayerGenerationSourceChip: View {
             }
             .padding(.horizontal, AppTheme.Spacing.sm)
             .padding(.vertical, AppTheme.Spacing.xs)
-            .glassSurface(
-                cornerRadius: AppTheme.Corner.md,
-                tint: Color.accentColor.opacity(0.08)
-            )
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .transition(.opacity.combined(with: .move(edge: .top)))

@@ -97,14 +97,6 @@ extension Persistence {
         episodeStore.fileURL.appendingPathExtension("chapter-backups")
     }
 
-    var legacyModelChapterWorkflowBackupRootURL: URL {
-        episodeStore.fileURL.appendingPathExtension("model-chapter-workflow-backups")
-    }
-
-    var legacyPublisherChapterWorkflowBackupRootURL: URL {
-        episodeStore.fileURL.appendingPathExtension("publisher-chapter-workflow-backups")
-    }
-
     var legacyTranscriptWorkflowBackupRootURL: URL {
         episodeStore.fileURL.appendingPathExtension("transcript-workflow-backups")
     }
@@ -170,8 +162,6 @@ extension Persistence {
             legacyClipsBackupURL,
             legacyTranscriptBackupRootURL,
             legacyChapterBackupRootURL,
-            legacyModelChapterWorkflowBackupRootURL,
-            legacyPublisherChapterWorkflowBackupRootURL,
             legacyTranscriptWorkflowBackupRootURL,
             legacyDownloadWorkflowBackupURL,
             legacyFeedDiscoveryWorkflowBackupRootURL,

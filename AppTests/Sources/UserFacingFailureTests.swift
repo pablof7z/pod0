@@ -121,8 +121,16 @@ final class UserFacingFailureTests: XCTestCase {
         let source = try String(contentsOf: sourceURL, encoding: .utf8)
 
         XCTAssertFalse(source.contains("Diagnostic:"))
-        XCTAssertFalse(source.contains("reason:"))
         XCTAssertFalse(source.contains("stage:"))
+
+        // The view now *takes* a reason so it can choose an honest remedy, but
+        // it must never render one — those strings are internal failure codes
+        // like "StoreNewerThanApp". Assert on interpolation rather than on the
+        // parameter name: the old check banned the word "reason:" outright,
+        // which conflated naming the input with displaying it.
+        XCTAssertFalse(source.contains("Text(reason"))
+        XCTAssertFalse(source.contains("\\(reason"))
+        XCTAssertFalse(source.contains("Label(reason"))
     }
 
     func testAllEpisodesUsesMenuFiltersAndCollapsibleSearch() throws {
@@ -164,8 +172,13 @@ final class UserFacingFailureTests: XCTestCase {
         XCTAssertTrue(source.contains(".navigationBarDrawer(displayMode: .automatic)"))
         XCTAssertTrue(source.contains("Color(.systemBackground)"))
         XCTAssertFalse(source.contains("Color(.systemGroupedBackground)"))
-        XCTAssertFalse(source.contains("LiquidGlassSegmentedPicker"))
         XCTAssertFalse(source.contains("StarredSegment"))
+        // The Saved/Starred split is what this screen dropped, and it stays
+        // dropped. The Clips/Notes switch that replaced it belongs in the
+        // navigation toolbar, never inline above the list where the old
+        // segmented control sat.
+        XCTAssertFalse(source.contains(".safeAreaInset(edge: .top)"))
+        XCTAssertTrue(source.contains("ToolbarItem(placement: .principal)"))
     }
 
     func testSettingsEntryLivesInSidebarNotSharedToolbar() throws {
@@ -217,5 +230,57 @@ final class UserFacingFailureTests: XCTestCase {
             lastErrorMessage: "SECRET body /private/file token=request-id",
             createdAt: now, updatedAt: now
         ))
+    }
+}
+
+
+// MARK: - SharedCoreUnavailableView copy
+
+final class SharedCoreUnavailableCopyTests: XCTestCase {
+
+    private let blockedReasons: [SharedLibraryBootstrapFailureCode] = [
+        .storeNewerThanApp, .migrationFailed, .storeUnreadable,
+    ]
+
+    func testNoBlockedReasonTellsTheUserToReopen() {
+        for reason in blockedReasons {
+            let message = SharedCoreUnavailableView(reason: reason.rawValue).messageForTesting
+            XCTAssertFalse(
+                message.localizedCaseInsensitiveContains("reopen Pod0 to try again"),
+                "\(reason.rawValue) must not promise a retry that cannot work"
+            )
+        }
+    }
+
+    func testEveryBlockedReasonStillReassuresAboutTheData() {
+        // The user's default assumption on a store failure is that their
+        // library is gone. That reassurance earns its place in all of them.
+        for reason in blockedReasons {
+            let message = SharedCoreUnavailableView(reason: reason.rawValue).messageForTesting
+            XCTAssertTrue(
+                message.localizedCaseInsensitiveContains("safe")
+                    || message.localizedCaseInsensitiveContains("hasn’t been changed"),
+                "\(reason.rawValue) should say the data is intact"
+            )
+        }
+    }
+
+    func testVersionSkewNamesUpdatingAsTheRemedy() {
+        let message = SharedCoreUnavailableView(
+            reason: SharedLibraryBootstrapFailureCode.storeNewerThanApp.rawValue
+        ).messageForTesting
+        XCTAssertTrue(message.localizedCaseInsensitiveContains("update"))
+    }
+
+    func testUnknownAndTransientReasonsKeepTheRetryWording() {
+        // Not every failure is permanent — recovery states genuinely do clear
+        // on relaunch, so the retry wording must survive for them.
+        for reason in [nil, "app_state_recovery_required", "StorageUnavailable"] {
+            let message = SharedCoreUnavailableView(reason: reason).messageForTesting
+            XCTAssertTrue(
+                message.localizedCaseInsensitiveContains("reopen Pod0 to try again"),
+                "\(reason ?? "nil") should keep the retry-safe wording"
+            )
+        }
     }
 }

@@ -82,7 +82,7 @@ final class FeedDiscoveryContractBindingTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(envelope.contractVersion, 50)
+        XCTAssertEqual(envelope.contractVersion, 52)
         guard case let .newEpisodeNotificationSettings(value) = envelope.projection else {
             return XCTFail("Expected notification settings projection")
         }
