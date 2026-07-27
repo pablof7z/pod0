@@ -33,8 +33,8 @@ The platform supplies an application-support location and filesystem
 capabilities; it does not define schemas or persistence policy.
 
 Schemas have explicit component versions. Migrations are transactional,
-restartable, forward-only within a supported compatibility window, and
-non-destructive on unknown/newer/corrupt input. Unsupported state opens in an
+restartable, forward-only for the current development schema, and
+non-destructive on unknown/newer/corrupt input. Unrecognized state opens in an
 honest blocked/read-only recovery mode rather than resetting data.
 
 Time and identifiers used in durable decisions are injected into the Rust
@@ -82,16 +82,14 @@ slices.
 
 - The app temporarily has multiple physical stores but exactly one writer per
   fact.
-- Existing Swift data needs versioned import fixtures and a supported upgrade
-  window.
+- Existing development data may use versioned import fixtures while a cutover is
+  being qualified. Pod0 has no released-installation upgrade commitment.
 - The first vertical slice must delete old mutation paths after cutover.
 - Rust storage design cannot depend on Swift Codable implementation details
   beyond the importer.
-- The legacy importer is read-only and cannot write listening facts after
-  cutover. Delete it only when the minimum supported iOS version is newer than
-  the final Swift-authoritative release, two consecutive qualified releases
-  observe zero imports, and rollback no longer depends on its fixtures. Its
-  removal must be a dedicated migration issue with upgrade-path evidence.
+- A legacy importer is read-only and cannot write facts after cutover. Delete it
+  as soon as the current development cutover is qualified; no release-age or
+  telemetry gate applies. Its removal remains a dedicated, reviewed cleanup.
 
 ## Rejected alternatives
 

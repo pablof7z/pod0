@@ -184,15 +184,8 @@ final class WorkflowProjectionTests: XCTestCase {
         XCTAssertEqual(bounded.count, 1)
     }
 
-    func testChapterQueryIgnoresLegacyRowsAndRendersOnlyRustProjection() async throws {
+    func testChapterQueryRendersRustProjection() async throws {
         let episodeID = UUID()
-        try LegacyChapterWorkflowTestSupport.insert(
-            LegacyChapterWorkflowTestSupport.makeJob(
-                key: "retired-publisher", kind: .publisherChapters,
-                episodeID: episodeID, inputVersion: "legacy-source"
-            ),
-            into: store
-        )
         let core = PublisherChapterWorkflowProjection(
             episodeId: EpisodeId(uuid: episodeID),
             sourceVersion: "rust-source",
@@ -225,10 +218,6 @@ final class WorkflowProjectionTests: XCTestCase {
         XCTAssertEqual(
             client.latest(kind: .publisherChapters, subjectID: episodeID)?.coreWorkflowRevision,
             3
-        )
-        XCTAssertEqual(
-            try store.legacyChapterJobs(kind: .publisherChapters).map(\.idempotencyKey),
-            ["retired-publisher"]
         )
     }
 

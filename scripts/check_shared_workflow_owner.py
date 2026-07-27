@@ -149,7 +149,7 @@ def validate(root: Path) -> list[str]:
         "docs/architecture/ownership.json",
         [
             "Rust owns all active durable workflow intent, lifecycle, and artifact receipts",
-            "Swift workflow and artifact tables are decode-only rollback compatibility",
+            "Residual Swift workflow and artifact tables are inactive development-migration inputs",
         ],
         "durable workflow ownership declaration",
     ))

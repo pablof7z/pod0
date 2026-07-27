@@ -5,7 +5,6 @@
   "baseline": {
     "App/Sources/Core/SharedLibraryBootstrap+RecallConfiguration.swift|importLegacyRecallConfiguration|dispatch": 1,
     "App/Sources/Core/SharedLibraryBootstrap+RecallConfiguration.swift|importLegacyRecallConfiguration|snapshot": 1,
-    "App/Sources/Core/SharedLibraryBootstrap.swift|prepareLocked|modelChapterCutover": 1,
     "App/Sources/Core/SharedLibraryBootstrap.swift|prepareLocked|open": 1
   }
 }

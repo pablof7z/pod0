@@ -27,14 +27,6 @@ mod listening_migration;
 mod listening_migration_error;
 mod memory_cutover;
 mod memory_cutover_types;
-mod model_chapter_cutover;
-#[cfg(test)]
-mod model_chapter_cutover_discard_tests;
-#[cfg(test)]
-mod model_chapter_cutover_success_tests;
-#[cfg(test)]
-mod model_chapter_cutover_tests;
-mod model_chapter_cutover_types;
 mod note_migration;
 mod runtime;
 include!("runtime_split_modules.rs");
@@ -158,11 +150,6 @@ pub use listening_migration::{
     stage_legacy_listening_import,
 };
 pub use memory_cutover_types::*;
-pub use model_chapter_cutover_types::{
-    LegacyModelChapterCutoverCandidate, LegacyModelChapterCutoverDisposition,
-    LegacyModelChapterCutoverFailure, LegacyModelChapterCutoverFailureCode,
-    LegacyModelChapterCutoverProjection, LegacyModelChapterCutoverStage,
-};
 pub use note_migration::{
     LegacyNoteBackupEvidence, LegacyNoteImportPlan, LegacyNoteImportReport,
     LegacyNoteImportVerification, LegacyNoteMigrationError, commit_staged_legacy_note_import,

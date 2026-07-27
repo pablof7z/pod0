@@ -21,7 +21,6 @@ enum SharedLibraryBootstrapFailureCode: String {
              LegacyListeningMigrationError.SourceChanged,
              LegacyNoteMigrationError.SourceChanged,
              LegacyTranscriptMigrationError.SourceChanged,
-             LegacyChapterWorkflowBackupError.sourceChanged,
              LegacyDownloadWorkflowBackupError.sourceChanged:
             .sourceChanged
         case LegacyClipMigrationError.SourceInvalid,
@@ -35,7 +34,7 @@ enum SharedLibraryBootstrapFailureCode: String {
              LegacyListeningMigrationError.BackupConflict,
              LegacyNoteMigrationError.BackupConflict,
              LegacyTranscriptMigrationError.BackupConflict,
-             LegacyChapterWorkflowBackupError.backupConflict:
+             LegacyWorkflowBackupError.backupConflict:
             .backupConflict
         case LegacyScheduledAgentWorkflowBackupError.backupConflict:
             .backupConflict
@@ -73,9 +72,9 @@ enum SharedLibraryBootstrapFailureCode: String {
             .storageUnavailable
         case SharedLibraryBootstrapError.verificationFailed:
             .verificationFailed
-        case LegacyChapterWorkflowBackupError.backupMissing,
-             LegacyChapterWorkflowBackupError.invalidBackup,
-             LegacyChapterWorkflowBackupError.durabilityFailed,
+        case LegacyWorkflowBackupError.backupMissing,
+             LegacyWorkflowBackupError.invalidBackup,
+             LegacyWorkflowBackupError.durabilityFailed,
              LegacyDownloadWorkflowBackupError.backupMissing,
              LegacyDownloadWorkflowBackupError.backupCorrupt,
              LegacyDownloadWorkflowCutoverError.verificationFailed,

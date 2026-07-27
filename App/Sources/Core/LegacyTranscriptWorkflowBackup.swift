@@ -53,7 +53,7 @@ struct LegacyTranscriptWorkflowBackupRow: Codable, Sendable, Equatable {
         let bytes = try LegacyWorkflowBackupStorage.encodedData(job)
         let fingerprint = ArtifactRepository.hash(bytes)
         guard let digest = ContentDigest(hexadecimal: fingerprint) else {
-            throw LegacyChapterWorkflowBackupError.invalidBackup
+            throw LegacyWorkflowBackupError.invalidBackup
         }
         return Pod0Core.LegacyTranscriptWorkflowBackupRow(
             episodeId: EpisodeId(uuid: job.subjectID),
@@ -99,7 +99,7 @@ struct LegacyTranscriptWorkflowBackupManifest: Codable, Sendable, Equatable {
     func evidence(at root: URL) throws -> Evidence {
         let data = try Data(contentsOf: root.appendingPathComponent(fileName))
         guard let digest = ContentDigest(hexadecimal: ArtifactRepository.hash(data)) else {
-            throw LegacyChapterWorkflowBackupError.invalidBackup
+            throw LegacyWorkflowBackupError.invalidBackup
         }
         return Evidence(digest: digest, byteCount: UInt64(data.count))
     }
@@ -109,9 +109,9 @@ struct LegacyTranscriptWorkflowBackupManifest: Codable, Sendable, Equatable {
             from: root,
             matchingPrefix: prefix(sourceGeneration),
             validate: { try $0.validate() }
-        ) else { throw LegacyChapterWorkflowBackupError.backupMissing }
+        ) else { throw LegacyWorkflowBackupError.backupMissing }
         guard manifest.sourceGeneration == sourceGeneration else {
-            throw LegacyChapterWorkflowBackupError.invalidBackup
+            throw LegacyWorkflowBackupError.invalidBackup
         }
         return manifest
     }
@@ -131,12 +131,12 @@ struct LegacyTranscriptWorkflowBackupManifest: Codable, Sendable, Equatable {
               sourceFingerprint.count == 64,
               Set(jobs.map(\.id)).count == jobs.count,
               jobs.allSatisfy({ LegacyTranscriptWorkflowJobKind.allCases.contains($0.kind) })
-        else { throw LegacyChapterWorkflowBackupError.invalidBackup }
+        else { throw LegacyWorkflowBackupError.invalidBackup }
         let coreRows = try coreRows()
         let fingerprint = Self.sourceFingerprint(for: coreRows)
         guard fingerprint.stableString == sourceFingerprint,
               Self.sourceGeneration(for: fingerprint) == sourceGeneration else {
-            throw LegacyChapterWorkflowBackupError.invalidBackup
+            throw LegacyWorkflowBackupError.invalidBackup
         }
     }
 

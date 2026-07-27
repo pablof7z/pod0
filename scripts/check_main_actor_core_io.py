@@ -13,7 +13,7 @@ import sys
 CALL = re.compile(
     r"\bfacade\.(?P<operation>"
     r"dispatch|snapshot|subscribe|unsubscribe|nextHostCancellations|"
-    r"nextHostRequests|recordHostObservation|modelChapterCutover"
+    r"nextHostRequests|recordHostObservation"
     r")\s*\(|\bPod0Facade\.open\s*\("
 )
 DECLARATION = re.compile(
