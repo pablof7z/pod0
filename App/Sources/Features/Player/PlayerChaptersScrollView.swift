@@ -76,6 +76,11 @@ struct PlayerChaptersScrollView: View {
             episodeDuration: state.duration,
             currentTime: state.currentTime
         )
+        let durationFraction = PlayerChapterPresentation.durationFraction(
+            for: chapter,
+            in: chapters,
+            episodeDuration: state.duration
+        )
         Button {
             handleTap(chapter)
         } label: {
@@ -102,7 +107,8 @@ struct PlayerChaptersScrollView: View {
             .padding(.vertical, AppTheme.Spacing.sm)
             .background {
                 chapterProgressBackground(
-                    fraction: playedFraction,
+                    playedFraction: playedFraction,
+                    durationFraction: durationFraction,
                     isActive: isActive
                 )
             }
@@ -136,15 +142,21 @@ struct PlayerChaptersScrollView: View {
         }
     }
 
-    private func chapterProgressBackground(fraction: Double, isActive: Bool) -> some View {
+    private func chapterProgressBackground(
+        playedFraction: Double,
+        durationFraction: Double,
+        isActive: Bool
+    ) -> some View {
         GeometryReader { proxy in
+            let durationWidth = max(4, proxy.size.width * durationFraction.clamped01)
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: AppTheme.Corner.md, style: .continuous)
                     .fill(Color.primary.opacity(isActive ? 0.045 : 0.018))
                 Rectangle()
                     .fill(Color.accentColor.opacity(isActive ? 0.10 : 0.045))
-                    .frame(width: proxy.size.width * fraction.clamped01)
+                    .frame(width: durationWidth * playedFraction.clamped01)
             }
+            .frame(width: durationWidth, alignment: .leading)
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.Corner.md, style: .continuous))
         }
         .accessibilityHidden(true)
@@ -191,6 +203,20 @@ struct PlayerChaptersScrollView: View {
 }
 
 enum PlayerChapterPresentation {
+    static func durationFraction(
+        for chapter: Episode.Chapter,
+        in chapters: [Episode.Chapter],
+        episodeDuration: TimeInterval
+    ) -> Double {
+        guard episodeDuration.isFinite, episodeDuration > 0,
+              let chapterDuration = Self.duration(
+                for: chapter,
+                in: chapters,
+                episodeDuration: episodeDuration
+              ) else { return 0 }
+        return (chapterDuration / episodeDuration).clamped01
+    }
+
     static func duration(
         for chapter: Episode.Chapter,
         in chapters: [Episode.Chapter],

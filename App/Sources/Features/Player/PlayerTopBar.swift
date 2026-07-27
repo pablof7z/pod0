@@ -1,12 +1,11 @@
-import AVKit
 import SwiftUI
 
 // MARK: - PlayerTopBar
 //
-// Top bar for the full-screen `PlayerView`. Holds the dismiss button on
-// the leading edge, the share / AirPlay / more cluster on the trailing
-// edge, and a middle slot that crossfades between the show name and a
-// compact artwork+title once the hero header has scrolled offscreen.
+// Top bar for the full-height `PlayerView`. Holds listening history on the
+// leading edge, one overflow menu on the trailing edge, and a middle slot
+// that crossfades between the show name and a compact artwork+title once the
+// hero header has scrolled offscreen. The sheet itself owns dismissal.
 //
 // All state lives in `PlayerView`; this view is a pure layout container
 // driven by the bindings/closures the parent passes in.
@@ -18,7 +17,6 @@ struct PlayerTopBar: View {
     let artworkURL: URL?
     let titleCollapsed: Bool
 
-    let onDismiss: () -> Void
     let onShare: () -> Void
     let onShowSleepTimer: () -> Void
     let onShowSpeed: () -> Void
@@ -27,38 +25,22 @@ struct PlayerTopBar: View {
 
     var body: some View {
         HStack(spacing: AppTheme.Spacing.xs) {
-            dismissButton
             historyButton
                 .animation(AppTheme.Animation.spring, value: historyButtonState)
 
             Spacer(minLength: 0)
 
-            HStack(spacing: AppTheme.Spacing.xs) {
-                if state.episode != nil {
-                    Button(action: onShare) {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(.primary)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Circle())
-                    }
-                    .buttonStyle(.pressable)
-                    .accessibilityLabel("Share episode")
-
-                    routePicker
-                }
-
-                if let episode = state.episode {
-                    PlayerMoreMenu(
-                        episode: episode,
-                        podcast: podcast,
-                        speedLabel: state.rate.label,
-                        onMarkPlayed: { store.markEpisodePlayed(episode.id) },
-                        onMarkUnplayed: { store.markEpisodeUnplayed(episode.id) },
-                        onShowSleepTimer: onShowSleepTimer,
-                        onShowSpeed: onShowSpeed
-                    )
-                }
+            if let episode = state.episode {
+                PlayerMoreMenu(
+                    episode: episode,
+                    podcast: podcast,
+                    speedLabel: state.rate.label,
+                    onShare: onShare,
+                    onMarkPlayed: { store.markEpisodePlayed(episode.id) },
+                    onMarkUnplayed: { store.markEpisodeUnplayed(episode.id) },
+                    onShowSleepTimer: onShowSleepTimer,
+                    onShowSpeed: onShowSpeed
+                )
             }
         }
         .overlay {
@@ -80,28 +62,13 @@ struct PlayerTopBar: View {
                 }
             }
             .animation(.easeInOut(duration: 0.2), value: titleCollapsed)
-            .padding(.horizontal, 140)
+            .padding(.horizontal, 88)
             .frame(maxWidth: .infinity)
             .allowsHitTesting(false)
         }
         .padding(.horizontal, AppTheme.Spacing.md)
         .padding(.top, AppTheme.Spacing.sm)
         .padding(.bottom, AppTheme.Spacing.xs)
-    }
-
-    private var dismissButton: some View {
-        Button {
-            Haptics.selection()
-            onDismiss()
-        } label: {
-            Image(systemName: "xmark")
-                .font(.body.weight(.semibold))
-                .foregroundStyle(.primary)
-                .frame(width: 44, height: 44)
-                .contentShape(Circle())
-        }
-        .buttonStyle(.pressable)
-        .accessibilityLabel("Close player")
     }
 
     /// Uses one fixed-size slot for back and the temporary forward recovery
@@ -146,23 +113,5 @@ struct PlayerTopBar: View {
 
     private var historyButtonState: Int {
         state.canJumpForward ? 2 : (state.canJumpBack ? 1 : 0)
-    }
-
-    private var routePicker: some View {
-        ZStack {
-            Image(systemName: "airplayaudio")
-                .font(.body.weight(.semibold))
-                .foregroundStyle(.primary)
-                .frame(width: 44, height: 44)
-                .contentShape(Circle())
-                .accessibilityHidden(true)
-            RoutePickerView(activeTintColor: .clear, tintColor: .clear)
-                .allowsHitTesting(true)
-                .accessibilityHidden(true)
-        }
-        .frame(width: 44, height: 44)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Audio output")
-        .accessibilityHint("Opens system output picker")
     }
 }

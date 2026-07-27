@@ -11,7 +11,6 @@ struct PlayerView: View {
     @Environment(AppStateStore.self) private var store
     @Environment(WorkflowClient.self) private var workflows
     @Bindable var state: PlaybackState
-    @Environment(\.dismiss) private var dismiss
     let glassNamespace: Namespace.ID
     @State private var showSpeedSheet: Bool = false
     @State private var showSleepSheet: Bool = false
@@ -109,7 +108,6 @@ struct PlayerView: View {
             showName: showName,
             artworkURL: artworkURL,
             titleCollapsed: false,
-            onDismiss: { dismiss() },
             onShare: { showShareSheet = true },
             onShowSleepTimer: { showSleepSheet = true },
             onShowSpeed: { showSpeedSheet = true }
