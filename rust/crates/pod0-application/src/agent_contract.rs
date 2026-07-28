@@ -1,21 +1,23 @@
-use crate::{
-    AgentCapabilityExecutionMode, AgentGeneratedAudioEvidence, AgentGeneratedAudioTarget,
-    AgentMessageProjection, AgentToolName, QueuePlacement, RecallEvidenceProjection, RecallScope,
-    ScheduledTaskInput,
-};
+use crate::{AgentToolName, QueuePlacement, RecallScope, ScheduledTaskInput};
 use pod0_domain::{
-    AgentCommitId, AgentExecutionFenceId, AgentProposalId, AgentTurnId, ContentDigest,
-    ConversationId, EpisodeId, GeneratedArtifactId, PodcastId, ScheduledTaskId, StateRevision,
-    UnixTimestampMilliseconds,
+    CategoryId, EpisodeId, LibraryItemId, PodcastId, ScheduledTaskId, StateRevision,
 };
-pub const AGENT_CONTRACT_VERSION: u32 = 3;
+pub const AGENT_CONTRACT_VERSION: u32 = 4;
 pub const MAX_AGENT_INPUT_BYTES: usize = 32 * 1_024;
 pub const MAX_AGENT_MESSAGE_BYTES: usize = 64 * 1_024;
 pub const MAX_AGENT_MODEL_REFERENCE_BYTES: usize = 256;
 pub const MAX_AGENT_ACTION_TEXT_BYTES: usize = 64 * 1_024;
 pub const MAX_AGENT_PROJECTION_MESSAGES: usize = 64;
 pub const MAX_AGENT_SAFE_DETAIL_BYTES: usize = 1_024;
-pub const MAX_AGENT_TOOLS_PER_TURN: usize = 46;
+/// A category name is a navigation label, not prose. Bounded tightly so the
+/// model cannot write a paragraph into a swipe-page title.
+pub const MAX_AGENT_CATEGORY_NAME_BYTES: usize = 128;
+/// One or two sentences describing what belongs in a category.
+pub const MAX_AGENT_CATEGORY_DESCRIPTION_BYTES: usize = 1_024;
+/// Ceiling on how many items one `tag_items` call may move. Bounded so a
+/// single model turn cannot rewrite the whole library in one commit.
+pub const MAX_CATEGORY_TAG_ITEMS: u16 = 200;
+pub const MAX_AGENT_TOOLS_PER_TURN: usize = 53;
 pub const MAX_AGENT_MODEL_OUTPUT_BYTES: u64 = 256 * 1_024;
 pub const MAX_AGENT_RECALL_EVIDENCE: u16 = 8;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
@@ -122,6 +124,24 @@ pub enum AgentToolAction {
         podcast_id: PodcastId,
         category: String,
     },
+    /// One upsert-or-delete primitive over a single category rather than a
+    /// create/update/delete triplet. Absent `category_id` means create;
+    /// `delete` means remove. Absent optional fields are left untouched.
+    WriteCategory {
+        category_id: Option<CategoryId>,
+        name: Option<String>,
+        description: Option<String>,
+        color_hex: Option<String>,
+        delete: bool,
+    },
+    /// Membership primitive. Podcasts and episodes share one address space
+    /// (`LibraryItemId`) so the model does not need a separate verb per item
+    /// kind — the kernel resolves what each id refers to.
+    TagItems {
+        category_id: CategoryId,
+        add_item_ids: Vec<LibraryItemId>,
+        remove_item_ids: Vec<LibraryItemId>,
+    },
     CreateClip {
         episode_id: EpisodeId,
         podcast_id: PodcastId,
@@ -179,6 +199,8 @@ impl AgentToolAction {
             Self::ScheduleTask { .. } => AgentToolName::ScheduleTask,
             Self::CancelScheduledTask { .. } => AgentToolName::CancelScheduledTask,
             Self::ChangePodcastCategory { .. } => AgentToolName::ChangePodcastCategory,
+            Self::WriteCategory { .. } => AgentToolName::WriteCategory,
+            Self::TagItems { .. } => AgentToolName::TagItems,
             Self::CreateClip { .. } => AgentToolName::CreateClip,
             Self::SubscribePodcast { .. } => AgentToolName::SubscribePodcast,
             Self::IngestYoutubeVideo { .. } => AgentToolName::IngestYoutubeVideo,
@@ -191,104 +213,8 @@ impl AgentToolAction {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
-pub enum AgentTurnStage {
-    AwaitingModel,
-    ApprovalRequired,
-    Authorized,
-    Executing,
-    CommitPending,
-    Committed,
-    Completed,
-    Denied,
-    Cancelled,
-    Blocked,
-    OutcomeAmbiguous,
-    Failed,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
-pub struct AgentProposalProjection {
-    pub proposal_id: AgentProposalId,
-    pub proposal_digest: ContentDigest,
-    pub revision: StateRevision,
-    pub action: AgentToolAction,
-    pub required_authority: AgentAuthority,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
-pub struct AgentCommitReceipt {
-    pub commit_id: AgentCommitId,
-    pub proposal_id: AgentProposalId,
-    pub artifact_id: Option<GeneratedArtifactId>,
-    pub committed_at: UnixTimestampMilliseconds,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
-pub struct AgentTurnProjection {
-    pub conversation_id: ConversationId,
-    pub turn_id: AgentTurnId,
-    pub revision: StateRevision,
-    pub stage: AgentTurnStage,
-    pub messages: Vec<AgentMessageProjection>,
-    #[serde(default)]
-    pub recall_evidence: Vec<RecallEvidenceProjection>,
-    #[serde(default)]
-    pub model_usage: Vec<crate::AgentModelUsageProjection>,
-    pub proposal: Option<AgentProposalProjection>,
-    pub execution_fence_id: Option<AgentExecutionFenceId>,
-    pub commit: Option<AgentCommitReceipt>,
-    pub safe_failure: Option<String>,
-    pub updated_at: UnixTimestampMilliseconds,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
-pub struct AgentConversationProjection {
-    pub conversation_id: ConversationId,
-    pub turns: Vec<AgentTurnProjection>,
-    pub has_more: bool,
-    pub failure: Option<crate::CoreFailure>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
-pub struct AgentModelExecutionRequest {
-    pub conversation_id: ConversationId,
-    pub turn_id: AgentTurnId,
-    pub model_fence_id: AgentExecutionFenceId,
-    pub model_reference: String,
-    pub messages: Vec<AgentMessageProjection>,
-    pub tool_definitions: Vec<crate::AgentToolDefinition>,
-    pub maximum_output_bytes: u64,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
-pub struct AgentApprovalRequest {
-    pub turn_id: AgentTurnId,
-    pub proposal: AgentProposalProjection,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
-pub struct AgentCapabilityRequest {
-    pub turn_id: AgentTurnId,
-    pub proposal_id: AgentProposalId,
-    pub proposal_digest: ContentDigest,
-    pub execution_fence_id: AgentExecutionFenceId,
-    pub execution_mode: AgentCapabilityExecutionMode,
-    pub generated_audio_target: Option<AgentGeneratedAudioTarget>,
-    pub action: AgentToolAction,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
-pub enum AgentCapabilityOutcome {
-    Succeeded {
-        bounded_result: String,
-    },
-    GeneratedAudioStaged {
-        evidence: AgentGeneratedAudioEvidence,
-    },
-    Failed {
-        safe_detail: Option<String>,
-    },
-    Cancelled,
-    OutcomeAmbiguous,
-}
+pub use crate::agent_turn_contract::{
+    AgentApprovalRequest, AgentCapabilityOutcome, AgentCapabilityRequest, AgentCommitReceipt,
+    AgentConversationProjection, AgentModelExecutionRequest, AgentProposalProjection,
+    AgentTurnProjection, AgentTurnStage,
+};

@@ -32,6 +32,8 @@
     {"tool":"list_podcasts","classes":["read_only","secret_bearing"],"authority":"durable_turn_grant","decision_owner":"pod0_rust","execution":"rust_projection"},
     {"tool":"list_categories","classes":["read_only","secret_bearing"],"authority":"durable_turn_grant","decision_owner":"pod0_rust","execution":"rust_projection"},
     {"tool":"change_podcast_category","classes":["reversible_write"],"authority":"durable_turn_grant","decision_owner":"pod0_rust","execution":"rust_commit"},
+    {"tool":"write_category","classes":["destructive_write"],"authority":"one_shot_approval","decision_owner":"pod0_rust","execution":"rust_commit"},
+    {"tool":"tag_items","classes":["reversible_write"],"authority":"durable_turn_grant","decision_owner":"pod0_rust","execution":"rust_commit"},
     {"tool":"list_episodes","classes":["read_only","secret_bearing"],"authority":"durable_turn_grant","decision_owner":"pod0_rust","execution":"rust_projection"},
     {"tool":"list_in_progress","classes":["read_only","secret_bearing"],"authority":"durable_turn_grant","decision_owner":"pod0_rust","execution":"rust_projection"},
     {"tool":"list_recent_unplayed","classes":["read_only","secret_bearing"],"authority":"durable_turn_grant","decision_owner":"pod0_rust","execution":"rust_projection"},
