@@ -17,6 +17,7 @@ fn publisher_workflow_admission_is_bounded_and_replenishes_after_completion() {
                     feed_url: None,
                     podcast_title: "Admission fixture".to_owned(),
                     audio_url: format!("https://example.test/audio-{index}.mp3"),
+                    guid: None,
                     title: format!("Admission episode {index}"),
                     description: String::new(),
                     published_at: UnixTimestampMilliseconds::new(1_800_000_000_000 + index as i64),

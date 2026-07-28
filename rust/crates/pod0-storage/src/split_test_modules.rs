@@ -28,6 +28,7 @@ mod feed_discovery_cutover_tests;
 mod feed_discovery_cutover_validation_tests;
 mod feed_discovery_workflow_policy_tests;
 mod feed_discovery_workflow_store_tests;
+mod library_store_external_dedup_tests;
 mod library_store_playback_tests;
 mod library_store_synthetic_tests;
 mod library_store_tests;

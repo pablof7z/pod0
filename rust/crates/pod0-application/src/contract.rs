@@ -10,7 +10,7 @@ use crate::{
     TranscriptWorkflowConfiguration, TranscriptWorkflowOrigin,
 };
 
-pub const FACADE_CONTRACT_VERSION: u32 = 52;
+pub const FACADE_CONTRACT_VERSION: u32 = 53;
 pub const MAX_PROJECTION_ITEMS: u16 = 200;
 pub const MAX_OPERATION_ITEMS: usize = 32;
 pub const MAX_HOST_REQUEST_BATCH: u16 = 64;
@@ -42,6 +42,11 @@ pub struct ExternalEpisodeInput {
     pub feed_url: Option<String>,
     pub podcast_title: String,
     pub audio_url: String,
+    /// Publisher's `<guid>` (or equivalent stable id from the source page),
+    /// when known. Falls back to `audio_url` for identity when absent.
+    /// Without this, importing an episode of an already-subscribed show
+    /// produces a second row instead of matching the feed-ingested one.
+    pub guid: Option<String>,
     pub title: String,
     pub description: String,
     pub published_at: UnixTimestampMilliseconds,

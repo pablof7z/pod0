@@ -4,11 +4,27 @@ struct SharedEpisodeImportRequest: Codable, Equatable, Identifiable, Sendable {
     let id: UUID
     let sourceURL: URL
     let createdAt: Date
+    /// Number of import attempts that have already failed for this request.
+    /// Missing on disk (pre-existing queued shares) decodes to 0.
+    var attemptCount: Int
 
-    init(id: UUID = UUID(), sourceURL: URL, createdAt: Date = Date()) {
+    init(id: UUID = UUID(), sourceURL: URL, createdAt: Date = Date(), attemptCount: Int = 0) {
         self.id = id
         self.sourceURL = sourceURL
         self.createdAt = createdAt
+        self.attemptCount = attemptCount
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, sourceURL, createdAt, attemptCount
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        sourceURL = try container.decode(URL.self, forKey: .sourceURL)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        attemptCount = try container.decodeIfPresent(Int.self, forKey: .attemptCount) ?? 0
     }
 }
 
@@ -92,6 +108,17 @@ struct SharedEpisodeImportRequestStore: Sendable {
         let url = fileURL(for: request.id)
         guard fileManager.fileExists(atPath: url.path) else { return }
         try fileManager.removeItem(at: url)
+    }
+
+    /// Overwrites the persisted copy of `request` in place (same id), so a
+    /// failed import can record its attempt count instead of being deleted.
+    func update(
+        _ request: SharedEpisodeImportRequest,
+        fileManager: FileManager = .default
+    ) throws {
+        try ensureDirectory(fileManager: fileManager)
+        let data = try JSONEncoder().encode(request)
+        try data.write(to: fileURL(for: request.id), options: .atomic)
     }
 
     private func ensureDirectory(fileManager: FileManager) throws {

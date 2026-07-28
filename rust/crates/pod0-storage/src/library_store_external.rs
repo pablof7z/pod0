@@ -78,6 +78,7 @@ impl LibraryStore {
         feed_identity: Option<FeedIdentityV1>,
         podcast_title: &str,
         audio_url: &str,
+        guid: Option<&str>,
         title: &str,
         description: &str,
         published_at_ms: i64,
@@ -86,6 +87,9 @@ impl LibraryStore {
         duration_milliseconds: Option<u64>,
         observed_at_ms: i64,
     ) -> Result<(StateRevision, PodcastId, EpisodeId), StorageError> {
+        let publisher_guid = guid
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or(audio_url);
         self.write(|transaction| {
             let podcast_id = ensure_external_parent(
                 transaction,
@@ -97,17 +101,17 @@ impl LibraryStore {
             if let Some(revision) =
                 command_was_applied(transaction, command_id, command_fingerprint)?
             {
-                let episode_id = find_episode_id(transaction, podcast_id, audio_url)?;
+                let episode_id = find_episode_id(transaction, podcast_id, publisher_guid)?;
                 return Ok((revision, podcast_id, episode_id));
             }
             let origin = source_import_id(transaction)?;
-            let proposed_episode_id = episode_id(podcast_id, audio_url);
+            let proposed_episode_id = episode_id(podcast_id, publisher_guid);
             transaction.execute(
                 "INSERT INTO pod0_episodes(episode_id,podcast_id,publisher_guid,title,description,\
                  published_at_ms,duration_ms,enclosure_url,enclosure_mime_type,image_url,\
                  resume_position_ms,completion_code,is_starred,download_code,transcript_code,\
                  legacy_payload,source_import_id) \
-                VALUES(?1,?2,?3,?4,?5,?6,?7,?3,?8,?9,0,1,0,1,1,x'7b7d',?10) \
+                VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,0,1,0,1,1,x'7b7d',?11) \
                  ON CONFLICT(podcast_id,publisher_guid) DO UPDATE SET \
                  title=CASE WHEN excluded.title='' THEN pod0_episodes.title ELSE excluded.title END,\
                  description=excluded.description,\
@@ -118,19 +122,20 @@ impl LibraryStore {
                 params![
                     proposed_episode_id.into_bytes().as_slice(),
                     podcast_id.into_bytes().as_slice(),
-                    audio_url,
+                    publisher_guid,
                     title,
                     description,
                     published_at_ms,
                     duration_milliseconds
                         .map(|value| i64_value(value, "external episode duration"))
                         .transpose()?,
+                    audio_url,
                     enclosure_mime_type,
                     image_url,
                     origin,
                 ],
             ).map_err(|error| StorageError::sqlite("upsert external episode", error))?;
-            let actual_episode_id = find_episode_id(transaction, podcast_id, audio_url)?;
+            let actual_episode_id = find_episode_id(transaction, podcast_id, publisher_guid)?;
             transaction.execute(
                 "INSERT INTO pod0_episode_feed_metadata(episode_id,persons_json,sound_bites_json) \
                  VALUES(?1,'[]','[]') ON CONFLICT(episode_id) DO NOTHING",

@@ -48,6 +48,7 @@ fn add_episode(fixture: &PlaybackFixture, id: u64, published_at: i64) -> Episode
                 feed_url: None,
                 podcast_title: "Automatic fixture".to_owned(),
                 audio_url: audio_url.clone(),
+                guid: None,
                 title: format!("Automatic episode {id}"),
                 description: String::new(),
                 published_at: UnixTimestampMilliseconds::new(published_at),

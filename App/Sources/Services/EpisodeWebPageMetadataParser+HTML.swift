@@ -223,8 +223,23 @@ extension EpisodeWebPageMetadataParser {
 
     static func parseDate(_ value: String?) -> Date? {
         guard let value else { return nil }
-        return ISO8601DateFormatter().date(from: value)
+        if let date = ISO8601DateFormatter().date(from: value) {
+            return date
+        }
+        // Apple's PodcastEpisode `datePublished` is often a bare calendar
+        // date ("2026-07-27") with no time component, which
+        // ISO8601DateFormatter's default options reject outright.
+        return dateOnlyFormatter.date(from: value)
     }
+
+    private static let dateOnlyFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .iso8601)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
 
     static func parseDuration(_ value: String?) -> TimeInterval? {
         guard let value else { return nil }
@@ -242,18 +257,5 @@ extension EpisodeWebPageMetadataParser {
             return Double(value[range]) ?? 0
         }
         return number(at: 1) * 3_600 + number(at: 2) * 60 + number(at: 3)
-    }
-
-    static func decodeHTMLEntities(_ value: String) -> String {
-        var decoded = value
-        let replacements = [
-            "&amp;": "&", "&quot;": "\"", "&#39;": "'", "&apos;": "'",
-            "&lt;": "<", "&gt;": ">", "&nbsp;": " ", "&mdash;": "—",
-            "&ndash;": "–"
-        ]
-        for (entity, replacement) in replacements {
-            decoded = decoded.replacingOccurrences(of: entity, with: replacement)
-        }
-        return decoded
     }
 }

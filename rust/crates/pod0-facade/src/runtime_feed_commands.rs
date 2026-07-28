@@ -210,6 +210,7 @@ impl FacadeState {
                     feed_identity,
                     &episode.podcast_title,
                     &audio_url,
+                    episode.guid.as_deref(),
                     &episode.title,
                     &episode.description,
                     episode.published_at.value,

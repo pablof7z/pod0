@@ -115,6 +115,7 @@ fn external_episode_and_placeholder_are_durable_without_creating_a_subscription(
             Some(feed.clone()),
             "External show",
             "https://external.test/audio.mp3",
+            None,
             "External episode",
             "External description",
             1_800_000_000_011,
@@ -148,6 +149,7 @@ fn external_episode_and_placeholder_are_durable_without_creating_a_subscription(
                 Some(feed.clone()),
                 "External show",
                 "https://external.test/audio.mp3",
+                None,
                 "Ignored replay",
                 "Ignored description",
                 1_800_000_000_013,
@@ -169,6 +171,7 @@ fn external_episode_and_placeholder_are_durable_without_creating_a_subscription(
             Some(feed),
             "Duplicate identity",
             "https://external.test/audio.mp3",
+            None,
             "Retitled external episode",
             "Retitled description",
             1_800_000_000_014,
@@ -231,7 +234,7 @@ fn listening_reset_clears_library_and_playback_but_preserves_authority() {
     assert!(LibraryStore::open_authoritative(&fixture.target).is_ok());
 }
 
-fn imported_fixture() -> ImportFixture {
+pub(crate) fn imported_fixture() -> ImportFixture {
     let fixture = ImportFixture::new();
     create_sqlite_source(
         &fixture.source,
