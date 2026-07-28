@@ -55,6 +55,12 @@ impl LibraryStore {
         crate::clip_store_read::read_clip_snapshot(&connection)
     }
 
+    pub fn category_snapshot(&self) -> Result<crate::CategoryCollectionSnapshot, StorageError> {
+        let connection = open_current(&self.path, true)?;
+        require_authoritative(&connection)?;
+        crate::category_store_read::read_snapshot(&connection)
+    }
+
     pub fn selected_chapter_artifact(
         &self,
         episode_id: EpisodeId,

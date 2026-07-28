@@ -1,3 +1,6 @@
+mod category_store_tagging_tests;
+mod category_store_test_support;
+mod category_store_tests;
 mod chapter_import_evidence_tests;
 mod chapter_import_failure_tests;
 mod chapter_import_recovery_tests;
@@ -44,6 +47,7 @@ mod note_import_tests;
 mod note_schema_test_support;
 mod recovery_test_support;
 mod recovery_tests;
+mod schema_revert_test_support;
 mod scheduled_agent_cutover_tests;
 mod scheduled_agent_store_lifecycle_tests;
 mod scheduled_agent_store_schema_tests;

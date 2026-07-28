@@ -5,6 +5,8 @@ use pod0_domain::{CommandId, UnixTimestampMilliseconds};
 uniffi::setup_scaffolding!();
 
 mod agent_action_hash;
+mod agent_action_hash_primitives;
+mod agent_action_validation;
 mod agent_contract;
 mod agent_generated_audio;
 mod agent_history_contract;
@@ -18,9 +20,13 @@ mod agent_provider_output;
 mod agent_provider_output_tests;
 mod agent_run_contract;
 mod agent_tool_catalog;
+mod agent_tool_catalog_builders;
+#[cfg(test)]
+mod agent_tool_catalog_tests;
 mod agent_tool_names;
 #[cfg(test)]
 mod agent_tool_policy_tests;
+mod agent_turn_contract;
 mod agent_workflow;
 #[cfg(test)]
 mod agent_workflow_compatibility_tests;

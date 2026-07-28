@@ -1499,6 +1499,214 @@ public object FfiConverterTypeCancellationId: FfiConverterRustBuffer<Cancellatio
 
 
 
+data class CategoryId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCategoryId: FfiConverterRustBuffer<CategoryId> {
+    override fun read(buf: ByteBuffer): CategoryId {
+        return CategoryId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: CategoryId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: CategoryId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class CategoryMember (
+    val `itemId`: LibraryItemId
+    ,
+    val `kind`: CategoryItemKind
+    ,
+    /**
+     * When this item entered the category. Ordering membership by recency
+     * is what makes a category page feel alive rather than alphabetical.
+     */
+    val `addedAt`: UnixTimestampMilliseconds
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCategoryMember: FfiConverterRustBuffer<CategoryMember> {
+    override fun read(buf: ByteBuffer): CategoryMember {
+        return CategoryMember(
+            FfiConverterTypeLibraryItemId.read(buf),
+            FfiConverterTypeCategoryItemKind.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: CategoryMember) = (
+            FfiConverterTypeLibraryItemId.allocationSize(value.`itemId`) +
+            FfiConverterTypeCategoryItemKind.allocationSize(value.`kind`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`addedAt`)
+    )
+
+    override fun write(value: CategoryMember, buf: ByteBuffer) {
+            FfiConverterTypeLibraryItemId.write(value.`itemId`, buf)
+            FfiConverterTypeCategoryItemKind.write(value.`kind`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`addedAt`, buf)
+    }
+}
+
+
+
+data class CategoryRecord (
+    val `categoryId`: CategoryId
+    ,
+    val `revision`: CategoryRevision
+    ,
+    val `name`: kotlin.String
+    ,
+    /**
+     * Lowercased, hyphenated form of `name`. Derived by the kernel rather
+     * than accepted from a caller so it cannot drift from the name.
+     */
+    val `slug`: kotlin.String
+    ,
+    val `description`: kotlin.String
+    ,
+    /**
+     * `#RRGGBB` or `#RRGGBBAA`, or `None` to let presentation derive a tint.
+     */
+    val `colorHex`: kotlin.String?
+    ,
+    val `origin`: CategoryOrigin
+    ,
+    val `members`: List<CategoryMember>
+    ,
+    val `createdAt`: UnixTimestampMilliseconds
+    ,
+    val `updatedAt`: UnixTimestampMilliseconds
+    ,
+    val `deleted`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCategoryRecord: FfiConverterRustBuffer<CategoryRecord> {
+    override fun read(buf: ByteBuffer): CategoryRecord {
+        return CategoryRecord(
+            FfiConverterTypeCategoryId.read(buf),
+            FfiConverterTypeCategoryRevision.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeCategoryOrigin.read(buf),
+            FfiConverterSequenceTypeCategoryMember.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: CategoryRecord) = (
+            FfiConverterTypeCategoryId.allocationSize(value.`categoryId`) +
+            FfiConverterTypeCategoryRevision.allocationSize(value.`revision`) +
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterString.allocationSize(value.`slug`) +
+            FfiConverterString.allocationSize(value.`description`) +
+            FfiConverterOptionalString.allocationSize(value.`colorHex`) +
+            FfiConverterTypeCategoryOrigin.allocationSize(value.`origin`) +
+            FfiConverterSequenceTypeCategoryMember.allocationSize(value.`members`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`createdAt`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`updatedAt`) +
+            FfiConverterBoolean.allocationSize(value.`deleted`)
+    )
+
+    override fun write(value: CategoryRecord, buf: ByteBuffer) {
+            FfiConverterTypeCategoryId.write(value.`categoryId`, buf)
+            FfiConverterTypeCategoryRevision.write(value.`revision`, buf)
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterString.write(value.`slug`, buf)
+            FfiConverterString.write(value.`description`, buf)
+            FfiConverterOptionalString.write(value.`colorHex`, buf)
+            FfiConverterTypeCategoryOrigin.write(value.`origin`, buf)
+            FfiConverterSequenceTypeCategoryMember.write(value.`members`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`createdAt`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`updatedAt`, buf)
+            FfiConverterBoolean.write(value.`deleted`, buf)
+    }
+}
+
+
+
+data class CategoryRevision (
+    val `value`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCategoryRevision: FfiConverterRustBuffer<CategoryRevision> {
+    override fun read(buf: ByteBuffer): CategoryRevision {
+        return CategoryRevision(
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: CategoryRevision) = (
+            FfiConverterULong.allocationSize(value.`value`)
+    )
+
+    override fun write(value: CategoryRevision, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`value`, buf)
+    }
+}
+
+
+
 data class ChapterArtifactId (
     val `high`: kotlin.ULong
     ,
@@ -3093,6 +3301,44 @@ public object FfiConverterTypeHostRequestId: FfiConverterRustBuffer<HostRequestI
     )
 
     override fun write(value: HostRequestId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class LibraryItemId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLibraryItemId: FfiConverterRustBuffer<LibraryItemId> {
+    override fun read(buf: ByteBuffer): LibraryItemId {
+        return LibraryItemId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LibraryItemId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: LibraryItemId, buf: ByteBuffer) {
             FfiConverterULong.write(value.`high`, buf)
             FfiConverterULong.write(value.`low`, buf)
     }
@@ -5653,6 +5899,213 @@ public object FfiConverterTypeAutoDownloadMode : FfiConverterRustBuffer<AutoDown
                 Unit
             }
             is AutoDownloadMode.Unsupported -> {
+                buf.putInt(4)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+/**
+ * What a category holds. Podcasts and episodes share `LibraryItemId` so the
+ * membership primitive needs no per-kind verb, but the resolved kind is
+ * recorded once the kernel has looked the id up.
+ */
+sealed class CategoryItemKind {
+
+    object Podcast : CategoryItemKind()
+
+
+    object Episode : CategoryItemKind()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : CategoryItemKind()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCategoryItemKind : FfiConverterRustBuffer<CategoryItemKind>{
+    override fun read(buf: ByteBuffer): CategoryItemKind {
+        return when(buf.getInt()) {
+            1 -> CategoryItemKind.Podcast
+            2 -> CategoryItemKind.Episode
+            3 -> CategoryItemKind.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: CategoryItemKind): ULong = when(value) {
+        is CategoryItemKind.Podcast -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CategoryItemKind.Episode -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CategoryItemKind.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: CategoryItemKind, buf: ByteBuffer) {
+        when(value) {
+            is CategoryItemKind.Podcast -> {
+                buf.putInt(1)
+                Unit
+            }
+            is CategoryItemKind.Episode -> {
+                buf.putInt(2)
+                Unit
+            }
+            is CategoryItemKind.Unsupported -> {
+                buf.putInt(3)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+/**
+ * Who put a category there. The distinction is not cosmetic: a rebuild of
+ * the machine-generated taxonomy must not silently discard groupings the
+ * user or the agent curated deliberately.
+ */
+sealed class CategoryOrigin {
+
+    /**
+     * Produced by a bulk categorization pass over the library.
+     */
+    object Generated : CategoryOrigin()
+
+
+    /**
+     * Created by the agent through `write_category`.
+     */
+    object Agent : CategoryOrigin()
+
+
+    /**
+     * Created by the person using the app.
+     */
+    object User : CategoryOrigin()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : CategoryOrigin()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCategoryOrigin : FfiConverterRustBuffer<CategoryOrigin>{
+    override fun read(buf: ByteBuffer): CategoryOrigin {
+        return when(buf.getInt()) {
+            1 -> CategoryOrigin.Generated
+            2 -> CategoryOrigin.Agent
+            3 -> CategoryOrigin.User
+            4 -> CategoryOrigin.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: CategoryOrigin): ULong = when(value) {
+        is CategoryOrigin.Generated -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CategoryOrigin.Agent -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CategoryOrigin.User -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CategoryOrigin.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: CategoryOrigin, buf: ByteBuffer) {
+        when(value) {
+            is CategoryOrigin.Generated -> {
+                buf.putInt(1)
+                Unit
+            }
+            is CategoryOrigin.Agent -> {
+                buf.putInt(2)
+                Unit
+            }
+            is CategoryOrigin.User -> {
+                buf.putInt(3)
+                Unit
+            }
+            is CategoryOrigin.Unsupported -> {
                 buf.putInt(4)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
@@ -9428,6 +9881,34 @@ public object FfiConverterSequenceTypeAdSpanInput: FfiConverterRustBuffer<List<A
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeAdSpanInput.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeCategoryMember: FfiConverterRustBuffer<List<CategoryMember>> {
+    override fun read(buf: ByteBuffer): List<CategoryMember> {
+        val len = buf.getInt()
+        return List<CategoryMember>(len) {
+            FfiConverterTypeCategoryMember.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<CategoryMember>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeCategoryMember.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<CategoryMember>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeCategoryMember.write(it, buf)
         }
     }
 }

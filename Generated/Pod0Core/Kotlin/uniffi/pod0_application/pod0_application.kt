@@ -38,6 +38,7 @@ import uniffi.pod0_domain.AgentProposalId
 import uniffi.pod0_domain.AgentTurnId
 import uniffi.pod0_domain.AutoDownloadPolicy
 import uniffi.pod0_domain.CancellationId
+import uniffi.pod0_domain.CategoryId
 import uniffi.pod0_domain.ChapterAdKind
 import uniffi.pod0_domain.ChapterArtifactId
 import uniffi.pod0_domain.ChapterArtifactInput
@@ -72,6 +73,7 @@ import uniffi.pod0_domain.FfiConverterTypeAgentProposalId
 import uniffi.pod0_domain.FfiConverterTypeAgentTurnId
 import uniffi.pod0_domain.FfiConverterTypeAutoDownloadPolicy
 import uniffi.pod0_domain.FfiConverterTypeCancellationId
+import uniffi.pod0_domain.FfiConverterTypeCategoryId
 import uniffi.pod0_domain.FfiConverterTypeChapterAdKind
 import uniffi.pod0_domain.FfiConverterTypeChapterArtifactId
 import uniffi.pod0_domain.FfiConverterTypeChapterArtifactInput
@@ -100,6 +102,7 @@ import uniffi.pod0_domain.FfiConverterTypeEvidenceSpanId
 import uniffi.pod0_domain.FfiConverterTypeFeedDiscoveryOccurrenceId
 import uniffi.pod0_domain.FfiConverterTypeGeneratedArtifactId
 import uniffi.pod0_domain.FfiConverterTypeHostRequestId
+import uniffi.pod0_domain.FfiConverterTypeLibraryItemId
 import uniffi.pod0_domain.FfiConverterTypeMemoryId
 import uniffi.pod0_domain.FfiConverterTypeMemoryRecord
 import uniffi.pod0_domain.FfiConverterTypeMemoryRevision
@@ -146,6 +149,7 @@ import uniffi.pod0_domain.FfiConverterTypeTranscriptWorkflowId
 import uniffi.pod0_domain.FfiConverterTypeUnixTimestampMilliseconds
 import uniffi.pod0_domain.GeneratedArtifactId
 import uniffi.pod0_domain.HostRequestId
+import uniffi.pod0_domain.LibraryItemId
 import uniffi.pod0_domain.MemoryId
 import uniffi.pod0_domain.MemoryRecord
 import uniffi.pod0_domain.MemoryRevision
@@ -198,6 +202,7 @@ import uniffi.pod0_domain.RustBuffer as RustBufferAgentProposalId
 import uniffi.pod0_domain.RustBuffer as RustBufferAgentTurnId
 import uniffi.pod0_domain.RustBuffer as RustBufferAutoDownloadPolicy
 import uniffi.pod0_domain.RustBuffer as RustBufferCancellationId
+import uniffi.pod0_domain.RustBuffer as RustBufferCategoryId
 import uniffi.pod0_domain.RustBuffer as RustBufferChapterAdKind
 import uniffi.pod0_domain.RustBuffer as RustBufferChapterArtifactId
 import uniffi.pod0_domain.RustBuffer as RustBufferChapterArtifactInput
@@ -226,6 +231,7 @@ import uniffi.pod0_domain.RustBuffer as RustBufferEvidenceSpanId
 import uniffi.pod0_domain.RustBuffer as RustBufferFeedDiscoveryOccurrenceId
 import uniffi.pod0_domain.RustBuffer as RustBufferGeneratedArtifactId
 import uniffi.pod0_domain.RustBuffer as RustBufferHostRequestId
+import uniffi.pod0_domain.RustBuffer as RustBufferLibraryItemId
 import uniffi.pod0_domain.RustBuffer as RustBufferMemoryId
 import uniffi.pod0_domain.RustBuffer as RustBufferMemoryRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferMemoryRevision
@@ -8899,6 +8905,40 @@ sealed class AgentToolAction {
         companion object
     }
 
+    /**
+     * One upsert-or-delete primitive over a single category rather than a
+     * create/update/delete triplet. Absent `category_id` means create;
+     * `delete` means remove. Absent optional fields are left untouched.
+     */
+    data class WriteCategory(
+        val `categoryId`: uniffi.pod0_domain.CategoryId?,
+        val `name`: kotlin.String?,
+        val `description`: kotlin.String?,
+        val `colorHex`: kotlin.String?,
+        val `delete`: kotlin.Boolean) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
+    /**
+     * Membership primitive. Podcasts and episodes share one address space
+     * (`LibraryItemId`) so the model does not need a separate verb per item
+     * kind — the kernel resolves what each id refers to.
+     */
+    data class TagItems(
+        val `categoryId`: uniffi.pod0_domain.CategoryId,
+        val `addItemIds`: List<uniffi.pod0_domain.LibraryItemId>,
+        val `removeItemIds`: List<uniffi.pod0_domain.LibraryItemId>) : AgentToolAction()
+
+    {
+
+
+        companion object
+    }
+
     data class CreateClip(
         val `episodeId`: uniffi.pod0_domain.EpisodeId,
         val `podcastId`: uniffi.pod0_domain.PodcastId,
@@ -9058,7 +9098,19 @@ public object FfiConverterTypeAgentToolAction : FfiConverterRustBuffer<AgentTool
                 FfiConverterTypePodcastId.read(buf),
                 FfiConverterString.read(buf),
                 )
-            16 -> AgentToolAction.CreateClip(
+            16 -> AgentToolAction.WriteCategory(
+                FfiConverterOptionalTypeCategoryId.read(buf),
+                FfiConverterOptionalString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            17 -> AgentToolAction.TagItems(
+                FfiConverterTypeCategoryId.read(buf),
+                FfiConverterSequenceTypeLibraryItemId.read(buf),
+                FfiConverterSequenceTypeLibraryItemId.read(buf),
+                )
+            18 -> AgentToolAction.CreateClip(
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterTypePodcastId.read(buf),
                 FfiConverterULong.read(buf),
@@ -9066,31 +9118,31 @@ public object FfiConverterTypeAgentToolAction : FfiConverterRustBuffer<AgentTool
                 FfiConverterOptionalString.read(buf),
                 FfiConverterString.read(buf),
                 )
-            17 -> AgentToolAction.SubscribePodcast(
+            19 -> AgentToolAction.SubscribePodcast(
                 FfiConverterString.read(buf),
                 )
-            18 -> AgentToolAction.IngestYoutubeVideo(
+            20 -> AgentToolAction.IngestYoutubeVideo(
                 FfiConverterString.read(buf),
                 )
-            19 -> AgentToolAction.ConfigureAgentVoice(
+            21 -> AgentToolAction.ConfigureAgentVoice(
                 FfiConverterString.read(buf),
                 )
-            20 -> AgentToolAction.CreatePodcast(
+            22 -> AgentToolAction.CreatePodcast(
                 FfiConverterString.read(buf),
                 FfiConverterString.read(buf),
                 )
-            21 -> AgentToolAction.UpdatePodcast(
+            23 -> AgentToolAction.UpdatePodcast(
                 FfiConverterTypePodcastId.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterString.read(buf),
                 )
-            22 -> AgentToolAction.GenerateTtsEpisode(
+            24 -> AgentToolAction.GenerateTtsEpisode(
                 FfiConverterOptionalTypePodcastId.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterOptionalString.read(buf),
                 )
-            23 -> AgentToolAction.GeneratePodcastArtwork(
+            25 -> AgentToolAction.GeneratePodcastArtwork(
                 FfiConverterTypePodcastId.read(buf),
                 FfiConverterString.read(buf),
                 )
@@ -9216,6 +9268,26 @@ public object FfiConverterTypeAgentToolAction : FfiConverterRustBuffer<AgentTool
                 4UL
                 + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
                 + FfiConverterString.allocationSize(value.`category`)
+            )
+        }
+        is AgentToolAction.WriteCategory -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterOptionalTypeCategoryId.allocationSize(value.`categoryId`)
+                + FfiConverterOptionalString.allocationSize(value.`name`)
+                + FfiConverterOptionalString.allocationSize(value.`description`)
+                + FfiConverterOptionalString.allocationSize(value.`colorHex`)
+                + FfiConverterBoolean.allocationSize(value.`delete`)
+            )
+        }
+        is AgentToolAction.TagItems -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeCategoryId.allocationSize(value.`categoryId`)
+                + FfiConverterSequenceTypeLibraryItemId.allocationSize(value.`addItemIds`)
+                + FfiConverterSequenceTypeLibraryItemId.allocationSize(value.`removeItemIds`)
             )
         }
         is AgentToolAction.CreateClip -> {
@@ -9379,8 +9451,24 @@ public object FfiConverterTypeAgentToolAction : FfiConverterRustBuffer<AgentTool
                 FfiConverterString.write(value.`category`, buf)
                 Unit
             }
-            is AgentToolAction.CreateClip -> {
+            is AgentToolAction.WriteCategory -> {
                 buf.putInt(16)
+                FfiConverterOptionalTypeCategoryId.write(value.`categoryId`, buf)
+                FfiConverterOptionalString.write(value.`name`, buf)
+                FfiConverterOptionalString.write(value.`description`, buf)
+                FfiConverterOptionalString.write(value.`colorHex`, buf)
+                FfiConverterBoolean.write(value.`delete`, buf)
+                Unit
+            }
+            is AgentToolAction.TagItems -> {
+                buf.putInt(17)
+                FfiConverterTypeCategoryId.write(value.`categoryId`, buf)
+                FfiConverterSequenceTypeLibraryItemId.write(value.`addItemIds`, buf)
+                FfiConverterSequenceTypeLibraryItemId.write(value.`removeItemIds`, buf)
+                Unit
+            }
+            is AgentToolAction.CreateClip -> {
+                buf.putInt(18)
                 FfiConverterTypeEpisodeId.write(value.`episodeId`, buf)
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
                 FfiConverterULong.write(value.`startMilliseconds`, buf)
@@ -9390,35 +9478,35 @@ public object FfiConverterTypeAgentToolAction : FfiConverterRustBuffer<AgentTool
                 Unit
             }
             is AgentToolAction.SubscribePodcast -> {
-                buf.putInt(17)
+                buf.putInt(19)
                 FfiConverterString.write(value.`feedUrl`, buf)
                 Unit
             }
             is AgentToolAction.IngestYoutubeVideo -> {
-                buf.putInt(18)
+                buf.putInt(20)
                 FfiConverterString.write(value.`url`, buf)
                 Unit
             }
             is AgentToolAction.ConfigureAgentVoice -> {
-                buf.putInt(19)
+                buf.putInt(21)
                 FfiConverterString.write(value.`voiceId`, buf)
                 Unit
             }
             is AgentToolAction.CreatePodcast -> {
-                buf.putInt(20)
+                buf.putInt(22)
                 FfiConverterString.write(value.`title`, buf)
                 FfiConverterString.write(value.`description`, buf)
                 Unit
             }
             is AgentToolAction.UpdatePodcast -> {
-                buf.putInt(21)
+                buf.putInt(23)
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
                 FfiConverterString.write(value.`title`, buf)
                 FfiConverterString.write(value.`description`, buf)
                 Unit
             }
             is AgentToolAction.GenerateTtsEpisode -> {
-                buf.putInt(22)
+                buf.putInt(24)
                 FfiConverterOptionalTypePodcastId.write(value.`podcastId`, buf)
                 FfiConverterString.write(value.`title`, buf)
                 FfiConverterString.write(value.`script`, buf)
@@ -9426,7 +9514,7 @@ public object FfiConverterTypeAgentToolAction : FfiConverterRustBuffer<AgentTool
                 Unit
             }
             is AgentToolAction.GeneratePodcastArtwork -> {
-                buf.putInt(23)
+                buf.putInt(25)
                 FfiConverterTypePodcastId.write(value.`podcastId`, buf)
                 FfiConverterString.write(value.`prompt`, buf)
                 Unit
@@ -9511,6 +9599,8 @@ enum class AgentToolName {
     LIST_PODCASTS,
     LIST_CATEGORIES,
     CHANGE_PODCAST_CATEGORY,
+    WRITE_CATEGORY,
+    TAG_ITEMS,
     LIST_EPISODES,
     LIST_IN_PROGRESS,
     LIST_RECENT_UNPLAYED,
@@ -9585,6 +9675,22 @@ sealed class AgentToolParameterKind {
         companion object
     }
 
+    object Boolean : AgentToolParameterKind()
+
+
+    /**
+     * Array of strings. Present so a membership primitive can move many
+     * items in one call instead of forcing one tool call per item.
+     */
+    data class TextList(
+        val `maximumItems`: kotlin.UShort) : AgentToolParameterKind()
+
+    {
+
+
+        companion object
+    }
+
 
 
 
@@ -9608,6 +9714,10 @@ public object FfiConverterTypeAgentToolParameterKind : FfiConverterRustBuffer<Ag
                 )
             3 -> AgentToolParameterKind.DecimalPermille(
                 FfiConverterUShort.read(buf),
+                FfiConverterUShort.read(buf),
+                )
+            4 -> AgentToolParameterKind.Boolean
+            5 -> AgentToolParameterKind.TextList(
                 FfiConverterUShort.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -9637,6 +9747,19 @@ public object FfiConverterTypeAgentToolParameterKind : FfiConverterRustBuffer<Ag
                 + FfiConverterUShort.allocationSize(value.`maximum`)
             )
         }
+        is AgentToolParameterKind.Boolean -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is AgentToolParameterKind.TextList -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUShort.allocationSize(value.`maximumItems`)
+            )
+        }
     }
 
     override fun write(value: AgentToolParameterKind, buf: ByteBuffer) {
@@ -9655,6 +9778,15 @@ public object FfiConverterTypeAgentToolParameterKind : FfiConverterRustBuffer<Ag
                 buf.putInt(3)
                 FfiConverterUShort.write(value.`minimum`, buf)
                 FfiConverterUShort.write(value.`maximum`, buf)
+                Unit
+            }
+            is AgentToolParameterKind.Boolean -> {
+                buf.putInt(4)
+                Unit
+            }
+            is AgentToolParameterKind.TextList -> {
+                buf.putInt(5)
+                FfiConverterUShort.write(value.`maximumItems`, buf)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
@@ -26708,6 +26840,38 @@ public object FfiConverterOptionalTypeAgentExecutionFenceId: FfiConverterRustBuf
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeCategoryId: FfiConverterRustBuffer<CategoryId?> {
+    override fun read(buf: ByteBuffer): CategoryId? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeCategoryId.read(buf)
+    }
+
+    override fun allocationSize(value: CategoryId?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeCategoryId.allocationSize(value)
+        }
+    }
+
+    override fun write(value: CategoryId?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeCategoryId.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeChapterArtifactId: FfiConverterRustBuffer<ChapterArtifactId?> {
     override fun read(buf: ByteBuffer): ChapterArtifactId? {
         if (buf.get().toInt() == 0) {
@@ -28574,6 +28738,34 @@ public object FfiConverterSequenceTypeEpisodeRecord: FfiConverterRustBuffer<List
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeEpisodeRecord.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeLibraryItemId: FfiConverterRustBuffer<List<LibraryItemId>> {
+    override fun read(buf: ByteBuffer): List<LibraryItemId> {
+        val len = buf.getInt()
+        return List<LibraryItemId>(len) {
+            FfiConverterTypeLibraryItemId.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<LibraryItemId>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeLibraryItemId.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<LibraryItemId>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeLibraryItemId.write(it, buf)
         }
     }
 }

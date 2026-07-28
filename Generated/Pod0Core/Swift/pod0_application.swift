@@ -9708,6 +9708,20 @@ public enum AgentToolAction: Equatable, Hashable {
     )
     case changePodcastCategory(podcastId: PodcastId, category: String
     )
+    /**
+     * One upsert-or-delete primitive over a single category rather than a
+     * create/update/delete triplet. Absent `category_id` means create;
+     * `delete` means remove. Absent optional fields are left untouched.
+     */
+    case writeCategory(categoryId: CategoryId?, name: String?, description: String?, colorHex: String?, delete: Bool
+    )
+    /**
+     * Membership primitive. Podcasts and episodes share one address space
+     * (`LibraryItemId`) so the model does not need a separate verb per item
+     * kind — the kernel resolves what each id refers to.
+     */
+    case tagItems(categoryId: CategoryId, addItemIds: [LibraryItemId], removeItemIds: [LibraryItemId]
+    )
     case createClip(episodeId: EpisodeId, podcastId: PodcastId, startMilliseconds: UInt64, endMilliseconds: UInt64, caption: String?, frozenTranscriptText: String
     )
     case subscribePodcast(feedUrl: String
@@ -9790,28 +9804,34 @@ public struct FfiConverterTypeAgentToolAction: FfiConverterRustBuffer {
         case 15: return .changePodcastCategory(podcastId: try FfiConverterTypePodcastId.read(from: &buf), category: try FfiConverterString.read(from: &buf)
         )
 
-        case 16: return .createClip(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), podcastId: try FfiConverterTypePodcastId.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf)
+        case 16: return .writeCategory(categoryId: try FfiConverterOptionTypeCategoryId.read(from: &buf), name: try FfiConverterOptionString.read(from: &buf), description: try FfiConverterOptionString.read(from: &buf), colorHex: try FfiConverterOptionString.read(from: &buf), delete: try FfiConverterBool.read(from: &buf)
         )
 
-        case 17: return .subscribePodcast(feedUrl: try FfiConverterString.read(from: &buf)
+        case 17: return .tagItems(categoryId: try FfiConverterTypeCategoryId.read(from: &buf), addItemIds: try FfiConverterSequenceTypeLibraryItemId.read(from: &buf), removeItemIds: try FfiConverterSequenceTypeLibraryItemId.read(from: &buf)
         )
 
-        case 18: return .ingestYoutubeVideo(url: try FfiConverterString.read(from: &buf)
+        case 18: return .createClip(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), podcastId: try FfiConverterTypePodcastId.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf)
         )
 
-        case 19: return .configureAgentVoice(voiceId: try FfiConverterString.read(from: &buf)
+        case 19: return .subscribePodcast(feedUrl: try FfiConverterString.read(from: &buf)
         )
 
-        case 20: return .createPodcast(title: try FfiConverterString.read(from: &buf), description: try FfiConverterString.read(from: &buf)
+        case 20: return .ingestYoutubeVideo(url: try FfiConverterString.read(from: &buf)
         )
 
-        case 21: return .updatePodcast(podcastId: try FfiConverterTypePodcastId.read(from: &buf), title: try FfiConverterString.read(from: &buf), description: try FfiConverterString.read(from: &buf)
+        case 21: return .configureAgentVoice(voiceId: try FfiConverterString.read(from: &buf)
         )
 
-        case 22: return .generateTtsEpisode(podcastId: try FfiConverterOptionTypePodcastId.read(from: &buf), title: try FfiConverterString.read(from: &buf), script: try FfiConverterString.read(from: &buf), voiceId: try FfiConverterOptionString.read(from: &buf)
+        case 22: return .createPodcast(title: try FfiConverterString.read(from: &buf), description: try FfiConverterString.read(from: &buf)
         )
 
-        case 23: return .generatePodcastArtwork(podcastId: try FfiConverterTypePodcastId.read(from: &buf), prompt: try FfiConverterString.read(from: &buf)
+        case 23: return .updatePodcast(podcastId: try FfiConverterTypePodcastId.read(from: &buf), title: try FfiConverterString.read(from: &buf), description: try FfiConverterString.read(from: &buf)
+        )
+
+        case 24: return .generateTtsEpisode(podcastId: try FfiConverterOptionTypePodcastId.read(from: &buf), title: try FfiConverterString.read(from: &buf), script: try FfiConverterString.read(from: &buf), voiceId: try FfiConverterOptionString.read(from: &buf)
+        )
+
+        case 25: return .generatePodcastArtwork(podcastId: try FfiConverterTypePodcastId.read(from: &buf), prompt: try FfiConverterString.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -9911,8 +9931,24 @@ public struct FfiConverterTypeAgentToolAction: FfiConverterRustBuffer {
             FfiConverterString.write(category, into: &buf)
 
 
-        case let .createClip(episodeId,podcastId,startMilliseconds,endMilliseconds,caption,frozenTranscriptText):
+        case let .writeCategory(categoryId,name,description,colorHex,delete):
             writeInt(&buf, Int32(16))
+            FfiConverterOptionTypeCategoryId.write(categoryId, into: &buf)
+            FfiConverterOptionString.write(name, into: &buf)
+            FfiConverterOptionString.write(description, into: &buf)
+            FfiConverterOptionString.write(colorHex, into: &buf)
+            FfiConverterBool.write(delete, into: &buf)
+
+
+        case let .tagItems(categoryId,addItemIds,removeItemIds):
+            writeInt(&buf, Int32(17))
+            FfiConverterTypeCategoryId.write(categoryId, into: &buf)
+            FfiConverterSequenceTypeLibraryItemId.write(addItemIds, into: &buf)
+            FfiConverterSequenceTypeLibraryItemId.write(removeItemIds, into: &buf)
+
+
+        case let .createClip(episodeId,podcastId,startMilliseconds,endMilliseconds,caption,frozenTranscriptText):
+            writeInt(&buf, Int32(18))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypePodcastId.write(podcastId, into: &buf)
             FfiConverterUInt64.write(startMilliseconds, into: &buf)
@@ -9922,35 +9958,35 @@ public struct FfiConverterTypeAgentToolAction: FfiConverterRustBuffer {
 
 
         case let .subscribePodcast(feedUrl):
-            writeInt(&buf, Int32(17))
+            writeInt(&buf, Int32(19))
             FfiConverterString.write(feedUrl, into: &buf)
 
 
         case let .ingestYoutubeVideo(url):
-            writeInt(&buf, Int32(18))
+            writeInt(&buf, Int32(20))
             FfiConverterString.write(url, into: &buf)
 
 
         case let .configureAgentVoice(voiceId):
-            writeInt(&buf, Int32(19))
+            writeInt(&buf, Int32(21))
             FfiConverterString.write(voiceId, into: &buf)
 
 
         case let .createPodcast(title,description):
-            writeInt(&buf, Int32(20))
+            writeInt(&buf, Int32(22))
             FfiConverterString.write(title, into: &buf)
             FfiConverterString.write(description, into: &buf)
 
 
         case let .updatePodcast(podcastId,title,description):
-            writeInt(&buf, Int32(21))
+            writeInt(&buf, Int32(23))
             FfiConverterTypePodcastId.write(podcastId, into: &buf)
             FfiConverterString.write(title, into: &buf)
             FfiConverterString.write(description, into: &buf)
 
 
         case let .generateTtsEpisode(podcastId,title,script,voiceId):
-            writeInt(&buf, Int32(22))
+            writeInt(&buf, Int32(24))
             FfiConverterOptionTypePodcastId.write(podcastId, into: &buf)
             FfiConverterString.write(title, into: &buf)
             FfiConverterString.write(script, into: &buf)
@@ -9958,7 +9994,7 @@ public struct FfiConverterTypeAgentToolAction: FfiConverterRustBuffer {
 
 
         case let .generatePodcastArtwork(podcastId,prompt):
-            writeInt(&buf, Int32(23))
+            writeInt(&buf, Int32(25))
             FfiConverterTypePodcastId.write(podcastId, into: &buf)
             FfiConverterString.write(prompt, into: &buf)
 
@@ -10115,6 +10151,8 @@ public enum AgentToolName: Equatable, Hashable {
     case listPodcasts
     case listCategories
     case changePodcastCategory
+    case writeCategory
+    case tagItems
     case listEpisodes
     case listInProgress
     case listRecentUnplayed
@@ -10210,41 +10248,45 @@ public struct FfiConverterTypeAgentToolName: FfiConverterRustBuffer {
 
         case 28: return .changePodcastCategory
 
-        case 29: return .listEpisodes
+        case 29: return .writeCategory
 
-        case 30: return .listInProgress
+        case 30: return .tagItems
 
-        case 31: return .listRecentUnplayed
+        case 31: return .listEpisodes
 
-        case 32: return .createClip
+        case 32: return .listInProgress
 
-        case 33: return .downloadAndTranscribe
+        case 33: return .listRecentUnplayed
 
-        case 34: return .generateTtsEpisode
+        case 34: return .createClip
 
-        case 35: return .configureAgentVoice
+        case 35: return .downloadAndTranscribe
 
-        case 36: return .listAvailableVoices
+        case 36: return .generateTtsEpisode
 
-        case 37: return .searchPodcastDirectory
+        case 37: return .configureAgentVoice
 
-        case 38: return .subscribePodcast
+        case 38: return .listAvailableVoices
 
-        case 39: return .deletePodcast
+        case 39: return .searchPodcastDirectory
 
-        case 40: return .ingestYoutubeVideo
+        case 40: return .subscribePodcast
 
-        case 41: return .searchYoutube
+        case 41: return .deletePodcast
 
-        case 42: return .createPodcast
+        case 42: return .ingestYoutubeVideo
 
-        case 43: return .updatePodcast
+        case 43: return .searchYoutube
 
-        case 44: return .deleteMyPodcast
+        case 44: return .createPodcast
 
-        case 45: return .listMyPodcasts
+        case 45: return .updatePodcast
 
-        case 46: return .generatePodcastArtwork
+        case 46: return .deleteMyPodcast
+
+        case 47: return .listMyPodcasts
+
+        case 48: return .generatePodcastArtwork
 
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -10366,76 +10408,84 @@ public struct FfiConverterTypeAgentToolName: FfiConverterRustBuffer {
             writeInt(&buf, Int32(28))
 
 
-        case .listEpisodes:
+        case .writeCategory:
             writeInt(&buf, Int32(29))
 
 
-        case .listInProgress:
+        case .tagItems:
             writeInt(&buf, Int32(30))
 
 
-        case .listRecentUnplayed:
+        case .listEpisodes:
             writeInt(&buf, Int32(31))
 
 
-        case .createClip:
+        case .listInProgress:
             writeInt(&buf, Int32(32))
 
 
-        case .downloadAndTranscribe:
+        case .listRecentUnplayed:
             writeInt(&buf, Int32(33))
 
 
-        case .generateTtsEpisode:
+        case .createClip:
             writeInt(&buf, Int32(34))
 
 
-        case .configureAgentVoice:
+        case .downloadAndTranscribe:
             writeInt(&buf, Int32(35))
 
 
-        case .listAvailableVoices:
+        case .generateTtsEpisode:
             writeInt(&buf, Int32(36))
 
 
-        case .searchPodcastDirectory:
+        case .configureAgentVoice:
             writeInt(&buf, Int32(37))
 
 
-        case .subscribePodcast:
+        case .listAvailableVoices:
             writeInt(&buf, Int32(38))
 
 
-        case .deletePodcast:
+        case .searchPodcastDirectory:
             writeInt(&buf, Int32(39))
 
 
-        case .ingestYoutubeVideo:
+        case .subscribePodcast:
             writeInt(&buf, Int32(40))
 
 
-        case .searchYoutube:
+        case .deletePodcast:
             writeInt(&buf, Int32(41))
 
 
-        case .createPodcast:
+        case .ingestYoutubeVideo:
             writeInt(&buf, Int32(42))
 
 
-        case .updatePodcast:
+        case .searchYoutube:
             writeInt(&buf, Int32(43))
 
 
-        case .deleteMyPodcast:
+        case .createPodcast:
             writeInt(&buf, Int32(44))
 
 
-        case .listMyPodcasts:
+        case .updatePodcast:
             writeInt(&buf, Int32(45))
 
 
-        case .generatePodcastArtwork:
+        case .deleteMyPodcast:
             writeInt(&buf, Int32(46))
+
+
+        case .listMyPodcasts:
+            writeInt(&buf, Int32(47))
+
+
+        case .generatePodcastArtwork:
+            writeInt(&buf, Int32(48))
 
         }
     }
@@ -10466,6 +10516,13 @@ public enum AgentToolParameterKind: Equatable, Hashable {
     )
     case decimalPermille(minimum: UInt16, maximum: UInt16
     )
+    case boolean
+    /**
+     * Array of strings. Present so a membership primitive can move many
+     * items in one call instead of forcing one tool call per item.
+     */
+    case textList(maximumItems: UInt16
+    )
 
 
 
@@ -10495,6 +10552,11 @@ public struct FfiConverterTypeAgentToolParameterKind: FfiConverterRustBuffer {
         case 3: return .decimalPermille(minimum: try FfiConverterUInt16.read(from: &buf), maximum: try FfiConverterUInt16.read(from: &buf)
         )
 
+        case 4: return .boolean
+
+        case 5: return .textList(maximumItems: try FfiConverterUInt16.read(from: &buf)
+        )
+
         default: throw UniffiInternalError.unexpectedEnumCase
         }
     }
@@ -10517,6 +10579,15 @@ public struct FfiConverterTypeAgentToolParameterKind: FfiConverterRustBuffer {
             writeInt(&buf, Int32(3))
             FfiConverterUInt16.write(minimum, into: &buf)
             FfiConverterUInt16.write(maximum, into: &buf)
+
+
+        case .boolean:
+            writeInt(&buf, Int32(4))
+
+
+        case let .textList(maximumItems):
+            writeInt(&buf, Int32(5))
+            FfiConverterUInt16.write(maximumItems, into: &buf)
 
         }
     }
@@ -21158,6 +21229,30 @@ fileprivate struct FfiConverterOptionTypeAgentExecutionFenceId: FfiConverterRust
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeCategoryId: FfiConverterRustBuffer {
+    typealias SwiftType = CategoryId?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeCategoryId.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeCategoryId.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeChapterArtifactId: FfiConverterRustBuffer {
     typealias SwiftType = ChapterArtifactId?
 
@@ -22697,6 +22792,31 @@ fileprivate struct FfiConverterSequenceTypeEpisodeRecord: FfiConverterRustBuffer
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeEpisodeRecord.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeLibraryItemId: FfiConverterRustBuffer {
+    typealias SwiftType = [LibraryItemId]
+
+    public static func write(_ value: [LibraryItemId], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeLibraryItemId.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [LibraryItemId] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [LibraryItemId]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeLibraryItemId.read(from: &buf))
         }
         return seq
     }

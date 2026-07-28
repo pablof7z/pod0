@@ -4,6 +4,7 @@ pub use crate::agent_history_cutover_model::*;
 pub use crate::agent_store::AgentStore;
 pub use crate::agent_store_model::*;
 pub use crate::backup::{restore_backup_to_new_store, verify_backup};
+pub use crate::category_store_model::CategoryCollectionSnapshot;
 pub use crate::chapter_authority::chapter_store_is_authoritative;
 pub use crate::chapter_import::{ChapterImportClock, ChapterImporter};
 pub use crate::chapter_import_model::{
@@ -49,6 +50,7 @@ pub use crate::legacy_note_source::inspect_legacy_note_source;
 pub use crate::legacy_source::inspect_legacy_listening_source;
 pub use crate::legacy_transcript_source::inspect_legacy_transcript_source;
 pub use crate::library_store::{LibraryStore, commit_listening_cutover};
+pub use crate::library_store_categories::CategoryEdit;
 pub use crate::library_store_playback::{
     PlaybackMutation, PlaybackMutationResult, PlaybackQueuePlacement,
 };

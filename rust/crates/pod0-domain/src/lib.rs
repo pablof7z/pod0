@@ -85,6 +85,11 @@ opaque_id!(EvidenceGenerationId, uniffi::Record);
 opaque_id!(NoteId, uniffi::Record);
 opaque_id!(MemoryId, uniffi::Record);
 opaque_id!(ClipId, uniffi::Record);
+opaque_id!(CategoryId, uniffi::Record);
+// One address space for "a thing a category can hold". A podcast id and an
+// episode id are both valid `LibraryItemId`s; the kernel resolves which kind
+// an id refers to at execution time so callers need no per-kind verb.
+opaque_id!(LibraryItemId, uniffi::Record);
 opaque_id!(ScheduledTaskId, uniffi::Record);
 opaque_id!(ScheduledOccurrenceId, uniffi::Record);
 opaque_id!(ScheduledAttemptId, uniffi::Record);
@@ -99,6 +104,7 @@ opaque_id!(AgentAuthorizationId, uniffi::Record);
 opaque_id!(AgentExecutionFenceId, uniffi::Record);
 opaque_id!(AgentCommitId, uniffi::Record);
 
+mod categories;
 mod chapter_artifact;
 mod chapter_artifact_hash;
 mod chapter_artifact_validation;
@@ -123,6 +129,7 @@ mod transcript_artifact_hash;
 mod transcript_artifact_validation;
 mod transcript_command;
 
+pub use categories::*;
 pub use chapter_artifact::*;
 pub use chapter_playback_policy::*;
 pub use clips::*;

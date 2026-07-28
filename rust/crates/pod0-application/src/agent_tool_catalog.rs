@@ -1,10 +1,25 @@
-use crate::{AgentToolName, MAX_AGENT_TOOLS_PER_TURN};
+use crate::agent_tool_catalog_builders::{
+    boolean, decimal_permille, definition, integer, text, text_list,
+};
+use crate::{AgentToolName, MAX_AGENT_TOOLS_PER_TURN, MAX_CATEGORY_TAG_ITEMS};
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum AgentToolParameterKind {
     Text,
-    Integer { minimum: i64, maximum: i64 },
-    DecimalPermille { minimum: u16, maximum: u16 },
+    Integer {
+        minimum: i64,
+        maximum: i64,
+    },
+    DecimalPermille {
+        minimum: u16,
+        maximum: u16,
+    },
+    Boolean,
+    /// Array of strings. Present so a membership primitive can move many
+    /// items in one call instead of forcing one tool call per item.
+    TextList {
+        maximum_items: u16,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
@@ -35,6 +50,9 @@ pub const PRODUCT_PROOF_AGENT_TOOLS: &[AgentToolName] = &[
     AgentToolName::PausePlayback,
     AgentToolName::SetPlaybackRate,
     AgentToolName::GenerateTtsEpisode,
+    AgentToolName::ListCategories,
+    AgentToolName::WriteCategory,
+    AgentToolName::TagItems,
 ];
 
 #[must_use]
@@ -190,103 +208,72 @@ pub fn agent_tool_definition(tool: AgentToolName) -> Option<AgentToolDefinition>
                 ),
             ],
         ),
+        ListCategories => definition(
+            tool,
+            "list_categories",
+            "List every category with its description, its tint, and the \
+             shows and episodes it holds. Call this first so you work with \
+             real category IDs instead of guessing at names.",
+            Vec::new(),
+        ),
+        WriteCategory => definition(
+            tool,
+            "write_category",
+            "Create, edit, or delete one category. Omit category_id to \
+             create; pass it to edit; pass it with delete=true to remove. \
+             Only the fields you supply change. A category is a named lens \
+             the user can swipe to from Home — it can hold whole shows, \
+             individual episodes, or both.",
+            vec![
+                text(
+                    "category_id",
+                    "Category UUID from list_categories. Omit to create a new category.",
+                    false,
+                ),
+                text(
+                    "name",
+                    "Short display name, e.g. \"Marketing\" or \"Philosophy\". Required when creating.",
+                    false,
+                ),
+                text(
+                    "description",
+                    "One sentence describing what belongs here. Shown on the category's own screen. Required when creating.",
+                    false,
+                ),
+                text("color_hex", "Optional tint as #RRGGBB or #RRGGBBAA.", false),
+                boolean(
+                    "delete",
+                    "Set true to delete the category. Its shows and episodes stay in the library.",
+                    false,
+                ),
+            ],
+        ),
+        TagItems => definition(
+            tool,
+            "tag_items",
+            "Add or remove library items in one category. An item is a \
+             podcast or a single episode — pass whichever UUIDs you got \
+             from the library tools and they are resolved automatically. \
+             Tag a whole show when every episode fits the theme; tag single \
+             episodes when only some do. Items can belong to several \
+             categories at once.",
+            vec![
+                text("category_id", "Category UUID from list_categories.", true),
+                text_list(
+                    "add",
+                    "Podcast or episode UUIDs to put in this category.",
+                    MAX_CATEGORY_TAG_ITEMS,
+                    false,
+                ),
+                text_list(
+                    "remove",
+                    "Podcast or episode UUIDs to take out of this category.",
+                    MAX_CATEGORY_TAG_ITEMS,
+                    false,
+                ),
+            ],
+        ),
         _ => return None,
     };
     Some(definition)
-}
-
-fn definition(
-    tool: AgentToolName,
-    wire_name: &str,
-    description: &str,
-    parameters: Vec<AgentToolParameterDefinition>,
-) -> AgentToolDefinition {
-    AgentToolDefinition {
-        tool,
-        wire_name: wire_name.to_owned(),
-        description: description.to_owned(),
-        parameters,
-    }
-}
-
-fn text(name: &str, description: &str, required: bool) -> AgentToolParameterDefinition {
-    AgentToolParameterDefinition {
-        name: name.to_owned(),
-        description: description.to_owned(),
-        kind: AgentToolParameterKind::Text,
-        required,
-    }
-}
-
-fn integer(
-    name: &str,
-    description: &str,
-    minimum: i64,
-    maximum: i64,
-    required: bool,
-) -> AgentToolParameterDefinition {
-    AgentToolParameterDefinition {
-        name: name.to_owned(),
-        description: description.to_owned(),
-        kind: AgentToolParameterKind::Integer { minimum, maximum },
-        required,
-    }
-}
-
-fn decimal_permille(
-    name: &str,
-    description: &str,
-    minimum: u16,
-    maximum: u16,
-    required: bool,
-) -> AgentToolParameterDefinition {
-    AgentToolParameterDefinition {
-        name: name.to_owned(),
-        description: description.to_owned(),
-        kind: AgentToolParameterKind::DecimalPermille { minimum, maximum },
-        required,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{AgentExecutionKind, agent_tool_policy, agent_tool_wire_name};
-    use std::collections::BTreeSet;
-
-    #[test]
-    fn product_proof_catalog_is_unique_bounded_and_executable() {
-        assert!(PRODUCT_PROOF_AGENT_TOOLS.len() <= MAX_AGENT_TOOLS_PER_TURN);
-        let unique = PRODUCT_PROOF_AGENT_TOOLS
-            .iter()
-            .copied()
-            .collect::<BTreeSet<_>>();
-        assert_eq!(unique.len(), PRODUCT_PROOF_AGENT_TOOLS.len());
-
-        let definitions =
-            agent_tool_definitions(PRODUCT_PROOF_AGENT_TOOLS).expect("complete catalog");
-        assert_eq!(definitions.len(), PRODUCT_PROOF_AGENT_TOOLS.len());
-        for definition in definitions {
-            assert_eq!(definition.wire_name, agent_tool_wire_name(definition.tool));
-            assert!(matches!(
-                agent_tool_policy(definition.tool).execution,
-                AgentExecutionKind::RustCommit
-                    | AgentExecutionKind::RustProjection
-                    | AgentExecutionKind::NativeCapability
-            ));
-            let parameter_names = definition
-                .parameters
-                .iter()
-                .map(|parameter| parameter.name.as_str())
-                .collect::<BTreeSet<_>>();
-            assert_eq!(parameter_names.len(), definition.parameters.len());
-        }
-    }
-
-    #[test]
-    fn deferred_tools_are_not_in_the_shipping_catalog() {
-        assert!(!PRODUCT_PROOF_AGENT_TOOLS.contains(&AgentToolName::RecordMemory));
-        assert!(agent_tool_definition(AgentToolName::ScheduleTask).is_none());
-        assert!(agent_tool_definition(AgentToolName::PlayEpisode).is_none());
-    }
 }
