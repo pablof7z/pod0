@@ -22,6 +22,7 @@ struct RootView: View {
     @State var playbackState = PlaybackState()
     @State var showFullPlayer = false
     @State var playerNavSubscriptionID: UUID?
+    @State var sharedEpisodeImporter = SharedEpisodeImportCoordinator()
     @Namespace var playerNamespace
 
     private let sidebarWidth: CGFloat = 300
@@ -120,6 +121,10 @@ struct RootView: View {
                     subscriptionID: $playerNavSubscriptionID,
                     store: store
                 ))
+                .sharedEpisodeImportPresenter(
+                    coordinator: sharedEpisodeImporter,
+                    onImported: { spotlightSheet = .episode($0) }
+                )
                 .agentAskPresenter(coordinator: askCoordinator)
                 .onOpenURL { handleDeepLink($0) }
                 .onReceive(

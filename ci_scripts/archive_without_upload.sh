@@ -5,6 +5,7 @@ APP_SCHEME="${APP_SCHEME:-Podcastr}"
 APP_PRODUCT_NAME="${APP_PRODUCT_NAME:-$APP_SCHEME}"
 PROJECT_PATH="${PROJECT_PATH:-Podcastr.xcodeproj}"
 WIDGET_EXTENSION_NAME="${WIDGET_EXTENSION_NAME:-${APP_PRODUCT_NAME}Widget}"
+SHARE_EXTENSION_NAME="${SHARE_EXTENSION_NAME:-${APP_PRODUCT_NAME}Share}"
 BUILD_ROOT="${BUILD_ROOT:-$PWD/build/non-publishing}"
 ARCHIVE_PATH="${ARCHIVE_PATH:-$BUILD_ROOT/Podcastr.xcarchive}"
 DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-$BUILD_ROOT/DerivedData}"
@@ -31,8 +32,9 @@ xcodebuild \
 
 archived_app="$ARCHIVE_PATH/Products/Applications/${APP_PRODUCT_NAME}.app"
 archived_widget="$archived_app/PlugIns/${WIDGET_EXTENSION_NAME}.appex"
-if [[ ! -d "$archived_app" || ! -d "$archived_widget" ]]; then
-  echo "Archive is missing the app or widget product." >&2
+archived_share="$archived_app/PlugIns/${SHARE_EXTENSION_NAME}.appex"
+if [[ ! -d "$archived_app" || ! -d "$archived_widget" || ! -d "$archived_share" ]]; then
+  echo "Archive is missing the app, widget, or share extension product." >&2
   exit 1
 fi
 
@@ -42,6 +44,7 @@ fi
   echo "tuist=$(tuist version)"
   echo "app_binary_sha256=$(shasum -a 256 "$archived_app/$APP_PRODUCT_NAME" | awk '{print $1}')"
   echo "widget_binary_sha256=$(shasum -a 256 "$archived_widget/$WIDGET_EXTENSION_NAME" | awk '{print $1}')"
+  echo "share_binary_sha256=$(shasum -a 256 "$archived_share/$SHARE_EXTENSION_NAME" | awk '{print $1}')"
 } > "$EVIDENCE_PATH"
 
 cat "$EVIDENCE_PATH"

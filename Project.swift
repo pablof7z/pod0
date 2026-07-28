@@ -17,6 +17,7 @@ let appBundleID = "io.f7z.podcast"
 // pattern) so the working title can change without re-provisioning the group.
 let appGroupID = "group.com.podcastr.app"
 let widgetBundleID = "\(appBundleID).widget"
+let shareBundleID = "\(appBundleID).share"
 let coreBindingsName = "Pod0Core"
 
 // MARK: - Project
@@ -101,7 +102,10 @@ let project = Project(
             bundleId: appBundleID,
             deploymentTargets: deploymentTarget,
             infoPlist: .file(path: "App/Resources/Info.plist"),
-            sources: ["App/Sources/**"],
+            sources: [
+                "App/Sources/**",
+                "App/Shared/Sources/**",
+            ],
             resources: [
                 "App/Resources/Assets.xcassets",
             ],
@@ -111,6 +115,7 @@ let project = Project(
                 .package(product: "Kingfisher"),
                 .target(name: coreBindingsName),
                 .target(name: "\(appName)Widget"),
+                .target(name: "\(appName)Share"),
             ],
             settings: .settings(
                 base: [
@@ -160,6 +165,37 @@ let project = Project(
                 ]
             )
         ),
+        // MARK: - Share extension
+        .target(
+            name: "\(appName)Share",
+            destinations: [.iPhone, .iPad],
+            product: .appExtension,
+            bundleId: shareBundleID,
+            deploymentTargets: deploymentTarget,
+            infoPlist: .file(path: "App/ShareExtension/Resources/Info.plist"),
+            sources: [
+                "App/ShareExtension/Sources/**",
+                "App/Shared/Sources/**",
+            ],
+            resources: [],
+            entitlements: .file(
+                path: "App/ShareExtension/Resources/PodcastrShare.entitlements"
+            ),
+            dependencies: [],
+            settings: .settings(
+                base: [
+                    "APP_BUNDLE_IDENTIFIER": "\(shareBundleID)",
+                    "APP_GROUP_IDENTIFIER": "\(appGroupID)",
+                    "PRODUCT_BUNDLE_IDENTIFIER": "$(APP_BUNDLE_IDENTIFIER)",
+                    "CFBundleDisplayName": "Add to Pod0",
+                    "GENERATE_INFOPLIST_FILE": "NO",
+                    "TARGETED_DEVICE_FAMILY": "1,2",
+                    "SWIFT_VERSION": "6.0",
+                    "SWIFT_STRICT_CONCURRENCY": "complete",
+                    "PROVISIONING_PROFILE_SPECIFIER": "$(CI_SHARE_PROFILE_SPECIFIER)",
+                ]
+            )
+        ),
         .target(
             name: "\(appName)Tests",
             destinations: [.iPhone],
@@ -192,7 +228,11 @@ let project = Project(
     schemes: [
         .scheme(
             name: appName,
-            buildAction: .buildAction(targets: [.target(appName), .target("\(appName)Widget")]),
+            buildAction: .buildAction(targets: [
+                .target(appName),
+                .target("\(appName)Widget"),
+                .target("\(appName)Share"),
+            ]),
             testAction: .targets([.testableTarget(target: .target("\(appName)Tests"))]),
             runAction: .runAction(configuration: .debug),
             archiveAction: .archiveAction(configuration: .release),
