@@ -37,7 +37,7 @@ struct HomeView: View {
     var body: some View {
         scrollContent
             .navigationTitle(navBarTitle)
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar { toolbarContent }
             .background(Color(.systemGroupedBackground).ignoresSafeArea())
             .refreshable { await refreshAllFeeds() }
@@ -221,27 +221,15 @@ struct HomeView: View {
     }
 
     // MARK: - Toolbar
+    //
+    // The old tappable "Home ⌄" title (which opened the category picker)
+    // is gone in favor of a standard large left-aligned title — see
+    // `navigationBarTitleDisplayMode(.large)` above. `showCategoryPicker`
+    // and its sheet still exist below but have no trigger right now; the
+    // category picker needs a new entry point, which isn't in scope here.
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .principal) {
-            Button {
-                Haptics.light()
-                showCategoryPicker = true
-            } label: {
-                HStack(spacing: 3) {
-                    Text(navBarTitle)
-                        .font(.system(.headline, design: .rounded, weight: .semibold))
-                        .foregroundStyle(.primary)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Browse categories")
-            .accessibilityHint("Opens category picker")
-        }
         // The first-run empty state also offers "Add show", but it only
         // renders when the library is completely empty — a library holding
         // nothing but unfollowed podcasts would otherwise have no way to
