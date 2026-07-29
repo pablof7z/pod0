@@ -1,4 +1,4 @@
-use pod0_domain::{EpisodeId, PodcastId};
+use pod0_domain::{CategoryId, EpisodeId, LibraryItemId, PodcastId};
 use serde_json::{Map, Value};
 
 use crate::{
@@ -55,9 +55,20 @@ fn parse_action(
             tool,
             text: required_text(args, "skill_id")?,
         }),
-        ListSubscriptions | ListPodcasts | ListInProgress | ListRecentUnplayed | PausePlayback => {
-            Ok(AgentToolAction::NoArguments { tool })
-        }
+        ListSubscriptions | ListPodcasts | ListInProgress | ListRecentUnplayed | ListCategories
+        | PausePlayback => Ok(AgentToolAction::NoArguments { tool }),
+        WriteCategory => Ok(AgentToolAction::WriteCategory {
+            category_id: optional_opaque_id(args, "category_id", CategoryId::from_bytes)?,
+            name: optional_text(args, "name")?,
+            description: optional_text(args, "description")?,
+            color_hex: optional_text(args, "color_hex")?,
+            delete: optional_bool(args, "delete")?.unwrap_or(false),
+        }),
+        TagItems => Ok(AgentToolAction::TagItems {
+            category_id: opaque_id(args, "category_id", CategoryId::from_bytes)?,
+            add_item_ids: opaque_id_list(args, "add")?,
+            remove_item_ids: opaque_id_list(args, "remove")?,
+        }),
         SearchEpisodes => Ok(AgentToolAction::Search {
             tool,
             query: required_text(args, "query")?,
@@ -134,6 +145,45 @@ fn optional_text(
         Some(Value::String(value)) => Ok(Some(value.clone())),
         _ => Err(AgentProviderOutputError::InvalidArguments),
     }
+}
+
+fn optional_bool(
+    args: &Map<String, Value>,
+    name: &str,
+) -> Result<Option<bool>, AgentProviderOutputError> {
+    match args.get(name) {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::Bool(value)) => Ok(Some(*value)),
+        _ => Err(AgentProviderOutputError::InvalidArguments),
+    }
+}
+
+/// A missing list is an empty list, but a present non-array — or an entry
+/// that is not a UUID — is a malformed call rather than something to skip
+/// silently. Partial acceptance would hide which items the model lost.
+fn opaque_id_list(
+    args: &Map<String, Value>,
+    name: &str,
+) -> Result<Vec<LibraryItemId>, AgentProviderOutputError> {
+    let Some(value) = args.get(name) else {
+        return Ok(Vec::new());
+    };
+    if value.is_null() {
+        return Ok(Vec::new());
+    }
+    let entries = value
+        .as_array()
+        .ok_or(AgentProviderOutputError::InvalidArguments)?;
+    entries
+        .iter()
+        .map(|entry| {
+            entry
+                .as_str()
+                .and_then(parse_uuid_bytes)
+                .map(LibraryItemId::from_bytes)
+                .ok_or(AgentProviderOutputError::InvalidArguments)
+        })
+        .collect()
 }
 
 fn required_number(args: &Map<String, Value>, name: &str) -> Result<f64, AgentProviderOutputError> {

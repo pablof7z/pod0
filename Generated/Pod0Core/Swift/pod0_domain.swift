@@ -1145,6 +1145,280 @@ public func FfiConverterTypeCancellationId_lower(_ value: CancellationId) -> Rus
 }
 
 
+public struct CategoryId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CategoryId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCategoryId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CategoryId {
+        return
+            try CategoryId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CategoryId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCategoryId_lift(_ buf: RustBuffer) throws -> CategoryId {
+    return try FfiConverterTypeCategoryId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCategoryId_lower(_ value: CategoryId) -> RustBuffer {
+    return FfiConverterTypeCategoryId.lower(value)
+}
+
+
+public struct CategoryMember: Equatable, Hashable {
+    public let itemId: LibraryItemId
+    public let kind: CategoryItemKind
+    /**
+     * When this item entered the category. Ordering membership by recency
+     * is what makes a category page feel alive rather than alphabetical.
+     */
+    public let addedAt: UnixTimestampMilliseconds
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(itemId: LibraryItemId, kind: CategoryItemKind,
+        /**
+         * When this item entered the category. Ordering membership by recency
+         * is what makes a category page feel alive rather than alphabetical.
+         */addedAt: UnixTimestampMilliseconds) {
+        self.itemId = itemId
+        self.kind = kind
+        self.addedAt = addedAt
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CategoryMember: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCategoryMember: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CategoryMember {
+        return
+            try CategoryMember(
+                itemId: FfiConverterTypeLibraryItemId.read(from: &buf),
+                kind: FfiConverterTypeCategoryItemKind.read(from: &buf),
+                addedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CategoryMember, into buf: inout [UInt8]) {
+        FfiConverterTypeLibraryItemId.write(value.itemId, into: &buf)
+        FfiConverterTypeCategoryItemKind.write(value.kind, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.addedAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCategoryMember_lift(_ buf: RustBuffer) throws -> CategoryMember {
+    return try FfiConverterTypeCategoryMember.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCategoryMember_lower(_ value: CategoryMember) -> RustBuffer {
+    return FfiConverterTypeCategoryMember.lower(value)
+}
+
+
+public struct CategoryRecord: Equatable, Hashable {
+    public let categoryId: CategoryId
+    public let revision: CategoryRevision
+    public let name: String
+    /**
+     * Lowercased, hyphenated form of `name`. Derived by the kernel rather
+     * than accepted from a caller so it cannot drift from the name.
+     */
+    public let slug: String
+    public let description: String
+    /**
+     * `#RRGGBB` or `#RRGGBBAA`, or `None` to let presentation derive a tint.
+     */
+    public let colorHex: String?
+    public let origin: CategoryOrigin
+    public let members: [CategoryMember]
+    public let createdAt: UnixTimestampMilliseconds
+    public let updatedAt: UnixTimestampMilliseconds
+    public let deleted: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(categoryId: CategoryId, revision: CategoryRevision, name: String,
+        /**
+         * Lowercased, hyphenated form of `name`. Derived by the kernel rather
+         * than accepted from a caller so it cannot drift from the name.
+         */slug: String, description: String,
+        /**
+         * `#RRGGBB` or `#RRGGBBAA`, or `None` to let presentation derive a tint.
+         */colorHex: String?, origin: CategoryOrigin, members: [CategoryMember], createdAt: UnixTimestampMilliseconds, updatedAt: UnixTimestampMilliseconds, deleted: Bool) {
+        self.categoryId = categoryId
+        self.revision = revision
+        self.name = name
+        self.slug = slug
+        self.description = description
+        self.colorHex = colorHex
+        self.origin = origin
+        self.members = members
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.deleted = deleted
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CategoryRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCategoryRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CategoryRecord {
+        return
+            try CategoryRecord(
+                categoryId: FfiConverterTypeCategoryId.read(from: &buf),
+                revision: FfiConverterTypeCategoryRevision.read(from: &buf),
+                name: FfiConverterString.read(from: &buf),
+                slug: FfiConverterString.read(from: &buf),
+                description: FfiConverterString.read(from: &buf),
+                colorHex: FfiConverterOptionString.read(from: &buf),
+                origin: FfiConverterTypeCategoryOrigin.read(from: &buf),
+                members: FfiConverterSequenceTypeCategoryMember.read(from: &buf),
+                createdAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                updatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                deleted: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CategoryRecord, into buf: inout [UInt8]) {
+        FfiConverterTypeCategoryId.write(value.categoryId, into: &buf)
+        FfiConverterTypeCategoryRevision.write(value.revision, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.slug, into: &buf)
+        FfiConverterString.write(value.description, into: &buf)
+        FfiConverterOptionString.write(value.colorHex, into: &buf)
+        FfiConverterTypeCategoryOrigin.write(value.origin, into: &buf)
+        FfiConverterSequenceTypeCategoryMember.write(value.members, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.createdAt, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.updatedAt, into: &buf)
+        FfiConverterBool.write(value.deleted, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCategoryRecord_lift(_ buf: RustBuffer) throws -> CategoryRecord {
+    return try FfiConverterTypeCategoryRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCategoryRecord_lower(_ value: CategoryRecord) -> RustBuffer {
+    return FfiConverterTypeCategoryRecord.lower(value)
+}
+
+
+public struct CategoryRevision: Equatable, Hashable {
+    public let value: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(value: UInt64) {
+        self.value = value
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CategoryRevision: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCategoryRevision: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CategoryRevision {
+        return
+            try CategoryRevision(
+                value: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CategoryRevision, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.value, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCategoryRevision_lift(_ buf: RustBuffer) throws -> CategoryRevision {
+    return try FfiConverterTypeCategoryRevision.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCategoryRevision_lower(_ value: CategoryRevision) -> RustBuffer {
+    return FfiConverterTypeCategoryRevision.lower(value)
+}
+
+
 public struct ChapterArtifactId: Equatable, Hashable {
     public let high: UInt64
     public let low: UInt64
@@ -3219,6 +3493,60 @@ public func FfiConverterTypeHostRequestId_lift(_ buf: RustBuffer) throws -> Host
 #endif
 public func FfiConverterTypeHostRequestId_lower(_ value: HostRequestId) -> RustBuffer {
     return FfiConverterTypeHostRequestId.lower(value)
+}
+
+
+public struct LibraryItemId: Equatable, Hashable {
+    public let high: UInt64
+    public let low: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(high: UInt64, low: UInt64) {
+        self.high = high
+        self.low = low
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LibraryItemId: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLibraryItemId: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LibraryItemId {
+        return
+            try LibraryItemId(
+                high: FfiConverterUInt64.read(from: &buf),
+                low: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LibraryItemId, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.high, into: &buf)
+        FfiConverterUInt64.write(value.low, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLibraryItemId_lift(_ buf: RustBuffer) throws -> LibraryItemId {
+    return try FfiConverterTypeLibraryItemId.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLibraryItemId_lower(_ value: LibraryItemId) -> RustBuffer {
+    return FfiConverterTypeLibraryItemId.lower(value)
 }
 
 
@@ -6453,6 +6781,184 @@ public func FfiConverterTypeAutoDownloadMode_lower(_ value: AutoDownloadMode) ->
 
 
 
+/**
+ * What a category holds. Podcasts and episodes share `LibraryItemId` so the
+ * membership primitive needs no per-kind verb, but the resolved kind is
+ * recorded once the kernel has looked the id up.
+ */
+
+public enum CategoryItemKind: Equatable, Hashable {
+
+    case podcast
+    case episode
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CategoryItemKind: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCategoryItemKind: FfiConverterRustBuffer {
+    typealias SwiftType = CategoryItemKind
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CategoryItemKind {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .podcast
+
+        case 2: return .episode
+
+        case 3: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: CategoryItemKind, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .podcast:
+            writeInt(&buf, Int32(1))
+
+
+        case .episode:
+            writeInt(&buf, Int32(2))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCategoryItemKind_lift(_ buf: RustBuffer) throws -> CategoryItemKind {
+    return try FfiConverterTypeCategoryItemKind.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCategoryItemKind_lower(_ value: CategoryItemKind) -> RustBuffer {
+    return FfiConverterTypeCategoryItemKind.lower(value)
+}
+
+
+
+/**
+ * Who put a category there. The distinction is not cosmetic: a rebuild of
+ * the machine-generated taxonomy must not silently discard groupings the
+ * user or the agent curated deliberately.
+ */
+
+public enum CategoryOrigin: Equatable, Hashable {
+
+    /**
+     * Produced by a bulk categorization pass over the library.
+     */
+    case generated
+    /**
+     * Created by the agent through `write_category`.
+     */
+    case agent
+    /**
+     * Created by the person using the app.
+     */
+    case user
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CategoryOrigin: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCategoryOrigin: FfiConverterRustBuffer {
+    typealias SwiftType = CategoryOrigin
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CategoryOrigin {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .generated
+
+        case 2: return .agent
+
+        case 3: return .user
+
+        case 4: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: CategoryOrigin, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .generated:
+            writeInt(&buf, Int32(1))
+
+
+        case .agent:
+            writeInt(&buf, Int32(2))
+
+
+        case .user:
+            writeInt(&buf, Int32(3))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(4))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCategoryOrigin_lift(_ buf: RustBuffer) throws -> CategoryOrigin {
+    return try FfiConverterTypeCategoryOrigin.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCategoryOrigin_lower(_ value: CategoryOrigin) -> RustBuffer {
+    return FfiConverterTypeCategoryOrigin.lower(value)
+}
+
+
+
 
 public enum ChapterAdKind: Equatable, Hashable {
 
@@ -9682,6 +10188,31 @@ fileprivate struct FfiConverterSequenceTypeAdSpanInput: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeAdSpanInput.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCategoryMember: FfiConverterRustBuffer {
+    typealias SwiftType = [CategoryMember]
+
+    public static func write(_ value: [CategoryMember], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCategoryMember.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CategoryMember] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CategoryMember]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCategoryMember.read(from: &buf))
         }
         return seq
     }

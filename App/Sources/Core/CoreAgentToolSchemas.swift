@@ -87,6 +87,19 @@ enum CoreAgentToolSchemas {
                 "minimum": Double(minimum) / 1_000,
                 "maximum": Double(maximum) / 1_000,
             ]
+        case .boolean:
+            return [
+                "type": "boolean",
+                "description": parameter.description,
+            ]
+        case .textList(let maximumItems):
+            guard maximumItems > 0 else { return nil }
+            return [
+                "type": "array",
+                "description": parameter.description,
+                "items": ["type": "string"] as [String: Any],
+                "maxItems": maximumItems,
+            ]
         }
     }
 }

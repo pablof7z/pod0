@@ -28,50 +28,8 @@ fn schema_14_through_current_preserves_and_adopts_current_publisher_chapters() {
     drop(store);
     rusqlite::Connection::open(&fixture.target)
         .unwrap()
-        .execute_batch(
-            "DROP TABLE pod0_feed_discovery_cutover_candidates;
-             DROP TABLE pod0_feed_discovery_cutover;
-             DROP TABLE pod0_feed_apply_receipts;
-             DROP TABLE pod0_feed_discovery_effects;
-             DROP TABLE pod0_feed_discovery_workflows;
-             DROP TABLE pod0_new_episode_notification_settings;
-             DROP TABLE pod0_feed_discovery_items;
-             DROP TABLE pod0_feed_discovery_occurrences;
-             DROP TABLE pod0_compiled_memory_sources;
-             DROP TABLE pod0_compiled_memory;
-             DROP TABLE pod0_memories;
-             DROP TABLE pod0_memory_cutover_evidence;
-             DROP TABLE pod0_memory_state;
-             DROP TABLE pod0_agent_history_staged_turns;
-             DROP TABLE pod0_agent_history_staged_conversations;
-             DROP TABLE pod0_agent_history_cutover_evidence;
-             DROP TABLE pod0_agent_conversation_metadata;
-             DROP TABLE pod0_publication_commands;
-             DROP TABLE pod0_publication_facts;
-             DROP TABLE pod0_signer_state;
-             DROP TABLE pod0_publications;
-             DROP TABLE pod0_agent_generated_audio_artifacts;
-             DROP TABLE pod0_agent_audit;
-             DROP TABLE pod0_agent_command_receipts;
-             DROP TABLE pod0_agent_turns;
-             DROP TABLE pod0_scheduled_completion_evidence;
-             DROP TABLE pod0_generated_artifacts;
-             DROP TABLE pod0_scheduled_command_receipts;
-             DROP TABLE pod0_scheduled_attempts;
-             DROP TABLE pod0_scheduled_occurrences;
-             DROP TABLE pod0_scheduled_tasks;
-             DROP TABLE pod0_scheduled_agent_cutover_evidence;
-             DROP TABLE pod0_scheduled_agent_authority;
-             DROP TABLE pod0_transcript_evidence_requests;
-             DROP TABLE pod0_transcript_attempts;
-             DROP TABLE pod0_transcript_workflows;
-             DROP TABLE pod0_transcript_workflow_import_rows;
-             DROP TABLE pod0_transcript_workflow_imports;
-             DROP TABLE pod0_download_host_requests;
-             DROP TABLE pod0_download_attempts;
-             DROP TABLE pod0_download_workflows;
-             DROP TABLE pod0_download_environment;
-             DROP TABLE pod0_recall_configuration;
+        .execute_batch(&format!(
+            "{}
              DROP TABLE pod0_model_chapter_completions;
              DROP TABLE pod0_model_chapter_workflows;
              DROP TABLE pod0_publisher_chapter_workflows;
@@ -79,7 +37,8 @@ fn schema_14_through_current_preserves_and_adopts_current_publisher_chapters() {
              ALTER TABLE pod0_subscriptions DROP COLUMN transcript_start_policy_code;
              UPDATE pod0_schema_versions SET version=14 WHERE component='kernel';
              PRAGMA user_version=14;",
-        )
+            crate::schema_revert_test_support::TABLES_ADDED_AFTER_V13,
+        ))
         .unwrap();
     crate::note_schema_test_support::revert_notes_below_v33(&fixture.target);
 
@@ -111,57 +70,16 @@ fn schema_15_to_current_preserves_publisher_state_and_adds_fenced_model_storage(
     drop(store);
     let connection = rusqlite::Connection::open(&fixture.target).unwrap();
     connection
-        .execute_batch(
-            "DROP TABLE pod0_feed_discovery_cutover_candidates;
-             DROP TABLE pod0_feed_discovery_cutover;
-             DROP TABLE pod0_feed_apply_receipts;
-             DROP TABLE pod0_feed_discovery_effects;
-             DROP TABLE pod0_feed_discovery_workflows;
-             DROP TABLE pod0_new_episode_notification_settings;
-             DROP TABLE pod0_feed_discovery_items;
-             DROP TABLE pod0_feed_discovery_occurrences;
-             DROP TABLE pod0_compiled_memory_sources;
-             DROP TABLE pod0_compiled_memory;
-             DROP TABLE pod0_memories;
-             DROP TABLE pod0_memory_cutover_evidence;
-             DROP TABLE pod0_memory_state;
-             DROP TABLE pod0_agent_history_staged_turns;
-             DROP TABLE pod0_agent_history_staged_conversations;
-             DROP TABLE pod0_agent_history_cutover_evidence;
-             DROP TABLE pod0_agent_conversation_metadata;
-             DROP TABLE pod0_publication_commands;
-             DROP TABLE pod0_publication_facts;
-             DROP TABLE pod0_signer_state;
-             DROP TABLE pod0_publications;
-             DROP TABLE pod0_agent_generated_audio_artifacts;
-             DROP TABLE pod0_agent_audit;
-             DROP TABLE pod0_agent_command_receipts;
-             DROP TABLE pod0_agent_turns;
-             DROP TABLE pod0_scheduled_completion_evidence;
-             DROP TABLE pod0_generated_artifacts;
-             DROP TABLE pod0_scheduled_command_receipts;
-             DROP TABLE pod0_scheduled_attempts;
-             DROP TABLE pod0_scheduled_occurrences;
-             DROP TABLE pod0_scheduled_tasks;
-             DROP TABLE pod0_scheduled_agent_cutover_evidence;
-             DROP TABLE pod0_scheduled_agent_authority;
-             DROP TABLE pod0_transcript_evidence_requests;
-             DROP TABLE pod0_transcript_attempts;
-             DROP TABLE pod0_transcript_workflows;
-             DROP TABLE pod0_transcript_workflow_import_rows;
-             DROP TABLE pod0_transcript_workflow_imports;
-             DROP TABLE pod0_download_host_requests;
-             DROP TABLE pod0_download_attempts;
-             DROP TABLE pod0_download_workflows;
-             DROP TABLE pod0_download_environment;
-             DROP TABLE pod0_recall_configuration;
+        .execute_batch(&format!(
+            "{}
              DROP TABLE pod0_model_chapter_completions;
              DROP TABLE pod0_model_chapter_workflows;
              ALTER TABLE pod0_subscriptions DROP COLUMN transcript_start_policy_wire_code;
              ALTER TABLE pod0_subscriptions DROP COLUMN transcript_start_policy_code;
              UPDATE pod0_schema_versions SET version=15 WHERE component='kernel';
              PRAGMA user_version=15;",
-        )
+            crate::schema_revert_test_support::TABLES_ADDED_AFTER_V13,
+        ))
         .unwrap();
     crate::note_schema_test_support::revert_notes_below_v33_on(&connection);
     drop(connection);
@@ -176,7 +94,7 @@ fn schema_15_to_current_preserves_publisher_state_and_adds_fenced_model_storage(
         .unwrap();
     assert_eq!(
         report.applied_versions,
-        [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]
+        [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34]
     );
 
     let reopened = crate::LibraryStore::open_authoritative(&fixture.target).unwrap();

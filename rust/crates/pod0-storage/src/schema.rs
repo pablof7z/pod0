@@ -278,5 +278,8 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
     if version >= 16 {
         crate::schema_model_chapter_workflows::validate_model_chapter_workflow_schema(connection)?;
     }
+    if version >= 34 {
+        crate::schema_categories::validate_category_schema(connection)?;
+    }
     Ok(())
 }
