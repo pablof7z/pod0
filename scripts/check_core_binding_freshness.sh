@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
-# Fails the build when .build/pod0core/Pod0CoreFFI.xcframework was compiled
-# against different bindings than the ones now in Generated/Pod0Core.
+# Fails the build when the FFI layout compiled into
+# .build/pod0core/Pod0CoreFFI.xcframework disagrees with the bindings now in
+# Generated/Pod0Core. build_pod0_core_apple.sh stamps the xcframework with a
+# fingerprint of bindings regenerated from the device library it just built,
+# so this comparison holds a property of that binary — not a copy of the
+# committed file it is checked against.
 #
 # The xcframework is an untracked local artifact with no dependency edges into
 # the Rust sources, so Xcode will happily link a stale static library against
@@ -9,6 +13,11 @@
 # silent wire-format mismatch that only aborts once a drifted type crosses the
 # FFI at runtime — which is exactly how a shipped build bricked a device by
 # persisting undeliverable evidence and replaying it on every launch.
+#
+# This is the local half of a two-gate composition: in CI,
+# check_core_binding_drift.sh proves the committed bindings match the Rust
+# sources at the same SHA; this gate proves the library actually linked
+# matches the committed bindings.
 #
 # Runs inside the Xcode user-script sandbox, so it compares two declared files
 # rather than reading the bindings tree.

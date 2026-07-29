@@ -45,9 +45,23 @@ plutil -lint "$TEMP_ROOT/Info.plist"
 lipo "$TEMP_ROOT/ios-arm64/libpod0_facade.a" -verify_arch arm64
 lipo "$TEMP_ROOT/ios-arm64_x86_64-simulator/libpod0_facade.a" \
   -verify_arch arm64 x86_64
-# Stamp the exact bindings this library was compiled against so
-# check_core_binding_freshness.sh can reject a stale link before it ships.
-cp "$REPO_ROOT/Generated/Pod0Core/bindings.fingerprint" "$TEMP_ROOT/bindings.fingerprint"
+# Stamp the xcframework with a fingerprint of bindings regenerated from the
+# device library that was just built, normalized exactly as
+# generate_core_bindings.sh does, so check_core_binding_freshness.sh compares
+# the committed bindings against the compiled artifact rather than against a
+# copy of themselves.
+mkdir -p "$TEMP_ROOT/derived/Swift"
+cargo run -p pod0-uniffi-bindgen --locked --release -- generate \
+  --library "$TEMP_ROOT/ios-arm64/libpod0_facade.a" \
+  --config "$REPO_ROOT/rust/uniffi.toml" \
+  --language swift \
+  --no-format \
+  --out-dir "$TEMP_ROOT/derived/Swift"
+while IFS= read -r -d '' derived_file; do
+  perl -0777 -pi -e 's/[ \t]+$//mg; s/\s+\z/\n/' "$derived_file"
+done < <(find "$TEMP_ROOT/derived/Swift" -type f -print0)
+"$SCRIPT_DIR/core_bindings_fingerprint.sh" "$TEMP_ROOT/derived/Swift" \
+  > "$TEMP_ROOT/bindings.fingerprint"
 
 mkdir -p "$OUTPUT_ROOT"
 rsync -a --delete "$TEMP_ROOT/" "$OUTPUT_ROOT/"
