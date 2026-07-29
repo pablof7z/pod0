@@ -1,162 +1,203 @@
-use pod0_application::{CoreFailureCode, HostObservation, OperationResult, OperationStage};
+use pod0_application::{
+    HostObservation, HostObservationEnvelope, HostObservationReceipt,
+    feed_fetch_failure_is_retryable,
+};
+use pod0_storage::{FeedFetchWorkflowRecord, StoredFeedFetchIntent};
 
-use crate::runtime_feed_state::{FeedIntent, PendingFeed};
-use crate::runtime_observation_mapping::host_failure;
-use crate::runtime_state::{FacadeState, failure};
-use crate::runtime_storage_commands::storage_failure;
+use crate::runtime_state::FacadeState;
 
 impl FacadeState {
-    pub(super) fn finish_feed_observation(
+    /// Applies a host observation to the durable feed-fetch workflow. Every
+    /// returned `Persisted` receipt corresponds to a committed transition:
+    /// the parsed feed applied, a retry scheduled, or the workflow parked.
+    /// The commanding operation finished at dispatch time and is never
+    /// touched here.
+    pub(super) fn persist_feed_observation(
         &mut self,
-        pending: PendingFeed,
-        observation: HostObservation,
-        observed_at_ms: i64,
-    ) {
-        match observation {
+        record: FeedFetchWorkflowRecord,
+        observation: HostObservationEnvelope,
+    ) -> HostObservationReceipt {
+        let request_id = observation.request_id;
+        self.advance_revision();
+        self.pending_feeds.remove(&request_id);
+        let observed_at_ms = observation.observed_at.value;
+        let receipt = match observation.observation {
             HostObservation::FeedBytesFetched {
                 bytes,
                 entity_tag,
                 last_modified,
                 ..
-            } => {
-                self.apply_fetched_feed(pending, &bytes, entity_tag, last_modified, observed_at_ms)
-            }
+            } => self.apply_fetched_feed(&record, &bytes, entity_tag, last_modified, observed_at_ms),
             HostObservation::FeedNotModified {
                 entity_tag,
                 last_modified,
                 ..
-            } => self.apply_not_modified(pending, entity_tag, last_modified, observed_at_ms),
-            HostObservation::Failed { code, .. } => {
-                self.fail(pending.command_id, host_failure(code))
-            }
-            HostObservation::Cancelled => self.finish(
-                pending.command_id,
-                OperationStage::Cancelled,
-                Some(failure(CoreFailureCode::Cancelled)),
-                None,
+            } => self.apply_not_modified(&record, entity_tag, last_modified, observed_at_ms),
+            HostObservation::Failed { code, .. } => self.fail_feed_fetch(
+                &record,
+                feed_failure_code_text(code),
+                feed_fetch_failure_is_retryable(code),
             ),
-            HostObservation::Unsupported { wire_code } => self.fail(
-                pending.command_id,
-                CoreFailureCode::Unsupported { wire_code },
-            ),
-            HostObservation::PlaybackObserved { .. } => {
-                self.fail(pending.command_id, CoreFailureCode::InvalidCommand)
-            }
-            HostObservation::RecallQueryEmbedded { .. }
-            | HostObservation::RecallSpansEmbedded { .. }
-            | HostObservation::RecallCandidatesReranked { .. }
-            | HostObservation::PublisherChaptersFetched { .. }
-            | HostObservation::ChapterModelProviderAccepted { .. }
-            | HostObservation::ChapterModelCompleted { .. }
-            | HostObservation::ChapterModelFailed { .. }
-            | HostObservation::DownloadAccepted { .. }
-            | HostObservation::DownloadStaged { .. }
-            | HostObservation::DownloadCancelled { .. }
-            | HostObservation::DownloadArtifactRemoved { .. }
-            | HostObservation::NewEpisodeNotificationDelivered { .. }
-            | HostObservation::TranscriptCapabilityObserved { .. }
-            | HostObservation::ScheduledAgentExecutionObserved { .. }
-            | HostObservation::AgentModelCompleted { .. }
-            | HostObservation::AgentApprovalObserved { .. }
-            | HostObservation::AgentCapabilityObserved { .. }
-            | HostObservation::NostrSignerCredentialReady { .. }
-            | HostObservation::NostrEventSigned { .. }
-            | HostObservation::NostrSignerCredentialDeleted { .. }
-            | HostObservation::CoreWakeReached { .. }
-            | HostObservation::LegacyRecallIndexArtifactsRemoved { .. } => {
-                self.fail(pending.command_id, CoreFailureCode::InvalidCommand)
-            }
-        }
+            HostObservation::Cancelled => self.discard_feed_fetch(&record),
+            _ => self.fail_feed_fetch(&record, "invalid_observation", false),
+        };
+        let _ = self.reload_feed_fetches();
+        self.trim_operations();
+        receipt
+    }
+
+    /// A response the ledger bounds rejected still resolves the workflow
+    /// durably instead of leaving the fetch outstanding forever.
+    pub(super) fn persist_oversized_feed_observation(
+        &mut self,
+        record: FeedFetchWorkflowRecord,
+    ) -> HostObservationReceipt {
+        self.advance_revision();
+        self.pending_feeds.remove(&record.request_id);
+        let receipt = self.fail_feed_fetch(&record, "response_too_large", false);
+        let _ = self.reload_feed_fetches();
+        self.trim_operations();
+        receipt
     }
 
     fn apply_fetched_feed(
         &mut self,
-        pending: PendingFeed,
+        record: &FeedFetchWorkflowRecord,
         bytes: &[u8],
         entity_tag: Option<String>,
         last_modified: Option<String>,
         observed_at_ms: i64,
-    ) {
+    ) -> HostObservationReceipt {
+        let identity = pod0_domain::FeedIdentityV1 {
+            source_url: record.source_url.clone(),
+            comparison_key: record.feed_key.clone(),
+        };
         let parsed = pod0_application::parse_podcast_feed(
             bytes,
-            pending.feed_identity,
-            pending.podcast_id,
+            identity,
+            record.podcast_id,
             pod0_domain::UnixTimestampMilliseconds::new(observed_at_ms),
         );
         let Ok(parsed) = parsed else {
-            self.fail(pending.command_id, CoreFailureCode::FeedMalformed);
-            return;
+            return self.fail_feed_fetch(record, "feed_malformed", false);
         };
-        let Some(store) = &self.store else {
-            self.fail(pending.command_id, CoreFailureCode::StorageUnavailable);
-            return;
+        let Some(store) = self.store.clone() else {
+            return retain(record.request_id);
         };
         let mut episodes = parsed.episodes;
-        if pending.intent == FeedIntent::Metadata {
+        if record.intent == StoredFeedFetchIntent::Metadata {
             episodes.clear();
         }
         let result = store.apply_feed(
-            pending.command_id,
-            &pending.fingerprint,
+            record.command_id,
+            &record.command_fingerprint,
             parsed.podcast,
             episodes,
-            pending.intent == FeedIntent::Subscribe,
-            pending.intent == FeedIntent::Refresh,
+            record.intent == StoredFeedFetchIntent::Subscribe,
+            record.intent == StoredFeedFetchIntent::Refresh,
             entity_tag,
             last_modified,
             observed_at_ms,
         );
         match result {
-            Ok(applied) => match self.reload_listening() {
-                Ok(()) => {
-                    let _ = self.reconcile_feed_discovery_workflows();
-                    self.succeed(
-                        pending.command_id,
-                        Some(OperationResult::Podcast {
-                            podcast_id: applied.podcast_id,
-                        }),
-                    );
-                }
-                Err(error) => self.fail(pending.command_id, storage_failure(error)),
-            },
-            Err(error) => self.fail(pending.command_id, storage_failure(error)),
+            Ok(_) => {
+                let _ = store.complete_feed_fetch_workflow(record.request_id);
+                let _ = self.reload_listening();
+                let _ = self.reconcile_feed_discovery_workflows();
+                self.host_requests.retire(record.request_id);
+                persisted(record.request_id)
+            }
+            Err(_) => self.fail_feed_fetch(record, "storage_unavailable", true),
         }
     }
 
     fn apply_not_modified(
         &mut self,
-        pending: PendingFeed,
+        record: &FeedFetchWorkflowRecord,
         entity_tag: Option<String>,
         last_modified: Option<String>,
         observed_at_ms: i64,
-    ) {
-        if !matches!(pending.intent, FeedIntent::Refresh | FeedIntent::Metadata) {
-            self.fail(pending.command_id, CoreFailureCode::FeedMalformed);
-            return;
-        }
-        let Some(store) = &self.store else {
-            self.fail(pending.command_id, CoreFailureCode::StorageUnavailable);
-            return;
+    ) -> HostObservationReceipt {
+        let Some(store) = self.store.clone() else {
+            return retain(record.request_id);
         };
-        let result = store.mark_feed_not_modified(
-            pending.command_id,
-            &pending.fingerprint,
-            pending.podcast_id,
-            entity_tag,
-            last_modified,
-            observed_at_ms,
-        );
+        let result = if matches!(
+            record.intent,
+            StoredFeedFetchIntent::Refresh | StoredFeedFetchIntent::Metadata
+        ) {
+            store
+                .mark_feed_not_modified(
+                    record.command_id,
+                    &record.command_fingerprint,
+                    record.podcast_id,
+                    entity_tag,
+                    last_modified,
+                    observed_at_ms,
+                )
+                .map(|_| ())
+        } else {
+            Ok(())
+        };
         match result {
-            Ok(_) => match self.reload_listening() {
-                Ok(()) => self.succeed(
-                    pending.command_id,
-                    Some(OperationResult::Podcast {
-                        podcast_id: pending.podcast_id,
-                    }),
-                ),
-                Err(error) => self.fail(pending.command_id, storage_failure(error)),
-            },
-            Err(error) => self.fail(pending.command_id, storage_failure(error)),
+            Ok(()) => {
+                let _ = store.complete_feed_fetch_workflow(record.request_id);
+                let _ = self.reload_listening();
+                self.host_requests.retire(record.request_id);
+                persisted(record.request_id)
+            }
+            Err(_) => self.fail_feed_fetch(record, "storage_unavailable", true),
         }
+    }
+
+    fn fail_feed_fetch(
+        &mut self,
+        record: &FeedFetchWorkflowRecord,
+        failure_code: &str,
+        retryable: bool,
+    ) -> HostObservationReceipt {
+        self.host_requests.retire(record.request_id);
+        match self.schedule_feed_fetch_failure(record, failure_code, retryable) {
+            Some(_) => persisted(record.request_id),
+            None => retain(record.request_id),
+        }
+    }
+
+    fn discard_feed_fetch(&mut self, record: &FeedFetchWorkflowRecord) -> HostObservationReceipt {
+        self.host_requests.retire(record.request_id);
+        match self
+            .store
+            .as_ref()
+            .map(|store| store.complete_feed_fetch_workflow(record.request_id))
+        {
+            Some(Ok(_)) => persisted(record.request_id),
+            _ => retain(record.request_id),
+        }
+    }
+}
+
+fn persisted(request_id: pod0_domain::HostRequestId) -> HostObservationReceipt {
+    HostObservationReceipt::Persisted {
+        request_id,
+        terminal: true,
+    }
+}
+
+fn retain(request_id: pod0_domain::HostRequestId) -> HostObservationReceipt {
+    HostObservationReceipt::RetainAndRetry { request_id }
+}
+
+fn feed_failure_code_text(code: pod0_application::HostFailureCode) -> &'static str {
+    match code {
+        pod0_application::HostFailureCode::Offline => "offline",
+        pod0_application::HostFailureCode::TimedOut => "timed_out",
+        pod0_application::HostFailureCode::PermissionDenied => "permission_denied",
+        pod0_application::HostFailureCode::InvalidResponse => "invalid_response",
+        pod0_application::HostFailureCode::ResponseTooLarge => "response_too_large",
+        pod0_application::HostFailureCode::MediaUnavailable => "media_unavailable",
+        pod0_application::HostFailureCode::ProviderUnavailable => "provider_unavailable",
+        pod0_application::HostFailureCode::Unauthorized => "unauthorized",
+        pod0_application::HostFailureCode::IndexUnavailable => "index_unavailable",
+        pod0_application::HostFailureCode::PlatformFailure => "platform_failure",
+        pod0_application::HostFailureCode::Unsupported { .. } => "unsupported",
     }
 }

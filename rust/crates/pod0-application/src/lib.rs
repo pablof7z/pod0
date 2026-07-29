@@ -99,6 +99,9 @@ mod effects;
 mod evidence_contract;
 mod feed;
 mod feed_discovery;
+mod feed_fetch_contract;
+#[cfg(test)]
+mod feed_fetch_contract_fixture_tests;
 mod feed_parser;
 mod feed_parser_reader;
 mod feed_parser_values;
@@ -180,6 +183,7 @@ pub use effects::*;
 pub use evidence_contract::*;
 pub use feed::*;
 pub use feed_discovery::*;
+pub use feed_fetch_contract::*;
 pub use host_cancellation::*;
 pub use knowledge::*;
 pub use knowledge_chunking::*;

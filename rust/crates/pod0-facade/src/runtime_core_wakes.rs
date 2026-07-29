@@ -145,6 +145,10 @@ impl FacadeState {
                 let _ = self.reconcile_feed_discovery_workflows();
                 true
             }
+            CoreWakeReason::FeedFetchRetry { .. } => {
+                let _ = self.admit_feed_fetch_requests();
+                true
+            }
             CoreWakeReason::Unsupported { .. } => true,
         }
     }

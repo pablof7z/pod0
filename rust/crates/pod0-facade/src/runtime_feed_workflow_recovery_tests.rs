@@ -134,6 +134,19 @@ fn transient_fetch_failure_schedules_retry_that_survives_restart() {
         OperationStage::Failed,
         "an offline fetch failure must schedule a retry, not fail terminally"
     );
+    // The retry is Rust-owned: it must be expressed as a ScheduleCoreWake
+    // with the dedicated FeedFetchRetry reason, not native timer policy.
+    let requests = fixture.facade.next_host_requests(20);
+    assert!(
+        requests.iter().any(|request| matches!(
+            &request.request,
+            HostRequest::ScheduleCoreWake {
+                reason: pod0_application::CoreWakeReason::FeedFetchRetry { .. },
+                ..
+            }
+        )),
+        "the scheduled retry must be expressed as a FeedFetchRetry core wake: {requests:?}"
+    );
 
     let PlaybackFixture {
         facade,

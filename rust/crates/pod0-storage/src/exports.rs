@@ -40,6 +40,10 @@ pub use crate::feed_discovery_workflow_model::{
     FeedDiscoveryEffectKind, FeedDiscoveryEffectRecord, FeedDiscoveryEffectStage,
     FeedDiscoveryNotificationOutcome,
 };
+pub use crate::feed_fetch_store_model::{
+    FeedFetchEnsureInput, FeedFetchEnsureOutcome, FeedFetchFailureInput, FeedFetchWorkflowRecord,
+    StoredFeedFetchIntent, StoredFeedFetchStage,
+};
 pub use crate::import_model::{
     LegacyBackupEvidence, LegacyImportPlan, LegacySourceKind, ListeningImportReport,
     ListeningImportVerification,

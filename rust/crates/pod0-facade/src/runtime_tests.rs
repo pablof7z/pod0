@@ -62,8 +62,18 @@ fn library_request() -> ProjectionRequest {
 
 #[test]
 fn command_deadlines_are_deterministic_from_the_injected_kernel_clock() {
-    let first = Pod0Facade::with_clock(std::sync::Arc::new(FixedClock(1_000)));
-    let second = Pod0Facade::with_clock(std::sync::Arc::new(FixedClock(1_000)));
+    use crate::runtime_playback_test_support::PlaybackFixture;
+
+    let first = PlaybackFixture::new();
+    let second = PlaybackFixture::new();
+    first
+        .facade
+        .state()
+        .set_clock(std::sync::Arc::new(FixedClock(1_800_000_000_000)));
+    second
+        .facade
+        .state()
+        .set_clock(std::sync::Arc::new(FixedClock(1_800_000_000_000)));
     let envelope = command(
         1,
         10,
@@ -72,16 +82,32 @@ fn command_deadlines_are_deterministic_from_the_injected_kernel_clock() {
         },
     );
 
-    first.dispatch(envelope.clone());
-    second.dispatch(envelope);
+    first.facade.dispatch(envelope.clone());
+    second.facade.dispatch(envelope);
 
-    let first_request = first.next_host_requests(1).pop().unwrap();
-    let second_request = second.next_host_requests(1).pop().unwrap();
+    let first_request = subscribe_fetch_request(&first.facade);
+    let second_request = subscribe_fetch_request(&second.facade);
     assert_eq!(first_request, second_request);
     assert_eq!(
         first_request.deadline_at,
-        Some(UnixTimestampMilliseconds::new(31_000))
+        Some(UnixTimestampMilliseconds::new(
+            1_800_000_000_000 + 24 * 60 * 60 * 1_000
+        ))
     );
+}
+
+fn subscribe_fetch_request(facade: &Pod0Facade) -> HostRequestEnvelope {
+    facade
+        .next_host_requests(20)
+        .into_iter()
+        .find(|request| {
+            matches!(
+                &request.request,
+                HostRequest::FetchFeed { feed_url, .. }
+                    if feed_url == "https://example.test/feed"
+            )
+        })
+        .expect("subscribe command should issue one bounded host request")
 }
 
 #[test]
@@ -169,7 +195,10 @@ fn library_subscription_detects_changes_beyond_its_bounded_page() {
 
 #[test]
 fn cancellation_prevents_late_host_observation_from_committing() {
-    let facade = Pod0Facade::new();
+    use crate::runtime_playback_test_support::PlaybackFixture;
+
+    let fixture = PlaybackFixture::new();
+    let facade = &fixture.facade;
     facade.dispatch(command(
         1,
         10,
@@ -177,11 +206,7 @@ fn cancellation_prevents_late_host_observation_from_committing() {
             feed_url: "https://example.test/feed".to_owned(),
         },
     ));
-    let request = facade
-        .next_host_requests(1)
-        .into_iter()
-        .next()
-        .expect("subscribe command should issue one bounded host request");
+    let request = subscribe_fetch_request(facade);
 
     facade.dispatch(command(
         2,
@@ -190,16 +215,19 @@ fn cancellation_prevents_late_host_observation_from_committing() {
             cancellation_id: CancellationId::from_parts(0, 10),
         },
     ));
-    let revision_after_cancel = facade.snapshot(library_request()).state_revision;
 
-    facade.record_host_observation(HostObservationEnvelope {
+    let receipt = facade.record_host_observation(HostObservationEnvelope {
         request_id: request.request_id,
         cancellation_id: request.cancellation_id,
         observed_request_revision: request.issued_revision,
         sequence_number: 0,
-        observed_at: UnixTimestampMilliseconds::new(1_000),
+        observed_at: UnixTimestampMilliseconds::new(1_800_000_100_000),
         observation: HostObservation::FeedBytesFetched {
-            bytes: b"ignored late result".to_vec(),
+            bytes: br#"<rss version="2.0"><channel><title>Late</title>
+<item><title>Late episode</title><guid>late-cancelled-episode</guid>
+<enclosure url="https://example.test/late.mp3" type="audio/mpeg"/></item>
+</channel></rss>"#
+                .to_vec(),
             entity_tag: None,
             last_modified: None,
             response_url: "https://example.test/feed".to_owned(),
@@ -207,21 +235,31 @@ fn cancellation_prevents_late_host_observation_from_committing() {
         },
     });
 
-    let projection = facade.snapshot(library_request());
-    assert_eq!(projection.state_revision, revision_after_cancel);
-    let Projection::Library { value } = projection.projection else {
+    assert_eq!(
+        receipt,
+        HostObservationReceipt::Rejected {
+            request_id: request.request_id,
+            reason: HostObservationRejection::Cancelled
+        }
+    );
+    let Projection::Library { value } = facade.snapshot(library_request()).projection else {
         panic!("expected library projection");
     };
-    assert!(value.operations.iter().any(|operation| {
-        operation.command_id == CommandId::from_parts(0, 1)
-            && operation.stage == OperationStage::Cancelled
-    }));
+    assert!(
+        value
+            .episodes
+            .iter()
+            .all(|episode| episode.publisher_guid != "late-cancelled-episode"),
+        "a cancelled fetch must not commit its late result"
+    );
 }
 
 #[test]
 fn host_request_drain_is_safe_when_limit_exceeds_queue_length() {
-    let facade = Pod0Facade::new();
-    facade.dispatch(command(
+    use crate::runtime_playback_test_support::PlaybackFixture;
+
+    let fixture = PlaybackFixture::new();
+    fixture.facade.dispatch(command(
         1,
         10,
         ApplicationCommand::SubscribeToFeed {
@@ -229,21 +267,30 @@ fn host_request_drain_is_safe_when_limit_exceeds_queue_length() {
         },
     ));
 
-    assert_eq!(facade.next_host_requests(u16::MAX).len(), 1);
-    assert!(facade.next_host_requests(u16::MAX).is_empty());
+    let drained = fixture.facade.next_host_requests(u16::MAX);
+    assert!(drained.iter().any(|request| {
+        matches!(
+            &request.request,
+            HostRequest::FetchFeed { feed_url, .. }
+                if feed_url == "https://example.test/feed"
+        )
+    }));
+    assert!(fixture.facade.next_host_requests(u16::MAX).is_empty());
 }
 
 #[test]
 fn cancellation_removes_native_work_that_has_not_started() {
-    let facade = Pod0Facade::new();
-    facade.dispatch(command(
+    use crate::runtime_playback_test_support::PlaybackFixture;
+
+    let fixture = PlaybackFixture::new();
+    fixture.facade.dispatch(command(
         1,
         10,
         ApplicationCommand::SubscribeToFeed {
             feed_url: "https://example.test/feed".to_owned(),
         },
     ));
-    facade.dispatch(command(
+    fixture.facade.dispatch(command(
         2,
         20,
         ApplicationCommand::CancelOperation {
@@ -251,7 +298,13 @@ fn cancellation_removes_native_work_that_has_not_started() {
         },
     ));
 
-    assert!(facade.next_host_requests(u16::MAX).is_empty());
+    assert!(
+        fixture
+            .facade
+            .next_host_requests(u16::MAX)
+            .iter()
+            .all(|request| !matches!(&request.request, HostRequest::FetchFeed { .. }))
+    );
 }
 
 #[test]

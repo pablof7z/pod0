@@ -56,6 +56,7 @@ impl Default for FacadeState {
             host_queue: VecDeque::new(),
             host_cancellations: VecDeque::new(),
             pending_feeds: BTreeMap::new(),
+            feed_fetches: Vec::new(),
             pending_publisher_chapters: BTreeMap::new(),
             pending_publisher_observations: BTreeMap::new(),
             pending_downloads: BTreeMap::new(),

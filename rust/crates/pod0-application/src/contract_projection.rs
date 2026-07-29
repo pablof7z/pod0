@@ -187,6 +187,7 @@ pub struct LibraryProjection {
     pub podcasts: Vec<PodcastRecord>,
     pub subscriptions: Vec<PodcastSubscriptionRecord>,
     pub episodes: Vec<EpisodeRecord>,
+    pub feed_fetches: Vec<crate::FeedFetchProjection>,
     pub operations: Vec<OperationProjection>,
     pub has_more: bool,
 }

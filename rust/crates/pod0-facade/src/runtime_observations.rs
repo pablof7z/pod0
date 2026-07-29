@@ -95,6 +95,7 @@ impl FacadeState {
         let pending_transcript = self.pending_transcript_record(request_id);
         let pending_wake = self.pending_core_wakes.contains_key(&request_id);
         let pending_download = self.pending_downloads.contains_key(&request_id);
+        let pending_feed = self.pending_feeds.get(&request_id).cloned();
         let pending_feed_notification = self
             .pending_feed_discovery_notifications
             .contains_key(&request_id);
@@ -105,6 +106,13 @@ impl FacadeState {
             && let Some(record) = pending_model
         {
             let receipt = self.persist_oversized_model_observation(record);
+            let changed = matches!(receipt, HostObservationReceipt::Persisted { .. });
+            return (changed, receipt);
+        }
+        if acceptance == ObservationAcceptance::PayloadTooLarge
+            && let Some(record) = pending_feed.clone()
+        {
+            let receipt = self.persist_oversized_feed_observation(record);
             let changed = matches!(receipt, HostObservationReceipt::Persisted { .. });
             return (changed, receipt);
         }
@@ -178,6 +186,11 @@ impl FacadeState {
             let changed = self.finish_core_wake(request_id, observation.observation);
             return (changed, accepted(request_id));
         }
+        if let Some(record) = pending_feed {
+            let receipt = self.persist_feed_observation(record, observation);
+            let changed = matches!(receipt, HostObservationReceipt::Persisted { .. });
+            return (changed, receipt);
+        }
         if pending_download {
             let retained = observation.clone();
             let receipt = self.persist_download_observation(observation);
@@ -193,12 +206,6 @@ impl FacadeState {
             self.pending_publisher_observations
                 .insert(observation.request_id, observation.observation);
             self.retry_pending_publisher_observations();
-        } else if let Some(pending) = self.pending_feeds.remove(&observation.request_id) {
-            self.finish_feed_observation(
-                pending,
-                observation.observation,
-                observation.observed_at.value,
-            );
         } else if let Some(pending) = pending_recall {
             if self.finish_recall_observation_for_agent(request_id, pending, observation) {
                 return (false, retain(request_id));

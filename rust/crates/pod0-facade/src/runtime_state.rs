@@ -4,8 +4,8 @@ use std::sync::Arc;
 use pod0_application::{
     Clock, CommandEnvelope, CommandLedger, CommandRegistration, CoreFailure, CoreFailureCode,
     CoreWakeReason, HostCancellationRequest, HostObservation, HostRequestEnvelope,
-    HostRequestLedger, OperationProjection, OperationResult, OperationStage, PlaybackPolicyState,
-    Projection, SubscriptionRegistry,
+    HostRequestLedger, OperationProjection, OperationResult, OperationStage, Projection,
+    SubscriptionRegistry,
 };
 use pod0_domain::{
     CommandId, EpisodeId, HostRequestId, ListeningDomainSnapshot, RecallQueryId, StateRevision,
@@ -22,21 +22,10 @@ use crate::runtime_agent_modules::state::{PendingAgentRecallObservation, Pending
 use crate::runtime_delivery_content::ProjectionDeliveryContent;
 use crate::runtime_evidence_state::PendingEvidenceIndex;
 pub(super) use crate::runtime_failure::failure;
-use crate::runtime_feed_state::PendingFeed;
 use crate::runtime_playback_state::PlaybackRuntime;
 use crate::runtime_recall_cutover::PendingRecallCutover;
 use crate::runtime_recall_interrupts::{RecallInterruptLease, RecallInterruptRegistry};
 use crate::runtime_recall_state::{PendingRecall, RecallWorkflow};
-
-pub(super) struct FacadeStores {
-    pub(super) listening: LibraryStore,
-    pub(super) evidence: EvidenceStore,
-    pub(super) transcript: TranscriptStore,
-    pub(super) scheduled_agent: Option<ScheduledAgentStore>,
-    pub(super) agent: AgentStore,
-    pub(super) publication: PublicationStore,
-    pub(super) signer: SignerStore,
-}
 
 pub(super) struct FacadeState {
     pub(super) clock: Arc<dyn Clock>,
@@ -68,7 +57,9 @@ pub(super) struct FacadeState {
     pub(super) host_requests: HostRequestLedger,
     pub(super) host_queue: VecDeque<HostRequestEnvelope>,
     pub(super) host_cancellations: VecDeque<HostCancellationRequest>,
-    pub(super) pending_feeds: BTreeMap<pod0_domain::HostRequestId, PendingFeed>,
+    pub(super) pending_feeds:
+        BTreeMap<pod0_domain::HostRequestId, pod0_storage::FeedFetchWorkflowRecord>,
+    pub(super) feed_fetches: Vec<pod0_storage::FeedFetchWorkflowRecord>,
     pub(super) pending_publisher_chapters:
         BTreeMap<HostRequestId, pod0_storage::PublisherChapterWorkflowRecord>,
     pub(super) pending_publisher_observations: BTreeMap<HostRequestId, HostObservation>,
@@ -110,14 +101,6 @@ pub(super) struct FacadeState {
 
 impl FacadeState {
     #[cfg(test)]
-    pub(super) fn with_clock(clock: Arc<dyn Clock>) -> Self {
-        Self {
-            clock,
-            ..Self::default()
-        }
-    }
-
-    #[cfg(test)]
     pub(super) fn set_clock(&mut self, clock: Arc<dyn Clock>) {
         self.clock = clock;
     }
@@ -132,80 +115,6 @@ impl FacadeState {
     ) -> RecallInterruptLease {
         self.recall_interrupts
             .begin(cancellation_id, self.recall_index.cancellation())
-    }
-
-    pub(super) fn open(
-        stores: FacadeStores,
-        mut recall_index: RecallIndex,
-        clock: Arc<dyn Clock>,
-    ) -> Result<Self, pod0_storage::StorageError> {
-        let FacadeStores {
-            listening: store,
-            evidence: evidence_store,
-            transcript: transcript_store,
-            scheduled_agent: scheduled_agent_store,
-            agent: agent_store,
-            publication: publication_store,
-            signer: signer_store,
-        } = stores;
-        let _ = store.clear_session_sleep_timer()?;
-        let _ = store.recover_download_artifacts()?;
-        let listening = store.snapshot()?;
-        let new_episode_notification_settings = store.new_episode_notification_settings()?;
-        let notes = store.note_snapshot()?;
-        let memories = store.memory_snapshot()?;
-        let clips = store.clip_snapshot()?;
-        let signer_account = signer_store.account()?;
-        let recall_configuration = store.recall_configuration()?.unwrap_or_default();
-        recall_index
-            .activate_embedding_space(recall_configuration.embedding_space_id)
-            .map_err(|_| pod0_storage::StorageError::InvalidRecallConfiguration)?;
-        let playback = PlaybackRuntime {
-            policy_state: if listening.playback.active_episode_id.is_some() {
-                PlaybackPolicyState::Paused
-            } else {
-                PlaybackPolicyState::Idle
-            },
-            ..PlaybackRuntime::default()
-        };
-        let mut state = Self {
-            clock,
-            revision: StateRevision::new(
-                listening
-                    .playback
-                    .revision
-                    .value
-                    .max(notes.revision.value)
-                    .max(memories.revision.value)
-                    .max(clips.revision.value),
-            ),
-            listening,
-            new_episode_notification_settings,
-            notes,
-            memories,
-            clips,
-            store: Some(store),
-            evidence_store: Some(evidence_store),
-            transcript_store: Some(transcript_store),
-            scheduled_agent_store,
-            agent_store: Some(agent_store),
-            publication_store: Some(publication_store),
-            signer_store: Some(signer_store),
-            signer_account,
-            recall_index,
-            recall_configuration,
-            playback,
-            ..Self::default()
-        };
-        state.rehydrate_publisher_chapter_workflows()?;
-        state.rehydrate_download_workflows()?;
-        state.rehydrate_feed_discovery_workflows()?;
-        state.rehydrate_model_chapter_workflows()?;
-        state.rehydrate_transcript_workflows()?;
-        state.rehydrate_scheduled_agent_workflows()?;
-        state.rehydrate_agent_turns()?;
-        state.rehydrate_nostr_signer()?;
-        Ok(state)
     }
 
     pub(super) fn dispatch(&mut self, envelope: CommandEnvelope) -> bool {

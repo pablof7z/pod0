@@ -1,5 +1,5 @@
 use pod0_domain::{
-    ChapterModelSubmissionFenceId, EpisodeId, FeedDiscoveryOccurrenceId, HostRequestId,
+    ChapterModelSubmissionFenceId, EpisodeId, FeedDiscoveryOccurrenceId, HostRequestId, PodcastId,
     TranscriptAttemptId, TranscriptSubmissionFenceId,
 };
 
@@ -32,6 +32,10 @@ pub enum CoreWakeReason {
         occurrence_id: FeedDiscoveryOccurrenceId,
         episode_id: EpisodeId,
         attempt: u8,
+    },
+    FeedFetchRetry {
+        podcast_id: PodcastId,
+        attempt: u16,
     },
     Unsupported {
         wire_code: u32,
