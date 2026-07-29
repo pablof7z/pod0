@@ -68,6 +68,24 @@ async fn library_lists_nothing(w: &mut PodWorld) {
     );
 }
 
+#[then(regex = r#"^the library lists no episodes$"#)]
+async fn library_lists_no_episodes(w: &mut PodWorld) {
+    nothing_to_observe!(
+        w.is_started(),
+        "no core ever ran in this scenario, so there is no library to be empty"
+    );
+    let library = w.library();
+    assert!(
+        library.episodes.is_empty(),
+        "expected no episodes; the library lists {:?}",
+        library
+            .episodes
+            .iter()
+            .map(|episode| episode.title.as_str())
+            .collect::<Vec<_>>()
+    );
+}
+
 #[then(regex = r#"^the live library view received the podcast "([^"]+)"$"#)]
 async fn live_view_received_podcast(w: &mut PodWorld, title: String) {
     let deliveries = w.library_watch_deliveries();

@@ -36,7 +36,7 @@ of a design problem, not a missing helper.
 ```text
 features/                  # repo root, organised by domain
   library/                 # what the app-visible library shows
-  operations/              # command lifecycle: cancel, retry, typed failure
+  operations/              # command acceptance, workflow cancellation, retry
 rust/crates/pod0-bdd/
   src/                     # cucumber-free fixture builders (unit-tested)
   tests/bdd/main.rs        # harness = false entry point + tag filtering

@@ -1,12 +1,13 @@
-//! Claims about one command's lifecycle: the semantic `OperationStage` the
-//! projection reports, the typed failure it carries, the typed receipt a
-//! host observation earned, and what the state revision did. This family
-//! owns the lookup from a scenario's feed URL to its projected operation.
+//! Claims about command acceptance and its durable feed-fetch workflow: the
+//! projected stages and failure, the typed receipt a host observation earned,
+//! and what the state revision did. This family owns the lookup from a
+//! scenario's feed URL to both projected records.
 
 use cucumber::then;
 
 use pod0_application::{
-    CoreFailureCode, HostObservationReceipt, OperationProjection, OperationStage,
+    FeedFetchProjection, FeedFetchStage, HostObservationReceipt, OperationProjection,
+    OperationStage,
 };
 
 use crate::world::PodWorld;
@@ -33,31 +34,41 @@ async fn subscription_succeeded(w: &mut PodWorld, url: String) {
     );
 }
 
-#[then(regex = r#"^the subscription to "([^"]+)" was cancelled$"#)]
-async fn subscription_cancelled(w: &mut PodWorld, url: String) {
-    let operation = subscribe_operation(w, &url);
+/// The durable feed-fetch workflow for `url` must exist before a stage claim
+/// about it can mean anything.
+fn feed_fetch(w: &PodWorld, url: &str) -> FeedFetchProjection {
+    nothing_to_observe!(
+        w.has_subscribed_to(url),
+        "the app never subscribed to {url:?}, so no feed fetch exists to make claims about"
+    );
+    w.feed_fetch(url)
+        .unwrap_or_else(|| panic!("expected a projected feed fetch for {url:?}"))
+}
+
+#[then(regex = r#"^the feed fetch for "([^"]+)" failed because the feed was malformed$"#)]
+async fn feed_fetch_failed_malformed(w: &mut PodWorld, url: String) {
+    let fetch = feed_fetch(w, &url);
     assert_eq!(
-        operation.stage,
-        OperationStage::Cancelled,
-        "expected the subscribe to {url:?} to be cancelled; got {operation:?}"
+        fetch.stage,
+        FeedFetchStage::Failed,
+        "expected the feed fetch for {url:?} to fail; got {fetch:?}"
+    );
+    assert_eq!(
+        fetch.failure_code.as_deref(),
+        Some("feed_malformed"),
+        "expected the durable feed workflow to carry feed_malformed; got {fetch:?}"
     );
 }
 
-#[then(regex = r#"^the subscription to "([^"]+)" failed because the feed was malformed$"#)]
-async fn subscription_failed_malformed(w: &mut PodWorld, url: String) {
-    let operation = subscribe_operation(w, &url);
-    assert_eq!(
-        operation.stage,
-        OperationStage::Failed,
-        "expected the subscribe to {url:?} to fail; got {operation:?}"
+#[then(regex = r#"^no feed fetch workflow remains for "([^"]+)"$"#)]
+async fn no_feed_fetch_workflow_remains(w: &mut PodWorld, url: String) {
+    nothing_to_observe!(
+        w.has_subscribed_to(&url),
+        "the app never subscribed to {url:?}, so an absent workflow proves nothing"
     );
-    let failure = operation
-        .failure
-        .unwrap_or_else(|| panic!("a failed operation must carry its typed failure"));
-    assert_eq!(
-        failure.code,
-        CoreFailureCode::FeedMalformed,
-        "expected the typed FeedMalformed failure; got {failure:?}"
+    assert!(
+        w.feed_fetch(&url).is_none(),
+        "expected no durable feed fetch workflow for {url:?}"
     );
 }
 

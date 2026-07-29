@@ -11,8 +11,9 @@
 use std::sync::{Arc, Mutex};
 
 use pod0_application::{
-    HostCancellationRequest, HostRequest, HostRequestEnvelope, LibraryProjection,
-    OperationProjection, Projection, ProjectionEnvelope, ProjectionRequest, ProjectionScope,
+    FeedFetchProjection, HostCancellationRequest, HostRequest, HostRequestEnvelope,
+    LibraryProjection, OperationProjection, Projection, ProjectionEnvelope, ProjectionRequest,
+    ProjectionScope,
 };
 use pod0_domain::StateRevision;
 use pod0_facade::ProjectionSubscriber;
@@ -97,6 +98,15 @@ impl PodWorld {
             .operations
             .into_iter()
             .find(|operation| operation.command_id == command_id)
+    }
+
+    /// The durable fetch workflow for `url`, if one remains projected.
+    pub fn feed_fetch(&self, url: &str) -> Option<FeedFetchProjection> {
+        let identity = pod0_application::normalize_feed_url(url)?;
+        self.library().feed_fetches.into_iter().find(|fetch| {
+            pod0_application::normalize_feed_url(&fetch.feed_url)
+                .is_some_and(|candidate| candidate.comparison_key == identity.comparison_key)
+        })
     }
 
     /// Drain the host-work queue to exhaustion, as a host draining until

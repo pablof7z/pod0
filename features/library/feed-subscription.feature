@@ -14,9 +14,11 @@ Feature: Subscribing to a podcast feed
     And the library lists the episode "Pilot"
     And the library lists the episode "Second wind"
 
-  Scenario: Malformed feed bytes become a typed failure, not a wedged operation
+  Scenario: Malformed feed bytes park the durable fetch with a typed failure
     Given the feed at "https://feeds.example/broken" serves bytes that are not a podcast feed
     When the app subscribes to the feed at "https://feeds.example/broken"
     And the host completes the feed fetch for "https://feeds.example/broken"
-    Then the subscription to "https://feeds.example/broken" failed because the feed was malformed
-    And the library lists no podcasts
+    Then the subscription to "https://feeds.example/broken" has succeeded
+    And the feed fetch for "https://feeds.example/broken" failed because the feed was malformed
+    And no feed fetch work remains for the host
+    And the library lists no episodes
