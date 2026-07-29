@@ -69,10 +69,13 @@ scheduling boundary, not a ledger commit gate: Rust-owned reconciliation
 withdraws a request whose deadline has elapsed and schedules the durable retry
 itself, after which a late observation is rejected as unknown or cancelled. A
 late observation for a request Rust still considers outstanding commits
-normally; native code never decides expiry (ADR-0001). Feed bytes are bounded
-by the request's declared maximum and carry only HTTP/cache evidence; feed
-normalization remains in Rust. The native host reports raw failure codes; Rust
-decides retry, fallback, and durable state.
+normally. The native dispatcher may still time out an individual attempt — a
+fetch that completes past `deadline_at` is reported as a retryable `TimedOut`
+failure on the native clock — but all durable expiry authority (withdrawal,
+retry scheduling, request-identity rotation) is Rust's (ADR-0001). Feed bytes
+are bounded by the request's declared maximum and carry only HTTP/cache
+evidence; feed normalization remains in Rust. The native host reports raw
+failure codes; Rust decides retry, fallback, and durable state.
 
 Model-chapter execution follows claim-before-return semantics. Rust durably
 authorizes a single POST before an `ExecuteChapterModel` request can leave the
