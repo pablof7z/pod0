@@ -7,7 +7,8 @@ fn reason_matches_record(reason: CoreWakeReason, record: &ModelChapterWorkflowRe
         CoreWakeReason::TranscriptProviderRecovery { .. }
         | CoreWakeReason::TranscriptRetry { .. }
         | CoreWakeReason::TranscriptFinalization { .. }
-        | CoreWakeReason::FeedDiscoveryNotificationRetry { .. } => false,
+        | CoreWakeReason::FeedDiscoveryNotificationRetry { .. }
+        | CoreWakeReason::FeedFetchRetry { .. } => false,
         CoreWakeReason::Unsupported { .. } => false,
     }
 }
@@ -64,6 +65,14 @@ fn wake_request_id(reason: CoreWakeReason, wake_at_ms: i64) -> HostRequestId {
             hash.update(occurrence_id.into_bytes());
             hash.update(episode_id.into_bytes());
             hash.update([attempt]);
+        }
+        CoreWakeReason::FeedFetchRetry {
+            podcast_id,
+            attempt,
+        } => {
+            hash.update([7]);
+            hash.update(podcast_id.into_bytes());
+            hash.update(attempt.to_be_bytes());
         }
         CoreWakeReason::Unsupported { wire_code } => {
             hash.update([255]);

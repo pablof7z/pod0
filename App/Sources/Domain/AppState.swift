@@ -20,6 +20,9 @@ struct AppState: Codable, Sendable {
     /// until their own vertical slices migrate.
     var episodes: [Episode] = []
     var notes: [Note] = []
+    /// Projection-only mirror of durable Rust feed-fetch workflows. Never
+    /// persisted: Rust re-issues interrupted fetches itself on relaunch.
+    var feedFetches: [FeedFetchProgress] = []
     var agentMemories: [AgentMemory] = []
     /// LLM-consolidated paragraph summarizing the active `agentMemories`.
     /// Preserved from the retired Swift agent. When non-nil,

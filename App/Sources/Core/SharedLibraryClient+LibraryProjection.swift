@@ -48,6 +48,7 @@ extension SharedLibraryClient {
         var podcasts: [PodcastRecord] = []
         var subscriptions: [PodcastSubscriptionRecord] = []
         var episodes: [EpisodeRecord] = []
+        var feedFetches: [FeedFetchProjection] = []
         var operations: [OperationProjection] = []
         while true {
             let envelope = facade.snapshot(request: ProjectionRequest(
@@ -60,6 +61,7 @@ extension SharedLibraryClient {
             subscriptions.append(contentsOf: page.subscriptions)
             episodes.append(contentsOf: page.episodes)
             if operations.isEmpty { operations = page.operations }
+            if feedFetches.isEmpty { feedFetches = page.feedFetches }
             guard page.hasMore, offset <= UInt32.max - 200 else { break }
             offset += 200
         }
@@ -78,6 +80,7 @@ extension SharedLibraryClient {
             podcasts: podcasts,
             subscriptions: subscriptions,
             episodes: episodes,
+            feedFetches: feedFetches,
             chaptersByEpisodeID: chapters,
             operations: operations
         )

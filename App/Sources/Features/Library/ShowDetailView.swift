@@ -27,7 +27,6 @@ struct ShowDetailView: View {
     @State private var showDownloadAllConfirm: Bool = false
     @State private var searchText: String = ""
     @State private var isSearchActive: Bool = false
-    @State private var isFetchingEpisodes: Bool = false
     /// Drives the VoiceOver "Open episode details" custom action — bound into
     /// `ShowDetailEpisodeList` and consumed via `.navigationDestination(item:)`
     /// so the same `EpisodeDetailView` opens regardless of how the user got there.
@@ -88,9 +87,7 @@ struct ShowDetailView: View {
         .refreshable { await refresh() }
         .task(id: podcast.id) {
             guard !isFollowed, liveSubscription.feedURL != nil else { return }
-            isFetchingEpisodes = true
             await refresh()
-            isFetchingEpisodes = false
         }
         .sheet(isPresented: $showSettings) {
             ShowDetailSettingsSheet(
@@ -182,7 +179,7 @@ struct ShowDetailView: View {
 
     @ViewBuilder
     private var episodeListSection: some View {
-        if isFetchingEpisodes && episodes.isEmpty {
+        if isFetchingEpisodes, episodes.isEmpty {
             Section {
                 ProgressView("Loading episodes…")
                     .frame(maxWidth: .infinity)
@@ -304,9 +301,11 @@ struct ShowDetailView: View {
         }
     }
 
-    private var isFollowed: Bool {
-        store.subscription(podcastID: podcast.id) != nil
-    }
+    private var isFollowed: Bool { store.subscription(podcastID: podcast.id) != nil }
+
+    /// Loading state is the durable Rust feed-fetch projection, so the row
+    /// reflects the actual background workflow even across relaunch.
+    private var isFetchingEpisodes: Bool { store.isFeedFetchInFlight(podcastID: podcast.id) }
 
     private func follow() async {
         guard let feedURL = liveSubscription.feedURL else { return }

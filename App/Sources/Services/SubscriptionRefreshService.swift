@@ -3,9 +3,9 @@ import Pod0Core
 import UIKit
 import os.log
 
-/// Schedules refresh intents while Rust owns conditional-fetch policy, feed
-/// normalization, durable metadata, and episode admission. Native networking
-/// is executed by the typed `CoreFeedHost` capability.
+/// Records refresh intents while Rust owns conditional-fetch policy, feed
+/// normalization, durable metadata, episode admission, coalescing, and retry.
+/// Native networking is executed by the typed `CoreFeedHost` capability.
 @MainActor
 final class SubscriptionRefreshService {
     static let shared = SubscriptionRefreshService()
@@ -18,35 +18,25 @@ final class SubscriptionRefreshService {
         guard let sharedLibrary = store.sharedLibrary else {
             throw SharedLibraryError.unavailable
         }
-        _ = try await sharedLibrary.execute(.refreshPodcast(
+        _ = try await sharedLibrary.executeCommitted(.refreshPodcast(
             podcastId: PodcastId(uuid: podcastID)
         ))
     }
 
-    /// Refreshes followed podcasts in bounded batches. Rust remains the only
-    /// writer even when native scheduling runs several independent commands.
-    func refreshAll(store: AppStateStore, maxConcurrent: Int = 4) async {
+    /// Records a refresh intent for every followed podcast. Each command
+    /// commits a durable workflow row immediately; admission, coalescing,
+    /// and retry pacing are Rust workflow policy, so native no longer
+    /// batches or bounds concurrency here.
+    func refreshAll(store: AppStateStore) async {
         let podcasts = store.sortedFollowedPodcastsByRecency.filter { $0.feedURL != nil }
-        guard !podcasts.isEmpty else { return }
-        let bounded = max(1, maxConcurrent)
-        var index = 0
-        while index < podcasts.count {
-            let upper = min(index + bounded, podcasts.count)
-            let identifiers = podcasts[index..<upper].map(\.id)
-            let tasks = identifiers.map { podcastID in
-                Task { @MainActor [weak self, weak store] in
-                    guard let self, let store else { return }
-                    do {
-                        try await self.refresh(podcastID, store: store)
-                    } catch {
-                        Self.logger.notice(
-                            "shared refresh failed for \(podcastID, privacy: .public): \(error.localizedDescription, privacy: .public)"
-                        )
-                    }
-                }
+        for podcast in podcasts {
+            do {
+                try await refresh(podcast.id, store: store)
+            } catch {
+                Self.logger.notice(
+                    "shared refresh failed for \(podcast.id, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                )
             }
-            for task in tasks { await task.value }
-            index = upper
         }
     }
 

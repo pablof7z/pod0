@@ -123,7 +123,11 @@ final class SharedLibraryVerticalSliceTests: XCTestCase {
 
         let service = SubscriptionService(store: store)
         let podcast = try await service.addSubscription(feedURLString: feedURL)
-        XCTAssertEqual(podcast.title, "Shared Show")
+
+        // Contract 53: `addSubscription` returns at durable commit. Hydrated
+        // state is asserted after driving the host pump to completion.
+        await AppStateTestSupport.settleSharedFeedWork(store)
+        XCTAssertEqual(store.podcast(id: podcast.id)?.title, "Shared Show")
         XCTAssertEqual(store.state.subscriptions.count, 1)
         XCTAssertEqual(store.episodes(forPodcast: podcast.id).map(\.guid), ["episode-1"])
 
@@ -143,6 +147,7 @@ final class SharedLibraryVerticalSliceTests: XCTestCase {
         )
         try await store.setSubscriptionNotificationsAndWait(podcast.id, enabled: true)
         try await SubscriptionRefreshService().refresh(podcast.id, store: store)
+        await AppStateTestSupport.settleSharedFeedWork(store)
 
         XCTAssertEqual(
             Set(store.episodes(forPodcast: podcast.id).map(\.guid)),
@@ -254,41 +259,4 @@ final class SharedLibraryVerticalSliceTests: XCTestCase {
         </rss>
         """#
     }
-}
-
-actor QueuedCoreFeedHost: CoreFeedHosting {
-    struct Request: Sendable {
-        let feedURL: String
-        let entityTag: String?
-        let lastModified: String?
-        let maximumResponseBytes: UInt64
-    }
-
-    private var responses: [HostObservation]
-    private var requests: [Request] = []
-
-    init(_ responses: [HostObservation]) {
-        self.responses = responses
-    }
-
-    func fetch(
-        feedURL: String,
-        entityTag: String?,
-        lastModified: String?,
-        maximumResponseBytes: UInt64,
-        deadline: Date?
-    ) async -> HostObservation {
-        requests.append(Request(
-            feedURL: feedURL,
-            entityTag: entityTag,
-            lastModified: lastModified,
-            maximumResponseBytes: maximumResponseBytes
-        ))
-        guard !responses.isEmpty else {
-            return .failed(code: .platformFailure, safeDetail: "No queued test response")
-        }
-        return responses.removeFirst()
-    }
-
-    func recordedRequests() -> [Request] { requests }
 }

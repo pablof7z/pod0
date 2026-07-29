@@ -13,6 +13,9 @@ impl LibraryProjection {
         self.podcasts = page(std::mem::take(&mut self.podcasts), offset, item_limit);
         self.subscriptions = page(std::mem::take(&mut self.subscriptions), offset, item_limit);
         self.episodes = page(std::mem::take(&mut self.episodes), offset, item_limit);
+        self.feed_fetches.truncate(usize::from(
+            crate::MAX_ACTIVE_FEED_FETCH_WORKFLOWS.min(MAX_PROJECTION_ITEMS),
+        ));
         self.operations.truncate(MAX_OPERATION_ITEMS);
         self.has_more |= counts.0 > offset.saturating_add(self.podcasts.len())
             || counts.1 > offset.saturating_add(self.subscriptions.len())

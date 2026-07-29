@@ -260,7 +260,7 @@ fn podcast_has_episodes(
         .map_err(|error| StorageError::sqlite("read podcast episode population", error))
 }
 
-fn insert_subscription(
+pub(crate) fn insert_subscription(
     transaction: &Transaction<'_>,
     podcast_id: PodcastId,
     observed_at_ms: i64,

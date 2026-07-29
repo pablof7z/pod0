@@ -20,6 +20,33 @@ extension SharedLibraryClient {
         dispatcher.cancel(cancellationID: cancellationID)
     }
 
+    /// Dispatches a commit-immediately command and reads its outcome from the
+    /// post-dispatch operation projection. Unlike `execute`, this never parks
+    /// a continuation waiting for host work to finish: from contract version
+    /// 53 the feed family succeeds once the intent is durably queued, and any
+    /// fetch it triggers is background workflow state projected separately.
+    func executeCommitted(_ command: ApplicationCommand) async throws -> OperationResult? {
+        await subscriptionTask?.value
+        await initialProjectionTask?.value
+        let commandID = CommandId(uuid: UUID())
+        dispatchCoreCommand(command, commandID: commandID)
+        await coreCommandTail?.value
+        let envelope = await coreSnapshot(ProjectionRequest(
+            scope: .library,
+            offset: 0,
+            maxItems: 1
+        ))
+        guard case .library(let value) = envelope.projection,
+              let operation = value.operations.last(where: { $0.commandId == commandID })
+        else { throw SharedLibraryError.unavailable }
+        switch operation.stage {
+        case .failed, .cancelled, .unsupported:
+            throw SharedLibraryError(operation.failure?.code)
+        default:
+            return operation.result
+        }
+    }
+
     func execute(_ command: ApplicationCommand) async throws -> OperationResult? {
         await subscriptionTask?.value
         await initialProjectionTask?.value

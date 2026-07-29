@@ -43,6 +43,9 @@ final class SharedLibraryExternalEpisodeTests: XCTestCase {
         _ = try await sharedLibrary.execute(.hydratePodcastMetadata(
             podcastId: PodcastId(uuid: requestedPodcastID)
         ))
+        // Contract 53: the metadata command succeeds at durable commit, so
+        // drive the host pump before asserting the hydrated projection.
+        await AppStateTestSupport.settleSharedFeedWork(store)
         XCTAssertEqual(store.podcast(id: requestedPodcastID)?.title, "Hydrated External Show")
         XCTAssertEqual(store.podcast(id: requestedPodcastID)?.titleIsPlaceholder, false)
         XCTAssertEqual(store.podcast(id: requestedPodcastID)?.etag, "\"metadata-v1\"")
