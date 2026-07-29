@@ -53,6 +53,9 @@ jobs:
       - name: Validate product-proof cohort evaluator
         run: python3 -m unittest scripts.tests.test_product_proof_cohort
 
+      - name: Validate core binding identity gate
+        run: python3 -m unittest scripts.tests.test_core_binding_identity
+
       - name: Install pinned Rust quality tools
         run: |
           command -v cargo-deny >/dev/null || cargo install cargo-deny --version 0.20.2 --locked
