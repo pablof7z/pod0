@@ -20,11 +20,27 @@ extension AppStateStore {
             else { return nil }
             return episode.id
         }
+        let projectedFeedFetches = projection.feedFetches.map { fetch in
+            FeedFetchProgress(
+                podcastID: fetch.podcastId.uuid,
+                feedURLString: fetch.feedUrl,
+                stage: {
+                    switch fetch.stage {
+                    case .requested: .fetching
+                    case .retryScheduled: .retryScheduled
+                    case .failed, .unsupported: .failed
+                    }
+                }(),
+                attempt: fetch.attempt,
+                failureCode: fetch.failureCode
+            )
+        }
         performMutationBatch {
             mutateProjectionState {
                 $0.podcasts = projectedPodcasts
                 $0.subscriptions = projection.subscriptions.map(\.swiftValue)
                 $0.episodes = projectedEpisodes
+                $0.feedFetches = projectedFeedFetches
             }
             invalidateEpisodeProjections()
         }

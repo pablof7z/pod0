@@ -121,6 +121,7 @@ final class ProductSignalInstrumentationTests: XCTestCase {
             podcasts: page.podcasts,
             subscriptions: page.subscriptions,
             episodes: page.episodes,
+            feedFetches: page.feedFetches,
             chaptersByEpisodeID: [:],
             operations: page.operations
         ))

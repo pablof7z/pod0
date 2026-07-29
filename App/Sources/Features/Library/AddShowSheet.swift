@@ -103,7 +103,6 @@ struct AddByURLForm: View {
     let onAdded: (Podcast) -> Void
 
     @State private var feedURL: String = ""
-    @State private var isWorking: Bool = false
     @State private var error: SubscriptionService.AddError?
 
     var body: some View {
@@ -146,15 +145,12 @@ struct AddByURLForm: View {
             Button {
                 Task { await submit() }
             } label: {
-                HStack {
-                    if isWorking { ProgressView().controlSize(.small) }
-                    Text(isWorking ? "Fetching feed…" : "Subscribe")
-                        .frame(maxWidth: .infinity)
-                }
-                .padding(.vertical, AppTheme.Spacing.sm)
+                Text("Subscribe")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, AppTheme.Spacing.sm)
             }
             .buttonStyle(.glassProminent)
-            .disabled(isWorking || feedURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .disabled(feedURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .padding(.horizontal, AppTheme.Spacing.lg)
     }
@@ -165,18 +161,18 @@ struct AddByURLForm: View {
         Haptics.selection()
     }
 
+    /// Subscribing commits durably before the feed is fetched, so this
+    /// returns immediately; the library grid renders fetch progress from
+    /// the shared `feedFetches` projection.
     private func submit() async {
         let trimmed = feedURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !isWorking else { return }
-        isWorking = true
+        guard !trimmed.isEmpty else { return }
         error = nil
         let service = SubscriptionService(store: store)
         do {
             let added = try await service.addSubscription(feedURLString: trimmed)
-            isWorking = false
             onAdded(added)
         } catch let addError as SubscriptionService.AddError {
-            isWorking = false
             // "Already subscribed" is success-like — the show the user
             // wanted is already in their library. Mirror DiscoverSearchForm's
             // behaviour: light haptic, dismiss the sheet via onAdded with
@@ -191,7 +187,6 @@ struct AddByURLForm: View {
             error = addError
             Haptics.warning()
         } catch {
-            isWorking = false
             self.error = .transport(ProductFailure.classify(error).diagnosticSummary)
             Haptics.warning()
         }

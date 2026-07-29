@@ -203,6 +203,7 @@
 		3992DC27F6BB072BF808FFD9 /* PodcastSubscription.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEB88A1AC5FC71153442A40A /* PodcastSubscription.swift */; };
 		3B155B629BEE0FC159BF33E1 /* AppTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32D6DCC3AC57739150675344 /* AppTests.swift */; };
 		3C6587F61908F2AB024BFEE6 /* VoiceNoteRecordingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A07B87C15E98C7F3A7F93ED7 /* VoiceNoteRecordingSheet.swift */; };
+		3C67E31B54C6CF07A6D1976B /* FeedFetchProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33918204E28AEFE620D18C0A /* FeedFetchProgress.swift */; };
 		3CB6124FD9E71E1897DC6E45 /* ChapterProjectionScopesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10CD6B399283FDECFA182A63 /* ChapterProjectionScopesTests.swift */; };
 		3D72CC53EC0E568081C00C99 /* CorePlaybackHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87AD2A35A78499B7D133A765 /* CorePlaybackHost.swift */; };
 		3DE1D061E5732D8295920FC2 /* CorePublisherChapterHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = A619964441015F750E5F983B /* CorePublisherChapterHost.swift */; };
@@ -726,6 +727,7 @@
 		EAB16FEEB444144AA6CCD5DB /* SharedLibraryClient+Operations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C14FF5E6C134CDA41A738F /* SharedLibraryClient+Operations.swift */; };
 		EAFC1069DC9170079CDC8CC0 /* CategoryAutoDownloadSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F01D52619F42226F96452B4 /* CategoryAutoDownloadSection.swift */; };
 		EBB7BBA82A7520183C315781 /* CoreRecallHosting.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDEB69C8E70BC8FE9028E8A0 /* CoreRecallHosting.swift */; };
+		EBBE88B9A58348ADB8C888DC /* feed-fetch-contract-v1.properties in Resources */ = {isa = PBXBuildFile; fileRef = D75846A46682FB85DEB5BBB7 /* feed-fetch-contract-v1.properties */; };
 		EC13AADD02657D6B62AF780F /* LegacyTranscriptWorkflowDisposition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CB356D928C988B74F400F59 /* LegacyTranscriptWorkflowDisposition.swift */; };
 		EC6DD9E498251B50D4470293 /* ChatConversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AEA03C43AECDFCE885BF7FD /* ChatConversation.swift */; };
 		EC871D842ED3571F98C7816D /* CoreTranscriptHostTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F32CB5B33650066C9185B8A4 /* CoreTranscriptHostTests.swift */; };
@@ -1057,6 +1059,7 @@
 		3266ABF27DC6701CC2EC309E /* Pod0CoreFFI.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = Pod0CoreFFI.xcframework; path = .build/pod0core/Pod0CoreFFI.xcframework; sourceTree = SOURCE_ROOT; };
 		3287A4A390015E885F29B691 /* SharedLibrarySubscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedLibrarySubscriber.swift; sourceTree = "<group>"; };
 		32D6DCC3AC57739150675344 /* AppTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTests.swift; sourceTree = "<group>"; };
+		33918204E28AEFE620D18C0A /* FeedFetchProgress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedFetchProgress.swift; sourceTree = "<group>"; };
 		3406662F3C98F8A17731C39C /* LegacyAgentMemoryCutover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyAgentMemoryCutover.swift; sourceTree = "<group>"; };
 		340726ACF6BF802DE9AFEAA2 /* ArtifactRepository+SQLite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ArtifactRepository+SQLite.swift"; sourceTree = "<group>"; };
 		3424D1E18F97C6D890FC6148 /* WorkflowHardeningRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowHardeningRegressionTests.swift; sourceTree = "<group>"; };
@@ -1533,6 +1536,7 @@
 		D5B3D200FFBFC6759CF54614 /* PlaybackState+Chapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlaybackState+Chapters.swift"; sourceTree = "<group>"; };
 		D5B540FF67AD41CA585E70BC /* AgentTurnProductSignalMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentTurnProductSignalMapper.swift; sourceTree = "<group>"; };
 		D5D503B1DFB044504C7F8548 /* SharedLibraryClient+Recall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SharedLibraryClient+Recall.swift"; sourceTree = "<group>"; };
+		D75846A46682FB85DEB5BBB7 /* feed-fetch-contract-v1.properties */ = {isa = PBXFileReference; path = "feed-fetch-contract-v1.properties"; sourceTree = "<group>"; };
 		D78BC9634F6F6220C816CFF1 /* transcript-contract-v1.properties */ = {isa = PBXFileReference; path = "transcript-contract-v1.properties"; sourceTree = "<group>"; };
 		D7E11F16DE4127AD138AB04C /* SRTParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SRTParserTests.swift; sourceTree = "<group>"; };
 		D7F0073ACE4337830361605C /* CoreTranscriptDispatcherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreTranscriptDispatcherTests.swift; sourceTree = "<group>"; };
@@ -1764,6 +1768,7 @@
 				80C9EDADBA130E2FABAB2FA3 /* AppState.swift */,
 				020F06C7D423D1C20E15D2D5 /* ChapterAgentContext.swift */,
 				16627FDF9F864B55F2AF04F3 /* Clip.swift */,
+				33918204E28AEFE620D18C0A /* FeedFetchProgress.swift */,
 				1FD9A6BB1CAF812368C6176B /* ItemColorTag.swift */,
 				DC163DF4C72FD7E91A69A486 /* LLMProvider.swift */,
 				4CA6225E0F89D30220E3C7ED /* Note.swift */,
@@ -2446,6 +2451,7 @@
 				771DA741EEAD5FF4141B66ED /* chapter-model-generation-system-v1.txt */,
 				B7B0EF9D5F0364CF7C00BDFB /* chapter-model-generation-user-v1.txt */,
 				9D144D7CFEBC571186744931 /* clip-projection-v1.properties */,
+				D75846A46682FB85DEB5BBB7 /* feed-fetch-contract-v1.properties */,
 				4285E655F092B2D53ADFA539 /* note-projection-v1.properties */,
 				0B8057F4F41E105DA6D7964F /* recall-index-v1.json */,
 				05A94C622A6552FD880D6C7E /* recall-projection-v1.properties */,
@@ -3182,6 +3188,7 @@
 				479BDFD59A8366D3DAEFD46E /* chapter-model-generation-system-v1.txt in Resources */,
 				95BA21171EE66A3C592CCB44 /* chapter-model-generation-user-v1.txt in Resources */,
 				47100C07F65DFFF7DF28CA4D /* clip-projection-v1.properties in Resources */,
+				EBBE88B9A58348ADB8C888DC /* feed-fetch-contract-v1.properties in Resources */,
 				96D343C63C01D54DB8FF5A58 /* note-projection-v1.properties in Resources */,
 				DB2873BD9B10BCD9A324F18F /* recall-index-v1.json in Resources */,
 				1995D350020D0FDB2DDF4E2C /* recall-projection-v1.properties in Resources */,
@@ -3454,6 +3461,7 @@
 				1D4F12E3A1B9272379D4059E /* AppState.swift in Sources */,
 				49E40F3F67BB4B306C5762AA /* ChapterAgentContext.swift in Sources */,
 				1C6D35F8975DDD1CB379C092 /* Clip.swift in Sources */,
+				3C67E31B54C6CF07A6D1976B /* FeedFetchProgress.swift in Sources */,
 				4E0655C4354D68F7347D6F05 /* ItemColorTag.swift in Sources */,
 				FEEA1557C2FF51272A8C754F /* LLMProvider.swift in Sources */,
 				1473E87B4E14FB375275245D /* Note.swift in Sources */,
