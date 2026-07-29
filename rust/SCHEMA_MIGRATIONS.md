@@ -45,7 +45,12 @@ generation. Selection moves one pointer atomically while retaining the previous
 generation for rollback. Corrupt, incomplete, foreign, or newer-schema evidence
 fails closed, and pruning cannot remove the selected generation.
 
-Version 35 adds `pod0_feed_fetch_workflows`, the durable feed-fetch workflow
+Version 35 adds durable speaker identity (`pod0_speakers` and revisable
+`pod0_speaker_assignments`), keeping user-visible speaker names outside the
+sealed transcript artifacts whose integrity digests they would otherwise
+invalidate.
+
+Version 36 adds `pod0_feed_fetch_workflows`, the durable feed-fetch workflow
 family behind subscribe/ensure/refresh/metadata commands. One row per
 normalized feed identity — the `feed_key_v1` primary key is the uniqueness
 constraint that coalesces concurrent intents onto a single workflow — stores
