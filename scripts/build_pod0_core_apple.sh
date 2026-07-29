@@ -51,7 +51,7 @@ lipo "$TEMP_ROOT/ios-arm64_x86_64-simulator/libpod0_facade.a" \
 # the committed bindings against the compiled artifact rather than against a
 # copy of themselves.
 mkdir -p "$TEMP_ROOT/derived/Swift"
-cargo run -p pod0-uniffi-bindgen --locked --release -- generate \
+cargo run -p pod0-uniffi-bindgen --locked -- generate \
   --library "$TEMP_ROOT/ios-arm64/libpod0_facade.a" \
   --config "$REPO_ROOT/rust/uniffi.toml" \
   --language swift \
