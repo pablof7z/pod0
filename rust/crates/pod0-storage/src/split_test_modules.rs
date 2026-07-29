@@ -54,6 +54,8 @@ mod scheduled_agent_store_schema_tests;
 mod scheduled_agent_store_test_support;
 mod scheduled_agent_store_tests;
 mod speaker_identity_tests;
+mod speaker_store_test_support;
+mod speaker_store_tests;
 mod transcript_import_empty_tests;
 mod transcript_import_evidence_tests;
 mod transcript_import_failure_tests;

@@ -35,6 +35,8 @@ pub(crate) mod recall;
 #[cfg(test)]
 #[path = "runtime_agent_recall_label_tests.rs"]
 mod recall_label_tests;
+#[path = "runtime_agent_recall_speaker_names.rs"]
+pub(crate) mod recall_speaker_names;
 #[path = "runtime_agent_recall_observations.rs"]
 pub(crate) mod recall_observations;
 #[cfg(test)]

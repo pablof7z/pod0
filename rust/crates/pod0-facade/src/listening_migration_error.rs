@@ -23,6 +23,7 @@ impl From<StorageError> for LegacyListeningMigrationError {
             | StorageError::CutoverNotAuthoritative
             | StorageError::RevisionConflict
             | StorageError::InvalidCategory
+            | StorageError::InvalidSpeakerEntity
             | StorageError::InvalidMemory
             | StorageError::InvalidNote
             | StorageError::InvalidClip

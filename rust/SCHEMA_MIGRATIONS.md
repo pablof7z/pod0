@@ -30,6 +30,17 @@ Later versions add complete domain slices rather than generic storage:
 10. canonical full transcript artifacts, speakers, words, selections, command
     receipts, and staged two-source legacy import evidence.
 
+Version 35 is a reserved no-op placeholder for the in-flight durable
+feed-fetch workflow slice (issue #189), which owns that number; its real
+content replaces the placeholder when that branch lands. Version 36 adds
+durable speaker identity (issue #190): a mutable, artifact-external
+`pod0_speakers` entity plus `pod0_speaker_assignments` keyed
+`(artifact_id, speaker_id)`, deliberately without foreign keys into
+`pod0_transcript_speakers` so user naming never couples to artifact
+lifecycle. Commit-and-select carries the superseded artifact's assignments
+onto matching speaker ids as `origin = inferred`; a user-authored assignment
+is never downgraded.
+
 Evidence generation writes are transactional. A complete artifact is staged,
 reread, and integrity-checked before commit; verification is a separate durable
 transition; and only a verified generation can become an episode's selected

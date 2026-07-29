@@ -1,0 +1,6 @@
+-- Version 0035 is reserved for issue #189 (durable feed-fetch workflows),
+-- in flight on agent/feed-fetch-durable-workflow. Issue #190 stacks behind it
+-- and must not renumber, so this placeholder keeps the migration chain
+-- sequential for 0036. When #189 lands its real 0035 content, the merge
+-- resolution takes that content and updates the migration lock; until then
+-- this step deliberately changes nothing.

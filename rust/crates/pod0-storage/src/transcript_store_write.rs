@@ -5,6 +5,7 @@ use pod0_domain::{
 use rusqlite::{OptionalExtension, Transaction, params};
 
 use crate::StorageError;
+use crate::speaker_store_write::carry_forward_speaker_assignments;
 use crate::transcript_authority::{
     advance_listening_revision, require_transcript_authoritative, set_episode_transcript_available,
     set_transcript_cutover_revision,
@@ -95,6 +96,18 @@ pub(crate) fn commit_and_select_transcript_in_transaction(
         .map_err(|_| StorageError::TranscriptRevisionConflict)?;
     let previous_artifact_id = current.map(|item| item.0);
     let already_selected = previous_artifact_id == Some(artifact.artifact_id);
+    if let Some(previous) = previous_artifact_id
+        && previous != artifact.artifact_id
+    {
+        // Issue #190: reseed the superseded artifact's speaker assignments
+        // onto matching speaker ids in the new artifact, as origin=inferred.
+        carry_forward_speaker_assignments(
+            transaction,
+            previous,
+            artifact.artifact_id,
+            completed_at_ms,
+        )?;
+    }
     transaction
         .execute(
             "INSERT INTO pod0_transcript_selection(episode_id,artifact_id,transcript_version_id,\

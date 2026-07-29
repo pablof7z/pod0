@@ -38,6 +38,8 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../../../schema/migrations/0032_subscription_transcript_policy.sql"),
     include_str!("../../../schema/migrations/0033_note_clip_target.sql"),
     include_str!("../../../schema/migrations/0034_categories.sql"),
+    include_str!("../../../schema/migrations/0035_feed_fetch_workflows.sql"),
+    include_str!("../../../schema/migrations/0036_speaker_identity.sql"),
 ];
 
 pub(crate) fn migration_sql(version: u32) -> Option<&'static str> {
