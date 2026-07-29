@@ -4,6 +4,10 @@ struct ResolvedSharedEpisode: Equatable, Sendable {
     let podcastTitle: String
     let feedURL: URL?
     let audioURL: URL
+    /// Publisher's `<guid>` when known, so importing an episode of an
+    /// already-subscribed show matches the feed-ingested row instead of
+    /// creating a duplicate keyed off this share's audio URL.
+    let guid: String?
     let title: String
     let description: String
     let publishedAt: Date
@@ -114,6 +118,7 @@ struct SharedEpisodeResolver: Sendable {
                 ?? "Shared Podcast",
             feedURL: page.feedURL,
             audioURL: Self.withoutFragment(audioURL),
+            guid: page.guid,
             title: page.episodeTitle
                 ?? Self.fallbackTitle(for: page.canonicalURL ?? sourceURL),
             description: page.description ?? "",
@@ -146,6 +151,7 @@ struct SharedEpisodeResolver: Sendable {
                 : parsed.podcast.title,
             feedURL: feedDocument.finalURL,
             audioURL: episode.enclosureURL,
+            guid: episode.guid,
             title: episode.title.isEmpty
                 ? (page.episodeTitle ?? Self.fallbackTitle(for: episode.enclosureURL))
                 : episode.title,
@@ -179,6 +185,7 @@ struct SharedEpisodeResolver: Sendable {
             podcastTitle: sourceURL.host() ?? "Shared Podcast",
             feedURL: nil,
             audioURL: Self.withoutFragment(audioURL),
+            guid: nil,
             title: Self.fallbackTitle(for: audioURL),
             description: "",
             publishedAt: Date(),

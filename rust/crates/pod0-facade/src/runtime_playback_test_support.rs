@@ -259,6 +259,7 @@ pub(super) fn add_external_episode(fixture: &PlaybackFixture, id: u64) -> Episod
                 feed_url: None,
                 podcast_title: "Legacy Kotlin fixture".to_owned(),
                 audio_url: format!("https://legacy.example/{id}.mp3"),
+                guid: None,
                 title: format!("Episode {id}"),
                 description: String::new(),
                 published_at: UnixTimestampMilliseconds::new(1_800_000_000_000),

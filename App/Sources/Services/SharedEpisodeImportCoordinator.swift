@@ -11,6 +11,11 @@ final class SharedEpisodeImportCoordinator {
         case failed(message: String)
     }
 
+    /// Failures below this many attempts are left queued for retry on the
+    /// next foreground consume; a transient network hiccup should not
+    /// permanently discard a shared episode the user can no longer re-share.
+    static let maxAttempts = 3
+
     private(set) var phase: Phase?
 
     @ObservationIgnored private let resolver: SharedEpisodeResolver
@@ -25,14 +30,19 @@ final class SharedEpisodeImportCoordinator {
         store: AppStateStore,
         onImported: @escaping @MainActor (UUID) -> Void
     ) async {
-        guard !isConsuming else { return }
-        let requestStore: SharedEpisodeImportRequestStore
-        do {
-            requestStore = try .appGroup()
-        } catch {
-            return
-        }
+        guard let requestStore = try? SharedEpisodeImportRequestStore.appGroup() else { return }
+        await consumePending(from: requestStore, store: store, onImported: onImported)
+    }
 
+    /// Real consume logic, separated from `consumePending(store:onImported:)`
+    /// so tests can inject an isolated `SharedEpisodeImportRequestStore`
+    /// instead of the real App Group container.
+    func consumePending(
+        from requestStore: SharedEpisodeImportRequestStore,
+        store: AppStateStore,
+        onImported: @escaping @MainActor (UUID) -> Void
+    ) async {
+        guard !isConsuming else { return }
         let requests: [SharedEpisodeImportRequest]
         do {
             requests = try requestStore.pendingRequests()
@@ -61,7 +71,13 @@ final class SharedEpisodeImportCoordinator {
                 phase = .downloadStarted(title: episode.title)
                 onImported(episode.id)
             } catch {
-                try? requestStore.remove(request)
+                if request.attemptCount + 1 < Self.maxAttempts {
+                    var retried = request
+                    retried.attemptCount += 1
+                    try? requestStore.update(retried)
+                } else {
+                    try? requestStore.remove(request)
+                }
                 presentFailure(error)
                 break
             }
@@ -105,6 +121,7 @@ final class SharedEpisodeImportCoordinator {
             feedURL: resolved.feedURL,
             podcastTitle: resolved.podcastTitle,
             audioURL: resolved.audioURL,
+            guid: resolved.guid,
             title: resolved.title,
             description: resolved.description,
             publishedAt: resolved.publishedAt,

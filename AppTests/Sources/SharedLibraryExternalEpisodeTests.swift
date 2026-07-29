@@ -64,6 +64,53 @@ final class SharedLibraryExternalEpisodeTests: XCTestCase {
         XCTAssertNil(relaunched.subscription(podcastID: requestedPodcastID))
     }
 
+    func testExternalEpisodeDedupesOnGUIDAcrossDifferentAudioMirrors() async throws {
+        let fileURL = AppStateTestSupport.uniqueTempFileURL()
+        let persistence = Persistence(fileURL: fileURL)
+        defer { persistence.reset() }
+        let feedURL = URL(string: "https://external.example/feed.xml")!
+        let store = AppStateStore(
+            persistence: persistence,
+            sharedFeedHost: QueuedCoreFeedHost([]),
+            startSubscriptionRefresh: false
+        )
+        let podcastID = UUID()
+
+        let first = try await store.upsertExternalEpisodeAndWait(
+            podcastID: podcastID,
+            feedURL: feedURL,
+            podcastTitle: "external.example",
+            audioURL: URL(string: "https://cdn-a.external.example/episode.mp3")!,
+            guid: "stable-episode-guid",
+            title: "Selected Episode",
+            imageURL: nil,
+            duration: 91
+        )
+
+        // A later share resolves through a different CDN mirror but the same
+        // publisher guid — this must update the same episode, not add a
+        // second row under the podcast (the bug: without a guid, dedup fell
+        // back to matching on audio_url, so a different mirror URL always
+        // looked like a brand-new episode).
+        let second = try await store.upsertExternalEpisodeAndWait(
+            podcastID: podcastID,
+            feedURL: feedURL,
+            podcastTitle: "external.example",
+            audioURL: URL(string: "https://cdn-b.external.example/mirror.mp3")!,
+            guid: "stable-episode-guid",
+            title: "Selected Episode",
+            imageURL: nil,
+            duration: 91
+        )
+
+        XCTAssertEqual(first.id, second.id)
+        XCTAssertEqual(store.episodes(forPodcast: podcastID).count, 1)
+        XCTAssertEqual(
+            store.episode(id: first.id)?.enclosureURL,
+            URL(string: "https://cdn-b.external.example/mirror.mp3")
+        )
+    }
+
     func testFeedlessExternalEpisodeCreatesDurableSyntheticParent() async throws {
         let fileURL = AppStateTestSupport.uniqueTempFileURL()
         let persistence = Persistence(fileURL: fileURL)

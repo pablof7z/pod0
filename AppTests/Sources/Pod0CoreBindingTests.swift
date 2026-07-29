@@ -122,7 +122,7 @@ final class Pod0CoreBindingTests: XCTestCase {
             operation: nil
         )
 
-        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 53)
+        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 54)
         XCTAssertEqual(projection.stage, .ready)
         XCTAssertEqual(projection.evidence.first?.excerpt, fixture["excerpt"])
         XCTAssertEqual(
@@ -187,7 +187,7 @@ final class Pod0CoreBindingTests: XCTestCase {
             hasMore: false
         )
 
-        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 53)
+        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 54)
         XCTAssertEqual(projection.notes.first?.text, fixture["text"])
         XCTAssertEqual(projection.notes.first?.evidence?.spanId, note.evidence?.spanId)
     }

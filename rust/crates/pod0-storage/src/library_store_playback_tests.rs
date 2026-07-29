@@ -21,6 +21,7 @@ fn playback_slice_commits_selection_queue_resume_and_natural_advance_atomically(
             None,
             "Imported show",
             "https://example.test/second.mp3",
+            None,
             "Second episode",
             "",
             1_800_000_000_001,

@@ -18,6 +18,7 @@ fn synthetic_podcast_and_local_episode_are_core_owned_without_a_feed() {
             None,
             "Unknown",
             "file:///tmp/generated.m4a",
+            None,
             "Generated episode",
             "A generated briefing",
             1_800_000_000_020,

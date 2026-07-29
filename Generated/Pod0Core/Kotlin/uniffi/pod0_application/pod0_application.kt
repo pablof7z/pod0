@@ -4285,6 +4285,14 @@ data class ExternalEpisodeInput (
     ,
     val `audioUrl`: kotlin.String
     ,
+    /**
+     * Publisher's `<guid>` (or equivalent stable id from the source page),
+     * when known. Falls back to `audio_url` for identity when absent.
+     * Without this, importing an episode of an already-subscribed show
+     * produces a second row instead of matching the feed-ingested one.
+     */
+    val `guid`: kotlin.String?
+    ,
     val `title`: kotlin.String
     ,
     val `description`: kotlin.String
@@ -4316,6 +4324,7 @@ public object FfiConverterTypeExternalEpisodeInput: FfiConverterRustBuffer<Exter
             FfiConverterOptionalString.read(buf),
             FfiConverterString.read(buf),
             FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
             FfiConverterString.read(buf),
             FfiConverterString.read(buf),
             FfiConverterTypeUnixTimestampMilliseconds.read(buf),
@@ -4330,6 +4339,7 @@ public object FfiConverterTypeExternalEpisodeInput: FfiConverterRustBuffer<Exter
             FfiConverterOptionalString.allocationSize(value.`feedUrl`) +
             FfiConverterString.allocationSize(value.`podcastTitle`) +
             FfiConverterString.allocationSize(value.`audioUrl`) +
+            FfiConverterOptionalString.allocationSize(value.`guid`) +
             FfiConverterString.allocationSize(value.`title`) +
             FfiConverterString.allocationSize(value.`description`) +
             FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`publishedAt`) +
@@ -4343,6 +4353,7 @@ public object FfiConverterTypeExternalEpisodeInput: FfiConverterRustBuffer<Exter
             FfiConverterOptionalString.write(value.`feedUrl`, buf)
             FfiConverterString.write(value.`podcastTitle`, buf)
             FfiConverterString.write(value.`audioUrl`, buf)
+            FfiConverterOptionalString.write(value.`guid`, buf)
             FfiConverterString.write(value.`title`, buf)
             FfiConverterString.write(value.`description`, buf)
             FfiConverterTypeUnixTimestampMilliseconds.write(value.`publishedAt`, buf)

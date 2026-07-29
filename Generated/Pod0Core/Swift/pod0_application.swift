@@ -4195,6 +4195,13 @@ public struct ExternalEpisodeInput: Equatable, Hashable {
     public let feedUrl: String?
     public let podcastTitle: String
     public let audioUrl: String
+    /**
+     * Publisher's `<guid>` (or equivalent stable id from the source page),
+     * when known. Falls back to `audio_url` for identity when absent.
+     * Without this, importing an episode of an already-subscribed show
+     * produces a second row instead of matching the feed-ingested one.
+     */
+    public let guid: String?
     public let title: String
     public let description: String
     public let publishedAt: UnixTimestampMilliseconds
@@ -4204,11 +4211,18 @@ public struct ExternalEpisodeInput: Equatable, Hashable {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(podcastId: PodcastId, feedUrl: String?, podcastTitle: String, audioUrl: String, title: String, description: String, publishedAt: UnixTimestampMilliseconds, enclosureMimeType: String?, imageUrl: String?, durationMilliseconds: UInt64?) {
+    public init(podcastId: PodcastId, feedUrl: String?, podcastTitle: String, audioUrl: String,
+        /**
+         * Publisher's `<guid>` (or equivalent stable id from the source page),
+         * when known. Falls back to `audio_url` for identity when absent.
+         * Without this, importing an episode of an already-subscribed show
+         * produces a second row instead of matching the feed-ingested one.
+         */guid: String?, title: String, description: String, publishedAt: UnixTimestampMilliseconds, enclosureMimeType: String?, imageUrl: String?, durationMilliseconds: UInt64?) {
         self.podcastId = podcastId
         self.feedUrl = feedUrl
         self.podcastTitle = podcastTitle
         self.audioUrl = audioUrl
+        self.guid = guid
         self.title = title
         self.description = description
         self.publishedAt = publishedAt
@@ -4237,6 +4251,7 @@ public struct FfiConverterTypeExternalEpisodeInput: FfiConverterRustBuffer {
                 feedUrl: FfiConverterOptionString.read(from: &buf),
                 podcastTitle: FfiConverterString.read(from: &buf),
                 audioUrl: FfiConverterString.read(from: &buf),
+                guid: FfiConverterOptionString.read(from: &buf),
                 title: FfiConverterString.read(from: &buf),
                 description: FfiConverterString.read(from: &buf),
                 publishedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
@@ -4251,6 +4266,7 @@ public struct FfiConverterTypeExternalEpisodeInput: FfiConverterRustBuffer {
         FfiConverterOptionString.write(value.feedUrl, into: &buf)
         FfiConverterString.write(value.podcastTitle, into: &buf)
         FfiConverterString.write(value.audioUrl, into: &buf)
+        FfiConverterOptionString.write(value.guid, into: &buf)
         FfiConverterString.write(value.title, into: &buf)
         FfiConverterString.write(value.description, into: &buf)
         FfiConverterTypeUnixTimestampMilliseconds.write(value.publishedAt, into: &buf)
