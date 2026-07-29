@@ -44,4 +44,15 @@ extension SubscriptionService {
         else { throw AddError.transport("Shared library projection unavailable") }
         return record.swiftValue
     }
+
+    func isOnlyDurableSubscription() async -> Bool {
+        guard let sharedLibrary = store.sharedLibrary else { return false }
+        let envelope = await sharedLibrary.coreSnapshot(ProjectionRequest(
+            scope: .library,
+            offset: 0,
+            maxItems: 2
+        ))
+        guard case .library(let page) = envelope.projection else { return false }
+        return page.subscriptions.count == 1 && !page.hasMore
+    }
 }

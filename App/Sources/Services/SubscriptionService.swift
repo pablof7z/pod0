@@ -46,7 +46,7 @@ struct SubscriptionService {
     func addSubscription(feedURLString: String) async throws -> Podcast {
         let result = try await executeShared(.subscribeToFeed(feedUrl: feedURLString))
         let podcast = try await resolvedPodcast(from: result)
-        if store.state.subscriptions.count == 1 {
+        if await isOnlyDurableSubscription() {
             store.recordProductSignal(.init(name: .firstSubscription, outcome: .created))
         }
         return podcast
