@@ -8,8 +8,8 @@
 //! Neither table couples to artifact lifecycle via foreign keys, matching
 //! the `pod0_category_members` prior art.
 //!
-//! The schema test below is the red test for the migration that follows
-//! 0035 (reserved by the in-flight feed-fetch branch). The identity tests
+//! The schema test below is the red test for migration 0035. The
+//! identity tests
 //! pin the derivation invariants the carry-forward mechanism relies on:
 //! a same-provider re-transcription mints identical speaker ids inside a
 //! new artifact (so carrying assignments forward is well defined), and a
