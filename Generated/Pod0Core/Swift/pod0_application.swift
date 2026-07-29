@@ -4277,6 +4277,93 @@ public func FfiConverterTypeExternalEpisodeInput_lower(_ value: ExternalEpisodeI
 
 
 /**
+ * Durable progress of one feed-fetch workflow, projected so the UI renders
+ * "Subscribing…" from state that survives relaunch instead of from a blocked
+ * continuation or per-row native spinner state.
+ */
+public struct FeedFetchProjection: Equatable, Hashable {
+    public let podcastId: PodcastId
+    public let feedUrl: String
+    public let intent: FeedFetchIntent
+    public let stage: FeedFetchStage
+    public let attempt: UInt16
+    public let requestId: HostRequestId
+    public let notBefore: UnixTimestampMilliseconds?
+    public let failureCode: String?
+    public let updatedAt: UnixTimestampMilliseconds
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(podcastId: PodcastId, feedUrl: String, intent: FeedFetchIntent, stage: FeedFetchStage, attempt: UInt16, requestId: HostRequestId, notBefore: UnixTimestampMilliseconds?, failureCode: String?, updatedAt: UnixTimestampMilliseconds) {
+        self.podcastId = podcastId
+        self.feedUrl = feedUrl
+        self.intent = intent
+        self.stage = stage
+        self.attempt = attempt
+        self.requestId = requestId
+        self.notBefore = notBefore
+        self.failureCode = failureCode
+        self.updatedAt = updatedAt
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension FeedFetchProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFeedFetchProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FeedFetchProjection {
+        return
+            try FeedFetchProjection(
+                podcastId: FfiConverterTypePodcastId.read(from: &buf),
+                feedUrl: FfiConverterString.read(from: &buf),
+                intent: FfiConverterTypeFeedFetchIntent.read(from: &buf),
+                stage: FfiConverterTypeFeedFetchStage.read(from: &buf),
+                attempt: FfiConverterUInt16.read(from: &buf),
+                requestId: FfiConverterTypeHostRequestId.read(from: &buf),
+                notBefore: FfiConverterOptionTypeUnixTimestampMilliseconds.read(from: &buf),
+                failureCode: FfiConverterOptionString.read(from: &buf),
+                updatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FeedFetchProjection, into buf: inout [UInt8]) {
+        FfiConverterTypePodcastId.write(value.podcastId, into: &buf)
+        FfiConverterString.write(value.feedUrl, into: &buf)
+        FfiConverterTypeFeedFetchIntent.write(value.intent, into: &buf)
+        FfiConverterTypeFeedFetchStage.write(value.stage, into: &buf)
+        FfiConverterUInt16.write(value.attempt, into: &buf)
+        FfiConverterTypeHostRequestId.write(value.requestId, into: &buf)
+        FfiConverterOptionTypeUnixTimestampMilliseconds.write(value.notBefore, into: &buf)
+        FfiConverterOptionString.write(value.failureCode, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.updatedAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFeedFetchProjection_lift(_ buf: RustBuffer) throws -> FeedFetchProjection {
+    return try FfiConverterTypeFeedFetchProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFeedFetchProjection_lower(_ value: FeedFetchProjection) -> RustBuffer {
+    return FfiConverterTypeFeedFetchProjection.lower(value)
+}
+
+
+/**
  * An exact, core-owned request withdrawal. The native shell cancels only the
  * matching platform task and does not infer product policy from it.
  */
@@ -4660,15 +4747,17 @@ public struct LibraryProjection: Equatable, Hashable {
     public let podcasts: [PodcastRecord]
     public let subscriptions: [PodcastSubscriptionRecord]
     public let episodes: [EpisodeRecord]
+    public let feedFetches: [FeedFetchProjection]
     public let operations: [OperationProjection]
     public let hasMore: Bool
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(podcasts: [PodcastRecord], subscriptions: [PodcastSubscriptionRecord], episodes: [EpisodeRecord], operations: [OperationProjection], hasMore: Bool) {
+    public init(podcasts: [PodcastRecord], subscriptions: [PodcastSubscriptionRecord], episodes: [EpisodeRecord], feedFetches: [FeedFetchProjection], operations: [OperationProjection], hasMore: Bool) {
         self.podcasts = podcasts
         self.subscriptions = subscriptions
         self.episodes = episodes
+        self.feedFetches = feedFetches
         self.operations = operations
         self.hasMore = hasMore
     }
@@ -4692,6 +4781,7 @@ public struct FfiConverterTypeLibraryProjection: FfiConverterRustBuffer {
                 podcasts: FfiConverterSequenceTypePodcastRecord.read(from: &buf),
                 subscriptions: FfiConverterSequenceTypePodcastSubscriptionRecord.read(from: &buf),
                 episodes: FfiConverterSequenceTypeEpisodeRecord.read(from: &buf),
+                feedFetches: FfiConverterSequenceTypeFeedFetchProjection.read(from: &buf),
                 operations: FfiConverterSequenceTypeOperationProjection.read(from: &buf),
                 hasMore: FfiConverterBool.read(from: &buf)
         )
@@ -4701,6 +4791,7 @@ public struct FfiConverterTypeLibraryProjection: FfiConverterRustBuffer {
         FfiConverterSequenceTypePodcastRecord.write(value.podcasts, into: &buf)
         FfiConverterSequenceTypePodcastSubscriptionRecord.write(value.subscriptions, into: &buf)
         FfiConverterSequenceTypeEpisodeRecord.write(value.episodes, into: &buf)
+        FfiConverterSequenceTypeFeedFetchProjection.write(value.feedFetches, into: &buf)
         FfiConverterSequenceTypeOperationProjection.write(value.operations, into: &buf)
         FfiConverterBool.write(value.hasMore, into: &buf)
     }
@@ -13063,6 +13154,8 @@ public enum CoreWakeReason: Equatable, Hashable {
     )
     case feedDiscoveryNotificationRetry(occurrenceId: FeedDiscoveryOccurrenceId, episodeId: EpisodeId, attempt: UInt8
     )
+    case feedFetchRetry(podcastId: PodcastId, attempt: UInt16
+    )
     case unsupported(wireCode: UInt32
     )
 
@@ -13104,7 +13197,10 @@ public struct FfiConverterTypeCoreWakeReason: FfiConverterRustBuffer {
         case 6: return .feedDiscoveryNotificationRetry(occurrenceId: try FfiConverterTypeFeedDiscoveryOccurrenceId.read(from: &buf), episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), attempt: try FfiConverterUInt8.read(from: &buf)
         )
 
-        case 7: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 7: return .feedFetchRetry(podcastId: try FfiConverterTypePodcastId.read(from: &buf), attempt: try FfiConverterUInt16.read(from: &buf)
+        )
+
+        case 8: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -13153,8 +13249,14 @@ public struct FfiConverterTypeCoreWakeReason: FfiConverterRustBuffer {
             FfiConverterUInt8.write(attempt, into: &buf)
 
 
-        case let .unsupported(wireCode):
+        case let .feedFetchRetry(podcastId,attempt):
             writeInt(&buf, Int32(7))
+            FfiConverterTypePodcastId.write(podcastId, into: &buf)
+            FfiConverterUInt16.write(attempt, into: &buf)
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(8))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -14098,6 +14200,179 @@ public func FfiConverterTypeEvidenceIndexStage_lift(_ buf: RustBuffer) throws ->
 #endif
 public func FfiConverterTypeEvidenceIndexStage_lower(_ value: EvidenceIndexStage) -> RustBuffer {
     return FfiConverterTypeEvidenceIndexStage.lower(value)
+}
+
+
+
+
+public enum FeedFetchIntent: Equatable, Hashable {
+
+    case subscribe
+    case ensure
+    case refresh
+    case metadata
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension FeedFetchIntent: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFeedFetchIntent: FfiConverterRustBuffer {
+    typealias SwiftType = FeedFetchIntent
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FeedFetchIntent {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .subscribe
+
+        case 2: return .ensure
+
+        case 3: return .refresh
+
+        case 4: return .metadata
+
+        case 5: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FeedFetchIntent, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .subscribe:
+            writeInt(&buf, Int32(1))
+
+
+        case .ensure:
+            writeInt(&buf, Int32(2))
+
+
+        case .refresh:
+            writeInt(&buf, Int32(3))
+
+
+        case .metadata:
+            writeInt(&buf, Int32(4))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(5))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFeedFetchIntent_lift(_ buf: RustBuffer) throws -> FeedFetchIntent {
+    return try FfiConverterTypeFeedFetchIntent.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFeedFetchIntent_lower(_ value: FeedFetchIntent) -> RustBuffer {
+    return FfiConverterTypeFeedFetchIntent.lower(value)
+}
+
+
+
+
+public enum FeedFetchStage: Equatable, Hashable {
+
+    case requested
+    case retryScheduled
+    case failed
+    case unsupported(wireCode: UInt32
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension FeedFetchStage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFeedFetchStage: FfiConverterRustBuffer {
+    typealias SwiftType = FeedFetchStage
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FeedFetchStage {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .requested
+
+        case 2: return .retryScheduled
+
+        case 3: return .failed
+
+        case 4: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FeedFetchStage, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .requested:
+            writeInt(&buf, Int32(1))
+
+
+        case .retryScheduled:
+            writeInt(&buf, Int32(2))
+
+
+        case .failed:
+            writeInt(&buf, Int32(3))
+
+
+        case let .unsupported(wireCode):
+            writeInt(&buf, Int32(4))
+            FfiConverterUInt32.write(wireCode, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFeedFetchStage_lift(_ buf: RustBuffer) throws -> FeedFetchStage {
+    return try FfiConverterTypeFeedFetchStage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFeedFetchStage_lower(_ value: FeedFetchStage) -> RustBuffer {
+    return FfiConverterTypeFeedFetchStage.lower(value)
 }
 
 
@@ -22267,6 +22542,31 @@ fileprivate struct FfiConverterSequenceTypeEvidenceIndexSpanProjection: FfiConve
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeEvidenceIndexSpanProjection.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeFeedFetchProjection: FfiConverterRustBuffer {
+    typealias SwiftType = [FeedFetchProjection]
+
+    public static func write(_ value: [FeedFetchProjection], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFeedFetchProjection.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FeedFetchProjection] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FeedFetchProjection]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFeedFetchProjection.read(from: &buf))
         }
         return seq
     }

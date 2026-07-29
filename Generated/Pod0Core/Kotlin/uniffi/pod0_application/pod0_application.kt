@@ -4355,6 +4355,84 @@ public object FfiConverterTypeExternalEpisodeInput: FfiConverterRustBuffer<Exter
 
 
 /**
+ * Durable progress of one feed-fetch workflow, projected so the UI renders
+ * "Subscribing…" from state that survives relaunch instead of from a blocked
+ * continuation or per-row native spinner state.
+ */
+data class FeedFetchProjection (
+    val `podcastId`: PodcastId
+    ,
+    val `feedUrl`: kotlin.String
+    ,
+    val `intent`: FeedFetchIntent
+    ,
+    val `stage`: FeedFetchStage
+    ,
+    val `attempt`: kotlin.UShort
+    ,
+    val `requestId`: HostRequestId
+    ,
+    val `notBefore`: UnixTimestampMilliseconds?
+    ,
+    val `failureCode`: kotlin.String?
+    ,
+    val `updatedAt`: UnixTimestampMilliseconds
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFeedFetchProjection: FfiConverterRustBuffer<FeedFetchProjection> {
+    override fun read(buf: ByteBuffer): FeedFetchProjection {
+        return FeedFetchProjection(
+            FfiConverterTypePodcastId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeFeedFetchIntent.read(buf),
+            FfiConverterTypeFeedFetchStage.read(buf),
+            FfiConverterUShort.read(buf),
+            FfiConverterTypeHostRequestId.read(buf),
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FeedFetchProjection) = (
+            FfiConverterTypePodcastId.allocationSize(value.`podcastId`) +
+            FfiConverterString.allocationSize(value.`feedUrl`) +
+            FfiConverterTypeFeedFetchIntent.allocationSize(value.`intent`) +
+            FfiConverterTypeFeedFetchStage.allocationSize(value.`stage`) +
+            FfiConverterUShort.allocationSize(value.`attempt`) +
+            FfiConverterTypeHostRequestId.allocationSize(value.`requestId`) +
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.allocationSize(value.`notBefore`) +
+            FfiConverterOptionalString.allocationSize(value.`failureCode`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`updatedAt`)
+    )
+
+    override fun write(value: FeedFetchProjection, buf: ByteBuffer) {
+            FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+            FfiConverterString.write(value.`feedUrl`, buf)
+            FfiConverterTypeFeedFetchIntent.write(value.`intent`, buf)
+            FfiConverterTypeFeedFetchStage.write(value.`stage`, buf)
+            FfiConverterUShort.write(value.`attempt`, buf)
+            FfiConverterTypeHostRequestId.write(value.`requestId`, buf)
+            FfiConverterOptionalTypeUnixTimestampMilliseconds.write(value.`notBefore`, buf)
+            FfiConverterOptionalString.write(value.`failureCode`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`updatedAt`, buf)
+    }
+}
+
+
+
+/**
  * An exact, core-owned request withdrawal. The native shell cancels only the
  * matching platform task and does not infer product policy from it.
  */
@@ -4658,6 +4736,8 @@ data class LibraryProjection (
     ,
     val `episodes`: List<EpisodeRecord>
     ,
+    val `feedFetches`: List<FeedFetchProjection>
+    ,
     val `operations`: List<OperationProjection>
     ,
     val `hasMore`: kotlin.Boolean
@@ -4680,6 +4760,7 @@ public object FfiConverterTypeLibraryProjection: FfiConverterRustBuffer<LibraryP
             FfiConverterSequenceTypePodcastRecord.read(buf),
             FfiConverterSequenceTypePodcastSubscriptionRecord.read(buf),
             FfiConverterSequenceTypeEpisodeRecord.read(buf),
+            FfiConverterSequenceTypeFeedFetchProjection.read(buf),
             FfiConverterSequenceTypeOperationProjection.read(buf),
             FfiConverterBoolean.read(buf),
         )
@@ -4689,6 +4770,7 @@ public object FfiConverterTypeLibraryProjection: FfiConverterRustBuffer<LibraryP
             FfiConverterSequenceTypePodcastRecord.allocationSize(value.`podcasts`) +
             FfiConverterSequenceTypePodcastSubscriptionRecord.allocationSize(value.`subscriptions`) +
             FfiConverterSequenceTypeEpisodeRecord.allocationSize(value.`episodes`) +
+            FfiConverterSequenceTypeFeedFetchProjection.allocationSize(value.`feedFetches`) +
             FfiConverterSequenceTypeOperationProjection.allocationSize(value.`operations`) +
             FfiConverterBoolean.allocationSize(value.`hasMore`)
     )
@@ -4697,6 +4779,7 @@ public object FfiConverterTypeLibraryProjection: FfiConverterRustBuffer<LibraryP
             FfiConverterSequenceTypePodcastRecord.write(value.`podcasts`, buf)
             FfiConverterSequenceTypePodcastSubscriptionRecord.write(value.`subscriptions`, buf)
             FfiConverterSequenceTypeEpisodeRecord.write(value.`episodes`, buf)
+            FfiConverterSequenceTypeFeedFetchProjection.write(value.`feedFetches`, buf)
             FfiConverterSequenceTypeOperationProjection.write(value.`operations`, buf)
             FfiConverterBoolean.write(value.`hasMore`, buf)
     }
@@ -13876,6 +13959,16 @@ sealed class CoreWakeReason {
         companion object
     }
 
+    data class FeedFetchRetry(
+        val `podcastId`: uniffi.pod0_domain.PodcastId,
+        val `attempt`: kotlin.UShort) : CoreWakeReason()
+
+    {
+
+
+        companion object
+    }
+
     data class Unsupported(
         val `wireCode`: kotlin.UInt) : CoreWakeReason()
 
@@ -13927,7 +14020,11 @@ public object FfiConverterTypeCoreWakeReason : FfiConverterRustBuffer<CoreWakeRe
                 FfiConverterTypeEpisodeId.read(buf),
                 FfiConverterUByte.read(buf),
                 )
-            7 -> CoreWakeReason.Unsupported(
+            7 -> CoreWakeReason.FeedFetchRetry(
+                FfiConverterTypePodcastId.read(buf),
+                FfiConverterUShort.read(buf),
+                )
+            8 -> CoreWakeReason.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -13985,6 +14082,14 @@ public object FfiConverterTypeCoreWakeReason : FfiConverterRustBuffer<CoreWakeRe
                 + FfiConverterUByte.allocationSize(value.`attempt`)
             )
         }
+        is CoreWakeReason.FeedFetchRetry -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePodcastId.allocationSize(value.`podcastId`)
+                + FfiConverterUShort.allocationSize(value.`attempt`)
+            )
+        }
         is CoreWakeReason.Unsupported -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -14034,8 +14139,14 @@ public object FfiConverterTypeCoreWakeReason : FfiConverterRustBuffer<CoreWakeRe
                 FfiConverterUByte.write(value.`attempt`, buf)
                 Unit
             }
-            is CoreWakeReason.Unsupported -> {
+            is CoreWakeReason.FeedFetchRetry -> {
                 buf.putInt(7)
+                FfiConverterTypePodcastId.write(value.`podcastId`, buf)
+                FfiConverterUShort.write(value.`attempt`, buf)
+                Unit
+            }
+            is CoreWakeReason.Unsupported -> {
+                buf.putInt(8)
                 FfiConverterUInt.write(value.`wireCode`, buf)
                 Unit
             }
@@ -15297,6 +15408,222 @@ public object FfiConverterTypeEvidenceIndexStage: FfiConverterRustBuffer<Evidenc
 
     override fun write(value: EvidenceIndexStage, buf: ByteBuffer) {
         buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+sealed class FeedFetchIntent {
+
+    object Subscribe : FeedFetchIntent()
+
+
+    object Ensure : FeedFetchIntent()
+
+
+    object Refresh : FeedFetchIntent()
+
+
+    object Metadata : FeedFetchIntent()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : FeedFetchIntent()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFeedFetchIntent : FfiConverterRustBuffer<FeedFetchIntent>{
+    override fun read(buf: ByteBuffer): FeedFetchIntent {
+        return when(buf.getInt()) {
+            1 -> FeedFetchIntent.Subscribe
+            2 -> FeedFetchIntent.Ensure
+            3 -> FeedFetchIntent.Refresh
+            4 -> FeedFetchIntent.Metadata
+            5 -> FeedFetchIntent.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: FeedFetchIntent): ULong = when(value) {
+        is FeedFetchIntent.Subscribe -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FeedFetchIntent.Ensure -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FeedFetchIntent.Refresh -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FeedFetchIntent.Metadata -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FeedFetchIntent.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: FeedFetchIntent, buf: ByteBuffer) {
+        when(value) {
+            is FeedFetchIntent.Subscribe -> {
+                buf.putInt(1)
+                Unit
+            }
+            is FeedFetchIntent.Ensure -> {
+                buf.putInt(2)
+                Unit
+            }
+            is FeedFetchIntent.Refresh -> {
+                buf.putInt(3)
+                Unit
+            }
+            is FeedFetchIntent.Metadata -> {
+                buf.putInt(4)
+                Unit
+            }
+            is FeedFetchIntent.Unsupported -> {
+                buf.putInt(5)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class FeedFetchStage {
+
+    object Requested : FeedFetchStage()
+
+
+    object RetryScheduled : FeedFetchStage()
+
+
+    object Failed : FeedFetchStage()
+
+
+    data class Unsupported(
+        val `wireCode`: kotlin.UInt) : FeedFetchStage()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFeedFetchStage : FfiConverterRustBuffer<FeedFetchStage>{
+    override fun read(buf: ByteBuffer): FeedFetchStage {
+        return when(buf.getInt()) {
+            1 -> FeedFetchStage.Requested
+            2 -> FeedFetchStage.RetryScheduled
+            3 -> FeedFetchStage.Failed
+            4 -> FeedFetchStage.Unsupported(
+                FfiConverterUInt.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: FeedFetchStage): ULong = when(value) {
+        is FeedFetchStage.Requested -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FeedFetchStage.RetryScheduled -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FeedFetchStage.Failed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FeedFetchStage.Unsupported -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`wireCode`)
+            )
+        }
+    }
+
+    override fun write(value: FeedFetchStage, buf: ByteBuffer) {
+        when(value) {
+            is FeedFetchStage.Requested -> {
+                buf.putInt(1)
+                Unit
+            }
+            is FeedFetchStage.RetryScheduled -> {
+                buf.putInt(2)
+                Unit
+            }
+            is FeedFetchStage.Failed -> {
+                buf.putInt(3)
+                Unit
+            }
+            is FeedFetchStage.Unsupported -> {
+                buf.putInt(4)
+                FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
     }
 }
 
@@ -28150,6 +28477,34 @@ public object FfiConverterSequenceTypeEvidenceIndexSpanProjection: FfiConverterR
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeEvidenceIndexSpanProjection.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFeedFetchProjection: FfiConverterRustBuffer<List<FeedFetchProjection>> {
+    override fun read(buf: ByteBuffer): List<FeedFetchProjection> {
+        val len = buf.getInt()
+        return List<FeedFetchProjection>(len) {
+            FfiConverterTypeFeedFetchProjection.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FeedFetchProjection>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFeedFetchProjection.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FeedFetchProjection>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFeedFetchProjection.write(it, buf)
         }
     }
 }
