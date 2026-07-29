@@ -30,12 +30,33 @@ Later versions add complete domain slices rather than generic storage:
 10. canonical full transcript artifacts, speakers, words, selections, command
     receipts, and staged two-source legacy import evidence.
 
+Version 35 adds durable speaker identity (issue #190): a mutable,
+artifact-external `pod0_speakers` entity plus `pod0_speaker_assignments`
+keyed `(artifact_id, speaker_id)`, deliberately without foreign keys into
+`pod0_transcript_speakers` so user naming never couples to artifact
+lifecycle. Commit-and-select carries the superseded artifact's assignments
+onto matching speaker ids as `origin = inferred`; a user-authored assignment
+is never downgraded.
+
 Evidence generation writes are transactional. A complete artifact is staged,
 reread, and integrity-checked before commit; verification is a separate durable
 transition; and only a verified generation can become an episode's selected
 generation. Selection moves one pointer atomically while retaining the previous
 generation for rollback. Corrupt, incomplete, foreign, or newer-schema evidence
 fails closed, and pruning cannot remove the selected generation.
+
+Version 35 adds durable speaker identity (`pod0_speakers` and revisable
+`pod0_speaker_assignments`), keeping user-visible speaker names outside the
+sealed transcript artifacts whose integrity digests they would otherwise
+invalidate.
+
+Version 36 adds `pod0_feed_fetch_workflows`, the durable feed-fetch workflow
+family behind subscribe/ensure/refresh/metadata commands. One row per
+normalized feed identity — the `feed_key_v1` primary key is the uniqueness
+constraint that coalesces concurrent intents onto a single workflow — stores
+the host-request identity, conditional-fetch headers, attempt count, retry
+schedule, and terminal failure state so an interrupted fetch is re-issued
+after relaunch with the same request identity.
 
 SQL steps are sequential files under `rust/schema/migrations`. Their SHA-256
 lock and `CURRENT_SCHEMA_VERSION` are checked in CI. Never edit a shipped step;

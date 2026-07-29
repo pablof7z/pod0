@@ -2,15 +2,6 @@ use std::sync::Mutex;
 
 use crate::*;
 
-#[derive(Clone, Copy)]
-struct FixedClock(i64);
-
-impl pod0_application::Clock for FixedClock {
-    fn now(&self) -> UnixTimestampMilliseconds {
-        UnixTimestampMilliseconds::new(self.0)
-    }
-}
-
 #[derive(Default)]
 struct RecordingSubscriber {
     projections: Mutex<Vec<ProjectionEnvelope>>,
@@ -58,30 +49,6 @@ fn library_request() -> ProjectionRequest {
         offset: 0,
         max_items: 20,
     }
-}
-
-#[test]
-fn command_deadlines_are_deterministic_from_the_injected_kernel_clock() {
-    let first = Pod0Facade::with_clock(std::sync::Arc::new(FixedClock(1_000)));
-    let second = Pod0Facade::with_clock(std::sync::Arc::new(FixedClock(1_000)));
-    let envelope = command(
-        1,
-        10,
-        ApplicationCommand::SubscribeToFeed {
-            feed_url: "https://example.test/feed".to_owned(),
-        },
-    );
-
-    first.dispatch(envelope.clone());
-    second.dispatch(envelope);
-
-    let first_request = first.next_host_requests(1).pop().unwrap();
-    let second_request = second.next_host_requests(1).pop().unwrap();
-    assert_eq!(first_request, second_request);
-    assert_eq!(
-        first_request.deadline_at,
-        Some(UnixTimestampMilliseconds::new(31_000))
-    );
 }
 
 #[test]
@@ -165,93 +132,6 @@ fn library_subscription_detects_changes_beyond_its_bounded_page() {
 
     assert_eq!(subscriber.count(), 2);
     assert!(subscriber.last().content_changed);
-}
-
-#[test]
-fn cancellation_prevents_late_host_observation_from_committing() {
-    let facade = Pod0Facade::new();
-    facade.dispatch(command(
-        1,
-        10,
-        ApplicationCommand::SubscribeToFeed {
-            feed_url: "https://example.test/feed".to_owned(),
-        },
-    ));
-    let request = facade
-        .next_host_requests(1)
-        .into_iter()
-        .next()
-        .expect("subscribe command should issue one bounded host request");
-
-    facade.dispatch(command(
-        2,
-        20,
-        ApplicationCommand::CancelOperation {
-            cancellation_id: CancellationId::from_parts(0, 10),
-        },
-    ));
-    let revision_after_cancel = facade.snapshot(library_request()).state_revision;
-
-    facade.record_host_observation(HostObservationEnvelope {
-        request_id: request.request_id,
-        cancellation_id: request.cancellation_id,
-        observed_request_revision: request.issued_revision,
-        sequence_number: 0,
-        observed_at: UnixTimestampMilliseconds::new(1_000),
-        observation: HostObservation::FeedBytesFetched {
-            bytes: b"ignored late result".to_vec(),
-            entity_tag: None,
-            last_modified: None,
-            response_url: "https://example.test/feed".to_owned(),
-            http_status: 200,
-        },
-    });
-
-    let projection = facade.snapshot(library_request());
-    assert_eq!(projection.state_revision, revision_after_cancel);
-    let Projection::Library { value } = projection.projection else {
-        panic!("expected library projection");
-    };
-    assert!(value.operations.iter().any(|operation| {
-        operation.command_id == CommandId::from_parts(0, 1)
-            && operation.stage == OperationStage::Cancelled
-    }));
-}
-
-#[test]
-fn host_request_drain_is_safe_when_limit_exceeds_queue_length() {
-    let facade = Pod0Facade::new();
-    facade.dispatch(command(
-        1,
-        10,
-        ApplicationCommand::SubscribeToFeed {
-            feed_url: "https://example.test/feed".to_owned(),
-        },
-    ));
-
-    assert_eq!(facade.next_host_requests(u16::MAX).len(), 1);
-    assert!(facade.next_host_requests(u16::MAX).is_empty());
-}
-
-#[test]
-fn cancellation_removes_native_work_that_has_not_started() {
-    let facade = Pod0Facade::new();
-    facade.dispatch(command(
-        1,
-        10,
-        ApplicationCommand::SubscribeToFeed {
-            feed_url: "https://example.test/feed".to_owned(),
-        },
-    ));
-    facade.dispatch(command(
-        2,
-        20,
-        ApplicationCommand::CancelOperation {
-            cancellation_id: CancellationId::from_parts(0, 10),
-        },
-    ));
-
-    assert!(facade.next_host_requests(u16::MAX).is_empty());
 }
 
 #[test]

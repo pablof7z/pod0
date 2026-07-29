@@ -25,8 +25,12 @@ final class SubscriptionRefreshServiceTests: XCTestCase {
         defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
         let service = SubscriptionService(store: made.store)
         let podcast = try await service.addSubscription(feedURLString: feedURL)
+        // Contract 53: subscribe returns at durable commit; drive the pump
+        // so the first fetch is applied before refreshing.
+        await AppStateTestSupport.settleSharedFeedWork(made.store)
 
         await service.refresh(podcast)
+        await AppStateTestSupport.settleSharedFeedWork(made.store)
 
         let refreshed = try XCTUnwrap(made.store.podcast(id: podcast.id))
         XCTAssertEqual(refreshed.title, "Fresh Title")
@@ -56,11 +60,15 @@ final class SubscriptionRefreshServiceTests: XCTestCase {
         defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
         let podcast = try await SubscriptionService(store: made.store)
             .addSubscription(feedURLString: feedURL)
+        // Contract 53: subscribe returns at durable commit; the first fetch
+        // (which stamps `lastRefreshedAt`) is applied by driving the pump.
+        await AppStateTestSupport.settleSharedFeedWork(made.store)
         let originalRefresh = try XCTUnwrap(
             made.store.podcast(id: podcast.id)?.lastRefreshedAt
         )
 
         try await SubscriptionRefreshService().refresh(podcast.id, store: made.store)
+        await AppStateTestSupport.settleSharedFeedWork(made.store)
 
         let updated = try XCTUnwrap(made.store.podcast(id: podcast.id))
         XCTAssertGreaterThanOrEqual(

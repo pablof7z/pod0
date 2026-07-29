@@ -1,7 +1,7 @@
 use crate::runtime_command_fingerprint::command_fingerprint;
-use crate::runtime_feed_state::FeedIntent;
 use crate::runtime_state::FacadeState;
 use pod0_application::{ApplicationCommand, CommandEnvelope, CoreFailureCode};
+use pod0_storage::StoredFeedFetchIntent;
 
 mod listening;
 
@@ -11,10 +11,10 @@ impl FacadeState {
         let fingerprint = command_fingerprint(&envelope.command);
         match envelope.command.clone() {
             ApplicationCommand::SubscribeToFeed { feed_url } => {
-                self.start_feed(&envelope, &fingerprint, feed_url, FeedIntent::Subscribe)
+                self.start_feed(&envelope, &fingerprint, feed_url, StoredFeedFetchIntent::Subscribe)
             }
             ApplicationCommand::EnsurePodcast { feed_url } => {
-                self.start_feed(&envelope, &fingerprint, feed_url, FeedIntent::Ensure)
+                self.start_feed(&envelope, &fingerprint, feed_url, StoredFeedFetchIntent::Ensure)
             }
             ApplicationCommand::RefreshPodcast { podcast_id } => {
                 self.start_refresh(&envelope, &fingerprint, podcast_id)

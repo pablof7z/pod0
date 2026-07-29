@@ -50,10 +50,23 @@ impl TranscriptStore {
             let Some(artifact_id) = selected_artifact_id(connection, episode_id)? else {
                 return Err(StorageError::TranscriptNotFound);
             };
+            // The single shared name resolution (issue #190): an assigned
+            // speaker entity's mutable display name overrides the immutable
+            // artifact-sealed one. Both the transcript projection and the
+            // agent's query_transcripts result go through this read, so the
+            // two surfaces cannot diverge after a rename.
             let mut statement = connection
                 .prepare(
-                    "SELECT ordinal,speaker_id,label,display_name FROM pod0_transcript_speakers \
-                     WHERE artifact_id=?1 ORDER BY ordinal LIMIT ?2 OFFSET ?3",
+                    "SELECT s.ordinal,s.speaker_id,s.label,\
+                     COALESCE(entity.display_name,s.display_name) \
+                     FROM pod0_transcript_speakers s \
+                     LEFT JOIN pod0_speaker_assignments assignment \
+                     ON assignment.artifact_id=s.artifact_id \
+                     AND assignment.speaker_id=s.speaker_id \
+                     LEFT JOIN pod0_speakers entity \
+                     ON entity.speaker_entity_id=assignment.speaker_entity_id \
+                     AND entity.deleted=0 \
+                     WHERE s.artifact_id=?1 ORDER BY s.ordinal LIMIT ?2 OFFSET ?3",
                 )
                 .map_err(|error| {
                     StorageError::sqlite("prepare bounded transcript speakers", error)

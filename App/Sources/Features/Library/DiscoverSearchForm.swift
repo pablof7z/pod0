@@ -38,7 +38,6 @@ struct DiscoverSearchForm: View {
     @State private var results: [ITunesSearchClient.Result] = []
     @State private var lastCompletedSearchTerm: String?
     @State private var searchError: String?
-    @State private var subscribingID: Int?
     /// Per-row subscribe failure messages, keyed by `collectionId`. Cleared
     /// when the user taps a fresh attempt on the same row.
     @State private var rowErrors: [Int: String] = [:]
@@ -205,7 +204,7 @@ struct DiscoverSearchForm: View {
                 ForEach(trending) { result in
                     DiscoverResultRow(
                         result: result,
-                        isSubscribing: subscribingID == result.collectionId,
+                        isSubscribing: isSubscribing(result),
                         isAlreadySubscribed: isAlreadySubscribed(result),
                         rowError: rowErrors[result.collectionId],
                         isErrorExpanded: expandedErrorIDs.contains(result.collectionId),
@@ -235,7 +234,7 @@ struct DiscoverSearchForm: View {
                 ForEach(results) { result in
                     DiscoverResultRow(
                         result: result,
-                        isSubscribing: subscribingID == result.collectionId,
+                        isSubscribing: isSubscribing(result),
                         isAlreadySubscribed: isAlreadySubscribed(result),
                         rowError: rowErrors[result.collectionId],
                         isErrorExpanded: expandedErrorIDs.contains(result.collectionId),
@@ -263,6 +262,14 @@ struct DiscoverSearchForm: View {
               !lastCompletedSearchTerm.isEmpty
         else { return false }
         return normalizedQuery == lastCompletedSearchTerm && results.isEmpty
+    }
+
+    /// Fetch progress is a durable Rust projection, not local view state:
+    /// the row spins while the committed subscription's feed fetch is still
+    /// owed, and it keeps spinning across sheet dismissal or relaunch.
+    private func isSubscribing(_ result: ITunesSearchClient.Result) -> Bool {
+        guard let url = result.feedURL else { return false }
+        return store.isFeedFetchInFlight(feedURL: url)
     }
 
     private func isAlreadySubscribed(_ result: ITunesSearchClient.Result) -> Bool {
@@ -380,22 +387,14 @@ struct DiscoverSearchForm: View {
             rowErrors[result.collectionId] = message
             return
         }
-        // Eager spinner so the tap registers visually even before the
-        // network round-trip completes.
-        subscribingID = result.collectionId
         rowErrors.removeValue(forKey: result.collectionId)
         expandedErrorIDs.remove(result.collectionId)
-        defer { subscribingID = nil }
 
         let service = SubscriptionService(store: store)
         do {
+            // Commits durably before the feed is fetched; the row renders
+            // the in-flight fetch from the shared projection.
             let added = try await service.addSubscription(feedURLString: feedURL.absoluteString)
-            // Sanity check the write actually landed.
-            if store.podcast(feedURL: feedURL) == nil {
-                Self.logger.error(
-                    "Subscription \(result.collectionName, privacy: .public) reported success but is missing from store"
-                )
-            }
             Haptics.success()
             // NOTE: parent `AddShowSheet` no longer auto-dismisses, so the
             // user sees this row's checkmark and can keep adding shows.

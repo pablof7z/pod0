@@ -35,13 +35,21 @@ final class Pod0NativeHostDispatcherWorkflowTests: XCTestCase {
         XCTAssertTrue(dispatcher.activeTasks.isEmpty)
     }
 
-    func testFacadeDrainNeverExceedsConfiguredNativeTaskCapacity() async {
+    func testFacadeDrainNeverExceedsConfiguredNativeTaskCapacity() async throws {
         let dispatcher = Pod0NativeHostDispatcher(
             feedHost: WorkflowSuspendingFeedHost(),
             playbackHost: WorkflowPlaybackHost(),
             maximumConcurrentTasks: 2
         )
-        let facade = Pod0Facade()
+        // Contract 53: feed commands commit durably, so queueing host fetches
+        // requires a real staged store, exactly as in production.
+        let made = AppStateTestSupport.makeIsolatedStore(
+            sharedFeedHost: QueuedCoreFeedHost([])
+        )
+        defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }
+        let client = try XCTUnwrap(made.store.sharedLibrary)
+        let facade = client.facade
+        client.shutdown()
         for index in 0 ..< 3 {
             facade.dispatch(command: CommandEnvelope(
                 commandId: CommandId(high: 30, low: UInt64(index)),

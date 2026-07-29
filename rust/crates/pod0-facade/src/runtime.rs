@@ -14,7 +14,8 @@ use crate::ProjectionSubscriber;
 use crate::runtime_clock::SystemClock;
 use crate::runtime_open_error::FacadeOpenError;
 use crate::runtime_recall_interrupts::RecallInterruptRegistry;
-use crate::runtime_state::{FacadeState, FacadeStores};
+use crate::runtime_state::FacadeState;
+use crate::runtime_state_open::FacadeStores;
 
 mod api;
 
@@ -27,11 +28,6 @@ pub struct Pod0Facade {
     pub(super) nmp_dispatcher: Mutex<Option<JoinHandle<()>>>,
 }
 impl Pod0Facade {
-    #[cfg(test)]
-    pub(super) fn with_clock(clock: Arc<dyn pod0_application::Clock>) -> Arc<Self> {
-        Self::from_state(FacadeState::with_clock(clock), None)
-    }
-
     fn from_state(state: FacadeState, nmp_store_path: Option<String>) -> Arc<Self> {
         let recall_interrupts = Arc::clone(&state.recall_interrupts);
         Arc::new(Self {
@@ -200,9 +196,11 @@ impl Pod0Facade {
             let mut state = self.state();
             let mut changed = state.retry_pending_publisher_observations();
             changed |= state.reconcile_download_deadlines();
+            changed |= state.reconcile_feed_fetch_deadlines();
             let _ = state.reconcile_feed_discovery_workflows();
             let _ = state.admit_publisher_chapter_requests();
             let _ = state.admit_download_requests();
+            let _ = state.admit_feed_fetch_requests();
             let _ = state.admit_scheduled_agent_requests();
             let maximum = bounded_host_request_count(maximum_count);
             let first_count = maximum.min(state.host_queue.len());

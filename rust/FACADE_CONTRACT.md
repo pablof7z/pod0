@@ -64,7 +64,15 @@ Every `HostRequestEnvelope` carries request, command, cancellation, and issued
 revision identities plus an optional absolute deadline. Observations echo the
 request ID, cancellation ID, issued revision, a monotonic sequence, and their
 observation time. Unknown, duplicate, out-of-order, mismatched, stale,
-oversized, expired, or post-cancellation observations cannot commit. Feed bytes
+oversized, or post-cancellation observations cannot commit. The deadline is a
+scheduling boundary, not a ledger commit gate: Rust-owned reconciliation
+withdraws a request whose deadline has elapsed and schedules the durable retry
+itself, after which a late observation is rejected as unknown or cancelled. A
+late observation for a request Rust still considers outstanding commits
+normally. The native dispatcher may still time out an individual attempt — a
+fetch that completes past `deadline_at` is reported as a retryable `TimedOut`
+failure on the native clock — but all durable expiry authority (withdrawal,
+retry scheduling, request-identity rotation) is Rust's (ADR-0001). Feed bytes
 are bounded by the request's declared maximum and carry only HTTP/cache
 evidence; feed normalization remains in Rust. The native host reports raw
 failure codes; Rust decides retry, fallback, and durable state.
@@ -124,6 +132,15 @@ and cannot commit migrated facts after cutover. Selected transcripts, canonical
 chapters, and both publisher and model chapter workflow decisions are also
 durable Rust-owned state. Download intent, attempts, recovery, and artifact
 selection are also Rust-owned; Swift executes background URLSession transfers.
+From contract version 53 the feed-fetch family (subscribe, ensure, refresh,
+metadata hydration) is a durable Rust-owned workflow: a `Succeeded` feed
+command means the intent is durably queued, not that the feed has been
+fetched. One workflow row per normalized feed identity coalesces concurrent
+intents, survives restart with the same request identity, retries transient
+failures with a kernel-owned backoff expressed through
+`CoreWakeReason::FeedFetchRetry`, and projects its progress through
+`LibraryProjection.feed_fetches`. Swift executes the bounded fetch and returns
+bytes or a typed failure; it owns no fetch retry, admission, or expiry policy.
 Swift still owns transcript-generation/index workflow scheduling, remaining
 agent workflow state, and presentation state until their complete vertical
 slices land. The audited NMP pin is available only through the isolated

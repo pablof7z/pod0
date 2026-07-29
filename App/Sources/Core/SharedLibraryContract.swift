@@ -5,6 +5,7 @@ struct SharedLibrarySnapshot: Sendable {
     let podcasts: [PodcastRecord]
     let subscriptions: [PodcastSubscriptionRecord]
     let episodes: [EpisodeRecord]
+    let feedFetches: [FeedFetchProjection]
     let chaptersByEpisodeID: [UUID: SharedChapterSnapshot]
     let operations: [OperationProjection]
 
@@ -12,6 +13,7 @@ struct SharedLibrarySnapshot: Sendable {
         podcasts == other.podcasts
             && subscriptions == other.subscriptions
             && episodes == other.episodes
+            && feedFetches == other.feedFetches
             && chaptersByEpisodeID == other.chaptersByEpisodeID
     }
 }

@@ -281,5 +281,8 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
     if version >= 34 {
         crate::schema_categories::validate_category_schema(connection)?;
     }
+    if version >= 35 {
+        crate::schema_speakers::validate_speaker_schema(connection)?;
+    }
     Ok(())
 }

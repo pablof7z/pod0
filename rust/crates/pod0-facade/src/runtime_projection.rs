@@ -17,6 +17,7 @@ impl FacadeState {
                     podcasts: self.listening.podcasts.clone(),
                     subscriptions: self.listening.subscriptions.clone(),
                     episodes: self.listening.episodes.clone(),
+                    feed_fetches: self.feed_fetch_projection(),
                     operations: self.operations.clone(),
                     has_more: false,
                 };

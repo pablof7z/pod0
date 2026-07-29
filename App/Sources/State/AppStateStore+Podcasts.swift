@@ -35,4 +35,23 @@ extension AppStateStore {
         }
     }
 
+    /// True while Rust still owes a feed fetch for this podcast. Drives the
+    /// projection-backed "Subscribing…" affordances that replaced per-row
+    /// native spinner state: the workflow is durable, so the indicator
+    /// survives relaunch instead of dying with a blocked continuation.
+    func isFeedFetchInFlight(podcastID: UUID) -> Bool {
+        state.feedFetches.contains { $0.isActive && $0.podcastID == podcastID }
+    }
+
+    func isFeedFetchInFlight(feedURL: URL) -> Bool {
+        if let podcast = podcast(feedURL: feedURL),
+           isFeedFetchInFlight(podcastID: podcast.id) {
+            return true
+        }
+        return state.feedFetches.contains { fetch in
+            fetch.isActive && fetch.feedURLString
+                .caseInsensitiveCompare(feedURL.absoluteString) == .orderedSame
+        }
+    }
+
 }

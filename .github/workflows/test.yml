@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   antislop:
     name: Antislop
@@ -48,6 +52,9 @@ jobs:
 
       - name: Validate product-proof cohort evaluator
         run: python3 -m unittest scripts.tests.test_product_proof_cohort
+
+      - name: Validate core binding identity gate
+        run: python3 -m unittest scripts.tests.test_core_binding_identity
 
       - name: Install pinned Rust quality tools
         run: |
