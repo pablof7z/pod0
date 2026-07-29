@@ -5,5 +5,6 @@ mod runtime_playback_tests;
 mod feed_discovery_cutover_tests;
 mod runtime_feed_discovery_retry_tests;
 mod runtime_feed_persistence_tests;
+mod runtime_feed_workflow_recovery_tests;
 mod runtime_publication_tests;
 mod runtime_recall_configuration_test_support;
