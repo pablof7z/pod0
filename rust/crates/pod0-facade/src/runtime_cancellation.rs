@@ -30,12 +30,21 @@ impl FacadeState {
         self.host_requests.cancel(cancellation_id);
         self.host_queue
             .retain(|request| request.cancellation_id != cancellation_id);
-        self.pending_feeds.retain(|_, pending| {
-            self.operations
-                .iter()
-                .find(|operation| operation.command_id == pending.command_id)
-                .is_none_or(|operation| operation.cancellation_id != cancellation_id)
-        });
+        let cancelled_feeds = self
+            .pending_feeds
+            .values()
+            .filter(|record| record.cancellation_id == cancellation_id)
+            .cloned()
+            .collect::<Vec<_>>();
+        for record in cancelled_feeds {
+            self.pending_feeds.remove(&record.request_id);
+            if let Some(store) = &self.store {
+                let _ = store.complete_feed_fetch_workflow(record.request_id);
+            }
+        }
+        if !self.feed_fetches.is_empty() {
+            let _ = self.reload_feed_fetches();
+        }
         self.pending_evidence_indexes
             .retain(|_, pending| pending.cancellation_id != cancellation_id);
         self.pending_recall_cutovers

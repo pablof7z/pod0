@@ -56,10 +56,7 @@ struct OnboardingSubscribePage: View {
     @Environment(AppStateStore.self) private var store
 
     @State private var feedURL: String = ""
-    @State private var isWorking: Bool = false
     @State private var errorMessage: String?
-    /// ID of the suggestion row currently being subscribed to, for spinner state.
-    @State private var subscribingSuggestionID: UUID?
 
     var body: some View {
         VStack(spacing: AppTheme.Spacing.lg) {
@@ -72,7 +69,6 @@ struct OnboardingSubscribePage: View {
             Spacer(minLength: 0)
         }
         .animation(AppTheme.Animation.springFast, value: errorMessage)
-        .animation(AppTheme.Animation.springFast, value: isWorking)
     }
 
     // MARK: - Subviews
@@ -131,7 +127,7 @@ struct OnboardingSubscribePage: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
-                if subscribingSuggestionID == suggestion.id {
+                if isSubscribing(to: suggestion) {
                     ProgressView().tint(.white)
                 } else if isAlreadySubscribed(to: suggestion) {
                     Image(systemName: "checkmark.circle.fill")
@@ -150,7 +146,7 @@ struct OnboardingSubscribePage: View {
             )
         }
         .buttonStyle(.plain)
-        .disabled(isWorking || isAlreadySubscribed(to: suggestion))
+        .disabled(isSubscribing(to: suggestion) || isAlreadySubscribed(to: suggestion))
     }
 
     private var urlEntry: some View {
@@ -168,15 +164,11 @@ struct OnboardingSubscribePage: View {
                 Button {
                     Task { await subscribeToTypedURL() }
                 } label: {
-                    if isWorking, subscribingSuggestionID == nil {
-                        ProgressView().tint(.white)
-                    } else {
-                        Image(systemName: "arrow.right.circle.fill")
-                            .foregroundStyle(.white.opacity(feedURL.isBlank ? 0.4 : 0.95))
-                    }
+                    Image(systemName: "arrow.right.circle.fill")
+                        .foregroundStyle(.white.opacity(feedURL.isBlank ? 0.4 : 0.95))
                 }
                 .buttonStyle(.plain)
-                .disabled(feedURL.isBlank || isWorking)
+                .disabled(feedURL.isBlank)
             }
             .padding(.horizontal, AppTheme.Spacing.md)
             .padding(.vertical, OnboardingLayout.fieldVerticalPadding)
@@ -204,27 +196,13 @@ struct OnboardingSubscribePage: View {
     // MARK: - Actions
 
     private func subscribe(to suggestion: Suggestion) async {
-        guard !isWorking else { return }
         errorMessage = nil
-        isWorking = true
-        subscribingSuggestionID = suggestion.id
-        defer {
-            isWorking = false
-            subscribingSuggestionID = nil
-        }
         let service = SubscriptionService(store: store)
         do {
+            // Commits durably before the feed is fetched; the row's spinner
+            // is driven by the shared feed-fetch projection.
             let added = try await service.addSubscription(feedURLString: suggestion.feed)
             Haptics.success()
-            // Sanity check the subscription is actually persisted — if a
-            // future regression starts losing writes, we'd rather log than
-            // silently flip the checkmark.
-            if let url = URL(string: suggestion.feed),
-               store.podcast(feedURL: url) == nil {
-                Self.logger.error(
-                    "Subscription \(suggestion.title, privacy: .public) reported success but was not found in store after add"
-                )
-            }
             onSubscribed(added)
         } catch let addError as SubscriptionService.AddError {
             let endpoint = PrivacySafeDiagnostics.endpoint(suggestion.feed)
@@ -244,10 +222,8 @@ struct OnboardingSubscribePage: View {
 
     private func subscribeToTypedURL() async {
         let trimmed = feedURL.trimmed
-        guard !trimmed.isEmpty, !isWorking else { return }
+        guard !trimmed.isEmpty else { return }
         errorMessage = nil
-        isWorking = true
-        defer { isWorking = false }
         let service = SubscriptionService(store: store)
         do {
             let added = try await service.addSubscription(feedURLString: trimmed)
@@ -268,6 +244,13 @@ struct OnboardingSubscribePage: View {
             errorMessage = UserFacingFailurePresenter.make(error: error, canRetry: true).message
             Haptics.warning()
         }
+    }
+
+    /// Spinner state comes from the durable Rust feed-fetch projection so
+    /// it reflects the actual background work, even across relaunch.
+    private func isSubscribing(to suggestion: Suggestion) -> Bool {
+        guard let url = URL(string: suggestion.feed) else { return false }
+        return store.isFeedFetchInFlight(feedURL: url)
     }
 
     private func isAlreadySubscribed(to suggestion: Suggestion) -> Bool {

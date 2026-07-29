@@ -37,6 +37,16 @@ pub fn normalize_feed_url(input: &str) -> Option<FeedIdentityV1> {
     make_feed_identity_v1(candidate).ok()
 }
 
+/// Human-readable placeholder title for a podcast committed before its feed
+/// has been fetched. The parsed feed replaces it on first application.
+#[must_use]
+pub fn feed_placeholder_title(identity: &FeedIdentityV1) -> String {
+    Url::parse(&identity.source_url)
+        .ok()
+        .and_then(|url| url.host_str().map(str::to_owned))
+        .unwrap_or_else(|| identity.source_url.clone())
+}
+
 /// Validates a playable enclosure reference without applying feed identity
 /// policy. HTTPS media is portable; file URLs are accepted for native-owned
 /// generated/download artifacts whose lifecycle is handled by a host adapter.

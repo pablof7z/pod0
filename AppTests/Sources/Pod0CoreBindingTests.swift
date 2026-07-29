@@ -37,80 +37,6 @@ final class Pod0CoreBindingTests: XCTestCase {
         XCTAssertEqual(fixture["optional_safe_detail"], "null")
     }
 
-    func testGeneratedFacadeRoundTripsCommandsProjectionsAndSubscriptionLifecycle() throws {
-        let facade = Pod0Facade()
-        let subscriber = RecordingCoreSubscriber()
-        let request = ProjectionRequest(scope: .library, offset: 0, maxItems: 20)
-        let handle = facade.subscribe(request: request, subscriber: subscriber)
-
-        XCTAssertEqual(subscriber.revisions, [0])
-
-        facade.dispatch(
-            command: CommandEnvelope(
-                commandId: CommandId(high: 0, low: 1),
-                cancellationId: CancellationId(high: 0, low: 2),
-                expectedRevision: nil,
-                command: .unsupported(wireCode: 77)
-            )
-        )
-
-        XCTAssertEqual(subscriber.revisions, [0, 1])
-        let projection = facade.snapshot(request: request)
-        XCTAssertEqual(projection.contractVersion, 53)
-        guard case let .library(value) = projection.projection else {
-            return XCTFail("Expected a bounded library projection")
-        }
-        XCTAssertEqual(value.operations.count, 1)
-        let unsupportedOperation = value.operations[0]
-        XCTAssertEqual(unsupportedOperation.commandId, CommandId(high: 0, low: 1))
-        XCTAssertEqual(unsupportedOperation.cancellationId, CancellationId(high: 0, low: 2))
-        XCTAssertTrue(unsupportedOperation.stage == OperationStage.failed)
-        XCTAssertEqual(unsupportedOperation.failure?.code, .unsupported(wireCode: 77))
-        XCTAssertNil(unsupportedOperation.failure?.safeDetail)
-
-        facade.dispatch(
-            command: CommandEnvelope(
-                commandId: CommandId(high: 0, low: 3),
-                cancellationId: CancellationId(high: 0, low: 4),
-                expectedRevision: nil,
-                command: .subscribeToFeed(feedUrl: "https://example.test/feed")
-            )
-        )
-        facade.dispatch(
-            command: CommandEnvelope(
-                commandId: CommandId(high: 0, low: 5),
-                cancellationId: CancellationId(high: 0, low: 6),
-                expectedRevision: nil,
-                command: .cancelOperation(cancellationId: CancellationId(high: 0, low: 4))
-            )
-        )
-
-        XCTAssertTrue(facade.nextHostRequests(maximumCount: 64).isEmpty)
-        let cancelledProjection = facade.snapshot(request: request)
-        guard case let .library(cancelledValue) = cancelledProjection.projection else {
-            return XCTFail("Expected a library projection after cancellation")
-        }
-        let cancelledCommandID = CommandId(high: 0, low: 3)
-        let includesCancelledOperation = cancelledValue.operations.contains { operation in
-            let commandMatches = operation.commandId == cancelledCommandID
-            let stageMatches = operation.stage == OperationStage.cancelled
-            let failureMatches = operation.failure?.code == CoreFailureCode.cancelled
-            return commandMatches && stageMatches && failureMatches
-        }
-        XCTAssertTrue(includesCancelledOperation)
-
-        facade.unsubscribe(subscriptionId: handle)
-        facade.dispatch(
-            command: CommandEnvelope(
-                commandId: CommandId(high: 0, low: 7),
-                cancellationId: CancellationId(high: 0, low: 8),
-                expectedRevision: nil,
-                command: .unsupported(wireCode: 78)
-            )
-        )
-        XCTAssertEqual(subscriber.revisions, [0, 1, 2, 3])
-    }
-
     func testSwiftDecodesRecallProjectionGoldenFixture() throws {
         let fixtureURL = try XCTUnwrap(
             Bundle(for: Self.self).url(
@@ -196,7 +122,7 @@ final class Pod0CoreBindingTests: XCTestCase {
             operation: nil
         )
 
-        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 53)
+        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 54)
         XCTAssertEqual(projection.stage, .ready)
         XCTAssertEqual(projection.evidence.first?.excerpt, fixture["excerpt"])
         XCTAssertEqual(
@@ -261,7 +187,7 @@ final class Pod0CoreBindingTests: XCTestCase {
             hasMore: false
         )
 
-        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 53)
+        XCTAssertEqual(UInt32(fixture["contract_version"] ?? ""), 54)
         XCTAssertEqual(projection.notes.first?.text, fixture["text"])
         XCTAssertEqual(projection.notes.first?.evidence?.spanId, note.evidence?.spanId)
     }
@@ -279,20 +205,5 @@ final class Pod0CoreBindingTests: XCTestCase {
                 guard parts.count == 2 else { return }
                 result[String(parts[0])] = String(parts[1])
             }
-    }
-}
-
-private final class RecordingCoreSubscriber: ProjectionSubscriber, @unchecked Sendable {
-    private let lock = NSLock()
-    private var storedRevisions: [UInt64] = []
-
-    var revisions: [UInt64] {
-        lock.withLock { storedRevisions }
-    }
-
-    func receive(projection: ProjectionEnvelope) {
-        lock.withLock {
-            storedRevisions.append(projection.stateRevision.value)
-        }
     }
 }

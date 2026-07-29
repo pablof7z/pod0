@@ -3,8 +3,10 @@ import Pod0Core
 import os.log
 
 /// Routes library intents through the sole Rust owner. Feed networking remains
-/// native through `CoreFeedHost`; parsing, normalization, identity, and
-/// subscription policy stay behind the typed application facade.
+/// native through `CoreFeedHost`; parsing, normalization, identity, retry, and
+/// subscription policy stay behind the typed application facade. Subscribing
+/// commits durably before any fetch: success here means "durably queued", and
+/// fetch progress is rendered from the `feedFetches` projection.
 @MainActor
 struct SubscriptionService {
     private static let logger = Logger.app("SubscriptionService")
@@ -18,7 +20,6 @@ struct SubscriptionService {
         case invalidURL
         case alreadySubscribed(title: String)
         case transport(String)
-        case http(Int)
         case parse(String)
 
         var errorDescription: String? {
@@ -29,29 +30,8 @@ struct SubscriptionService {
                 "You're already subscribed to \(title)."
             case .transport:
                 "Couldn't reach the feed. Check your connection and try again."
-            case .http(let status):
-                Self.humanizeHTTPStatus(status)
             case .parse:
                 "Pod0 couldn't read a podcast feed at that address."
-            }
-        }
-
-        private static func humanizeHTTPStatus(_ status: Int) -> String {
-            switch status {
-            case 401, 403:
-                "This feed needs sign-in or isn't public — Podcastr can't subscribe to it."
-            case 404, 410:
-                "We couldn't find a feed at that URL. Double-check it and try again."
-            case 408, 504:
-                "The feed server took too long to respond. Try again in a moment."
-            case 429:
-                "The feed server is rate-limiting requests right now. Try again in a few minutes."
-            case 500..<600:
-                "The feed server hit an error (HTTP \(status)). Try again later."
-            case 400..<500:
-                "The feed server rejected the request (HTTP \(status))."
-            default:
-                "The feed server returned an unexpected status (HTTP \(status))."
             }
         }
     }
@@ -59,13 +39,13 @@ struct SubscriptionService {
     @discardableResult
     func ensurePodcast(feedURLString: String) async throws -> Podcast {
         let result = try await executeShared(.ensurePodcast(feedUrl: feedURLString))
-        return try resolvedPodcast(from: result)
+        return try await resolvedPodcast(from: result)
     }
 
     @discardableResult
     func addSubscription(feedURLString: String) async throws -> Podcast {
         let result = try await executeShared(.subscribeToFeed(feedUrl: feedURLString))
-        let podcast = try resolvedPodcast(from: result)
+        let podcast = try await resolvedPodcast(from: result)
         if store.state.subscriptions.count == 1 {
             store.recordProductSignal(.init(name: .firstSubscription, outcome: .created))
         }

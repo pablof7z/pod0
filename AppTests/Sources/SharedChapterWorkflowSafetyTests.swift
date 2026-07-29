@@ -154,6 +154,7 @@ final class SharedChapterWorkflowSafetyTests: XCTestCase {
             podcasts: [],
             subscriptions: [],
             episodes: episodes,
+            feedFetches: [],
             chaptersByEpisodeID: [:],
             operations: []
         )

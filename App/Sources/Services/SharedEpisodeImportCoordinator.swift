@@ -130,7 +130,9 @@ final class SharedEpisodeImportCoordinator {
             duration: resolved.duration
         )
         if resolved.feedURL != nil {
-            _ = try? await store.sharedLibrary?.execute(.hydratePodcastMetadata(
+            // Commit-immediately: the metadata fetch is a durable Rust
+            // workflow, so nothing waits on the host round trip.
+            _ = try? await store.sharedLibrary?.executeCommitted(.hydratePodcastMetadata(
                 podcastId: PodcastId(uuid: episode.podcastID)
             ))
         }

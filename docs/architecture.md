@@ -21,7 +21,7 @@ configuration, indexing, and retrieval; publisher and model chapter workflows;
 scheduled-agent definitions, occurrences, and artifacts; interactive
 product-proof agent conversations, proposals, permissions, recall citations,
 model usage, generated audio provenance, tracked NMP publication receipts, and
-feed-discovery download/notification policy with durable recovery. The facade contract is now version 53. It exposes bounded commands,
+feed-discovery download/notification policy with durable recovery. The facade contract is now version 54. It exposes bounded commands,
 projections, domain events, and correlated host requests across those migrated
 domains. Exact integer milliseconds, stable identifiers, explicit revisions,
 effect fences, cancellation, and typed failure states prevent native adapters
@@ -222,6 +222,15 @@ Swift and Kotlin bindings. CI rejects drift from Rust metadata.
   no facade cutover methods or types, no storage authority gate, and no
   generated Swift/Kotlin bridge API remain. Model workflows operate directly
   from the Rust store.
+- Version 53 makes the feed-fetch family (subscribe, ensure, refresh,
+  metadata hydration) a durable Rust-owned workflow: `Succeeded` now means
+  the intent is durably queued rather than fully applied. One workflow row
+  per normalized feed identity coalesces concurrent intents, restarts
+  re-issue the in-flight fetch with the same request identity, transient
+  failures schedule a kernel-owned exponential retry expressed through
+  `CoreWakeReason::FeedFetchRetry`, and `LibraryProjection.feed_fetches`
+  projects stage/attempt/failure so the UI renders progress from durable
+  state instead of blocked continuations.
 - Open views receive bounded, revisioned, screen-shaped projections.
 - Operation failure and cancellation appear in projection state, not thrown
   per-operation FFI results.

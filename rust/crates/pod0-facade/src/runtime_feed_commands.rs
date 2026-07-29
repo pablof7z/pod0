@@ -1,12 +1,10 @@
 use pod0_application::{
-    CommandEnvelope, CoreFailureCode, ExternalEpisodeInput, HostRequest, HostRequestEnvelope,
-    MAX_FEED_RESPONSE_BYTES, OperationResult, OperationStage, SyntheticPodcastInput,
+    CommandEnvelope, CoreFailureCode, FEED_FETCH_HOST_REQUEST_DEADLINE_MILLISECONDS,
+    OperationResult,
 };
-use pod0_domain::{
-    HostRequestId, PodcastId, PodcastKind, PodcastRecord, UnixTimestampMilliseconds,
-};
+use pod0_domain::PodcastId;
+use pod0_storage::{FeedFetchEnsureInput, StoredFeedFetchIntent};
 
-use crate::runtime_feed_state::{FeedIntent, PendingFeed};
 use crate::runtime_state::FacadeState;
 use crate::runtime_storage_commands::storage_failure;
 
@@ -16,53 +14,51 @@ impl FacadeState {
         envelope: &CommandEnvelope,
         fingerprint: &str,
         feed_url: String,
-        intent: FeedIntent,
+        intent: StoredFeedFetchIntent,
     ) {
         let Some(identity) = pod0_application::normalize_feed_url(&feed_url) else {
             self.fail(envelope.command_id, CoreFailureCode::InvalidFeedUrl);
             return;
         };
-        let existing = self.listening.podcasts.iter().find(|podcast| {
-            podcast
-                .feed_identity
-                .as_ref()
-                .is_some_and(|feed| feed.comparison_key == identity.comparison_key)
+        let existing = self
+            .listening
+            .podcasts
+            .iter()
+            .find(|podcast| {
+                podcast
+                    .feed_identity
+                    .as_ref()
+                    .is_some_and(|feed| feed.comparison_key == identity.comparison_key)
+            })
+            .map(|podcast| podcast.podcast_id);
+        let workflow_active = self.feed_fetches.iter().any(|record| {
+            record.feed_key == identity.comparison_key
+                && record.stage != pod0_storage::StoredFeedFetchStage::Failed
         });
-        if intent == FeedIntent::Subscribe
-            && existing.is_some_and(|podcast| {
+        if intent == StoredFeedFetchIntent::Subscribe
+            && !workflow_active
+            && existing.is_some_and(|podcast_id| {
                 self.listening
                     .subscriptions
                     .iter()
-                    .any(|row| row.podcast_id == podcast.podcast_id)
+                    .any(|row| row.podcast_id == podcast_id)
             })
         {
             self.fail(envelope.command_id, CoreFailureCode::AlreadySubscribed);
             return;
         }
-        if intent == FeedIntent::Ensure
-            && let Some(podcast) = existing
+        if intent == StoredFeedFetchIntent::Ensure
+            && let Some(podcast_id) = existing
         {
             self.succeed(
                 envelope.command_id,
-                Some(OperationResult::Podcast {
-                    podcast_id: podcast.podcast_id,
-                }),
+                Some(OperationResult::Podcast { podcast_id }),
             );
             return;
         }
-        let podcast_id = existing.map_or_else(
-            || PodcastId::from_bytes(envelope.command_id.into_bytes()),
-            |podcast| podcast.podcast_id,
-        );
-        self.queue_feed_request(
-            envelope,
-            fingerprint,
-            intent,
-            identity,
-            podcast_id,
-            None,
-            None,
-        );
+        let podcast_id = existing
+            .unwrap_or_else(|| PodcastId::from_bytes(envelope.command_id.into_bytes()));
+        self.commit_feed_workflow(envelope, fingerprint, intent, identity, podcast_id, None, None);
     }
 
     pub(super) fn start_refresh(
@@ -71,28 +67,7 @@ impl FacadeState {
         fingerprint: &str,
         podcast_id: PodcastId,
     ) {
-        let Some(podcast) = self
-            .listening
-            .podcasts
-            .iter()
-            .find(|podcast| podcast.podcast_id == podcast_id)
-        else {
-            self.fail(envelope.command_id, CoreFailureCode::NotFound);
-            return;
-        };
-        let Some(identity) = podcast.feed_identity.clone() else {
-            self.fail(envelope.command_id, CoreFailureCode::InvalidFeedUrl);
-            return;
-        };
-        self.queue_feed_request(
-            envelope,
-            fingerprint,
-            FeedIntent::Refresh,
-            identity,
-            podcast_id,
-            podcast.etag.clone(),
-            podcast.last_modified.clone(),
-        );
+        self.start_conditional_fetch(envelope, fingerprint, podcast_id, StoredFeedFetchIntent::Refresh);
     }
 
     pub(super) fn start_metadata_refresh(
@@ -101,6 +76,21 @@ impl FacadeState {
         fingerprint: &str,
         podcast_id: PodcastId,
     ) {
+        self.start_conditional_fetch(
+            envelope,
+            fingerprint,
+            podcast_id,
+            StoredFeedFetchIntent::Metadata,
+        );
+    }
+
+    fn start_conditional_fetch(
+        &mut self,
+        envelope: &CommandEnvelope,
+        fingerprint: &str,
+        podcast_id: PodcastId,
+        intent: StoredFeedFetchIntent,
+    ) {
         let Some(podcast) = self
             .listening
             .podcasts
@@ -114,169 +104,76 @@ impl FacadeState {
             self.fail(envelope.command_id, CoreFailureCode::InvalidFeedUrl);
             return;
         };
-        self.queue_feed_request(
+        let entity_tag = podcast.etag.clone();
+        let last_modified = podcast.last_modified.clone();
+        self.commit_feed_workflow(
             envelope,
             fingerprint,
-            FeedIntent::Metadata,
+            intent,
             identity,
             podcast_id,
-            podcast.etag.clone(),
-            podcast.last_modified.clone(),
+            entity_tag,
+            last_modified,
         );
     }
 
-    pub(super) fn upsert_synthetic_podcast(
-        &mut self,
-        envelope: &CommandEnvelope,
-        fingerprint: &str,
-        podcast: SyntheticPodcastInput,
-    ) {
-        if podcast.title.trim().is_empty() || podcast.categories.len() > 32 {
-            self.fail(envelope.command_id, CoreFailureCode::InvalidCommand);
-            return;
-        }
-        let podcast_id = podcast
-            .podcast_id
-            .unwrap_or_else(|| PodcastId::from_bytes(envelope.command_id.into_bytes()));
-        let now = self.now();
-        let record = PodcastRecord {
-            podcast_id,
-            kind: PodcastKind::Synthetic,
-            feed_identity: None,
-            title: podcast.title,
-            author: podcast.author,
-            image_url: podcast.image_url,
-            description: podcast.description,
-            language: podcast.language,
-            categories: podcast.categories,
-            discovered_at: now,
-            title_is_placeholder: false,
-            last_refreshed_at: None,
-            etag: None,
-            last_modified: None,
-        };
-        let result = self
-            .store
-            .as_ref()
-            .ok_or(pod0_storage::StorageError::CutoverNotAuthoritative)
-            .and_then(|store| {
-                store.upsert_synthetic_podcast(envelope.command_id, fingerprint, record, now.value)
-            });
-        match result {
-            Ok(_) => match self.reload_listening() {
-                Ok(()) => self.succeed(
-                    envelope.command_id,
-                    Some(OperationResult::Podcast { podcast_id }),
-                ),
-                Err(error) => self.fail(envelope.command_id, storage_failure(error)),
-            },
-            Err(error) => self.fail(envelope.command_id, storage_failure(error)),
-        }
-    }
-
-    pub(super) fn upsert_external_episode(
-        &mut self,
-        envelope: &CommandEnvelope,
-        fingerprint: &str,
-        episode: ExternalEpisodeInput,
-    ) {
-        let feed_identity = match episode.feed_url {
-            Some(value) => match pod0_application::normalize_feed_url(&value) {
-                Some(value) => Some(value),
-                None => {
-                    self.fail(envelope.command_id, CoreFailureCode::InvalidFeedUrl);
-                    return;
-                }
-            },
-            None => None,
-        };
-        let Some(audio_url) = pod0_application::normalize_media_url(&episode.audio_url) else {
-            self.fail(envelope.command_id, CoreFailureCode::InvalidCommand);
-            return;
-        };
-        if episode.title.trim().is_empty() || episode.podcast_title.trim().is_empty() {
-            self.fail(envelope.command_id, CoreFailureCode::InvalidCommand);
-            return;
-        }
-        let result = self
-            .store
-            .as_ref()
-            .ok_or(pod0_storage::StorageError::CutoverNotAuthoritative)
-            .and_then(|store| {
-                store.upsert_external_episode(
-                    envelope.command_id,
-                    fingerprint,
-                    episode.podcast_id,
-                    feed_identity,
-                    &episode.podcast_title,
-                    &audio_url,
-                    episode.guid.as_deref(),
-                    &episode.title,
-                    &episode.description,
-                    episode.published_at.value,
-                    episode.enclosure_mime_type.as_deref(),
-                    episode.image_url.as_deref(),
-                    episode.duration_milliseconds,
-                    self.now().value,
-                )
-            });
-        match result {
-            Ok((_, resolved_podcast_id, episode_id)) => match self.reload_listening() {
-                Ok(()) => self.succeed(
-                    envelope.command_id,
-                    Some(OperationResult::ExternalEpisode {
-                        podcast_id: resolved_podcast_id,
-                        episode_id,
-                    }),
-                ),
-                Err(error) => self.fail(envelope.command_id, storage_failure(error)),
-            },
-            Err(error) => self.fail(envelope.command_id, storage_failure(error)),
-        }
-    }
-
+    /// Commits the intent durably (placeholder podcast, subscription, and
+    /// workflow row in one transaction), queues the host fetch from the
+    /// stored row, and succeeds immediately: from contract version 53 a
+    /// `Succeeded` feed command means "durably queued", not "fully applied".
     #[allow(clippy::too_many_arguments)]
-    fn queue_feed_request(
+    fn commit_feed_workflow(
         &mut self,
         envelope: &CommandEnvelope,
         fingerprint: &str,
-        intent: FeedIntent,
+        intent: StoredFeedFetchIntent,
         identity: pod0_domain::FeedIdentityV1,
         podcast_id: PodcastId,
         entity_tag: Option<String>,
         last_modified: Option<String>,
     ) {
-        let request_id = HostRequestId::from_bytes(envelope.command_id.into_bytes());
-        let request = HostRequestEnvelope {
-            request_id,
-            command_id: envelope.command_id,
-            cancellation_id: envelope.cancellation_id,
-            issued_revision: self.revision,
-            deadline_at: Some(UnixTimestampMilliseconds::new(
-                self.now().value.saturating_add(30_000),
-            )),
-            request: HostRequest::FetchFeed {
-                feed_url: identity.source_url.clone(),
-                entity_tag,
-                last_modified,
-                maximum_response_bytes: MAX_FEED_RESPONSE_BYTES,
-            },
+        let Some(store) = self.store.clone() else {
+            self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
+            return;
         };
-        if self.host_requests.register(request.clone()) {
-            self.pending_feeds.insert(
-                request_id,
-                PendingFeed {
-                    command_id: envelope.command_id,
-                    fingerprint: fingerprint.to_owned(),
-                    intent,
-                    feed_identity: identity,
-                    podcast_id,
-                },
-            );
-            self.host_queue.push_back(request);
-            self.finish(envelope.command_id, OperationStage::Running, None, None);
-        } else {
+        let now = self.now().value;
+        let Some(deadline) = now.checked_add(FEED_FETCH_HOST_REQUEST_DEADLINE_MILLISECONDS) else {
             self.fail(envelope.command_id, CoreFailureCode::InvalidCommand);
+            return;
+        };
+        let outcome = store.ensure_feed_fetch_workflow(FeedFetchEnsureInput {
+            command_id: envelope.command_id,
+            command_fingerprint: fingerprint.to_owned(),
+            cancellation_id: envelope.cancellation_id,
+            source_url: identity.source_url.clone(),
+            feed_key: identity.comparison_key.clone(),
+            podcast_id,
+            placeholder_title: pod0_application::feed_placeholder_title(&identity),
+            intent,
+            entity_tag,
+            last_modified,
+            issued_revision: self.revision,
+            now_ms: now,
+            deadline_at_ms: deadline,
+        });
+        match outcome {
+            Ok(outcome) => {
+                if let Err(error) = self.reload_listening() {
+                    self.fail(envelope.command_id, storage_failure(error));
+                    return;
+                }
+                let _ = self.reload_feed_fetches();
+                if let Some(record) = outcome.record {
+                    let _ = self.queue_feed_fetch_request(record);
+                }
+                self.succeed(
+                    envelope.command_id,
+                    Some(OperationResult::Podcast {
+                        podcast_id: outcome.podcast_id,
+                    }),
+                );
+            }
+            Err(error) => self.fail(envelope.command_id, storage_failure(error)),
         }
     }
 }

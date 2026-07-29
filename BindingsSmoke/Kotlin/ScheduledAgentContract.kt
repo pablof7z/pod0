@@ -48,7 +48,7 @@ fun qualifyScheduledAgentContract() {
                 20u.toUShort(),
             ),
         )
-        check(envelope.contractVersion == 53u)
+        check(envelope.contractVersion == 54u)
         val projection = envelope.projection
         check(projection is Projection.ScheduledAgent)
         check(projection.value.tasks.isEmpty())

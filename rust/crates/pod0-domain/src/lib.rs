@@ -86,6 +86,9 @@ opaque_id!(NoteId, uniffi::Record);
 opaque_id!(MemoryId, uniffi::Record);
 opaque_id!(ClipId, uniffi::Record);
 opaque_id!(CategoryId, uniffi::Record);
+// Not a uniffi record yet: speaker entities are storage-internal until a
+// facade command surface exposes create/rename across the binding boundary.
+opaque_id!(SpeakerEntityId);
 // One address space for "a thing a category can hold". A podcast id and an
 // episode id are both valid `LibraryItemId`s; the kernel resolves which kind
 // an id refers to at execution time so callers need no per-kind verb.
