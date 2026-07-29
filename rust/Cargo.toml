@@ -7,6 +7,7 @@ members = [
     "crates/pod0-recall-index",
     "crates/pod0-nmp",
     "crates/pod0-facade",
+    "crates/pod0-bdd",
     "crates/uniffi-bindgen",
 ]
 

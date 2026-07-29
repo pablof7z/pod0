@@ -1,0 +1,36 @@
+[package]
+name = "pod0-bdd"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "BDD acceptance layer: Gherkin scenarios driven against the real Pod0 facade (docs/bdd/000-bdd-approach.md)."
+
+# Test-only crate: no production crate depends on it, and its library target
+# carries only cucumber-free fixture builders (unit-tested under the normal
+# harness). Everything cucumber-typed lives inside the `bdd` test target so
+# `cucumber` can stay a dev-dependency -- cargo-deny prunes dev-dependencies
+# from its license graph, which keeps the BlueOak-1.0.0-licensed `synthez`
+# proc-macro subtree (pulled by cucumber's `macros` feature) out of the
+# checked production graph without touching the allow-list.
+[lib]
+name = "pod0_bdd"
+path = "src/lib.rs"
+doctest = false
+
+[[test]]
+name = "bdd"
+path = "tests/bdd/main.rs"
+harness = false
+
+[dev-dependencies]
+pod0-application.workspace = true
+pod0-domain.workspace = true
+pod0-facade = { path = "../pod0-facade", version = "=0.1.0" }
+pod0-storage.workspace = true
+
+cucumber = { version = "=0.23.0" }
+futures = { version = "=0.3.33" }
+rusqlite.workspace = true
+tempfile.workspace = true

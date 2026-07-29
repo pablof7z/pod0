@@ -77,10 +77,11 @@ fun main(args: Array<String>) {
         check(facade.nextHostRequests(64u.toUShort()).isEmpty())
         val cancelledProjection = facade.snapshot(request).projection
         check(cancelledProjection is Projection.Library)
+        check(cancelledProjection.value.feedFetches.isEmpty())
         check(cancelledProjection.value.operations.any { operation ->
             operation.commandId == CommandId(0UL, 3UL) &&
-                operation.stage is OperationStage.Cancelled &&
-                operation.failure?.code is CoreFailureCode.Cancelled
+                operation.stage is OperationStage.Failed &&
+                operation.failure?.code is CoreFailureCode.StorageUnavailable
         })
 
         facade.unsubscribe(handle)
