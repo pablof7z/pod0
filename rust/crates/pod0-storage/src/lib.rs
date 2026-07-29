@@ -87,6 +87,7 @@ mod feed_discovery_workflow_model;
 mod feed_discovery_workflow_store;
 mod feed_fetch_store;
 mod feed_fetch_store_model;
+mod feed_fetch_store_read;
 mod import_model;
 mod legacy_backup;
 mod legacy_chapter_artifact_source;

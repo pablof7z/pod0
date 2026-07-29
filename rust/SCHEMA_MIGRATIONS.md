@@ -45,6 +45,14 @@ generation. Selection moves one pointer atomically while retaining the previous
 generation for rollback. Corrupt, incomplete, foreign, or newer-schema evidence
 fails closed, and pruning cannot remove the selected generation.
 
+Version 35 adds `pod0_feed_fetch_workflows`, the durable feed-fetch workflow
+family behind subscribe/ensure/refresh/metadata commands. One row per
+normalized feed identity — the `feed_key_v1` primary key is the uniqueness
+constraint that coalesces concurrent intents onto a single workflow — stores
+the host-request identity, conditional-fetch headers, attempt count, retry
+schedule, and terminal failure state so an interrupted fetch is re-issued
+after relaunch with the same request identity.
+
 SQL steps are sequential files under `rust/schema/migrations`. Their SHA-256
 lock and `CURRENT_SCHEMA_VERSION` are checked in CI. Never edit a shipped step;
 add the next version and update the lock in the same reviewed change.
