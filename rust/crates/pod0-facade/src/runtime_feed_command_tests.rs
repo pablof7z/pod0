@@ -101,6 +101,7 @@ fn cancellation_prevents_late_host_observation_from_committing() {
             cancellation_id: CancellationId::from_parts(0, 10),
         },
     ));
+    let revision_after_cancel = facade.snapshot(library_request()).state_revision;
 
     let receipt = facade.record_host_observation(HostObservationEnvelope {
         request_id: request.request_id,
@@ -128,7 +129,12 @@ fn cancellation_prevents_late_host_observation_from_committing() {
             reason: HostObservationRejection::Cancelled
         }
     );
-    let Projection::Library { value } = facade.snapshot(library_request()).projection else {
+    let snapshot = facade.snapshot(library_request());
+    assert_eq!(
+        snapshot.state_revision, revision_after_cancel,
+        "a rejected late observation must leave state_revision unchanged"
+    );
+    let Projection::Library { value } = snapshot.projection else {
         panic!("expected library projection");
     };
     assert!(
@@ -153,13 +159,20 @@ fn host_request_drain_is_safe_when_limit_exceeds_queue_length() {
     ));
 
     let drained = fixture.facade.next_host_requests(u16::MAX);
-    assert!(drained.iter().any(|request| {
-        matches!(
-            &request.request,
-            HostRequest::FetchFeed { feed_url, .. }
-                if feed_url == "https://example.test/feed"
-        )
-    }));
+    let matching_fetches = drained
+        .iter()
+        .filter(|request| {
+            matches!(
+                &request.request,
+                HostRequest::FetchFeed { feed_url, .. }
+                    if feed_url == "https://example.test/feed"
+            )
+        })
+        .count();
+    assert_eq!(
+        matching_fetches, 1,
+        "subscribe must issue exactly one FetchFeed for the requested URL"
+    );
     assert!(fixture.facade.next_host_requests(u16::MAX).is_empty());
 }
 
