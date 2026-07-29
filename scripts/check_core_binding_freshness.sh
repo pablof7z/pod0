@@ -49,6 +49,7 @@ if ! cmp -s "$EXPECTED" "$ACTUAL"; then
   echo "note: the linked Rust core and Generated/Pod0Core disagree on FFI" >&2
   echo "note: layout; linking them aborts at runtime on the first drifted type." >&2
   rebuild_note
+  echo "note: if rebuilding does not fix this, run scripts/generate_core_bindings.sh — the Rust sources and the committed bindings disagree." >&2
   exit 1
 fi
 
