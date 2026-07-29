@@ -5,7 +5,7 @@ use pod0_domain::CommandId;
 
 pub const APPLICATION_ID: i64 = 0x504F_4430;
 pub const MIN_SUPPORTED_SCHEMA_VERSION: u32 = 0;
-pub const CURRENT_SCHEMA_VERSION: u32 = 34;
+pub const CURRENT_SCHEMA_VERSION: u32 = 35;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AccessMode {
@@ -125,6 +125,7 @@ pub enum StorageError {
     EntityNotFound,
     RevisionConflict,
     InvalidCategory,
+    InvalidSpeakerEntity,
     InvalidMemory,
     InvalidNote,
     InvalidClip,
@@ -215,6 +216,7 @@ impl StorageError {
             Self::EntityNotFound => "library_entity_not_found",
             Self::RevisionConflict => "revision_conflict",
             Self::InvalidCategory => "invalid_category",
+            Self::InvalidSpeakerEntity => "invalid_speaker_entity",
             Self::InvalidMemory => "invalid_memory",
             Self::InvalidNote => "invalid_note",
             Self::InvalidClip => "invalid_clip",

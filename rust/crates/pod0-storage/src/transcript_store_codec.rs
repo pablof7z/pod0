@@ -1,6 +1,6 @@
 use pod0_domain::{
-    ContentDigest, EpisodeId, PodcastId, SpeakerId, StateRevision, TranscriptArtifactError,
-    TranscriptArtifactId, TranscriptSegmentId, TranscriptVersionId,
+    ContentDigest, EpisodeId, PodcastId, SpeakerEntityId, SpeakerId, StateRevision,
+    TranscriptArtifactError, TranscriptArtifactId, TranscriptSegmentId, TranscriptVersionId,
 };
 
 use crate::StorageError;
@@ -27,6 +27,11 @@ id_decoder!(
     "transcript segment identity"
 );
 id_decoder!(speaker_id, SpeakerId, "transcript speaker identity");
+id_decoder!(
+    speaker_entity_id,
+    SpeakerEntityId,
+    "speaker entity identity"
+);
 id_decoder!(
     version_id,
     TranscriptVersionId,

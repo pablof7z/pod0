@@ -191,7 +191,7 @@ fn schema_16_completion_is_preserved_and_no_longer_pins_the_current_request() {
     assert_eq!(
         report.applied_versions,
         [
-            17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34
+            17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35
         ]
     );
     let connection = rusqlite::Connection::open(&path).unwrap();

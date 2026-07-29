@@ -168,10 +168,15 @@ impl FacadeState {
             .recalls
             .get(&query_id)
             .ok_or(StorageError::InvalidAgentState)?;
+        let speaker_names =
+            self.recall_speaker_names(workflow.evidence.iter().map(|item| item.episode_id));
         let evidence = workflow
             .evidence
             .iter()
             .map(|item| {
+                let speaker = item
+                    .speaker_id
+                    .and_then(|id| speaker_names.get(&(item.episode_id, id)));
                 let episode = self
                     .listening
                     .episodes
@@ -192,6 +197,8 @@ impl FacadeState {
                     "timestamp": timestamp(item.start_milliseconds),
                     "excerpt": item.excerpt,
                     "speaker_id": item.speaker_id.map(|id| opaque_id(id.into_bytes())),
+                    "speaker_label": speaker.map(|(label, _)| label.as_str()),
+                    "speaker_display_name": speaker.and_then(|(_, name)| name.as_deref()),
                     "transcript_source": transcript_source(item.provenance.source),
                     "provider": item.provenance.provider,
                     "playable_reference": {

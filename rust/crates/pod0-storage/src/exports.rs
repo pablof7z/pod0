@@ -79,6 +79,10 @@ pub use crate::scheduled_agent_store::{
 };
 pub use crate::scheduled_agent_store_model::*;
 pub use crate::signer_store::SignerStore;
+pub use crate::speaker_store_model::{
+    MAX_SPEAKER_DISPLAY_NAME_BYTES, SpeakerAssignmentOrigin, StoredSpeakerAssignment,
+    StoredSpeakerEntity,
+};
 pub use crate::transcript_import::{TranscriptImportClock, TranscriptImporter};
 pub use crate::transcript_import_model::{
     LegacyTranscriptSourceKind, TranscriptBackupEvidence, TranscriptImportEntrySummary,
