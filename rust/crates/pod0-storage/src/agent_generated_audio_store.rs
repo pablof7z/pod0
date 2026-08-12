@@ -47,9 +47,11 @@ impl AgentStore {
                 return Ok(AgentMutationOutcome::Duplicate(duplicate));
             }
             validate_input(state, expected_revision, input)?;
-            ensure_generated_podcast(transaction, input.podcast_id, context.observed_at)?;
-            upsert_episode(transaction, &episode_record(input, context.observed_at))?;
-            insert_artifact(transaction, input)?;
+            commit_generated_audio_artifact_in_transaction(
+                transaction,
+                input,
+                context.observed_at,
+            )?;
             let library_fingerprint = library_fingerprint(context.command_fingerprint);
             if command_was_applied(transaction, context.command_id, &library_fingerprint)?.is_some()
             {
@@ -70,6 +72,16 @@ impl AgentStore {
             )
         })
     }
+}
+
+pub(crate) fn commit_generated_audio_artifact_in_transaction(
+    transaction: &rusqlite::Transaction<'_>,
+    input: &AgentGeneratedAudioCommitInput,
+    observed_at: pod0_domain::UnixTimestampMilliseconds,
+) -> Result<(), StorageError> {
+    ensure_generated_podcast(transaction, input.podcast_id, observed_at)?;
+    upsert_episode(transaction, &episode_record(input, observed_at))?;
+    insert_artifact(transaction, input)
 }
 
 fn validate_input(

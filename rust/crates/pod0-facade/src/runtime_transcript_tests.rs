@@ -160,7 +160,7 @@ fn stale_invalid_missing_and_unsupported_transcript_states_are_typed() {
     assert!(unsupported.segments.is_empty());
 }
 
-fn envelope(
+pub(super) fn envelope(
     id: u64,
     expected_selection_revision: StateRevision,
     artifact: TranscriptArtifactInput,
@@ -176,7 +176,7 @@ fn envelope(
     }
 }
 
-fn input(fixture: &PlaybackFixture, source_revision: &str) -> TranscriptArtifactInput {
+pub(super) fn input(fixture: &PlaybackFixture, source_revision: &str) -> TranscriptArtifactInput {
     let speaker_id = SpeakerId::from_parts(62, 1);
     TranscriptArtifactInput {
         episode_id: fixture.episode_id,

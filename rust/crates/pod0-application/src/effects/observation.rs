@@ -130,16 +130,6 @@ pub enum HostObservation {
         execution_fence_id: AgentExecutionFenceId,
         outcome: AgentCapabilityOutcome,
     },
-    NostrSignerCredentialReady {
-        account_id: pod0_domain::SignerAccountId,
-        public_key_hex: String,
-    },
-    NostrEventSigned {
-        value: crate::NostrSignatureObservation,
-    },
-    NostrSignerCredentialDeleted {
-        account_id: pod0_domain::SignerAccountId,
-    },
     CoreWakeReached {
         reason: crate::CoreWakeReason,
     },
@@ -156,7 +146,7 @@ pub enum HostObservation {
     },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum HostFailureCode {
     Offline,
     TimedOut,

@@ -14,15 +14,11 @@ final class Pod0NativeHostDispatcher {
     let publisherChapterHost: any CorePublisherChapterHosting
     let chapterModelHost: any CoreChapterModelHosting
     let agentHost: any CoreAgentHosting
-    let nostrSignerHost: any CoreNostrSignerHosting
     let playbackHost: any CorePlaybackHosting
     let maximumConcurrentTasks: Int
     let recallHost: any CoreRecallHosting
     let scheduledAgentHost: any CoreScheduledAgentHosting
     let transcriptHost: any CoreTranscriptHosting
-    let recallObservationRecorder = CoreRecallObservationRecorder()
-    let publisherObservationRecorder = CorePublisherChapterObservationRecorder()
-    let transientObservationRecorder = CoreTransientObservationRecorder()
     let hostRequestReader = CoreHostRequestReader()
     let durableObservationRecorder: CoreDurableObservationRecorder
     let observationOutbox: NativeHostObservationOutbox?
@@ -54,7 +50,6 @@ final class Pod0NativeHostDispatcher {
         publisherChapterHost: any CorePublisherChapterHosting = CorePublisherChapterHost(),
         chapterModelHost: any CoreChapterModelHosting = CoreChapterModelHost(),
         agentHost: any CoreAgentHosting = UnavailableCoreAgentHost(),
-        nostrSignerHost: any CoreNostrSignerHosting = CoreNostrSignerHost(),
         playbackHost: any CorePlaybackHosting,
         recallHost: any CoreRecallHosting = UnavailableCoreRecallHost(),
         scheduledAgentHost: any CoreScheduledAgentHosting = CoreScheduledAgentHost(),
@@ -69,7 +64,6 @@ final class Pod0NativeHostDispatcher {
         self.publisherChapterHost = publisherChapterHost
         self.chapterModelHost = chapterModelHost
         self.agentHost = agentHost
-        self.nostrSignerHost = nostrSignerHost
         self.playbackHost = playbackHost
         self.recallHost = recallHost
         self.scheduledAgentHost = scheduledAgentHost
@@ -219,9 +213,6 @@ final class Pod0NativeHostDispatcher {
                 return
             }
             startAgentTask(envelope, delivery: delivery)
-        case .provisionNostrSignerCredential, .restoreNostrSignerCredential,
-             .signNostrEvent, .deleteNostrSignerCredential:
-            startNostrSignerTask(envelope, delivery: delivery)
         case .scheduleCoreWake(let wakeAt, let reason):
             startCoreWakeTask(
                 envelope,

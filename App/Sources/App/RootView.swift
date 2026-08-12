@@ -2,8 +2,8 @@ import CoreSpotlight
 import Pod0Core
 import SwiftUI
 
-/// The root view of the app. Hosts the main tab bar (hidden), onboarding gate,
-/// deep-link routing, and the avatar sidebar.
+/// The root view of the app. Hosts the main tab bar (hidden), deep-link
+/// routing, and the avatar sidebar.
 struct RootView: View {
     @Environment(AppStateStore.self) var store
     @Environment(AgentAskCoordinator.self) var askCoordinator
@@ -87,16 +87,7 @@ struct RootView: View {
                 )) { identified in
                     NavigationStack { spotlightDetailView(for: identified.link) }
                 }
-                .fullScreenCover(
-                    isPresented: Binding(
-                        get: { !store.state.settings.hasCompletedOnboarding },
-                        set: { _ in }
-                    )
-                ) {
-                    OnboardingView()
-                }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-                    store.sharedLibrary?.ensureNostrSigner()
                     Task { await workflows.reconcileOpportunity() }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .askAgentRequested)) { _ in

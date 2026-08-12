@@ -18,9 +18,10 @@ impl LibraryStore {
         &self,
         input: TranscriptWorkflowCommitInput,
     ) -> Result<TranscriptWorkflowCommitReceipt, StorageError> {
-        self.commit_transcript_workflow_with_observer(input, || Ok(()))
+        crate::transition_commit::commit_transcript_finalization(self.path(), input)
     }
 
+    #[cfg(test)]
     pub(crate) fn commit_transcript_workflow_with_observer<F>(
         &self,
         input: TranscriptWorkflowCommitInput,
@@ -29,62 +30,10 @@ impl LibraryStore {
     where
         F: FnOnce() -> Result<(), StorageError>,
     {
-        validate_time(input.completed_at_ms)?;
-        if input.evidence_input_version.is_empty() || input.evidence_input_version.len() > 256 {
-            return Err(StorageError::TranscriptWorkflowConflict);
-        }
         self.write(|transaction| {
-            require_authoritative(transaction)?;
-            let mut workflow = read_workflow(transaction, input.episode_id)?
-                .ok_or(StorageError::TranscriptWorkflowNotFound)?;
-            if workflow.request_id != Some(input.request_id)
-                || !matches!(
-                    workflow.stage,
-                    StoredTranscriptWorkflowStage::CompletionObserved
-                        | StoredTranscriptWorkflowStage::EvidenceRequested
-                )
-            {
-                return Err(StorageError::StaleTranscriptAttempt);
-            }
-            let artifact_id = workflow
-                .completion_artifact_id
-                .ok_or(StorageError::TranscriptWorkflowConflict)?;
-            let artifact = read_artifact_by_id(transaction, artifact_id)?
-                .ok_or(StorageError::InvalidTranscriptArtifact)?;
-            let transcript = commit_and_select_transcript_in_transaction(
-                transaction,
-                workflow.command_id,
-                workflow.expected_selection_revision,
-                &artifact,
-                input.completed_at_ms,
-            )?;
-            if workflow.stage == StoredTranscriptWorkflowStage::CompletionObserved {
-                workflow.stage = StoredTranscriptWorkflowStage::EvidenceRequested;
-                workflow.workflow_revision = next_revision(workflow.workflow_revision)?;
-                workflow.committed_artifact_id = Some(transcript.artifact_id);
-                workflow.committed_transcript_version_id = Some(transcript.transcript_version_id);
-                workflow.committed_content_digest = Some(transcript.transcript_content_digest);
-                workflow.resulting_selection_revision = Some(transcript.selection_revision);
-                workflow.evidence_input_version = Some(input.evidence_input_version.clone());
-                workflow.deadline_at_ms = None;
-                workflow.not_before_ms = None;
-                workflow.failure_code = None;
-                workflow.failure_detail = None;
-                workflow.failure_retryable = false;
-                workflow.updated_at_ms = input.completed_at_ms;
-                persist_workflow(transaction, &workflow)?;
-                insert_evidence_request(transaction, &workflow, input.completed_at_ms)?;
-                mark_attempt_committed(transaction, &workflow)?;
-            } else if workflow.evidence_input_version.as_deref()
-                != Some(input.evidence_input_version.as_str())
-            {
-                return Err(StorageError::TranscriptWorkflowConflict);
-            }
+            let receipt = apply_transcript_workflow_commit(transaction, input)?;
             before_commit()?;
-            Ok(TranscriptWorkflowCommitReceipt {
-                workflow,
-                transcript,
-            })
+            Ok(receipt)
         })
     }
 
@@ -94,14 +43,15 @@ impl LibraryStore {
         input_version: &str,
         completed_at_ms: i64,
     ) -> Result<TranscriptWorkflowRecord, StorageError> {
-        self.complete_transcript_evidence_request_with_observer(
+        crate::transition_commit::commit_transcript_evidence_completion(
+            self.path(),
             workflow_id,
             input_version,
             completed_at_ms,
-            || Ok(()),
         )
     }
 
+    #[cfg(test)]
     pub(crate) fn complete_transcript_evidence_request_with_observer<F>(
         &self,
         workflow_id: TranscriptWorkflowId,
@@ -112,48 +62,131 @@ impl LibraryStore {
     where
         F: FnOnce() -> Result<(), StorageError>,
     {
-        validate_time(completed_at_ms)?;
         self.write(|transaction| {
-            require_authoritative(transaction)?;
-            let episode: Vec<u8> = transaction
-                .query_row(
-                    "SELECT episode_id FROM pod0_transcript_workflows WHERE workflow_id=?1",
-                    [workflow_id.into_bytes().as_slice()],
-                    |row| row.get(0),
-                )
-                .map_err(|_| StorageError::TranscriptWorkflowNotFound)?;
-            let episode_id = pod0_domain::EpisodeId::from_bytes(
-                episode.try_into().map_err(|_| StorageError::TranscriptWorkflowConflict)?,
-            );
-            let mut workflow = read_workflow(transaction, episode_id)?
-                .ok_or(StorageError::TranscriptWorkflowNotFound)?;
-            if workflow.stage == StoredTranscriptWorkflowStage::Succeeded
-                && workflow.evidence_input_version.as_deref() == Some(input_version)
-            {
-                return Ok(workflow);
-            }
-            if workflow.stage != StoredTranscriptWorkflowStage::EvidenceRequested
-                || workflow.evidence_input_version.as_deref() != Some(input_version)
-                || completed_at_ms < workflow.updated_at_ms
-            {
-                return Err(StorageError::TranscriptWorkflowConflict);
-            }
-            let changed = transaction
-                .execute(
-                    "UPDATE pod0_transcript_evidence_requests SET state='completed',completed_at_ms=?1
-                     WHERE workflow_id=?2 AND input_version=?3 AND state='requested'",
-                    params![completed_at_ms, workflow_id.into_bytes().as_slice(), input_version],
-                )
-                .map_err(|error| StorageError::sqlite("complete transcript evidence request", error))?;
-            if changed != 1 { return Err(StorageError::TranscriptWorkflowConflict); }
-            workflow.stage = StoredTranscriptWorkflowStage::Succeeded;
-            workflow.workflow_revision = next_revision(workflow.workflow_revision)?;
-            workflow.updated_at_ms = completed_at_ms;
-            persist_workflow(transaction, &workflow)?;
+            let workflow = apply_transcript_evidence_completion(
+                transaction,
+                workflow_id,
+                input_version,
+                completed_at_ms,
+            )?;
             before_commit()?;
             Ok(workflow)
         })
     }
+}
+
+pub(crate) fn apply_transcript_evidence_completion(
+    transaction: &rusqlite::Transaction<'_>,
+    workflow_id: TranscriptWorkflowId,
+    input_version: &str,
+    completed_at_ms: i64,
+) -> Result<TranscriptWorkflowRecord, StorageError> {
+    validate_time(completed_at_ms)?;
+    require_authoritative(transaction)?;
+    let episode: Vec<u8> = transaction
+        .query_row(
+            "SELECT episode_id FROM pod0_transcript_workflows WHERE workflow_id=?1",
+            [workflow_id.into_bytes().as_slice()],
+            |row| row.get(0),
+        )
+        .map_err(|_| StorageError::TranscriptWorkflowNotFound)?;
+    let episode_id = pod0_domain::EpisodeId::from_bytes(
+        episode
+            .try_into()
+            .map_err(|_| StorageError::TranscriptWorkflowConflict)?,
+    );
+    let mut workflow =
+        read_workflow(transaction, episode_id)?.ok_or(StorageError::TranscriptWorkflowNotFound)?;
+    if workflow.stage == StoredTranscriptWorkflowStage::Succeeded
+        && workflow.evidence_input_version.as_deref() == Some(input_version)
+    {
+        return Ok(workflow);
+    }
+    if workflow.stage != StoredTranscriptWorkflowStage::EvidenceRequested
+        || workflow.evidence_input_version.as_deref() != Some(input_version)
+        || completed_at_ms < workflow.updated_at_ms
+    {
+        return Err(StorageError::TranscriptWorkflowConflict);
+    }
+    let changed = transaction
+        .execute(
+            "UPDATE pod0_transcript_evidence_requests SET state='completed',completed_at_ms=?1
+             WHERE workflow_id=?2 AND input_version=?3 AND state='requested'",
+            params![
+                completed_at_ms,
+                workflow_id.into_bytes().as_slice(),
+                input_version
+            ],
+        )
+        .map_err(|error| StorageError::sqlite("complete transcript evidence request", error))?;
+    if changed != 1 {
+        return Err(StorageError::TranscriptWorkflowConflict);
+    }
+    workflow.stage = StoredTranscriptWorkflowStage::Succeeded;
+    workflow.workflow_revision = next_revision(workflow.workflow_revision)?;
+    workflow.updated_at_ms = completed_at_ms;
+    persist_workflow(transaction, &workflow)?;
+    Ok(workflow)
+}
+
+pub(crate) fn apply_transcript_workflow_commit(
+    transaction: &rusqlite::Transaction<'_>,
+    input: TranscriptWorkflowCommitInput,
+) -> Result<TranscriptWorkflowCommitReceipt, StorageError> {
+    validate_time(input.completed_at_ms)?;
+    if input.evidence_input_version.is_empty() || input.evidence_input_version.len() > 256 {
+        return Err(StorageError::TranscriptWorkflowConflict);
+    }
+    require_authoritative(transaction)?;
+    let mut workflow = read_workflow(transaction, input.episode_id)?
+        .ok_or(StorageError::TranscriptWorkflowNotFound)?;
+    if workflow.request_id != Some(input.request_id)
+        || !matches!(
+            workflow.stage,
+            StoredTranscriptWorkflowStage::CompletionObserved
+                | StoredTranscriptWorkflowStage::EvidenceRequested
+        )
+    {
+        return Err(StorageError::StaleTranscriptAttempt);
+    }
+    let artifact_id = workflow
+        .completion_artifact_id
+        .ok_or(StorageError::TranscriptWorkflowConflict)?;
+    let artifact = read_artifact_by_id(transaction, artifact_id)?
+        .ok_or(StorageError::InvalidTranscriptArtifact)?;
+    let transcript = commit_and_select_transcript_in_transaction(
+        transaction,
+        workflow.command_id,
+        workflow.expected_selection_revision,
+        &artifact,
+        input.completed_at_ms,
+    )?;
+    if workflow.stage == StoredTranscriptWorkflowStage::CompletionObserved {
+        workflow.stage = StoredTranscriptWorkflowStage::EvidenceRequested;
+        workflow.workflow_revision = next_revision(workflow.workflow_revision)?;
+        workflow.committed_artifact_id = Some(transcript.artifact_id);
+        workflow.committed_transcript_version_id = Some(transcript.transcript_version_id);
+        workflow.committed_content_digest = Some(transcript.transcript_content_digest);
+        workflow.resulting_selection_revision = Some(transcript.selection_revision);
+        workflow.evidence_input_version = Some(input.evidence_input_version.clone());
+        workflow.deadline_at_ms = None;
+        workflow.not_before_ms = None;
+        workflow.failure_code = None;
+        workflow.failure_detail = None;
+        workflow.failure_retryable = false;
+        workflow.updated_at_ms = input.completed_at_ms;
+        persist_workflow(transaction, &workflow)?;
+        insert_evidence_request(transaction, &workflow, input.completed_at_ms)?;
+        mark_attempt_committed(transaction, &workflow)?;
+    } else if workflow.evidence_input_version.as_deref()
+        != Some(input.evidence_input_version.as_str())
+    {
+        return Err(StorageError::TranscriptWorkflowConflict);
+    }
+    Ok(TranscriptWorkflowCommitReceipt {
+        workflow,
+        transcript,
+    })
 }
 
 fn insert_evidence_request(

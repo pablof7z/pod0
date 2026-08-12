@@ -4,8 +4,7 @@ use pod0_application::{Clock, PlaybackPolicyState};
 use pod0_domain::StateRevision;
 use pod0_recall_index::RecallIndex;
 use pod0_storage::{
-    AgentStore, EvidenceStore, LibraryStore, PublicationStore, ScheduledAgentStore, SignerStore,
-    TranscriptStore,
+    AgentStore, EvidenceStore, LibraryStore, PublicationStore, ScheduledAgentStore, TranscriptStore,
 };
 
 use crate::runtime_playback_state::PlaybackRuntime;
@@ -18,7 +17,6 @@ pub(super) struct FacadeStores {
     pub(super) scheduled_agent: Option<ScheduledAgentStore>,
     pub(super) agent: AgentStore,
     pub(super) publication: PublicationStore,
-    pub(super) signer: SignerStore,
 }
 
 impl FacadeState {
@@ -34,16 +32,14 @@ impl FacadeState {
             scheduled_agent: scheduled_agent_store,
             agent: agent_store,
             publication: publication_store,
-            signer: signer_store,
         } = stores;
-        let _ = store.clear_session_sleep_timer()?;
+        let _ = store.clear_session_sleep_timer(clock.now().value)?;
         let _ = store.recover_download_artifacts()?;
         let listening = store.snapshot()?;
         let new_episode_notification_settings = store.new_episode_notification_settings()?;
         let notes = store.note_snapshot()?;
         let memories = store.memory_snapshot()?;
         let clips = store.clip_snapshot()?;
-        let signer_account = signer_store.account()?;
         let recall_configuration = store.recall_configuration()?.unwrap_or_default();
         recall_index
             .activate_embedding_space(recall_configuration.embedding_space_id)
@@ -78,8 +74,6 @@ impl FacadeState {
             scheduled_agent_store,
             agent_store: Some(agent_store),
             publication_store: Some(publication_store),
-            signer_store: Some(signer_store),
-            signer_account,
             recall_index,
             recall_configuration,
             playback,
@@ -87,14 +81,15 @@ impl FacadeState {
         };
         state.rehydrate_publisher_chapter_workflows()?;
         state.rehydrate_download_workflows()?;
+        state.resume_automatic_download_commands();
         state.rehydrate_feed_workflows()?;
         state.rehydrate_feed_discovery_workflows()?;
         state.rehydrate_model_chapter_workflows()?;
         state.rehydrate_transcript_workflows()?;
+        state.resume_playback_transcript_commands();
         state.rehydrate_scheduled_agent_workflows()?;
         state.rehydrate_agent_turns()?;
-        state.rehydrate_nostr_signer()?;
+        state.rehydrate_publications()?;
         Ok(state)
     }
-
 }

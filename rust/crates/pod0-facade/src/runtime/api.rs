@@ -34,6 +34,13 @@ impl Pod0ApplicationApi for Pod0Facade {
         Self::next_host_requests(self, maximum_count)
     }
 
+    fn next_leased_host_requests(
+        &self,
+        maximum_count: u16,
+    ) -> Vec<pod0_application::LeasedHostRequestEnvelope> {
+        Self::next_leased_host_requests(self, maximum_count)
+    }
+
     fn next_host_cancellations(&self, maximum_count: u16) -> Vec<HostCancellationRequest> {
         Self::next_host_cancellations(self, maximum_count)
     }
@@ -43,5 +50,12 @@ impl Pod0ApplicationApi for Pod0Facade {
         observation: HostObservationEnvelope,
     ) -> HostObservationReceipt {
         Self::record_host_observation(self, observation)
+    }
+
+    fn record_leased_host_observation(
+        &self,
+        observation: pod0_application::LeasedHostObservationEnvelope,
+    ) -> HostObservationReceipt {
+        Self::record_leased_host_observation(self, observation)
     }
 }

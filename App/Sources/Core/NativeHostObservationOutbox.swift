@@ -25,22 +25,20 @@ actor NativeHostObservationOutbox {
         case unsupportedSchema
         case invalidArchive
         case receiptRequestMismatch
-        case abandonedTooOften
     }
 
     typealias Delivery = @Sendable (HostObservationEnvelope) async -> HostObservationReceipt
 
     private typealias Entry = NativeHostObservationArchive.Entry
+    typealias LeasedEntry = NativeLeasedHostObservationArchive.Entry
 
-    /// A record that has killed the process this many times mid-delivery is
-    /// poison: replaying it again would relaunch straight back into the same
-    /// abort. Rust keeps its own pending-request state, so quarantining the
-    /// transport copy costs at most one re-request and never bricks the app.
-    private static let maximumAbandonedDeliveries: UInt32 = 2
     private let fileURL: URL
-    private let limits: Limits
+    let leasedFileURL: URL
+    let limits: Limits
     private var entries: [Entry]
+    var leasedEntries: [LeasedEntry]
     private var isDelivering = false
+    var isDeliveringLeased = false
 
     init(
         fileURL: URL? = nil,
@@ -52,8 +50,20 @@ actor NativeHostObservationOutbox {
               limits.maximumArchiveBytes > 0
         else { throw OutboxError.invalidLimits }
         self.fileURL = try fileURL ?? Self.defaultFileURL(fileManager: fileManager)
+        leasedFileURL = Self.leasedFileURL(for: self.fileURL)
         self.limits = limits
         entries = try NativeHostObservationArchive.restore(from: self.fileURL, limits: limits)
+        leasedEntries = try NativeLeasedHostObservationArchive.restore(
+            from: leasedFileURL,
+            limits: limits
+        )
+        guard entries.count + leasedEntries.count <= limits.maximumRecordCount else {
+            throw OutboxError.recordLimitExceeded
+        }
+        guard try NativeHostObservationArchive.encodedSize(entries)
+            + NativeLeasedHostObservationArchive.encodedSize(leasedEntries)
+            <= limits.maximumArchiveBytes
+        else { throw OutboxError.archiveTooLarge }
     }
 
     /// Atomically persists exact generated evidence before the caller delivers it.
@@ -68,7 +78,7 @@ actor NativeHostObservationOutbox {
             $0.envelope.requestId == envelope.requestId
                 && $0.envelope.sequenceNumber == envelope.sequenceNumber
         }) else { throw OutboxError.conflictingObservationIdentity }
-        guard entries.count < limits.maximumRecordCount else {
+        guard entries.count + leasedEntries.count < limits.maximumRecordCount else {
             throw OutboxError.recordLimitExceeded
         }
         let updated = entries + [Entry(stored: stored, envelope: envelope)]
@@ -83,21 +93,14 @@ actor NativeHostObservationOutbox {
     }
 
     /// Records that a delivery is about to cross into Rust, so a process death
-    /// inside that call is still visible after relaunch. Returns `false` when
-    /// the record has already been abandoned too often to replay safely; the
-    /// caller must not deliver it, and the record is dropped from the archive.
+    /// inside that call is still visible after relaunch. Durable evidence is
+    /// never discarded merely because delivery repeatedly abandoned it.
     func beginDelivery(of envelope: HostObservationEnvelope) -> Bool {
         guard let index = entries.firstIndex(where: { Self.matches($0, envelope) }) else {
             return true
         }
-        let attempts = entries[index].stored.abandonedDeliveries + 1
-        guard attempts <= Self.maximumAbandonedDeliveries else {
-            var updated = entries
-            updated.remove(at: index)
-            try? persist(updated)
-            entries = updated
-            return false
-        }
+        let current = entries[index].stored.abandonedDeliveries
+        let attempts = current == UInt32.max ? UInt32.max : current + 1
         var updated = entries
         updated[index] = Self.marking(updated[index], abandonedDeliveries: attempts)
         guard (try? persist(updated)) != nil else { return true }
@@ -128,7 +131,13 @@ actor NativeHostObservationOutbox {
     }
 
     func pendingCount() -> Int {
-        entries.count
+        entries.count + leasedEntries.count
+    }
+
+    var legacyEntryCount: Int { entries.count }
+
+    func legacyEncodedSize() throws -> Int {
+        try NativeHostObservationArchive.encodedSize(entries)
     }
 
     /// The integration path for newly generated evidence: persist first, then deliver.
@@ -138,7 +147,9 @@ actor NativeHostObservationOutbox {
         using delivery: @escaping Delivery
     ) async throws -> HostObservationReceipt {
         _ = try persistBeforeDelivery(envelope)
-        guard beginDelivery(of: envelope) else { throw OutboxError.abandonedTooOften }
+        guard beginDelivery(of: envelope) else {
+            return .retainAndRetry(requestId: envelope.requestId)
+        }
         let receipt = await delivery(envelope)
         finishDelivery(of: envelope)
         guard Self.requestID(receipt) == envelope.requestId else {
@@ -182,17 +193,21 @@ actor NativeHostObservationOutbox {
     }
 
     private func persist(_ updated: [Entry]) throws {
+        guard try NativeHostObservationArchive.encodedSize(updated)
+            + NativeLeasedHostObservationArchive.encodedSize(leasedEntries)
+            <= limits.maximumArchiveBytes
+        else { throw OutboxError.archiveTooLarge }
         try NativeHostObservationArchive.write(updated, to: fileURL, limits: limits)
     }
 
-    private static func requestID(_ receipt: HostObservationReceipt) -> HostRequestId {
+    static func requestID(_ receipt: HostObservationReceipt) -> HostRequestId {
         switch receipt {
         case .acceptedTransient(let requestID), .retainAndRetry(let requestID): requestID
         case .persisted(let requestID, _), .rejected(let requestID, _): requestID
         }
     }
 
-    private static func terminalRequestID(_ receipt: HostObservationReceipt) -> HostRequestId? {
+    static func terminalRequestID(_ receipt: HostObservationReceipt) -> HostRequestId? {
         switch receipt {
         case .persisted(let requestID, terminal: true), .rejected(let requestID, _): requestID
         case .acceptedTransient, .persisted, .retainAndRetry: nil
@@ -208,6 +223,11 @@ actor NativeHostObservationOutbox {
         )
         .appendingPathComponent("podcastr", isDirectory: true)
         .appendingPathComponent("native-host-observation-outbox-v1.json")
+    }
+
+    private static func leasedFileURL(for legacyURL: URL) -> URL {
+        legacyURL.deletingPathExtension()
+            .appendingPathExtension("leased.json")
     }
 
 }

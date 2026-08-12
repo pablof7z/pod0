@@ -11,76 +11,112 @@ use super::support::{next_revision, validate_detail, validate_time};
 use crate::{LibraryStore, StorageError};
 
 impl LibraryStore {
-    pub fn fail_transcript_workflow(
+    #[cfg(test)]
+    pub(crate) fn fail_transcript_workflow(
         &self,
         input: TranscriptWorkflowFailureInput,
     ) -> Result<TranscriptWorkflowRecord, StorageError> {
-        validate_failure(&input)?;
-        self.write(|transaction| {
-            require_authoritative(transaction)?;
-            let mut record = read_workflow(transaction, input.episode_id)?
-                .ok_or(StorageError::TranscriptWorkflowNotFound)?;
-            validate_fence(&record, &input)?;
-            if !matches!(
-                record.stage,
-                StoredTranscriptWorkflowStage::Requested
-                    | StoredTranscriptWorkflowStage::PublisherRequested
-                    | StoredTranscriptWorkflowStage::RetryScheduled
-                    | StoredTranscriptWorkflowStage::SubmissionAuthorized
-                    | StoredTranscriptWorkflowStage::ProviderAccepted
-                    | StoredTranscriptWorkflowStage::CompletionObserved
-            ) {
-                return Err(StorageError::TranscriptWorkflowConflict);
-            }
-            record.workflow_revision = next_revision(record.workflow_revision)?;
-            record.failure_code = Some(input.failure_code);
-            record.failure_detail = input.failure_detail;
-            record.failure_retryable = input.retryable;
-            record.may_have_submitted |= input.may_have_submitted;
-            record.updated_at_ms = input.observed_at_ms;
-            let failed_attempt_id = record.attempt_id;
-            apply_disposition(transaction, &mut record, input.disposition)?;
-            persist_workflow(transaction, &record)?;
-            update_attempt_failure(transaction, &record, failed_attempt_id)?;
-            Ok(record)
-        })
+        self.write(|transaction| apply_transcript_failure(transaction, input))
     }
+}
 
-    pub fn cancel_transcript_workflow(
-        &self,
-        episode_id: pod0_domain::EpisodeId,
-        expected_revision: pod0_domain::StateRevision,
-        observed_at_ms: i64,
-    ) -> Result<TranscriptWorkflowRecord, StorageError> {
-        validate_time(observed_at_ms)?;
-        self.write(|transaction| {
-            require_authoritative(transaction)?;
-            let mut record = read_workflow(transaction, episode_id)?
-                .ok_or(StorageError::TranscriptWorkflowNotFound)?;
-            if record.workflow_revision != expected_revision
-                || matches!(record.stage, StoredTranscriptWorkflowStage::Succeeded | StoredTranscriptWorkflowStage::Cancelled)
-            {
-                return Err(StorageError::TranscriptWorkflowConflict);
-            }
-            record.stage = StoredTranscriptWorkflowStage::Cancelled;
-            record.workflow_revision = next_revision(record.workflow_revision)?;
-            record.deadline_at_ms = None;
-            record.not_before_ms = None;
-            record.failure_code = Some("cancelled".to_owned());
-            record.failure_detail = None;
-            record.failure_retryable = false;
-            record.updated_at_ms = observed_at_ms;
-            persist_workflow(transaction, &record)?;
-            if let Some(attempt_id) = record.attempt_id {
-                transaction.execute(
-                    "UPDATE pod0_transcript_attempts SET state='cancelled',failure_code='cancelled',
-                     may_have_submitted=?1,updated_at_ms=?2 WHERE attempt_id=?3 AND state!='committed'",
-                    params![i64::from(record.may_have_submitted),observed_at_ms,attempt_id.into_bytes().as_slice()],
-                ).map_err(|error| StorageError::sqlite("cancel transcript attempt", error))?;
-            }
-            Ok(record)
-        })
+pub(crate) fn apply_transcript_failure(
+    transaction: &rusqlite::Transaction<'_>,
+    input: TranscriptWorkflowFailureInput,
+) -> Result<TranscriptWorkflowRecord, StorageError> {
+    validate_failure(&input)?;
+    require_authoritative(transaction)?;
+    let mut record = read_workflow(transaction, input.episode_id)?
+        .ok_or(StorageError::TranscriptWorkflowNotFound)?;
+    validate_fence(&record, &input)?;
+    if !matches!(
+        record.stage,
+        StoredTranscriptWorkflowStage::Requested
+            | StoredTranscriptWorkflowStage::PublisherRequested
+            | StoredTranscriptWorkflowStage::RetryScheduled
+            | StoredTranscriptWorkflowStage::SubmissionAuthorized
+            | StoredTranscriptWorkflowStage::ProviderAccepted
+            | StoredTranscriptWorkflowStage::CompletionObserved
+    ) {
+        return Err(StorageError::TranscriptWorkflowConflict);
     }
+    record.workflow_revision = next_revision(record.workflow_revision)?;
+    record.failure_code = Some(input.failure_code);
+    record.failure_detail = input.failure_detail;
+    record.failure_retryable = input.retryable;
+    record.may_have_submitted |= input.may_have_submitted;
+    record.updated_at_ms = input.observed_at_ms;
+    let failed_attempt_id = record.attempt_id;
+    apply_disposition(transaction, &mut record, input.disposition)?;
+    persist_workflow(transaction, &record)?;
+    update_attempt_failure(transaction, &record, failed_attempt_id)?;
+    Ok(record)
+}
+
+pub(crate) fn apply_transcript_workflow_cancellation(
+    transaction: &rusqlite::Transaction<'_>,
+    episode_id: pod0_domain::EpisodeId,
+    expected_revision: pod0_domain::StateRevision,
+    observed_at_ms: i64,
+) -> Result<TranscriptWorkflowRecord, StorageError> {
+    validate_time(observed_at_ms)?;
+    require_authoritative(transaction)?;
+    let mut record =
+        read_workflow(transaction, episode_id)?.ok_or(StorageError::TranscriptWorkflowNotFound)?;
+    if record.workflow_revision != expected_revision
+        || matches!(
+            record.stage,
+            StoredTranscriptWorkflowStage::Succeeded | StoredTranscriptWorkflowStage::Cancelled
+        )
+    {
+        return Err(StorageError::TranscriptWorkflowConflict);
+    }
+    record.stage = StoredTranscriptWorkflowStage::Cancelled;
+    record.workflow_revision = next_revision(record.workflow_revision)?;
+    record.deadline_at_ms = None;
+    record.not_before_ms = None;
+    record.failure_code = Some("cancelled".to_owned());
+    record.failure_detail = None;
+    record.failure_retryable = false;
+    record.updated_at_ms = observed_at_ms;
+    persist_workflow(transaction, &record)?;
+    if let Some(attempt_id) = record.attempt_id {
+        transaction
+            .execute(
+                "UPDATE pod0_transcript_attempts SET state='cancelled',failure_code='cancelled',
+             may_have_submitted=?1,updated_at_ms=?2 WHERE attempt_id=?3 AND state!='committed'",
+                params![
+                    i64::from(record.may_have_submitted),
+                    observed_at_ms,
+                    attempt_id.into_bytes().as_slice()
+                ],
+            )
+            .map_err(|error| StorageError::sqlite("cancel transcript attempt", error))?;
+    }
+    cancel_workflow_effects(transaction, record.request.workflow_id)?;
+    Ok(record)
+}
+
+fn cancel_workflow_effects(
+    transaction: &rusqlite::Transaction<'_>,
+    workflow_id: pod0_domain::TranscriptWorkflowId,
+) -> Result<(), StorageError> {
+    transaction
+        .execute(
+            "UPDATE pod0_effect_attempts SET state_code=4 WHERE intent_id IN(
+             SELECT intent_id FROM pod0_effect_intents WHERE subject_code=6 AND subject_id=?1
+             AND state_code IN(1,2)) AND state_code IN(1,2)",
+            [workflow_id.into_bytes().as_slice()],
+        )
+        .map_err(|error| StorageError::sqlite("cancel transcript effect attempts", error))?;
+    transaction
+        .execute(
+            "UPDATE pod0_effect_intents SET state_code=4 WHERE subject_code=6 AND subject_id=?1
+             AND state_code IN(1,2)",
+            [workflow_id.into_bytes().as_slice()],
+        )
+        .map_err(|error| StorageError::sqlite("cancel transcript effect intents", error))?;
+    Ok(())
 }
 
 fn validate_failure(input: &TranscriptWorkflowFailureInput) -> Result<(), StorageError> {

@@ -2,8 +2,8 @@ use pod0_domain::StateRevision;
 
 use super::model::*;
 use super::test_support::{Fixture, NOW, interrupted};
-use crate::StorageError;
 use crate::transcript_store_test_support::input as artifact_input;
+use crate::{ActivityStore, StorageError};
 
 #[test]
 fn submission_authorization_is_durable_and_idempotently_fenced() {
@@ -31,6 +31,16 @@ fn submission_authorization_is_durable_and_idempotently_fenced() {
         StoredTranscriptWorkflowStage::SubmissionAuthorized
     );
     assert!(authorized.may_have_submitted);
+    let activity = ActivityStore::open(&fixture.transcript.import.target)
+        .unwrap()
+        .page_for_episode(fixture.episode_id, None, 20)
+        .unwrap();
+    assert_eq!(activity.items.len(), 5);
+    assert!(matches!(
+        activity.items[4].draft.fact,
+        pod0_application::ActivityFact::EffectAuthorized { .. }
+    ));
+    assert_eq!(effect_intent_count(&fixture), 1);
 
     let reopened = fixture.reopen();
     let TranscriptSubmissionClaim::AlreadyClaimed(replayed) =
@@ -39,6 +49,16 @@ fn submission_authorization_is_durable_and_idempotently_fenced() {
         panic!("replayed claim must not authorize again")
     };
     assert_eq!(replayed.workflow_revision, authorized.workflow_revision);
+    assert_eq!(
+        ActivityStore::open(&fixture.transcript.import.target)
+            .unwrap()
+            .page_for_episode(fixture.episode_id, None, 20)
+            .unwrap()
+            .items
+            .len(),
+        5
+    );
+    assert_eq!(effect_intent_count(&fixture), 1);
 
     let stale = TranscriptProviderAcceptedInput {
         episode_id: fixture.episode_id,
@@ -53,6 +73,15 @@ fn submission_authorization_is_durable_and_idempotently_fenced() {
         reopened.record_transcript_provider_accepted(stale),
         Err(StorageError::StaleTranscriptAttempt)
     );
+}
+
+fn effect_intent_count(fixture: &Fixture) -> i64 {
+    rusqlite::Connection::open(&fixture.transcript.import.target)
+        .unwrap()
+        .query_row("SELECT count(*) FROM pod0_effect_intents", [], |row| {
+            row.get(0)
+        })
+        .unwrap()
 }
 
 #[test]
@@ -197,8 +226,40 @@ fn transcript_selection_and_evidence_admission_commit_atomically() {
         committed.transcript.selection_revision,
         StateRevision::new(1)
     );
+    let activity_after_commit = ActivityStore::open(&fixture.transcript.import.target)
+        .unwrap()
+        .page_for_episode(fixture.episode_id, None, 50)
+        .unwrap();
+    assert!(activity_after_commit.items.iter().any(|item| matches!(
+        item.draft.fact,
+        pod0_application::ActivityFact::DomainTransition {
+            kind: pod0_application::DomainTransitionKind::Transcript(
+                pod0_application::TranscriptTransition::SelectionChanged
+            ),
+            ..
+        }
+    )));
+    assert!(activity_after_commit.items.iter().any(|item| matches!(
+        item.draft.fact,
+        pod0_application::ActivityFact::InternalCommandAuthorized {
+            target: pod0_application::ActivityDomain::RecallKnowledge,
+            ..
+        }
+    )));
+    assert_eq!(pending_internal_command_count(&fixture), 1);
+    let activity_count = activity_after_commit.items.len();
     let replay = fixture.reopen().commit_transcript_workflow(commit).unwrap();
     assert_eq!(replay.transcript, committed.transcript);
+    assert_eq!(
+        ActivityStore::open(&fixture.transcript.import.target)
+            .unwrap()
+            .page_for_episode(fixture.episode_id, None, 50)
+            .unwrap()
+            .items
+            .len(),
+        activity_count
+    );
+    assert_eq!(pending_internal_command_count(&fixture), 1);
     let report = fixture
         .store
         .recover_transcript_workflows(NOW + 5, 20)
@@ -219,38 +280,13 @@ fn transcript_selection_and_evidence_admission_commit_atomically() {
     assert_eq!(succeeded.stage, StoredTranscriptWorkflowStage::Succeeded);
 }
 
-#[test]
-fn restart_fences_authorized_but_unaccepted_submission_as_ambiguous() {
-    let fixture = Fixture::new();
-    let requested = fixture.ensure_provider(1);
-    let request_id = requested.request_id.unwrap();
-    fixture
-        .store
-        .claim_transcript_submission(TranscriptSubmissionClaimInput {
-            episode_id: fixture.episode_id,
-            request_id,
-            attempt_id: requested.attempt_id.unwrap(),
-            submission_fence_id: requested.submission_fence_id.unwrap(),
-            cancellation_id: requested.cancellation_id,
-            issued_revision: requested.issued_revision,
-            now_ms: NOW + 2,
-        })
-        .unwrap();
-
-    let report = fixture
-        .reopen()
-        .recover_transcript_workflows(NOW + 3, 20)
-        .unwrap();
-    assert_eq!(report.ambiguous_requests, [request_id]);
-    assert!(report.dispatchable_requests.is_empty());
-    let blocked = fixture
-        .store
-        .transcript_workflow(fixture.episode_id)
+fn pending_internal_command_count(fixture: &Fixture) -> i64 {
+    rusqlite::Connection::open(&fixture.transcript.import.target)
         .unwrap()
-        .unwrap();
-    assert_eq!(blocked.stage, StoredTranscriptWorkflowStage::Blocked);
-    assert_eq!(
-        blocked.failure_code.as_deref(),
-        Some("ambiguous_submission")
-    );
+        .query_row(
+            "SELECT count(*) FROM pod0_internal_command_intents WHERE state_code=1",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap()
 }

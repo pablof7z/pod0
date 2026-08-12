@@ -178,6 +178,15 @@ pub enum TranscriptSubmissionClaim {
     AlreadyClaimed(TranscriptWorkflowRecord),
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TranscriptWorkflowCancellationInput {
+    pub episode_id: EpisodeId,
+    pub expected_workflow_revision: StateRevision,
+    pub command_id: CommandId,
+    pub command_fingerprint: ContentDigest,
+    pub observed_at_ms: i64,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TranscriptProviderAcceptedInput {
     pub episode_id: EpisodeId,

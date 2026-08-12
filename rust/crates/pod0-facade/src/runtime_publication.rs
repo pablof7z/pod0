@@ -3,7 +3,6 @@ use pod0_application::{
     compose_generated_episode_publication,
 };
 use pod0_domain::{PublicationId, PublicationIntent, PublicationStage};
-use pod0_nmp::PublicationAdapterEvent;
 
 use crate::runtime_state::FacadeState;
 use crate::runtime_storage_commands::storage_failure;
@@ -76,54 +75,6 @@ impl FacadeState {
         }
     }
 
-    pub(super) fn take_pending_publications(
-        &mut self,
-    ) -> Vec<pod0_application::Pod0PublicationDraft> {
-        self.pending_publications.drain(..).collect()
-    }
-
-    pub(super) fn record_publication_receipt(
-        &mut self,
-        publication_id: PublicationId,
-        receipt_id: u64,
-    ) -> bool {
-        let Some(store) = self.publication_store.as_ref() else {
-            return false;
-        };
-        let before = store
-            .publication(publication_id)
-            .ok()
-            .flatten()
-            .map(|record| record.revision);
-        let Ok(record) = store.record_receipt(publication_id, receipt_id, self.now()) else {
-            return false;
-        };
-        if before == Some(record.revision) {
-            return false;
-        }
-        self.advance_revision();
-        true
-    }
-
-    pub(super) fn apply_publication_event(&mut self, event: PublicationAdapterEvent) -> bool {
-        let Some(store) = self.publication_store.as_ref() else {
-            return false;
-        };
-        let before = store
-            .publication(event.publication_id)
-            .ok()
-            .flatten()
-            .map(|record| record.revision);
-        let Ok(record) = store.observe(event.publication_id, &event.observation, self.now()) else {
-            return false;
-        };
-        if before == Some(record.revision) {
-            return false;
-        }
-        self.advance_revision();
-        true
-    }
-
     pub(super) fn publications_projection(
         &self,
         publication_id: Option<PublicationId>,
@@ -146,6 +97,98 @@ impl FacadeState {
         value
     }
 
+    pub(super) fn take_pending_publications(
+        &mut self,
+        maximum: usize,
+    ) -> Vec<pod0_application::Pod0PublicationDraft> {
+        let count = maximum.min(self.pending_publications.len());
+        self.pending_publications.drain(..count).collect()
+    }
+
+    pub(super) fn rehydrate_publications(&mut self) -> Result<(), pod0_storage::StorageError> {
+        let records = self
+            .publication_store
+            .as_ref()
+            .ok_or(pod0_storage::StorageError::CutoverNotAuthoritative)?
+            .recoverable_publications()?;
+        for record in records {
+            if record.receipt_id.is_some() || record.stage != PublicationStage::Prepared {
+                continue;
+            }
+            let Some(episode) = self
+                .listening
+                .episodes
+                .iter()
+                .find(|episode| episode.episode_id == record.episode_id)
+            else {
+                continue;
+            };
+            let Some(podcast) = self
+                .listening
+                .podcasts
+                .iter()
+                .find(|podcast| podcast.podcast_id == record.podcast_id)
+            else {
+                continue;
+            };
+            let draft = compose_generated_episode_publication(&record, episode, podcast)
+                .map_err(|_| pod0_storage::StorageError::InvalidPublication)?;
+            self.pending_publications.push_back(draft);
+        }
+        Ok(())
+    }
+
+    pub(super) fn publication_receipt_links(
+        &self,
+    ) -> Vec<pod0_application::NMPPublicationReceiptLink> {
+        self.publication_store
+            .as_ref()
+            .and_then(|store| store.recoverable_publications().ok())
+            .unwrap_or_default()
+            .into_iter()
+            .filter_map(|record| {
+                record
+                    .receipt_id
+                    .map(|receipt_id| pod0_application::NMPPublicationReceiptLink {
+                        publication_id: record.publication_id,
+                        receipt_id,
+                    })
+            })
+            .collect()
+    }
+
+    pub(super) fn record_publication_receipt(
+        &mut self,
+        publication_id: PublicationId,
+        receipt_id: u64,
+    ) -> bool {
+        let Some(store) = self.publication_store.as_ref() else {
+            return false;
+        };
+        let Ok(record) = store.record_receipt(publication_id, receipt_id, self.now()) else {
+            return false;
+        };
+        self.revision =
+            pod0_domain::StateRevision::new(self.revision.value.max(record.revision.value));
+        true
+    }
+
+    pub(super) fn record_publication_observation(
+        &mut self,
+        publication_id: PublicationId,
+        observation: &pod0_application::PublicationStatusObservation,
+    ) -> bool {
+        let Some(store) = self.publication_store.as_ref() else {
+            return false;
+        };
+        let Ok(record) = store.observe(publication_id, observation, self.now()) else {
+            return false;
+        };
+        self.revision =
+            pod0_domain::StateRevision::new(self.revision.value.max(record.revision.value));
+        true
+    }
+
     pub(super) fn publication_projection(
         &self,
         publication_id: Option<PublicationId>,
@@ -154,12 +197,5 @@ impl FacadeState {
         Projection::Publications {
             value: self.publications_projection(publication_id, request.offset, request.max_items),
         }
-    }
-
-    pub(super) fn publication_records(&self) -> Vec<pod0_domain::PublicationRecord> {
-        self.publication_store
-            .as_ref()
-            .and_then(|store| store.recoverable_publications().ok())
-            .unwrap_or_default()
     }
 }

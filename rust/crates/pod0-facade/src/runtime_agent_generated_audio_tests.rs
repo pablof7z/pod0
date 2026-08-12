@@ -1,21 +1,19 @@
+use super::tests::{next_leased_agent_request, record_leased_agent_observation};
 use crate::runtime_playback_test_support::PlaybackFixture;
 use crate::*;
 
-pub(crate) fn observe(
-    request: &HostRequestEnvelope,
-    observation: HostObservation,
-) -> HostObservationEnvelope {
-    HostObservationEnvelope {
-        request_id: request.request_id,
-        cancellation_id: request.cancellation_id,
-        observed_request_revision: request.issued_revision,
-        sequence_number: 1,
-        observed_at: UnixTimestampMilliseconds::new(1_900_000_000_000),
-        observation,
+struct FixedClock(i64);
+
+impl pod0_application::Clock for FixedClock {
+    fn now(&self) -> UnixTimestampMilliseconds {
+        UnixTimestampMilliseconds::new(self.0)
     }
 }
 
-pub(crate) fn start(fixture: &PlaybackFixture, id: u64) -> (CommandEnvelope, HostRequestEnvelope) {
+pub(crate) fn start(
+    fixture: &PlaybackFixture,
+    id: u64,
+) -> (CommandEnvelope, LeasedHostRequestEnvelope) {
     let command = CommandEnvelope {
         command_id: CommandId::from_parts(301, id),
         cancellation_id: CancellationId::from_parts(302, id),
@@ -27,11 +25,12 @@ pub(crate) fn start(fixture: &PlaybackFixture, id: u64) -> (CommandEnvelope, Hos
         },
     };
     fixture.facade.dispatch(command.clone());
-    let model = fixture.facade.next_host_requests(8).remove(0);
-    let HostRequest::ExecuteAgentModelTurn { execution } = &model.request else {
+    let model = next_leased_agent_request(&fixture.facade);
+    let HostRequest::ExecuteAgentModelTurn { execution } = &model.request.request else {
         panic!("expected model request");
     };
-    fixture.facade.record_host_observation(observe(
+    record_leased_agent_observation(
+        &fixture.facade,
         &model,
         HostObservation::AgentModelCompleted {
             turn_id: execution.turn_id,
@@ -44,12 +43,13 @@ pub(crate) fn start(fixture: &PlaybackFixture, id: u64) -> (CommandEnvelope, Hos
             }),
             usage: None,
         },
-    ));
-    let approval = fixture.facade.next_host_requests(8).remove(0);
-    let HostRequest::PresentAgentApproval { approval: request } = &approval.request else {
+    );
+    let approval = next_leased_agent_request(&fixture.facade);
+    let HostRequest::PresentAgentApproval { approval: request } = &approval.request.request else {
         panic!("expected approval request");
     };
-    fixture.facade.record_host_observation(observe(
+    record_leased_agent_observation(
+        &fixture.facade,
         &approval,
         HostObservation::AgentApprovalObserved {
             turn_id: request.turn_id,
@@ -57,8 +57,8 @@ pub(crate) fn start(fixture: &PlaybackFixture, id: u64) -> (CommandEnvelope, Hos
             proposal_digest: request.proposal.proposal_digest,
             decision: AgentApprovalDecision::Approve,
         },
-    ));
-    (command, fixture.facade.next_host_requests(8).remove(0))
+    );
+    (command, next_leased_agent_request(&fixture.facade))
 }
 
 pub(crate) fn generated_episode(facade: &Pod0Facade) -> EpisodeRecord {
@@ -85,7 +85,7 @@ fn generated_audio_evidence_atomically_commits_a_restart_safe_episode() {
     let (command, capability) = start(&fixture, 1);
     let HostRequest::ExecuteAgentCapability {
         capability: request,
-    } = &capability.request
+    } = &capability.request.request
     else {
         panic!("expected capability request");
     };
@@ -103,7 +103,8 @@ fn generated_audio_evidence_atomically_commits_a_restart_safe_episode() {
         duration_milliseconds: Some(30_000),
     };
     assert!(matches!(
-        fixture.facade.record_host_observation(observe(
+        record_leased_agent_observation(
+            &fixture.facade,
             &capability,
             HostObservation::AgentCapabilityObserved {
                 turn_id: request.turn_id,
@@ -112,8 +113,8 @@ fn generated_audio_evidence_atomically_commits_a_restart_safe_episode() {
                 outcome: AgentCapabilityOutcome::GeneratedAudioStaged {
                     evidence: evidence.clone(),
                 },
-            },
-        )),
+            }
+        ),
         HostObservationReceipt::Persisted { .. }
     ));
 
@@ -123,9 +124,17 @@ fn generated_audio_evidence_atomically_commits_a_restart_safe_episode() {
     assert_eq!(provenance.media_content_digest, evidence.content_digest);
     assert_eq!(provenance.media_byte_count, evidence.byte_count);
     assert_eq!(episode.title, "Calm Briefing");
+    let activity = pod0_storage::ActivityStore::open(&fixture.target)
+        .unwrap()
+        .page_for_episode(episode.episode_id, None, 100)
+        .unwrap();
+    assert!(activity.items.iter().any(|item| matches!(
+        item.draft.fact,
+        pod0_application::ActivityFact::EffectObserved { .. }
+    )));
 
-    let continuation = fixture.facade.next_host_requests(8).remove(0);
-    let HostRequest::ExecuteAgentModelTurn { execution } = &continuation.request else {
+    let continuation = next_leased_agent_request(&fixture.facade);
+    let HostRequest::ExecuteAgentModelTurn { execution } = &continuation.request.request else {
         panic!("expected final model continuation");
     };
     assert!(execution.tool_definitions.is_empty());
@@ -159,7 +168,7 @@ fn restart_requeues_generated_audio_only_for_existing_artifact_recovery() {
     let (_, capability) = start(&fixture, 2);
     let HostRequest::ExecuteAgentCapability {
         capability: original,
-    } = &capability.request
+    } = &capability.request.request
     else {
         panic!("expected capability request");
     };
@@ -168,11 +177,14 @@ fn restart_requeues_generated_audio_only_for_existing_artifact_recovery() {
         AgentCapabilityExecutionMode::Perform
     );
 
-    let reopened = Pod0Facade::open(fixture.target.to_string_lossy().into_owned()).unwrap();
-    let recovered = reopened.next_host_requests(8).remove(0);
+    let reopened = Pod0Facade::open_with_clock(
+        fixture.target.to_string_lossy().into_owned(),
+        std::sync::Arc::new(FixedClock(capability.lease.expires_at.value + 1)),
+    );
+    let recovered = reopened.next_leased_host_requests(1).remove(0);
     let HostRequest::ExecuteAgentCapability {
         capability: request,
-    } = recovered.request
+    } = recovered.request.request
     else {
         panic!("expected recovered capability");
     };

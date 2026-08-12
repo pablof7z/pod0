@@ -56,9 +56,17 @@ impl FacadeState {
             );
             return;
         }
-        let podcast_id = existing
-            .unwrap_or_else(|| PodcastId::from_bytes(envelope.command_id.into_bytes()));
-        self.commit_feed_workflow(envelope, fingerprint, intent, identity, podcast_id, None, None);
+        let podcast_id =
+            existing.unwrap_or_else(|| PodcastId::from_bytes(envelope.command_id.into_bytes()));
+        self.commit_feed_workflow(
+            envelope,
+            fingerprint,
+            intent,
+            identity,
+            podcast_id,
+            None,
+            None,
+        );
     }
 
     pub(super) fn start_refresh(
@@ -67,7 +75,12 @@ impl FacadeState {
         fingerprint: &str,
         podcast_id: PodcastId,
     ) {
-        self.start_conditional_fetch(envelope, fingerprint, podcast_id, StoredFeedFetchIntent::Refresh);
+        self.start_conditional_fetch(
+            envelope,
+            fingerprint,
+            podcast_id,
+            StoredFeedFetchIntent::Refresh,
+        );
     }
 
     pub(super) fn start_metadata_refresh(

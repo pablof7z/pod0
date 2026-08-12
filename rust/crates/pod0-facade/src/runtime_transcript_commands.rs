@@ -8,6 +8,7 @@ impl FacadeState {
     pub(super) fn commit_transcript(
         &mut self,
         envelope: &CommandEnvelope,
+        activity_fingerprint: pod0_domain::ContentDigest,
         expected_selection_revision: StateRevision,
         artifact: TranscriptArtifactInput,
     ) {
@@ -17,8 +18,9 @@ impl FacadeState {
             .as_ref()
             .ok_or(pod0_storage::StorageError::CutoverNotAuthoritative)
             .and_then(|store| {
-                store.commit_and_select(
+                store.commit_and_select_with_activity_fingerprint(
                     envelope.command_id,
+                    activity_fingerprint,
                     expected_selection_revision,
                     artifact,
                     completed_at_ms,

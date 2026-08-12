@@ -2,12 +2,9 @@ use pod0_application::{
     AgentActionObservation, AgentActionOutcome, AgentToolAction, AgentToolName, AgentTurnState,
     AgentWorkflowAcceptance,
 };
-use pod0_domain::{
-    ClipId, ClipSource, CommandId, CompletionStatus, MemorySource, NoteAuthor, NoteKind,
-};
+use pod0_domain::CompletionStatus;
 use pod0_storage::{AgentAuditKind, AgentStore, StorageError};
 use serde_json::json;
-use sha2::{Digest, Sha256};
 
 use crate::runtime_agent_modules::identity::{agent_command_id, continuation_model_fence_id};
 use crate::runtime_agent_modules::persistence::persist_agent_update;
@@ -39,11 +36,7 @@ impl FacadeState {
         let fence = before
             .execution_fence_id
             .ok_or(StorageError::InvalidAgentState)?;
-        let outcome = match self.perform_internal_agent_action(
-            proposal.proposal_id,
-            &proposal.action,
-            observed_at,
-        ) {
+        let outcome = match self.perform_internal_agent_action(&proposal.action) {
             Ok(result) => AgentActionOutcome::Succeeded {
                 bounded_result: result,
                 artifact_id: None,
@@ -83,97 +76,15 @@ impl FacadeState {
         Ok(())
     }
 
-    fn perform_internal_agent_action(
+    pub(super) fn perform_internal_agent_action(
         &mut self,
-        proposal_id: pod0_domain::AgentProposalId,
         action: &AgentToolAction,
-        observed_at: pod0_domain::UnixTimestampMilliseconds,
     ) -> Result<String, &'static str> {
         match action {
             AgentToolAction::TextInput {
                 tool: AgentToolName::UseSkill,
                 text,
             } => Ok(json!({ "enabled_skill": text }).to_string()),
-            AgentToolAction::CreateNote { text } => {
-                let store = self.store.as_ref().ok_or("agent_store_unavailable")?;
-                let command_id = CommandId::from_bytes(proposal_id.into_bytes());
-                let fingerprint = commit_fingerprint("create-note", proposal_id);
-                let (_, note_id) = store
-                    .create_note(
-                        command_id,
-                        &fingerprint,
-                        text,
-                        NoteKind::Free,
-                        NoteAuthor::Agent,
-                        None,
-                        observed_at.value,
-                    )
-                    .map_err(|_| "agent_note_commit_failed")?;
-                self.reload_notes()
-                    .map_err(|_| "agent_note_reload_failed")?;
-                Ok(json!({
-                    "note_id": opaque_id_string(note_id.into_bytes()),
-                    "saved": true
-                })
-                .to_string())
-            }
-            AgentToolAction::RecordMemory { text } => {
-                let store = self.store.as_ref().ok_or("agent_store_unavailable")?;
-                let command_id = CommandId::from_bytes(proposal_id.into_bytes());
-                let fingerprint = commit_fingerprint("record-memory", proposal_id);
-                let (_, memory_id, _) = store
-                    .create_memory(
-                        command_id,
-                        &fingerprint,
-                        text,
-                        MemorySource::Agent,
-                        observed_at.value,
-                    )
-                    .map_err(|_| "agent_memory_commit_failed")?;
-                self.reload_memories()
-                    .map_err(|_| "agent_memory_reload_failed")?;
-                Ok(json!({
-                    "memory_id": opaque_id_string(memory_id.into_bytes()),
-                    "saved": true
-                })
-                .to_string())
-            }
-            AgentToolAction::CreateClip {
-                episode_id,
-                podcast_id,
-                start_milliseconds,
-                end_milliseconds,
-                caption,
-                frozen_transcript_text,
-            } => {
-                let store = self.store.as_ref().ok_or("agent_store_unavailable")?;
-                let command_id = CommandId::from_bytes(proposal_id.into_bytes());
-                let clip_id = ClipId::from_bytes(proposal_id.into_bytes());
-                let fingerprint = commit_fingerprint("create-clip", proposal_id);
-                store
-                    .create_clip(
-                        command_id,
-                        &fingerprint,
-                        clip_id,
-                        *episode_id,
-                        *podcast_id,
-                        *start_milliseconds,
-                        *end_milliseconds,
-                        caption.as_deref(),
-                        None,
-                        frozen_transcript_text,
-                        ClipSource::Agent,
-                        observed_at.value,
-                    )
-                    .map_err(|_| "agent_clip_commit_failed")?;
-                self.reload_clips()
-                    .map_err(|_| "agent_clip_reload_failed")?;
-                Ok(json!({
-                    "clip_id": opaque_id_string(clip_id.into_bytes()),
-                    "saved": true
-                })
-                .to_string())
-            }
             AgentToolAction::NoArguments { tool }
                 if matches!(
                     tool,
@@ -185,6 +96,9 @@ impl FacadeState {
             {
                 self.list_library_action(*tool)
             }
+            AgentToolAction::NoArguments {
+                tool: AgentToolName::ListCategories,
+            } => self.list_categories_action(),
             AgentToolAction::Podcast {
                 tool: AgentToolName::ListEpisodes,
                 podcast_id,
@@ -277,6 +191,28 @@ impl FacadeState {
             }
             _ => Err("agent_internal_executor_unavailable"),
         }
+    }
+
+    fn list_categories_action(&self) -> Result<String, &'static str> {
+        let store = self.store.as_ref().ok_or("library_unavailable")?;
+        let snapshot = store
+            .category_snapshot()
+            .map_err(|_| "category_projection_unavailable")?;
+        let rows = snapshot
+            .categories
+            .into_iter()
+            .take(25)
+            .map(|category| {
+                json!({
+                    "category_id": opaque_id_string(category.category_id.into_bytes()),
+                    "name": category.name,
+                    "description": category.description,
+                    "color_hex": category.color_hex,
+                    "member_count": category.members.len(),
+                })
+            })
+            .collect::<Vec<_>>();
+        Ok(json!({ "categories": rows }).to_string())
     }
 }
 

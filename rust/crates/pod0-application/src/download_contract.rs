@@ -13,7 +13,7 @@ pub const MAX_DOWNLOAD_ENCLOSURE_URL_BYTES: usize = 4_096;
 pub const MAX_DOWNLOAD_OPAQUE_KEY_BYTES: usize = 1_024;
 pub const MAX_DOWNLOAD_SAFE_DETAIL_BYTES: usize = 1_024;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum DownloadIntentOrigin {
     User,
     Playback,

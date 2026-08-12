@@ -36,6 +36,32 @@ fn parses_product_proof_actions_inside_rust() {
             query: "architecture".into(),
             scope: None,
             limit: 5,
+            execute_first: false,
+        })
+    );
+    assert_eq!(
+        parse_agent_tool_call(&call(
+            "search_podcast_directory",
+            r#"{"query":"tiny changes","scope":"Hidden Brain","play":true}"#,
+        )),
+        Ok(AgentToolAction::Search {
+            tool: AgentToolName::SearchPodcastDirectory,
+            query: "tiny changes".into(),
+            scope: Some("Hidden Brain".into()),
+            limit: 5,
+            execute_first: true,
+        })
+    );
+    assert_eq!(
+        parse_agent_tool_call(&call(
+            "play_episode",
+            r#"{"episode_id":"00000000-0000-0000-0000-000000000009"}"#,
+        )),
+        Ok(AgentToolAction::PlayEpisode {
+            episode_id: EpisodeId::from_parts(0, 9),
+            start_milliseconds: None,
+            end_milliseconds: None,
+            placement: QueuePlacement::Now,
         })
     );
     assert_eq!(

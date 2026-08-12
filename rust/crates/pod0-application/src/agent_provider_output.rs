@@ -9,10 +9,8 @@ pub const MAX_AGENT_TOOL_CALL_ID_BYTES: usize = 512;
 pub const MAX_AGENT_TOOL_NAME_BYTES: usize = 128;
 pub const MAX_AGENT_TOOL_ARGUMENTS_BYTES: usize = 64 * 1_024;
 
-/// Bounded, untrusted provider output. Native transports do not interpret
-/// tool arguments or construct an authorized domain action; the Rust kernel
-/// parses this observation against its closed action schema.
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+/// Untrusted provider output parsed by Rust against its closed action schema.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct AgentModelToolCallObservation {
     pub provider_call_id: String,
     pub tool_name: String,
@@ -74,6 +72,14 @@ fn parse_action(
             query: required_text(args, "query")?,
             scope: optional_text(args, "scope")?,
             limit: optional_u16(args, "limit")?.unwrap_or(10),
+            execute_first: false,
+        }),
+        SearchPodcastDirectory => Ok(AgentToolAction::Search {
+            tool,
+            query: required_text(args, "query")?,
+            scope: optional_text(args, "scope")?,
+            limit: optional_u16(args, "limit")?.unwrap_or(5),
+            execute_first: optional_bool(args, "play")?.unwrap_or(false),
         }),
         QueryTranscripts => Ok(AgentToolAction::QueryTranscripts {
             query: required_text(args, "query")?,
@@ -267,8 +273,9 @@ fn queue_placement(args: &Map<String, Value>) -> Result<QueuePlacement, AgentPro
     match args
         .get("queue_position")
         .and_then(Value::as_str)
-        .unwrap_or("next")
+        .unwrap_or("now")
     {
+        "now" => Ok(QueuePlacement::Now),
         "next" => Ok(QueuePlacement::Next),
         "end" => Ok(QueuePlacement::Back),
         _ => Err(AgentProviderOutputError::InvalidArguments),

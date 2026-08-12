@@ -13,21 +13,21 @@ pub const MAX_TRANSCRIPT_WORDS: usize = 2_000_000;
 pub const MAX_TRANSCRIPT_SPEAKER_LABEL_BYTES: usize = 1_024;
 pub const MAX_TRANSCRIPT_WORD_TEXT_BYTES: usize = 1_024;
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct TranscriptArtifactSpeakerInput {
     pub speaker_id: SpeakerId,
     pub label: String,
     pub display_name: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct TranscriptArtifactWordInput {
     pub text: String,
     pub start_milliseconds: u64,
     pub end_milliseconds: u64,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct TranscriptArtifactSegmentInput {
     pub text: String,
     pub start_milliseconds: u64,
@@ -36,7 +36,7 @@ pub struct TranscriptArtifactSegmentInput {
     pub words: Vec<TranscriptArtifactWordInput>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct TranscriptArtifactInput {
     pub episode_id: EpisodeId,
     pub podcast_id: PodcastId,

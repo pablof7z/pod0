@@ -39,10 +39,10 @@ security, file, and presentation capabilities. A native adapter may retain an
 in-flight OS/provider handle and transient streaming text. It cannot decide
 whether an occurrence is due, retryable, complete, authorized, or selected.
 
-Generic NMP does not own Pod0 scheduled jobs or artifacts. A later Pod0 Nostr
-slice may publish a committed artifact through `pod0-nmp`, but publication is a
-separate durable obligation and is never evidence that the agent occurrence
-completed.
+Generic NMP does not own Pod0 scheduled jobs or artifacts. Pod0 may hand a
+committed artifact's generic write directly to the app-owned upstream NMP
+engine, but publication is a separate durable obligation and is never evidence
+that the agent occurrence completed.
 
 ## Single-writer ownership
 

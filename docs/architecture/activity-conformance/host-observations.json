@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "inventory": "host_observations",
+  "source": "rust/crates/pod0-application/src/effects/observation.rs#HostObservation",
+  "items": [
+    {"variant":"FeedBytesFetched","domain":"library_feed","target_owner":"LibraryFeedStateMachine","outcome_fact":"library_feed.effect_observed","exact_effect_identity_required":true,"child_issue":216,"implementation_status":"planned"},
+    {"variant":"FeedNotModified","domain":"library_feed","target_owner":"LibraryFeedStateMachine","outcome_fact":"library_feed.effect_observed","exact_effect_identity_required":true,"child_issue":216,"implementation_status":"planned"},
+    {"variant":"NewEpisodeNotificationDelivered","domain":"library_feed","target_owner":"LibraryFeedStateMachine","outcome_fact":"library_feed.effect_observed","exact_effect_identity_required":true,"child_issue":216,"implementation_status":"planned"},
+    {"variant":"PlaybackObserved","domain":"playback","target_owner":"PlaybackStateMachine","outcome_fact":"playback.effect_observed","exact_effect_identity_required":true,"child_issue":214,"implementation_status":"typed_atomic_semantic_checkpoints_pending_leased_effect"},
+    {"variant":"RecallQueryEmbedded","domain":"recall_knowledge","target_owner":"RecallKnowledgeStateMachine","outcome_fact":"recall_knowledge.effect_observed","exact_effect_identity_required":true,"child_issue":215,"implementation_status":"planned"},
+    {"variant":"RecallSpansEmbedded","domain":"recall_knowledge","target_owner":"RecallKnowledgeStateMachine","outcome_fact":"recall_knowledge.effect_observed","exact_effect_identity_required":true,"child_issue":215,"implementation_status":"typed_atomic_observation_for_transcript_evidence"},
+    {"variant":"RecallCandidatesReranked","domain":"recall_knowledge","target_owner":"RecallKnowledgeStateMachine","outcome_fact":"recall_knowledge.effect_observed","exact_effect_identity_required":true,"child_issue":215,"implementation_status":"planned"},
+    {"variant":"LegacyRecallIndexArtifactsRemoved","domain":"recall_knowledge","target_owner":"RecallKnowledgeStateMachine","outcome_fact":"recall_knowledge.effect_observed","exact_effect_identity_required":true,"child_issue":215,"implementation_status":"planned"},
+    {"variant":"PublisherChaptersFetched","domain":"chapter","target_owner":"ChapterStateMachine","outcome_fact":"chapter.effect_observed","exact_effect_identity_required":true,"child_issue":213,"implementation_status":"planned"},
+    {"variant":"ChapterModelProviderAccepted","domain":"chapter","target_owner":"ChapterStateMachine","outcome_fact":"chapter.effect_observed","exact_effect_identity_required":true,"child_issue":213,"implementation_status":"planned"},
+    {"variant":"ChapterModelCompleted","domain":"chapter","target_owner":"ChapterStateMachine","outcome_fact":"chapter.effect_observed","exact_effect_identity_required":true,"child_issue":213,"implementation_status":"planned"},
+    {"variant":"ChapterModelFailed","domain":"chapter","target_owner":"ChapterStateMachine","outcome_fact":"chapter.effect_observed","exact_effect_identity_required":true,"child_issue":213,"implementation_status":"planned"},
+    {"variant":"DownloadAccepted","domain":"download","target_owner":"DownloadStateMachine","outcome_fact":"download.effect_observed","exact_effect_identity_required":true,"child_issue":214,"implementation_status":"planned"},
+    {"variant":"DownloadStaged","domain":"download","target_owner":"DownloadStateMachine","outcome_fact":"download.effect_observed","exact_effect_identity_required":true,"child_issue":214,"implementation_status":"planned"},
+    {"variant":"DownloadCancelled","domain":"download","target_owner":"DownloadStateMachine","outcome_fact":"download.effect_observed","exact_effect_identity_required":true,"child_issue":214,"implementation_status":"planned"},
+    {"variant":"DownloadArtifactRemoved","domain":"download","target_owner":"DownloadStateMachine","outcome_fact":"download.effect_observed","exact_effect_identity_required":true,"child_issue":214,"implementation_status":"planned"},
+    {"variant":"TranscriptCapabilityObserved","domain":"transcript","target_owner":"TranscriptStateMachine","outcome_fact":"transcript.effect_observed","exact_effect_identity_required":true,"child_issue":213,"implementation_status":"typed_atomic_observation_and_lease_completion"},
+    {"variant":"ScheduledAgentExecutionObserved","domain":"scheduled_agent","target_owner":"ScheduledAgentStateMachine","outcome_fact":"scheduled_agent.effect_observed","exact_effect_identity_required":true,"child_issue":215,"implementation_status":"planned"},
+    {"variant":"AgentModelCompleted","domain":"agent_publication","target_owner":"AgentPublicationStateMachine","outcome_fact":"agent_publication.effect_observed","exact_effect_identity_required":true,"child_issue":215,"implementation_status":"typed_atomic_leased_observation_for_turn_start_model_phase"},
+    {"variant":"AgentApprovalObserved","domain":"agent_publication","target_owner":"AgentPublicationStateMachine","outcome_fact":"agent_publication.effect_observed","exact_effect_identity_required":true,"child_issue":215,"implementation_status":"typed_atomic_leased_observation"},
+    {"variant":"AgentCapabilityObserved","domain":"agent_publication","target_owner":"AgentPublicationStateMachine","outcome_fact":"agent_publication.effect_observed","exact_effect_identity_required":true,"child_issue":215,"implementation_status":"typed_atomic_leased_observation_including_generated_audio_adoption"},
+    {"variant":"CoreWakeReached","domain":"lifecycle","target_owner":"LifecycleStateMachine","outcome_fact":"lifecycle.effect_observed","exact_effect_identity_required":true,"child_issue":210,"implementation_status":"planned"},
+    {"variant":"Failed","domain":"correlated","target_owner":"CorrelatedEffectOwner","outcome_fact":"correlated.effect_observed","exact_effect_identity_required":true,"child_issue":210,"implementation_status":"planned"},
+    {"variant":"Cancelled","domain":"correlated","target_owner":"CorrelatedEffectOwner","outcome_fact":"correlated.effect_observed","exact_effect_identity_required":true,"child_issue":210,"implementation_status":"planned"},
+    {"variant":"Unsupported","domain":"boundary","target_owner":"UnsupportedInputStateMachine","outcome_fact":"boundary.observation_rejected","exact_effect_identity_required":false,"child_issue":210,"implementation_status":"planned"}
+  ]
+}

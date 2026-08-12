@@ -1,6 +1,7 @@
 use pod0_application::{
     CoreFailureCode, EvidenceChunkPolicy, HostObservation, HostRequest, HostRequestEnvelope,
     OperationStage, RecallEmbeddingInput, TranscriptEvidenceInput, build_evidence_artifact,
+    evidence_phase_command_id,
 };
 use pod0_domain::{
     CommandId, EvidenceGenerationId, EvidenceSpanId, HostRequestId, TranscriptEvidenceArtifact,
@@ -230,7 +231,7 @@ impl FacadeState {
     }
 }
 
-fn index_spans(artifact: &TranscriptEvidenceArtifact) -> Vec<RecallIndexSpan> {
+pub(super) fn index_spans(artifact: &TranscriptEvidenceArtifact) -> Vec<RecallIndexSpan> {
     artifact
         .spans
         .iter()
@@ -242,17 +243,6 @@ fn index_spans(artifact: &TranscriptEvidenceArtifact) -> Vec<RecallIndexSpan> {
             text: span.text.clone(),
         })
         .collect()
-}
-
-pub(super) fn evidence_phase_command_id(
-    generation_id: EvidenceGenerationId,
-    phase: &[u8],
-) -> CommandId {
-    let mut hash = Sha256::new();
-    hash.update(b"pod0-evidence-rebuild-phase-v1\0");
-    hash.update(generation_id.into_bytes());
-    hash.update(phase);
-    id_from_digest(hash.finalize())
 }
 
 fn evidence_index_request_id(
@@ -271,10 +261,4 @@ fn evidence_index_request_id(
     let mut bytes = [0_u8; 16];
     bytes.copy_from_slice(&digest[..16]);
     HostRequestId::from_bytes(bytes)
-}
-
-fn id_from_digest(digest: impl AsRef<[u8]>) -> CommandId {
-    let mut bytes = [0_u8; 16];
-    bytes.copy_from_slice(&digest.as_ref()[..16]);
-    CommandId::from_bytes(bytes)
 }

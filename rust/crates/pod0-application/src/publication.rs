@@ -13,7 +13,7 @@ pub const MAX_PUBLICATION_FACTS: usize = 128;
 pub const MAX_PUBLICATION_DETAIL_BYTES: usize = 512;
 pub const MAX_PUBLICATION_URL_BYTES: usize = 8_192;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct Pod0PublicationDraft {
     pub publication_id: PublicationId,
     pub expected_author_hex: String,
@@ -24,7 +24,13 @@ pub struct Pod0PublicationDraft {
     pub content: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct NMPPublicationReceiptLink {
+    pub publication_id: PublicationId,
+    pub receipt_id: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct PublicationStatusObservation {
     pub kind: pod0_domain::PublicationFactKind,
     pub route_id: Option<pod0_domain::PublicationRouteId>,

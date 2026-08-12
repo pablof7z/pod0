@@ -30,10 +30,10 @@ let project = Project(
         developmentRegion: "en"
     ),
     packages: [
-        .remote(
-            url: "https://github.com/GigaBitcoin/secp256k1.swift",
-            requirement: .exact("0.23.1")
-        ),
+        // Prepared from the exact Rust dependency revision by
+        // `scripts/prepare_nmp_swift_package.sh`. NMP intentionally builds
+        // its Swift bindings and XCFramework from the same source revision.
+        .local(path: ".build/nmp/Packages/NMP"),
         // Kingfisher — memory + disk image cache. Backs `CachedAsyncImage`
         // so artwork URLs (subscription / episode covers, iTunes Search
         // results, etc.) fetch at most once per session instead of
@@ -92,6 +92,11 @@ let project = Project(
                     "SWIFT_VERSION": "6.0",
                     "SWIFT_STRICT_CONCURRENCY": "complete",
                     "SKIP_INSTALL": "YES",
+                    // Keep this static XCFramework's processed headers away
+                    // from NMP's static XCFramework headers. Both correctly
+                    // contain module.modulemap, which otherwise collide in
+                    // Xcode's shared Products/include directory.
+                    "CONFIGURATION_BUILD_DIR": "$(BUILD_DIR)/Pod0Core/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)",
                 ]
             )
         ),
@@ -111,7 +116,7 @@ let project = Project(
             ],
             entitlements: .file(path: "App/Resources/Podcastr.entitlements"),
             dependencies: [
-                .package(product: "P256K"),
+                .package(product: "NMP"),
                 .package(product: "Kingfisher"),
                 .target(name: coreBindingsName),
                 .target(name: "\(appName)Widget"),
@@ -125,6 +130,9 @@ let project = Project(
                     "CFBundleDisplayName": "\(appDisplayName)",
                     "GENERATE_INFOPLIST_FILE": "NO",
                     "OTHER_LDFLAGS": "$(inherited) -lsqlite3",
+                    "FRAMEWORK_SEARCH_PATHS": "$(inherited) $(BUILD_DIR)/Pod0Core/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)",
+                    "HEADER_SEARCH_PATHS[sdk=iphoneos*]": "$(inherited) $(SRCROOT)/.build/pod0core/Pod0CoreFFI.xcframework/ios-arm64/Headers",
+                    "HEADER_SEARCH_PATHS[sdk=iphonesimulator*]": "$(inherited) $(SRCROOT)/.build/pod0core/Pod0CoreFFI.xcframework/ios-arm64_x86_64-simulator/Headers",
                     "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
                     "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "",
                     "TARGETED_DEVICE_FAMILY": "1,2",
@@ -218,6 +226,9 @@ let project = Project(
                     "GENERATE_INFOPLIST_FILE": "YES",
                     "OTHER_LDFLAGS": "$(inherited) -lsqlite3",
                     "PRODUCT_BUNDLE_IDENTIFIER": "\(appBundleID).tests",
+                    "FRAMEWORK_SEARCH_PATHS": "$(inherited) $(BUILD_DIR)/Pod0Core/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)",
+                    "HEADER_SEARCH_PATHS[sdk=iphoneos*]": "$(inherited) $(SRCROOT)/.build/pod0core/Pod0CoreFFI.xcframework/ios-arm64/Headers",
+                    "HEADER_SEARCH_PATHS[sdk=iphonesimulator*]": "$(inherited) $(SRCROOT)/.build/pod0core/Pod0CoreFFI.xcframework/ios-arm64_x86_64-simulator/Headers",
                     "BUNDLE_LOADER": "$(TEST_HOST)",
                     "TEST_HOST": "$(BUILT_PRODUCTS_DIR)/\(appName).app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/\(appName)",
                     "SWIFT_INCLUDE_PATHS": "$(SRCROOT)/App/Support",

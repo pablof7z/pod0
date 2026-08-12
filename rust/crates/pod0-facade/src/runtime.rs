@@ -1,5 +1,4 @@
 use std::sync::{Arc, Mutex, MutexGuard};
-use std::thread::JoinHandle;
 
 use pod0_application::{
     ApplicationCommand, CommandEnvelope, HostCancellationRequest, HostObservationEnvelope,
@@ -23,19 +22,13 @@ mod api;
 pub struct Pod0Facade {
     pub(super) state: Arc<Mutex<FacadeState>>,
     pub(super) recall_interrupts: Arc<RecallInterruptRegistry>,
-    pub(super) nmp_store_path: Option<String>,
-    pub(super) nmp: Mutex<Option<pod0_nmp::NmpRuntime>>,
-    pub(super) nmp_dispatcher: Mutex<Option<JoinHandle<()>>>,
 }
 impl Pod0Facade {
-    fn from_state(state: FacadeState, nmp_store_path: Option<String>) -> Arc<Self> {
+    fn from_state(state: FacadeState) -> Arc<Self> {
         let recall_interrupts = Arc::clone(&state.recall_interrupts);
         Arc::new(Self {
             state: Arc::new(Mutex::new(state)),
             recall_interrupts,
-            nmp_store_path,
-            nmp: Mutex::new(None),
-            nmp_dispatcher: Mutex::new(None),
         })
     }
 
@@ -76,7 +69,6 @@ impl Pod0Facade {
         let agent_store = pod0_storage::AgentStore::open(path).map_err(FacadeOpenError::from)?;
         let publication_store =
             pod0_storage::PublicationStore::open(path).map_err(FacadeOpenError::from)?;
-        let signer_store = pod0_storage::SignerStore::open(path).map_err(FacadeOpenError::from)?;
         let recall_index = RecallIndex::open(
             &recall_index_path_for_core_store(path),
             RECALL_INDEX_DIMENSIONS,
@@ -90,18 +82,12 @@ impl Pod0Facade {
                 scheduled_agent: scheduled_agent_store,
                 agent: agent_store,
                 publication: publication_store,
-                signer: signer_store,
             },
             recall_index,
             clock,
         )
         .map_err(FacadeOpenError::from)?;
-        let facade = Self::from_state(state, Some(format!("{}.nmp.redb", path.to_string_lossy())));
-        if !facade.state().publication_records().is_empty() {
-            facade.start_nmp()?;
-            facade.recover_nmp_publications();
-        }
-        Ok(facade)
+        Ok(Self::from_state(state))
     }
 
     pub(super) fn notify_subscribers(&self) {
@@ -116,7 +102,7 @@ impl Pod0Facade {
 impl Pod0Facade {
     #[uniffi::constructor]
     pub fn new() -> Arc<Self> {
-        Self::from_state(FacadeState::default(), None)
+        Self::from_state(FacadeState::default())
     }
 
     #[uniffi::constructor]
@@ -125,12 +111,6 @@ impl Pod0Facade {
     }
 
     pub fn dispatch(&self, command: CommandEnvelope) {
-        let signer_sign_out = match command.command {
-            ApplicationCommand::SignOutNostrSigner {
-                expected_account_id,
-            } => Some(expected_account_id),
-            _ => None,
-        };
         let cancellation_id = cancellation_target(&command);
         if let Some(cancellation_id) = cancellation_id {
             self.recall_interrupts.signal(cancellation_id);
@@ -138,10 +118,6 @@ impl Pod0Facade {
         let changed = self.state().dispatch(command);
         if let Some(cancellation_id) = cancellation_id {
             self.recall_interrupts.finish_signal(cancellation_id);
-        }
-        self.drive_pending_publications();
-        if let Some(account_id) = signer_sign_out {
-            self.detach_native_signer(account_id);
         }
         if changed {
             self.notify_subscribers();
@@ -208,9 +184,6 @@ impl Pod0Facade {
             if requests.len() < maximum && state.prepare_model_chapter_host_request() {
                 changed = true;
             }
-            if requests.len() < maximum && state.prepare_transcript_host_request() {
-                changed = true;
-            }
             let remaining = maximum
                 .saturating_sub(requests.len())
                 .min(state.host_queue.len());
@@ -223,28 +196,90 @@ impl Pod0Facade {
         requests
     }
 
+    pub fn next_leased_host_requests(
+        &self,
+        maximum_count: u16,
+    ) -> Vec<pod0_application::LeasedHostRequestEnvelope> {
+        let (changed, requests) = self.state().next_leased_transcript_requests(maximum_count);
+        if changed {
+            self.notify_subscribers();
+        }
+        requests
+    }
+
     pub fn next_host_cancellations(&self, maximum_count: u16) -> Vec<HostCancellationRequest> {
         let mut state = self.state();
         let count = bounded_host_request_count(maximum_count).min(state.host_cancellations.len());
         state.host_cancellations.drain(..count).collect()
     }
 
+    pub fn next_nmp_publications(
+        &self,
+        maximum_count: u16,
+    ) -> Vec<pod0_application::Pod0PublicationDraft> {
+        self.state()
+            .take_pending_publications(usize::from(maximum_count.clamp(1, 32)))
+    }
+
+    pub fn nmp_publication_receipt_links(
+        &self,
+    ) -> Vec<pod0_application::NMPPublicationReceiptLink> {
+        self.state().publication_receipt_links()
+    }
+
+    pub fn record_nmp_publication_receipt(
+        &self,
+        publication_id: pod0_domain::PublicationId,
+        receipt_id: u64,
+    ) {
+        if self
+            .state()
+            .record_publication_receipt(publication_id, receipt_id)
+        {
+            self.notify_subscribers();
+        }
+    }
+
+    pub fn record_nmp_publication_observation(
+        &self,
+        publication_id: pod0_domain::PublicationId,
+        observation: pod0_application::PublicationStatusObservation,
+    ) {
+        if self
+            .state()
+            .record_publication_observation(publication_id, &observation)
+        {
+            self.notify_subscribers();
+        }
+    }
+
     pub fn record_host_observation(
         &self,
         observation: HostObservationEnvelope,
     ) -> pod0_application::HostObservationReceipt {
-        let signer_result = {
-            let mut state = self.state();
-            state.record_signer_observation(observation.clone())
-        };
-        if let Some(result) = signer_result {
-            let changed = result.changed | self.apply_signer_runtime_action(result.action);
-            if changed {
-                self.notify_subscribers();
-            }
-            return result.receipt;
+        let mut state = self.state();
+        if state
+            .host_requests
+            .is_transcript_request(observation.request_id)
+        {
+            return pod0_application::HostObservationReceipt::Rejected {
+                request_id: observation.request_id,
+                reason: pod0_application::HostObservationRejection::StaleWorkflow,
+            };
         }
-        let (changed, receipt) = self.state().record_host_observation(observation);
+        let (changed, receipt) = state.record_host_observation(observation);
+        drop(state);
+        if changed {
+            self.notify_subscribers();
+        }
+        receipt
+    }
+
+    pub fn record_leased_host_observation(
+        &self,
+        observation: pod0_application::LeasedHostObservationEnvelope,
+    ) -> pod0_application::HostObservationReceipt {
+        let (changed, receipt) = self.state().record_leased_host_observation(observation);
         if changed {
             self.notify_subscribers();
         }

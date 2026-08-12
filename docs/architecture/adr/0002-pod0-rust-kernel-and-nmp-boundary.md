@@ -14,10 +14,9 @@ generic NMP must not become a home for podcast application concepts.
 
 ## Implementation status
 
-The workspace and exact NMP pin landed after this decision. NMP remains
-isolated in `pod0-nmp`; no application crate or iOS binary consumes it while
-security issue #85 is open. The generated native facade is app-owned and no
-Swift NMP surface has been restored.
+The workspace and exact NMP pin landed after this decision. The iOS app now
+owns one upstream `NMPEngine`; Pod0 does not wrap its identity, signing,
+routing, transport, query, or receipt product surface in Rust or Swift.
 
 ## Decision
 
@@ -27,10 +26,10 @@ Create one Pod0-owned Rust workspace with cohesive crates or modules for:
 - application commands, actor/reducer, workflows, and projections;
 - persistence and versioned migrations;
 - platform capability contracts;
-- a Pod0 NMP adapter and Pod0-specific event semantics;
+- Pod0-specific publication intent and audit semantics at the app boundary;
 - one app-owned UniFFI facade.
 
-Generic NMP is a pinned dependency. It owns reusable Nostr protocol,
+Upstream NMP is a pinned Swift-package dependency. It owns Nostr identity,
 cryptography, relay, sync, routing, and signer primitives. Podcast, episode,
 subscription, queue, transcript, highlight, clip, note, briefing, workflow,
 and Pod0 agent nouns remain in Pod0 crates.
@@ -41,14 +40,14 @@ the lockfile, and record any semantic migration.
 
 ## Boundary
 
-Pod0 application code asks its NMP adapter for semantic operations. App-facing
-commands never accept relay URLs, cipher choices, retry policy, or raw protocol
-routing. NMP returns verified observations/provenance to the Pod0 application
-layer; the application layer decides Pod0 product meaning.
+Pod0 composes a bounded product publication draft, then hands the generic write
+directly to the app-owned `NMPEngine`. App-facing commands never accept relay
+URLs, cipher choices, retry policy, or raw protocol routing. Pod0 may retain a
+receipt identifier and bounded product audit facts; NMP remains authoritative
+for identity, signing, routing, transport, queries, and receipt state.
 
-Platform key custody is a capability boundary. Keychain/Keystore or an external
-signer executes an authorized signing request. Rust owns the intent, scope,
-permission decision, event semantics, and result validation.
+NMP's account store owns platform key custody. Pod0 never receives a private
+key or exposes a signing request across its facade.
 
 ## Failure behavior
 

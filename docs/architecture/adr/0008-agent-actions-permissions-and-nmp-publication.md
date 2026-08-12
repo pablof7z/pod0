@@ -12,8 +12,7 @@ into `[String: Any]`, and let Swift dispatch 46 tools. Those tools span private
 reads, durable writes, playback, paid provider requests, destructive deletion,
 artifact generation, and public upload. Prompts and skill activation provide
 advisory gating, but no single durable authority, proposal, commit, or recovery
-contract exists. Swift also composes Nostr signatures independently of the
-Pod0-owned `pod0-nmp` runtime.
+contract exists. Pod0 also had its own Nostr identity and signing surface.
 
 This is cross-platform, security-sensitive product policy. Native code must
 still present conversations and approvals and execute platform primitives, but
@@ -38,8 +37,8 @@ qualification, and #138 owns the remaining rollback cleanup.
 Pod0 Rust is the sole owner of interactive turn state, tool schemas and typed
 actions, validation, authorization, capability admission, idempotent commit,
 audit, cancellation, recovery, and bounded projections. Native shells render
-those projections and execute only typed capabilities. Generic NMP owns Nostr
-identity, signing, routing, receipt, and relay facts behind `pod0-nmp`.
+those projections and execute only typed capabilities. Upstream NMP owns Nostr
+identity, signing, routing, receipt, and relay facts through its public SDK.
 
 The machine-readable [permission matrix](../agent-tool-permissions.json)
 classifies every current tool exactly once. CI compares it to canonical Swift
@@ -76,7 +75,7 @@ Commands are fire-and-forget state transitions:
 
 - `StartAgentTurn`, `SubmitAgentInput`, and `CancelAgentTurn`;
 - `ApproveAgentProposal` and `DenyAgentProposal` with proposal digest/revision;
-- raw provider, approval, capability, signer, and publication observations;
+- raw provider, approval, capability, and publication observations;
 - explicit recovery/reconciliation commands, never blind effect retries.
 
 Bounded projections expose a selected conversation page, current turn stage,
@@ -115,16 +114,17 @@ becomes retry permission.
 ## Nostr and publication boundary
 
 Pod0 Rust defines Pod0 event nouns, validates semantic content, selects public
-versus private intent, and creates one `PublicationId`. `pod0-nmp` is the only
-direct NMP engine owner and converts an authorized Pod0 publication into a
-generic `WriteIntent`. The application facade accepts no relay URL or generic
-NMP routing primitive.
+versus private intent, and creates one `PublicationId`. The upstream NMP Swift
+SDK is the sole engine and account owner. Pod0 hands that engine a generic
+`WriteIntent` and observes its `Receipt`; it does not wrap NMP with another
+identity, signer, routing, relay, cache, or receipt implementation.
 
-Public byte upload, file access, biometrics, and secure credential access remain
-typed native capabilities. Nostr event composition, author binding, signer
-selection, routing, delivery, and receipt facts do not occur in Swift. Private
-recipient delivery uses NMP's inbox or `PrivateNarrow` semantics and fails
-closed; it never falls back to public author outbox routing.
+Public byte upload and file access remain typed native capabilities. NMP owns
+account generation, its `NMPKeychainAccountStore` checkpoint, active identity,
+event composition, author binding, signer selection, signing, verification,
+routing, delivery, and receipt facts. Swift invokes those NMP APIs directly;
+Pod0-specific Swift code does not implement those mechanics. Private recipient
+delivery uses NMP's private routing semantics and fails closed.
 
 For every publication, Rust persists a stable correlation token derived from
 the immutable `PublicationId` and semantic revision before calling
@@ -134,7 +134,7 @@ reattachment key. After restart it reattaches by receipt id when present and by
 correlation token otherwise.
 
 The pinned NMP revision is
-`68310f88a31bf80e6b73d018b1374e73efda0041`. At this revision, a caller that
+`bca64d75eeee8496b93ca220976c4fa6046cf6cb`. At this revision, a caller that
 omits `WriteIntent.correlation` still has a crash gap after durable NMP
 acceptance but before Pod0 persists the returned receipt id. Pod0 closes that
 gap structurally by requiring the pre-persisted correlation token and using
@@ -157,8 +157,8 @@ tool, complete an agent turn, or prove a generated artifact is valid.
 ## Migration and rollback
 
 Issues #133–#137 establish the Rust turn/tool reducer, native capabilities,
-durable conversation/artifact ownership, NMP publication, and secure signer
-path. Issue #138 performs inspect, versioned backup, staged import, validation,
+durable conversation/artifact ownership, and upstream NMP publication. Issue
+#138 performs inspect, versioned backup, staged import, validation,
 authority-marker commit, and immediate deletion of replaced Swift writers.
 
 Before the marker commits, rollback discards staged Rust state and leaves the
@@ -169,10 +169,10 @@ AVFoundation, approval sheets, file primitives, and platform credential UI
 remain.
 
 The cutover deletes or reduces `AgentTools` dispatch/schema policy,
-`AgentChatSession` turn/tool decisions, Swift chat/run-log durability,
-`AgentNostrSigner`, direct Blossom/publication orchestration, and store-mutating
-tool adapters. Every surviving adapter must correspond to a typed Rust host
-request and raw observation.
+`AgentChatSession` turn/tool decisions, Swift chat/run-log durability, direct
+Blossom/publication orchestration, and store-mutating tool adapters. Every
+surviving adapter must correspond to a typed Rust host request and raw
+observation.
 
 ## Required falsifiers
 
@@ -182,7 +182,7 @@ request and raw observation.
   cancellation, and process-death tests;
 - denied or absent grants produce no native request and no durable mutation;
 - external ambiguity does not retry or commit;
-- public/private routing, missing signer, signer rejection, ACK, rejection,
+- public/private routing, unavailable identity, signing refusal, ACK, rejection,
   persistence blockage, `OutcomeUnknown`, not-found, and correlation
   reattachment tests;
 - generated Swift/Kotlin parity, Android-compatible builds, bounded FFI,

@@ -17,13 +17,15 @@ use crate::transcript_store_write_rows::{
 use crate::{LibraryStore, StorageError};
 
 impl LibraryStore {
-    pub fn stage_transcript_workflow_completion(
+    #[cfg(test)]
+    pub(crate) fn stage_transcript_workflow_completion(
         &self,
         input: TranscriptCompletionInput,
     ) -> Result<TranscriptWorkflowRecord, StorageError> {
         self.stage_transcript_workflow_completion_with_observer(input, || Ok(()))
     }
 
+    #[cfg(test)]
     pub(crate) fn stage_transcript_workflow_completion_with_observer<F>(
         &self,
         input: TranscriptCompletionInput,
@@ -32,52 +34,60 @@ impl LibraryStore {
     where
         F: FnOnce() -> Result<(), StorageError>,
     {
-        validate_time(input.observed_at_ms)?;
-        let artifact = TranscriptArtifact::seal(input.artifact.clone()).map_err(artifact_error)?;
         self.write(|transaction| {
-            require_authoritative(transaction)?;
-            require_transcript_authoritative(transaction)?;
-            let mut workflow = read_workflow(transaction, input.episode_id)?
-                .ok_or(StorageError::TranscriptWorkflowNotFound)?;
-            validate_completion_fence(&workflow, &input)?;
-            if workflow.stage == StoredTranscriptWorkflowStage::CompletionObserved {
-                return replay_completion(transaction, workflow, &artifact);
-            }
-            if !matches!(
-                workflow.stage,
-                StoredTranscriptWorkflowStage::PublisherRequested
-                    | StoredTranscriptWorkflowStage::SubmissionAuthorized
-                    | StoredTranscriptWorkflowStage::ProviderAccepted
-            ) || input.observed_at_ms < workflow.updated_at_ms
-                || artifact.episode_id != workflow.episode_id
-                || artifact.source_revision != workflow.request.source_revision
-            {
-                return Err(StorageError::StaleTranscriptAttempt);
-            }
-            if let (Some(expected), Some(observed)) = (
-                workflow.external_operation_id.as_deref(),
-                input.external_operation_id.as_deref(),
-            ) && expected != observed
-            {
-                return Err(StorageError::StaleTranscriptAttempt);
-            }
-            require_episode_parent(transaction, &artifact)?;
-            ensure_semantic_document(transaction, &artifact)?;
-            insert_or_validate_artifact(transaction, &artifact, None, input.observed_at_ms)?;
-            workflow.stage = StoredTranscriptWorkflowStage::CompletionObserved;
-            workflow.workflow_revision = next_revision(workflow.workflow_revision)?;
-            workflow.completion_artifact_id = Some(artifact.artifact_id);
-            workflow.external_operation_id = input
-                .external_operation_id
-                .or(workflow.external_operation_id);
-            workflow.provider_status = input.provider_status.or(workflow.provider_status);
-            workflow.updated_at_ms = input.observed_at_ms;
-            persist_workflow(transaction, &workflow)?;
-            update_attempt_completion(transaction, &workflow)?;
+            let workflow = apply_transcript_completion(transaction, input)?;
             before_commit()?;
             Ok(workflow)
         })
     }
+}
+
+pub(crate) fn apply_transcript_completion(
+    transaction: &rusqlite::Transaction<'_>,
+    input: TranscriptCompletionInput,
+) -> Result<TranscriptWorkflowRecord, StorageError> {
+    validate_time(input.observed_at_ms)?;
+    let artifact = TranscriptArtifact::seal(input.artifact.clone()).map_err(artifact_error)?;
+    require_authoritative(transaction)?;
+    require_transcript_authoritative(transaction)?;
+    let mut workflow = read_workflow(transaction, input.episode_id)?
+        .ok_or(StorageError::TranscriptWorkflowNotFound)?;
+    validate_completion_fence(&workflow, &input)?;
+    if workflow.stage == StoredTranscriptWorkflowStage::CompletionObserved {
+        return replay_completion(transaction, workflow, &artifact);
+    }
+    if !matches!(
+        workflow.stage,
+        StoredTranscriptWorkflowStage::PublisherRequested
+            | StoredTranscriptWorkflowStage::SubmissionAuthorized
+            | StoredTranscriptWorkflowStage::ProviderAccepted
+    ) || input.observed_at_ms < workflow.updated_at_ms
+        || artifact.episode_id != workflow.episode_id
+        || artifact.source_revision != workflow.request.source_revision
+    {
+        return Err(StorageError::StaleTranscriptAttempt);
+    }
+    if let (Some(expected), Some(observed)) = (
+        workflow.external_operation_id.as_deref(),
+        input.external_operation_id.as_deref(),
+    ) && expected != observed
+    {
+        return Err(StorageError::StaleTranscriptAttempt);
+    }
+    require_episode_parent(transaction, &artifact)?;
+    ensure_semantic_document(transaction, &artifact)?;
+    insert_or_validate_artifact(transaction, &artifact, None, input.observed_at_ms)?;
+    workflow.stage = StoredTranscriptWorkflowStage::CompletionObserved;
+    workflow.workflow_revision = next_revision(workflow.workflow_revision)?;
+    workflow.completion_artifact_id = Some(artifact.artifact_id);
+    workflow.external_operation_id = input
+        .external_operation_id
+        .or(workflow.external_operation_id);
+    workflow.provider_status = input.provider_status.or(workflow.provider_status);
+    workflow.updated_at_ms = input.observed_at_ms;
+    persist_workflow(transaction, &workflow)?;
+    update_attempt_completion(transaction, &workflow)?;
+    Ok(workflow)
 }
 
 fn validate_completion_fence(

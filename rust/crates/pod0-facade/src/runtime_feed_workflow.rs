@@ -1,6 +1,6 @@
 use pod0_application::{
-    CoreWakeReason, FeedFetchIntent, FeedFetchProjection, FeedFetchStage,
-    FEED_FETCH_HOST_REQUEST_DEADLINE_MILLISECONDS, HostRequest, HostRequestEnvelope,
+    CoreWakeReason, FEED_FETCH_HOST_REQUEST_DEADLINE_MILLISECONDS, FeedFetchIntent,
+    FeedFetchProjection, FeedFetchStage, HostRequest, HostRequestEnvelope,
     MAX_ACTIVE_FEED_FETCH_WORKFLOWS, MAX_FEED_FETCH_ATTEMPTS, MAX_FEED_RESPONSE_BYTES,
 };
 use pod0_domain::{HostRequestId, UnixTimestampMilliseconds};
@@ -132,8 +132,8 @@ impl FacadeState {
         let store = self.store.clone()?;
         let now = self.now();
         let retry = retryable && record.attempt < MAX_FEED_FETCH_ATTEMPTS;
-        let retry_at =
-            retry.then(|| pod0_application::feed_fetch_retry_not_before(now, record.attempt).value());
+        let retry_at = retry
+            .then(|| pod0_application::feed_fetch_retry_not_before(now, record.attempt).value());
         let retry_deadline = retry_at
             .and_then(|value| value.checked_add(FEED_FETCH_HOST_REQUEST_DEADLINE_MILLISECONDS));
         let updated = store
@@ -154,7 +154,10 @@ impl FacadeState {
         Some(updated)
     }
 
-    pub(super) fn schedule_feed_fetch_retry_wake(&mut self, record: &FeedFetchWorkflowRecord) -> bool {
+    pub(super) fn schedule_feed_fetch_retry_wake(
+        &mut self,
+        record: &FeedFetchWorkflowRecord,
+    ) -> bool {
         let Some(wake_at) = record.not_before_ms else {
             return false;
         };

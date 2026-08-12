@@ -37,5 +37,5 @@ fn product_proof_catalog_is_unique_bounded_and_executable() {
 fn deferred_tools_are_not_in_the_shipping_catalog() {
     assert!(!PRODUCT_PROOF_AGENT_TOOLS.contains(&AgentToolName::RecordMemory));
     assert!(agent_tool_definition(AgentToolName::ScheduleTask).is_none());
-    assert!(agent_tool_definition(AgentToolName::PlayEpisode).is_none());
+    assert!(agent_tool_definition(AgentToolName::PlayEpisode).is_some());
 }

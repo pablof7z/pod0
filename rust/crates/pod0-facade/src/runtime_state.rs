@@ -13,8 +13,7 @@ use pod0_domain::{
 };
 use pod0_recall_index::RecallIndex;
 use pod0_storage::{
-    AgentStore, EvidenceStore, LibraryStore, PublicationStore, ScheduledAgentStore, SignerStore,
-    TranscriptStore,
+    AgentStore, EvidenceStore, LibraryStore, PublicationStore, ScheduledAgentStore, TranscriptStore,
 };
 
 use crate::ProjectionSubscriber;
@@ -42,13 +41,6 @@ pub(super) struct FacadeState {
     pub(super) scheduled_agent_store: Option<ScheduledAgentStore>,
     pub(super) agent_store: Option<AgentStore>,
     pub(super) publication_store: Option<PublicationStore>,
-    pub(super) signer_store: Option<SignerStore>,
-    pub(super) signer_account: Option<pod0_domain::SignerAccountRecord>,
-    pub(super) pending_signers:
-        BTreeMap<HostRequestId, crate::runtime_signer::PendingSignerRequest>,
-    pub(super) pending_signer_observations:
-        BTreeMap<HostRequestId, pod0_application::HostObservationEnvelope>,
-    pub(super) signer_waiters: BTreeMap<CommandId, crate::runtime_signer::SignerWaiter>,
     pub(super) pending_publications: VecDeque<pod0_application::Pod0PublicationDraft>,
     pub(super) recall_index: RecallIndex,
     pub(super) recall_configuration: pod0_domain::RecallConfiguration,
@@ -74,8 +66,6 @@ pub(super) struct FacadeState {
     pub(super) pending_model_observations:
         BTreeMap<HostRequestId, pod0_application::HostObservationEnvelope>,
     pub(super) pending_transcripts: BTreeMap<HostRequestId, EpisodeId>,
-    pub(super) pending_transcript_observations:
-        BTreeMap<HostRequestId, pod0_application::HostObservationEnvelope>,
     pub(super) pending_scheduled_agents:
         BTreeMap<HostRequestId, pod0_storage::ScheduledAgentHostRequestRecord>,
     pub(super) pending_scheduled_agent_observations:

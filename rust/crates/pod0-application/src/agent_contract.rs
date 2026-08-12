@@ -77,6 +77,7 @@ pub enum AgentToolAction {
         query: String,
         scope: Option<String>,
         limit: u16,
+        execute_first: bool,
     },
     QueryTranscripts {
         query: String,

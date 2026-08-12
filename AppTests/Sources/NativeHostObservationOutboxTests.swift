@@ -184,17 +184,16 @@ final class NativeHostObservationOutboxTests: XCTestCase {
         XCTAssertEqual(pending, [expected])
     }
 
-    /// A record whose delivery aborts the process must not be replayed forever.
-    /// Without this fence an undeliverable envelope relaunches straight back
-    /// into the same abort, leaving the app permanently unopenable.
-    func testEvidenceAbandonedInDeliveryIsQuarantinedInsteadOfReplayedForever() async throws {
+    /// Transport evidence may diagnose repeated abandonment, but it cannot be
+    /// discarded before Rust returns a terminal durable receipt.
+    func testEvidenceAbandonedInDeliveryRemainsDurable() async throws {
         let fileURL = temporaryFileURL()
         defer { try? FileManager.default.removeItem(at: fileURL.deletingLastPathComponent()) }
         let poison = envelope(requestLow: 11, sequence: 0, observation: completion())
 
         // Each launch marks the delivery as started and then "dies" inside the
         // call, so the mark is never cleared.
-        for _ in 0 ..< 2 {
+        for _ in 0 ..< 5 {
             let launch = try NativeHostObservationOutbox(fileURL: fileURL)
             _ = try await launch.persistBeforeDelivery(poison)
             let pending = await launch.pendingObservations()
@@ -205,9 +204,9 @@ final class NativeHostObservationOutboxTests: XCTestCase {
 
         let relaunched = try NativeHostObservationOutbox(fileURL: fileURL)
         let began = await relaunched.beginDelivery(of: poison)
-        XCTAssertFalse(began)
+        XCTAssertTrue(began)
         let remaining = await relaunched.pendingCount()
-        XCTAssertEqual(remaining, 0)
+        XCTAssertEqual(remaining, 1)
     }
 
     /// Ordinary `retainAndRetry` churn returns a receipt, so it must never

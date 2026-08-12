@@ -12,13 +12,12 @@ struct SharedLibrarySubscriptions: @unchecked Sendable {
     let transcriptWorkflows: SubscriptionId
     let notificationSettings: SubscriptionId
     let scheduledAgents: SubscriptionId
-    let nostrSigner: SubscriptionId
 
     var ids: [SubscriptionId] {
         [
             library, playback, recallConfiguration, chapterWorkflows, notes,
             memories, clips, downloads, transcriptWorkflows, notificationSettings,
-            scheduledAgents, nostrSigner,
+            scheduledAgents,
         ]
     }
 }
@@ -36,6 +35,5 @@ extension SharedLibraryClient {
         transcriptWorkflowSubscriptionID = subscriptions.transcriptWorkflows
         newEpisodeNotificationSettingsSubscriptionID = subscriptions.notificationSettings
         scheduledAgentSubscriptionID = subscriptions.scheduledAgents
-        nostrSignerSubscriptionID = subscriptions.nostrSigner
     }
 }

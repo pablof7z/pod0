@@ -28,12 +28,12 @@ fn accepted_provider_operation_recovers_once_after_a_durable_wake() {
     });
     let submission = transcript_request(&fixture.facade, "submission");
     assert!(matches!(
-        submission.request,
+        submission.request.request,
         HostRequest::ExecuteTranscriptCapability {
             capability: TranscriptCapabilityRequest::SubmitProvider { .. }
         }
     ));
-    record(
+    record_leased(
         &fixture.facade,
         &submission,
         HostObservation::TranscriptCapabilityObserved {
@@ -70,12 +70,12 @@ fn accepted_provider_operation_recovers_once_after_a_durable_wake() {
                 external_operation_id,
                 ..
             },
-    } = &recovery.request
+    } = &recovery.request.request
     else {
         panic!("expected provider recovery");
     };
     assert_eq!(external_operation_id, "assembly-job-1");
-    record(
+    record_leased(
         &fixture.facade,
         &recovery,
         HostObservation::TranscriptCapabilityObserved {
@@ -142,18 +142,48 @@ fn configuration() -> TranscriptWorkflowConfiguration {
     }
 }
 
-fn transcript_request(facade: &Pod0Facade, phase: &str) -> HostRequestEnvelope {
-    let requests = facade.next_host_requests(u16::MAX);
+fn transcript_request(facade: &Pod0Facade, phase: &str) -> LeasedHostRequestEnvelope {
+    let requests = facade
+        .next_leased_host_requests(u16::MAX)
+        .into_iter()
+        .collect::<Vec<_>>();
     requests
         .iter()
         .find(|request| {
             matches!(
-                request.request,
+                request.request.request,
                 HostRequest::ExecuteTranscriptCapability { .. }
             )
         })
         .cloned()
         .unwrap_or_else(|| panic!("{phase} transcript capability was not emitted: {requests:?}"))
+}
+
+fn record_leased(
+    facade: &Pod0Facade,
+    request: &LeasedHostRequestEnvelope,
+    observation: HostObservation,
+) {
+    let envelope = &request.request;
+    let receipt = facade.record_leased_host_observation(LeasedHostObservationEnvelope {
+        lease: request.lease,
+        observation: HostObservationEnvelope {
+            request_id: envelope.request_id,
+            cancellation_id: envelope.cancellation_id,
+            observed_request_revision: envelope.issued_revision,
+            sequence_number: 0,
+            observed_at: UnixTimestampMilliseconds::new(request.lease.expires_at.value - 1),
+            observation,
+        },
+    });
+    assert!(
+        matches!(
+            receipt,
+            HostObservationReceipt::Persisted { .. }
+                | HostObservationReceipt::AcceptedTransient { .. }
+        ),
+        "unexpected leased observation receipt: {receipt:?}"
+    );
 }
 
 fn record(facade: &Pod0Facade, request: &HostRequestEnvelope, observation: HostObservation) {

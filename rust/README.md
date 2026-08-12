@@ -17,16 +17,14 @@ The permanent operating rule is:
   migrations, verified backups, recovery state, and domain cutover markers.
   Its current schema is infrastructure-only and imports no Swift records. See
   [`SCHEMA_MIGRATIONS.md`](SCHEMA_MIGRATIONS.md).
-- `pod0-nmp` is the only crate allowed to depend directly on generic NMP. It
-  adapts NMP's public Rust facade; Pod0 nouns never enter NMP crates.
 - `pod0-facade` is the one app-owned native/core boundary. Its typed
   command/projection/event/host-request contract is documented in
   [`FACADE_CONTRACT.md`](FACADE_CONTRACT.md). Swift and Kotlin bindings derive
   from that same source and are committed under `Generated/Pod0Core`.
 
-No crate may depend on NMP mechanism crates such as `nmp-engine`, `nmp-store`,
-or `nmp-ffi`. Pod0 will not import NMP's generated Swift/Kotlin bindings as a
-second bridge; the app-owned facade composes NMP inside Rust.
+No Pod0 Rust crate depends on NMP protocol machinery. The iOS app consumes the
+upstream `NMP` Swift SDK as the sole engine/account boundary; Pod0 Rust remains
+limited to product nouns, authorization, and durable product state.
 
 The app-owned facade is the typed single-writer boundary used by the migrated
 listening, playback, transcript, evidence, note, clip, and recall slices. Its
@@ -73,31 +71,14 @@ for Android arm64/x86_64. Those results prove API portability, not permission
 to begin the M6 Android application phase; the M5 product/architecture gate
 remains authoritative.
 
-## NMP security posture
-
-The pinned NMP graph resolves Hickory 0.26.1 and contains neither
-RUSTSEC-2026-0118 nor RUSTSEC-2026-0119. `cargo deny` and `cargo audit` run
-without advisory exceptions. The `pod0-nmp` adapter is therefore eligible for
-composition behind the app-owned Rust facade; no NMP network path is linked
-into the iOS app until a product slice explicitly adds that dependency and its
-lifecycle tests.
-
 ## NMP pin and upgrade policy
 
-The only NMP dependency is the supported `nmp` crate at Git revision
-`68310f88a31bf80e6b73d018b1374e73efda0041`, merged to and audited against
-upstream `master` on 2026-07-19. NMP is pre-1.0, so an upgrade requires a named Pod0 issue,
-review of upstream `README.md`, `docs/known-gaps.md`,
-`docs/architecture/supported-surface.md`, and the current public facade, then:
+The upstream Swift SDK is prepared at Git revision
+`bca64d75eeee8496b93ca220976c4fa6046cf6cb` by
+`scripts/prepare_nmp_swift_package.sh`. NMP is pre-1.0, so an upgrade requires
+review of its public Swift surface, then:
 
-1. update the exact `rev` and lockfile;
-2. update the dependency-policy checker in the same commit;
-3. run the Pod0 adapter lifecycle test and full workspace checks;
-4. run upstream's `cargo test -p nmp-consumer-check` at the selected revision;
-5. record any Swift/Kotlin/Android surface gaps that affect Pod0.
-
-At the pinned revision, NMP's Swift wrapper is host-tested and its simulator
-slices compile, while its Kotlin wrapper is a desktop-JVM falsifier rather than
-an Android AAR. Pod0 therefore consumes direct Rust now and treats Android
-target/binding compilation as readiness evidence only; it does not authorize
-Android product work before the M5 gate.
+1. update the exact revision in the preparation script;
+2. rebuild the NMP XCFramework and generated bindings from that source;
+3. run upstream Swift tests and Pod0's full Apple build/tests;
+4. record any Swift/Kotlin/Android surface gaps that affect Pod0.

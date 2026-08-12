@@ -5,8 +5,8 @@ use pod0_application::{
 };
 use pod0_domain::{
     ContentDigest, TranscriptArtifactInput, TranscriptArtifactSegmentInput, TranscriptSource,
-    TranscriptStartPolicy,
 };
+use pod0_storage::ActivityStore;
 
 use crate::runtime_playback_test_support::{PlaybackFixture, library_request};
 use crate::*;
@@ -26,45 +26,149 @@ fn transcript_workflow_commits_indexes_and_survives_relaunch() {
         },
     });
 
-    let request = fixture
+    let leased = fixture
         .facade
-        .next_host_requests(u16::MAX)
+        .next_leased_host_requests(u16::MAX)
         .into_iter()
-        .find(|request| {
+        .find(|leased| {
             matches!(
-                request.request,
+                leased.request.request,
                 HostRequest::ExecuteTranscriptCapability { .. }
             )
         })
         .expect("transcript request");
+    let request = &leased.request;
     let HostRequest::ExecuteTranscriptCapability {
         capability: TranscriptCapabilityRequest::SubmitProvider { context, .. },
     } = &request.request
     else {
         panic!("expected provider submission");
     };
+    let observation = HostObservationEnvelope {
+        request_id: request.request_id,
+        cancellation_id: request.cancellation_id,
+        observed_request_revision: request.issued_revision,
+        sequence_number: 0,
+        observed_at: UnixTimestampMilliseconds::new(leased.lease.expires_at.value - 1),
+        observation: HostObservation::TranscriptCapabilityObserved {
+            observation: TranscriptCapabilityObservation::Completed {
+                external_operation_id: None,
+                provider_status: Some("completed".into()),
+                artifact: transcript(context),
+            },
+        },
+    };
+    assert!(matches!(
+        fixture.facade.record_host_observation(observation.clone()),
+        HostObservationReceipt::Rejected {
+            reason: HostObservationRejection::StaleWorkflow,
+            ..
+        }
+    ));
+    let mut stale_lease = leased.lease;
+    stale_lease.fence = stale_lease.fence.saturating_add(1);
+    assert!(matches!(
+        fixture
+            .facade
+            .record_leased_host_observation(LeasedHostObservationEnvelope {
+                lease: stale_lease,
+                observation: observation.clone(),
+            }),
+        HostObservationReceipt::Rejected {
+            reason: HostObservationRejection::StaleWorkflow,
+            ..
+        }
+    ));
+    let leased_observation = LeasedHostObservationEnvelope {
+        lease: leased.lease,
+        observation,
+    };
     let receipt = fixture
         .facade
-        .record_host_observation(HostObservationEnvelope {
-            request_id: request.request_id,
-            cancellation_id: request.cancellation_id,
-            observed_request_revision: request.issued_revision,
-            sequence_number: 0,
-            observed_at: UnixTimestampMilliseconds::new(1_900_000_000_000),
-            observation: HostObservation::TranscriptCapabilityObserved {
-                observation: TranscriptCapabilityObservation::Completed {
-                    external_operation_id: None,
-                    provider_status: Some("completed".into()),
-                    artifact: transcript(context),
-                },
-            },
-        });
+        .record_leased_host_observation(leased_observation.clone());
     assert!(matches!(
         receipt,
         HostObservationReceipt::Persisted { terminal: true, .. }
     ));
+    let activity = ActivityStore::open(&fixture.target)
+        .unwrap()
+        .page_for_episode(fixture.episode_id, None, 40)
+        .unwrap();
+    assert!(activity.items.iter().any(|fact| matches!(
+        fact.draft.fact,
+        pod0_application::ActivityFact::EffectObserved {
+            intent_id,
+            attempt_id,
+            outcome: pod0_application::EffectOutcome::Succeeded,
+        } if intent_id == leased.lease.intent_id && attempt_id == leased.lease.attempt_id
+    )));
+    let fact_count = activity.items.len();
+    assert!(matches!(
+        fixture
+            .facade
+            .record_leased_host_observation(leased_observation),
+        HostObservationReceipt::Rejected {
+            reason: HostObservationRejection::Duplicate,
+            ..
+        }
+    ));
+    assert_eq!(
+        ActivityStore::open(&fixture.target)
+            .unwrap()
+            .page_for_episode(fixture.episode_id, None, 40)
+            .unwrap()
+            .items
+            .len(),
+        fact_count
+    );
+    let effect_states: (i64, i64) = rusqlite::Connection::open(&fixture.target)
+        .unwrap()
+        .query_row(
+            "SELECT i.state_code,a.state_code FROM pod0_effect_intents i
+             JOIN pod0_effect_attempts a ON a.intent_id=i.intent_id WHERE i.intent_id=?1",
+            [leased.lease.intent_id.into_bytes().as_slice()],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(effect_states, (3, 3));
 
     crate::runtime_recall_test_support::complete_evidence_embedding_requests(&fixture.facade);
+    let completed_activity = ActivityStore::open(&fixture.target)
+        .unwrap()
+        .page_for_episode(fixture.episode_id, None, 100)
+        .unwrap();
+    assert!(completed_activity.items.iter().any(|item| matches!(
+        item.draft.fact,
+        pod0_application::ActivityFact::InternalCommandAuthorized {
+            target: pod0_application::ActivityDomain::RecallKnowledge,
+            ..
+        }
+    )));
+    assert!(completed_activity.items.iter().any(|item| matches!(
+        item.draft.fact,
+        pod0_application::ActivityFact::EffectAuthorized {
+            kind: pod0_application::ExternalEffectKind::RecallProvider,
+            ..
+        }
+    )));
+    assert!(completed_activity.items.iter().any(|item| matches!(
+        item.draft.fact,
+        pod0_application::ActivityFact::EffectObserved {
+            outcome: pod0_application::EffectOutcome::Succeeded,
+            ..
+        }
+    )));
+    let durable_states: (i64, i64) = rusqlite::Connection::open(&fixture.target)
+        .unwrap()
+        .query_row(
+            "SELECT
+             (SELECT count(*) FROM pod0_internal_command_intents WHERE state_code=2),
+             (SELECT count(*) FROM pod0_effect_intents WHERE effect_kind_code=3 AND state_code=3)",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(durable_states, (1, 1));
     let projected = workflow(&fixture.facade, fixture.episode_id);
     assert_eq!(projected.stage, TranscriptWorkflowStage::Succeeded);
     assert!(projected.failure.is_none());
@@ -95,95 +199,7 @@ fn transcript_workflow_commits_indexes_and_survives_relaunch() {
     );
 }
 
-#[test]
-fn automatic_policy_admits_background_transcript_work() {
-    let fixture = PlaybackFixture::new();
-    ensure_automatic(&fixture, 20);
-
-    assert!(has_transcript_request(&fixture.facade));
-    assert_eq!(transcript_workflow_count(&fixture.facade), 1);
-}
-
-#[test]
-fn when_played_policy_defers_automatic_work_until_play_and_deduplicates_replays() {
-    let fixture = PlaybackFixture::new();
-    set_transcript_policy(&fixture, TranscriptStartPolicy::WhenPlayed, 30);
-    ensure_automatic(&fixture, 31);
-
-    assert!(!has_transcript_request(&fixture.facade));
-    assert_eq!(transcript_workflow_count(&fixture.facade), 0);
-
-    fixture.dispatch(
-        32,
-        PlaybackCommand::Play {
-            transcript_configuration: Some(configuration()),
-        },
-    );
-    assert!(has_transcript_request(&fixture.facade));
-    assert_eq!(transcript_workflow_count(&fixture.facade), 1);
-
-    fixture.dispatch(
-        33,
-        PlaybackCommand::Play {
-            transcript_configuration: Some(configuration()),
-        },
-    );
-    assert!(!has_transcript_request(&fixture.facade));
-    assert_eq!(transcript_workflow_count(&fixture.facade), 1);
-}
-
-fn set_transcript_policy(fixture: &PlaybackFixture, policy: TranscriptStartPolicy, command: u64) {
-    fixture.facade.dispatch(CommandEnvelope {
-        command_id: CommandId::from_parts(70, command),
-        cancellation_id: CancellationId::from_parts(71, command),
-        expected_revision: None,
-        command: ApplicationCommand::SetSubscriptionTranscriptStartPolicy {
-            podcast_id: fixture.podcast_id,
-            policy,
-        },
-    });
-}
-
-fn ensure_automatic(fixture: &PlaybackFixture, command: u64) {
-    fixture.facade.dispatch(CommandEnvelope {
-        command_id: CommandId::from_parts(70, command),
-        cancellation_id: CancellationId::from_parts(71, command),
-        expected_revision: None,
-        command: ApplicationCommand::EnsureTranscriptWorkflow {
-            episode_id: fixture.episode_id,
-            origin: TranscriptWorkflowOrigin::Automatic,
-            configuration: configuration(),
-        },
-    });
-}
-
-fn has_transcript_request(facade: &Pod0Facade) -> bool {
-    facade
-        .next_host_requests(u16::MAX)
-        .into_iter()
-        .any(|request| {
-            matches!(
-                request.request,
-                HostRequest::ExecuteTranscriptCapability { .. }
-            )
-        })
-}
-
-fn transcript_workflow_count(facade: &Pod0Facade) -> usize {
-    let Projection::TranscriptWorkflows { value } = facade
-        .snapshot(ProjectionRequest {
-            scope: ProjectionScope::TranscriptWorkflows { episode_id: None },
-            offset: 0,
-            max_items: 20,
-        })
-        .projection
-    else {
-        panic!("expected transcript workflow projection");
-    };
-    value.workflows.len()
-}
-
-fn configuration() -> TranscriptWorkflowConfiguration {
+pub(super) fn configuration() -> TranscriptWorkflowConfiguration {
     TranscriptWorkflowConfiguration {
         provider: TranscriptProvider::AssemblyAi,
         model: "universal-2".into(),
@@ -194,7 +210,7 @@ fn configuration() -> TranscriptWorkflowConfiguration {
     }
 }
 
-fn transcript(context: &TranscriptCapabilityContext) -> TranscriptArtifactInput {
+pub(super) fn transcript(context: &TranscriptCapabilityContext) -> TranscriptArtifactInput {
     TranscriptArtifactInput {
         episode_id: context.episode_id,
         podcast_id: context.podcast_id,
@@ -215,7 +231,7 @@ fn transcript(context: &TranscriptCapabilityContext) -> TranscriptArtifactInput 
     }
 }
 
-fn workflow(facade: &Pod0Facade, episode_id: EpisodeId) -> TranscriptWorkflowProjection {
+pub(super) fn workflow(facade: &Pod0Facade, episode_id: EpisodeId) -> TranscriptWorkflowProjection {
     let Projection::TranscriptWorkflows { value } = facade
         .snapshot(ProjectionRequest {
             scope: ProjectionScope::TranscriptWorkflows {

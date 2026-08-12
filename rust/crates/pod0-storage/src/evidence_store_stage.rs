@@ -27,62 +27,72 @@ impl EvidenceStore {
     where
         F: FnOnce() -> Result<(), StorageError>,
     {
-        artifact
-            .verify_integrity()
-            .map_err(crate::evidence_codec::artifact_error)?;
-        validate_sqlite_values(artifact)?;
-        let generation_id = artifact.generation_id;
-        let command_fingerprint = fingerprint(
-            EvidenceOperation::Stage,
-            generation_id,
-            None,
-            Some(artifact.integrity_digest),
-        );
         self.write(|transaction| {
-            if let Some(stored) = replay(transaction, command_id, command_fingerprint)? {
-                if stored.operation != EvidenceOperation::Stage
-                    || stored.generation_id != generation_id
-                    || stored.episode_id.is_some()
-                {
-                    return Err(StorageError::EvidenceCommandConflict);
-                }
-                return Ok(EvidenceStageReceipt {
-                    generation_id,
-                    already_present: stored.result,
-                });
-            }
-            require_episode_parent(transaction, artifact)?;
-            let already_present = match read_artifact(transaction, generation_id)? {
-                Some(stored) if stored == *artifact => true,
-                Some(_) => return Err(StorageError::InvalidEvidenceArtifact),
-                None => {
-                    insert_artifact(transaction, artifact, staged_at_ms)?;
-                    let stored = read_artifact(transaction, generation_id)?
-                        .ok_or(StorageError::InvalidEvidenceArtifact)?;
-                    if stored != *artifact {
-                        return Err(StorageError::InvalidEvidenceArtifact);
-                    }
-                    false
-                }
-            };
-            record(
-                transaction,
-                command_id,
-                EvidenceOperation::Stage,
-                command_fingerprint,
-                generation_id,
-                None,
-                None,
-                already_present,
-                staged_at_ms,
-            )?;
+            let receipt = apply_evidence_stage(transaction, command_id, artifact, staged_at_ms)?;
             before_commit()?;
-            Ok(EvidenceStageReceipt {
-                generation_id,
-                already_present,
-            })
+            Ok(receipt)
         })
     }
+}
+
+pub(crate) fn apply_evidence_stage(
+    transaction: &Transaction<'_>,
+    command_id: CommandId,
+    artifact: &TranscriptEvidenceArtifact,
+    staged_at_ms: i64,
+) -> Result<EvidenceStageReceipt, StorageError> {
+    artifact
+        .verify_integrity()
+        .map_err(crate::evidence_codec::artifact_error)?;
+    validate_sqlite_values(artifact)?;
+    let generation_id = artifact.generation_id;
+    let command_fingerprint = fingerprint(
+        EvidenceOperation::Stage,
+        generation_id,
+        None,
+        Some(artifact.integrity_digest),
+    );
+    if let Some(stored) = replay(transaction, command_id, command_fingerprint)? {
+        if stored.operation != EvidenceOperation::Stage
+            || stored.generation_id != generation_id
+            || stored.episode_id.is_some()
+        {
+            return Err(StorageError::EvidenceCommandConflict);
+        }
+        return Ok(EvidenceStageReceipt {
+            generation_id,
+            already_present: stored.result,
+        });
+    }
+    require_episode_parent(transaction, artifact)?;
+    let already_present = match read_artifact(transaction, generation_id)? {
+        Some(stored) if stored == *artifact => true,
+        Some(_) => return Err(StorageError::InvalidEvidenceArtifact),
+        None => {
+            insert_artifact(transaction, artifact, staged_at_ms)?;
+            let stored = read_artifact(transaction, generation_id)?
+                .ok_or(StorageError::InvalidEvidenceArtifact)?;
+            if stored != *artifact {
+                return Err(StorageError::InvalidEvidenceArtifact);
+            }
+            false
+        }
+    };
+    record(
+        transaction,
+        command_id,
+        EvidenceOperation::Stage,
+        command_fingerprint,
+        generation_id,
+        None,
+        None,
+        already_present,
+        staged_at_ms,
+    )?;
+    Ok(EvidenceStageReceipt {
+        generation_id,
+        already_present,
+    })
 }
 
 fn require_episode_parent(

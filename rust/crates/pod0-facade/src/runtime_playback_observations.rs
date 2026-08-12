@@ -63,6 +63,7 @@ impl FacadeState {
             return;
         }
         self.checkpoint_observation(
+            &reaction,
             episode_id,
             value.position_milliseconds,
             observed_at_ms,
@@ -88,6 +89,7 @@ impl FacadeState {
 
     pub(super) fn checkpoint_observation(
         &mut self,
+        reaction: &CommandEnvelope,
         episode_id: EpisodeId,
         position_milliseconds: u64,
         observed_at_ms: i64,
@@ -117,19 +119,15 @@ impl FacadeState {
         ) {
             return;
         }
-        let result = self
-            .store
-            .as_ref()
-            .ok_or(pod0_storage::StorageError::CutoverNotAuthoritative)
-            .and_then(|store| {
-                store.apply_playback_observation(
-                    PlaybackMutation::Checkpoint {
-                        episode_id,
-                        position_milliseconds,
-                    },
-                    observed_at_ms,
-                )
-            });
+        let result = self.commit_playback_observation_mutation(
+            reaction,
+            "checkpoint",
+            PlaybackMutation::Checkpoint {
+                episode_id,
+                position_milliseconds,
+            },
+            observed_at_ms,
+        );
         match result {
             Ok(_) => {
                 self.playback.last_position_commit_at_ms = Some(observed_at_ms);

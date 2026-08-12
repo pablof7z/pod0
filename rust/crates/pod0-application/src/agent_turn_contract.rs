@@ -94,7 +94,7 @@ pub struct AgentCapabilityRequest {
     pub action: AgentToolAction,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum AgentCapabilityOutcome {
     Succeeded {
         bounded_result: String,

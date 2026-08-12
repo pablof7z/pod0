@@ -68,6 +68,7 @@ pub enum PlaybackCommand {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum QueuePlacement {
+    Now,
     Back,
     Next,
     Unsupported { wire_code: u32 },

@@ -1,12 +1,14 @@
+use super::tests::{next_leased_agent_request, record_leased_agent_observation};
 use crate::runtime_recall_test_support::RecallFixture;
 use crate::*;
 
 pub(super) fn propose_query(fixture: &RecallFixture) {
-    let model = fixture.base.facade.next_host_requests(1).remove(0);
-    let HostRequest::ExecuteAgentModelTurn { execution } = &model.request else {
+    let model = next_leased_agent_request(&fixture.base.facade);
+    let HostRequest::ExecuteAgentModelTurn { execution } = &model.request.request else {
         panic!("expected model request");
     };
-    fixture.base.facade.record_host_observation(observe(
+    record_leased_agent_observation(
+        &fixture.base.facade,
         &model,
         HostObservation::AgentModelCompleted {
             turn_id: execution.turn_id,
@@ -22,15 +24,16 @@ pub(super) fn propose_query(fixture: &RecallFixture) {
             }),
             usage: None,
         },
-    ));
+    );
 }
 
 pub(super) fn approve_next(fixture: &RecallFixture) {
-    let approval = fixture.base.facade.next_host_requests(1).remove(0);
-    let HostRequest::PresentAgentApproval { approval: request } = &approval.request else {
+    let approval = next_leased_agent_request(&fixture.base.facade);
+    let HostRequest::PresentAgentApproval { approval: request } = &approval.request.request else {
         panic!("expected approval request");
     };
-    fixture.base.facade.record_host_observation(observe(
+    record_leased_agent_observation(
+        &fixture.base.facade,
         &approval,
         HostObservation::AgentApprovalObserved {
             turn_id: request.turn_id,
@@ -38,7 +41,7 @@ pub(super) fn approve_next(fixture: &RecallFixture) {
             proposal_digest: request.proposal.proposal_digest,
             decision: AgentApprovalDecision::Approve,
         },
-    ));
+    );
 }
 
 pub(super) fn start_command(id: u64) -> CommandEnvelope {

@@ -1,5 +1,6 @@
 use crate::runtime_playback_test_support::PlaybackFixture;
 use crate::*;
+use pod0_application::{ActivityFact, CommandActivityIdentity, RequestDisposition};
 
 fn clips(facade: &Pod0Facade, scope: ClipProjectionScope) -> ClipsProjection {
     let Projection::Clips { value } = facade
@@ -32,6 +33,15 @@ fn operation(projection: &ClipsProjection, id: u64) -> &OperationProjection {
         .expect("clip operation should be projected")
 }
 
+fn activity(fixture: &PlaybackFixture, id: u64) -> Vec<pod0_application::CommittedActivityFact> {
+    let correlation = CommandActivityIdentity::new(CommandId::from_parts(40, id)).correlation_id();
+    pod0_storage::ActivityStore::open(&fixture.target)
+        .unwrap()
+        .page_for_correlation(correlation, None, 20)
+        .unwrap()
+        .items
+}
+
 fn create(fixture: &PlaybackFixture, id: u64, clip_id: ClipId) -> CommandEnvelope {
     envelope(
         id,
@@ -59,6 +69,7 @@ fn clip_commands_are_single_writer_revision_checked_and_restart_durable() {
     assert_eq!(created.clips.len(), 1);
     assert_eq!(created.clips[0].clip_id, clip_id);
     assert_eq!(created.clips[0].revision, ClipRevision::INITIAL);
+    assert_eq!(activity(&fixture, 1).len(), 2);
     assert!(matches!(
         operation(&created, 1).result,
         Some(OperationResult::ClipCreated {
@@ -89,6 +100,7 @@ fn clip_commands_are_single_writer_revision_checked_and_restart_durable() {
     assert_eq!(updated.clips[0].revision, ClipRevision::new(2));
     assert_eq!(updated.clips[0].start_milliseconds, 10_500);
     assert_eq!(updated.clips[0].caption.as_deref(), Some("Refined"));
+    assert_eq!(activity(&fixture, 2).len(), 2);
     assert_eq!(
         clips(&fixture.facade, ClipProjectionScope::Clip { clip_id },).clips,
         updated.clips
@@ -115,6 +127,7 @@ fn clip_commands_are_single_writer_revision_checked_and_restart_durable() {
             ..
         })
     ));
+    assert_eq!(activity(&fixture, 3).len(), 1);
 
     fixture.facade.dispatch(envelope(
         4,
@@ -129,6 +142,7 @@ fn clip_commands_are_single_writer_revision_checked_and_restart_durable() {
             .clips
             .is_empty()
     );
+    assert_eq!(activity(&fixture, 4).len(), 2);
     let reopened = Pod0Facade::open(fixture.target.to_string_lossy().into_owned()).unwrap();
     let recovered = clips(&reopened, ClipProjectionScope::All);
     assert!(recovered.clips[0].deleted);
@@ -145,6 +159,7 @@ fn clip_commands_are_single_writer_revision_checked_and_restart_durable() {
         Some(OperationResult::ClipsCleared { collection_revision })
             if collection_revision.value > recovered.collection_revision.value
     ));
+    assert_eq!(activity(&fixture, 5).len(), 2);
 
     reopened.dispatch(envelope(
         6,
@@ -198,6 +213,14 @@ fn clip_validation_and_command_replay_have_typed_deterministic_outcomes() {
             ..
         })
     ));
+    let rejected = activity(&fixture, 10);
+    assert_eq!(rejected.len(), 1);
+    assert!(matches!(
+        rejected[0].draft.fact,
+        ActivityFact::RequestDisposition {
+            disposition: RequestDisposition::Rejected { .. }
+        }
+    ));
 
     let command = create(&fixture, 11, clip_id);
     fixture.facade.dispatch(command.clone());
@@ -207,4 +230,5 @@ fn clip_validation_and_command_replay_have_typed_deterministic_outcomes() {
     let replayed = clips(&reopened, ClipProjectionScope::All);
     assert_eq!(replayed.clips.len(), 1);
     assert_eq!(replayed.collection_revision, first.collection_revision);
+    assert_eq!(activity(&fixture, 11).len(), 2);
 }

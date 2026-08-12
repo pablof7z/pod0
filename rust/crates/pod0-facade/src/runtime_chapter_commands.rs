@@ -1,5 +1,5 @@
 use pod0_application::{ChapterCommitReceipt, CommandEnvelope, OperationResult};
-use pod0_domain::{ChapterArtifactInput, StateRevision};
+use pod0_domain::{ChapterArtifactInput, ContentDigest, StateRevision};
 
 use crate::runtime_state::FacadeState;
 use crate::runtime_storage_commands::storage_failure;
@@ -8,6 +8,7 @@ impl FacadeState {
     pub(super) fn commit_chapter(
         &mut self,
         envelope: &CommandEnvelope,
+        activity_fingerprint: ContentDigest,
         expected_selection_revision: StateRevision,
         artifact: ChapterArtifactInput,
     ) {
@@ -17,8 +18,9 @@ impl FacadeState {
             .as_ref()
             .ok_or(pod0_storage::StorageError::CutoverNotAuthoritative)
             .and_then(|store| {
-                store.commit_and_select_chapter(
+                store.commit_and_select_chapter_with_activity_fingerprint(
                     envelope.command_id,
+                    activity_fingerprint,
                     expected_selection_revision,
                     artifact,
                     completed_at_ms,

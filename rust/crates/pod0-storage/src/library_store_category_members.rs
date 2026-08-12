@@ -3,9 +3,8 @@ use rusqlite::params;
 
 use crate::StorageError;
 use crate::category_store_model::encode_item_kind;
-use crate::category_store_read::category_exists;
 use crate::category_store_write_support::{bump_category, finish_category_command};
-use crate::library_store::{LibraryStore, command_was_applied};
+use crate::library_store::LibraryStore;
 
 impl LibraryStore {
     /// Adds and removes members in one command. `resolve` maps a
@@ -23,55 +22,16 @@ impl LibraryStore {
         resolve: impl Fn(LibraryItemId) -> Option<CategoryItemKind>,
         observed_at_ms: i64,
     ) -> Result<(StateRevision, usize, usize), StorageError> {
-        self.write(|transaction| {
-            if let Some(revision) =
-                command_was_applied(transaction, command_id, command_fingerprint)?
-            {
-                return Ok((revision, 0, 0));
-            }
-            if !category_exists(transaction, category_id)? {
-                return Err(StorageError::EntityNotFound);
-            }
-            let mut added = 0;
-            for item in add {
-                let kind = resolve(*item).ok_or(StorageError::EntityNotFound)?;
-                let changed = transaction
-                    .execute(
-                        "INSERT INTO pod0_category_members(category_id,item_id,item_kind_code,\
-                         added_at_ms) VALUES(?1,?2,?3,?4) \
-                         ON CONFLICT(category_id,item_id) DO NOTHING",
-                        params![
-                            category_id.into_bytes().as_slice(),
-                            item.into_bytes().as_slice(),
-                            encode_item_kind(kind)?,
-                            observed_at_ms,
-                        ],
-                    )
-                    .map_err(|error| StorageError::sqlite("add category member", error))?;
-                added += changed;
-            }
-            let mut removed = 0;
-            for item in remove {
-                let changed = transaction
-                    .execute(
-                        "DELETE FROM pod0_category_members WHERE category_id=?1 AND item_id=?2",
-                        params![
-                            category_id.into_bytes().as_slice(),
-                            item.into_bytes().as_slice(),
-                        ],
-                    )
-                    .map_err(|error| StorageError::sqlite("remove category member", error))?;
-                removed += changed;
-            }
-            bump_category(transaction, category_id, observed_at_ms)?;
-            let revision = finish_category_command(
-                transaction,
-                command_id,
-                command_fingerprint,
-                observed_at_ms,
-            )?;
-            Ok((revision, added, removed))
-        })
+        crate::transition_commit::commit_category_tag(
+            self.path(),
+            command_id,
+            command_fingerprint,
+            category_id,
+            add,
+            remove,
+            resolve,
+            observed_at_ms,
+        )
     }
 
     /// Every category an item currently belongs to. Backs "which lenses does
@@ -107,4 +67,38 @@ impl LibraryStore {
             Ok(ids)
         })
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn tag_category_items_in_transaction(
+    transaction: &rusqlite::Transaction<'_>,
+    command_id: CommandId,
+    fingerprint: &str,
+    category_id: CategoryId,
+    add: &[(LibraryItemId, CategoryItemKind)],
+    remove: &[LibraryItemId],
+    observed_at_ms: i64,
+) -> Result<(StateRevision, usize, usize), StorageError> {
+    let mut added = 0;
+    for (item, kind) in add {
+        added += transaction.execute(
+            "INSERT INTO pod0_category_members(category_id,item_id,item_kind_code,added_at_ms) VALUES(?1,?2,?3,?4) ON CONFLICT(category_id,item_id) DO NOTHING",
+            params![category_id.into_bytes().as_slice(), item.into_bytes().as_slice(), encode_item_kind(*kind)?, observed_at_ms],
+        ).map_err(|error| StorageError::sqlite("add category member", error))?;
+    }
+    let mut removed = 0;
+    for item in remove {
+        removed += transaction
+            .execute(
+                "DELETE FROM pod0_category_members WHERE category_id=?1 AND item_id=?2",
+                params![
+                    category_id.into_bytes().as_slice(),
+                    item.into_bytes().as_slice()
+                ],
+            )
+            .map_err(|error| StorageError::sqlite("remove category member", error))?;
+    }
+    bump_category(transaction, category_id, observed_at_ms)?;
+    let revision = finish_category_command(transaction, command_id, fingerprint, observed_at_ms)?;
+    Ok((revision, added, removed))
 }

@@ -1,16 +1,6 @@
+use super::tests::{next_leased_agent_request, record_leased_agent_observation};
 use crate::runtime_playback_test_support::PlaybackFixture;
 use crate::*;
-
-fn observe(request: &HostRequestEnvelope, observation: HostObservation) -> HostObservationEnvelope {
-    HostObservationEnvelope {
-        request_id: request.request_id,
-        cancellation_id: request.cancellation_id,
-        observed_request_revision: request.issued_revision,
-        sequence_number: 1,
-        observed_at: UnixTimestampMilliseconds::new(1_900_000_000_000),
-        observation,
-    }
-}
 
 fn turn(facade: &Pod0Facade, command_id: CommandId) -> AgentTurnProjection {
     let conversation_id = ConversationId::from_bytes(command_id.into_bytes());
@@ -41,11 +31,12 @@ fn successful_native_action_queues_one_tool_free_final_answer() {
         },
     };
     fixture.facade.dispatch(start.clone());
-    let model = fixture.facade.next_host_requests(8).remove(0);
-    let HostRequest::ExecuteAgentModelTurn { execution } = &model.request else {
+    let model = next_leased_agent_request(&fixture.facade);
+    let HostRequest::ExecuteAgentModelTurn { execution } = &model.request.request else {
         panic!("expected model request");
     };
-    fixture.facade.record_host_observation(observe(
+    record_leased_agent_observation(
+        &fixture.facade,
         &model,
         HostObservation::AgentModelCompleted {
             turn_id: execution.turn_id,
@@ -58,12 +49,13 @@ fn successful_native_action_queues_one_tool_free_final_answer() {
             }),
             usage: None,
         },
-    ));
-    let approval = fixture.facade.next_host_requests(8).remove(0);
-    let HostRequest::PresentAgentApproval { approval: request } = &approval.request else {
+    );
+    let approval = next_leased_agent_request(&fixture.facade);
+    let HostRequest::PresentAgentApproval { approval: request } = &approval.request.request else {
         panic!("expected approval request");
     };
-    fixture.facade.record_host_observation(observe(
+    record_leased_agent_observation(
+        &fixture.facade,
         &approval,
         HostObservation::AgentApprovalObserved {
             turn_id: request.turn_id,
@@ -71,15 +63,16 @@ fn successful_native_action_queues_one_tool_free_final_answer() {
             proposal_digest: request.proposal.proposal_digest,
             decision: AgentApprovalDecision::Approve,
         },
-    ));
-    let capability = fixture.facade.next_host_requests(8).remove(0);
+    );
+    let capability = next_leased_agent_request(&fixture.facade);
     let HostRequest::ExecuteAgentCapability {
         capability: request,
-    } = &capability.request
+    } = &capability.request.request
     else {
         panic!("expected native capability request");
     };
-    fixture.facade.record_host_observation(observe(
+    record_leased_agent_observation(
+        &fixture.facade,
         &capability,
         HostObservation::AgentCapabilityObserved {
             turn_id: request.turn_id,
@@ -89,10 +82,10 @@ fn successful_native_action_queues_one_tool_free_final_answer() {
                 bounded_result: r#"{"paused":true}"#.to_owned(),
             },
         },
-    ));
+    );
 
-    let continuation = fixture.facade.next_host_requests(8).remove(0);
-    let HostRequest::ExecuteAgentModelTurn { execution } = &continuation.request else {
+    let continuation = next_leased_agent_request(&fixture.facade);
+    let HostRequest::ExecuteAgentModelTurn { execution } = &continuation.request.request else {
         panic!("expected final model continuation");
     };
     assert!(execution.tool_definitions.is_empty());

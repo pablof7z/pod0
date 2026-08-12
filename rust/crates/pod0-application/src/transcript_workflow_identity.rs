@@ -1,6 +1,7 @@
 use pod0_domain::{
-    ContentDigest, EpisodeId, SpeakerId, TranscriptAttemptId, TranscriptSubmissionFenceId,
-    TranscriptVersionId, TranscriptWorkflowId, UnixTimestampMilliseconds,
+    ContentDigest, EpisodeId, HostRequestId, SpeakerId, TranscriptAttemptId,
+    TranscriptSubmissionFenceId, TranscriptVersionId, TranscriptWorkflowId,
+    UnixTimestampMilliseconds,
 };
 use sha2::{Digest as _, Sha256};
 
@@ -59,6 +60,21 @@ pub fn transcript_attempt_id(
     hash.bytes(&workflow_id.into_bytes());
     hash.u64(u64::from(attempt));
     Some(TranscriptAttemptId::from_bytes(hash.first_16()))
+}
+
+#[must_use]
+pub fn transcript_workflow_request_id(
+    workflow_id: TranscriptWorkflowId,
+    attempt: u16,
+    publisher: bool,
+) -> HostRequestId {
+    let mut hash = Sha256::new();
+    hash.update(b"pod0-transcript-host-request-v1\0");
+    hash.update(workflow_id.into_bytes());
+    hash.update(attempt.to_be_bytes());
+    hash.update([u8::from(publisher)]);
+    let digest = hash.finalize();
+    HostRequestId::from_bytes(digest[..16].try_into().expect("digest prefix"))
 }
 
 #[must_use]

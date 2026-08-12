@@ -62,6 +62,7 @@ fn invalid_action_fails_before_authorization_or_execution() {
             query: "x".into(),
             scope: None,
             limit: 1,
+            execute_first: false,
         }),
         usage: None,
         observed_at: at(20),

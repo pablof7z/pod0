@@ -1,3 +1,4 @@
+import Pod0Core
 import SwiftUI
 
 // MARK: - EpisodeAuditLogView
@@ -19,11 +20,12 @@ struct EpisodeAuditLogView: View {
     @Environment(WorkflowClient.self) private var workflows
     @Environment(\.dismiss) private var dismiss
 
-    @State private var auditStore = EpisodeAuditLogStore.shared
-    @State private var expandedEventIDs: Set<UUID> = []
+    @State private var activityPage: EpisodeActivityPage?
+    @State private var expandedSequences: Set<UInt64> = []
+    @State private var isLoadingActivity = false
     @State private var actionNotice: WorkflowActionNotice?
-    private var events: [EpisodeAuditEvent] {
-        auditStore.eventsNewestFirst(for: episode.id)
+    private var events: [EpisodeActivityEntry] {
+        activityPage.map { Array($0.items.reversed()) } ?? []
     }
 
     var body: some View {
@@ -42,14 +44,8 @@ struct EpisodeAuditLogView: View {
                     Button("Done") { dismiss() }
                 }
                 ToolbarItem(placement: .topBarLeading) {
-                    Menu {
-                        Button(role: .destructive) {
-                            EpisodeAuditLogStore.shared.clear(episodeID: episode.id)
-                        } label: {
-                            Label("Clear log", systemImage: "trash")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
+                    Button("Refresh", systemImage: "arrow.clockwise") {
+                        Task { await loadActivity() }
                     }
                 }
             }
@@ -65,6 +61,7 @@ struct EpisodeAuditLogView: View {
             subjectIDs: [episode.id],
             kinds: WorkflowProjectionKind.allCases
         )
+        .task(id: activityRefreshToken) { await loadActivity() }
     }
     // MARK: - Sections
 
@@ -136,12 +133,6 @@ struct EpisodeAuditLogView: View {
     }
 
     private func requestTranscript() {
-        EpisodeAuditLogStore.shared.record(
-            episodeID: episode.id,
-            kind: .transcriptRetryRequested,
-            severity: .info,
-            summary: "User requested a transcript from Diagnostics"
-        )
         workflows.requestTranscript(episodeID: episode.id)
     }
 
@@ -152,18 +143,23 @@ struct EpisodeAuditLogView: View {
     @ViewBuilder
     private var eventsSection: some View {
         Section {
-            if events.isEmpty {
+            if isLoadingActivity, activityPage == nil {
+                ProgressView()
+            } else if activityPage?.available == false {
+                Text("The durable activity journal is unavailable.")
+                    .foregroundStyle(.secondary)
+            } else if events.isEmpty {
                 emptyState
             } else {
-                ForEach(events) { event in
-                    EpisodeAuditEventRow(
-                        event: event,
-                        isExpanded: expandedEventIDs.contains(event.id),
+                ForEach(events, id: \.sequence) { event in
+                    EpisodeActivityEntryRow(
+                        entry: event,
+                        isExpanded: expandedSequences.contains(event.sequence),
                         onToggle: {
-                            if expandedEventIDs.contains(event.id) {
-                                expandedEventIDs.remove(event.id)
+                            if expandedSequences.contains(event.sequence) {
+                                expandedSequences.remove(event.sequence)
                             } else {
-                                expandedEventIDs.insert(event.id)
+                                expandedSequences.insert(event.sequence)
                             }
                         }
                     )
@@ -207,7 +203,7 @@ struct EpisodeAuditLogView: View {
         HStack(spacing: 12) {
             Image(systemName: "tray")
                 .foregroundStyle(.secondary)
-            Text("No events recorded yet. Trigger a download or transcription to populate the log.")
+            Text("No durable activity has been recorded for this episode.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
@@ -244,90 +240,23 @@ struct EpisodeAuditLogView: View {
     private func jobSummary(_ job: WorkflowJobProjection?) -> String? {
         job.map { WorkflowDiagnosticPresenter.stateTitle($0.state).lowercased() }
     }
-}
 
-// MARK: - Row
-
-private struct EpisodeAuditEventRow: View {
-    let event: EpisodeAuditEvent
-    let isExpanded: Bool
-    let onToggle: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Button(action: onToggle) {
-                HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: event.kind.iconName)
-                        .font(.system(size: 16))
-                        .foregroundStyle(tint)
-                        .frame(width: 22, alignment: .center)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(event.kind.displayLabel)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.primary)
-                        Text(EpisodeAuditPresentation.summary(for: event))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.leading)
-                    }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text(event.timestamp, style: .time)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                        Text(event.timestamp, format: .dateTime.month(.abbreviated).day())
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-            }
-            .buttonStyle(.plain)
-            if isExpanded {
-                detailGrid
-                    .padding(.leading, 34)
-            }
-        }
-        .padding(.vertical, 2)
+    private var activityRefreshToken: String {
+        workflowJobs
+            .map { "\($0.id):\($0.updatedAt.timeIntervalSince1970)" }
+            .joined(separator: "|")
     }
 
-    @ViewBuilder
-    private var detailGrid: some View {
-        if safeDetails.isEmpty {
-            Text("No additional detail captured.")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-        } else {
-            VStack(alignment: .leading, spacing: 4) {
-                ForEach(Array(safeDetails.enumerated()), id: \.offset) { _, detail in
-                    HStack(alignment: .top, spacing: 8) {
-                        Text(detail.label)
-                            .font(.caption2.weight(.medium))
-                            .foregroundStyle(.secondary)
-                            .frame(minWidth: 84, alignment: .leading)
-                        Text(detail.value)
-                            .font(.system(.caption2, design: .monospaced))
-                            .foregroundStyle(.primary)
-                            .textSelection(.enabled)
-                            .lineLimit(nil)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-            }
-            .padding(.vertical, 4)
+    private func loadActivity() async {
+        guard let facade = store.sharedLibrary?.facade else {
+            activityPage = nil
+            return
         }
-    }
-
-    private var safeDetails: [EpisodeAuditEvent.Detail] {
-        EpisodeAuditPresentation.details(for: event)
-    }
-
-    private var tint: Color {
-        switch event.severity {
-        case .info: return .secondary
-        case .success: return AppTheme.Tint.success
-        case .warning: return AppTheme.Tint.warning
-        case .failure: return AppTheme.Tint.error
-        }
+        isLoadingActivity = true
+        activityPage = await CoreEpisodeActivityReader.shared.page(
+            for: EpisodeId(uuid: episode.id),
+            from: facade
+        )
+        isLoadingActivity = false
     }
 }

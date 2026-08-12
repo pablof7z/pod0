@@ -16,17 +16,11 @@ pub(super) fn agent_execution_fence_id(
     proposal_id: AgentProposalId,
     digest: ContentDigest,
 ) -> AgentExecutionFenceId {
-    AgentExecutionFenceId::from_bytes(derived(
-        b"pod0:agent-execution-fence:v1",
-        &[&proposal_id.into_bytes(), &digest.into_bytes()],
-    ))
+    pod0_application::agent_execution_fence_id(proposal_id, digest)
 }
 
 pub(super) fn agent_authorization_id(request_id: HostRequestId) -> AgentAuthorizationId {
-    AgentAuthorizationId::from_bytes(derived(
-        b"pod0:agent-authorization:v1",
-        &[&request_id.into_bytes()],
-    ))
+    pod0_application::agent_authorization_id(request_id)
 }
 
 pub(super) fn model_fence_id(turn_id: AgentTurnId) -> AgentExecutionFenceId {
@@ -40,20 +34,14 @@ pub(super) fn continuation_model_fence_id(
     turn_id: AgentTurnId,
     revision: StateRevision,
 ) -> AgentExecutionFenceId {
-    AgentExecutionFenceId::from_bytes(derived(
-        b"pod0:agent-continuation-model-fence:v1",
-        &[&turn_id.into_bytes(), &revision.value.to_be_bytes()],
-    ))
+    pod0_application::continuation_model_fence_id(turn_id, revision)
 }
 
-pub(super) fn model_request_id(
+pub(crate) fn model_request_id(
     turn_id: AgentTurnId,
     fence_id: AgentExecutionFenceId,
 ) -> HostRequestId {
-    HostRequestId::from_bytes(derived(
-        b"pod0:agent-model-request:v1",
-        &[&turn_id.into_bytes(), &fence_id.into_bytes()],
-    ))
+    pod0_application::agent_model_request_id(turn_id, fence_id)
 }
 
 pub(super) fn approval_request_id(
@@ -61,14 +49,7 @@ pub(super) fn approval_request_id(
     proposal_id: AgentProposalId,
     digest: ContentDigest,
 ) -> HostRequestId {
-    HostRequestId::from_bytes(derived(
-        b"pod0:agent-approval-request:v1",
-        &[
-            &turn_id.into_bytes(),
-            &proposal_id.into_bytes(),
-            &digest.into_bytes(),
-        ],
-    ))
+    pod0_application::agent_approval_request_id(turn_id, proposal_id, digest)
 }
 
 pub(super) fn capability_request_id(
@@ -76,14 +57,7 @@ pub(super) fn capability_request_id(
     proposal_id: AgentProposalId,
     fence_id: AgentExecutionFenceId,
 ) -> HostRequestId {
-    HostRequestId::from_bytes(derived(
-        b"pod0:agent-capability-request:v1",
-        &[
-            &turn_id.into_bytes(),
-            &proposal_id.into_bytes(),
-            &fence_id.into_bytes(),
-        ],
-    ))
+    pod0_application::agent_capability_request_id(turn_id, proposal_id, fence_id)
 }
 
 pub(super) fn agent_fingerprint(domain: &[u8], parts: &[&[u8]]) -> [u8; 32] {

@@ -27,7 +27,9 @@ impl FacadeState {
                 entity_tag,
                 last_modified,
                 ..
-            } => self.apply_fetched_feed(&record, &bytes, entity_tag, last_modified, observed_at_ms),
+            } => {
+                self.apply_fetched_feed(&record, &bytes, entity_tag, last_modified, observed_at_ms)
+            }
             HostObservation::FeedNotModified {
                 entity_tag,
                 last_modified,

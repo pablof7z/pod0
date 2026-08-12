@@ -80,6 +80,17 @@
       ]
     },
     {
+      "id": "native-nmp-sdk-adapter",
+      "classification": "native_by_design",
+      "current_owner": "Swift adoption point for the upstream NMP engine, account store, write intents, and receipt facts",
+      "target_owner": "Swift and future Kotlin adapters over the upstream NMP SDK",
+      "reason": "NMP owns platform-integrated identity, signing, routing, transport, and receipt mechanics while Pod0 Rust owns publication intent and durable product state.",
+      "boundary": "Translate typed Pod0 publication drafts into generic NMP write intents and map NMP receipt facts back into typed observations; do not implement signing, relay policy, or durable Pod0 product decisions.",
+      "persisted_state": "NMP-owned engine and account checkpoints only; Pod0 publication state and receipt links remain Rust-owned.",
+      "priority": "keep_native",
+      "includes": ["App/Sources/NMP/"]
+    },
+    {
       "id": "temporary-scheduled-agent-workflow-cutover",
       "classification": "temporary_swift",
       "current_owner": "Swift one-shot scheduled-agent source reader, immutable rollback manifest, and exact retirement transaction",
@@ -372,7 +383,7 @@
       "current_owner": "Rust owns interactive and scheduled turn state, conversation history, model usage, generated audio provenance, tool identity, permissions, fences, supported commits, and publication receipts; Swift retains typed provider/platform capabilities, transient presentation streams, and decode-only rollback compatibility",
       "target_owner": "Pod0 Rust agent/application layer",
       "reason": "Tool validation, permission, durable commits, jobs, and generated artifact policy must be identical across platforms.",
-      "boundary": "ADR-0008 and agent-tool-permissions.json require typed Rust proposals, durable grants, effect fences, commits, and bounded projections. Native presents conversations/approvals and returns raw observations for typed platform capabilities. pod0-nmp alone owns generic NMP engine, signing, routing, and receipt facts; the app facade accepts no relay selection.",
+      "boundary": "ADR-0008 and agent-tool-permissions.json require typed Rust proposals, durable grants, effect fences, commits, and bounded projections. Native presents conversations/approvals and returns raw observations for typed platform capabilities. The upstream NMP SDK alone owns the engine, identity, signing, routing, and receipt facts; the app facade accepts no relay selection.",
       "persisted_state": "Rust SQLite owns conversations, turns, model usage, memories, scheduled tasks/occurrences, generated audio and artifact provenance, and publication receipts. Swift retains platform files awaiting acknowledged adoption and immutable rollback manifests only.",
       "migration_issues": [60, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138],
       "deletion_target": "Issues #130, #135, and #136 completed scheduled/conversation/artifact/publication authority cutovers. Facade v45 deleted native catalog and provider-neutral schema ownership. Issue #133 completed the product-proof Rust agent owner; #134 finishes native capability qualification, #137 qualifies the physical-device signer, and #138 removes remaining compatibility ownership.",

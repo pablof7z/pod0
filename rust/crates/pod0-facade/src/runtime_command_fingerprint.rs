@@ -150,13 +150,6 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
         ApplicationCommand::PublishGeneratedEpisode { intent } => {
             hash_publication(&mut hash, intent)
         }
-        ApplicationCommand::EnsureNostrSigner => hash.update(b"ensure-nostr-signer\0"),
-        ApplicationCommand::SignOutNostrSigner {
-            expected_account_id,
-        } => {
-            hash.update(b"sign-out-nostr-signer\0");
-            hash.update(expected_account_id.into_bytes());
-        }
         ApplicationCommand::CommitChapter {
             expected_selection_revision,
             artifact,
@@ -228,6 +221,18 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
         }
     }
     finish_command_hash(hash)
+}
+
+pub(super) fn command_fingerprint_digest(
+    command: &ApplicationCommand,
+) -> pod0_domain::ContentDigest {
+    let value = command_fingerprint(command);
+    let mut bytes = [0_u8; 32];
+    for (index, slot) in bytes.iter_mut().enumerate() {
+        *slot = u8::from_str_radix(&value[index * 2..index * 2 + 2], 16)
+            .expect("command fingerprint is canonical hex");
+    }
+    pod0_domain::ContentDigest::from_bytes(bytes)
 }
 
 include!("runtime_command_fingerprint_podcast.rs");

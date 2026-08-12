@@ -244,39 +244,7 @@ pub(super) fn advance_to_rerank(fixture: &RecallFixture, query_id: u64) {
     );
 }
 
-pub(super) fn complete_evidence_embedding_requests(facade: &Pod0Facade) {
-    loop {
-        let Some(request) = facade.next_host_requests(1).pop() else {
-            break;
-        };
-        let HostRequest::EmbedRecallSpans {
-            episode_id,
-            generation_id,
-            spans,
-            ..
-        } = &request.request
-        else {
-            panic!("expected evidence embedding request")
-        };
-        record(
-            facade,
-            &request,
-            HostObservation::RecallSpansEmbedded {
-                episode_id: *episode_id,
-                generation_id: *generation_id,
-                embeddings: spans
-                    .iter()
-                    .map(|span| RecallSpanEmbeddingObservation {
-                        span_id: span.span_id,
-                        embedding: RecallEmbeddingVector {
-                            values: recall_test_embedding(),
-                        },
-                    })
-                    .collect(),
-            },
-        );
-    }
-}
+pub(super) use crate::runtime_recall_embedding_test_support::complete_evidence_embedding_requests;
 
 pub(super) fn recall_test_embedding() -> Vec<i32> {
     let mut values = vec![0; pod0_recall_index::RECALL_INDEX_DIMENSIONS];

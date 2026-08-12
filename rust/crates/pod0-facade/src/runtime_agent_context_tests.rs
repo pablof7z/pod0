@@ -1,3 +1,4 @@
+use super::tests::{next_leased_agent_request, record_leased_agent_observation};
 use crate::runtime_playback_test_support::PlaybackFixture;
 use crate::*;
 
@@ -6,14 +7,15 @@ fn follow_up_turn_model_request_contains_bounded_conversation_context() {
     let fixture = PlaybackFixture::new();
     let first = start_command(4, None, "Save architecture matters as a note");
     fixture.facade.dispatch(first.clone());
-    let first_model = fixture.facade.next_host_requests(8).remove(0);
+    let first_model = next_leased_agent_request(&fixture.facade);
     let HostRequest::ExecuteAgentModelTurn {
         execution: first_execution,
-    } = &first_model.request
+    } = &first_model.request.request
     else {
         panic!("expected first model request");
     };
-    fixture.facade.record_host_observation(observe(
+    record_leased_agent_observation(
+        &fixture.facade,
         &first_model,
         HostObservation::AgentModelCompleted {
             turn_id: first_execution.turn_id,
@@ -26,7 +28,7 @@ fn follow_up_turn_model_request_contains_bounded_conversation_context() {
                 cached_prompt_tokens: Some(40),
             }),
         },
-    ));
+    );
     let conversation_id = ConversationId::from_bytes(first.command_id.into_bytes());
 
     fixture.facade.dispatch(start_command(
@@ -34,8 +36,8 @@ fn follow_up_turn_model_request_contains_bounded_conversation_context() {
         Some(conversation_id),
         "What did you just say?",
     ));
-    let second_model = fixture.facade.next_host_requests(8).remove(0);
-    let HostRequest::ExecuteAgentModelTurn { execution } = second_model.request else {
+    let second_model = next_leased_agent_request(&fixture.facade);
+    let HostRequest::ExecuteAgentModelTurn { execution } = second_model.request.request else {
         panic!("expected follow-up model request");
     };
 
@@ -88,16 +90,5 @@ fn start_command(
             user_input: user_input.to_owned(),
             model_reference: "openrouter/test".to_owned(),
         },
-    }
-}
-
-fn observe(request: &HostRequestEnvelope, observation: HostObservation) -> HostObservationEnvelope {
-    HostObservationEnvelope {
-        request_id: request.request_id,
-        cancellation_id: request.cancellation_id,
-        observed_request_revision: request.issued_revision,
-        sequence_number: 1,
-        observed_at: UnixTimestampMilliseconds::new(1_900_000_000_000),
-        observation,
     }
 }

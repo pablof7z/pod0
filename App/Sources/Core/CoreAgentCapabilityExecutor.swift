@@ -10,21 +10,84 @@ protocol CoreAgentCapabilityExecuting: AnyObject {
 @MainActor
 final class LiveCoreAgentCapabilityExecutor: CoreAgentCapabilityExecuting {
     private let engine: AudioEngine
+    private let playback: PlaybackState?
+    private weak var store: AppStateStore?
+    private let catalogSearch: PodcastCatalogEpisodeSearchService
     private let tts: any TTSClientProtocol
     private let generatedAudioStore: CoreAgentGeneratedAudioFileStore
 
     init(
         engine: AudioEngine,
+        playback: PlaybackState? = nil,
+        store: AppStateStore? = nil,
+        catalogSearch: PodcastCatalogEpisodeSearchService = PodcastCatalogEpisodeSearchService(),
         tts: any TTSClientProtocol = ElevenLabsTTSClient(),
         generatedAudioStore: CoreAgentGeneratedAudioFileStore = CoreAgentGeneratedAudioFileStore()
     ) {
         self.engine = engine
+        self.playback = playback
+        self.store = store
+        self.catalogSearch = catalogSearch
         self.tts = tts
         self.generatedAudioStore = generatedAudioStore
     }
 
     func execute(_ request: AgentCapabilityRequest) async -> AgentCapabilityOutcome {
         switch request.action {
+        case .search(let tool, let query, let scope, let limit, let executeFirst)
+            where tool == .searchPodcastDirectory:
+            guard let store else {
+                return .failed(safeDetail: "Podcast catalog is unavailable")
+            }
+            do {
+                let result = try await catalogSearch.search(
+                    episodeQuery: query,
+                    podcastHint: scope,
+                    limit: Int(limit),
+                    store: store
+                )
+                if executeFirst, let episode = result.episodes.first {
+                    guard let playback else {
+                        return .failed(safeDetail: "Podcast playback is unavailable")
+                    }
+                    playback.enqueueSegments([.episode(episode.id)], playNow: true)
+                }
+                return .succeeded(boundedResult: result.boundedResult)
+            } catch PodcastCatalogEpisodeSearchService.SearchError.noMatches {
+                return .succeeded(boundedResult: #"{"episodes":[]}"#)
+            } catch is CancellationError {
+                return .cancelled
+            } catch {
+                return .failed(safeDetail: "The public podcast catalog could not be searched")
+            }
+        case .playEpisode(
+            let episodeID,
+            let startMilliseconds,
+            let endMilliseconds,
+            let placement
+        ):
+            guard let id = episodeID.uuid,
+                  store?.episode(id: id) != nil,
+                  let playback
+            else {
+                return .failed(safeDetail: "The requested episode is unavailable")
+            }
+            let item = QueueItem(
+                episodeID: id,
+                startSeconds: startMilliseconds.map { Double($0) / 1_000 },
+                endSeconds: endMilliseconds.map { Double($0) / 1_000 }
+            )
+            switch placement {
+            case .now:
+                playback.enqueueSegments([item], playNow: true)
+            case .next:
+                playback.insertNext(item)
+            case .back:
+                playback.enqueueItem(item)
+            case .unsupported:
+                return .failed(safeDetail: "The requested queue position is unsupported")
+            }
+            return .succeeded(boundedResult: #"{"accepted":true}"#)
         case .noArguments(let tool) where tool == .pausePlayback:
             guard engine.episode != nil else {
                 return .failed(safeDetail: "Playback media is unavailable")

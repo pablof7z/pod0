@@ -9,23 +9,19 @@ extension Pod0NativeHostDispatcher {
     ) {
         switch envelope.request {
         case .embedRecallQuery, .embedRecallSpans, .rerankRecallCandidates,
-             .removeLegacyRecallIndexArtifacts:
-            let recorder = recallObservationRecorder
+             .removeLegacyRecallIndexArtifacts, .fetchPublisherChapters:
+            let recorder = durableObservationRecorder
             Task { @MainActor in
-                await recorder.record(observation, in: facade)
-                completion()
-            }
-        case .fetchPublisherChapters:
-            let recorder = publisherObservationRecorder
-            Task { @MainActor in
-                await recorder.record(observation, in: facade)
+                _ = await recorder.recordRetaining(
+                    observation,
+                    in: facade,
+                    persistForRelaunch: false
+                )
                 completion()
             }
         case .executeChapterModel, .recoverChapterModelOperation,
              .executeTranscriptCapability, .executeAgentModelTurn,
-             .presentAgentApproval, .executeAgentCapability, .scheduleCoreWake,
-             .provisionNostrSignerCredential, .restoreNostrSignerCredential,
-             .signNostrEvent, .deleteNostrSignerCredential:
+             .presentAgentApproval, .executeAgentCapability, .scheduleCoreWake:
             let recorder = durableObservationRecorder
             let persistForRelaunch = switch envelope.request {
             case .executeChapterModel, .recoverChapterModelOperation,
@@ -73,9 +69,13 @@ extension Pod0NativeHostDispatcher {
                 completion: completion
             )
         default:
-            let recorder = transientObservationRecorder
+            let recorder = durableObservationRecorder
             Task { @MainActor in
-                await recorder.record(observation, in: facade)
+                _ = await recorder.recordRetaining(
+                    observation,
+                    in: facade,
+                    persistForRelaunch: false
+                )
                 completion()
             }
         }
@@ -150,9 +150,7 @@ extension Pod0NativeHostDispatcher {
         case .persisted(_, let terminal): terminal
         case .acceptedTransient:
             switch request {
-            case .scheduleCoreWake, .provisionNostrSignerCredential,
-                 .restoreNostrSignerCredential, .signNostrEvent,
-                 .deleteNostrSignerCredential:
+            case .scheduleCoreWake:
                 true
             default:
                 false
@@ -206,80 +204,5 @@ extension Pod0NativeHostDispatcher {
             for completion in completions { completion() }
         }
         return true
-    }
-}
-
-/// Serializes recall observations away from the main actor so Rust-owned
-/// SQLite work can be interrupted without blocking native rendering.
-actor CoreRecallObservationRecorder {
-    func record(_ observation: HostObservationEnvelope, in facade: Pod0Facade) {
-        _ = facade.recordHostObservation(observation: observation)
-    }
-}
-
-/// Keeps publisher qualification and SQLite transitions off the main actor.
-/// The actor serializes bounded accepted observations before the next native
-/// request is admitted.
-actor CorePublisherChapterObservationRecorder {
-    func record(_ observation: HostObservationEnvelope, in facade: Pod0Facade) {
-        _ = facade.recordHostObservation(observation: observation)
-    }
-}
-
-/// Retains the exact observation in actor state until Rust acknowledges that
-/// it has been persisted or rejects it as terminally unusable.
-actor CoreDurableObservationRecorder {
-    private let outbox: NativeHostObservationOutbox?
-
-    init(outbox: NativeHostObservationOutbox?) {
-        self.outbox = outbox
-    }
-
-    func recordRetaining(
-        _ observation: HostObservationEnvelope,
-        in facade: Pod0Facade,
-        persistForRelaunch: Bool
-    ) async -> HostObservationReceipt {
-        if persistForRelaunch {
-            guard let outbox else {
-                return .retainAndRetry(requestId: observation.requestId)
-            }
-            do {
-                _ = try await outbox.persistBeforeDelivery(observation)
-            } catch {
-                return .retainAndRetry(requestId: observation.requestId)
-            }
-            // Records that have already killed the process mid-call are never
-            // handed back to Rust; delivering one again would abort the launch.
-            guard await outbox.beginDelivery(of: observation) else {
-                return .retainAndRetry(requestId: observation.requestId)
-            }
-        }
-        guard !Task.isCancelled else {
-            return .retainAndRetry(requestId: observation.requestId)
-        }
-        let receipt = facade.recordHostObservation(observation: observation)
-        if persistForRelaunch, let outbox {
-            await outbox.finishDelivery(of: observation)
-            _ = try? await outbox.acknowledge(receipt)
-        }
-        return receipt
-    }
-
-    func replayPending(
-        in facade: Pod0Facade
-    ) async -> [(HostObservationEnvelope, HostObservationReceipt)] {
-        guard let outbox else { return [] }
-        var replayed: [(HostObservationEnvelope, HostObservationReceipt)] = []
-        for observation in await outbox.pendingObservations() {
-            guard !Task.isCancelled else { return replayed }
-            guard await outbox.beginDelivery(of: observation) else { continue }
-            let receipt = facade.recordHostObservation(observation: observation)
-            await outbox.finishDelivery(of: observation)
-            guard !Task.isCancelled else { return replayed }
-            _ = try? await outbox.acknowledge(receipt)
-            replayed.append((observation, receipt))
-        }
-        return replayed
     }
 }

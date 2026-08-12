@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Enforce the one NMP adapter and exact Git dependency policy."""
+"""Keep protocol machinery out of Pod0's product Rust workspace."""
 
 from __future__ import annotations
 
@@ -8,9 +8,6 @@ import re
 import sys
 
 
-NMP_REVISION = "68310f88a31bf80e6b73d018b1374e73efda0041"
-NMP_GIT = "https://github.com/pablof7z/nmp.git"
-ALLOWED_NMP_MANIFEST = "crates/pod0-nmp/Cargo.toml"
 UNIFFI_VERSION = "0.32.0"
 RUSQLITE_VERSION = "0.39.0"
 
@@ -34,9 +31,7 @@ def dependency_errors(relative: str, name: str, specification: str) -> list[str]
     errors: list[str] = []
     package_match = re.search(r'package\s*=\s*"([^"]+)"', specification)
     package = package_match.group(1) if package_match else name
-    if package == "nmp" and relative != ALLOWED_NMP_MANIFEST:
-        errors.append(f"{relative}: only {ALLOWED_NMP_MANIFEST} may depend on nmp")
-    if package.startswith("nmp-") and package != "pod0-nmp":
+    if package == "nmp" or package.startswith("nmp-"):
         errors.append(
             f"{relative}: mechanism/protocol crate dependency {package!r} is forbidden"
         )
@@ -49,11 +44,6 @@ def validate(root: Path) -> list[str]:
     errors: list[str] = []
     rust = root / "rust"
     workspace_text = (rust / "Cargo.toml").read_text(encoding="utf-8")
-    expected_nmp = (
-        f'nmp = {{ git = "{NMP_GIT}", rev = "{NMP_REVISION}", version = "=0.1.0" }}'
-    )
-    if expected_nmp not in workspace_text:
-        errors.append(f"workspace NMP dependency must equal {expected_nmp!r}")
     expected_uniffi = f'uniffi = {{ version = "={UNIFFI_VERSION}" }}'
     if expected_uniffi not in workspace_text:
         errors.append(f"workspace UniFFI dependency must equal {expected_uniffi!r}")
@@ -66,8 +56,6 @@ def validate(root: Path) -> list[str]:
     lock = rust / "Cargo.lock"
     if not lock.exists():
         errors.append("rust/Cargo.lock must be committed")
-    elif NMP_REVISION not in lock.read_text(encoding="utf-8"):
-        errors.append("Cargo.lock does not contain the approved NMP revision")
 
     for manifest in sorted((rust / "crates").glob("*/Cargo.toml")):
         relative = manifest.relative_to(rust).as_posix()
@@ -81,8 +69,11 @@ def self_test() -> None:
     fixture = '[dependencies]\nnmp = { workspace = true }\n[package]\nname = "fixture"'
     assert manifest_dependencies(fixture) == [("nmp", "{ workspace = true }")]
     assert dependency_errors(
-        "crates/pod0-facade/Cargo.toml", "pod0-nmp", "{ path = \"../pod0-nmp\" }"
-    ) == []
+        "crates/pod0-facade/Cargo.toml", "nmp", "{ workspace = true }"
+    ) == [
+        "crates/pod0-facade/Cargo.toml: mechanism/protocol crate dependency "
+        "'nmp' is forbidden"
+    ]
     assert dependency_errors(
         "crates/pod0-facade/Cargo.toml", "nmp-store", "{ git = \"example\" }"
     ) == [

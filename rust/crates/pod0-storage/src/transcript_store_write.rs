@@ -1,7 +1,4 @@
-use pod0_domain::{
-    CommandId, StateRevision, TranscriptArtifact, TranscriptArtifactInput,
-    transcript_command_fingerprint,
-};
+use pod0_domain::{CommandId, StateRevision, TranscriptArtifact, transcript_command_fingerprint};
 use rusqlite::{OptionalExtension, Transaction, params};
 
 use crate::StorageError;
@@ -10,61 +7,14 @@ use crate::transcript_authority::{
     advance_listening_revision, require_transcript_authoritative, set_episode_transcript_available,
     set_transcript_cutover_revision,
 };
-use crate::transcript_store::TranscriptStore;
 use crate::transcript_store_codec::{
-    artifact_error, artifact_id, digest, episode_id, optional_artifact_id, revision, version_id,
+    artifact_id, digest, episode_id, optional_artifact_id, revision, version_id,
 };
 use crate::transcript_store_model::TranscriptCommitStorageReceipt;
 use crate::transcript_store_read_artifact::read_artifact_by_id;
 use crate::transcript_store_write_rows::{
     ensure_semantic_document, insert_or_validate_artifact, require_episode_parent,
 };
-
-impl TranscriptStore {
-    pub fn commit_and_select(
-        &self,
-        command_id: CommandId,
-        expected_selection_revision: StateRevision,
-        input: TranscriptArtifactInput,
-        completed_at_ms: i64,
-    ) -> Result<TranscriptCommitStorageReceipt, StorageError> {
-        self.commit_and_select_with_observer(
-            command_id,
-            expected_selection_revision,
-            input,
-            completed_at_ms,
-            || Ok(()),
-        )
-    }
-
-    pub(crate) fn commit_and_select_with_observer<F>(
-        &self,
-        command_id: CommandId,
-        expected_selection_revision: StateRevision,
-        input: TranscriptArtifactInput,
-        completed_at_ms: i64,
-        before_commit: F,
-    ) -> Result<TranscriptCommitStorageReceipt, StorageError>
-    where
-        F: FnOnce() -> Result<(), StorageError>,
-    {
-        let artifact = TranscriptArtifact::seal(input).map_err(artifact_error)?;
-        if completed_at_ms < 0 || artifact.generated_at.value < 0 {
-            return Err(StorageError::InvalidTranscriptArtifact);
-        }
-        self.write(|transaction| {
-            let receipt = commit_and_select_transcript_in_transaction(
-                transaction,
-                command_id,
-                expected_selection_revision,
-                &artifact,
-                completed_at_ms,
-            )?;
-            before_commit()?;
-            Ok(receipt)
-        })
-    }
-}
 
 pub(crate) fn commit_and_select_transcript_in_transaction(
     transaction: &Transaction<'_>,
@@ -75,7 +25,8 @@ pub(crate) fn commit_and_select_transcript_in_transaction(
 ) -> Result<TranscriptCommitStorageReceipt, StorageError> {
     require_transcript_authoritative(transaction)?;
     let fingerprint = transcript_command_fingerprint(expected_selection_revision, artifact);
-    if let Some(receipt) = replay(transaction, command_id, fingerprint, artifact)? {
+    if let Some(receipt) = replay_transcript_commit(transaction, command_id, fingerprint, artifact)?
+    {
         return Ok(receipt);
     }
     require_episode_parent(transaction, artifact)?;
@@ -160,11 +111,11 @@ pub(crate) fn commit_and_select_transcript_in_transaction(
     Ok(receipt)
 }
 
-fn current_selection(
-    transaction: &Transaction<'_>,
+pub(crate) fn current_selection(
+    connection: &rusqlite::Connection,
     requested_episode: pod0_domain::EpisodeId,
 ) -> Result<Option<(pod0_domain::TranscriptArtifactId, StateRevision)>, StorageError> {
-    let row: Option<(Vec<u8>, i64)> = transaction
+    let row: Option<(Vec<u8>, i64)> = connection
         .query_row(
             "SELECT artifact_id,selection_revision FROM pod0_transcript_selection \
              WHERE episode_id=?1",
@@ -199,8 +150,8 @@ fn advance_collection_revision(transaction: &Transaction<'_>) -> Result<(), Stor
 }
 
 #[allow(clippy::type_complexity)]
-fn replay(
-    transaction: &Transaction<'_>,
+pub(crate) fn replay_transcript_commit(
+    transaction: &rusqlite::Connection,
     command_id: CommandId,
     requested_fingerprint: pod0_domain::ContentDigest,
     requested_artifact: &TranscriptArtifact,

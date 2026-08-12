@@ -51,6 +51,6 @@
     {"tool":"update_podcast","classes":["reversible_write"],"authority":"durable_turn_grant","decision_owner":"pod0_rust","execution":"rust_commit"},
     {"tool":"delete_my_podcast","classes":["destructive_write"],"authority":"one_shot_approval","decision_owner":"pod0_rust","execution":"rust_commit"},
     {"tool":"list_my_podcasts","classes":["read_only","secret_bearing"],"authority":"durable_turn_grant","decision_owner":"pod0_rust","execution":"rust_projection"},
-    {"tool":"generate_podcast_artwork","classes":["external_side_effect","secret_bearing","publication"],"authority":"one_shot_approval","decision_owner":"pod0_rust","execution":"native_capability_and_pod0_nmp_publication"}
+    {"tool":"generate_podcast_artwork","classes":["external_side_effect","secret_bearing","publication"],"authority":"one_shot_approval","decision_owner":"pod0_rust","execution":"native_capability_and_nmp_publication"}
   ]
 }

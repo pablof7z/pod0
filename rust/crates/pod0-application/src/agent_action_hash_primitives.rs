@@ -10,6 +10,7 @@ pub(crate) fn fields(hasher: &mut Sha256, tag: u32, write: impl FnOnce(&mut Sha2
 
 pub(crate) fn queue_code(value: QueuePlacement) -> u32 {
     match value {
+        QueuePlacement::Now => 0,
         QueuePlacement::Back => 1,
         QueuePlacement::Next => 2,
         QueuePlacement::Unsupported { wire_code } => wire_code,

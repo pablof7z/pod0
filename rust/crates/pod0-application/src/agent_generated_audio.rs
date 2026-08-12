@@ -17,7 +17,7 @@ pub struct AgentGeneratedAudioTarget {
     pub maximum_bytes: u64,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct AgentGeneratedAudioEvidence {
     pub artifact_id: GeneratedArtifactId,
     pub file_url: String,

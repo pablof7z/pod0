@@ -99,6 +99,10 @@ impl FacadeState {
             ),
             PlaybackCommand::Enqueue { entry, placement } => {
                 let placement = match placement {
+                    QueuePlacement::Now => {
+                        self.fail(envelope.command_id, CoreFailureCode::InvalidCommand);
+                        return;
+                    }
                     QueuePlacement::Back => PlaybackQueuePlacement::Back,
                     QueuePlacement::Next => PlaybackQueuePlacement::Next,
                     QueuePlacement::Unsupported { wire_code } => {

@@ -186,10 +186,6 @@ pub enum ApplicationCommand {
     PublishGeneratedEpisode {
         intent: pod0_domain::PublicationIntent,
     },
-    EnsureNostrSigner,
-    SignOutNostrSigner {
-        expected_account_id: pod0_domain::SignerAccountId,
-    },
     CancelAgentTurn {
         turn_id: pod0_domain::AgentTurnId,
         expected_turn_revision: StateRevision,

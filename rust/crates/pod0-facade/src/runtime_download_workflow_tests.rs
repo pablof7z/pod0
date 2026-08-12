@@ -4,7 +4,7 @@ use crate::runtime_playback_test_support::PlaybackFixture;
 use crate::*;
 
 #[derive(Clone, Copy)]
-struct FixedClock(i64);
+pub(super) struct FixedClock(pub i64);
 
 impl pod0_application::Clock for FixedClock {
     fn now(&self) -> UnixTimestampMilliseconds {
@@ -12,7 +12,7 @@ impl pod0_application::Clock for FixedClock {
     }
 }
 
-fn dispatch(facade: &Pod0Facade, id: u64, command: ApplicationCommand) {
+pub(super) fn dispatch(facade: &Pod0Facade, id: u64, command: ApplicationCommand) {
     facade.dispatch(CommandEnvelope {
         command_id: CommandId::from_parts(70, id),
         cancellation_id: CancellationId::from_parts(71, id),
@@ -21,7 +21,7 @@ fn dispatch(facade: &Pod0Facade, id: u64, command: ApplicationCommand) {
     });
 }
 
-fn workflows(facade: &Pod0Facade, episode_id: EpisodeId) -> DownloadWorkflowsProjection {
+pub(super) fn workflows(facade: &Pod0Facade, episode_id: EpisodeId) -> DownloadWorkflowsProjection {
     let Projection::Downloads { value } = facade
         .snapshot(ProjectionRequest {
             scope: ProjectionScope::Downloads {
@@ -37,7 +37,7 @@ fn workflows(facade: &Pod0Facade, episode_id: EpisodeId) -> DownloadWorkflowsPro
     value
 }
 
-fn observe_wifi(facade: &Pod0Facade, id: u64) {
+pub(super) fn observe_wifi(facade: &Pod0Facade, id: u64) {
     dispatch(
         facade,
         id,
@@ -50,7 +50,7 @@ fn observe_wifi(facade: &Pod0Facade, id: u64) {
     );
 }
 
-fn request_download(fixture: &PlaybackFixture, id: u64) {
+pub(super) fn request_download(fixture: &PlaybackFixture, id: u64) {
     dispatch(
         &fixture.facade,
         id,
@@ -61,7 +61,7 @@ fn request_download(fixture: &PlaybackFixture, id: u64) {
     );
 }
 
-fn staged_observation(
+pub(super) fn staged_observation(
     request: &HostRequestEnvelope,
     sequence: u64,
     path: String,

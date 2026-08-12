@@ -1110,6 +1110,120 @@ public object FfiConverterString: FfiConverter<String, RustBuffer.ByValue> {
 
 
 
+data class ActivityCorrelationId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeActivityCorrelationId: FfiConverterRustBuffer<ActivityCorrelationId> {
+    override fun read(buf: ByteBuffer): ActivityCorrelationId {
+        return ActivityCorrelationId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ActivityCorrelationId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: ActivityCorrelationId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class ActivityId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeActivityId: FfiConverterRustBuffer<ActivityId> {
+    override fun read(buf: ByteBuffer): ActivityId {
+        return ActivityId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ActivityId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: ActivityId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class ActivityTransactionId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeActivityTransactionId: FfiConverterRustBuffer<ActivityTransactionId> {
+    override fun read(buf: ByteBuffer): ActivityTransactionId {
+        return ActivityTransactionId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ActivityTransactionId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: ActivityTransactionId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
 data class AdSpanId (
     val `high`: kotlin.ULong
     ,
@@ -2628,6 +2742,120 @@ public object FfiConverterTypeDownloadIntentId: FfiConverterRustBuffer<DownloadI
 
 
 
+data class EffectAttemptId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEffectAttemptId: FfiConverterRustBuffer<EffectAttemptId> {
+    override fun read(buf: ByteBuffer): EffectAttemptId {
+        return EffectAttemptId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: EffectAttemptId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: EffectAttemptId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class EffectIntentId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEffectIntentId: FfiConverterRustBuffer<EffectIntentId> {
+    override fun read(buf: ByteBuffer): EffectIntentId {
+        return EffectIntentId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: EffectIntentId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: EffectIntentId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class EffectLeaseId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEffectLeaseId: FfiConverterRustBuffer<EffectLeaseId> {
+    override fun read(buf: ByteBuffer): EffectLeaseId {
+        return EffectLeaseId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: EffectLeaseId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: EffectLeaseId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
 data class EpisodeFeedMetadata (
     val `publisherTranscript`: PublisherTranscriptReference?
     ,
@@ -3301,6 +3529,44 @@ public object FfiConverterTypeHostRequestId: FfiConverterRustBuffer<HostRequestI
     )
 
     override fun write(value: HostRequestId, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`high`, buf)
+            FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class InternalCommandId (
+    val `high`: kotlin.ULong
+    ,
+    val `low`: kotlin.ULong
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeInternalCommandId: FfiConverterRustBuffer<InternalCommandId> {
+    override fun read(buf: ByteBuffer): InternalCommandId {
+        return InternalCommandId(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: InternalCommandId) = (
+            FfiConverterULong.allocationSize(value.`high`) +
+            FfiConverterULong.allocationSize(value.`low`)
+    )
+
+    override fun write(value: InternalCommandId, buf: ByteBuffer) {
             FfiConverterULong.write(value.`high`, buf)
             FfiConverterULong.write(value.`low`, buf)
     }
@@ -4965,111 +5231,6 @@ public object FfiConverterTypeScheduledTaskId: FfiConverterRustBuffer<ScheduledT
     override fun write(value: ScheduledTaskId, buf: ByteBuffer) {
             FfiConverterULong.write(value.`high`, buf)
             FfiConverterULong.write(value.`low`, buf)
-    }
-}
-
-
-
-data class SignerAccountId (
-    val `high`: kotlin.ULong
-    ,
-    val `low`: kotlin.ULong
-
-){
-
-
-
-
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeSignerAccountId: FfiConverterRustBuffer<SignerAccountId> {
-    override fun read(buf: ByteBuffer): SignerAccountId {
-        return SignerAccountId(
-            FfiConverterULong.read(buf),
-            FfiConverterULong.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: SignerAccountId) = (
-            FfiConverterULong.allocationSize(value.`high`) +
-            FfiConverterULong.allocationSize(value.`low`)
-    )
-
-    override fun write(value: SignerAccountId, buf: ByteBuffer) {
-            FfiConverterULong.write(value.`high`, buf)
-            FfiConverterULong.write(value.`low`, buf)
-    }
-}
-
-
-
-/**
- * Durable product identity metadata. Secret material is never part of this
- * record and remains in the platform secure-storage capability.
- */
-data class SignerAccountRecord (
-    val `accountId`: SignerAccountId?
-    ,
-    val `credentialKind`: SignerCredentialKind
-    ,
-    val `expectedAuthorHex`: kotlin.String?
-    ,
-    val `revision`: StateRevision
-    ,
-    val `stage`: SignerStage
-    ,
-    val `updatedAt`: UnixTimestampMilliseconds
-    ,
-    val `safeDetail`: kotlin.String?
-
-){
-
-
-
-
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeSignerAccountRecord: FfiConverterRustBuffer<SignerAccountRecord> {
-    override fun read(buf: ByteBuffer): SignerAccountRecord {
-        return SignerAccountRecord(
-            FfiConverterOptionalTypeSignerAccountId.read(buf),
-            FfiConverterTypeSignerCredentialKind.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterTypeStateRevision.read(buf),
-            FfiConverterTypeSignerStage.read(buf),
-            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
-            FfiConverterOptionalString.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: SignerAccountRecord) = (
-            FfiConverterOptionalTypeSignerAccountId.allocationSize(value.`accountId`) +
-            FfiConverterTypeSignerCredentialKind.allocationSize(value.`credentialKind`) +
-            FfiConverterOptionalString.allocationSize(value.`expectedAuthorHex`) +
-            FfiConverterTypeStateRevision.allocationSize(value.`revision`) +
-            FfiConverterTypeSignerStage.allocationSize(value.`stage`) +
-            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`updatedAt`) +
-            FfiConverterOptionalString.allocationSize(value.`safeDetail`)
-    )
-
-    override fun write(value: SignerAccountRecord, buf: ByteBuffer) {
-            FfiConverterOptionalTypeSignerAccountId.write(value.`accountId`, buf)
-            FfiConverterTypeSignerCredentialKind.write(value.`credentialKind`, buf)
-            FfiConverterOptionalString.write(value.`expectedAuthorHex`, buf)
-            FfiConverterTypeStateRevision.write(value.`revision`, buf)
-            FfiConverterTypeSignerStage.write(value.`stage`, buf)
-            FfiConverterTypeUnixTimestampMilliseconds.write(value.`updatedAt`, buf)
-            FfiConverterOptionalString.write(value.`safeDetail`, buf)
     }
 }
 
@@ -8729,133 +8890,6 @@ public object FfiConverterTypeRecallRerankProvider : FfiConverterRustBuffer<Reca
 
 
 
-sealed class SignerCredentialKind {
-
-    object LocalKeychain : SignerCredentialKind()
-
-
-    object RemoteNip46 : SignerCredentialKind()
-
-
-    data class Unsupported(
-        val `wireCode`: kotlin.UInt) : SignerCredentialKind()
-
-    {
-
-
-        companion object
-    }
-
-
-
-
-
-
-
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeSignerCredentialKind : FfiConverterRustBuffer<SignerCredentialKind>{
-    override fun read(buf: ByteBuffer): SignerCredentialKind {
-        return when(buf.getInt()) {
-            1 -> SignerCredentialKind.LocalKeychain
-            2 -> SignerCredentialKind.RemoteNip46
-            3 -> SignerCredentialKind.Unsupported(
-                FfiConverterUInt.read(buf),
-                )
-            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
-        }
-    }
-
-    override fun allocationSize(value: SignerCredentialKind): ULong = when(value) {
-        is SignerCredentialKind.LocalKeychain -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4UL
-            )
-        }
-        is SignerCredentialKind.RemoteNip46 -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4UL
-            )
-        }
-        is SignerCredentialKind.Unsupported -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4UL
-                + FfiConverterUInt.allocationSize(value.`wireCode`)
-            )
-        }
-    }
-
-    override fun write(value: SignerCredentialKind, buf: ByteBuffer) {
-        when(value) {
-            is SignerCredentialKind.LocalKeychain -> {
-                buf.putInt(1)
-                Unit
-            }
-            is SignerCredentialKind.RemoteNip46 -> {
-                buf.putInt(2)
-                Unit
-            }
-            is SignerCredentialKind.Unsupported -> {
-                buf.putInt(3)
-                FfiConverterUInt.write(value.`wireCode`, buf)
-                Unit
-            }
-        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
-    }
-}
-
-
-
-
-
-
-enum class SignerStage {
-
-    PROVISIONING,
-    RESTORING,
-    READY,
-    UNAVAILABLE,
-    SIGNING_OUT,
-    FAILED;
-
-
-
-
-    companion object
-}
-
-
-/**
- * @suppress
- */
-public object FfiConverterTypeSignerStage: FfiConverterRustBuffer<SignerStage> {
-    override fun read(buf: ByteBuffer) = try {
-
-        SignerStage.entries[buf.getInt() - 1]
-
-    } catch (e: IndexOutOfBoundsException) {
-        throw RuntimeException("invalid enum value, something is very wrong!!", e)
-    }
-
-    override fun allocationSize(value: SignerStage) = 4UL
-
-    override fun write(value: SignerStage, buf: ByteBuffer) {
-        buf.putInt(value.ordinal + 1)
-    }
-}
-
-
-
-
-
 sealed class TranscriptArtifactStatus {
 
     object Unavailable : TranscriptArtifactStatus()
@@ -9633,38 +9667,6 @@ public object FfiConverterOptionalTypePublisherTranscriptReference: FfiConverter
         } else {
             buf.put(1)
             FfiConverterTypePublisherTranscriptReference.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterOptionalTypeSignerAccountId: FfiConverterRustBuffer<SignerAccountId?> {
-    override fun read(buf: ByteBuffer): SignerAccountId? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterTypeSignerAccountId.read(buf)
-    }
-
-    override fun allocationSize(value: SignerAccountId?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterTypeSignerAccountId.allocationSize(value)
-        }
-    }
-
-    override fun write(value: SignerAccountId?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterTypeSignerAccountId.write(value, buf)
         }
     }
 }

@@ -2,6 +2,7 @@ import Pod0Core
 
 struct CoreHostRequestBatch: @unchecked Sendable {
     let cancellations: [HostCancellationRequest]
+    let leasedRequests: [LeasedHostRequestEnvelope]
     let requests: [HostRequestEnvelope]
 }
 
@@ -16,21 +17,18 @@ actor CoreHostRequestReader {
         let cancellations = facade.nextHostCancellations(
             maximumCount: cancellationCount
         )
-        let requests = requestCount > 0
-            ? facade.nextHostRequests(maximumCount: requestCount)
+        let leasedRequests = requestCount > 0
+            ? facade.nextLeasedHostRequests(maximumCount: requestCount)
+            : []
+        let legacyCapacity = max(0, Int(requestCount) - leasedRequests.count)
+        let requests = legacyCapacity > 0
+            ? facade.nextHostRequests(maximumCount: UInt16(legacyCapacity))
             : []
         return CoreHostRequestBatch(
             cancellations: cancellations,
+            leasedRequests: leasedRequests,
             requests: requests
         )
-    }
-}
-
-/// Serializes transient observations away from rendering. Rust remains the
-/// durable owner; this actor only changes where the typed call executes.
-actor CoreTransientObservationRecorder {
-    func record(_ observation: HostObservationEnvelope, in facade: Pod0Facade) {
-        _ = facade.recordHostObservation(observation: observation)
     }
 }
 
@@ -68,6 +66,23 @@ extension Pod0NativeHostDispatcher {
                     cancellationID: cancellation.cancellationId
                 )
             }
+            for leased in batch.leasedRequests {
+                execute(leased) { [weak self] observation in
+                    guard let self else { return }
+                    Task {
+                        _ = await self.durableObservationRecorder.recordRetaining(
+                            observation,
+                            in: facade
+                        )
+                        await MainActor.run {
+                            self.executePendingRequests(
+                                from: facade,
+                                maximumCount: maximumCount
+                            )
+                        }
+                    }
+                }
+            }
             for envelope in batch.requests {
                 execute(envelope) { [weak self] observation in
                     guard let self else { return }
@@ -80,7 +95,8 @@ extension Pod0NativeHostDispatcher {
                 }
             }
             if requestDrainRequested
-                || (boundedCount > 0 && batch.requests.count == boundedCount) {
+                || (boundedCount > 0
+                    && batch.requests.count + batch.leasedRequests.count >= boundedCount) {
                 executePendingRequests(from: facade, maximumCount: maximumCount)
             }
         }

@@ -15,6 +15,7 @@ final class SharedLibraryClient {
     let deferredPlaybackHost: DeferredPlaybackHost
     let deferredAgentHost: DeferredAgentHost
     let deferredRecallHost: DeferredRecallHost
+    let nmp: NMPClient
     private var subscriber: SharedLibrarySubscriber?
     var librarySubscriptionID: SubscriptionId?
     var playbackSubscriptionID: SubscriptionId?
@@ -26,7 +27,6 @@ final class SharedLibraryClient {
     var downloadsSubscriptionID: SubscriptionId?
     var transcriptWorkflowSubscriptionID: SubscriptionId?
     var newEpisodeNotificationSettingsSubscriptionID: SubscriptionId?
-    var nostrSignerSubscriptionID: SubscriptionId?
     var scheduledAgentSubscriptionID: SubscriptionId?
     var waiters: [CommandId: Waiter] = [:]
     var lastLibraryRevision: UInt64 = 0
@@ -57,8 +57,6 @@ final class SharedLibraryClient {
     var cachedDownloadWorkflows: [UUID: DownloadWorkflowProjection] = [:]
     var lastTranscriptWorkflowRevision: UInt64 = 0
     var lastScheduledAgentRevision: UInt64 = 0
-    var lastNostrSignerRevision: UInt64 = 0
-    var cachedNostrSigner: SignerProjection?
     var cachedScheduledAgent: ScheduledAgentProjection?
     var cachedNewEpisodeNotificationSettings: NewEpisodeNotificationSettingsProjection?
     var announcedTranscriptWorkflowVersions: [UUID: String] = [:]
@@ -100,6 +98,7 @@ final class SharedLibraryClient {
         self.deferredPlaybackHost = playbackHost
         self.deferredAgentHost = agentHost
         self.deferredRecallHost = recallHost
+        self.nmp = NMPClient()
         self.dispatcher = Pod0NativeHostDispatcher(
             feedHost: feedHost,
             downloadHost: downloadHost,
@@ -134,7 +133,8 @@ final class SharedLibraryClient {
                 return
             }
             install(subscriptions)
-            ensureNostrSigner()
+            _ = try? await nmp.ensureAccount()
+            await nmp.resume(from: facade)
             dispatcher.executePendingRequests(from: facade)
         }
     }
@@ -170,8 +170,6 @@ final class SharedLibraryClient {
             receiveTranscriptWorkflows(revision: envelope.stateRevision.value)
         case .scheduledAgent(let projection):
             receiveScheduledAgents(projection, revision: envelope.stateRevision.value)
-        case .nostrSigner(let projection):
-            receiveNostrSigner(projection, revision: envelope.stateRevision.value)
         case .newEpisodeNotificationSettings(let projection):
             cachedNewEpisodeNotificationSettings = projection
             if let store { publishNewEpisodeNotificationSettings(to: store) }
@@ -222,7 +220,6 @@ final class SharedLibraryClient {
             transcriptWorkflowSubscriptionID,
             newEpisodeNotificationSettingsSubscriptionID,
             scheduledAgentSubscriptionID,
-            nostrSignerSubscriptionID,
         ].compactMap { $0 }
         if !subscriptionIDs.isEmpty {
             let commandExecutor = commandExecutor
@@ -242,8 +239,6 @@ final class SharedLibraryClient {
         transcriptWorkflowSubscriptionID = nil
         newEpisodeNotificationSettingsSubscriptionID = nil
         scheduledAgentSubscriptionID = nil
-        nostrSignerSubscriptionID = nil
-        cachedNostrSigner = nil
         cachedScheduledAgent = nil
         chapterScopes.removeAll()
         chapterSnapshots.removeAll()

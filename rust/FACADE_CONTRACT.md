@@ -143,9 +143,9 @@ failures with a kernel-owned backoff expressed through
 bytes or a typed failure; it owns no fetch retry, admission, or expiry policy.
 Swift still owns transcript-generation/index workflow scheduling, remaining
 agent workflow state, and presentation state until their complete vertical
-slices land. The audited NMP pin is available only through the isolated
-`pod0-nmp` adapter until a Pod0-specific Nostr vertical slice composes it into
-this facade.
+slices land. Nostr identity, signing, routing, transport, queries, and receipts
+belong to the single upstream `NMPEngine` owned by the iOS application. The
+facade exposes only Pod0 publication drafts and bounded product audit updates.
 
 Canonical chapter artifacts, selections, and workflows are Rust-owned. Contract
 version 24 adds durable source-version provenance to the model-chapter command,

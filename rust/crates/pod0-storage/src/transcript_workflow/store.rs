@@ -32,44 +32,48 @@ impl LibraryStore {
         input: TranscriptWorkflowEnsureInput,
     ) -> Result<TranscriptWorkflowEnsureOutcome, StorageError> {
         validate_ensure(&input)?;
-        self.write(|transaction| {
-            require_authoritative(transaction)?;
-            let existing = read_workflow(transaction, input.episode_id)?;
-            if existing
-                .as_ref()
-                .is_some_and(|record| replays(record, &input))
-            {
-                return Ok(TranscriptWorkflowEnsureOutcome::Existing(
-                    existing.expect("checked existing"),
-                ));
-            }
-            validate_replacement(existing.as_ref(), &input)?;
-            if existing.is_some() {
-                transaction
-                    .execute(
-                        "DELETE FROM pod0_transcript_workflows WHERE episode_id=?1",
-                        [input.episode_id.into_bytes().as_slice()],
-                    )
-                    .map_err(|error| StorageError::sqlite("replace transcript workflow", error))?;
-            }
-            let revision = existing
-                .as_ref()
-                .map_or(Ok(pod0_domain::StateRevision::new(1)), |value| {
-                    next_revision(value.workflow_revision)
-                })?;
-            let record = make_record(
-                input,
-                revision,
-                existing.as_ref().map(|value| value.created_at_ms),
-            );
-            persist_workflow(transaction, &record)?;
-            insert_prepared_attempt(transaction, &record)?;
-            Ok(TranscriptWorkflowEnsureOutcome::Changed(record))
-        })
+        let fingerprint = crate::transition_commit::transcript_admission_fingerprint(&input);
+        crate::transition_commit::commit_transcript_admission(self.path(), input, fingerprint)
+    }
+
+    pub fn ensure_transcript_workflow_with_fingerprint(
+        &self,
+        input: TranscriptWorkflowEnsureInput,
+        fingerprint: pod0_domain::ContentDigest,
+    ) -> Result<TranscriptWorkflowEnsureOutcome, StorageError> {
+        validate_ensure(&input)?;
+        crate::transition_commit::commit_transcript_admission(self.path(), input, fingerprint)
+    }
+
+    pub fn ensure_transcript_workflow_from_internal_command(
+        &self,
+        command: crate::PendingInternalCommand,
+        input: TranscriptWorkflowEnsureInput,
+    ) -> Result<TranscriptWorkflowEnsureOutcome, StorageError> {
+        validate_ensure(&input)?;
+        crate::transition_commit::commit_transcript_internal_admission(self.path(), command, input)
+    }
+
+    pub fn record_transcript_internal_disposition(
+        &self,
+        command: crate::PendingInternalCommand,
+        episode_id: pod0_domain::EpisodeId,
+        state_revision: pod0_domain::StateRevision,
+        disposition: pod0_application::RequestDisposition,
+        observed_at: pod0_domain::UnixTimestampMilliseconds,
+    ) -> Result<crate::CommitReceipt, StorageError> {
+        crate::transition_commit::commit_transcript_internal_disposition(
+            self.path(),
+            command,
+            episode_id,
+            state_revision,
+            disposition,
+            observed_at,
+        )
     }
 }
 
-fn validate_ensure(input: &TranscriptWorkflowEnsureInput) -> Result<(), StorageError> {
+pub(crate) fn validate_ensure(input: &TranscriptWorkflowEnsureInput) -> Result<(), StorageError> {
     validate_request(&input.request)?;
     validate_time(input.now_ms)?;
     if input.max_attempts == 0
@@ -119,7 +123,10 @@ fn validate_replacement(
     }
 }
 
-fn replays(record: &TranscriptWorkflowRecord, input: &TranscriptWorkflowEnsureInput) -> bool {
+pub(crate) fn replays(
+    record: &TranscriptWorkflowRecord,
+    input: &TranscriptWorkflowEnsureInput,
+) -> bool {
     record.request == input.request
         && record.stage == input.stage
         && record.request_id == input.request_id
@@ -128,6 +135,49 @@ fn replays(record: &TranscriptWorkflowRecord, input: &TranscriptWorkflowEnsureIn
             == input
                 .prepared_attempt
                 .map(|value| value.submission_fence_id)
+}
+
+pub(crate) fn apply_transcript_workflow_ensure(
+    transaction: &rusqlite::Transaction<'_>,
+    input: TranscriptWorkflowEnsureInput,
+    expected: pod0_domain::StateRevision,
+) -> Result<TranscriptWorkflowRecord, StorageError> {
+    require_authoritative(transaction)?;
+    let existing = read_workflow(transaction, input.episode_id)?;
+    let current = existing
+        .as_ref()
+        .map_or(pod0_domain::StateRevision::INITIAL, |record| {
+            record.workflow_revision
+        });
+    if current != expected
+        || existing
+            .as_ref()
+            .is_some_and(|record| replays(record, &input))
+    {
+        return Err(StorageError::RevisionConflict);
+    }
+    validate_replacement(existing.as_ref(), &input)?;
+    if existing.is_some() {
+        transaction
+            .execute(
+                "DELETE FROM pod0_transcript_workflows WHERE episode_id=?1",
+                [input.episode_id.into_bytes().as_slice()],
+            )
+            .map_err(|error| StorageError::sqlite("replace transcript workflow", error))?;
+    }
+    let revision = existing
+        .as_ref()
+        .map_or(Ok(pod0_domain::StateRevision::new(1)), |value| {
+            next_revision(value.workflow_revision)
+        })?;
+    let record = make_record(
+        input,
+        revision,
+        existing.as_ref().map(|value| value.created_at_ms),
+    );
+    persist_workflow(transaction, &record)?;
+    insert_prepared_attempt(transaction, &record)?;
+    Ok(record)
 }
 
 fn make_record(

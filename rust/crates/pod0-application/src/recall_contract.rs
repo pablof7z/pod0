@@ -125,7 +125,7 @@ pub struct RecallScoreProjection {
     pub rerank_rank: Option<u16>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct RecallEmbeddingVector {
     /// Provider dimensions quantized to signed millionths at the host boundary.
     pub values: Vec<i32>,
@@ -146,7 +146,7 @@ pub struct RecallEmbeddingInput {
     pub text: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct RecallSpanEmbeddingObservation {
     pub span_id: EvidenceSpanId,
     pub embedding: RecallEmbeddingVector,

@@ -105,11 +105,6 @@ if not lock_path.is_file():
 
 payload = json.loads(lock_path.read_text())
 expected = {
-    "https://github.com/GigaBitcoin/secp256k1.swift": (
-        "secp256k1.swift",
-        "0.23.1",
-        "cfab52e538683557259302c39ef25df60226eb30",
-    ),
     "https://github.com/onevcat/Kingfisher": (
         "kingfisher",
         "8.9.0",
@@ -137,6 +132,8 @@ for location, (_, version, _) in expected.items():
         raise SystemExit(
             f"Project.swift does not declare the exact {version} pin for {location}"
         )
+if '.local(path: ".build/nmp/Packages/NMP")' not in manifest:
+    raise SystemExit("Project.swift does not consume the prepared NMP Swift package")
 PY
 
 for generated_lock in "$project_lock" "$workspace_lock"; do

@@ -13,7 +13,7 @@ use crate::StorageError;
 
 pub(super) const WORKFLOW_COLUMNS: &str = "episode_id,workflow_id,stage,source_revision,origin,provider,model,remote_audio_url,local_audio_url,publisher_transcript_url,publisher_mime_hint,publisher_first,provider_fallback_enabled,workflow_revision,attempt,max_attempts,attempt_id,submission_fence_id,command_id,cancellation_id,request_id,issued_revision,deadline_at_ms,not_before_ms,submission_authorized_at_ms,external_operation_id,provider_status,completion_artifact_id,committed_artifact_id,committed_transcript_version_id,committed_content_digest,expected_selection_revision,resulting_selection_revision,evidence_input_version,failure_code,failure_detail,failure_retryable,may_have_submitted,source_generation,created_at_ms,updated_at_ms";
 
-pub(super) fn read_workflow(
+pub(crate) fn read_workflow(
     connection: &Connection,
     episode_id: EpisodeId,
 ) -> Result<Option<TranscriptWorkflowRecord>, StorageError> {

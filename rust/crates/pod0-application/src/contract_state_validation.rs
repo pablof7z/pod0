@@ -162,35 +162,6 @@ pub(super) fn observation_matches_request(
             HostRequest::RemoveLegacyRecallIndexArtifacts,
             HostObservation::LegacyRecallIndexArtifactsRemoved { removed_file_count },
         ) => *removed_file_count <= 3,
-        (
-            HostRequest::ProvisionNostrSignerCredential,
-            HostObservation::NostrSignerCredentialReady { public_key_hex, .. },
-        ) => crate::valid_lower_hex(public_key_hex, 64),
-        (
-            HostRequest::RestoreNostrSignerCredential {
-                account_id: expected_account,
-                expected_author_hex,
-            },
-            HostObservation::NostrSignerCredentialReady {
-                account_id,
-                public_key_hex,
-            },
-        ) => {
-            expected_account == account_id
-                && expected_author_hex == public_key_hex
-                && crate::valid_lower_hex(public_key_hex, 64)
-        }
-        (HostRequest::SignNostrEvent { request }, HostObservation::NostrEventSigned { value }) => {
-            request.account_id == value.account_id
-                && request.event_id_hex == value.event_id_hex
-                && crate::signature_observation_is_valid(value)
-        }
-        (
-            HostRequest::DeleteNostrSignerCredential {
-                account_id: expected,
-            },
-            HostObservation::NostrSignerCredentialDeleted { account_id },
-        ) => expected == account_id,
         (HostRequest::Unsupported { .. }, HostObservation::Unsupported { .. }) => true,
         _ => false,
     }
