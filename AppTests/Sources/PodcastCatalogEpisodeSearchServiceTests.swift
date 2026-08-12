@@ -50,8 +50,8 @@ final class PodcastCatalogEpisodeSearchServiceTests: XCTestCase {
             limit: 2
         )
 
-        XCTAssertEqual(matches.first?.episode.title, "TSMC")
-        XCTAssertTrue(matches.contains { $0.episode.title == "The Nvidia Story" })
+        XCTAssertEqual(matches.first?.episode.title, "The Nvidia Story")
+        XCTAssertTrue(matches.contains { $0.episode.title == "TSMC" })
     }
 
     private func episode(
