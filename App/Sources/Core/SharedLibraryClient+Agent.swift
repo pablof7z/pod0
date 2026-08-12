@@ -7,7 +7,11 @@ extension SharedLibraryClient {
         store: AppStateStore
     ) {
         deferredAgentHost.attach(CoreAgentHost(
-            capabilityExecutor: LiveCoreAgentCapabilityExecutor(engine: playback.engine),
+            capabilityExecutor: LiveCoreAgentCapabilityExecutor(
+                engine: playback.engine,
+                playback: playback,
+                store: store
+            ),
             streamingState: agentStreamingState,
             approvalPresenter: approvalPresenter,
             systemPrompt: { [weak store] in

@@ -183,10 +183,7 @@ impl FacadeState {
         }
     }
 
-    fn model_chapter_store(
-        &mut self,
-        envelope: &CommandEnvelope,
-    ) -> Option<LibraryStore> {
+    fn model_chapter_store(&mut self, envelope: &CommandEnvelope) -> Option<LibraryStore> {
         let Some(store) = self.store.clone() else {
             self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
             return None;

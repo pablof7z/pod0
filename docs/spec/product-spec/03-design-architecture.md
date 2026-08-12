@@ -86,7 +86,9 @@ Every surface must pass: Dynamic Type to AX5 (single column at AX3+; eyebrow sta
 - **State.** `State/AppStateStore.swift` plus six extension files (`+Items`, `+Notes`, `+Memories`, `+Friends`, `+Nostr`, `+AgentActivity`, `+DerivedViews`). `@MainActor @Observable`. Single source of truth.
 - **Persistence.** `State/Persistence.swift` encodes the entire `AppState` as JSON, writes to App Group `UserDefaults` keyed `podcastr.state.v1`. `iCloudSettingsSync` already merges arbitrary `Settings` fields key-by-key.
 - **Agent loop.** `Features/Agent/AgentChatSession.swift` plus `AgentOpenRouterClient.swift` runs the SSE streaming loop with up to 20 turns. `Agent/AgentTools.swift` + `AgentToolSchema.swift` + `AgentPrompt.swift`, with tool dispatchers split into `+Items`, `+NotesMemory`, `+Reminders`, `+DueDates`, `+Search`. `AgentRelayBridge.swift` runs the same loop at 8-turn cap for inbound Nostr DMs.
-- **Nostr subsystem.** `NostrRelayService` (WebSocket + kind-1 + reconnect), `NostrKeyPair` (P256K), `Bech32`, ACL (`nostrAllowedPubkeys` / `nostrBlockedPubkeys` / `nostrPendingApprovals`). The whole subsystem is kept verbatim.
+- **Nostr subsystem.** The template implementation is not inherited. Pod0 uses
+  upstream NMP for identity, Keychain checkpointing, signing, routing, relay
+  transport, queries, and publication receipts.
 - **Services.** `KeychainStore`, `OpenRouterCredentialStore`, `ElevenLabsCredentialStore`, `NostrCredentialStore`, `BYOKConnectService` (PKCE), `NotificationService`, `BadgeManager`, `SpotlightIndexer`, `iCloudSettingsSync`, `DataExport`, `DeepLinkHandler`, `VoiceItemService` (`SFSpeechRecognizer` dictation, harden for full-duplex), `ChatHistoryStore`, `ReviewPrompt`, `UserIdentityStore`.
 - **Design.** `AppTheme` (split by concern), `GlassSurface` (calls native iOS 26 `.glassEffect()`), `Haptics`, `PressableStyle`, `ShakeDetector`, `MarkdownView`, `AsyncButton`.
 - **Feedback.** Shake → `FeedbackWorkflow` state machine, `FeedbackStore` in `Documents/feedback_threads.json`. Wire `FeedbackView.performSubmission` to a backend later; that hook exists.

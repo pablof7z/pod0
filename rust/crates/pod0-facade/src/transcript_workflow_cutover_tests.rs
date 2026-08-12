@@ -62,11 +62,11 @@ fn legacy_workflow_cutover_survives_each_restart_and_recovers_owned_work() {
     );
     assert!(
         after_commit
-            .next_host_requests(u16::MAX)
+            .next_leased_host_requests(u16::MAX)
             .iter()
-            .any(|request| {
+            .any(|leased| {
                 matches!(
-                    request.request,
+                    leased.request.request,
                     HostRequest::ExecuteTranscriptCapability { .. }
                 )
             })
@@ -207,8 +207,9 @@ fn automatic_publisher_restart_preserves_the_idempotent_fetch_path() {
     );
     let request = fixture
         .facade
-        .next_host_requests(u16::MAX)
+        .next_leased_host_requests(u16::MAX)
         .into_iter()
+        .map(|leased| leased.request)
         .find(|request| {
             matches!(
                 request.request,

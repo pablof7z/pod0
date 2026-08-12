@@ -4,7 +4,7 @@ use crate::runtime_download_mapping::{
 use crate::runtime_state::FacadeState;
 use crate::runtime_storage_commands::storage_failure;
 use pod0_application::{
-    CommandEnvelope, CoreFailureCode, DOWNLOAD_HOST_REQUEST_DEADLINE_MILLISECONDS,
+    ActivitySubject, CommandEnvelope, CoreFailureCode, DOWNLOAD_HOST_REQUEST_DEADLINE_MILLISECONDS,
     DownloadAdmissionDecision, DownloadEnvironmentObservation, DownloadIntentOrigin,
     OperationStage, download_input_version, download_intent_id, evaluate_download_admission,
 };
@@ -68,6 +68,10 @@ impl FacadeState {
             match store.record_download_noop_command(
                 envelope.command_id,
                 fingerprint,
+                ActivitySubject::Episode { episode_id },
+                Some(episode_id),
+                origin,
+                Vec::new(),
                 self.now().value,
             ) {
                 Ok(_) => self.succeed(envelope.command_id, None),

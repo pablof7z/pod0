@@ -99,7 +99,12 @@ pub fn agent_tool_policy(tool: AgentToolName) -> AgentToolPolicy {
             DurableTurnGrant,
             AgentExecutionKind::NativeCapability,
         ),
-        SearchPodcastDirectory | SearchYoutube => (
+        SearchPodcastDirectory => (
+            vec![ReversibleWrite, ExternalSideEffect],
+            DurableTurnGrant,
+            AgentExecutionKind::NativeCapability,
+        ),
+        SearchYoutube => (
             vec![ReadOnly, ExternalSideEffect],
             DurableTurnGrant,
             AgentExecutionKind::NativeCapability,

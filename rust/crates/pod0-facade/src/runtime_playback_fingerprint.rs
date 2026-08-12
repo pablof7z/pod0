@@ -61,6 +61,7 @@ pub(super) fn hash_playback(hash: &mut Sha256, command: &PlaybackCommand) {
             hash.update(b"playback-enqueue\0");
             hash_queue_entry(hash, entry);
             match placement {
+                QueuePlacement::Now => hash.update([0]),
                 QueuePlacement::Back => hash.update([1]),
                 QueuePlacement::Next => hash.update([2]),
                 QueuePlacement::Unsupported { wire_code } => {

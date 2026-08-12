@@ -21,6 +21,7 @@ pub fn validate_agent_action(action: &AgentToolAction) -> Result<(), AgentAction
             query,
             scope,
             limit,
+            ..
         } if search_tool(*tool) => {
             validate_text(query, MAX_AGENT_ACTION_TEXT_BYTES)?;
             validate_optional_text(scope.as_deref(), 1_024)?;

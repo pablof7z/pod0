@@ -8,6 +8,7 @@ SOURCE_PACKAGES_PATH="${SOURCE_PACKAGES_PATH:-$REPO_ROOT/.build/DerivedData/Sour
 cd "$REPO_ROOT"
 
 ./scripts/check_apple_release_inputs.sh --toolchain-only
+./scripts/prepare_nmp_swift_package.sh
 ./scripts/build_pod0_core_apple.sh
 
 tuist generate --no-open

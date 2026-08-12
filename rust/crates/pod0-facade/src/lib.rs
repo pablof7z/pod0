@@ -17,6 +17,7 @@ mod clip_migration;
 mod contract_facade;
 mod download_cutover;
 mod download_cutover_types;
+mod episode_activity_projection;
 #[cfg(test)]
 mod facade_contract_tests;
 mod feed_discovery_cutover;
@@ -33,6 +34,8 @@ mod runtime_open_error;
 include!("runtime_split_modules.rs");
 #[cfg(test)]
 mod runtime_cancellation_tests;
+#[cfg(test)]
+mod runtime_chapter_activity_tests;
 #[cfg(test)]
 mod runtime_chapter_ad_skip_tests;
 #[cfg(test)]
@@ -68,6 +71,8 @@ mod runtime_download_admission_tests;
 #[cfg(test)]
 mod runtime_download_contract_tests;
 #[cfg(test)]
+mod runtime_download_control_activity_tests;
+#[cfg(test)]
 mod runtime_download_deadline_tests;
 #[cfg(test)]
 mod runtime_download_workflow_tests;
@@ -88,9 +93,17 @@ mod runtime_recall_test_support;
 #[cfg(test)]
 mod runtime_recall_tests;
 #[cfg(test)]
-mod runtime_signer_tests;
+mod runtime_request_disposition_tests;
 #[cfg(test)]
 mod runtime_tests;
+#[cfg(test)]
+mod runtime_transcript_activity_tests;
+#[cfg(test)]
+mod runtime_transcript_cancellation_activity_tests;
+#[cfg(test)]
+mod runtime_transcript_observation_rollback_tests;
+#[cfg(test)]
+mod runtime_transcript_policy_activity_tests;
 #[cfg(test)]
 mod runtime_transcript_tests;
 #[cfg(test)]
@@ -139,6 +152,10 @@ pub use contract_facade::*;
 pub use download_cutover_types::{
     LegacyDownloadCutoverCandidate, LegacyDownloadCutoverDisposition, LegacyDownloadCutoverFailure,
     LegacyDownloadCutoverFailureCode, LegacyDownloadCutoverProjection, LegacyDownloadCutoverStage,
+};
+pub use episode_activity_projection::{
+    EpisodeActivityDetail, EpisodeActivityEntry, EpisodeActivityEntryKind, EpisodeActivityPage,
+    EpisodeActivitySeverity,
 };
 pub use feed_discovery_cutover_types::*;
 pub use kernel_probe_facade::KernelProbeFacade;
@@ -190,9 +207,17 @@ pub trait Pod0ApplicationApi: Send + Sync {
     ) -> SubscriptionId;
     fn unsubscribe(&self, subscription_id: SubscriptionId);
     fn next_host_requests(&self, maximum_count: u16) -> Vec<HostRequestEnvelope>;
+    fn next_leased_host_requests(
+        &self,
+        maximum_count: u16,
+    ) -> Vec<pod0_application::LeasedHostRequestEnvelope>;
     fn next_host_cancellations(&self, maximum_count: u16) -> Vec<HostCancellationRequest>;
     fn record_host_observation(
         &self,
         observation: HostObservationEnvelope,
+    ) -> HostObservationReceipt;
+    fn record_leased_host_observation(
+        &self,
+        observation: pod0_application::LeasedHostObservationEnvelope,
     ) -> HostObservationReceipt;
 }

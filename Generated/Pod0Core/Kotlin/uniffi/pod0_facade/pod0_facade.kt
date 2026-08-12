@@ -59,10 +59,15 @@ import uniffi.pod0_application.FfiConverterTypeHostCancellationRequest
 import uniffi.pod0_application.FfiConverterTypeHostObservationEnvelope
 import uniffi.pod0_application.FfiConverterTypeHostObservationReceipt
 import uniffi.pod0_application.FfiConverterTypeHostRequestEnvelope
+import uniffi.pod0_application.FfiConverterTypeLeasedHostObservationEnvelope
+import uniffi.pod0_application.FfiConverterTypeLeasedHostRequestEnvelope
 import uniffi.pod0_application.FfiConverterTypeLegacyAgentHistoryConversationInput
 import uniffi.pod0_application.FfiConverterTypeModelChapterObservation
+import uniffi.pod0_application.FfiConverterTypeNMPPublicationReceiptLink
+import uniffi.pod0_application.FfiConverterTypePod0PublicationDraft
 import uniffi.pod0_application.FfiConverterTypeProjectionEnvelope
 import uniffi.pod0_application.FfiConverterTypeProjectionRequest
+import uniffi.pod0_application.FfiConverterTypePublicationStatusObservation
 import uniffi.pod0_application.FfiConverterTypePublisherChapterObservation
 import uniffi.pod0_application.FfiConverterTypeScheduledAgentExecutionObservation
 import uniffi.pod0_application.FfiConverterTypeScheduledAgentExecutionRequest
@@ -81,10 +86,15 @@ import uniffi.pod0_application.HostCancellationRequest
 import uniffi.pod0_application.HostObservationEnvelope
 import uniffi.pod0_application.HostObservationReceipt
 import uniffi.pod0_application.HostRequestEnvelope
+import uniffi.pod0_application.LeasedHostObservationEnvelope
+import uniffi.pod0_application.LeasedHostRequestEnvelope
 import uniffi.pod0_application.LegacyAgentHistoryConversationInput
 import uniffi.pod0_application.ModelChapterObservation
+import uniffi.pod0_application.NmpPublicationReceiptLink
+import uniffi.pod0_application.Pod0PublicationDraft
 import uniffi.pod0_application.ProjectionEnvelope
 import uniffi.pod0_application.ProjectionRequest
+import uniffi.pod0_application.PublicationStatusObservation
 import uniffi.pod0_application.PublisherChapterObservation
 import uniffi.pod0_application.ScheduledAgentExecutionObservation
 import uniffi.pod0_application.ScheduledAgentExecutionRequest
@@ -111,6 +121,7 @@ import uniffi.pod0_domain.FfiConverterTypeListeningDomainSnapshot
 import uniffi.pod0_domain.FfiConverterTypeMemoryId
 import uniffi.pod0_domain.FfiConverterTypeNoteRecord
 import uniffi.pod0_domain.FfiConverterTypePodcastId
+import uniffi.pod0_domain.FfiConverterTypePublicationId
 import uniffi.pod0_domain.FfiConverterTypeScheduledTaskId
 import uniffi.pod0_domain.FfiConverterTypeSpeakerId
 import uniffi.pod0_domain.FfiConverterTypeStateRevision
@@ -120,6 +131,7 @@ import uniffi.pod0_domain.ListeningDomainSnapshot
 import uniffi.pod0_domain.MemoryId
 import uniffi.pod0_domain.NoteRecord
 import uniffi.pod0_domain.PodcastId
+import uniffi.pod0_domain.PublicationId
 import uniffi.pod0_domain.ScheduledTaskId
 import uniffi.pod0_domain.SpeakerId
 import uniffi.pod0_domain.StateRevision
@@ -141,10 +153,15 @@ import uniffi.pod0_application.RustBuffer as RustBufferHostCancellationRequest
 import uniffi.pod0_application.RustBuffer as RustBufferHostObservationEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferHostObservationReceipt
 import uniffi.pod0_application.RustBuffer as RustBufferHostRequestEnvelope
+import uniffi.pod0_application.RustBuffer as RustBufferLeasedHostObservationEnvelope
+import uniffi.pod0_application.RustBuffer as RustBufferLeasedHostRequestEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferLegacyAgentHistoryConversationInput
 import uniffi.pod0_application.RustBuffer as RustBufferModelChapterObservation
+import uniffi.pod0_application.RustBuffer as RustBufferNMPPublicationReceiptLink
+import uniffi.pod0_application.RustBuffer as RustBufferPod0PublicationDraft
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionRequest
+import uniffi.pod0_application.RustBuffer as RustBufferPublicationStatusObservation
 import uniffi.pod0_application.RustBuffer as RustBufferPublisherChapterObservation
 import uniffi.pod0_application.RustBuffer as RustBufferScheduledAgentExecutionObservation
 import uniffi.pod0_application.RustBuffer as RustBufferScheduledAgentExecutionRequest
@@ -167,6 +184,7 @@ import uniffi.pod0_domain.RustBuffer as RustBufferListeningDomainSnapshot
 import uniffi.pod0_domain.RustBuffer as RustBufferMemoryId
 import uniffi.pod0_domain.RustBuffer as RustBufferNoteRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferPodcastId
+import uniffi.pod0_domain.RustBuffer as RustBufferPublicationId
 import uniffi.pod0_domain.RustBuffer as RustBufferScheduledTaskId
 import uniffi.pod0_domain.RustBuffer as RustBufferSpeakerId
 import uniffi.pod0_domain.RustBuffer as RustBufferStateRevision
@@ -944,6 +962,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_download_cutover(
     ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_episode_activity_page(
+    ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_feed_discovery_cutover(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_feed_discovery_cutover(
@@ -970,9 +990,21 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_next_host_requests(
     ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_next_leased_host_requests(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_next_nmp_publications(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_nmp_publication_receipt_links(
+    ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_plan_chapter_model_request(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_record_host_observation(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_record_leased_host_observation(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_observation(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_receipt(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_snapshot(
     ): Int
@@ -1063,6 +1095,8 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_download_cutover(`ptr`: Long,`sourceGeneration`: Long,`candidates`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_episode_activity_page(`ptr`: Long,`episodeId`: RustBufferEpisodeId.ByValue,`afterSequence`: RustBuffer.ByValue,`requestedCount`: Short,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_feed_discovery_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_feed_discovery_cutover(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus,
@@ -1089,10 +1123,22 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_next_host_requests(`ptr`: Long,`maximumCount`: Short,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_next_leased_host_requests(`ptr`: Long,`maximumCount`: Short,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_next_nmp_publications(`ptr`: Long,`maximumCount`: Short,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_nmp_publication_receipt_links(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_plan_chapter_model_request(`ptr`: Long,`episodeId`: RustBufferEpisodeId.ByValue,`configuredModel`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBufferChapterModelPlan.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_record_host_observation(`ptr`: Long,`observation`: RustBufferHostObservationEnvelope.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBufferHostObservationReceipt.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_record_leased_host_observation(`ptr`: Long,`observation`: RustBufferLeasedHostObservationEnvelope.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBufferHostObservationReceipt.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_record_nmp_publication_observation(`ptr`: Long,`publicationId`: RustBufferPublicationId.ByValue,`observation`: RustBufferPublicationStatusObservation.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): Unit
+    external fun uniffi_pod0_facade_fn_method_pod0facade_record_nmp_publication_receipt(`ptr`: Long,`publicationId`: RustBufferPublicationId.ByValue,`receiptId`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): Unit
     external fun uniffi_pod0_facade_fn_method_pod0facade_snapshot(`ptr`: Long,`request`: RustBufferProjectionRequest.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBufferProjectionEnvelope.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_subscribe(`ptr`: Long,`request`: RustBufferProjectionRequest.ByValue,`subscriber`: Long,uniffi_out_err: UniffiRustCallStatus,
@@ -1488,6 +1534,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_download_cutover() != 2411) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_episode_activity_page() != 54347) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_feed_discovery_cutover() != 42949) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1527,10 +1576,28 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_next_host_requests() != 62215) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_next_leased_host_requests() != 19145) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_next_nmp_publications() != 2989) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_nmp_publication_receipt_links() != 57711) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_plan_chapter_model_request() != 53024) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_host_observation() != 28085) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_leased_host_observation() != 16311) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_observation() != 8870) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_receipt() != 63944) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_snapshot() != 17086) {
@@ -2109,6 +2176,8 @@ public interface Pod0FacadeInterface {
 
     fun `stageLegacyDownloadCutover`(`sourceGeneration`: kotlin.ULong, `candidates`: List<LegacyDownloadCutoverCandidate>): LegacyDownloadCutoverProjection
 
+    fun `episodeActivityPage`(`episodeId`: EpisodeId, `afterSequence`: kotlin.ULong?, `requestedCount`: kotlin.UShort): EpisodeActivityPage
+
     fun `commitLegacyFeedDiscoveryCutover`(`sourceGeneration`: kotlin.ULong): LegacyFeedDiscoveryCutoverProjection
 
     fun `feedDiscoveryCutover`(): LegacyFeedDiscoveryCutoverProjection
@@ -2135,6 +2204,12 @@ public interface Pod0FacadeInterface {
 
     fun `nextHostRequests`(`maximumCount`: kotlin.UShort): List<HostRequestEnvelope>
 
+    fun `nextLeasedHostRequests`(`maximumCount`: kotlin.UShort): List<LeasedHostRequestEnvelope>
+
+    fun `nextNmpPublications`(`maximumCount`: kotlin.UShort): List<Pod0PublicationDraft>
+
+    fun `nmpPublicationReceiptLinks`(): List<NmpPublicationReceiptLink>
+
     /**
      * Plans the exact bounded chapter-model capability request from the
      * authoritative Rust episode, transcript, and chapter selections.
@@ -2142,6 +2217,12 @@ public interface Pod0FacadeInterface {
     fun `planChapterModelRequest`(`episodeId`: EpisodeId, `configuredModel`: kotlin.String): ChapterModelPlan
 
     fun `recordHostObservation`(`observation`: HostObservationEnvelope): HostObservationReceipt
+
+    fun `recordLeasedHostObservation`(`observation`: LeasedHostObservationEnvelope): HostObservationReceipt
+
+    fun `recordNmpPublicationObservation`(`publicationId`: PublicationId, `observation`: PublicationStatusObservation)
+
+    fun `recordNmpPublicationReceipt`(`publicationId`: PublicationId, `receiptId`: kotlin.ULong)
 
     fun `snapshot`(`request`: ProjectionRequest): ProjectionEnvelope
 
@@ -2427,6 +2508,22 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
     }
 
 
+    override fun `episodeActivityPage`(`episodeId`: EpisodeId, `afterSequence`: kotlin.ULong?, `requestedCount`: kotlin.UShort): EpisodeActivityPage {
+            return FfiConverterTypeEpisodeActivityPage.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_episode_activity_page(
+        it,
+
+        FfiConverterTypeEpisodeId.lower(`episodeId`),
+        FfiConverterOptionalULong.lower(`afterSequence`),
+        FfiConverterUShort.lower(`requestedCount`),_status)
+}
+    }
+    )
+    }
+
+
     override fun `commitLegacyFeedDiscoveryCutover`(`sourceGeneration`: kotlin.ULong): LegacyFeedDiscoveryCutoverProjection {
             return FfiConverterTypeLegacyFeedDiscoveryCutoverProjection.lift(
     callWithHandle {
@@ -2622,6 +2719,47 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
     }
 
 
+    override fun `nextLeasedHostRequests`(`maximumCount`: kotlin.UShort): List<LeasedHostRequestEnvelope> {
+            return FfiConverterSequenceTypeLeasedHostRequestEnvelope.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_next_leased_host_requests(
+        it,
+
+        FfiConverterUShort.lower(`maximumCount`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `nextNmpPublications`(`maximumCount`: kotlin.UShort): List<Pod0PublicationDraft> {
+            return FfiConverterSequenceTypePod0PublicationDraft.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_next_nmp_publications(
+        it,
+
+        FfiConverterUShort.lower(`maximumCount`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `nmpPublicationReceiptLinks`(): List<NmpPublicationReceiptLink> {
+            return FfiConverterSequenceTypeNMPPublicationReceiptLink.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_nmp_publication_receipt_links(
+        it,
+        _status)
+}
+    }
+    )
+    }
+
+
 
     /**
      * Plans the exact bounded chapter-model capability request from the
@@ -2653,6 +2791,48 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
     }
     )
     }
+
+
+    override fun `recordLeasedHostObservation`(`observation`: LeasedHostObservationEnvelope): HostObservationReceipt {
+            return FfiConverterTypeHostObservationReceipt.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_record_leased_host_observation(
+        it,
+
+        FfiConverterTypeLeasedHostObservationEnvelope.lower(`observation`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `recordNmpPublicationObservation`(`publicationId`: PublicationId, `observation`: PublicationStatusObservation)
+        =
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_record_nmp_publication_observation(
+        it,
+
+        FfiConverterTypePublicationId.lower(`publicationId`),
+        FfiConverterTypePublicationStatusObservation.lower(`observation`),_status)
+}
+    }
+
+
+
+    override fun `recordNmpPublicationReceipt`(`publicationId`: PublicationId, `receiptId`: kotlin.ULong)
+        =
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_record_nmp_publication_receipt(
+        it,
+
+        FfiConverterTypePublicationId.lower(`publicationId`),
+        FfiConverterULong.lower(`receiptId`),_status)
+}
+    }
+
 
 
     override fun `snapshot`(`request`: ProjectionRequest): ProjectionEnvelope {
@@ -3223,6 +3403,150 @@ public object FfiConverterTypeProjectionSubscriber: FfiConverter<ProjectionSubsc
 
     override fun write(value: ProjectionSubscriber, buf: ByteBuffer) {
         buf.putLong(lower(value))
+    }
+}
+
+
+
+data class EpisodeActivityDetail (
+    val `label`: kotlin.String
+    ,
+    val `value`: kotlin.String
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEpisodeActivityDetail: FfiConverterRustBuffer<EpisodeActivityDetail> {
+    override fun read(buf: ByteBuffer): EpisodeActivityDetail {
+        return EpisodeActivityDetail(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: EpisodeActivityDetail) = (
+            FfiConverterString.allocationSize(value.`label`) +
+            FfiConverterString.allocationSize(value.`value`)
+    )
+
+    override fun write(value: EpisodeActivityDetail, buf: ByteBuffer) {
+            FfiConverterString.write(value.`label`, buf)
+            FfiConverterString.write(value.`value`, buf)
+    }
+}
+
+
+
+data class EpisodeActivityEntry (
+    val `sequence`: kotlin.ULong
+    ,
+    val `committedAt`: UnixTimestampMilliseconds
+    ,
+    val `kind`: EpisodeActivityEntryKind
+    ,
+    val `severity`: EpisodeActivitySeverity
+    ,
+    val `title`: kotlin.String
+    ,
+    val `summary`: kotlin.String
+    ,
+    val `details`: List<EpisodeActivityDetail>
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEpisodeActivityEntry: FfiConverterRustBuffer<EpisodeActivityEntry> {
+    override fun read(buf: ByteBuffer): EpisodeActivityEntry {
+        return EpisodeActivityEntry(
+            FfiConverterULong.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+            FfiConverterTypeEpisodeActivityEntryKind.read(buf),
+            FfiConverterTypeEpisodeActivitySeverity.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterSequenceTypeEpisodeActivityDetail.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: EpisodeActivityEntry) = (
+            FfiConverterULong.allocationSize(value.`sequence`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`committedAt`) +
+            FfiConverterTypeEpisodeActivityEntryKind.allocationSize(value.`kind`) +
+            FfiConverterTypeEpisodeActivitySeverity.allocationSize(value.`severity`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterString.allocationSize(value.`summary`) +
+            FfiConverterSequenceTypeEpisodeActivityDetail.allocationSize(value.`details`)
+    )
+
+    override fun write(value: EpisodeActivityEntry, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`sequence`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`committedAt`, buf)
+            FfiConverterTypeEpisodeActivityEntryKind.write(value.`kind`, buf)
+            FfiConverterTypeEpisodeActivitySeverity.write(value.`severity`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterString.write(value.`summary`, buf)
+            FfiConverterSequenceTypeEpisodeActivityDetail.write(value.`details`, buf)
+    }
+}
+
+
+
+data class EpisodeActivityPage (
+    val `available`: kotlin.Boolean
+    ,
+    val `items`: List<EpisodeActivityEntry>
+    ,
+    val `nextAfterSequence`: kotlin.ULong?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEpisodeActivityPage: FfiConverterRustBuffer<EpisodeActivityPage> {
+    override fun read(buf: ByteBuffer): EpisodeActivityPage {
+        return EpisodeActivityPage(
+            FfiConverterBoolean.read(buf),
+            FfiConverterSequenceTypeEpisodeActivityEntry.read(buf),
+            FfiConverterOptionalULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: EpisodeActivityPage) = (
+            FfiConverterBoolean.allocationSize(value.`available`) +
+            FfiConverterSequenceTypeEpisodeActivityEntry.allocationSize(value.`items`) +
+            FfiConverterOptionalULong.allocationSize(value.`nextAfterSequence`)
+    )
+
+    override fun write(value: EpisodeActivityPage, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`available`, buf)
+            FfiConverterSequenceTypeEpisodeActivityEntry.write(value.`items`, buf)
+            FfiConverterOptionalULong.write(value.`nextAfterSequence`, buf)
     }
 }
 
@@ -5627,6 +5951,86 @@ public object FfiConverterTypeSharedListeningStorePreparation: FfiConverterRustB
             FfiConverterBoolean.write(value.`resumedFromJournal`, buf)
     }
 }
+
+
+
+
+enum class EpisodeActivityEntryKind {
+
+    REQUEST,
+    DOMAIN_TRANSITION,
+    PLAYBACK_CHECKPOINT,
+    EFFECT_AUTHORIZATION,
+    EFFECT_OBSERVATION,
+    INTERNAL_COMMAND,
+    RECOVERY,
+    AUTHORITY_CUTOVER;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEpisodeActivityEntryKind: FfiConverterRustBuffer<EpisodeActivityEntryKind> {
+    override fun read(buf: ByteBuffer) = try {
+
+        EpisodeActivityEntryKind.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: EpisodeActivityEntryKind) = 4UL
+
+    override fun write(value: EpisodeActivityEntryKind, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+enum class EpisodeActivitySeverity {
+
+    INFO,
+    SUCCESS,
+    WARNING,
+    FAILURE;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEpisodeActivitySeverity: FfiConverterRustBuffer<EpisodeActivitySeverity> {
+    override fun read(buf: ByteBuffer) = try {
+
+        EpisodeActivitySeverity.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: EpisodeActivitySeverity) = 4UL
+
+    override fun write(value: EpisodeActivitySeverity, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
 
 
 
@@ -8793,6 +9197,34 @@ public object FfiConverterSequenceTypeHostRequestEnvelope: FfiConverterRustBuffe
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeLeasedHostRequestEnvelope: FfiConverterRustBuffer<List<LeasedHostRequestEnvelope>> {
+    override fun read(buf: ByteBuffer): List<LeasedHostRequestEnvelope> {
+        val len = buf.getInt()
+        return List<LeasedHostRequestEnvelope>(len) {
+            FfiConverterTypeLeasedHostRequestEnvelope.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<LeasedHostRequestEnvelope>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeLeasedHostRequestEnvelope.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<LeasedHostRequestEnvelope>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeLeasedHostRequestEnvelope.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeLegacyAgentHistoryConversationInput: FfiConverterRustBuffer<List<LegacyAgentHistoryConversationInput>> {
     override fun read(buf: ByteBuffer): List<LegacyAgentHistoryConversationInput> {
         val len = buf.getInt()
@@ -8811,6 +9243,62 @@ public object FfiConverterSequenceTypeLegacyAgentHistoryConversationInput: FfiCo
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeLegacyAgentHistoryConversationInput.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeNMPPublicationReceiptLink: FfiConverterRustBuffer<List<NmpPublicationReceiptLink>> {
+    override fun read(buf: ByteBuffer): List<NmpPublicationReceiptLink> {
+        val len = buf.getInt()
+        return List<NmpPublicationReceiptLink>(len) {
+            FfiConverterTypeNMPPublicationReceiptLink.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<NmpPublicationReceiptLink>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeNMPPublicationReceiptLink.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<NmpPublicationReceiptLink>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeNMPPublicationReceiptLink.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypePod0PublicationDraft: FfiConverterRustBuffer<List<Pod0PublicationDraft>> {
+    override fun read(buf: ByteBuffer): List<Pod0PublicationDraft> {
+        val len = buf.getInt()
+        return List<Pod0PublicationDraft>(len) {
+            FfiConverterTypePod0PublicationDraft.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<Pod0PublicationDraft>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypePod0PublicationDraft.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<Pod0PublicationDraft>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypePod0PublicationDraft.write(it, buf)
         }
     }
 }
@@ -8895,6 +9383,62 @@ public object FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer<List<No
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeNoteRecord.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeEpisodeActivityDetail: FfiConverterRustBuffer<List<EpisodeActivityDetail>> {
+    override fun read(buf: ByteBuffer): List<EpisodeActivityDetail> {
+        val len = buf.getInt()
+        return List<EpisodeActivityDetail>(len) {
+            FfiConverterTypeEpisodeActivityDetail.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<EpisodeActivityDetail>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeEpisodeActivityDetail.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<EpisodeActivityDetail>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeEpisodeActivityDetail.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeEpisodeActivityEntry: FfiConverterRustBuffer<List<EpisodeActivityEntry>> {
+    override fun read(buf: ByteBuffer): List<EpisodeActivityEntry> {
+        val len = buf.getInt()
+        return List<EpisodeActivityEntry>(len) {
+            FfiConverterTypeEpisodeActivityEntry.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<EpisodeActivityEntry>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeEpisodeActivityEntry.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<EpisodeActivityEntry>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeEpisodeActivityEntry.write(it, buf)
         }
     }
 }
@@ -9094,6 +9638,18 @@ public object FfiConverterSequenceTypeLegacyTranscriptWorkflowCutoverCandidate: 
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

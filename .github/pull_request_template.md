@@ -19,11 +19,12 @@ it not applicable and explain why.
 - [ ] **3. Android need:** Could Android need the same behavior or persisted
   fact?
 - [ ] **4. Long-term owner:** Where is the long-term source of truth?
-- [ ] **5. Ownership choice:** Is the logic **Shared Rust now**, **Native by
-  design**, **Temporary Swift behind a migration-safe boundary**, or a
-  **Planning/research/decision record**?
-- [ ] **6. Temporary deletion:** If temporary, what linked issue removes or
-  migrates it? Temporary Swift without an issue is not mergeable.
+- [ ] **5. Ownership choice:** Product/business logic is **Shared Rust**;
+  presentation or a literal platform primitive may be **Native by design**;
+  planning/research owns no production behavior.
+- [ ] **6. No new exception:** This does not add a Swift/Kotlin product-policy
+  file, declaration, durable writer, retry/fallback decision, or effect path.
+  Existing exact exceptions may only shrink through #213–#218.
 - [ ] **7. Typed boundary:** Is the boundary typed and testable through commands,
   projections, domain events, host requests, or raw host observations?
 - [ ] **8. Platform leakage:** Does a supposedly shared API assume UIKit,
@@ -43,7 +44,7 @@ it not applicable and explain why.
 - Current source of truth:
 - Source of truth after this PR:
 - Typed interface or native capability boundary:
-- Migration/deletion issue, if temporary:
+- Migration/deletion issue for any reduced legacy exception:
 - Obsolete code deleted by this PR:
 
 Architecture source: [`docs/architecture/README.md`](../docs/architecture/README.md).
@@ -56,9 +57,9 @@ Architecture source: [`docs/architecture/README.md`](../docs/architecture/README
 - Normalized transcript, chapter, and evidence semantics belong in Rust;
   Apple Speech remains a native capability and provider request/recovery policy
   follows the shared workflow owner.
-- SwiftUI rendering/navigation is native; `AppStateStore` is a temporary Swift
-  durable owner. Views dispatch domain methods/intents rather than mutating
-  `AppState` or opening repositories directly.
+- SwiftUI rendering/navigation is native. Views dispatch typed Rust intents and
+  render Rust projections; they do not mutate `AppState`, open repositories,
+  select work, or decide retry/fallback behavior.
 
 </details>
 

@@ -87,6 +87,13 @@ enum NativeHostObservationArchive {
         try data.write(to: url, options: .atomic)
     }
 
+    static func encodedSize(_ entries: [Entry]) throws -> Int {
+        try JSONEncoder().encode(Payload(
+            schemaVersion: schemaVersion,
+            records: entries.map(\.stored)
+        )).count
+    }
+
     static func restore(from url: URL, limits: Limits) throws -> [Entry] {
         guard FileManager.default.fileExists(atPath: url.path) else { return [] }
         let fileSize = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize

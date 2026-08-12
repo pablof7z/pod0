@@ -45,12 +45,6 @@ pub enum OperationResult {
     PublicationPrepared {
         publication_id: pod0_domain::PublicationId,
     },
-    NostrSignerReady {
-        account_id: pod0_domain::SignerAccountId,
-    },
-    NostrSignerSignedOut {
-        account_id: pod0_domain::SignerAccountId,
-    },
     RecallFinished {
         query_id: RecallQueryId,
         evidence_count: u16,

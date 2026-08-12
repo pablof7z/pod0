@@ -4,25 +4,29 @@ use pod0_domain::{CommandId, UnixTimestampMilliseconds};
 
 uniffi::setup_scaffolding!();
 
+mod activity_contract;
+mod activity_identity;
+mod activity_routing_command;
+mod activity_routing_effect;
+mod activity_routing_observation;
+mod activity_transition_kind;
 mod agent_action_hash;
 mod agent_action_hash_primitives;
 mod agent_action_validation;
+mod agent_activity;
+mod agent_activity_identity;
 mod agent_contract;
+mod agent_execution_activity;
 mod agent_generated_audio;
 mod agent_history_contract;
 mod agent_history_import;
-#[cfg(test)]
-mod agent_model_usage_tests;
 mod agent_policy;
 mod agent_policy_shape;
 mod agent_provider_output;
-#[cfg(test)]
-mod agent_provider_output_tests;
 mod agent_run_contract;
 mod agent_tool_catalog;
 mod agent_tool_catalog_builders;
-#[cfg(test)]
-mod agent_tool_catalog_tests;
+mod agent_tool_catalog_discovery;
 mod agent_tool_names;
 #[cfg(test)]
 mod agent_tool_policy_tests;
@@ -35,11 +39,8 @@ mod agent_workflow_recovery;
 #[cfg(test)]
 mod agent_workflow_tests;
 mod agent_workflow_values;
+mod chapter_artifact_activity;
 mod chapter_contract;
-#[cfg(test)]
-mod chapter_contract_fixture_tests;
-#[cfg(test)]
-mod chapter_contract_tests;
 mod chapter_model_host;
 mod chapter_model_policy;
 #[cfg(test)]
@@ -79,8 +80,6 @@ mod contract_playback_command;
 mod contract_playback_projection;
 mod contract_projection;
 mod contract_projection_bounds;
-#[cfg(test)]
-mod contract_projection_tests;
 mod contract_state;
 mod contract_state_agent_validation;
 mod contract_state_download_validation;
@@ -92,11 +91,17 @@ mod contract_state_tests;
 mod contract_state_transcript_validation;
 mod contract_state_validation;
 mod core_wake;
+mod download_activity;
 mod download_contract;
 #[cfg(test)]
 mod download_contract_tests;
+mod download_control_activity;
+mod download_environment_activity;
+mod effect_lease_contract;
 mod effects;
+mod evidence_activity;
 mod evidence_contract;
+mod evidence_observation_activity;
 mod feed;
 mod feed_discovery;
 mod feed_fetch_contract;
@@ -118,10 +123,13 @@ mod knowledge_ranking;
 mod knowledge_ranking_tests;
 #[cfg(test)]
 mod knowledge_test_fixture;
+mod library_activity;
 mod memory_contract;
-mod note_contract;
+include!("note_activity_modules.rs");
+mod playback_activity;
 mod publication;
 mod recall_contract;
+mod request_disposition_activity;
 mod scheduled_agent;
 mod scheduled_agent_completion;
 #[cfg(test)]
@@ -131,12 +139,28 @@ mod scheduled_agent_observation_validation;
 mod scheduled_agent_policy;
 #[cfg(test)]
 mod scheduled_agent_tests;
-mod signer;
+mod transcript_activity;
+#[cfg(test)]
+mod transcript_activity_tests;
+mod transcript_admission_activity;
+#[cfg(test)]
+mod transcript_admission_activity_tests;
+mod transcript_artifact_activity;
+mod transcript_cancellation_activity;
+#[cfg(test)]
+mod transcript_cancellation_activity_tests;
 mod transcript_contract;
 #[cfg(test)]
 mod transcript_contract_fixture_tests;
 #[cfg(test)]
 mod transcript_contract_tests;
+mod transcript_finalization_activity;
+mod transcript_observation_activity;
+#[cfg(test)]
+mod transcript_observation_activity_tests;
+mod transcript_observation_policy;
+#[cfg(test)]
+mod transcript_observation_policy_tests;
 mod transcript_projection;
 mod transcript_workflow;
 mod transcript_workflow_capability;
@@ -149,9 +173,22 @@ mod transcript_workflow_policy;
 mod transcript_workflow_projection_tests;
 #[cfg(test)]
 mod transcript_workflow_tests;
+mod transition_plan;
 
+#[cfg(test)]
+include!("activity_test_modules.rs");
+
+pub use activity_contract::*;
+pub use activity_identity::*;
+pub use activity_routing_command::*;
+pub use activity_routing_effect::*;
+pub use activity_routing_observation::*;
+pub use activity_transition_kind::*;
 pub use agent_action_hash::*;
+pub use agent_activity::*;
+pub use agent_activity_identity::*;
 pub use agent_contract::*;
+pub use agent_execution_activity::*;
 pub use agent_generated_audio::*;
 pub use agent_history_contract::*;
 pub use agent_history_import::*;
@@ -161,6 +198,7 @@ pub use agent_run_contract::*;
 pub use agent_tool_catalog::*;
 pub use agent_tool_names::*;
 pub use agent_workflow_values::*;
+pub use chapter_artifact_activity::*;
 pub use chapter_contract::*;
 pub use chapter_model_host::*;
 pub use chapter_model_policy::*;
@@ -178,9 +216,15 @@ pub use contract_projection::*;
 pub use contract_state::*;
 pub use contract_state_subscription::*;
 pub use core_wake::*;
+pub use download_activity::*;
 pub use download_contract::*;
+pub use download_control_activity::*;
+pub use download_environment_activity::*;
+pub use effect_lease_contract::*;
 pub use effects::*;
+pub use evidence_activity::*;
 pub use evidence_contract::*;
+pub use evidence_observation_activity::*;
 pub use feed::*;
 pub use feed_discovery::*;
 pub use feed_fetch_contract::*;
@@ -188,25 +232,33 @@ pub use host_cancellation::*;
 pub use knowledge::*;
 pub use knowledge_chunking::*;
 pub use knowledge_ranking::*;
+pub use library_activity::*;
 pub use memory_contract::*;
-pub use note_contract::*;
+pub use playback_activity::*;
 pub use publication::*;
 pub use recall_contract::*;
+pub use request_disposition_activity::*;
 pub use scheduled_agent::*;
 pub use scheduled_agent_completion::*;
 pub use scheduled_agent_observation::*;
 pub use scheduled_agent_policy::*;
-pub use signer::*;
+pub use transcript_activity::*;
+pub use transcript_admission_activity::*;
+pub use transcript_artifact_activity::*;
+pub use transcript_cancellation_activity::*;
 pub use transcript_contract::*;
+pub use transcript_finalization_activity::*;
+pub use transcript_observation_activity::*;
+pub use transcript_observation_policy::*;
 pub use transcript_projection::*;
 pub use transcript_workflow::*;
 pub use transcript_workflow_capability::*;
 pub use transcript_workflow_failure::*;
 pub use transcript_workflow_identity::*;
 pub use transcript_workflow_policy::*;
+pub use transition_plan::*;
 
 pub const CORE_SCHEMA_VERSION: u32 = 1;
-
 /// The kernel owns time. Hosts provide an observation through this capability;
 /// reducers never sample a native or process-global clock directly.
 pub trait Clock: Send + Sync {
@@ -225,9 +277,6 @@ pub struct KernelProbeProjection {
     pub core_schema_version: u32,
 }
 
-/// Minimal deterministic application boundary. It persists nothing and emits
-/// no host request; the first listening slice will replace the probe with real
-/// commands without changing the crate direction or time contract.
 pub struct KernelApplication<C> {
     clock: C,
 }
@@ -245,34 +294,5 @@ impl<C: Clock> KernelApplication<C> {
             observed_at: self.clock.now(),
             core_schema_version: CORE_SCHEMA_VERSION,
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[derive(Clone, Copy)]
-    struct FixedClock(UnixTimestampMilliseconds);
-
-    impl Clock for FixedClock {
-        fn now(&self) -> UnixTimestampMilliseconds {
-            self.0
-        }
-    }
-
-    #[test]
-    fn identical_command_and_time_produce_identical_projection() {
-        let time = UnixTimestampMilliseconds::new(1_700_000_000_123);
-        let command = KernelProbeCommand {
-            command_id: CommandId::from_bytes([9; 16]),
-        };
-
-        let first = KernelApplication::new(FixedClock(time)).dispatch_probe(command);
-        let second = KernelApplication::new(FixedClock(time)).dispatch_probe(command);
-
-        assert_eq!(first, second);
-        assert_eq!(first.observed_at, time);
-        assert_eq!(first.core_schema_version, CORE_SCHEMA_VERSION);
     }
 }

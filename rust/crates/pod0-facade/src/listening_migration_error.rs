@@ -9,7 +9,8 @@ impl From<StorageError> for LegacyListeningMigrationError {
             StorageError::BackupConflict => Self::BackupConflict,
             StorageError::ImportConflict
             | StorageError::CutoverAlreadyAuthoritative
-            | StorageError::CommandConflict => Self::ImportConflict,
+            | StorageError::CommandConflict
+            | StorageError::ActivityCommandConflict => Self::ImportConflict,
             StorageError::ImportNotFound | StorageError::EntityNotFound => Self::ImportNotFound,
             StorageError::Interrupted => Self::Interrupted,
             StorageError::UnsupportedLegacySource
@@ -76,9 +77,7 @@ impl From<StorageError> for LegacyListeningMigrationError {
             | StorageError::PublicationNotFound
             | StorageError::PublicationConflict
             | StorageError::InvalidPublication
-            | StorageError::SignerNotFound
-            | StorageError::SignerConflict
-            | StorageError::InvalidSignerState => Self::TargetBlocked,
+            | StorageError::InvalidActivity => Self::TargetBlocked,
             StorageError::Io { .. } | StorageError::Sqlite { .. } => Self::StorageUnavailable,
         }
     }

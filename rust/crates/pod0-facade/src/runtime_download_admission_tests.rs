@@ -1,5 +1,10 @@
 use std::sync::Arc;
 
+use pod0_application::{
+    ActivityDomain, ActivityFact, ActivityOrigin, ActivitySubject, DurableInternalCommandRequest,
+    InternalCommandKind,
+};
+
 use crate::runtime_playback_test_support::PlaybackFixture;
 use crate::*;
 
@@ -225,4 +230,68 @@ fn automatic_candidates_select_latest_n_in_rust_regardless_of_input_order() {
             && workflow.stage == DownloadWorkflowStage::WaitingForEnvironment
     }));
     assert!(fixture.facade.next_host_requests(20).is_empty());
+    let store = pod0_storage::LibraryStore::open_authoritative(&fixture.target).unwrap();
+    assert!(store.pending_internal_commands(100).unwrap().is_empty());
+    let activity = pod0_storage::ActivityStore::open(&fixture.target)
+        .unwrap()
+        .page_for_episode(newest, None, 100)
+        .unwrap();
+    assert!(activity.items.iter().any(|item| matches!(
+        item.draft.fact,
+        ActivityFact::InternalCommandAuthorized {
+            target: ActivityDomain::Download,
+            ..
+        }
+    )));
+    assert!(activity.items.iter().any(|item| {
+        item.draft.origin == ActivityOrigin::InternalCommand
+            && item.draft.caused_by_activity_id.is_some()
+            && matches!(item.draft.fact, ActivityFact::DomainTransition { .. })
+    }));
+}
+
+#[test]
+fn startup_resumes_automatic_downloads_authorized_by_the_parent_command() {
+    let fixture = PlaybackFixture::new();
+    dispatch(
+        &fixture.facade,
+        50,
+        ApplicationCommand::SetSubscriptionAutoDownload {
+            podcast_id: fixture.podcast_id,
+            policy: AutoDownloadPolicy {
+                mode: AutoDownloadMode::AllNew,
+                wifi_only: false,
+            },
+        },
+    );
+    let store = pod0_storage::LibraryStore::open_authoritative(&fixture.target).unwrap();
+    let episode_id = fixture.episode_id;
+    store
+        .record_download_noop_command(
+            CommandId::from_parts(90, 1),
+            &"b".repeat(64),
+            ActivitySubject::Podcast {
+                podcast_id: fixture.podcast_id,
+            },
+            None,
+            DownloadIntentOrigin::Automatic,
+            vec![DurableInternalCommandRequest {
+                kind: InternalCommandKind::RequestEpisodeDownload {
+                    origin: DownloadIntentOrigin::Automatic,
+                },
+                target: ActivityDomain::Download,
+                subject: ActivitySubject::Episode { episode_id },
+                episode_id: Some(episode_id),
+            }],
+            1_800_000_000_100,
+        )
+        .unwrap();
+    assert_eq!(store.pending_internal_commands(100).unwrap().len(), 1);
+
+    let reopened = Pod0Facade::open(fixture.target.to_string_lossy().into_owned()).unwrap();
+    assert!(store.pending_internal_commands(100).unwrap().is_empty());
+    assert_eq!(
+        workflows(&reopened, episode_id).workflows[0].stage,
+        DownloadWorkflowStage::WaitingForEnvironment
+    );
 }

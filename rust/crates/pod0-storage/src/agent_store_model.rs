@@ -57,6 +57,52 @@ pub struct AgentTurnMutation {
     pub audit_kind: AgentAuditKind,
 }
 
+#[derive(Clone, Debug)]
+pub struct AgentModelObservationCommitInput {
+    pub lease: pod0_application::PersistedEffectLeaseIdentity,
+    pub observation: pod0_application::DurableAgentModelHostObservation,
+    pub committed_at: UnixTimestampMilliseconds,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AgentModelObservationCommitOutcome {
+    pub state: AgentTurnState,
+    pub replayed: bool,
+}
+
+#[derive(Clone, Debug)]
+pub struct AgentApprovalObservationCommitInput {
+    pub lease: pod0_application::PersistedEffectLeaseIdentity,
+    pub observation: pod0_application::DurableAgentApprovalHostObservation,
+    pub committed_at: UnixTimestampMilliseconds,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AgentApprovalObservationCommitOutcome {
+    pub state: AgentTurnState,
+    pub replayed: bool,
+}
+
+#[derive(Clone, Debug)]
+pub struct AgentCapabilityObservationCommitInput {
+    pub lease: pod0_application::PersistedEffectLeaseIdentity,
+    pub observation: pod0_application::DurableAgentCapabilityHostObservation,
+    pub committed_at: UnixTimestampMilliseconds,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AgentCapabilityObservationCommitOutcome {
+    pub state: AgentTurnState,
+    pub replayed: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AgentCancellationCommitOutcome {
+    pub disposition: pod0_application::RequestDisposition,
+    pub cancellation_id: Option<pod0_domain::CancellationId>,
+    pub replayed: bool,
+}
+
 impl AgentMutationOutcome {
     #[must_use]
     pub fn state(&self) -> &AgentTurnState {

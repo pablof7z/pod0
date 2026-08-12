@@ -1,4 +1,5 @@
 use crate::runtime_command_fingerprint::command_fingerprint;
+use crate::runtime_command_fingerprint::command_fingerprint_digest;
 use crate::runtime_state::FacadeState;
 use pod0_application::{ApplicationCommand, CommandEnvelope, CoreFailureCode};
 use pod0_storage::StoredFeedFetchIntent;
@@ -10,12 +11,18 @@ impl FacadeState {
         self.begin(&envelope);
         let fingerprint = command_fingerprint(&envelope.command);
         match envelope.command.clone() {
-            ApplicationCommand::SubscribeToFeed { feed_url } => {
-                self.start_feed(&envelope, &fingerprint, feed_url, StoredFeedFetchIntent::Subscribe)
-            }
-            ApplicationCommand::EnsurePodcast { feed_url } => {
-                self.start_feed(&envelope, &fingerprint, feed_url, StoredFeedFetchIntent::Ensure)
-            }
+            ApplicationCommand::SubscribeToFeed { feed_url } => self.start_feed(
+                &envelope,
+                &fingerprint,
+                feed_url,
+                StoredFeedFetchIntent::Subscribe,
+            ),
+            ApplicationCommand::EnsurePodcast { feed_url } => self.start_feed(
+                &envelope,
+                &fingerprint,
+                feed_url,
+                StoredFeedFetchIntent::Ensure,
+            ),
             ApplicationCommand::RefreshPodcast { podcast_id } => {
                 self.start_refresh(&envelope, &fingerprint, podcast_id)
             }
@@ -64,9 +71,13 @@ impl FacadeState {
                 self.cancel_operation(cancellation_id);
                 self.succeed(envelope.command_id, None);
             }
-            ApplicationCommand::RequestPlayback { .. } => {
-                self.fail(envelope.command_id, CoreFailureCode::NotFound)
-            }
+            ApplicationCommand::RequestPlayback { episode_id } => self.reject_application_request(
+                &envelope,
+                pod0_application::ActivitySubject::Episode { episode_id },
+                Some(episode_id),
+                pod0_application::RequestRejectionReason::MissingSubject,
+                CoreFailureCode::NotFound,
+            ),
             ApplicationCommand::Playback { command } => {
                 self.accept_playback_command(&envelope, &fingerprint, command)
             }
@@ -98,18 +109,30 @@ impl FacadeState {
             ApplicationCommand::CommitTranscript {
                 expected_selection_revision,
                 artifact,
-            } => self.commit_transcript(&envelope, expected_selection_revision, artifact),
+            } => self.commit_transcript(
+                &envelope,
+                command_fingerprint_digest(&envelope.command),
+                expected_selection_revision,
+                artifact,
+            ),
             ApplicationCommand::EnsureTranscriptWorkflow {
                 episode_id,
                 origin,
                 configuration,
-            } => self.ensure_transcript_workflow(&envelope, episode_id, origin, configuration),
+            } => self.ensure_transcript_workflow(
+                &envelope,
+                command_fingerprint_digest(&envelope.command),
+                episode_id,
+                origin,
+                configuration,
+            ),
             ApplicationCommand::RetryTranscriptWorkflow {
                 episode_id,
                 expected_workflow_revision,
                 configuration,
             } => self.retry_transcript_workflow(
                 &envelope,
+                command_fingerprint_digest(&envelope.command),
                 episode_id,
                 expected_workflow_revision,
                 configuration,
@@ -117,7 +140,12 @@ impl FacadeState {
             ApplicationCommand::CancelTranscriptWorkflow {
                 episode_id,
                 expected_workflow_revision,
-            } => self.cancel_transcript_workflow(&envelope, episode_id, expected_workflow_revision),
+            } => self.cancel_transcript_workflow(
+                &envelope,
+                command_fingerprint_digest(&envelope.command),
+                episode_id,
+                expected_workflow_revision,
+            ),
             command @ (ApplicationCommand::EnsureScheduledTask { .. }
             | ApplicationCommand::UpdateScheduledTask { .. }
             | ApplicationCommand::RemoveScheduledTask { .. }
@@ -133,14 +161,15 @@ impl FacadeState {
             ApplicationCommand::PublishGeneratedEpisode { intent } => {
                 self.pub_nmp(&envelope, &fingerprint, &intent)
             }
-            ApplicationCommand::EnsureNostrSigner => self.ensure_nostr_signer(&envelope),
-            ApplicationCommand::SignOutNostrSigner {
-                expected_account_id,
-            } => self.sign_out_nostr_signer(&envelope, expected_account_id),
             ApplicationCommand::CommitChapter {
                 expected_selection_revision,
                 artifact,
-            } => self.commit_chapter(&envelope, expected_selection_revision, artifact),
+            } => self.commit_chapter(
+                &envelope,
+                command_fingerprint_digest(&envelope.command),
+                expected_selection_revision,
+                artifact,
+            ),
             ApplicationCommand::EnsurePublisherChapters { episode_id } => {
                 self.ensure_publisher_chapters(&envelope, episode_id)
             }
@@ -239,9 +268,13 @@ impl FacadeState {
             | ApplicationCommand::ClearClips { .. }) => {
                 self.route_clip_command(&envelope, &fingerprint, command)
             }
-            ApplicationCommand::Unsupported { wire_code } => {
-                self.reject_unsupported(envelope.command_id, wire_code)
-            }
+            ApplicationCommand::Unsupported { wire_code } => self.reject_application_request(
+                &envelope,
+                pod0_application::ActivitySubject::Global,
+                None,
+                pod0_application::RequestRejectionReason::UnsupportedCode { wire_code },
+                CoreFailureCode::Unsupported { wire_code },
+            ),
         }
         self.trim_operations();
         true

@@ -10,6 +10,11 @@
 /// need at least this much dropped. Callers append whatever else their target
 /// version also requires before it.
 pub(crate) const TABLES_ADDED_AFTER_V13: &str = "
+    DROP TABLE pod0_effect_attempts;
+    DROP TABLE pod0_effect_intents;
+    DROP TABLE pod0_internal_command_intents;
+    DROP TABLE pod0_transition_receipts;
+    DROP TABLE pod0_activity_facts;
     DROP TABLE pod0_feed_fetch_workflows;
     DROP TABLE pod0_speaker_assignments;
     DROP TABLE pod0_speakers;

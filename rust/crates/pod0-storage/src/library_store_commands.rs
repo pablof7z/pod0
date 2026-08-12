@@ -18,23 +18,14 @@ impl LibraryStore {
         starred: bool,
         observed_at_ms: i64,
     ) -> Result<StateRevision, StorageError> {
-        self.write(|transaction| {
-            if let Some(revision) =
-                command_was_applied(transaction, command_id, command_fingerprint)?
-            {
-                return Ok(revision);
-            }
-            let changed = transaction
-                .execute(
-                    "UPDATE pod0_episodes SET is_starred=?1 WHERE episode_id=?2",
-                    params![bool_value(starred), episode_id.into_bytes().as_slice()],
-                )
-                .map_err(|error| StorageError::sqlite("update episode starred state", error))?;
-            if changed != 1 {
-                return Err(StorageError::EntityNotFound);
-            }
-            finish_command(transaction, command_id, command_fingerprint, observed_at_ms)
-        })
+        crate::transition_commit::commit_episode_starred(
+            self.path(),
+            command_id,
+            command_fingerprint,
+            episode_id,
+            starred,
+            observed_at_ms,
+        )
     }
 
     pub fn reset_listening_data(

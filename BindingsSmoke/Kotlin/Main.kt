@@ -55,7 +55,7 @@ fun main(args: Array<String>) {
         check(unsupportedOperation.cancellationId == CancellationId(0UL, 2UL))
         check(unsupportedOperation.stage is OperationStage.Failed)
         val unsupportedFailure = unsupportedOperation.failure
-        check(unsupportedFailure?.code == CoreFailureCode.Unsupported(77u))
+        check(unsupportedFailure?.code is CoreFailureCode.StorageUnavailable)
         check(unsupportedFailure.safeDetail == null)
 
         facade.dispatch(

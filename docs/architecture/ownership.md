@@ -17,18 +17,21 @@ owner without both a GitHub migration issue and a deletion target.
 
 ## Baseline interpretation
 
-- **Shared Rust now:** stable durable/cross-platform behavior whose current
-  Swift implementation is migration input, not the long-term owner.
+- **Shared Rust now:** product/business behavior is Rust-owned. Retained Swift
+  in this class is presentation, a literal typed capability, or decode-only
+  migration input; it is not an alternate policy owner.
 - **Native by design:** presentation or Apple platform capability execution
   that remains Swift permanently.
-- **Temporary Swift:** unsettled product-proof behavior isolated behind a
-  boundary and linked to mandatory migration/deletion work.
-- **Undecided pending investigation:** the owner direction is known, but an
-  implementation choice needs named evidence before selection.
+- **Temporary Swift:** a frozen legacy exception recorded exactly in
+  `rust-business-logic-exceptions.json`. New files and declarations are
+  forbidden; #213–#218 delete or reduce the existing rows and #219 requires
+  zero.
+- **Undecided pending investigation:** forbidden for production business
+  logic. Investigation can own a decision artifact, not a shipping policy.
 
-The inventory is a ratchet, not a claim that existing shared domains have
-already migrated. `current_owner`, `target_owner`, `migration_issues`, and
-`deletion_target` make that distinction explicit.
+The inventory plus the exact exception manifest is a ratchet, not permission
+to add temporary native policy. `current_owner`, `target_owner`,
+`migration_issues`, and `deletion_target` document removal responsibility.
 
 ## Migration priority
 

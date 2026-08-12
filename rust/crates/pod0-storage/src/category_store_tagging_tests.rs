@@ -1,4 +1,4 @@
-use pod0_domain::CategoryOrigin;
+use pod0_domain::{CategoryItemKind, CategoryOrigin, EpisodeId, LibraryItemId};
 
 use crate::StorageError;
 use crate::category_store_test_support::{NOW, as_podcast, command, fp, item, store};
@@ -174,4 +174,43 @@ fn deleting_a_category_drops_its_membership_but_not_its_items() {
         store.delete_category(command(18), &fp("fp-18"), id, NOW + 3),
         Err(StorageError::EntityNotFound)
     ));
+}
+
+#[test]
+fn tagging_an_episode_projects_the_durable_transition_to_episode_diagnostics() {
+    let (fixture, store) = store();
+    let (_, id) = store
+        .create_category(
+            command(22),
+            &fp("fp-22"),
+            "Episode research",
+            "Curated episodes.",
+            None,
+            CategoryOrigin::User,
+            NOW,
+        )
+        .unwrap();
+    let episode_id = EpisodeId::from_bytes([0x22; 16]);
+    let item_id = LibraryItemId::from_bytes(episode_id.into_bytes());
+    store
+        .tag_category_items(
+            command(23),
+            &fp("fp-23"),
+            id,
+            &[item_id],
+            &[],
+            |_| Some(CategoryItemKind::Episode),
+            NOW + 1,
+        )
+        .unwrap();
+
+    let connection = rusqlite::Connection::open(&fixture.target).unwrap();
+    let count: i64 = connection
+        .query_row(
+            "SELECT COUNT(*) FROM pod0_activity_facts WHERE episode_id=?1",
+            [episode_id.into_bytes().as_slice()],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(count, 2);
 }

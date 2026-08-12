@@ -1,7 +1,7 @@
 use pod0_domain::{
     ClipEvidenceReference, ClipId, ClipSource, CommandId, EpisodeId, PodcastId, StateRevision,
 };
-use rusqlite::{OptionalExtension, Transaction, params};
+use rusqlite::{Connection, OptionalExtension, Transaction, params};
 
 use crate::library_store::finish_command;
 use crate::{StorageError, clip_store_codec};
@@ -39,9 +39,7 @@ pub(crate) fn set_clip_revision(
     Ok(())
 }
 
-pub(crate) fn collection_revision(
-    transaction: &Transaction<'_>,
-) -> Result<StateRevision, StorageError> {
+pub(crate) fn collection_revision(transaction: &Connection) -> Result<StateRevision, StorageError> {
     let value: i64 = transaction
         .query_row(
             "SELECT collection_revision FROM pod0_clip_state WHERE singleton=1",
@@ -56,10 +54,7 @@ pub(crate) fn collection_revision(
     })?))
 }
 
-pub(crate) fn require_clip(
-    transaction: &Transaction<'_>,
-    clip_id: ClipId,
-) -> Result<(), StorageError> {
+pub(crate) fn require_clip(transaction: &Connection, clip_id: ClipId) -> Result<(), StorageError> {
     let exists: bool = transaction
         .query_row(
             "SELECT EXISTS(SELECT 1 FROM pod0_clips WHERE clip_id=?1)",
@@ -75,7 +70,7 @@ pub(crate) fn require_clip(
 }
 
 pub(crate) fn clip_mutation_state(
-    transaction: &Transaction<'_>,
+    transaction: &Connection,
     clip_id: ClipId,
 ) -> Result<(u64, ClipSource, u64, u64), StorageError> {
     let row = transaction
@@ -111,10 +106,22 @@ pub(crate) fn clip_mutation_state(
 }
 
 pub(crate) fn validate_clip_target(
-    transaction: &Transaction<'_>,
+    transaction: &Connection,
     episode_id: EpisodeId,
     podcast_id: PodcastId,
 ) -> Result<(), StorageError> {
+    if clip_target_is_valid(transaction, episode_id, podcast_id)? {
+        Ok(())
+    } else {
+        Err(StorageError::InvalidClip)
+    }
+}
+
+pub(crate) fn clip_target_is_valid(
+    transaction: &Connection,
+    episode_id: EpisodeId,
+    podcast_id: PodcastId,
+) -> Result<bool, StorageError> {
     let stored: Option<Vec<u8>> = transaction
         .query_row(
             "SELECT podcast_id FROM pod0_episodes WHERE episode_id=?1",
@@ -123,11 +130,7 @@ pub(crate) fn validate_clip_target(
         )
         .optional()
         .map_err(|error| StorageError::sqlite("validate clip target", error))?;
-    if stored.as_deref() == Some(podcast_id.into_bytes().as_slice()) {
-        Ok(())
-    } else {
-        Err(StorageError::InvalidClip)
-    }
+    Ok(stored.as_deref() == Some(podcast_id.into_bytes().as_slice()))
 }
 
 pub(crate) fn selected_evidence(

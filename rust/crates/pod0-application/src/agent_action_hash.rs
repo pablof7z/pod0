@@ -73,11 +73,13 @@ fn hash_action(hasher: &mut Sha256, action: &AgentToolAction) {
             query,
             scope,
             limit,
+            execute_first,
         } => fields(hasher, 3, |h| {
             hash_tool(h, *tool);
             hash_text(h, query);
             hash_optional_text(h, scope.as_deref());
             h.update(limit.to_be_bytes());
+            h.update([u8::from(*execute_first)]);
         }),
         QueryTranscripts {
             query,

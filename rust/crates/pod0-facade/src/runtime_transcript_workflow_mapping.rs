@@ -5,7 +5,6 @@ use pod0_application::{
 };
 use pod0_domain::{HostRequestId, UnixTimestampMilliseconds};
 use pod0_storage::{StoredTranscriptWorkflowRequest, TranscriptWorkflowRecord};
-use sha2::{Digest as _, Sha256};
 
 pub(super) fn stored_request(
     request: TranscriptWorkflowRequest,
@@ -125,11 +124,5 @@ pub(super) fn request_id(
     attempt: u16,
     publisher: bool,
 ) -> HostRequestId {
-    let mut hash = Sha256::new();
-    hash.update(b"pod0-transcript-host-request-v1\0");
-    hash.update(workflow_id.into_bytes());
-    hash.update(attempt.to_be_bytes());
-    hash.update([u8::from(publisher)]);
-    let digest = hash.finalize();
-    HostRequestId::from_bytes(digest[..16].try_into().expect("digest prefix"))
+    pod0_application::transcript_workflow_request_id(workflow_id, attempt, publisher)
 }

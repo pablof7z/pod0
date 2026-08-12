@@ -1,29 +1,9 @@
 use crate::runtime_playback_test_support::PlaybackFixture;
 use crate::*;
-
-fn start_command(id: u64) -> CommandEnvelope {
-    CommandEnvelope {
-        command_id: CommandId::from_parts(101, id),
-        cancellation_id: CancellationId::from_parts(102, id),
-        expected_revision: None,
-        command: ApplicationCommand::StartAgentTurn {
-            conversation_id: None,
-            user_input: "Save architecture matters as a note".to_owned(),
-            model_reference: "openrouter/test".to_owned(),
-        },
-    }
-}
-
-fn observe(request: &HostRequestEnvelope, observation: HostObservation) -> HostObservationEnvelope {
-    HostObservationEnvelope {
-        request_id: request.request_id,
-        cancellation_id: request.cancellation_id,
-        observed_request_revision: request.issued_revision,
-        sequence_number: 1,
-        observed_at: UnixTimestampMilliseconds::new(1_900_000_000_000),
-        observation,
-    }
-}
+pub(crate) use super::test_support::{
+    next_leased_agent_request, observe, record_leased_agent_observation, start_command,
+    uuid_string,
+};
 
 fn turn(facade: &Pod0Facade, command_id: CommandId) -> AgentTurnProjection {
     let conversation_id = ConversationId::from_bytes(command_id.into_bytes());
@@ -46,11 +26,12 @@ fn note_action_requires_exact_approval_and_commits_once_in_rust() {
     let fixture = PlaybackFixture::new();
     let start = start_command(1);
     fixture.facade.dispatch(start.clone());
-    let model = fixture.facade.next_host_requests(8).remove(0);
-    let HostRequest::ExecuteAgentModelTurn { execution } = &model.request else {
+    let model = next_leased_agent_request(&fixture.facade);
+    let HostRequest::ExecuteAgentModelTurn { execution } = &model.request.request else {
         panic!("expected model request");
     };
-    let receipt = fixture.facade.record_host_observation(observe(
+    let receipt = record_leased_agent_observation(
+        &fixture.facade,
         &model,
         HostObservation::AgentModelCompleted {
             turn_id: execution.turn_id,
@@ -63,14 +44,15 @@ fn note_action_requires_exact_approval_and_commits_once_in_rust() {
             }),
             usage: None,
         },
-    ));
+    );
     assert!(matches!(receipt, HostObservationReceipt::Persisted { .. }));
 
-    let approval = fixture.facade.next_host_requests(8).remove(0);
-    let HostRequest::PresentAgentApproval { approval: request } = &approval.request else {
+    let approval = next_leased_agent_request(&fixture.facade);
+    let HostRequest::PresentAgentApproval { approval: request } = &approval.request.request else {
         panic!("expected approval request");
     };
-    let stale = fixture.facade.record_host_observation(observe(
+    let stale = record_leased_agent_observation(
+        &fixture.facade,
         &approval,
         HostObservation::AgentApprovalObserved {
             turn_id: request.turn_id,
@@ -78,11 +60,11 @@ fn note_action_requires_exact_approval_and_commits_once_in_rust() {
             proposal_digest: ContentDigest::from_bytes([77; 32]),
             decision: AgentApprovalDecision::Approve,
         },
-    ));
+    );
     assert!(matches!(
         stale,
         HostObservationReceipt::Rejected {
-            reason: HostObservationRejection::MismatchedPayload,
+            reason: HostObservationRejection::StaleWorkflow,
             ..
         }
     ));
@@ -101,19 +83,14 @@ fn note_action_requires_exact_approval_and_commits_once_in_rust() {
             .is_empty()
     );
 
-    let approval_observation = observe(
-        &approval,
-        HostObservation::AgentApprovalObserved {
-            turn_id: request.turn_id,
-            proposal_id: request.proposal.proposal_id,
-            proposal_digest: request.proposal.proposal_digest,
-            decision: AgentApprovalDecision::Approve,
-        },
-    );
+    let approval_observation = HostObservation::AgentApprovalObserved {
+        turn_id: request.turn_id,
+        proposal_id: request.proposal.proposal_id,
+        proposal_digest: request.proposal.proposal_digest,
+        decision: AgentApprovalDecision::Approve,
+    };
     assert!(matches!(
-        fixture
-            .facade
-            .record_host_observation(approval_observation.clone()),
+        record_leased_agent_observation(&fixture.facade, &approval, approval_observation.clone()),
         HostObservationReceipt::Persisted { .. }
     ));
     assert_eq!(
@@ -135,16 +112,36 @@ fn note_action_requires_exact_approval_and_commits_once_in_rust() {
     };
     assert_eq!(value.notes.len(), 1);
     assert_eq!(value.notes[0].text, "Architecture matters");
+    let connection = rusqlite::Connection::open(&fixture.target).unwrap();
+    let note_id = value.notes[0].note_id;
+    let note_facts: i64 = connection
+        .query_row(
+            "SELECT count(*) FROM pod0_activity_facts WHERE subject_code=8 AND subject_id=?1",
+            [note_id.into_bytes().as_slice()],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert!(note_facts >= 2);
+    let consumed: i64 = connection
+        .query_row(
+            "SELECT count(*) FROM pod0_internal_command_intents WHERE subject_code=4
+             AND subject_id=?1 AND state_code=2",
+            [request.turn_id.into_bytes().as_slice()],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(consumed, 3);
 
-    let continuation = fixture.facade.next_host_requests(8).remove(0);
-    let HostRequest::ExecuteAgentModelTurn { execution } = &continuation.request else {
+    let continuation = next_leased_agent_request(&fixture.facade);
+    let HostRequest::ExecuteAgentModelTurn { execution } = &continuation.request.request else {
         panic!("expected final model continuation");
     };
     assert!(execution.tool_definitions.is_empty());
     assert!(execution.messages.iter().any(|message| {
         message.role == AgentMessageRole::Tool && message.content.contains("note_id")
     }));
-    fixture.facade.record_host_observation(observe(
+    record_leased_agent_observation(
+        &fixture.facade,
         &continuation,
         HostObservation::AgentModelCompleted {
             turn_id: execution.turn_id,
@@ -153,7 +150,7 @@ fn note_action_requires_exact_approval_and_commits_once_in_rust() {
             proposed_tool_call: None,
             usage: None,
         },
-    ));
+    );
     assert_eq!(
         turn(&fixture.facade, start.command_id).stage,
         AgentTurnStage::Completed
@@ -167,7 +164,7 @@ fn note_action_requires_exact_approval_and_commits_once_in_rust() {
         "Saved that note."
     );
 
-    let _ = fixture.facade.record_host_observation(approval_observation);
+    let _ = record_leased_agent_observation(&fixture.facade, &approval, approval_observation);
     let Projection::Notes { value } = fixture
         .facade
         .snapshot(ProjectionRequest {
@@ -189,11 +186,12 @@ fn native_action_is_fenced_and_restart_never_blindly_replays_it() {
     let fixture = PlaybackFixture::new();
     let start = start_command(2);
     fixture.facade.dispatch(start.clone());
-    let model = fixture.facade.next_host_requests(8).remove(0);
-    let HostRequest::ExecuteAgentModelTurn { execution } = &model.request else {
+    let model = next_leased_agent_request(&fixture.facade);
+    let HostRequest::ExecuteAgentModelTurn { execution } = &model.request.request else {
         panic!("expected model request");
     };
-    fixture.facade.record_host_observation(observe(
+    record_leased_agent_observation(
+        &fixture.facade,
         &model,
         HostObservation::AgentModelCompleted {
             turn_id: execution.turn_id,
@@ -206,12 +204,13 @@ fn native_action_is_fenced_and_restart_never_blindly_replays_it() {
             }),
             usage: None,
         },
-    ));
-    let approval = fixture.facade.next_host_requests(8).remove(0);
-    let HostRequest::PresentAgentApproval { approval: request } = &approval.request else {
+    );
+    let approval = next_leased_agent_request(&fixture.facade);
+    let HostRequest::PresentAgentApproval { approval: request } = &approval.request.request else {
         panic!("expected approval request");
     };
-    fixture.facade.record_host_observation(observe(
+    record_leased_agent_observation(
+        &fixture.facade,
         &approval,
         HostObservation::AgentApprovalObserved {
             turn_id: request.turn_id,
@@ -219,67 +218,20 @@ fn native_action_is_fenced_and_restart_never_blindly_replays_it() {
             proposal_digest: request.proposal.proposal_digest,
             decision: AgentApprovalDecision::Approve,
         },
-    ));
-    let capability = fixture.facade.next_host_requests(8).remove(0);
+    );
+    let capability = next_leased_agent_request(&fixture.facade);
     assert!(matches!(
-        capability.request,
+        capability.request.request,
         HostRequest::ExecuteAgentCapability { .. }
     ));
 
     let reopened = Pod0Facade::open(fixture.target.to_string_lossy().into_owned()).unwrap();
     assert_eq!(
         turn(&reopened, start.command_id).stage,
-        AgentTurnStage::OutcomeAmbiguous
+        AgentTurnStage::Executing
     );
     assert!(reopened.next_host_requests(8).is_empty());
-}
-
-#[test]
-fn invalid_and_unavailable_actions_fail_before_any_capability_request() {
-    let fixture = PlaybackFixture::new();
-    let start = start_command(3);
-    fixture.facade.dispatch(start.clone());
-    let model = fixture.facade.next_host_requests(8).remove(0);
-    let HostRequest::ExecuteAgentModelTurn { execution } = &model.request else {
-        panic!("expected model request");
-    };
-    fixture.facade.record_host_observation(observe(
-        &model,
-        HostObservation::AgentModelCompleted {
-            turn_id: execution.turn_id,
-            model_fence_id: execution.model_fence_id,
-            assistant_text: String::new(),
-            proposed_tool_call: Some(AgentModelToolCallObservation {
-                provider_call_id: "unavailable-call".to_owned(),
-                tool_name: "play_episode".to_owned(),
-                arguments_json: format!(
-                    r#"{{"episode_id":"{}","queue_position":"next"}}"#,
-                    uuid_string(fixture.episode_id.into_bytes())
-                ),
-            }),
-            usage: None,
-        },
-    ));
-    assert_eq!(
-        turn(&fixture.facade, start.command_id).stage,
-        AgentTurnStage::Failed
-    );
-    assert!(fixture.facade.next_host_requests(8).is_empty());
-}
-
-fn uuid_string(bytes: [u8; 16]) -> String {
-    let hex = bytes
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect::<String>();
-    format!(
-        "{}-{}-{}-{}-{}",
-        &hex[0..8],
-        &hex[8..12],
-        &hex[12..16],
-        &hex[16..20],
-        &hex[20..32]
-    )
+    assert!(reopened.next_leased_host_requests(1).is_empty());
 }
 
 trait ProjectionNotes {

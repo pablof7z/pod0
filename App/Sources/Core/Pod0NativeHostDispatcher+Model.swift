@@ -9,6 +9,7 @@ extension Pod0NativeHostDispatcher {
         guard observationRecoveryTask == nil else { return }
         let recorder = durableObservationRecorder
         observationRecoveryTask = Task { @MainActor [weak self] in
+            let replayedLeased = await recorder.replayPendingLeased(in: facade)
             let replayed = await recorder.replayPending(in: facade)
             guard let self, !Task.isCancelled else { return }
             for (observation, receipt) in replayed where observation.observation.isDownloadResult {
@@ -20,6 +21,8 @@ extension Pod0NativeHostDispatcher {
             }
             observationRecoveryTask = nil
             guard !replayed.contains(where: {
+                if case .retainAndRetry = $0.1 { true } else { false }
+            }), !replayedLeased.contains(where: {
                 if case .retainAndRetry = $0.1 { true } else { false }
             }) else { return }
             observationRecoveryReady = true

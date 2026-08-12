@@ -1,5 +1,11 @@
+use crate::runtime_agent_modules::tests::{
+    next_leased_agent_request, record_leased_agent_observation,
+};
 use crate::runtime_playback_test_support::PlaybackFixture;
 use crate::*;
+use pod0_application::{
+    ActivityFact, CommandActivityIdentity, RequestDisposition, RequestRejectionReason,
+};
 
 fn projection(facade: &Pod0Facade, scope: MemoryProjectionScope) -> MemoriesProjection {
     let Projection::Memories { value } = facade
@@ -46,6 +52,16 @@ fn activate(facade: &Pod0Facade) {
     );
 }
 
+fn activity(fixture: &PlaybackFixture, id: u64) -> Vec<pod0_application::CommittedActivityFact> {
+    let command_id = CommandId::from_parts(80, id);
+    let correlation = CommandActivityIdentity::new(command_id).correlation_id();
+    pod0_storage::ActivityStore::open(&fixture.target)
+        .unwrap()
+        .page_for_correlation(correlation, None, 20)
+        .unwrap()
+        .items
+}
+
 #[test]
 fn memory_commands_are_revision_checked_bounded_and_restart_durable() {
     let fixture = PlaybackFixture::new();
@@ -61,6 +77,7 @@ fn memory_commands_are_revision_checked_bounded_and_restart_durable() {
     let memory_id = MemoryId::from_bytes(CommandId::from_parts(80, 1).into_bytes());
     assert_eq!(created.memories[0].memory_id, memory_id);
     assert_eq!(created.memories[0].revision, MemoryRevision::INITIAL);
+    assert_eq!(activity(&fixture, 1).len(), 2);
 
     fixture.facade.dispatch(command(
         2,
@@ -72,6 +89,26 @@ fn memory_commands_are_revision_checked_bounded_and_restart_durable() {
     ));
     let updated = projection(&fixture.facade, MemoryProjectionScope::Active);
     assert_eq!(updated.memories[0].revision, MemoryRevision::new(2));
+    assert_eq!(activity(&fixture, 2).len(), 2);
+
+    fixture.facade.dispatch(command(
+        4,
+        ApplicationCommand::UpdateMemory {
+            memory_id,
+            expected_memory_revision: MemoryRevision::INITIAL,
+            content: "Stale mutation".to_owned(),
+        },
+    ));
+    let rejected = activity(&fixture, 4);
+    assert_eq!(rejected.len(), 1);
+    assert!(matches!(
+        rejected[0].draft.fact,
+        ActivityFact::RequestDisposition {
+            disposition: RequestDisposition::Rejected {
+                reason: RequestRejectionReason::RevisionConflict
+            }
+        }
+    ));
 
     fixture.facade.dispatch(command(
         3,
@@ -86,6 +123,7 @@ fn memory_commands_are_revision_checked_bounded_and_restart_durable() {
             .memories
             .is_empty()
     );
+    assert_eq!(activity(&fixture, 3).len(), 2);
 
     let reopened = Pod0Facade::open(fixture.target.to_string_lossy().into_owned()).unwrap();
     let recovered = projection(&reopened, MemoryProjectionScope::All);
@@ -144,11 +182,12 @@ fn deferred_agent_record_memory_is_not_advertised_or_committed() {
         },
     );
     fixture.facade.dispatch(start);
-    let model = fixture.facade.next_host_requests(8).remove(0);
-    let HostRequest::ExecuteAgentModelTurn { execution } = &model.request else {
+    let model = next_leased_agent_request(&fixture.facade);
+    let HostRequest::ExecuteAgentModelTurn { execution } = &model.request.request else {
         panic!("expected model request");
     };
-    fixture.facade.record_host_observation(agent_observation(
+    record_leased_agent_observation(
+        &fixture.facade,
         &model,
         HostObservation::AgentModelCompleted {
             turn_id: execution.turn_id,
@@ -161,22 +200,8 @@ fn deferred_agent_record_memory_is_not_advertised_or_committed() {
             }),
             usage: None,
         },
-    ));
+    );
     assert!(fixture.facade.next_host_requests(8).is_empty());
     let memories = projection(&fixture.facade, MemoryProjectionScope::Active);
     assert!(memories.memories.is_empty());
-}
-
-fn agent_observation(
-    request: &HostRequestEnvelope,
-    observation: HostObservation,
-) -> HostObservationEnvelope {
-    HostObservationEnvelope {
-        request_id: request.request_id,
-        cancellation_id: request.cancellation_id,
-        observed_request_revision: request.issued_revision,
-        sequence_number: 1,
-        observed_at: UnixTimestampMilliseconds::new(1_900_000_000_000),
-        observation,
-    }
 }

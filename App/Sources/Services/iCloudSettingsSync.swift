@@ -17,7 +17,6 @@ import os.log
 ///
 /// **What is NOT synced.** Fields that are device-local, security-sensitive, or
 /// bound to entries in the Keychain:
-///   - `hasCompletedOnboarding` — local UX gate; reinstall should show onboarding
 ///   - `openRouterCredentialSource`, `*BYOKKeyID/Label`, `*ConnectedAt` — tied to
 ///     local Keychain secrets; syncing source without syncing the secret is
 ///     misleading and could make the app appear connected when it isn't

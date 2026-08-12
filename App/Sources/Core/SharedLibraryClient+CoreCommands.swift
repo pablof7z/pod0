@@ -30,6 +30,7 @@ extension SharedLibraryClient {
             guard !Task.isCancelled else { return }
             await executor.dispatch(envelope, to: facade)
             guard !Task.isCancelled, drainHostRequests else { return }
+            await nmp.publishPending(from: facade)
             dispatcher.executePendingRequests(from: facade)
         }
     }
@@ -79,8 +80,7 @@ actor CoreFacadeCommandExecutor {
             downloads: subscribe(.downloads(episodeId: nil)),
             transcriptWorkflows: subscribe(.transcriptWorkflows(episodeId: nil)),
             notificationSettings: subscribe(.newEpisodeNotificationSettings, maxItems: 1),
-            scheduledAgents: subscribe(.scheduledAgent(taskId: nil)),
-            nostrSigner: subscribe(.nostrSigner, maxItems: 20)
+            scheduledAgents: subscribe(.scheduledAgent(taskId: nil))
         )
     }
 

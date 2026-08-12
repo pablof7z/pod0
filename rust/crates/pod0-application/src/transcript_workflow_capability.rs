@@ -51,7 +51,7 @@ pub enum TranscriptCapabilityRequest {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum TranscriptCapabilityObservation {
     ProviderAccepted {
         external_operation_id: String,

@@ -661,6 +661,8 @@ public protocol Pod0FacadeProtocol: AnyObject, Sendable {
 
     func stageLegacyDownloadCutover(sourceGeneration: UInt64, candidates: [LegacyDownloadCutoverCandidate])  -> LegacyDownloadCutoverProjection
 
+    func episodeActivityPage(episodeId: EpisodeId, afterSequence: UInt64?, requestedCount: UInt16)  -> EpisodeActivityPage
+
     func commitLegacyFeedDiscoveryCutover(sourceGeneration: UInt64)  -> LegacyFeedDiscoveryCutoverProjection
 
     func feedDiscoveryCutover()  -> LegacyFeedDiscoveryCutoverProjection
@@ -687,6 +689,12 @@ public protocol Pod0FacadeProtocol: AnyObject, Sendable {
 
     func nextHostRequests(maximumCount: UInt16)  -> [HostRequestEnvelope]
 
+    func nextLeasedHostRequests(maximumCount: UInt16)  -> [LeasedHostRequestEnvelope]
+
+    func nextNmpPublications(maximumCount: UInt16)  -> [Pod0PublicationDraft]
+
+    func nmpPublicationReceiptLinks()  -> [NmpPublicationReceiptLink]
+
     /**
      * Plans the exact bounded chapter-model capability request from the
      * authoritative Rust episode, transcript, and chapter selections.
@@ -694,6 +702,12 @@ public protocol Pod0FacadeProtocol: AnyObject, Sendable {
     func planChapterModelRequest(episodeId: EpisodeId, configuredModel: String)  -> ChapterModelPlan
 
     func recordHostObservation(observation: HostObservationEnvelope)  -> HostObservationReceipt
+
+    func recordLeasedHostObservation(observation: LeasedHostObservationEnvelope)  -> HostObservationReceipt
+
+    func recordNmpPublicationObservation(publicationId: PublicationId, observation: PublicationStatusObservation)
+
+    func recordNmpPublicationReceipt(publicationId: PublicationId, receiptId: UInt64)
 
     func snapshot(request: ProjectionRequest)  -> ProjectionEnvelope
 
@@ -898,6 +912,18 @@ open func stageLegacyDownloadCutover(sourceGeneration: UInt64, candidates: [Lega
 })
 }
 
+open func episodeActivityPage(episodeId: EpisodeId, afterSequence: UInt64?, requestedCount: UInt16) -> EpisodeActivityPage  {
+    return try!  FfiConverterTypeEpisodeActivityPage_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_episode_activity_page(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeEpisodeId_lower(episodeId),
+        FfiConverterOptionUInt64.lower(afterSequence),
+        FfiConverterUInt16.lower(requestedCount),uniffiCallStatus
+    )
+})
+}
+
 open func commitLegacyFeedDiscoveryCutover(sourceGeneration: UInt64) -> LegacyFeedDiscoveryCutoverProjection  {
     return try!  FfiConverterTypeLegacyFeedDiscoveryCutoverProjection_lift(try! rustCall() {
         uniffiCallStatus in
@@ -1041,6 +1067,35 @@ open func nextHostRequests(maximumCount: UInt16) -> [HostRequestEnvelope]  {
 })
 }
 
+open func nextLeasedHostRequests(maximumCount: UInt16) -> [LeasedHostRequestEnvelope]  {
+    return try!  FfiConverterSequenceTypeLeasedHostRequestEnvelope.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_next_leased_host_requests(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt16.lower(maximumCount),uniffiCallStatus
+    )
+})
+}
+
+open func nextNmpPublications(maximumCount: UInt16) -> [Pod0PublicationDraft]  {
+    return try!  FfiConverterSequenceTypePod0PublicationDraft.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_next_nmp_publications(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt16.lower(maximumCount),uniffiCallStatus
+    )
+})
+}
+
+open func nmpPublicationReceiptLinks() -> [NmpPublicationReceiptLink]  {
+    return try!  FfiConverterSequenceTypeNMPPublicationReceiptLink.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_nmp_publication_receipt_links(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+
     /**
      * Plans the exact bounded chapter-model capability request from the
      * authoritative Rust episode, transcript, and chapter selections.
@@ -1064,6 +1119,36 @@ open func recordHostObservation(observation: HostObservationEnvelope) -> HostObs
         FfiConverterTypeHostObservationEnvelope_lower(observation),uniffiCallStatus
     )
 })
+}
+
+open func recordLeasedHostObservation(observation: LeasedHostObservationEnvelope) -> HostObservationReceipt  {
+    return try!  FfiConverterTypeHostObservationReceipt_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_record_leased_host_observation(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeLeasedHostObservationEnvelope_lower(observation),uniffiCallStatus
+    )
+})
+}
+
+open func recordNmpPublicationObservation(publicationId: PublicationId, observation: PublicationStatusObservation)  {try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_record_nmp_publication_observation(
+            self.uniffiCloneHandle(),
+        FfiConverterTypePublicationId_lower(publicationId),
+        FfiConverterTypePublicationStatusObservation_lower(observation),uniffiCallStatus
+    )
+}
+}
+
+open func recordNmpPublicationReceipt(publicationId: PublicationId, receiptId: UInt64)  {try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_record_nmp_publication_receipt(
+            self.uniffiCloneHandle(),
+        FfiConverterTypePublicationId_lower(publicationId),
+        FfiConverterUInt64.lower(receiptId),uniffiCallStatus
+    )
+}
 }
 
 open func snapshot(request: ProjectionRequest) -> ProjectionEnvelope  {
@@ -1465,6 +1550,192 @@ public func FfiConverterTypeProjectionSubscriber_lower(_ value: ProjectionSubscr
 }
 
 
+
+
+public struct EpisodeActivityDetail: Equatable, Hashable {
+    public let label: String
+    public let value: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(label: String, value: String) {
+        self.label = label
+        self.value = value
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension EpisodeActivityDetail: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeEpisodeActivityDetail: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EpisodeActivityDetail {
+        return
+            try EpisodeActivityDetail(
+                label: FfiConverterString.read(from: &buf),
+                value: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: EpisodeActivityDetail, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.label, into: &buf)
+        FfiConverterString.write(value.value, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpisodeActivityDetail_lift(_ buf: RustBuffer) throws -> EpisodeActivityDetail {
+    return try FfiConverterTypeEpisodeActivityDetail.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpisodeActivityDetail_lower(_ value: EpisodeActivityDetail) -> RustBuffer {
+    return FfiConverterTypeEpisodeActivityDetail.lower(value)
+}
+
+
+public struct EpisodeActivityEntry: Equatable, Hashable {
+    public let sequence: UInt64
+    public let committedAt: UnixTimestampMilliseconds
+    public let kind: EpisodeActivityEntryKind
+    public let severity: EpisodeActivitySeverity
+    public let title: String
+    public let summary: String
+    public let details: [EpisodeActivityDetail]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sequence: UInt64, committedAt: UnixTimestampMilliseconds, kind: EpisodeActivityEntryKind, severity: EpisodeActivitySeverity, title: String, summary: String, details: [EpisodeActivityDetail]) {
+        self.sequence = sequence
+        self.committedAt = committedAt
+        self.kind = kind
+        self.severity = severity
+        self.title = title
+        self.summary = summary
+        self.details = details
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension EpisodeActivityEntry: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeEpisodeActivityEntry: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EpisodeActivityEntry {
+        return
+            try EpisodeActivityEntry(
+                sequence: FfiConverterUInt64.read(from: &buf),
+                committedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
+                kind: FfiConverterTypeEpisodeActivityEntryKind.read(from: &buf),
+                severity: FfiConverterTypeEpisodeActivitySeverity.read(from: &buf),
+                title: FfiConverterString.read(from: &buf),
+                summary: FfiConverterString.read(from: &buf),
+                details: FfiConverterSequenceTypeEpisodeActivityDetail.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: EpisodeActivityEntry, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.sequence, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.committedAt, into: &buf)
+        FfiConverterTypeEpisodeActivityEntryKind.write(value.kind, into: &buf)
+        FfiConverterTypeEpisodeActivitySeverity.write(value.severity, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterString.write(value.summary, into: &buf)
+        FfiConverterSequenceTypeEpisodeActivityDetail.write(value.details, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpisodeActivityEntry_lift(_ buf: RustBuffer) throws -> EpisodeActivityEntry {
+    return try FfiConverterTypeEpisodeActivityEntry.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpisodeActivityEntry_lower(_ value: EpisodeActivityEntry) -> RustBuffer {
+    return FfiConverterTypeEpisodeActivityEntry.lower(value)
+}
+
+
+public struct EpisodeActivityPage: Equatable, Hashable {
+    public let available: Bool
+    public let items: [EpisodeActivityEntry]
+    public let nextAfterSequence: UInt64?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(available: Bool, items: [EpisodeActivityEntry], nextAfterSequence: UInt64?) {
+        self.available = available
+        self.items = items
+        self.nextAfterSequence = nextAfterSequence
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension EpisodeActivityPage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeEpisodeActivityPage: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EpisodeActivityPage {
+        return
+            try EpisodeActivityPage(
+                available: FfiConverterBool.read(from: &buf),
+                items: FfiConverterSequenceTypeEpisodeActivityEntry.read(from: &buf),
+                nextAfterSequence: FfiConverterOptionUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: EpisodeActivityPage, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.available, into: &buf)
+        FfiConverterSequenceTypeEpisodeActivityEntry.write(value.items, into: &buf)
+        FfiConverterOptionUInt64.write(value.nextAfterSequence, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpisodeActivityPage_lift(_ buf: RustBuffer) throws -> EpisodeActivityPage {
+    return try FfiConverterTypeEpisodeActivityPage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpisodeActivityPage_lower(_ value: EpisodeActivityPage) -> RustBuffer {
+    return FfiConverterTypeEpisodeActivityPage.lower(value)
+}
 
 
 public struct LegacyAgentHistoryCutoverFailure: Equatable, Hashable {
@@ -4425,6 +4696,194 @@ public func FfiConverterTypeSharedListeningStorePreparation_lift(_ buf: RustBuff
 public func FfiConverterTypeSharedListeningStorePreparation_lower(_ value: SharedListeningStorePreparation) -> RustBuffer {
     return FfiConverterTypeSharedListeningStorePreparation.lower(value)
 }
+
+
+
+public enum EpisodeActivityEntryKind: Equatable, Hashable {
+
+    case request
+    case domainTransition
+    case playbackCheckpoint
+    case effectAuthorization
+    case effectObservation
+    case internalCommand
+    case recovery
+    case authorityCutover
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension EpisodeActivityEntryKind: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeEpisodeActivityEntryKind: FfiConverterRustBuffer {
+    typealias SwiftType = EpisodeActivityEntryKind
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EpisodeActivityEntryKind {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .request
+
+        case 2: return .domainTransition
+
+        case 3: return .playbackCheckpoint
+
+        case 4: return .effectAuthorization
+
+        case 5: return .effectObservation
+
+        case 6: return .internalCommand
+
+        case 7: return .recovery
+
+        case 8: return .authorityCutover
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: EpisodeActivityEntryKind, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .request:
+            writeInt(&buf, Int32(1))
+
+
+        case .domainTransition:
+            writeInt(&buf, Int32(2))
+
+
+        case .playbackCheckpoint:
+            writeInt(&buf, Int32(3))
+
+
+        case .effectAuthorization:
+            writeInt(&buf, Int32(4))
+
+
+        case .effectObservation:
+            writeInt(&buf, Int32(5))
+
+
+        case .internalCommand:
+            writeInt(&buf, Int32(6))
+
+
+        case .recovery:
+            writeInt(&buf, Int32(7))
+
+
+        case .authorityCutover:
+            writeInt(&buf, Int32(8))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpisodeActivityEntryKind_lift(_ buf: RustBuffer) throws -> EpisodeActivityEntryKind {
+    return try FfiConverterTypeEpisodeActivityEntryKind.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpisodeActivityEntryKind_lower(_ value: EpisodeActivityEntryKind) -> RustBuffer {
+    return FfiConverterTypeEpisodeActivityEntryKind.lower(value)
+}
+
+
+
+
+public enum EpisodeActivitySeverity: Equatable, Hashable {
+
+    case info
+    case success
+    case warning
+    case failure
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension EpisodeActivitySeverity: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeEpisodeActivitySeverity: FfiConverterRustBuffer {
+    typealias SwiftType = EpisodeActivitySeverity
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EpisodeActivitySeverity {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .info
+
+        case 2: return .success
+
+        case 3: return .warning
+
+        case 4: return .failure
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: EpisodeActivitySeverity, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .info:
+            writeInt(&buf, Int32(1))
+
+
+        case .success:
+            writeInt(&buf, Int32(2))
+
+
+        case .warning:
+            writeInt(&buf, Int32(3))
+
+
+        case .failure:
+            writeInt(&buf, Int32(4))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpisodeActivitySeverity_lift(_ buf: RustBuffer) throws -> EpisodeActivitySeverity {
+    return try FfiConverterTypeEpisodeActivitySeverity.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpisodeActivitySeverity_lower(_ value: EpisodeActivitySeverity) -> RustBuffer {
+    return FfiConverterTypeEpisodeActivitySeverity.lower(value)
+}
+
 
 
 public
@@ -7835,6 +8294,31 @@ fileprivate struct FfiConverterSequenceTypeHostRequestEnvelope: FfiConverterRust
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeLeasedHostRequestEnvelope: FfiConverterRustBuffer {
+    typealias SwiftType = [LeasedHostRequestEnvelope]
+
+    public static func write(_ value: [LeasedHostRequestEnvelope], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeLeasedHostRequestEnvelope.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [LeasedHostRequestEnvelope] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [LeasedHostRequestEnvelope]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeLeasedHostRequestEnvelope.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeLegacyAgentHistoryConversationInput: FfiConverterRustBuffer {
     typealias SwiftType = [LegacyAgentHistoryConversationInput]
 
@@ -7852,6 +8336,56 @@ fileprivate struct FfiConverterSequenceTypeLegacyAgentHistoryConversationInput: 
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeLegacyAgentHistoryConversationInput.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeNMPPublicationReceiptLink: FfiConverterRustBuffer {
+    typealias SwiftType = [NmpPublicationReceiptLink]
+
+    public static func write(_ value: [NmpPublicationReceiptLink], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeNMPPublicationReceiptLink.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [NmpPublicationReceiptLink] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [NmpPublicationReceiptLink]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeNMPPublicationReceiptLink.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypePod0PublicationDraft: FfiConverterRustBuffer {
+    typealias SwiftType = [Pod0PublicationDraft]
+
+    public static func write(_ value: [Pod0PublicationDraft], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypePod0PublicationDraft.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Pod0PublicationDraft] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [Pod0PublicationDraft]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypePod0PublicationDraft.read(from: &buf))
         }
         return seq
     }
@@ -7927,6 +8461,56 @@ fileprivate struct FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeNoteRecord.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeEpisodeActivityDetail: FfiConverterRustBuffer {
+    typealias SwiftType = [EpisodeActivityDetail]
+
+    public static func write(_ value: [EpisodeActivityDetail], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeEpisodeActivityDetail.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [EpisodeActivityDetail] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [EpisodeActivityDetail]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeEpisodeActivityDetail.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeEpisodeActivityEntry: FfiConverterRustBuffer {
+    typealias SwiftType = [EpisodeActivityEntry]
+
+    public static func write(_ value: [EpisodeActivityEntry], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeEpisodeActivityEntry.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [EpisodeActivityEntry] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [EpisodeActivityEntry]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeEpisodeActivityEntry.read(from: &buf))
         }
         return seq
     }
@@ -8743,6 +9327,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_download_cutover() != 2411) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_episode_activity_page() != 54347) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_feed_discovery_cutover() != 42949) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -8782,10 +9369,28 @@ private let initializationResult: InitializationResult = {
     if (uniffi_pod0_facade_checksum_method_pod0facade_next_host_requests() != 62215) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_next_leased_host_requests() != 19145) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_next_nmp_publications() != 2989) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_nmp_publication_receipt_links() != 57711) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_pod0_facade_checksum_method_pod0facade_plan_chapter_model_request() != 53024) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_record_host_observation() != 28085) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_record_leased_host_observation() != 16311) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_observation() != 8870) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_receipt() != 63944) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_snapshot() != 17086) {

@@ -1,12 +1,11 @@
+use pod0_application::PlaybackTransition;
 use pod0_domain::{
     CommandId, CompletionStatus, EpisodeId, PlaybackRatePermille, PlaybackSegment,
     PlaybackSleepMode, QueueEntry, QueueEntryId, StateRevision,
 };
 
 use crate::StorageError;
-use crate::library_store::{LibraryStore, command_was_applied, finish_command};
-use crate::library_store_playback_apply::apply_mutation;
-use crate::library_store_playback_support::{active_episode, advance_revision, current_revision};
+use crate::library_store::LibraryStore;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PlaybackQueuePlacement {
@@ -59,70 +58,68 @@ pub struct PlaybackMutationResult {
 }
 
 impl LibraryStore {
+    #[allow(clippy::too_many_arguments)]
     pub fn apply_playback_mutation(
         &self,
         command_id: CommandId,
         fingerprint: &str,
         mutation: PlaybackMutation,
+        episode_id: Option<EpisodeId>,
+        transition: PlaybackTransition,
+        internal_command: Option<pod0_application::DurableInternalCommandRequest>,
         observed_at_ms: i64,
     ) -> Result<PlaybackMutationResult, StorageError> {
-        self.write(|transaction| {
-            if let Some(revision) = command_was_applied(transaction, command_id, fingerprint)? {
-                return Ok(PlaybackMutationResult {
-                    revision,
-                    active_episode_id: active_episode(transaction)?,
-                    reused_existing: true,
-                });
-            }
-            apply_mutation(transaction, mutation, observed_at_ms)?;
-            let revision = finish_command(transaction, command_id, fingerprint, observed_at_ms)?;
-            Ok(PlaybackMutationResult {
-                revision,
-                active_episode_id: active_episode(transaction)?,
-                reused_existing: false,
-            })
-        })
+        crate::transition_commit::commit_playback_mutation(
+            self.path(),
+            command_id,
+            fingerprint,
+            mutation,
+            episode_id,
+            transition,
+            internal_command,
+            observed_at_ms,
+        )
     }
 
-    pub fn clear_session_sleep_timer(&self) -> Result<StateRevision, StorageError> {
-        self.write(|transaction| {
-            let mode: i64 = transaction
-                .query_row(
-                    "SELECT sleep_mode_code FROM pod0_playback_state WHERE singleton=1",
-                    [],
-                    |row| row.get(0),
-                )
-                .map_err(|error| StorageError::sqlite("read session sleep timer", error))?;
-            if mode == 1 {
-                current_revision(transaction)
-            } else {
-                transaction
-                    .execute(
-                        "UPDATE pod0_playback_state SET sleep_mode_code=1,sleep_duration_ms=NULL,\
-                         sleep_wire_code=NULL WHERE singleton=1",
-                        [],
-                    )
-                    .map_err(|error| StorageError::sqlite("clear session sleep timer", error))?;
-                advance_revision(transaction)
-            }
-        })
-    }
-
-    /// Accepted host observations bypass the durable user-command receipt
-    /// table, keeping thirty-second playback checkpoints bounded on disk.
-    pub fn apply_playback_observation(
+    pub fn clear_session_sleep_timer(
         &self,
-        mutation: PlaybackMutation,
         observed_at_ms: i64,
-    ) -> Result<PlaybackMutationResult, StorageError> {
-        self.write(|transaction| {
-            apply_mutation(transaction, mutation, observed_at_ms)?;
-            let revision = advance_revision(transaction)?;
-            Ok(PlaybackMutationResult {
-                revision,
-                active_episode_id: active_episode(transaction)?,
-                reused_existing: false,
-            })
-        })
+    ) -> Result<StateRevision, StorageError> {
+        let snapshot = self.snapshot()?;
+        if snapshot.playback.sleep_mode == PlaybackSleepMode::Off {
+            return Ok(snapshot.playback.revision);
+        }
+        let command_id = recovery_sleep_timer_command(snapshot.playback.revision);
+        self.apply_playback_mutation(
+            command_id,
+            &hex_digest(command_id.into_bytes()),
+            PlaybackMutation::SetSleepTimer(PlaybackSleepMode::Off),
+            snapshot.playback.active_episode_id,
+            PlaybackTransition::SleepTimerChanged,
+            None,
+            observed_at_ms,
+        )
+        .map(|result| result.revision)
     }
+}
+
+fn recovery_sleep_timer_command(revision: StateRevision) -> CommandId {
+    use sha2::{Digest as _, Sha256};
+    let mut hash = Sha256::new();
+    hash.update(b"pod0/playback/recovery-clear-sleep/v1");
+    hash.update(revision.value.to_be_bytes());
+    CommandId::from_bytes(
+        hash.finalize()[..16]
+            .try_into()
+            .expect("fixed digest prefix"),
+    )
+}
+
+fn hex_digest(value: [u8; 16]) -> String {
+    use std::fmt::Write as _;
+    let mut output = String::with_capacity(64);
+    for byte in value.into_iter().chain(value) {
+        write!(&mut output, "{byte:02x}").expect("writing to String cannot fail");
+    }
+    output
 }

@@ -1,32 +1,16 @@
-use std::sync::{Arc, mpsc};
-use std::time::Duration;
-
-use crate::runtime_agent_modules::generated_audio_tests::{generated_episode, observe, start};
+use crate::runtime_agent_modules::generated_audio_tests::{generated_episode, start};
+use crate::runtime_agent_modules::tests::record_leased_agent_observation;
 use crate::runtime_playback_test_support::PlaybackFixture;
 use crate::*;
-
-struct Subscriber(mpsc::Sender<ProjectionEnvelope>);
-
-impl ProjectionSubscriber for Subscriber {
-    fn receive(&self, projection: ProjectionEnvelope) {
-        let _ = self.0.send(projection);
-    }
-}
-
-fn publication(envelope: ProjectionEnvelope) -> Option<PublicationRecord> {
-    let Projection::Publications { value } = envelope.projection else {
-        return None;
-    };
-    value.items.into_iter().next()
-}
+use pod0_application::PublicationStatusObservation;
 
 #[test]
-fn generated_episode_publication_persists_receipt_and_missing_signer_across_restart() {
+fn generated_episode_publication_hands_off_to_nmp_and_persists_receipt_across_restart() {
     let fixture = PlaybackFixture::new();
     let (_, capability) = start(&fixture, 701);
     let HostRequest::ExecuteAgentCapability {
         capability: request,
-    } = &capability.request
+    } = &capability.request.request
     else {
         panic!("expected capability");
     };
@@ -39,7 +23,8 @@ fn generated_episode_publication_persists_receipt_and_missing_signer_across_rest
         content_digest: ContentDigest::from_bytes([71; 32]),
         duration_milliseconds: Some(45_000),
     };
-    fixture.facade.record_host_observation(observe(
+    record_leased_agent_observation(
+        &fixture.facade,
         &capability,
         HostObservation::AgentCapabilityObserved {
             turn_id: request.turn_id,
@@ -49,21 +34,8 @@ fn generated_episode_publication_persists_receipt_and_missing_signer_across_rest
                 evidence: evidence.clone(),
             },
         },
-    ));
-    let episode = generated_episode(&fixture.facade);
-    let (sender, receiver) = mpsc::channel();
-    let subscriber = Arc::new(Subscriber(sender));
-    fixture.facade.subscribe(
-        ProjectionRequest {
-            scope: ProjectionScope::Publications {
-                publication_id: None,
-            },
-            offset: 0,
-            max_items: 10,
-        },
-        subscriber,
     );
-    let _ = receiver.recv_timeout(Duration::from_secs(1)).unwrap();
+    let episode = generated_episode(&fixture.facade);
     fixture.facade.dispatch(CommandEnvelope {
         command_id: CommandId::from_parts(702, 1),
         cancellation_id: CancellationId::from_parts(703, 1),
@@ -85,32 +57,42 @@ fn generated_episode_publication_persists_receipt_and_missing_signer_across_rest
         },
     });
 
-    let mut latest = None;
-    for _ in 0..6 {
-        let envelope = receiver.recv_timeout(Duration::from_secs(2)).unwrap();
-        if let Some(record) = publication(envelope) {
-            let done = record.stage == PublicationStage::AwaitingCapability;
-            latest = Some(record);
-            if done {
-                break;
-            }
-        }
-    }
-    let record = latest.expect("publication projection");
-    assert_eq!(record.episode_id, episode.episode_id);
-    assert!(record.receipt_id.is_some());
-    assert_eq!(record.stage, PublicationStage::AwaitingCapability);
-    assert_eq!(
-        record
-            .facts
-            .iter()
-            .map(|fact| fact.kind)
-            .collect::<Vec<_>>(),
-        vec![
-            PublicationFactKind::Accepted,
-            PublicationFactKind::AwaitingCapability
-        ]
+    let drafts = fixture.facade.next_nmp_publications(8);
+    assert_eq!(drafts.len(), 1);
+    let draft = &drafts[0];
+    assert_eq!(draft.expected_author_hex, "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798");
+    assert_eq!(draft.kind, POD0_PODCAST_EPISODE_KIND);
+    assert!(fixture.facade.next_nmp_publications(8).is_empty());
+
+    fixture
+        .facade
+        .record_nmp_publication_receipt(draft.publication_id, 904);
+    fixture.facade.record_nmp_publication_observation(
+        draft.publication_id,
+        PublicationStatusObservation {
+            kind: PublicationFactKind::Acknowledged,
+            route_id: None,
+            attempt: Some(1),
+            event_id_hex: Some(
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into(),
+            ),
+            observed_at: None,
+            detail: Some("NMP relay acknowledgement".into()),
+        },
     );
+
+    let Projection::Publications { value } = fixture.facade.snapshot(ProjectionRequest {
+        scope: ProjectionScope::Publications { publication_id: Some(draft.publication_id) },
+        offset: 0,
+        max_items: 10,
+    }).projection else {
+        panic!("expected publications");
+    };
+    let record = &value.items[0];
+    assert_eq!(record.episode_id, episode.episode_id);
+    assert_eq!(record.receipt_id, Some(904));
+    assert_eq!(record.stage, PublicationStage::Acknowledged);
+    assert_eq!(record.facts[0].kind, PublicationFactKind::Acknowledged);
     assert!(record.facts.iter().all(|fact| fact.route_id.is_none()));
     let publication_id = record.publication_id;
     let receipt_id = record.receipt_id;
@@ -137,6 +119,6 @@ fn generated_episode_publication_persists_receipt_and_missing_signer_across_rest
     };
     assert_eq!(value.items.len(), 1);
     assert_eq!(value.items[0].receipt_id, receipt_id);
-    assert_eq!(value.items[0].stage, PublicationStage::AwaitingCapability);
+    assert_eq!(value.items[0].stage, PublicationStage::Acknowledged);
     drop(_directory);
 }

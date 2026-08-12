@@ -1,15 +1,11 @@
-use pod0_application::{
-    HostCancellationRequest, TranscriptFailureEvidence, classify_transcript_failure,
-};
+use pod0_application::HostCancellationRequest;
 use pod0_domain::HostRequestId;
 use pod0_storage::{
     StoredTranscriptWorkflowStage, TranscriptSubmissionClaim, TranscriptSubmissionClaimInput,
-    TranscriptWorkflowFailureDisposition, TranscriptWorkflowFailureInput, TranscriptWorkflowRecord,
+    TranscriptWorkflowRecord,
 };
 
 use crate::runtime_state::FacadeState;
-use crate::runtime_transcript_workflow_mapping::host_request;
-use crate::runtime_transcript_workflow_receipts::failure_wire;
 
 impl FacadeState {
     pub(super) fn rehydrate_transcript_workflows(
@@ -88,8 +84,17 @@ impl FacadeState {
         {
             return self.schedule_transcript_wake(&record);
         }
-        let record = match record.stage {
-            StoredTranscriptWorkflowStage::PublisherRequested => record,
+        match record.stage {
+            StoredTranscriptWorkflowStage::PublisherRequested => {
+                match store.authorize_transcript_publisher_effect(
+                    episode_id,
+                    request_id,
+                    self.now().value,
+                ) {
+                    Ok(record) => record,
+                    Err(_) => return false,
+                }
+            }
             StoredTranscriptWorkflowStage::Requested
             | StoredTranscriptWorkflowStage::RetryScheduled => {
                 let (Some(attempt_id), Some(submission_fence_id)) =
@@ -108,39 +113,22 @@ impl FacadeState {
                     now_ms: self.now().value,
                 }) {
                     Ok(TranscriptSubmissionClaim::Authorized(claimed)) => claimed,
-                    Ok(TranscriptSubmissionClaim::AlreadyClaimed(claimed)) => {
-                        if claimed.external_operation_id.is_none() {
-                            self.abandon_undeliverable_transcript_claim(&claimed);
-                            return false;
-                        }
-                        claimed
-                    }
+                    Ok(TranscriptSubmissionClaim::AlreadyClaimed(claimed)) => claimed,
                     Err(_) => return false,
                 }
             }
-            StoredTranscriptWorkflowStage::ProviderAccepted => record,
+            StoredTranscriptWorkflowStage::ProviderAccepted => {
+                match store.authorize_transcript_recovery_effect(
+                    episode_id,
+                    request_id,
+                    self.now().value,
+                ) {
+                    Ok(record) => record,
+                    Err(_) => return false,
+                }
+            }
             _ => return false,
         };
-        let Some(podcast_id) = self
-            .listening
-            .episodes
-            .iter()
-            .find(|episode| episode.episode_id == episode_id)
-            .map(|episode| episode.podcast_id)
-        else {
-            return false;
-        };
-        let Some(request) = host_request(&record, podcast_id) else {
-            self.abandon_undeliverable_transcript_claim(&record);
-            return false;
-        };
-        if !self.host_requests.register(request.clone())
-            && !self.host_requests.matches_outstanding(&request)
-        {
-            self.abandon_undeliverable_transcript_claim(&record);
-            return false;
-        }
-        self.host_queue.push_back(request);
         true
     }
 
@@ -162,7 +150,6 @@ impl FacadeState {
             .any(|item| item.request_id == request_id);
         self.host_queue.retain(|item| item.request_id != request_id);
         self.pending_transcripts.remove(&request_id);
-        self.pending_transcript_observations.remove(&request_id);
         if self.host_requests.cancel_request(request_id) && !was_queued {
             self.host_cancellations.push_back(HostCancellationRequest {
                 request_id,
@@ -174,7 +161,6 @@ impl FacadeState {
 
     pub(super) fn retire_transcript_request(&mut self, request_id: HostRequestId) {
         self.pending_transcripts.remove(&request_id);
-        self.pending_transcript_observations.remove(&request_id);
         self.host_requests.retire(request_id);
     }
 
@@ -188,34 +174,5 @@ impl FacadeState {
             .transcript_workflow(*episode_id)
             .ok()?
             .filter(|record| record.request_id == Some(request_id))
-    }
-
-    fn abandon_undeliverable_transcript_claim(&mut self, record: &TranscriptWorkflowRecord) {
-        let classification = classify_transcript_failure(TranscriptFailureEvidence::Transport {
-            submission_authorized: true,
-            provider_accepted: record.stage == StoredTranscriptWorkflowStage::ProviderAccepted,
-        });
-        let Some(request_id) = record.request_id else {
-            return;
-        };
-        let _ = self.store.as_ref().and_then(|store| {
-            store
-                .fail_transcript_workflow(TranscriptWorkflowFailureInput {
-                    episode_id: record.episode_id,
-                    request_id,
-                    attempt_id: record.attempt_id,
-                    submission_fence_id: record.submission_fence_id,
-                    failure_code: failure_wire(classification.code).to_owned(),
-                    failure_detail: Some(
-                        "authorized transcript request could not be delivered safely".into(),
-                    ),
-                    retryable: false,
-                    may_have_submitted: true,
-                    disposition: TranscriptWorkflowFailureDisposition::Ambiguous,
-                    observed_at_ms: self.now().value,
-                })
-                .ok()
-        });
-        self.retire_transcript_request(request_id);
     }
 }

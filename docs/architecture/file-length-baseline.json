@@ -28,7 +28,6 @@
     "App/Sources/Features/Player/MiniPlayerView.swift": 388,
     "AppTests/Sources/PersistenceDurabilityTests.swift": 325,
     "App/Sources/Voice/AudioConversationManager.swift": 385,
-    "App/Sources/Features/EpisodeDetail/EpisodeAuditLogView.swift": 333,
     "App/Sources/Features/Library/ShowDetailView.swift": 367,
     "App/Sources/Features/EpisodeDetail/EpisodeDetailHeroView.swift": 364,
     "App/Sources/Features/Player/VoiceNote/VoiceNoteRealtimeSTT.swift": 363,

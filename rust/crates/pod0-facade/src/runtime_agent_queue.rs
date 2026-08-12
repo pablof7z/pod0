@@ -52,7 +52,7 @@ impl FacadeState {
         })
     }
 
-    fn agent_model_messages(
+    pub(crate) fn agent_model_messages(
         &self,
         current: &pod0_application::AgentTurnProjection,
     ) -> Vec<AgentMessageProjection> {
@@ -78,7 +78,7 @@ impl FacadeState {
         messages
     }
 
-    pub(super) fn queue_agent_approval_request(
+    pub(crate) fn queue_agent_approval_request(
         &mut self,
         command_id: CommandId,
         state: &AgentTurnState,

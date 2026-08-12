@@ -1,4 +1,4 @@
-use pod0_domain::{EpisodeId, PlaybackSegment, StateRevision};
+use pod0_domain::{EpisodeId, PlaybackSegment};
 use rusqlite::{OptionalExtension, Transaction};
 
 use crate::StorageError;
@@ -60,46 +60,4 @@ pub(super) fn id_bytes(value: Vec<u8>) -> Result<[u8; 16], StorageError> {
     value.try_into().map_err(|_| StorageError::CorruptSchema {
         detail: "playback identity must contain sixteen bytes",
     })
-}
-
-pub(super) fn current_revision(
-    transaction: &Transaction<'_>,
-) -> Result<StateRevision, StorageError> {
-    let value: i64 = transaction
-        .query_row(
-            "SELECT state_revision FROM pod0_playback_state WHERE singleton=1",
-            [],
-            |row| row.get(0),
-        )
-        .map_err(|error| StorageError::sqlite("read playback revision", error))?;
-    Ok(StateRevision::new(u64::try_from(value).map_err(|_| {
-        StorageError::CorruptSchema {
-            detail: "playback revision is malformed",
-        }
-    })?))
-}
-
-pub(super) fn advance_revision(
-    transaction: &Transaction<'_>,
-) -> Result<StateRevision, StorageError> {
-    let next =
-        current_revision(transaction)?
-            .value
-            .checked_add(1)
-            .ok_or(StorageError::CorruptSchema {
-                detail: "playback revision exhausted",
-            })?;
-    transaction
-        .execute(
-            "UPDATE pod0_playback_state SET state_revision=?1 WHERE singleton=1",
-            [i64_value(next, "playback revision")?],
-        )
-        .map_err(|error| StorageError::sqlite("advance playback revision", error))?;
-    transaction
-        .execute(
-            "UPDATE pod0_domain_cutovers SET core_revision=?1 WHERE domain='listening'",
-            [i64_value(next, "playback revision")?],
-        )
-        .map_err(|error| StorageError::sqlite("advance playback cutover revision", error))?;
-    Ok(StateRevision::new(next))
 }

@@ -1,5 +1,5 @@
 use pod0_domain::{CommandId, MemoryId, MemoryRevision, StateRevision};
-use rusqlite::{OptionalExtension, Transaction};
+use rusqlite::{Connection, OptionalExtension, Transaction};
 
 use crate::library_store::finish_command;
 use crate::{StorageError, library_store::command_was_applied};
@@ -29,9 +29,7 @@ pub(crate) fn finish_memory_command(
     Ok(revision)
 }
 
-pub(crate) fn collection_revision(
-    transaction: &Transaction<'_>,
-) -> Result<StateRevision, StorageError> {
+pub(crate) fn collection_revision(transaction: &Connection) -> Result<StateRevision, StorageError> {
     let value: i64 = transaction
         .query_row(
             "SELECT collection_revision FROM pod0_memory_state WHERE singleton=1",
@@ -55,7 +53,7 @@ pub(crate) fn command_replay(
 }
 
 pub(crate) fn memory_revision(
-    transaction: &Transaction<'_>,
+    transaction: &Connection,
     memory_id: MemoryId,
 ) -> Result<MemoryRevision, StorageError> {
     let value: Option<i64> = transaction

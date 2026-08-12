@@ -27,7 +27,7 @@ run_test pod0-facade \
 run_test pod0-facade \
   runtime_agent_modules::tests::native_action_is_fenced_and_restart_never_blindly_replays_it
 run_test pod0-facade \
-  runtime_publication_tests::generated_episode_publication_persists_receipt_and_missing_signer_across_restart
+  runtime_publication_tests::generated_episode_publication_hands_off_to_nmp_and_persists_receipt_across_restart
 run_test pod0-facade \
   runtime_feed_workflow_recovery_tests::interrupted_subscribe_reissues_fetch_after_restart_and_applies_once
 

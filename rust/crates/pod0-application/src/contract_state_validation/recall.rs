@@ -54,10 +54,6 @@ pub(crate) fn recall_payload_is_bounded(
             HostRequest::ExecuteTranscriptCapability { capability },
             HostObservation::TranscriptCapabilityObserved { observation },
         ) => transcript_observation_matches(capability, observation),
-        (HostRequest::SignNostrEvent { request }, HostObservation::NostrEventSigned { value }) => {
-            crate::signing_request_is_bounded(request)
-                && crate::signature_observation_is_valid(value)
-        }
         _ => true,
     }
 }

@@ -1,6 +1,7 @@
 use super::recall_test_support::{
     approve_next, observe, propose_query, start_command, turn, uuid_string,
 };
+use super::tests::{next_leased_agent_request, record_leased_agent_observation};
 use crate::runtime_recall_test_support::{RecallFixture, recall_test_embedding, record};
 use crate::*;
 
@@ -9,11 +10,12 @@ fn transcript_query_returns_exact_evidence_then_finishes_conversationally() {
     let fixture = RecallFixture::new(true);
     let start = start_command(301);
     fixture.base.facade.dispatch(start.clone());
-    let model = fixture.base.facade.next_host_requests(1).remove(0);
-    let HostRequest::ExecuteAgentModelTurn { execution } = &model.request else {
+    let model = next_leased_agent_request(&fixture.base.facade);
+    let HostRequest::ExecuteAgentModelTurn { execution } = &model.request.request else {
         panic!("expected model request");
     };
-    fixture.base.facade.record_host_observation(observe(
+    record_leased_agent_observation(
+        &fixture.base.facade,
         &model,
         HostObservation::AgentModelCompleted {
             turn_id: execution.turn_id,
@@ -29,7 +31,7 @@ fn transcript_query_returns_exact_evidence_then_finishes_conversationally() {
             }),
             usage: None,
         },
-    ));
+    );
     approve_next(&fixture);
     let embed = fixture.base.facade.next_host_requests(1).remove(0);
     let HostRequest::EmbedRecallQuery { query_id, text, .. } = &embed.request else {

@@ -57,9 +57,6 @@ impl FacadeState {
             }
             return (changed, receipt);
         }
-        if let Some(result) = self.retry_pending_transcript_observation(request_id, &observation) {
-            return result;
-        }
         if self
             .pending_publisher_observations
             .contains_key(&request_id)
@@ -92,7 +89,6 @@ impl FacadeState {
                     .and_then(|store| store.model_chapter_workflow(*episode_id).ok())
                     .flatten()
             });
-        let pending_transcript = self.pending_transcript_record(request_id);
         let pending_wake = self.pending_core_wakes.contains_key(&request_id);
         let pending_download = self.pending_downloads.contains_key(&request_id);
         let pending_feed = self.pending_feeds.get(&request_id).cloned();
@@ -159,16 +155,6 @@ impl FacadeState {
             let receipt = self.persist_model_observation(record, observation);
             if matches!(receipt, HostObservationReceipt::RetainAndRetry { .. }) {
                 self.pending_model_observations.insert(request_id, retained);
-            }
-            let changed = matches!(receipt, HostObservationReceipt::Persisted { .. });
-            return (changed, receipt);
-        }
-        if let Some(record) = pending_transcript {
-            let retained = observation.clone();
-            let receipt = self.persist_transcript_observation(record, observation);
-            if matches!(receipt, HostObservationReceipt::RetainAndRetry { .. }) {
-                self.pending_transcript_observations
-                    .insert(request_id, retained);
             }
             let changed = matches!(receipt, HostObservationReceipt::Persisted { .. });
             return (changed, receipt);
@@ -263,9 +249,6 @@ impl FacadeState {
                 | HostObservation::AgentModelCompleted { .. }
                 | HostObservation::AgentApprovalObserved { .. }
                 | HostObservation::AgentCapabilityObserved { .. }
-                | HostObservation::NostrSignerCredentialReady { .. }
-                | HostObservation::NostrEventSigned { .. }
-                | HostObservation::NostrSignerCredentialDeleted { .. }
                 | HostObservation::CoreWakeReached { .. }
                 | HostObservation::LegacyRecallIndexArtifactsRemoved { .. } => {
                     self.fail(command_id, CoreFailureCode::InvalidCommand)

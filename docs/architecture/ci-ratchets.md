@@ -11,6 +11,11 @@ TestFlight test jobs.
 
 It enforces:
 
+- every `ApplicationCommand`, `HostRequest`, and `HostObservation` variant has
+  an explicit Rust owner, fact policy, child issue, and migration status;
+- recovery, authoritative mutation, and native execution source surfaces match
+  the exact ADR-0009 conformance inventory, so the exception baseline cannot
+  grow silently;
 - every production Swift file has exactly one ownership entry;
 - migrating/temporary owners have implementation issues and deletion targets;
 - native presentation does not gain new direct durable-store/runtime access;

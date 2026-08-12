@@ -1,12 +1,12 @@
 use pod0_application::{
-    CommandEnvelope, CoreFailureCode, OperationStage,
+    CommandEnvelope, CoreFailureCode, OperationStage, RequestDisposition, RequestRejectionReason,
     TRANSCRIPT_HOST_REQUEST_DEADLINE_MILLISECONDS, TRANSCRIPT_WORKFLOW_MAX_ATTEMPTS,
     TranscriptGenerationDecision, TranscriptWorkflowConfiguration, TranscriptWorkflowOrigin,
     transcript_attempt_id, transcript_submission_fence_id,
 };
 use pod0_domain::{EpisodeId, StateRevision};
 use pod0_storage::{
-    LibraryStore, PreparedTranscriptAttempt, StoredTranscriptWorkflowStage,
+    PreparedTranscriptAttempt, StoredTranscriptWorkflowStage, TranscriptWorkflowCancellationInput,
     TranscriptWorkflowEnsureInput, TranscriptWorkflowEnsureOutcome,
 };
 
@@ -18,26 +18,50 @@ impl FacadeState {
     pub(super) fn ensure_transcript_workflow(
         &mut self,
         envelope: &CommandEnvelope,
+        fingerprint: pod0_domain::ContentDigest,
         episode_id: EpisodeId,
         origin: TranscriptWorkflowOrigin,
         configuration: TranscriptWorkflowConfiguration,
     ) {
+        let Some(store) = self.authoritative_transcript_workflow_store(envelope) else {
+            return;
+        };
         if !self.transcript_origin_is_allowed(episode_id, origin) {
-            self.succeed(envelope.command_id, None);
+            if self.record_transcript_disposition(
+                &store,
+                envelope,
+                fingerprint,
+                episode_id,
+                origin,
+                RequestDisposition::Rejected {
+                    reason: RequestRejectionReason::NotAllowed,
+                },
+            ) {
+                self.succeed(envelope.command_id, None);
+            }
             return;
         }
-        self.start_transcript_workflow(envelope, episode_id, origin, configuration, None);
+        self.start_transcript_workflow(
+            envelope,
+            fingerprint,
+            episode_id,
+            origin,
+            configuration,
+            None,
+        );
     }
 
     pub(super) fn retry_transcript_workflow(
         &mut self,
         envelope: &CommandEnvelope,
+        fingerprint: pod0_domain::ContentDigest,
         episode_id: EpisodeId,
         expected_revision: StateRevision,
         configuration: TranscriptWorkflowConfiguration,
     ) {
         self.start_transcript_workflow(
             envelope,
+            fingerprint,
             episode_id,
             TranscriptWorkflowOrigin::User,
             configuration,
@@ -48,6 +72,7 @@ impl FacadeState {
     pub(super) fn cancel_transcript_workflow(
         &mut self,
         envelope: &CommandEnvelope,
+        fingerprint: pod0_domain::ContentDigest,
         episode_id: EpisodeId,
         expected_revision: StateRevision,
     ) {
@@ -65,7 +90,13 @@ impl FacadeState {
                 return;
             }
         };
-        match store.cancel_transcript_workflow(episode_id, expected_revision, self.now().value) {
+        match store.cancel_transcript_workflow(TranscriptWorkflowCancellationInput {
+            episode_id,
+            expected_workflow_revision: expected_revision,
+            command_id: envelope.command_id,
+            command_fingerprint: fingerprint,
+            observed_at_ms: self.now().value,
+        }) {
             Ok(_) => {
                 self.withdraw_transcript_request(&existing);
                 self.advance_revision();
@@ -78,6 +109,7 @@ impl FacadeState {
     fn start_transcript_workflow(
         &mut self,
         envelope: &CommandEnvelope,
+        fingerprint: pod0_domain::ContentDigest,
         episode_id: EpisodeId,
         origin: TranscriptWorkflowOrigin,
         configuration: TranscriptWorkflowConfiguration,
@@ -92,11 +124,31 @@ impl FacadeState {
         }
         let Some(runtime_plan) = self.transcript_workflow_plan(episode_id, origin, configuration)
         else {
-            self.fail(envelope.command_id, CoreFailureCode::InvalidCommand);
+            if self.record_transcript_disposition(
+                &store,
+                envelope,
+                fingerprint,
+                episode_id,
+                origin,
+                RequestDisposition::Rejected {
+                    reason: RequestRejectionReason::MissingSubject,
+                },
+            ) {
+                self.fail(envelope.command_id, CoreFailureCode::InvalidCommand);
+            }
             return;
         };
         if runtime_plan.is_current() {
-            self.succeed(envelope.command_id, None);
+            if self.record_transcript_disposition(
+                &store,
+                envelope,
+                fingerprint,
+                episode_id,
+                origin,
+                RequestDisposition::AlreadyComplete,
+            ) {
+                self.succeed(envelope.command_id, None);
+            }
             return;
         }
         let request = match runtime_plan.plan.generation {
@@ -107,20 +159,53 @@ impl FacadeState {
             }
             TranscriptGenerationDecision::AwaitingCredential { .. }
             | TranscriptGenerationDecision::AwaitingLocalAudio => {
-                self.finish(
-                    envelope.command_id,
-                    OperationStage::Blocked,
-                    Some(failure(CoreFailureCode::HostUnavailable)),
-                    None,
-                );
+                if self.record_transcript_disposition(
+                    &store,
+                    envelope,
+                    fingerprint,
+                    episode_id,
+                    origin,
+                    RequestDisposition::Rejected {
+                        reason: RequestRejectionReason::MissingPrerequisite,
+                    },
+                ) {
+                    self.finish(
+                        envelope.command_id,
+                        OperationStage::Blocked,
+                        Some(failure(CoreFailureCode::HostUnavailable)),
+                        None,
+                    );
+                }
                 return;
             }
             TranscriptGenerationDecision::Blocked { .. } => {
-                self.fail(envelope.command_id, CoreFailureCode::InvalidCommand);
+                if self.record_transcript_disposition(
+                    &store,
+                    envelope,
+                    fingerprint,
+                    episode_id,
+                    origin,
+                    RequestDisposition::Rejected {
+                        reason: RequestRejectionReason::Invalid,
+                    },
+                ) {
+                    self.fail(envelope.command_id, CoreFailureCode::InvalidCommand);
+                }
                 return;
             }
             TranscriptGenerationDecision::NotRequested => {
-                self.succeed(envelope.command_id, None);
+                if self.record_transcript_disposition(
+                    &store,
+                    envelope,
+                    fingerprint,
+                    episode_id,
+                    origin,
+                    RequestDisposition::Rejected {
+                        reason: RequestRejectionReason::NotAllowed,
+                    },
+                ) {
+                    self.succeed(envelope.command_id, None);
+                }
                 return;
             }
         };
@@ -138,7 +223,18 @@ impl FacadeState {
         if force_retry_from_revision.is_some()
             && existing.as_ref().map(|value| value.workflow_revision) != force_retry_from_revision
         {
-            self.fail(envelope.command_id, CoreFailureCode::RevisionConflict);
+            if self.record_transcript_disposition(
+                &store,
+                envelope,
+                fingerprint,
+                episode_id,
+                origin,
+                RequestDisposition::Rejected {
+                    reason: RequestRejectionReason::RevisionConflict,
+                },
+            ) {
+                self.fail(envelope.command_id, CoreFailureCode::RevisionConflict);
+            }
             return;
         }
         let now = self.now().value;
@@ -156,25 +252,28 @@ impl FacadeState {
                 submission_fence_id: transcript_submission_fence_id(attempt_id),
             });
         let host_request_id = request_id(request.workflow_id, attempt_number, publisher);
-        let outcome = store.ensure_transcript_workflow(TranscriptWorkflowEnsureInput {
-            episode_id,
-            request: stored_request(request),
-            stage: if publisher {
-                StoredTranscriptWorkflowStage::PublisherRequested
-            } else {
-                StoredTranscriptWorkflowStage::Requested
+        let outcome = store.ensure_transcript_workflow_with_fingerprint(
+            TranscriptWorkflowEnsureInput {
+                episode_id,
+                request: stored_request(request),
+                stage: if publisher {
+                    StoredTranscriptWorkflowStage::PublisherRequested
+                } else {
+                    StoredTranscriptWorkflowStage::Requested
+                },
+                prepared_attempt,
+                command_id: envelope.command_id,
+                cancellation_id: envelope.cancellation_id,
+                request_id: Some(host_request_id),
+                issued_revision: self.revision,
+                deadline_at_ms: Some(deadline),
+                expected_selection_revision: runtime_plan.expected_selection_revision,
+                max_attempts: TRANSCRIPT_WORKFLOW_MAX_ATTEMPTS,
+                now_ms: now,
+                expected_workflow_revision: force_retry_from_revision,
             },
-            prepared_attempt,
-            command_id: envelope.command_id,
-            cancellation_id: envelope.cancellation_id,
-            request_id: Some(host_request_id),
-            issued_revision: self.revision,
-            deadline_at_ms: Some(deadline),
-            expected_selection_revision: runtime_plan.expected_selection_revision,
-            max_attempts: TRANSCRIPT_WORKFLOW_MAX_ATTEMPTS,
-            now_ms: now,
-            expected_workflow_revision: force_retry_from_revision,
-        });
+            fingerprint,
+        );
         match outcome {
             Ok(TranscriptWorkflowEnsureOutcome::Changed(record))
             | Ok(TranscriptWorkflowEnsureOutcome::Existing(record)) => {
@@ -189,27 +288,6 @@ impl FacadeState {
                 self.finish(envelope.command_id, OperationStage::Running, None, None);
             }
             Err(error) => self.fail(envelope.command_id, storage_failure(error)),
-        }
-    }
-
-    fn authoritative_transcript_workflow_store(
-        &mut self,
-        envelope: &CommandEnvelope,
-    ) -> Option<LibraryStore> {
-        let Some(store) = self.store.clone() else {
-            self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
-            return None;
-        };
-        match store.transcript_workflow_authority() {
-            Ok(state) if state.is_authoritative() => Some(store),
-            Ok(_) => {
-                self.fail(envelope.command_id, CoreFailureCode::HostUnavailable);
-                None
-            }
-            Err(error) => {
-                self.fail(envelope.command_id, storage_failure(error));
-                None
-            }
         }
     }
 }

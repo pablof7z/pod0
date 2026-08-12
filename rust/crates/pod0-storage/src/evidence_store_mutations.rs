@@ -16,51 +16,8 @@ impl EvidenceStore {
         generation_id: EvidenceGenerationId,
         verified_at_ms: i64,
     ) -> Result<EvidenceVerificationReceipt, StorageError> {
-        let command_fingerprint = fingerprint(EvidenceOperation::Verify, generation_id, None, None);
         self.write(|transaction| {
-            if let Some(stored) = replay(transaction, command_id, command_fingerprint)? {
-                if stored.operation != EvidenceOperation::Verify
-                    || stored.generation_id != generation_id
-                    || stored.episode_id.is_some()
-                {
-                    return Err(StorageError::EvidenceCommandConflict);
-                }
-                return Ok(EvidenceVerificationReceipt {
-                    generation_id,
-                    already_verified: stored.result,
-                });
-            }
-            read_artifact(transaction, generation_id)?.ok_or(StorageError::EvidenceNotFound)?;
-            let summary =
-                read_summary(transaction, generation_id)?.ok_or(StorageError::EvidenceNotFound)?;
-            let already_verified = summary.state == EvidenceGenerationState::Verified;
-            if !already_verified {
-                let changed = transaction
-                    .execute(
-                        "UPDATE pod0_evidence_generations SET state='verified',verified_at_ms=?1 \
-                         WHERE generation_id=?2 AND state='staged'",
-                        params![verified_at_ms, generation_id.into_bytes().as_slice()],
-                    )
-                    .map_err(|error| StorageError::sqlite("verify evidence generation", error))?;
-                if changed != 1 {
-                    return Err(StorageError::InvalidEvidenceArtifact);
-                }
-            }
-            record(
-                transaction,
-                command_id,
-                EvidenceOperation::Verify,
-                command_fingerprint,
-                generation_id,
-                None,
-                None,
-                already_verified,
-                verified_at_ms,
-            )?;
-            Ok(EvidenceVerificationReceipt {
-                generation_id,
-                already_verified,
-            })
+            apply_evidence_verification(transaction, command_id, generation_id, verified_at_ms)
         })
     }
 
@@ -71,71 +28,14 @@ impl EvidenceStore {
         generation_id: EvidenceGenerationId,
         selected_at_ms: i64,
     ) -> Result<EvidenceSelectionReceipt, StorageError> {
-        let command_fingerprint = fingerprint(
-            EvidenceOperation::Select,
-            generation_id,
-            Some(episode_id),
-            None,
-        );
         self.write(|transaction| {
-            if let Some(stored) = replay(transaction, command_id, command_fingerprint)? {
-                if stored.operation != EvidenceOperation::Select
-                    || stored.generation_id != generation_id
-                    || stored.episode_id != Some(episode_id)
-                {
-                    return Err(StorageError::EvidenceCommandConflict);
-                }
-                return Ok(EvidenceSelectionReceipt {
-                    episode_id,
-                    generation_id,
-                    previous_generation_id: stored.previous_generation_id,
-                    already_selected: stored.result,
-                });
-            }
-            let summary = read_summary(transaction, generation_id)?
-                .ok_or(StorageError::EvidenceNotFound)?;
-            if summary.episode_id != episode_id {
-                return Err(StorageError::EvidenceEpisodeMismatch);
-            }
-            if summary.state != EvidenceGenerationState::Verified {
-                return Err(StorageError::EvidenceNotVerified);
-            }
-            read_artifact(transaction, generation_id)?
-                .ok_or(StorageError::EvidenceNotFound)?;
-            let previous_generation_id = selected_generation_id(transaction, episode_id)?;
-            let already_selected = previous_generation_id == Some(generation_id);
-            if !already_selected {
-                transaction
-                    .execute(
-                        "INSERT INTO pod0_evidence_selection(episode_id,generation_id,\
-                         generation_state,selected_at_ms) VALUES(?1,?2,'verified',?3) \
-                         ON CONFLICT(episode_id) DO UPDATE SET generation_id=excluded.generation_id,\
-                         generation_state='verified',selected_at_ms=excluded.selected_at_ms",
-                        params![
-                            episode_id.into_bytes().as_slice(),
-                            generation_id.into_bytes().as_slice(),
-                            selected_at_ms,
-                        ],
-                    )
-                    .map_err(|error| StorageError::sqlite("select evidence generation", error))?;
-            }
-            record(
+            apply_evidence_selection(
                 transaction,
                 command_id,
-                EvidenceOperation::Select,
-                command_fingerprint,
-                generation_id,
-                Some(episode_id),
-                previous_generation_id,
-                already_selected,
-                selected_at_ms,
-            )?;
-            Ok(EvidenceSelectionReceipt {
                 episode_id,
                 generation_id,
-                previous_generation_id,
-                already_selected,
-            })
+                selected_at_ms,
+            )
         })
     }
 
@@ -217,4 +117,128 @@ impl EvidenceStore {
             })
         })
     }
+}
+
+pub(crate) fn apply_evidence_verification(
+    transaction: &rusqlite::Transaction<'_>,
+    command_id: CommandId,
+    generation_id: EvidenceGenerationId,
+    verified_at_ms: i64,
+) -> Result<EvidenceVerificationReceipt, StorageError> {
+    let command_fingerprint = fingerprint(EvidenceOperation::Verify, generation_id, None, None);
+    if let Some(stored) = replay(transaction, command_id, command_fingerprint)? {
+        if stored.operation != EvidenceOperation::Verify
+            || stored.generation_id != generation_id
+            || stored.episode_id.is_some()
+        {
+            return Err(StorageError::EvidenceCommandConflict);
+        }
+        return Ok(EvidenceVerificationReceipt {
+            generation_id,
+            already_verified: stored.result,
+        });
+    }
+    read_artifact(transaction, generation_id)?.ok_or(StorageError::EvidenceNotFound)?;
+    let summary =
+        read_summary(transaction, generation_id)?.ok_or(StorageError::EvidenceNotFound)?;
+    let already_verified = summary.state == EvidenceGenerationState::Verified;
+    if !already_verified {
+        let changed = transaction
+            .execute(
+                "UPDATE pod0_evidence_generations SET state='verified',verified_at_ms=?1 \
+                 WHERE generation_id=?2 AND state='staged'",
+                params![verified_at_ms, generation_id.into_bytes().as_slice()],
+            )
+            .map_err(|error| StorageError::sqlite("verify evidence generation", error))?;
+        if changed != 1 {
+            return Err(StorageError::InvalidEvidenceArtifact);
+        }
+    }
+    record(
+        transaction,
+        command_id,
+        EvidenceOperation::Verify,
+        command_fingerprint,
+        generation_id,
+        None,
+        None,
+        already_verified,
+        verified_at_ms,
+    )?;
+    Ok(EvidenceVerificationReceipt {
+        generation_id,
+        already_verified,
+    })
+}
+
+pub(crate) fn apply_evidence_selection(
+    transaction: &rusqlite::Transaction<'_>,
+    command_id: CommandId,
+    episode_id: EpisodeId,
+    generation_id: EvidenceGenerationId,
+    selected_at_ms: i64,
+) -> Result<EvidenceSelectionReceipt, StorageError> {
+    let command_fingerprint = fingerprint(
+        EvidenceOperation::Select,
+        generation_id,
+        Some(episode_id),
+        None,
+    );
+    if let Some(stored) = replay(transaction, command_id, command_fingerprint)? {
+        if stored.operation != EvidenceOperation::Select
+            || stored.generation_id != generation_id
+            || stored.episode_id != Some(episode_id)
+        {
+            return Err(StorageError::EvidenceCommandConflict);
+        }
+        return Ok(EvidenceSelectionReceipt {
+            episode_id,
+            generation_id,
+            previous_generation_id: stored.previous_generation_id,
+            already_selected: stored.result,
+        });
+    }
+    let summary =
+        read_summary(transaction, generation_id)?.ok_or(StorageError::EvidenceNotFound)?;
+    if summary.episode_id != episode_id {
+        return Err(StorageError::EvidenceEpisodeMismatch);
+    }
+    if summary.state != EvidenceGenerationState::Verified {
+        return Err(StorageError::EvidenceNotVerified);
+    }
+    read_artifact(transaction, generation_id)?.ok_or(StorageError::EvidenceNotFound)?;
+    let previous_generation_id = selected_generation_id(transaction, episode_id)?;
+    let already_selected = previous_generation_id == Some(generation_id);
+    if !already_selected {
+        transaction
+            .execute(
+                "INSERT INTO pod0_evidence_selection(episode_id,generation_id,\
+                 generation_state,selected_at_ms) VALUES(?1,?2,'verified',?3) \
+                 ON CONFLICT(episode_id) DO UPDATE SET generation_id=excluded.generation_id,\
+                 generation_state='verified',selected_at_ms=excluded.selected_at_ms",
+                params![
+                    episode_id.into_bytes().as_slice(),
+                    generation_id.into_bytes().as_slice(),
+                    selected_at_ms,
+                ],
+            )
+            .map_err(|error| StorageError::sqlite("select evidence generation", error))?;
+    }
+    record(
+        transaction,
+        command_id,
+        EvidenceOperation::Select,
+        command_fingerprint,
+        generation_id,
+        Some(episode_id),
+        previous_generation_id,
+        already_selected,
+        selected_at_ms,
+    )?;
+    Ok(EvidenceSelectionReceipt {
+        episode_id,
+        generation_id,
+        previous_generation_id,
+        already_selected,
+    })
 }

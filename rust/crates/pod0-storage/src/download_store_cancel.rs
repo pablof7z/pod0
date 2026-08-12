@@ -2,13 +2,11 @@ use pod0_domain::{CommandId, EpisodeId, HostRequestId, StateRevision};
 use rusqlite::params;
 
 use crate::download_store_read::workflow;
-use crate::download_store_request::{
-    derived_request_id, download_command_was_applied, retire_request, u64_to_i64,
-};
+use crate::download_store_request::{derived_request_id, retire_request, u64_to_i64};
 use crate::library_store::finish_command;
 use crate::{
     DownloadRemovalInput, DownloadWorkflowRecord, DownloadWorkflowTransition, LibraryStore,
-    StorageError, StoredDownloadStage,
+    StorageError,
 };
 
 impl LibraryStore {
@@ -21,151 +19,135 @@ impl LibraryStore {
         issued_revision: StateRevision,
         now_ms: i64,
     ) -> Result<DownloadWorkflowTransition, StorageError> {
-        self.write(|transaction| {
-            if download_command_was_applied(transaction, command_id, command_fingerprint)?.is_some()
-            {
-                let record = workflow(transaction, episode_id)?
-                    .ok_or(StorageError::DownloadWorkflowNotFound)?;
-                return Ok(DownloadWorkflowTransition {
-                    record,
-                    replaced: None,
-                });
-            }
-            let existing =
-                workflow(transaction, episode_id)?.ok_or(StorageError::DownloadWorkflowNotFound)?;
-            if existing.workflow_revision != expected_revision
-                || matches!(
-                    existing.stage,
-                    StoredDownloadStage::Succeeded | StoredDownloadStage::Removing
-                )
-            {
-                return Err(StorageError::DownloadWorkflowConflict);
-            }
-            retire_request(transaction, existing.request_id, now_ms)?;
-            if let Some(attempt_id) = existing.attempt_id {
-                let request_id = derived_request_id(
-                    b"pod0-download-cancel-request-v1",
-                    &attempt_id.into_bytes(),
-                    expected_revision.value,
-                );
-                insert_cancel_request(
-                    transaction,
-                    &existing,
-                    request_id,
-                    command_id,
-                    issued_revision,
-                    now_ms,
-                )?;
-            }
-            transaction
-                .execute(
-                    "UPDATE pod0_download_workflows SET desired_state='absent',stage='cancelled',\
-                     workflow_revision=workflow_revision+1,request_id=NULL,deadline_at_ms=NULL,\
-                     not_before_ms=NULL,failure_code=NULL,failure_detail=NULL,failure_retryable=0,\
-                     updated_at_ms=?1 WHERE episode_id=?2 AND workflow_revision=?3",
-                    params![
-                        now_ms,
-                        episode_id.into_bytes().as_slice(),
-                        u64_to_i64(expected_revision.value)?
-                    ],
-                )
-                .map_err(|error| StorageError::sqlite("cancel download workflow", error))?;
-            if transaction.changes() != 1 {
-                return Err(StorageError::DownloadWorkflowConflict);
-            }
-            finish_command(transaction, command_id, command_fingerprint, now_ms)?;
-            let record =
-                workflow(transaction, episode_id)?.ok_or(StorageError::DownloadWorkflowNotFound)?;
-            Ok(DownloadWorkflowTransition {
-                record,
-                replaced: Some(Box::new(existing)),
-            })
-        })
+        crate::transition_commit::commit_download_cancel(
+            self.path(),
+            command_id,
+            command_fingerprint,
+            episode_id,
+            expected_revision,
+            issued_revision,
+            now_ms,
+        )
     }
 
     pub fn remove_download_artifact(
         &self,
         input: DownloadRemovalInput,
     ) -> Result<DownloadWorkflowTransition, StorageError> {
-        self.write(|transaction| {
-            if download_command_was_applied(
-                transaction,
-                input.command_id,
-                &input.command_fingerprint,
-            )?
-            .is_some()
-            {
-                let record = workflow(transaction, input.episode_id)?
-                    .ok_or(StorageError::DownloadWorkflowNotFound)?;
-                return Ok(DownloadWorkflowTransition {
-                    record,
-                    replaced: None,
-                });
-            }
-            let existing = workflow(transaction, input.episode_id)?
-                .ok_or(StorageError::DownloadWorkflowNotFound)?;
-            if existing.workflow_revision != input.expected_revision
-                || !matches!(
-                    existing.stage,
-                    StoredDownloadStage::Succeeded | StoredDownloadStage::Failed
-                )
-            {
-                return Err(StorageError::DownloadWorkflowConflict);
-            }
-            let artifact_key = existing
-                .artifact_key
-                .as_deref()
-                .ok_or(StorageError::InvalidDownloadArtifact)?;
-            let request_id = derived_request_id(
-                b"pod0-download-remove-request-v1",
-                artifact_key.as_bytes(),
-                input.expected_revision.value,
-            );
-            insert_remove_request(
-                transaction,
-                &existing,
-                request_id,
-                input.command_id,
-                input.issued_revision,
-                artifact_key,
+        crate::transition_commit::commit_download_remove(self.path(), input)
+    }
+}
+
+pub(crate) fn apply_download_cancel(
+    transaction: &rusqlite::Transaction<'_>,
+    command_id: CommandId,
+    command_fingerprint: &str,
+    episode_id: EpisodeId,
+    expected_revision: StateRevision,
+    issued_revision: StateRevision,
+    now_ms: i64,
+) -> Result<DownloadWorkflowTransition, StorageError> {
+    let existing =
+        workflow(transaction, episode_id)?.ok_or(StorageError::DownloadWorkflowNotFound)?;
+    retire_request(transaction, existing.request_id, now_ms)?;
+    if let Some(attempt_id) = existing.attempt_id {
+        let request_id = derived_request_id(
+            b"pod0-download-cancel-request-v1",
+            &attempt_id.into_bytes(),
+            expected_revision.value,
+        );
+        insert_cancel_request(
+            transaction,
+            &existing,
+            request_id,
+            command_id,
+            issued_revision,
+            now_ms,
+        )?;
+    }
+    transaction
+        .execute(
+            "UPDATE pod0_download_workflows SET desired_state='absent',stage='cancelled',\
+             workflow_revision=workflow_revision+1,request_id=NULL,deadline_at_ms=NULL,\
+             not_before_ms=NULL,failure_code=NULL,failure_detail=NULL,failure_retryable=0,\
+             updated_at_ms=?1 WHERE episode_id=?2 AND workflow_revision=?3",
+            params![
+                now_ms,
+                episode_id.into_bytes().as_slice(),
+                u64_to_i64(expected_revision.value)?
+            ],
+        )
+        .map_err(|error| StorageError::sqlite("cancel download workflow", error))?;
+    if transaction.changes() != 1 {
+        return Err(StorageError::DownloadWorkflowConflict);
+    }
+    finish_command(transaction, command_id, command_fingerprint, now_ms)?;
+    let record =
+        workflow(transaction, episode_id)?.ok_or(StorageError::DownloadWorkflowNotFound)?;
+    Ok(DownloadWorkflowTransition {
+        record,
+        replaced: Some(Box::new(existing)),
+    })
+}
+
+pub(crate) fn apply_download_remove(
+    transaction: &rusqlite::Transaction<'_>,
+    input: DownloadRemovalInput,
+) -> Result<DownloadWorkflowTransition, StorageError> {
+    let existing =
+        workflow(transaction, input.episode_id)?.ok_or(StorageError::DownloadWorkflowNotFound)?;
+    let artifact_key = existing
+        .artifact_key
+        .as_deref()
+        .ok_or(StorageError::InvalidDownloadArtifact)?;
+    let request_id = derived_request_id(
+        b"pod0-download-remove-request-v1",
+        artifact_key.as_bytes(),
+        input.expected_revision.value,
+    );
+    insert_remove_request(
+        transaction,
+        &existing,
+        request_id,
+        input.command_id,
+        input.issued_revision,
+        artifact_key,
+        input.deadline_at_ms,
+        input.now_ms,
+    )?;
+    transaction
+        .execute(
+            "UPDATE pod0_download_workflows SET desired_state='absent',stage='removing',\
+         workflow_revision=workflow_revision+1,request_id=?1,command_id=?2,issued_revision=?3,\
+         deadline_at_ms=?4,not_before_ms=NULL,failure_code=NULL,failure_detail=NULL,\
+         failure_retryable=0,updated_at_ms=?5 WHERE episode_id=?6 AND workflow_revision=?7 \
+         AND stage IN('succeeded','failed')",
+            params![
+                request_id.into_bytes().as_slice(),
+                input.command_id.into_bytes().as_slice(),
+                u64_to_i64(input.issued_revision.value)?,
                 input.deadline_at_ms,
                 input.now_ms,
-            )?;
-            transaction
-                .execute(
-                    "UPDATE pod0_download_workflows SET desired_state='absent',stage='removing',\
-                     workflow_revision=workflow_revision+1,request_id=?1,command_id=?2,\
-                     issued_revision=?3,deadline_at_ms=?4,not_before_ms=NULL,failure_code=NULL,\
-                     failure_detail=NULL,failure_retryable=0,updated_at_ms=?5 WHERE episode_id=?6 \
-                     AND workflow_revision=?7 AND stage IN('succeeded','failed')",
-                    params![
-                        request_id.into_bytes().as_slice(),
-                        input.command_id.into_bytes().as_slice(),
-                        u64_to_i64(input.issued_revision.value)?,
-                        input.deadline_at_ms,
-                        input.now_ms,
-                        input.episode_id.into_bytes().as_slice(),
-                        u64_to_i64(input.expected_revision.value)?
-                    ],
-                )
-                .map_err(|error| StorageError::sqlite("request download removal", error))?;
-            if transaction.changes() != 1 {
-                return Err(StorageError::DownloadWorkflowConflict);
-            }
-            finish_command(
-                transaction,
-                input.command_id,
-                &input.command_fingerprint,
-                input.now_ms,
-            )?;
-            let record = workflow(transaction, input.episode_id)?
-                .ok_or(StorageError::DownloadWorkflowNotFound)?;
-            Ok(DownloadWorkflowTransition {
-                record,
-                replaced: Some(Box::new(existing)),
-            })
-        })
+                input.episode_id.into_bytes().as_slice(),
+                u64_to_i64(input.expected_revision.value)?
+            ],
+        )
+        .map_err(|error| StorageError::sqlite("request download removal", error))?;
+    if transaction.changes() != 1 {
+        return Err(StorageError::DownloadWorkflowConflict);
     }
+    finish_command(
+        transaction,
+        input.command_id,
+        &input.command_fingerprint,
+        input.now_ms,
+    )?;
+    let record =
+        workflow(transaction, input.episode_id)?.ok_or(StorageError::DownloadWorkflowNotFound)?;
+    Ok(DownloadWorkflowTransition {
+        record,
+        replaced: Some(Box::new(existing)),
+    })
 }
 
 fn insert_cancel_request(

@@ -1,4 +1,5 @@
-use super::recall_test_support::{approve_next, observe, start_command, uuid_string};
+use super::recall_test_support::{approve_next, start_command, uuid_string};
+use super::tests::{next_leased_agent_request, record_leased_agent_observation};
 use crate::runtime_recall_test_support::{
     RecallFixture, evidence_input, recall_test_embedding, record,
 };
@@ -18,11 +19,12 @@ fn transcript_query_result_carries_speaker_label_and_display_name() {
     commit_labelled_transcript(&fixture);
     let start = start_command(305);
     fixture.base.facade.dispatch(start.clone());
-    let model = fixture.base.facade.next_host_requests(1).remove(0);
-    let HostRequest::ExecuteAgentModelTurn { execution } = &model.request else {
+    let model = next_leased_agent_request(&fixture.base.facade);
+    let HostRequest::ExecuteAgentModelTurn { execution } = &model.request.request else {
         panic!("expected model request");
     };
-    fixture.base.facade.record_host_observation(observe(
+    record_leased_agent_observation(
+        &fixture.base.facade,
         &model,
         HostObservation::AgentModelCompleted {
             turn_id: execution.turn_id,
@@ -38,7 +40,7 @@ fn transcript_query_result_carries_speaker_label_and_display_name() {
             }),
             usage: None,
         },
-    ));
+    );
     approve_next(&fixture);
     let embed = fixture.base.facade.next_host_requests(1).remove(0);
     let HostRequest::EmbedRecallQuery { query_id, .. } = &embed.request else {
@@ -79,9 +81,7 @@ fn transcript_query_result_carries_speaker_label_and_display_name() {
     assert!(evidence.content.contains(r#""status":"ready""#));
     assert!(evidence.content.contains("daily cues"));
     assert!(
-        evidence
-            .content
-            .contains(r#""speaker_label":"speaker_0""#),
+        evidence.content.contains(r#""speaker_label":"speaker_0""#),
         "query_transcripts evidence must carry the diarization label for the span's speaker, \
          not only an opaque id; tool result was: {}",
         evidence.content
@@ -161,8 +161,7 @@ fn commit_labelled_transcript(fixture: &RecallFixture) {
     };
     assert!(
         value.speakers.iter().any(|speaker| {
-            speaker.label == "speaker_0"
-                && speaker.display_name.as_deref() == Some("Ada Lovelace")
+            speaker.label == "speaker_0" && speaker.display_name.as_deref() == Some("Ada Lovelace")
         }),
         "fixture guard: the label and display name must already be durable through the \
          transcript projection; only the agent surface is under test"

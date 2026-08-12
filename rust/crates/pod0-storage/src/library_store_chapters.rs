@@ -1,6 +1,5 @@
 use pod0_domain::{
-    ChapterArtifact, ChapterArtifactId, ChapterArtifactInput, CommandId, ContentDigest, EpisodeId,
-    StateRevision,
+    ChapterArtifact, ChapterArtifactId, CommandId, ContentDigest, EpisodeId, StateRevision,
 };
 use rusqlite::{OptionalExtension, Transaction, params};
 
@@ -10,50 +9,7 @@ use crate::chapter_store_read_artifact::read_chapter_artifact;
 use crate::chapter_store_receipt::chapter_commit_receipt;
 use crate::chapter_store_write_artifact::insert_or_validate_chapter_artifact;
 use crate::transcript_authority::advance_listening_revision;
-use crate::{ChapterCommitStorageReceipt, LibraryStore, StorageError};
-
-impl LibraryStore {
-    pub fn commit_and_select_chapter(
-        &self,
-        command_id: CommandId,
-        expected_selection_revision: StateRevision,
-        input: ChapterArtifactInput,
-        completed_at_ms: i64,
-    ) -> Result<ChapterCommitStorageReceipt, StorageError> {
-        self.commit_and_select_chapter_with_observer(
-            command_id,
-            expected_selection_revision,
-            input,
-            completed_at_ms,
-            || Ok(()),
-        )
-    }
-
-    pub(crate) fn commit_and_select_chapter_with_observer<F>(
-        &self,
-        command_id: CommandId,
-        expected_selection_revision: StateRevision,
-        input: ChapterArtifactInput,
-        completed_at_ms: i64,
-        before_commit: F,
-    ) -> Result<ChapterCommitStorageReceipt, StorageError>
-    where
-        F: FnOnce() -> Result<(), StorageError>,
-    {
-        let artifact =
-            ChapterArtifact::seal(input).map_err(|_| StorageError::InvalidChapterArtifact)?;
-        self.write(|transaction| {
-            commit_and_select_chapter_in_transaction(
-                transaction,
-                command_id,
-                expected_selection_revision,
-                &artifact,
-                completed_at_ms,
-                before_commit,
-            )
-        })
-    }
-}
+use crate::{ChapterCommitStorageReceipt, StorageError};
 
 pub(crate) fn commit_and_select_chapter_in_transaction<F>(
     transaction: &Transaction<'_>,
@@ -138,11 +94,11 @@ where
     Ok(receipt)
 }
 
-fn require_episode_parent(
-    transaction: &Transaction<'_>,
+pub(crate) fn require_episode_parent(
+    connection: &rusqlite::Connection,
     artifact: &ChapterArtifact,
 ) -> Result<(), StorageError> {
-    let parent: Option<Vec<u8>> = transaction
+    let parent: Option<Vec<u8>> = connection
         .query_row(
             "SELECT podcast_id FROM pod0_episodes WHERE episode_id=?1",
             [artifact.episode_id.into_bytes().as_slice()],
@@ -162,8 +118,8 @@ fn require_episode_parent(
     }
 }
 
-fn require_selected_transcript_provenance(
-    transaction: &Transaction<'_>,
+pub(crate) fn require_selected_transcript_provenance(
+    connection: &rusqlite::Connection,
     artifact: &ChapterArtifact,
 ) -> Result<(), StorageError> {
     let provenance = &artifact.provenance;
@@ -173,7 +129,7 @@ fn require_selected_transcript_provenance(
     ) else {
         return Ok(());
     };
-    let selected: Option<(Vec<u8>, Vec<u8>)> = transaction
+    let selected: Option<(Vec<u8>, Vec<u8>)> = connection
         .query_row(
             "SELECT selection.transcript_version_id,documents.content_digest \
              FROM pod0_transcript_selection selection JOIN pod0_transcript_documents documents \
@@ -196,11 +152,11 @@ fn require_selected_transcript_provenance(
     }
 }
 
-fn current_selection(
-    transaction: &Transaction<'_>,
+pub(crate) fn current_selection(
+    connection: &rusqlite::Connection,
     requested_episode: EpisodeId,
 ) -> Result<Option<(ChapterArtifactId, StateRevision)>, StorageError> {
-    let row: Option<(Vec<u8>, i64)> = transaction
+    let row: Option<(Vec<u8>, i64)> = connection
         .query_row(
             "SELECT artifact_id,selection_revision FROM pod0_chapter_selections \
              WHERE episode_id=?1 ORDER BY selection_revision DESC LIMIT 1",
@@ -235,13 +191,13 @@ fn advance_collection_revision(transaction: &Transaction<'_>) -> Result<(), Stor
 }
 
 #[allow(clippy::type_complexity)]
-fn replay(
-    transaction: &Transaction<'_>,
+pub(crate) fn replay(
+    connection: &rusqlite::Connection,
     command_id: CommandId,
     requested_fingerprint: ContentDigest,
     requested_artifact: &ChapterArtifact,
 ) -> Result<Option<ChapterCommitStorageReceipt>, StorageError> {
-    let row = transaction
+    let row = connection
         .query_row(
             "SELECT operation_code,command_fingerprint,episode_id,artifact_id,\
              expected_selection_revision,previous_artifact_id,resulting_selection_revision,\
@@ -269,7 +225,7 @@ fn replay(
     let fingerprint = digest(&row.1)?;
     let stored_artifact_id = artifact_id(&row.3)?;
     let stored_expected = revision(row.4)?;
-    let artifact = read_chapter_artifact(transaction, stored_artifact_id)?
+    let artifact = read_chapter_artifact(connection, stored_artifact_id)?
         .ok_or(StorageError::InvalidChapterArtifact)?;
     if episode_id(&row.2)? != artifact.episode_id
         || artifact.command_fingerprint(stored_expected) != fingerprint

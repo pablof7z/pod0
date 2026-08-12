@@ -5,7 +5,7 @@ use crate::{CategoryEdit, StorageError};
 
 #[test]
 fn creating_a_category_derives_a_slug_and_is_idempotent_under_replay() {
-    let (_fixture, store) = store();
+    let (fixture, store) = store();
     let (revision, id) = store
         .create_category(
             command(1),
@@ -39,6 +39,14 @@ fn creating_a_category_derives_a_slug_and_is_idempotent_under_replay() {
     assert_eq!(replayed_id, id);
     assert_eq!(replayed, revision);
     assert_eq!(store.category_snapshot().unwrap().categories.len(), 1);
+    let connection = rusqlite::Connection::open(&fixture.target).unwrap();
+    assert_eq!(activity_count(&connection), 2);
+}
+
+fn activity_count(connection: &rusqlite::Connection) -> i64 {
+    connection
+        .query_row("SELECT COUNT(*) FROM pod0_activity_facts", [], |row| row.get(0))
+        .unwrap()
 }
 
 #[test]

@@ -140,19 +140,15 @@ impl FacadeState {
             return false;
         };
         let context = active.context;
-        let committed = self
-            .store
-            .as_ref()
-            .ok_or(pod0_storage::StorageError::CutoverNotAuthoritative)
-            .and_then(|store| {
-                store.apply_playback_observation(
-                    PlaybackMutation::Checkpoint {
-                        episode_id: context.episode_id,
-                        position_milliseconds: decision.target_milliseconds,
-                    },
-                    observed_at_ms,
-                )
-            });
+        let committed = self.commit_playback_observation_mutation(
+            reaction,
+            "automatic-ad-skip",
+            PlaybackMutation::Checkpoint {
+                episode_id: context.episode_id,
+                position_milliseconds: decision.target_milliseconds,
+            },
+            observed_at_ms,
+        );
         if committed.is_err() || self.reload_listening().is_err() {
             self.playback.policy_state = pod0_application::PlaybackPolicyState::Failed;
             return true;
@@ -179,6 +175,11 @@ impl FacadeState {
         fingerprint: &str,
         mutation: PlaybackMutation,
     ) -> Option<bool> {
+        let episode_id = crate::runtime_playback_actions::playback_episode_hint(
+            &mutation,
+            self.listening.playback.active_episode_id,
+        );
+        let transition = crate::runtime_playback_actions::playback_transition(&mutation);
         let outcome = self
             .store
             .as_ref()
@@ -188,6 +189,9 @@ impl FacadeState {
                     envelope.command_id,
                     fingerprint,
                     mutation,
+                    episode_id,
+                    transition,
+                    None,
                     self.now().value,
                 )
             });

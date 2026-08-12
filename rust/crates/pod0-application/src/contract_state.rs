@@ -55,6 +55,7 @@ enum HostRequestStatus {
     Completed,
 }
 
+#[derive(Clone)]
 struct TrackedHostRequest {
     envelope: HostRequestEnvelope,
     status: HostRequestStatus,
@@ -74,12 +75,19 @@ pub enum ObservationAcceptance {
     PayloadTooLarge,
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct HostRequestLedger {
     requests: BTreeMap<HostRequestId, TrackedHostRequest>,
 }
 
 impl HostRequestLedger {
+    #[must_use]
+    pub fn validate_observation(
+        &self,
+        observation: &HostObservationEnvelope,
+    ) -> ObservationAcceptance {
+        self.clone().accept_observation(observation)
+    }
     #[must_use]
     pub fn command_id(&self, request_id: HostRequestId) -> Option<CommandId> {
         self.requests
@@ -114,19 +122,6 @@ impl HostRequestLedger {
             matches!(
                 request.envelope.request,
                 HostRequest::ExecuteTranscriptCapability { .. }
-            )
-        })
-    }
-
-    #[must_use]
-    pub fn is_signer_request(&self, request_id: HostRequestId) -> bool {
-        self.requests.get(&request_id).is_some_and(|request| {
-            matches!(
-                request.envelope.request,
-                HostRequest::ProvisionNostrSignerCredential
-                    | HostRequest::RestoreNostrSignerCredential { .. }
-                    | HostRequest::SignNostrEvent { .. }
-                    | HostRequest::DeleteNostrSignerCredential { .. }
             )
         })
     }

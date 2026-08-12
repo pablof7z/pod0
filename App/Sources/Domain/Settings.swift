@@ -220,12 +220,12 @@ struct Settings: Codable, Hashable, Sendable {
     // It is deliberately not encoded after the verified cutover.
     var legacyNotifyOnNewEpisodes: Bool = true
 
-    // Agent identity — display name and avatar the user configures for the
-    // agent during onboarding. Surfaced in the sidebar/toolbar avatar.
+    // Agent identity — display name and avatar surfaced in the sidebar/toolbar.
     var agentDisplayName: String = ""
     var agentAvatarURLString: String = ""
 
-    // Onboarding
+    // Legacy migration field retained so previously persisted settings continue
+    // to decode. It no longer controls any UI flow.
     var hasCompletedOnboarding: Bool = false
 
     init() {}

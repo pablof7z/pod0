@@ -15,6 +15,10 @@ pub struct TranscriptStore {
 }
 
 impl TranscriptStore {
+    pub(crate) fn path(&self) -> &Path {
+        &self.path
+    }
+
     pub fn open(path: &Path) -> Result<Self, StorageError> {
         let connection = open_current(path, true)?;
         validate_open_database(&connection, CURRENT_SCHEMA_VERSION)?;

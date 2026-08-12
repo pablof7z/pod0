@@ -226,9 +226,6 @@ impl FacadeState {
             ProjectionScope::Publications { publication_id } => {
                 self.publication_projection(publication_id, &request)
             }
-            ProjectionScope::NostrSigner => Projection::NostrSigner {
-                value: self.signer_projection(),
-            },
             ProjectionScope::Notes { scope } => self.notes_projection(scope, offset, item_limit),
             ProjectionScope::Memories { scope } => {
                 let mut memories = self.memories.memories.clone();

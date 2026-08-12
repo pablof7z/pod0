@@ -194,26 +194,8 @@ fn external_episode_and_placeholder_are_durable_without_creating_a_subscription(
     assert_eq!(updated.published_at, episode.published_at);
 }
 
-#[test]
-fn episode_starred_state_is_owned_and_replayed_by_the_library_store() {
-    let fixture = imported_fixture();
-    commit_listening_cutover(&fixture.target, 1_800_000_000_000).unwrap();
-    let store = LibraryStore::open_authoritative(&fixture.target).unwrap();
-    let episode_id = store.snapshot().unwrap().episodes[0].episode_id;
-
-    let revision = store
-        .set_episode_starred(id(13), &"d".repeat(64), episode_id, true, 1_800_000_000_013)
-        .unwrap();
-    let snapshot = store.snapshot().unwrap();
-    assert!(snapshot.episodes[0].is_starred);
-    assert_eq!(snapshot.playback.revision, revision);
-    assert_eq!(
-        store
-            .set_episode_starred(id(13), &"d".repeat(64), episode_id, true, 1_800_000_000_014,)
-            .unwrap(),
-        revision
-    );
-}
+#[path = "library_store_activity_tests.rs"]
+mod activity;
 
 #[test]
 fn listening_reset_clears_library_and_playback_but_preserves_authority() {

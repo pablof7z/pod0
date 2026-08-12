@@ -30,7 +30,7 @@ PRIVILEGED_CLASSES = {
 ALLOWED_EXECUTION = {
     "rust_commit", "rust_projection", "native_capability",
     "native_conversation_presentation",
-    "native_capability_and_pod0_nmp_publication",
+    "native_capability_and_nmp_publication",
 }
 
 
@@ -87,8 +87,8 @@ def validate(payload: dict, actual: list[str]) -> list[str]:
         execution = row.get("execution")
         if execution not in ALLOWED_EXECUTION:
             errors.append(f"{name}: unknown execution boundary {execution!r}")
-        if "publication" in classes and "pod0_nmp_publication" not in str(execution):
-            errors.append(f"{name}: publication must route through pod0-nmp")
+        if "publication" in classes and "nmp_publication" not in str(execution):
+            errors.append(f"{name}: publication must route through NMP")
 
     if "relay" in json.dumps(payload).lower():
         errors.append("the app tool contract must not expose relay selection")

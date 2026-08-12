@@ -46,6 +46,8 @@ pub const PRODUCT_PROOF_AGENT_TOOLS: &[AgentToolName] = &[
     AgentToolName::ListInProgress,
     AgentToolName::ListRecentUnplayed,
     AgentToolName::SearchEpisodes,
+    AgentToolName::SearchPodcastDirectory,
+    AgentToolName::PlayEpisode,
     AgentToolName::QueryTranscripts,
     AgentToolName::PausePlayback,
     AgentToolName::SetPlaybackRate,
@@ -70,6 +72,9 @@ pub fn agent_tool_definitions(tools: &[AgentToolName]) -> Option<Vec<AgentToolDe
 
 #[must_use]
 pub fn agent_tool_definition(tool: AgentToolName) -> Option<AgentToolDefinition> {
+    if let Some(definition) = crate::agent_tool_catalog_discovery::definition(tool) {
+        return Some(definition);
+    }
     use AgentToolName::*;
     let definition = match tool {
         CreateNote => definition(
@@ -138,6 +143,7 @@ pub fn agent_tool_definition(tool: AgentToolName) -> Option<AgentToolDefinition>
                 ),
             ],
         ),
+        SearchPodcastDirectory | PlayEpisode => unreachable!("handled above"),
         QueryTranscripts => definition(
             tool,
             "query_transcripts",

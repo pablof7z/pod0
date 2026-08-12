@@ -7,13 +7,45 @@ use super::support::validate_time;
 use crate::{LibraryStore, StorageError};
 
 impl LibraryStore {
+    pub fn authorize_transcript_publisher_effect(
+        &self,
+        episode_id: pod0_domain::EpisodeId,
+        request_id: pod0_domain::HostRequestId,
+        now_ms: i64,
+    ) -> Result<TranscriptWorkflowRecord, StorageError> {
+        validate_time(now_ms)?;
+        crate::transition_commit::commit_transcript_publisher_effect(
+            self.path(),
+            episode_id,
+            request_id,
+            now_ms,
+        )
+    }
+
+    pub fn authorize_transcript_recovery_effect(
+        &self,
+        episode_id: pod0_domain::EpisodeId,
+        request_id: pod0_domain::HostRequestId,
+        now_ms: i64,
+    ) -> Result<TranscriptWorkflowRecord, StorageError> {
+        validate_time(now_ms)?;
+        crate::transition_commit::commit_transcript_recovery_effect(
+            self.path(),
+            episode_id,
+            request_id,
+            now_ms,
+        )
+    }
+
     pub fn claim_transcript_submission(
         &self,
         input: TranscriptSubmissionClaimInput,
     ) -> Result<TranscriptSubmissionClaim, StorageError> {
-        self.claim_transcript_submission_with_observer(input, || Ok(()))
+        validate_time(input.now_ms)?;
+        crate::transition_commit::commit_transcript_submission(self.path(), input)
     }
 
+    #[cfg(test)]
     pub(crate) fn claim_transcript_submission_with_observer<F>(
         &self,
         input: TranscriptSubmissionClaimInput,
@@ -45,63 +77,15 @@ impl LibraryStore {
         })
     }
 
-    pub fn record_transcript_provider_accepted(
+    #[cfg(test)]
+    pub(crate) fn record_transcript_provider_accepted(
         &self,
         input: TranscriptProviderAcceptedInput,
     ) -> Result<TranscriptWorkflowRecord, StorageError> {
         self.record_transcript_provider_accepted_with_observer(input, || Ok(()))
     }
 
-    pub fn record_transcript_provider_pending(
-        &self,
-        input: TranscriptProviderPendingInput,
-    ) -> Result<TranscriptWorkflowRecord, StorageError> {
-        validate_time(input.observed_at_ms)?;
-        validate_time(input.not_before_ms)?;
-        if input.not_before_ms < input.observed_at_ms
-            || input
-                .provider_status
-                .as_ref()
-                .is_some_and(|value| value.len() > 1_024)
-        {
-            return Err(StorageError::TranscriptWorkflowConflict);
-        }
-        self.write(|transaction| {
-            require_authoritative(transaction)?;
-            let mut record = exact_attempt(
-                transaction,
-                input.episode_id,
-                input.request_id,
-                input.attempt_id,
-                input.submission_fence_id,
-            )?;
-            if record.stage != StoredTranscriptWorkflowStage::ProviderAccepted
-                || input.observed_at_ms < record.updated_at_ms
-            {
-                return Err(StorageError::StaleTranscriptAttempt);
-            }
-            record.workflow_revision = super::support::next_revision(record.workflow_revision)?;
-            record.provider_status = input.provider_status;
-            record.not_before_ms = Some(input.not_before_ms);
-            record.updated_at_ms = input.observed_at_ms;
-            super::persist::persist_workflow(transaction, &record)?;
-            transaction
-                .execute(
-                    "UPDATE pod0_transcript_attempts SET provider_status=?1,updated_at_ms=?2
-                     WHERE attempt_id=?3 AND state='provider_accepted'",
-                    params![
-                        record.provider_status,
-                        input.observed_at_ms,
-                        input.attempt_id.into_bytes().as_slice()
-                    ],
-                )
-                .map_err(|error| {
-                    StorageError::sqlite("record transcript provider pending", error)
-                })?;
-            Ok(record)
-        })
-    }
-
+    #[cfg(test)]
     pub(crate) fn record_transcript_provider_accepted_with_observer<F>(
         &self,
         input: TranscriptProviderAcceptedInput,
@@ -136,7 +120,59 @@ impl LibraryStore {
     }
 }
 
-fn validate_claim(
+pub(crate) fn apply_transcript_provider_accepted(
+    transaction: &rusqlite::Transaction<'_>,
+    input: TranscriptProviderAcceptedInput,
+    not_before_ms: i64,
+) -> Result<TranscriptWorkflowRecord, StorageError> {
+    validate_provider_acceptance(&input)?;
+    validate_time(not_before_ms)?;
+    if not_before_ms < input.observed_at_ms {
+        return Err(StorageError::TranscriptWorkflowConflict);
+    }
+    require_authoritative(transaction)?;
+    let mut record = exact_attempt(
+        transaction,
+        input.episode_id,
+        input.request_id,
+        input.attempt_id,
+        input.submission_fence_id,
+    )?;
+    if record.stage != StoredTranscriptWorkflowStage::SubmissionAuthorized
+        || input.observed_at_ms < record.updated_at_ms
+    {
+        return Err(StorageError::StaleTranscriptAttempt);
+    }
+    record.stage = StoredTranscriptWorkflowStage::ProviderAccepted;
+    record.workflow_revision = super::support::next_revision(record.workflow_revision)?;
+    record.external_operation_id = Some(input.external_operation_id);
+    record.provider_status = input.provider_status;
+    record.not_before_ms = Some(not_before_ms);
+    record.updated_at_ms = input.observed_at_ms;
+    super::persist::persist_workflow(transaction, &record)?;
+    let changed = transaction
+        .execute(
+            "UPDATE pod0_transcript_attempts SET state='provider_accepted',external_operation_id=?1,
+             provider_status=?2,updated_at_ms=?3 WHERE episode_id=?4 AND request_id=?5
+             AND attempt_id=?6 AND submission_fence_id=?7 AND state='authorized'",
+            params![
+                record.external_operation_id,
+                record.provider_status,
+                input.observed_at_ms,
+                input.episode_id.into_bytes().as_slice(),
+                input.request_id.into_bytes().as_slice(),
+                input.attempt_id.into_bytes().as_slice(),
+                input.submission_fence_id.into_bytes().as_slice()
+            ],
+        )
+        .map_err(|error| StorageError::sqlite("record transcript provider acceptance", error))?;
+    if changed != 1 {
+        return Err(StorageError::StaleTranscriptAttempt);
+    }
+    Ok(record)
+}
+
+pub(crate) fn validate_claim(
     record: &TranscriptWorkflowRecord,
     input: &TranscriptSubmissionClaimInput,
 ) -> Result<(), StorageError> {
@@ -157,7 +193,7 @@ fn validate_claim(
     Ok(())
 }
 
-fn authorize_submission(
+pub(crate) fn authorize_submission(
     transaction: &rusqlite::Transaction<'_>,
     input: &TranscriptSubmissionClaimInput,
 ) -> Result<(), StorageError> {
@@ -194,7 +230,7 @@ fn authorize_submission(
     require_one_change(transaction)
 }
 
-fn exact_attempt(
+pub(crate) fn exact_attempt(
     transaction: &rusqlite::Transaction<'_>,
     episode_id: pod0_domain::EpisodeId,
     request_id: pod0_domain::HostRequestId,
@@ -212,60 +248,4 @@ fn exact_attempt(
     Ok(record)
 }
 
-fn validate_provider_acceptance(
-    input: &TranscriptProviderAcceptedInput,
-) -> Result<(), StorageError> {
-    validate_time(input.observed_at_ms)?;
-    if input.external_operation_id.is_empty()
-        || input.external_operation_id.len() > 1_024
-        || input
-            .provider_status
-            .as_ref()
-            .is_some_and(|value| value.len() > 1_024)
-    {
-        return Err(StorageError::TranscriptWorkflowConflict);
-    }
-    Ok(())
-}
-
-fn replayed_provider_acceptance(
-    current: TranscriptWorkflowRecord,
-    input: &TranscriptProviderAcceptedInput,
-) -> Result<TranscriptWorkflowRecord, StorageError> {
-    if current.external_operation_id.as_deref() == Some(&input.external_operation_id)
-        && current.provider_status == input.provider_status
-    {
-        Ok(current)
-    } else {
-        Err(StorageError::TranscriptWorkflowConflict)
-    }
-}
-
-fn update_provider_acceptance(
-    transaction: &rusqlite::Transaction<'_>,
-    input: &TranscriptProviderAcceptedInput,
-) -> Result<(), StorageError> {
-    for sql in [
-        "UPDATE pod0_transcript_workflows SET stage='provider_accepted',workflow_revision=workflow_revision+1,
-         external_operation_id=?1,provider_status=?2,updated_at_ms=?3 WHERE episode_id=?4 AND request_id=?5
-         AND attempt_id=?6 AND submission_fence_id=?7 AND stage='submission_authorized'",
-        "UPDATE pod0_transcript_attempts SET state='provider_accepted',external_operation_id=?1,
-         provider_status=?2,updated_at_ms=?3 WHERE episode_id=?4 AND request_id=?5 AND attempt_id=?6
-         AND submission_fence_id=?7 AND state='authorized'",
-    ] {
-        transaction.execute(sql,params![input.external_operation_id,input.provider_status,input.observed_at_ms,
-            input.episode_id.into_bytes().as_slice(),input.request_id.into_bytes().as_slice(),
-            input.attempt_id.into_bytes().as_slice(),input.submission_fence_id.into_bytes().as_slice()])
-            .map_err(|error| StorageError::sqlite("record transcript provider acceptance", error))?;
-        require_one_change(transaction)?;
-    }
-    Ok(())
-}
-
-fn require_one_change(transaction: &rusqlite::Transaction<'_>) -> Result<(), StorageError> {
-    if transaction.changes() == 1 {
-        Ok(())
-    } else {
-        Err(StorageError::StaleTranscriptAttempt)
-    }
-}
+include!("submission_support.rs");

@@ -1,6 +1,7 @@
 use pod0_application::{
-    CommandEnvelope, CoreFailureCode, HostRequest, OperationResult, PlaybackTransitionCue,
-    TranscriptWorkflowConfiguration,
+    ActivityDomain, ActivitySubject, CommandEnvelope, CoreFailureCode,
+    DurableInternalCommandRequest, HostRequest, InternalCommandKind, OperationResult,
+    PlaybackTransitionCue, TranscriptWorkflowConfiguration, TranscriptWorkflowOrigin,
 };
 use pod0_domain::{EpisodeId, PlaybackSleepMode};
 use pod0_storage::PlaybackMutation;
@@ -19,23 +20,33 @@ impl FacadeState {
             self.fail(envelope.command_id, CoreFailureCode::NotFound);
             return;
         };
-        if self.apply_playback_command(
+        let internal_command = transcript_configuration
+            .filter(|_| {
+                self.transcript_origin_is_allowed(episode_id, TranscriptWorkflowOrigin::Playback)
+            })
+            .map(|configuration| DurableInternalCommandRequest {
+                kind: InternalCommandKind::EnsureTranscriptWorkflow {
+                    origin: TranscriptWorkflowOrigin::Playback,
+                    configuration,
+                },
+                target: ActivityDomain::Transcript,
+                subject: ActivitySubject::Episode { episode_id },
+                episode_id: Some(episode_id),
+            });
+        if self.apply_playback_command_with_internal(
             envelope,
             fingerprint,
             PlaybackMutation::ReceiptOnly,
             OperationResult::PlaybackUpdated {
                 episode_id: Some(episode_id),
             },
+            internal_command,
         ) {
             self.playback.completion_checkpoint_fence_episode_id = None;
             self.playback.desired_playing = true;
             self.playback.timer_fired = false;
             self.playback.policy_state = pod0_application::PlaybackPolicyState::AwaitingHost;
-            self.start_playback_transcript_if_needed(
-                envelope,
-                episode_id,
-                transcript_configuration,
-            );
+            self.resume_playback_transcript_commands();
             let must_reload = self.playback.media_episode_id != Some(episode_id)
                 || self
                     .playback
@@ -189,6 +200,20 @@ impl FacadeState {
         mutation: PlaybackMutation,
         result: OperationResult,
     ) -> bool {
+        self.apply_playback_command_with_internal(envelope, fingerprint, mutation, result, None)
+    }
+
+    fn apply_playback_command_with_internal(
+        &mut self,
+        envelope: &CommandEnvelope,
+        fingerprint: &str,
+        mutation: PlaybackMutation,
+        result: OperationResult,
+        internal_command: Option<DurableInternalCommandRequest>,
+    ) -> bool {
+        let episode_id =
+            playback_episode_hint(&mutation, self.listening.playback.active_episode_id);
+        let transition = playback_transition(&mutation);
         let outcome = self
             .store
             .as_ref()
@@ -198,6 +223,9 @@ impl FacadeState {
                     envelope.command_id,
                     fingerprint,
                     mutation,
+                    episode_id,
+                    transition,
+                    internal_command,
                     self.now().value,
                 )
             });
@@ -217,5 +245,40 @@ impl FacadeState {
                 false
             }
         }
+    }
+}
+
+pub(super) fn playback_episode_hint(
+    mutation: &PlaybackMutation,
+    active: Option<EpisodeId>,
+) -> Option<EpisodeId> {
+    match mutation {
+        PlaybackMutation::Select { episode_id, .. }
+        | PlaybackMutation::SetCompletion { episode_id, .. }
+        | PlaybackMutation::Checkpoint { episode_id, .. } => Some(*episode_id),
+        PlaybackMutation::Enqueue { entry, .. } => Some(entry.episode_id),
+        PlaybackMutation::RemoveEpisode(episode_id)
+        | PlaybackMutation::ResetProgress(episode_id) => Some(*episode_id),
+        _ => active,
+    }
+}
+
+pub(super) fn playback_transition(
+    mutation: &PlaybackMutation,
+) -> pod0_application::PlaybackTransition {
+    use pod0_application::PlaybackTransition;
+    match mutation {
+        PlaybackMutation::Enqueue { .. }
+        | PlaybackMutation::RemoveQueueEntry(_)
+        | PlaybackMutation::RemoveEpisode(_)
+        | PlaybackMutation::ReplaceQueueOrder(_)
+        | PlaybackMutation::ClearQueue
+        | PlaybackMutation::AdvanceQueue => PlaybackTransition::QueueChanged,
+        PlaybackMutation::SetRate(_) => PlaybackTransition::RateChanged,
+        PlaybackMutation::SetSleepTimer(_) => PlaybackTransition::SleepTimerChanged,
+        PlaybackMutation::Checkpoint { .. } | PlaybackMutation::ResetProgress(_) => {
+            PlaybackTransition::PositionCheckpointCommitted
+        }
+        _ => PlaybackTransition::SessionStateChanged,
     }
 }

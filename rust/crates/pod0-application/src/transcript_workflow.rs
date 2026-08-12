@@ -16,7 +16,7 @@ pub const MAX_TRANSCRIPT_PROVIDER_STATUS_BYTES: usize = 1_024;
 pub const MAX_TRANSCRIPT_SAFE_DETAIL_BYTES: usize = 1_024;
 pub const MAX_TRANSCRIPT_CAPABILITY_RESPONSE_BYTES: u64 = 32 * 1_024 * 1_024;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum TranscriptWorkflowOrigin {
     User,
     Automatic,
@@ -24,7 +24,7 @@ pub enum TranscriptWorkflowOrigin {
     Unsupported { wire_code: u32 },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum TranscriptProvider {
     AssemblyAi,
     ElevenLabsScribe,
@@ -78,7 +78,7 @@ pub struct TranscriptWorkflowPlanInput {
 /// shared kernel to plan a transcript workflow. Durable episode, transcript,
 /// evidence, retry, and fallback state are intentionally not supplied by the
 /// native application.
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct TranscriptWorkflowConfiguration {
     pub provider: TranscriptProvider,
     pub model: String,
@@ -189,7 +189,7 @@ pub struct TranscriptFailureClassification {
     pub resubmission_is_safe: bool,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum TranscriptFailureEvidence {
     MissingCredential,
     MissingLocalAudio,

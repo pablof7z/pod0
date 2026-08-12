@@ -21,7 +21,9 @@ impl FacadeState {
             let projection = state.projection();
             match projection.stage {
                 AgentTurnStage::AwaitingModel => {
-                    if projection.commit.is_some() {
+                    if store.has_open_model_effect(projection.turn_id)? {
+                        continue;
+                    } else if projection.commit.is_some() {
                         let command_id =
                             agent_command_id(b"continuation-recovery", projection.turn_id);
                         let _ = self.queue_agent_model_request(command_id, &state);
@@ -36,13 +38,19 @@ impl FacadeState {
                     }
                 }
                 AgentTurnStage::ApprovalRequired => {
-                    let command_id = agent_command_id(b"approval-recovery", projection.turn_id);
-                    let _ = self.queue_agent_approval_request(command_id, &state);
+                    if !store.has_open_approval_effect(projection.turn_id)? {
+                        let command_id = agent_command_id(b"approval-recovery", projection.turn_id);
+                        let _ = self.queue_agent_approval_request(command_id, &state);
+                    }
                 }
                 AgentTurnStage::Authorized => {
-                    self.begin_authorized_agent_action(&store, state, now)?;
+                    // The authorizing observation emitted a durable internal
+                    // command; it is consumed after rehydration below.
                 }
                 AgentTurnStage::Executing => {
+                    if store.has_open_capability_effect(projection.turn_id)? {
+                        continue;
+                    }
                     if matches!(
                         projection
                             .proposal
@@ -63,11 +71,19 @@ impl FacadeState {
                         .proposal
                         .as_ref()
                         .map(|proposal| agent_tool_policy(proposal.action.tool()).execution);
-                    if matches!(
-                        execution,
-                        Some(AgentExecutionKind::RustCommit | AgentExecutionKind::RustProjection)
-                    ) {
+                    let resumes_directly =
+                        execution == Some(AgentExecutionKind::RustCommit)
+                            || execution == Some(AgentExecutionKind::RustProjection)
+                        && matches!(
+                            projection.proposal.as_ref().map(|value| &value.action),
+                            Some(AgentToolAction::QueryTranscripts { .. })
+                        );
+                    if resumes_directly {
                         self.execute_internal_agent_action(&store, state, now)?;
+                    } else if execution == Some(AgentExecutionKind::RustProjection) {
+                        // Begin-execution atomically emitted a durable projection
+                        // command. The shared internal-command resumer consumes it
+                        // after rehydration; recovery does not fabricate a second leg.
                     } else {
                         let _ = state.mark_outcome_ambiguous(now);
                         self.persist_recovered_agent_state(
@@ -81,6 +97,7 @@ impl FacadeState {
                 _ => {}
             }
         }
+        self.resume_agent_internal_commands();
         Ok(())
     }
 

@@ -115,6 +115,17 @@ fn command_identity_is_durable_and_conflicting_reuse_is_rejected() {
             .len(),
         1
     );
+    let activity = ActivityStore::open(&fixture.import.target)
+        .unwrap()
+        .page_for_episode(fixture.episode_id, None, 20)
+        .unwrap();
+    assert!(activity.items.iter().any(|item| matches!(
+        item.draft.fact,
+        pod0_application::ActivityFact::DomainTransition {
+            kind: pod0_application::DomainTransitionKind::Download(_),
+            ..
+        }
+    )));
 
     let episode = fixture.store.snapshot().unwrap().episodes[0].clone();
     let input_version = pod0_application::download_input_version(

@@ -1,28 +1,6 @@
 use pod0_recall_index::RecallIndexError;
 
-use crate::{FacadeOpenError, Pod0Facade, SchemaBlockReason};
-
-impl Drop for Pod0Facade {
-    fn drop(&mut self) {
-        let runtime = self
-            .nmp
-            .get_mut()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .take();
-        if let Some(runtime) = runtime {
-            runtime.shutdown();
-            drop(runtime);
-        }
-        if let Some(dispatcher) = self
-            .nmp_dispatcher
-            .get_mut()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .take()
-        {
-            let _ = dispatcher.join();
-        }
-    }
-}
+use crate::{FacadeOpenError, SchemaBlockReason};
 
 impl From<pod0_storage::StorageError> for FacadeOpenError {
     fn from(value: pod0_storage::StorageError) -> Self {

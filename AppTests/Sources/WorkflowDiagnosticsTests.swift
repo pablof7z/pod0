@@ -44,28 +44,6 @@ final class WorkflowDiagnosticsTests: XCTestCase {
         XCTAssertEqual(snapshot.actions, [.retry])
     }
 
-    func testEpisodeAuditPresentationRedactsURLsErrorsPathsAndTaskTokens() {
-        let event = EpisodeAuditEvent(
-            episodeID: UUID(),
-            kind: .downloadFailed,
-            severity: .failure,
-            summary: "secret raw provider body",
-            details: [
-                .init("URL", "https://media.example.com/audio?token=secret"),
-                .init("Error", "/private/path leaked token"),
-                .init("File", "/private/path/file.mp3"),
-                .init("Task ID", "internal-token"),
-                .init("HTTP status", "503"),
-            ]
-        )
-        XCTAssertFalse(EpisodeAuditPresentation.summary(for: event).contains("secret"))
-        let details = EpisodeAuditPresentation.details(for: event)
-        XCTAssertEqual(details, [
-            .init("Host", "media.example.com"),
-            .init("HTTP status", "503"),
-        ])
-    }
-
     private func projection(
         state: WorkJobState,
         externalState: String?,

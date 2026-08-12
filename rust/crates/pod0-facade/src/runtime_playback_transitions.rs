@@ -22,6 +22,7 @@ impl FacadeState {
             PlaybackInterruption::None => false,
             PlaybackInterruption::Began => {
                 self.checkpoint_observation(
+                    reaction,
                     episode_id,
                     value.position_milliseconds,
                     observed_at_ms,
@@ -60,6 +61,7 @@ impl FacadeState {
             }
             PlaybackInterruption::EndedShouldRemainPaused | PlaybackInterruption::RouteLost => {
                 self.checkpoint_observation(
+                    reaction,
                     episode_id,
                     value.position_milliseconds,
                     observed_at_ms,
@@ -77,6 +79,7 @@ impl FacadeState {
             }
             PlaybackInterruption::MediaServicesReset => {
                 self.checkpoint_observation(
+                    reaction,
                     episode_id,
                     value.position_milliseconds,
                     observed_at_ms,
@@ -102,7 +105,12 @@ impl FacadeState {
         prior_episode_id: EpisodeId,
     ) {
         let had_next = !self.listening.playback.queue.is_empty();
-        if !self.apply_observation_mutation(PlaybackMutation::AdvanceQueue, observed_at_ms) {
+        if !self.apply_observation_mutation(
+            reaction,
+            "finish-segment",
+            PlaybackMutation::AdvanceQueue,
+            observed_at_ms,
+        ) {
             return;
         }
         let next = self.listening.playback.active_episode_id;
@@ -136,7 +144,7 @@ impl FacadeState {
         let mutation = PlaybackMutation::FinishActive {
             suppress_auto_advance: self.playback.timer_fired,
         };
-        if !self.apply_observation_mutation(mutation, observed_at_ms) {
+        if !self.apply_observation_mutation(reaction, "finish-episode", mutation, observed_at_ms) {
             return;
         }
         let next = self.listening.playback.active_episode_id;
@@ -158,14 +166,13 @@ impl FacadeState {
 
     fn apply_observation_mutation(
         &mut self,
+        reaction: &CommandEnvelope,
+        label: &str,
         mutation: PlaybackMutation,
         observed_at_ms: i64,
     ) -> bool {
-        let result = self
-            .store
-            .as_ref()
-            .ok_or(pod0_storage::StorageError::CutoverNotAuthoritative)
-            .and_then(|store| store.apply_playback_observation(mutation, observed_at_ms));
+        let result =
+            self.commit_playback_observation_mutation(reaction, label, mutation, observed_at_ms);
         match result {
             Ok(_) => match self.reload_listening() {
                 Ok(()) => true,
@@ -181,5 +188,53 @@ impl FacadeState {
                 false
             }
         }
+    }
+
+    pub(super) fn commit_playback_observation_mutation(
+        &self,
+        reaction: &CommandEnvelope,
+        label: &str,
+        mutation: PlaybackMutation,
+        observed_at_ms: i64,
+    ) -> Result<pod0_storage::PlaybackMutationResult, pod0_storage::StorageError> {
+        let envelope = observation_action_envelope(reaction, label);
+        let fingerprint =
+            crate::runtime_command_fingerprint::command_fingerprint(&envelope.command);
+        let episode_id = crate::runtime_playback_actions::playback_episode_hint(
+            &mutation,
+            self.listening.playback.active_episode_id,
+        );
+        let transition = crate::runtime_playback_actions::playback_transition(&mutation);
+        self.store
+            .as_ref()
+            .ok_or(pod0_storage::StorageError::CutoverNotAuthoritative)?
+            .apply_playback_mutation(
+                envelope.command_id,
+                &fingerprint,
+                mutation,
+                episode_id,
+                transition,
+                None,
+                observed_at_ms,
+            )
+    }
+}
+
+fn observation_action_envelope(reaction: &CommandEnvelope, label: &str) -> CommandEnvelope {
+    use sha2::{Digest as _, Sha256};
+    let mut hash = Sha256::new();
+    hash.update(b"pod0-playback-observation-action-v1\0");
+    hash.update(reaction.command_id.into_bytes());
+    hash.update(label.as_bytes());
+    let digest: [u8; 32] = hash.finalize().into();
+    CommandEnvelope {
+        command_id: pod0_domain::CommandId::from_bytes(
+            digest[..16].try_into().expect("fixed digest prefix"),
+        ),
+        cancellation_id: reaction.cancellation_id,
+        expected_revision: None,
+        command: pod0_application::ApplicationCommand::Playback {
+            command: pod0_application::PlaybackCommand::Restore,
+        },
     }
 }

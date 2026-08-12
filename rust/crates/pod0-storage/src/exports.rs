@@ -1,3 +1,5 @@
+pub use crate::activity_store::ActivityStore;
+pub use crate::activity_store_model::{ActivityPage, MAX_ACTIVITY_PAGE_ITEMS};
 pub use crate::agent_generated_audio_store::AgentGeneratedAudioCommitInput;
 pub use crate::agent_history_cutover::inspect_legacy_agent_history_cutover;
 pub use crate::agent_history_cutover_model::*;
@@ -26,6 +28,8 @@ pub use crate::clip_store_model::ClipCollectionSnapshot;
 pub use crate::download_store_cutover_model::*;
 pub use crate::download_store_model::*;
 pub use crate::download_store_request::download_start_request_id;
+pub use crate::effect_outbox::EffectOutbox;
+pub use crate::effect_outbox_model::{EffectLease, EffectOutboxError};
 pub use crate::evidence_model::{
     EvidenceGenerationState, EvidenceGenerationSummary, EvidencePruneReceipt,
     EvidenceSelectionReceipt, EvidenceStageReceipt, EvidenceVerificationReceipt,
@@ -48,6 +52,7 @@ pub use crate::import_model::{
     LegacyBackupEvidence, LegacyImportPlan, LegacySourceKind, ListeningImportReport,
     ListeningImportVerification,
 };
+pub use crate::internal_command_store::PendingInternalCommand;
 pub use crate::legacy_chapter_source::inspect_legacy_chapter_source;
 pub use crate::legacy_clip_source::inspect_legacy_clip_source;
 pub use crate::legacy_note_source::inspect_legacy_note_source;
@@ -82,7 +87,6 @@ pub use crate::scheduled_agent_store::{
     ScheduledAgentStore, scheduled_agent_store_is_authoritative,
 };
 pub use crate::scheduled_agent_store_model::*;
-pub use crate::signer_store::SignerStore;
 pub use crate::speaker_store_model::{
     MAX_SPEAKER_DISPLAY_NAME_BYTES, SpeakerAssignmentOrigin, StoredSpeakerAssignment,
     StoredSpeakerEntity,
@@ -106,3 +110,9 @@ pub use crate::transcript_store_model::{
     TranscriptSelectionSummary,
 };
 pub use crate::transcript_workflow::*;
+pub use crate::transition_commit::EvidenceAdmissionCommitInput;
+pub use crate::transition_commit::TransitionCommit;
+pub use crate::transition_commit::{
+    EvidenceObservationCommitInput, EvidenceObservationCommitOutcome,
+};
+pub use crate::transition_commit_model::{CommitReceipt, TransitionIngress, TransitionIngressKind};

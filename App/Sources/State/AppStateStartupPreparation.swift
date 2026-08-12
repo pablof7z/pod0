@@ -52,12 +52,21 @@ enum AppStateStartupPreparer {
         let needsNativeRetirement = AppStateStore.hasMigratedNativeState(loadedState)
         let needsRecallRetirement =
             loadedState.settings.legacyRecallConfigurationSeed != nil
-        let bootstrap = SharedLibraryBootstrap.prepare(
-            persistence: persistence,
-            legacyState: loadedState,
-            feedHost: sharedFeedHost ?? CoreFeedHost(),
-            legacyRecallConfiguration: loadedState.settings.legacyRecallConfigurationSeed
-        )
+        let bootstrap: SharedLibraryBootstrapPreparationOutcome
+        if let sharedFeedHost {
+            bootstrap = SharedLibraryBootstrap.prepare(
+                persistence: persistence,
+                legacyState: loadedState,
+                feedHost: sharedFeedHost,
+                legacyRecallConfiguration: loadedState.settings.legacyRecallConfigurationSeed
+            )
+        } else {
+            bootstrap = SharedLibraryBootstrap.prepare(
+                persistence: persistence,
+                legacyState: loadedState,
+                legacyRecallConfiguration: loadedState.settings.legacyRecallConfigurationSeed
+            )
+        }
         return AppStateStartupPreparation(
             state: loadedState,
             loadFailed: false,

@@ -1,10 +1,11 @@
 use pod0_application::{
     AgentCapabilityExecutionMode, AgentExecutionKind, AgentTurnStage, AgentTurnStart,
     AgentTurnState, AgentWorkflowAcceptance, ApplicationCommand, CommandEnvelope, CoreFailureCode,
-    OperationResult, agent_tool_policy, product_proof_agent_tools,
+    OperationResult, RequestDisposition, RequestRejectionReason, agent_tool_policy,
+    product_proof_agent_tools,
 };
 use pod0_domain::{AgentTurnId, ConversationId, StateRevision, UnixTimestampMilliseconds};
-use pod0_storage::{AgentAuditKind, AgentCommandContext, AgentTurnMutation, StorageError};
+use pod0_storage::{AgentAuditKind, AgentCommandContext, StorageError};
 
 use crate::runtime_agent_modules::identity::{
     agent_command_id, agent_execution_fence_id, agent_fingerprint, agent_turn_id, model_fence_id,
@@ -91,12 +92,10 @@ impl FacadeState {
             ),
             observed_at: now,
         };
-        match store.start_turn(context, &state) {
+        match store.start_turn_activity(context, &state) {
             Ok(outcome) => {
                 let persisted = outcome.state().clone();
-                if persisted.projection().stage == AgentTurnStage::AwaitingModel {
-                    let _ = self.queue_agent_model_request(envelope.command_id, &persisted);
-                }
+                debug_assert_eq!(persisted.projection().stage, AgentTurnStage::AwaitingModel);
                 self.succeed(
                     envelope.command_id,
                     Some(OperationResult::AgentTurnStarted {
@@ -120,45 +119,48 @@ impl FacadeState {
             self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
             return;
         };
-        let mut turn_cancellation_id = None;
-        let result = store.turn(turn_id).and_then(|state| {
-            let mut state = state.ok_or(StorageError::AgentTurnNotFound)?;
-            turn_cancellation_id = Some(state.cancellation_id());
-            if state.projection().revision != expected_revision
-                || state.cancel(self.now()) != AgentWorkflowAcceptance::Updated
-            {
-                return Err(StorageError::AgentTurnConflict);
-            }
-            store.update_turn(
-                AgentCommandContext {
-                    command_id: envelope.command_id,
-                    command_fingerprint: agent_fingerprint(
-                        b"pod0:agent-cancel-command:v1",
-                        &[fingerprint.as_bytes()],
-                    ),
-                    observed_at: self.now(),
-                },
-                AgentTurnMutation {
-                    expected_revision,
-                    audit_kind: AgentAuditKind::Cancelled,
-                },
-                &state,
-            )
-        });
+        let result = store.cancel_turn_activity(
+            AgentCommandContext {
+                command_id: envelope.command_id,
+                command_fingerprint: agent_fingerprint(
+                    b"pod0:agent-cancel-command:v2",
+                    &[fingerprint.as_bytes()],
+                ),
+                observed_at: self.now(),
+            },
+            turn_id,
+            expected_revision,
+        );
         match result {
-            Ok(_) => {
+            Ok(outcome) if outcome.disposition == RequestDisposition::Accepted => {
                 self.retire_agent_recalls_for_turn(turn_id);
-                if let Some(cancellation_id) = turn_cancellation_id {
+                if let Some(cancellation_id) = outcome.cancellation_id {
                     self.cancel_operation(cancellation_id);
                 }
                 self.withdraw_agent_requests(turn_id);
                 self.succeed(envelope.command_id, None);
             }
+            Ok(outcome) => self.fail(
+                envelope.command_id,
+                match outcome.disposition {
+                    RequestDisposition::Rejected {
+                        reason: RequestRejectionReason::MissingSubject,
+                    } => CoreFailureCode::NotFound,
+                    RequestDisposition::Rejected {
+                        reason: RequestRejectionReason::RevisionConflict,
+                    }
+                    | RequestDisposition::Stale => CoreFailureCode::RevisionConflict,
+                    RequestDisposition::AlreadyComplete | RequestDisposition::Duplicate => {
+                        CoreFailureCode::Cancelled
+                    }
+                    _ => CoreFailureCode::InvalidCommand,
+                },
+            ),
             Err(error) => self.fail(envelope.command_id, storage_failure(error)),
         }
     }
 
-    pub(super) fn begin_authorized_agent_action(
+    pub(crate) fn begin_authorized_agent_action(
         &mut self,
         store: &pod0_storage::AgentStore,
         mut state: AgentTurnState,

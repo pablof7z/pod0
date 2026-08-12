@@ -1,7 +1,7 @@
 use pod0_domain::{
     CommandId, NoteAuthor, NoteEvidenceReference, NoteId, NoteTarget, StateRevision,
 };
-use rusqlite::{OptionalExtension, Transaction, params};
+use rusqlite::{Connection, OptionalExtension, Transaction, params};
 
 use crate::library_store::finish_command;
 use crate::{StorageError, note_store_codec};
@@ -48,10 +48,7 @@ pub(crate) fn collection_revision(
     })?))
 }
 
-pub(crate) fn note_exists(
-    transaction: &Transaction<'_>,
-    note_id: NoteId,
-) -> Result<bool, StorageError> {
+pub(crate) fn note_exists(transaction: &Connection, note_id: NoteId) -> Result<bool, StorageError> {
     transaction
         .query_row(
             "SELECT EXISTS(SELECT 1 FROM pod0_notes WHERE note_id=?1)",
@@ -61,10 +58,7 @@ pub(crate) fn note_exists(
         .map_err(|error| StorageError::sqlite("find note", error))
 }
 
-pub(crate) fn require_note(
-    transaction: &Transaction<'_>,
-    note_id: NoteId,
-) -> Result<(), StorageError> {
+pub(crate) fn require_note(transaction: &Connection, note_id: NoteId) -> Result<(), StorageError> {
     if note_exists(transaction, note_id)? {
         Ok(())
     } else {
@@ -73,7 +67,7 @@ pub(crate) fn require_note(
 }
 
 pub(crate) fn note_mutation_state(
-    transaction: &Transaction<'_>,
+    transaction: &Connection,
     note_id: NoteId,
 ) -> Result<(u64, NoteAuthor, Option<NoteTarget>), StorageError> {
     let row = transaction
@@ -140,10 +134,22 @@ pub(crate) fn selected_evidence(
 }
 
 pub(crate) fn validate_target_reference(
-    transaction: &Transaction<'_>,
+    transaction: &Connection,
     subject_note_id: NoteId,
     target: Option<NoteTarget>,
 ) -> Result<(), StorageError> {
+    if target_reference_is_valid(transaction, subject_note_id, target)? {
+        Ok(())
+    } else {
+        Err(StorageError::InvalidNote)
+    }
+}
+
+pub(crate) fn target_reference_is_valid(
+    transaction: &Connection,
+    subject_note_id: NoteId,
+    target: Option<NoteTarget>,
+) -> Result<bool, StorageError> {
     let exists = match target {
         None => true,
         Some(NoteTarget::Note { note_id }) if note_id == subject_note_id => false,
@@ -164,9 +170,5 @@ pub(crate) fn validate_target_reference(
             .map_err(|error| StorageError::sqlite("validate note clip target", error))?,
         Some(NoteTarget::Unsupported { .. }) => false,
     };
-    if exists {
-        Ok(())
-    } else {
-        Err(StorageError::InvalidNote)
-    }
+    Ok(exists)
 }

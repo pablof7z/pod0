@@ -47,7 +47,7 @@ pub(super) fn read_authority(
     }
 }
 
-pub(super) fn require_authoritative(connection: &Connection) -> Result<(), StorageError> {
+pub(crate) fn require_authoritative(connection: &Connection) -> Result<(), StorageError> {
     if read_authority(connection)?.is_authoritative() {
         Ok(())
     } else {
