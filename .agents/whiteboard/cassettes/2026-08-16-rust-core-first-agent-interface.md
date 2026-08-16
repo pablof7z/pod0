@@ -2,12 +2,15 @@
 type: whiteboard-decision-cassette
 id: 2026-08-16-rust-core-first-agent-interface
 date: 2026-08-16
-status: active
+status: superseded
 supersedes: []
 source_whiteboard: pod0/2026-08-16-agent-repl-access-exploration
 ---
 
 # Rust-core-first agent interface
+
+Superseded by
+`2026-08-16-real-pure-rust-headless-pod0-with-no-mocks`.
 
 ## Decision
 
