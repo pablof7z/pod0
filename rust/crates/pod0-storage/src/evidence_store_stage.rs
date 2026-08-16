@@ -3,11 +3,14 @@ use rusqlite::{OptionalExtension, Transaction, params};
 
 use crate::evidence_codec::{encode_source, podcast_id, sqlite_i64};
 use crate::evidence_commands::{EvidenceOperation, fingerprint, record, replay};
+#[cfg(test)]
 use crate::evidence_store::EvidenceStore;
 use crate::evidence_store_read::read_artifact;
 use crate::{EvidenceStageReceipt, StorageError};
 
+#[cfg(test)]
 impl EvidenceStore {
+    #[cfg(test)]
     pub fn stage_artifact(
         &self,
         command_id: CommandId,
@@ -17,6 +20,7 @@ impl EvidenceStore {
         self.stage_artifact_with_observer(command_id, artifact, staged_at_ms, || Ok(()))
     }
 
+    #[cfg(test)]
     pub(crate) fn stage_artifact_with_observer<F>(
         &self,
         command_id: CommandId,

@@ -60,6 +60,32 @@ final class AppStateStore {
         state = updated
     }
 
+    func fenceNativeStateForUserDataErasure() -> SharedLibraryClient? {
+        startupRecoveryRequired = true
+        sharedLibraryUnavailableReason = "user_data_erasure_in_progress"
+        widgetReloadTask?.cancel()
+        widgetReloadTask = nil
+        let client = sharedLibrary
+        client?.shutdown()
+        sharedLibrary = nil
+        return client
+    }
+
+    func installFreshStateAfterUserDataErasure(
+        _ freshState: AppState,
+        client: SharedLibraryClient
+    ) {
+        state = freshState
+        sharedLibrary = client
+        sharedLibraryUnavailableReason = nil
+        startupRecoveryRequired = false
+        client.attach(store: self)
+        recomputeEpisodeProjections()
+        client.attachRecall(RecallProviderService.shared, store: self)
+        WorkflowRuntime.shared.attach(store: self)
+        BackgroundWorkScheduler.shared.attach(store: self)
+    }
+
     // MARK: - Episode projections (cache)
     //
     // These mirror `state.episodes` so the per-cell O(N) helpers in the

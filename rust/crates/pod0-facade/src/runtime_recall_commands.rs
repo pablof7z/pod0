@@ -1,126 +1,171 @@
 use pod0_application::{
-    CommandEnvelope, CoreFailureCode, HostRequest, HostRequestEnvelope, MAX_RECALL_EVIDENCE,
-    MAX_RECALL_QUERY_BYTES, OperationResult, OperationStage, RecallEvidenceProjection, RecallQuery,
-    RecallScope, RecallStage,
+    CommandEnvelope, CoreFailureCode, MAX_RECALL_EVIDENCE, MAX_RECALL_QUERY_BYTES, OperationStage,
+    RecallQuery, RecallScope, RecallStage,
 };
-use pod0_domain::{
-    CancellationId, CommandId, EpisodeId, HostRequestId, RecallQueryId, TranscriptArtifactStatus,
-    UnixTimestampMilliseconds,
-};
-use pod0_recall_index::RECALL_INDEX_DIMENSIONS;
-use sha2::{Digest, Sha256};
+use pod0_domain::{EpisodeId, TranscriptArtifactStatus};
 
-use crate::runtime_recall_state::{PendingRecall, RecallHostPhase, RecallWorkflow};
+use crate::runtime_recall_state::RecallWorkflow;
 use crate::runtime_state::{FacadeState, failure};
 
 impl FacadeState {
-    pub(super) fn start_recall(&mut self, envelope: &CommandEnvelope, query: RecallQuery) {
-        if self.recalls.contains_key(&query.query_id) {
-            self.fail(envelope.command_id, CoreFailureCode::InvalidCommand);
-            return;
+    pub(super) fn rehydrate_recall_queries(&mut self) -> Result<(), pod0_storage::StorageError> {
+        let Some(store) = self.store.clone() else {
+            return Ok(());
+        };
+        for workflow in store.recall_query_workflows()? {
+            self.revision =
+                pod0_domain::StateRevision::new(self.revision.value.max(workflow.revision.value));
+            self.recalls.insert(
+                workflow.query.query_id,
+                RecallWorkflow {
+                    command_id: workflow.command_id,
+                    cancellation_id: workflow.cancellation_id,
+                    query_id: workflow.query.query_id,
+                    scope: workflow.query.scope,
+                    normalized_text: workflow.query.text,
+                    limit: workflow.query.limit,
+                    stage: workflow.stage,
+                    failure: workflow.failure,
+                    evidence: workflow.evidence,
+                },
+            );
         }
-        let normalized_text = query.text.split_whitespace().collect::<Vec<_>>().join(" ");
-        let query_id = query.query_id;
-        let workflow = RecallWorkflow::new(
-            envelope.command_id,
-            envelope.cancellation_id,
-            query_id,
-            query.scope,
-            normalized_text,
-            query.limit,
-        );
-        self.recalls.insert(query_id, workflow);
+        Ok(())
+    }
 
-        if self.recalls[&query_id].normalized_text.is_empty()
-            || self.recalls[&query_id].normalized_text.len() > MAX_RECALL_QUERY_BYTES
+    pub(super) fn start_recall(&mut self, envelope: &CommandEnvelope, query: RecallQuery) {
+        let Some(store) = self.store.clone() else {
+            self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
+            return;
+        };
+        let normalized = query.text.split_whitespace().collect::<Vec<_>>().join(" ");
+        let mut normalized_query = query.clone();
+        normalized_query.text = normalized;
+        let (initial_stage, initial_failure) = self.initial_recall_state(&normalized_query);
+        match store.start_recall_query(
+            envelope.command_id,
+            &crate::runtime_command_fingerprint::command_fingerprint(&envelope.command),
+            envelope.cancellation_id,
+            normalized_query,
+            initial_stage,
+            initial_failure.clone(),
+            self.now(),
+        ) {
+            Ok(workflow) => {
+                self.recalls.insert(
+                    query.query_id,
+                    RecallWorkflow {
+                        command_id: workflow.command_id,
+                        cancellation_id: workflow.cancellation_id,
+                        query_id: workflow.query.query_id,
+                        scope: workflow.query.scope,
+                        normalized_text: workflow.query.text,
+                        limit: workflow.query.limit,
+                        stage: workflow.stage,
+                        failure: workflow.failure.clone(),
+                        evidence: workflow.evidence,
+                    },
+                );
+                if workflow.stage.is_terminal() {
+                    if let Some(failure) = workflow.failure.clone() {
+                        self.finish(
+                            envelope.command_id,
+                            OperationStage::Failed,
+                            Some(failure),
+                            None,
+                        );
+                    } else {
+                        self.succeed(
+                            envelope.command_id,
+                            Some(pod0_application::OperationResult::RecallFinished {
+                                query_id: workflow.query.query_id,
+                                evidence_count: 0,
+                            }),
+                        );
+                    }
+                } else {
+                    self.finish(envelope.command_id, OperationStage::Running, None, None);
+                }
+            }
+            Err(_) => self.fail(envelope.command_id, CoreFailureCode::InvalidCommand),
+        }
+    }
+
+    fn initial_recall_state(
+        &self,
+        query: &RecallQuery,
+    ) -> (RecallStage, Option<pod0_application::CoreFailure>) {
+        let failed = |stage, code| (stage, Some(failure(code)));
+        if query.text.is_empty()
+            || query.text.len() > MAX_RECALL_QUERY_BYTES
             || query.limit == 0
             || usize::from(query.limit) > MAX_RECALL_EVIDENCE
         {
-            self.fail_recall(
-                query_id,
-                RecallStage::Failed,
-                CoreFailureCode::InvalidCommand,
-            );
-            return;
+            return failed(RecallStage::Failed, CoreFailureCode::InvalidCommand);
         }
         if let RecallScope::Unsupported { wire_code } = query.scope {
-            self.fail_recall(
-                query_id,
+            return failed(
                 RecallStage::Unsupported { wire_code },
                 CoreFailureCode::Unsupported { wire_code },
             );
-            return;
         }
         if self.scope_has_pending_evidence_index(query.scope) {
-            self.complete_recall(query_id, RecallStage::Indexing, Vec::new());
-            return;
+            return (RecallStage::Indexing, None);
         }
-        let has_evidence = self
-            .evidence_store
-            .as_ref()
-            .ok_or(pod0_storage::StorageError::EvidenceNotFound)
-            .and_then(|store| match query.scope {
-                RecallScope::Library => store.has_any_selected_evidence(),
-                RecallScope::Podcast { podcast_id } => {
-                    store.has_selected_evidence_for_podcast(podcast_id)
-                }
-                RecallScope::Episode { episode_id } => {
-                    store.has_selected_evidence_for_episode(episode_id)
-                }
-                RecallScope::Unsupported { .. } => Ok(false),
-            });
+        let has_evidence =
+            self.evidence_store
+                .as_ref()
+                .ok_or(())
+                .and_then(|store| match query.scope {
+                    RecallScope::Library => store.has_any_selected_evidence().map_err(|_| ()),
+                    RecallScope::Podcast { podcast_id } => store
+                        .has_selected_evidence_for_podcast(podcast_id)
+                        .map_err(|_| ()),
+                    RecallScope::Episode { episode_id } => store
+                        .has_selected_evidence_for_episode(episode_id)
+                        .map_err(|_| ()),
+                    RecallScope::Unsupported { .. } => Ok(false),
+                });
         match has_evidence {
             Ok(false) => {
-                let stage = if self.scope_has_available_transcript(query.scope) {
-                    RecallStage::IndexMissing
-                } else {
-                    RecallStage::TranscriptMissing
-                };
-                self.complete_recall(query_id, stage, Vec::new());
-                return;
+                return (
+                    if self.scope_has_available_transcript(query.scope) {
+                        RecallStage::IndexMissing
+                    } else {
+                        RecallStage::TranscriptMissing
+                    },
+                    None,
+                );
             }
-            Err(_) => {
-                self.fail_recall(
-                    query_id,
+            Err(()) => {
+                return failed(
                     RecallStage::IndexUnavailable,
                     CoreFailureCode::StorageUnavailable,
                 );
-                return;
             }
             Ok(true) => {}
         }
         match self.recall_index.has_ready_scope(query.scope) {
-            Ok(true) => {}
-            Ok(false) => {
-                self.complete_recall(query_id, RecallStage::IndexMissing, Vec::new());
-                return;
-            }
-            Err(_) => {
-                self.fail_recall(
-                    query_id,
-                    RecallStage::IndexUnavailable,
-                    CoreFailureCode::StorageUnavailable,
-                );
-                return;
-            }
+            Ok(true) => (
+                RecallStage::Running {
+                    phase: pod0_application::RecallPhase::Retrieving,
+                },
+                None,
+            ),
+            Ok(false) => (RecallStage::IndexMissing, None),
+            Err(_) => failed(
+                RecallStage::IndexUnavailable,
+                CoreFailureCode::StorageUnavailable,
+            ),
         }
-        self.queue_recall_request(
-            query_id,
-            RecallHostPhase::Embedding,
-            HostRequest::EmbedRecallQuery {
-                query_id,
-                provider: self.recall_configuration.embedding_provider,
-                model: self.recall_configuration.embedding_model.clone(),
-                text: self.recalls[&query_id].normalized_text.clone(),
-                maximum_dimensions: u16::try_from(RECALL_INDEX_DIMENSIONS)
-                    .expect("bounded recall dimensions"),
-            },
-        );
     }
 
     fn scope_has_pending_evidence_index(&self, scope: RecallScope) -> bool {
-        self.pending_evidence_indexes
-            .values()
+        self.store
+            .as_ref()
+            .and_then(|store| store.active_evidence_embedding_effects().ok())
+            .unwrap_or_default()
+            .iter()
             .any(|pending| self.episode_matches_scope(pending.episode_id, scope))
     }
 
@@ -151,135 +196,4 @@ impl FacadeState {
             RecallScope::Unsupported { .. } => false,
         }
     }
-
-    pub(super) fn queue_recall_request(
-        &mut self,
-        query_id: RecallQueryId,
-        phase: RecallHostPhase,
-        request: HostRequest,
-    ) {
-        let Some(workflow) = self.recalls.get(&query_id) else {
-            return;
-        };
-        let command_id = workflow.command_id;
-        let cancellation_id = workflow.cancellation_id;
-        let request_id = recall_request_id(command_id, phase);
-        let envelope = HostRequestEnvelope {
-            request_id,
-            command_id,
-            cancellation_id,
-            issued_revision: self.revision,
-            deadline_at: Some(UnixTimestampMilliseconds::new(
-                self.now().value.saturating_add(30_000),
-            )),
-            request,
-        };
-        if self.host_requests.register(envelope.clone()) {
-            self.pending_recalls.insert(
-                request_id,
-                PendingRecall {
-                    query_id,
-                    cancellation_id,
-                    phase,
-                },
-            );
-            self.host_queue.push_back(envelope);
-            self.finish(command_id, OperationStage::Running, None, None);
-        } else {
-            self.fail_recall(
-                query_id,
-                RecallStage::Failed,
-                CoreFailureCode::InvalidCommand,
-            );
-        }
-    }
-
-    pub(super) fn complete_recall(
-        &mut self,
-        query_id: RecallQueryId,
-        stage: RecallStage,
-        evidence: Vec<RecallEvidenceProjection>,
-    ) {
-        let Some(workflow) = self.recalls.get_mut(&query_id) else {
-            return;
-        };
-        workflow.stage = stage;
-        workflow.failure = None;
-        workflow.evidence = evidence;
-        let command_id = workflow.command_id;
-        let evidence_count = u16::try_from(workflow.evidence.len()).unwrap_or(u16::MAX);
-        self.succeed(
-            command_id,
-            Some(OperationResult::RecallFinished {
-                query_id,
-                evidence_count,
-            }),
-        );
-    }
-
-    pub(super) fn fail_recall(
-        &mut self,
-        query_id: RecallQueryId,
-        stage: RecallStage,
-        code: CoreFailureCode,
-    ) {
-        let Some(workflow) = self.recalls.get_mut(&query_id) else {
-            return;
-        };
-        let recall_failure = failure(code);
-        workflow.stage = stage;
-        workflow.failure = Some(recall_failure.clone());
-        workflow.evidence.clear();
-        let command_id = workflow.command_id;
-        self.finish(
-            command_id,
-            OperationStage::Failed,
-            Some(recall_failure),
-            None,
-        );
-    }
-
-    pub(super) fn cancel_recall(&mut self, cancellation_id: CancellationId) {
-        let query_ids = self
-            .recalls
-            .values()
-            .filter(|workflow| {
-                workflow.cancellation_id == cancellation_id && !workflow.stage.is_terminal()
-            })
-            .map(|workflow| workflow.query_id)
-            .collect::<Vec<_>>();
-        self.pending_recalls
-            .retain(|_, pending| pending.cancellation_id != cancellation_id);
-        for query_id in query_ids {
-            let Some(workflow) = self.recalls.get_mut(&query_id) else {
-                continue;
-            };
-            let recall_failure = failure(CoreFailureCode::Cancelled);
-            workflow.stage = RecallStage::Cancelled;
-            workflow.failure = Some(recall_failure.clone());
-            workflow.evidence.clear();
-            let command_id = workflow.command_id;
-            self.finish(
-                command_id,
-                OperationStage::Cancelled,
-                Some(recall_failure),
-                None,
-            );
-        }
-    }
-}
-
-fn recall_request_id(command_id: CommandId, phase: RecallHostPhase) -> HostRequestId {
-    let tag = match phase {
-        RecallHostPhase::Embedding => b"embedding".as_slice(),
-        RecallHostPhase::Reranking => b"reranking".as_slice(),
-    };
-    let mut hash = Sha256::new();
-    hash.update(b"pod0-recall-host-request-v1\0");
-    hash.update(command_id.into_bytes());
-    hash.update(tag);
-    let digest = hash.finalize();
-    let mut bytes = [0_u8; 16];
-    bytes.copy_from_slice(&digest[..16]);
-    HostRequestId::from_bytes(bytes)
 }

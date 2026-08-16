@@ -190,15 +190,26 @@ pub(crate) fn mark_corrupt(target_path: &Path, import_id: CommandId, diagnostic:
     else {
         return;
     };
+    let _ = mark_corrupt_in_transaction(&transaction, import_id, diagnostic);
+    let _ = transaction.commit();
+}
+
+pub(crate) fn mark_corrupt_in_transaction(
+    transaction: &rusqlite::Transaction<'_>,
+    import_id: CommandId,
+    diagnostic: &str,
+) -> Result<(), StorageError> {
     let diagnostic = if diagnostic.is_empty() || diagnostic.len() > 128 {
         "chapter_import_corrupt"
     } else {
         diagnostic
     };
-    let _ = transaction.execute(
-        "UPDATE pod0_chapter_imports SET state='corrupt',diagnostic_code=?1 \
-         WHERE import_id=?2 AND state IN ('staged','verified','corrupt')",
-        params![diagnostic, import_id.into_bytes().as_slice()],
-    );
-    let _ = transaction.commit();
+    transaction
+        .execute(
+            "UPDATE pod0_chapter_imports SET state='corrupt',diagnostic_code=?1 \
+             WHERE import_id=?2 AND state IN ('staged','verified','corrupt')",
+            params![diagnostic, import_id.into_bytes().as_slice()],
+        )
+        .map_err(|error| StorageError::sqlite("mark chapter import corrupt", error))?;
+    Ok(())
 }

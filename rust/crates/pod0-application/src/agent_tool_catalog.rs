@@ -3,7 +3,7 @@ use crate::agent_tool_catalog_builders::{
 };
 use crate::{AgentToolName, MAX_AGENT_TOOLS_PER_TURN, MAX_CATEGORY_TAG_ITEMS};
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum AgentToolParameterKind {
     Text,
     Integer {
@@ -22,7 +22,7 @@ pub enum AgentToolParameterKind {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct AgentToolParameterDefinition {
     pub name: String,
     pub description: String,
@@ -30,7 +30,7 @@ pub struct AgentToolParameterDefinition {
     pub required: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct AgentToolDefinition {
     pub tool: AgentToolName,
     pub wire_name: String,

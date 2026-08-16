@@ -1,10 +1,45 @@
 use rusqlite::Connection;
+use pod0_application::{ActivityDomain, ActivityFact, CommandActivityIdentity};
 
 use crate::chapter_import_commit::commit_chapter_import_with_observer;
 use crate::chapter_import_test_support::{
     ChapterImportFixture, EPISODE_ID, FixedClock, IMPORT_ID, PODCAST_ID, STORE_ID,
 };
 use crate::{ChapterImportState, ChapterImporter, StorageError, read_chapter_import};
+
+#[test]
+fn cutover_replay_is_exact_and_activity_omits_chapter_content() {
+    let fixture = valid_fixture();
+    fixture.stage(1_800_000_149_000);
+    fixture.verify(1_800_000_149_001);
+    let first = fixture.import(1_800_000_149_002);
+    let correlation = CommandActivityIdentity::new(IMPORT_ID).correlation_id();
+    let page = crate::ActivityStore::open(&fixture.target)
+        .unwrap()
+        .page_for_correlation(correlation, None, 100)
+        .unwrap();
+    assert_eq!(page.items.len(), 3);
+    assert!(matches!(
+        page.items[2].draft.fact,
+        ActivityFact::AuthorityCutover {
+            domain: ActivityDomain::Chapter
+        }
+    ));
+    let encoded = serde_json::to_string(&page.items).unwrap();
+    assert!(!encoded.contains("Opening"));
+    assert!(!encoded.contains("Deep dive"));
+
+    assert_eq!(fixture.import(1_800_000_149_099), first);
+    assert_eq!(
+        crate::ActivityStore::open(&fixture.target)
+            .unwrap()
+            .page_for_correlation(correlation, None, 100)
+            .unwrap()
+            .items
+            .len(),
+        3
+    );
+}
 
 #[test]
 fn source_change_inside_stage_fence_rolls_back_all_import_rows() {

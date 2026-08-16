@@ -166,6 +166,10 @@ struct CoreDownloadNativeStore: @unchecked Sendable {
         String(format: "%016llx%016llx", attemptID.high, attemptID.low)
     }
 
+    static func erasureRootURL(fileManager: FileManager = .default) -> URL {
+        defaultRoot(fileManager: fileManager)
+    }
+
     private static func defaultRoot(fileManager: FileManager) -> URL {
         let base = (try? fileManager.url(
             for: .applicationSupportDirectory,

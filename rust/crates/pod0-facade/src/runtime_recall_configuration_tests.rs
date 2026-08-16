@@ -24,9 +24,14 @@ fn configuration_change_reindexes_with_typed_provider_and_survives_restart() {
         },
     });
 
-    let request = fixture.base.facade.next_host_requests(1).pop().unwrap();
+    let request = fixture
+        .base
+        .facade
+        .next_leased_host_requests(1)
+        .pop()
+        .unwrap();
     assert!(matches!(
-        &request.request,
+        &request.request.request,
         HostRequest::EmbedRecallSpans {
             provider: RecallEmbeddingProvider::Ollama,
             model,
@@ -37,36 +42,39 @@ fn configuration_change_reindexes_with_typed_provider_and_survives_restart() {
     fixture
         .base
         .facade
-        .record_host_observation(HostObservationEnvelope {
-            request_id: request.request_id,
-            cancellation_id: request.cancellation_id,
-            observed_request_revision: request.issued_revision,
-            sequence_number: 0,
-            observed_at: UnixTimestampMilliseconds::new(1_800_000_000_300),
-            observation: match &request.request {
-                HostRequest::EmbedRecallSpans {
-                    episode_id,
-                    generation_id,
-                    spans,
-                    ..
-                } => HostObservation::RecallSpansEmbedded {
-                    episode_id: *episode_id,
-                    generation_id: *generation_id,
-                    embeddings: spans
-                        .iter()
-                        .map(|span| RecallSpanEmbeddingObservation {
-                            span_id: span.span_id,
-                            embedding: RecallEmbeddingVector {
-                                values: {
-                                    let mut values = vec![0; 1_024];
-                                    values[0] = 1_000_000;
-                                    values
+        .record_leased_host_observation(LeasedHostObservationEnvelope {
+            lease: request.lease,
+            observation: HostObservationEnvelope {
+                request_id: request.request.request_id,
+                cancellation_id: request.request.cancellation_id,
+                observed_request_revision: request.request.issued_revision,
+                sequence_number: 0,
+                observed_at: request.lease.expires_at,
+                observation: match &request.request.request {
+                    HostRequest::EmbedRecallSpans {
+                        episode_id,
+                        generation_id,
+                        spans,
+                        ..
+                    } => HostObservation::RecallSpansEmbedded {
+                        episode_id: *episode_id,
+                        generation_id: *generation_id,
+                        embeddings: spans
+                            .iter()
+                            .map(|span| RecallSpanEmbeddingObservation {
+                                span_id: span.span_id,
+                                embedding: RecallEmbeddingVector {
+                                    values: {
+                                        let mut values = vec![0; 1_024];
+                                        values[0] = 1_000_000;
+                                        values
+                                    },
                                 },
-                            },
-                        })
-                        .collect(),
+                            })
+                            .collect(),
+                    },
+                    _ => unreachable!(),
                 },
-                _ => unreachable!(),
             },
         });
     complete_evidence_embedding_requests(&fixture.base.facade);
@@ -90,9 +98,14 @@ fn configuration_change_reindexes_with_typed_provider_and_survives_restart() {
     assert_eq!(configuration(&reopened), after);
 
     fixture.dispatch(83, 83, "habit cues");
-    let query_request = fixture.base.facade.next_host_requests(1).pop().unwrap();
+    let query_request = fixture
+        .base
+        .facade
+        .next_leased_host_requests(1)
+        .pop()
+        .unwrap();
     assert!(matches!(
-        &query_request.request,
+        &query_request.request.request,
         HostRequest::EmbedRecallQuery {
             provider: RecallEmbeddingProvider::Ollama,
             model,
@@ -114,7 +127,7 @@ fn configuration_change_reindexes_with_typed_provider_and_survives_restart() {
         },
     );
     assert_eq!(fixture.projection(83).stage, RecallStage::Ready);
-    assert!(fixture.base.facade.next_host_requests(1).is_empty());
+    assert!(fixture.base.facade.next_leased_host_requests(1).is_empty());
 }
 
 #[test]

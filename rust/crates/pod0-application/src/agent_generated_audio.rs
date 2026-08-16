@@ -5,13 +5,15 @@ use sha2::{Digest as _, Sha256};
 pub const MAX_AGENT_GENERATED_AUDIO_BYTES: u64 = 128 * 1_024 * 1_024;
 pub const MAX_AGENT_GENERATED_AUDIO_DURATION_MILLISECONDS: u64 = 24 * 60 * 60 * 1_000;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum AgentCapabilityExecutionMode {
     Perform,
     RecoverExisting,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record,
+)]
 pub struct AgentGeneratedAudioTarget {
     pub artifact_id: GeneratedArtifactId,
     pub maximum_bytes: u64,

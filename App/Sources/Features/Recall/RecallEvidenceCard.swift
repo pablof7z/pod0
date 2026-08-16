@@ -1,7 +1,9 @@
 import SwiftUI
+import Pod0Core
 
 struct RecallEvidenceCard: View {
-    let evidence: RecallEvidence
+    @Environment(AppStateStore.self) private var store
+    let evidence: RecallEvidenceProjection
     let open: () -> Void
 
     var body: some View {
@@ -9,10 +11,10 @@ struct RecallEvidenceCard: View {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(evidence.episodeTitle)
+                        Text(episodeTitle)
                             .font(.subheadline.weight(.semibold))
                             .lineLimit(2)
-                        Text(evidence.podcastTitle)
+                        Text(podcastTitle)
                             .font(AppTheme.Typography.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
@@ -27,7 +29,7 @@ struct RecallEvidenceCard: View {
                     .foregroundStyle(.primary)
                     .lineLimit(5)
                     .multilineTextAlignment(.leading)
-                Text("Transcript · \(provenanceLabel)")
+                Text("Transcript evidence")
                     .font(AppTheme.Typography.caption2)
                     .foregroundStyle(.tertiary)
             }
@@ -39,21 +41,20 @@ struct RecallEvidenceCard: View {
             )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Play citation from \(evidence.episodeTitle) at \(timestamp)")
+        .accessibilityLabel("Play citation from \(episodeTitle) at \(timestamp)")
     }
 
     private var timestamp: String {
         PlayerTimeFormat.clock(Double(evidence.startMilliseconds) / 1_000)
     }
 
-    private var provenanceLabel: String {
-        switch evidence.provenance.source {
-        case "publisher": "Publisher"
-        case "scribe": "Scribe"
-        case "whisper": "Whisper"
-        case "onDevice": "On-device"
-        case "assemblyAI": "AssemblyAI"
-        default: "Transcript source"
-        }
+    private var episodeTitle: String {
+        guard let id = evidence.episodeId.uuid else { return "Episode" }
+        return store.episode(id: id)?.title ?? "Episode"
+    }
+
+    private var podcastTitle: String {
+        guard let id = evidence.podcastId.uuid else { return "Podcast" }
+        return store.podcast(id: id)?.title ?? "Podcast"
     }
 }

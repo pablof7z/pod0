@@ -84,3 +84,19 @@ pub(super) fn scheduled_observation(
         observation: HostObservation::ScheduledAgentExecutionObserved { observation },
     }
 }
+
+pub(super) fn leased_scheduled_observation(
+    request: &LeasedHostRequestEnvelope,
+    sequence_number: u64,
+    observation: ScheduledAgentExecutionObservation,
+) -> LeasedHostObservationEnvelope {
+    LeasedHostObservationEnvelope {
+        lease: request.lease,
+        observation: scheduled_observation(
+            &request.request,
+            sequence_number,
+            request.lease.expires_at.value,
+            observation,
+        ),
+    }
+}

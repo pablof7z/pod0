@@ -213,9 +213,6 @@ final class AutoSnipController {
             Self.logger.debug("refine: no transcript yet for \(episodeID, privacy: .public)")
             return
         }
-        // Surface the no-key hint before the network call — the credential
-        // resolver inside the client factory will short-circuit when no key
-        // is present, but the user-visible signal needs to fire here.
         let modelReference = LLMModelReference(storedID: modelID)
         if !LLMProviderCredentialResolver.hasAPIKey(for: modelReference.provider) {
             noLLMKeyHintPending = true

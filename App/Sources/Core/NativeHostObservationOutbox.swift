@@ -214,6 +214,11 @@ actor NativeHostObservationOutbox {
         }
     }
 
+    static func erasureFileURLs(fileManager: FileManager = .default) throws -> [URL] {
+        let outbox = try defaultFileURL(fileManager: fileManager)
+        return [outbox, leasedFileURL(for: outbox)]
+    }
+
     private static func defaultFileURL(fileManager: FileManager) throws -> URL {
         try fileManager.url(
             for: .applicationSupportDirectory,

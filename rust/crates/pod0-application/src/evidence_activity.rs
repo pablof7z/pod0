@@ -1,11 +1,12 @@
 use pod0_domain::{
     ActivityCorrelationId, ActivityId, EpisodeId, EvidenceGenerationId, InternalCommandId,
-    StateRevision, TranscriptEvidenceArtifact, UnixTimestampMilliseconds,
+    StateRevision, TranscriptEvidenceArtifact,
 };
 
 use crate::{
     ActivityActor, ActivityFact, ActivityFactDraft, ActivityOrigin, ActivitySubject,
-    AuthorizedExternalEffect, DomainTransitionKind, DurableExternalEffectRequest,
+    AuthorizedExternalEffect, DomainTransitionKind, DurableEffectExecution,
+    DurableEvidenceEmbeddingEffectRequest, DurableExternalEffectRequest,
     DurableInternalCommandRequest, ExternalEffectKind, InternalCommandActivityIdentity,
     NonEmptyActivityFacts, RecallKnowledgeTransition, RequestDisposition, TransitionPlan,
     TransitionPlanError,
@@ -18,7 +19,7 @@ pub struct EvidenceAdmissionActivityInput {
     pub correlation_id: ActivityCorrelationId,
     pub episode_id: EpisodeId,
     pub artifact: TranscriptEvidenceArtifact,
-    pub deadline_at: UnixTimestampMilliseconds,
+    pub effect: Option<DurableEvidenceEmbeddingEffectRequest>,
 }
 
 pub type EvidenceAdmissionPlan = TransitionPlan<
@@ -49,6 +50,43 @@ pub fn plan_evidence_admission(
         episode_id: Some(input.episode_id),
         fact,
     };
+    if input.effect.as_ref().is_some_and(|request| {
+        request.episode_id != input.episode_id
+            || request.generation_id != input.artifact.generation_id
+    }) {
+        return Err(TransitionPlanError::InvalidEffectAuthorization);
+    }
+    let mut tail = vec![base(
+        1,
+        ActivityFact::DomainTransition {
+            kind: DomainTransitionKind::RecallKnowledge(
+                RecallKnowledgeTransition::EvidenceGenerationChanged,
+            ),
+            previous_revision: StateRevision::INITIAL,
+            committed_revision: StateRevision::new(1),
+        },
+    )];
+    let effects = input.effect.map_or_else(Vec::new, |request| {
+        tail.push(base(
+            2,
+            ActivityFact::EffectAuthorized {
+                intent_id,
+                kind: ExternalEffectKind::RecallProvider,
+            },
+        ));
+        vec![AuthorizedExternalEffect {
+            intent_id,
+            authorizing_fact_index: 2,
+            request: DurableExternalEffectRequest {
+                kind: ExternalEffectKind::RecallProvider,
+                subject,
+                episode_id: Some(input.episode_id),
+                not_before: None,
+                deadline_at: Some(request.deadline_at),
+                execution: DurableEffectExecution::EvidenceEmbedding { request },
+            },
+        }]
+    });
     TransitionPlan::new(
         transaction_id,
         StateRevision::INITIAL,
@@ -60,37 +98,9 @@ pub fn plan_evidence_admission(
                     disposition: RequestDisposition::Accepted,
                 },
             ),
-            vec![
-                base(
-                    1,
-                    ActivityFact::DomainTransition {
-                        kind: DomainTransitionKind::RecallKnowledge(
-                            RecallKnowledgeTransition::EvidenceGenerationChanged,
-                        ),
-                        previous_revision: StateRevision::INITIAL,
-                        committed_revision: StateRevision::new(1),
-                    },
-                ),
-                base(
-                    2,
-                    ActivityFact::EffectAuthorized {
-                        intent_id,
-                        kind: ExternalEffectKind::RecallProvider,
-                    },
-                ),
-            ],
+            tail,
         ),
-        vec![AuthorizedExternalEffect {
-            intent_id,
-            authorizing_fact_index: 2,
-            request: DurableExternalEffectRequest {
-                kind: ExternalEffectKind::RecallProvider,
-                subject,
-                episode_id: Some(input.episode_id),
-                not_before: None,
-                deadline_at: Some(input.deadline_at),
-            },
-        }],
+        effects,
         Vec::new(),
     )
 }

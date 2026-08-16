@@ -11,7 +11,7 @@ use crate::{
     TransitionPlan, TransitionPlanError,
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TranscriptSubmissionActivityInput {
     pub request_id: HostRequestId,
     pub command_id: CommandId,
@@ -20,6 +20,7 @@ pub struct TranscriptSubmissionActivityInput {
     pub workflow_revision: StateRevision,
     pub origin: TranscriptWorkflowOrigin,
     pub deadline_at: Option<UnixTimestampMilliseconds>,
+    pub execution: crate::DurableTranscriptEffectRequest,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -68,6 +69,9 @@ pub fn plan_transcript_submission(
         episode_id: Some(input.episode_id),
         not_before: None,
         deadline_at: input.deadline_at,
+        execution: crate::DurableEffectExecution::Transcript {
+            request: input.execution.clone(),
+        },
     };
     TransitionPlan::new(
         transaction_id,
@@ -183,6 +187,9 @@ fn plan_transcript_stateless_effect(
                 episode_id: Some(input.episode_id),
                 not_before: None,
                 deadline_at: input.deadline_at,
+                execution: crate::DurableEffectExecution::Transcript {
+                    request: input.execution.clone(),
+                },
             },
         }],
         Vec::new(),

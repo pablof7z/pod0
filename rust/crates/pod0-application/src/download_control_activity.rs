@@ -2,9 +2,10 @@ use pod0_domain::{CommandId, EpisodeId, StateRevision};
 
 use crate::{
     ActivityActor, ActivityFact, ActivityFactDraft, ActivityOrigin, ActivitySubject,
-    DomainTransitionKind, DownloadTransition, DurableExternalEffectRequest,
-    DurableInternalCommandRequest, NonEmptyActivityFacts, RequestDisposition,
-    RequestRejectionReason, TransitionPlan, TransitionPlanError,
+    AuthorizedExternalEffect, DomainTransitionKind, DownloadEffectAuthorization,
+    DownloadTransition, DurableExternalEffectRequest, DurableInternalCommandRequest,
+    ExternalEffectKind, NonEmptyActivityFacts, RequestDisposition, RequestRejectionReason,
+    TransitionPlan, TransitionPlanError,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -13,7 +14,7 @@ pub enum DownloadControlOperation {
     Remove,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DownloadControlActivityInput {
     pub command_id: CommandId,
     pub episode_id: EpisodeId,
@@ -21,6 +22,7 @@ pub struct DownloadControlActivityInput {
     pub legacy_replay: bool,
     pub operation: DownloadControlOperation,
     pub rejection: Option<RequestRejectionReason>,
+    pub effect: Option<DownloadEffectAuthorization>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -70,6 +72,10 @@ pub fn plan_download_control(
         episode_id: Some(input.episode_id),
         fact,
     };
+    if input.effect.is_some() && mutation != DownloadControlMutation::Apply {
+        return Err(TransitionPlanError::InvalidEffectAuthorization);
+    }
+    let mut effects = Vec::new();
     let facts = if mutation == DownloadControlMutation::Apply {
         let committed = StateRevision::new(
             input
@@ -88,12 +94,40 @@ pub fn plan_download_control(
                 },
             )
         };
+        let mut tail = vec![
+            transition(1, DownloadTransition::DesiredStateChanged),
+            transition(2, DownloadTransition::AttemptStateChanged),
+        ];
+        if let Some(effect) = input.effect {
+            if effect.request.episode_id() != input.episode_id {
+                return Err(TransitionPlanError::InvalidEffectAuthorization);
+            }
+            let intent_id = identity.effect_intent_id(0);
+            tail.push(base(
+                3,
+                ActivityFact::EffectAuthorized {
+                    intent_id,
+                    kind: ExternalEffectKind::Download,
+                },
+            ));
+            effects.push(AuthorizedExternalEffect {
+                intent_id,
+                authorizing_fact_index: 3,
+                request: DurableExternalEffectRequest {
+                    kind: ExternalEffectKind::Download,
+                    subject,
+                    episode_id: Some(input.episode_id),
+                    not_before: effect.request.not_before,
+                    deadline_at: effect.request.deadline_at,
+                    execution: crate::DurableEffectExecution::Download {
+                        request: effect.request,
+                    },
+                },
+            });
+        }
         NonEmptyActivityFacts::from_head_and_tail(
             base(0, ActivityFact::RequestDisposition { disposition }),
-            vec![
-                transition(1, DownloadTransition::DesiredStateChanged),
-                transition(2, DownloadTransition::AttemptStateChanged),
-            ],
+            tail,
         )
     } else {
         NonEmptyActivityFacts::new(base(0, ActivityFact::RequestDisposition { disposition }))
@@ -103,7 +137,7 @@ pub fn plan_download_control(
         input.current_revision,
         mutation,
         facts,
-        Vec::new(),
+        effects,
         Vec::new(),
     )
 }

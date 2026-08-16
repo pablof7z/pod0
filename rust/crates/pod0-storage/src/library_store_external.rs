@@ -5,9 +5,10 @@ use pod0_domain::{
 use rusqlite::{OptionalExtension, Transaction, params};
 
 use crate::StorageError;
-use crate::library_store::{LibraryStore, command_was_applied, finish_command, source_import_id};
+use crate::library_store::{LibraryStore, source_import_id};
 use crate::library_store_feed::{episode_id, resolve_podcast_id, upsert_podcast};
 use crate::listening_db_codec::i64_value;
+use pod0_application::{ActivitySubject, LibraryFeedTransition};
 
 impl LibraryStore {
     pub fn upsert_synthetic_podcast(
@@ -17,33 +18,39 @@ impl LibraryStore {
         podcast: PodcastRecord,
         observed_at_ms: i64,
     ) -> Result<StateRevision, StorageError> {
-        self.write(|transaction| {
-            if let Some(revision) =
-                command_was_applied(transaction, command_id, command_fingerprint)?
-            {
-                return Ok(revision);
-            }
-            if podcast.kind != PodcastKind::Synthetic || podcast.feed_identity.is_some() {
-                return Err(StorageError::CommandConflict);
-            }
-            let existing_kind: Option<i64> = transaction
-                .query_row(
-                    "SELECT kind_code FROM pod0_podcasts WHERE podcast_id=?1",
-                    [podcast.podcast_id.into_bytes().as_slice()],
-                    |row| row.get(0),
-                )
-                .optional()
-                .map_err(|error| StorageError::sqlite("find synthetic podcast", error))?;
-            if existing_kind.is_some_and(|kind| kind != 2) {
-                return Err(StorageError::CommandConflict);
-            }
-            let origin = source_import_id(transaction)?;
-            let categories = serde_json::to_string(&podcast.categories).map_err(|_| {
-                StorageError::CorruptSchema {
-                    detail: "synthetic podcast categories cannot be encoded",
+        let podcast_id = podcast.podcast_id;
+        self.commit_library_activity(
+            command_id,
+            command_fingerprint,
+            ActivitySubject::Podcast { podcast_id },
+            None,
+            LibraryFeedTransition::EpisodeMetadataChanged,
+            observed_at_ms,
+            |transaction| {
+                if podcast.kind != PodcastKind::Synthetic || podcast.feed_identity.is_some() {
+                    return Err(StorageError::CommandConflict);
                 }
-            })?;
-            transaction.execute(
+                let existing_kind: Option<i64> = transaction
+                    .query_row(
+                        "SELECT kind_code FROM pod0_podcasts WHERE podcast_id=?1",
+                        [podcast_id.into_bytes().as_slice()],
+                        |row| row.get(0),
+                    )
+                    .optional()
+                    .map_err(|error| StorageError::sqlite("find synthetic podcast", error))?;
+                if existing_kind.is_some_and(|kind| kind != 2) {
+                    return Err(StorageError::CommandConflict);
+                }
+                Ok((true, podcast))
+            },
+            |transaction, podcast| {
+                let origin = source_import_id(transaction)?;
+                let categories = serde_json::to_string(&podcast.categories).map_err(|_| {
+                    StorageError::CorruptSchema {
+                        detail: "synthetic podcast categories cannot be encoded",
+                    }
+                })?;
+                transaction.execute(
                 "INSERT INTO pod0_podcasts(podcast_id,kind_code,feed_url,feed_key_v1,title,author,\
                  image_url,description,language,categories_json,discovered_at_ms,\
                  title_is_placeholder,source_import_id) \
@@ -65,8 +72,10 @@ impl LibraryStore {
                 ],
             )
             .map_err(|error| StorageError::sqlite("upsert synthetic podcast", error))?;
-            finish_command(transaction, command_id, command_fingerprint, observed_at_ms)
-        })
+                Ok(())
+            },
+            |_, _| Ok(()),
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -90,19 +99,32 @@ impl LibraryStore {
         let publisher_guid = guid
             .filter(|value| !value.trim().is_empty())
             .unwrap_or(audio_url);
-        self.write(|transaction| {
+        let podcast_id = self.read(|connection| {
+            resolve_external_parent(connection, requested_podcast_id, feed_identity.as_ref())
+        })?;
+        let subject_episode_id = episode_id(podcast_id, publisher_guid);
+        let revision = self.commit_library_activity(
+            command_id,
+            command_fingerprint,
+            ActivitySubject::Episode {
+                episode_id: subject_episode_id,
+            },
+            Some(subject_episode_id),
+            LibraryFeedTransition::EpisodeMetadataChanged,
+            observed_at_ms,
+            |_| Ok((true, ())),
+            |transaction, ()| {
             let podcast_id = ensure_external_parent(
                 transaction,
                 requested_podcast_id,
-                feed_identity,
+                    feed_identity.clone(),
                 podcast_title,
                 observed_at_ms,
             )?;
-            if let Some(revision) =
-                command_was_applied(transaction, command_id, command_fingerprint)?
-            {
-                let episode_id = find_episode_id(transaction, podcast_id, publisher_guid)?;
-                return Ok((revision, podcast_id, episode_id));
+                if podcast_id != requested_podcast_id
+                    && episode_id(podcast_id, publisher_guid) != subject_episode_id
+                {
+                    return Err(StorageError::RevisionConflict);
             }
             let origin = source_import_id(transaction)?;
             let proposed_episode_id = episode_id(podcast_id, publisher_guid);
@@ -141,14 +163,56 @@ impl LibraryStore {
                  VALUES(?1,'[]','[]') ON CONFLICT(episode_id) DO NOTHING",
                 [actual_episode_id.into_bytes().as_slice()],
             ).map_err(|error| StorageError::sqlite("initialize external episode metadata", error))?;
-            let revision =
-                finish_command(transaction, command_id, command_fingerprint, observed_at_ms)?;
-            Ok((revision, podcast_id, actual_episode_id))
-        })
+                if actual_episode_id != subject_episode_id {
+                    return Err(StorageError::RevisionConflict);
+                }
+                Ok(())
+            },
+            |_, _| Ok(()),
+        )?;
+        let actual_episode_id =
+            self.read(|connection| find_episode_id(connection, podcast_id, publisher_guid))?;
+        Ok((revision, podcast_id, actual_episode_id))
     }
 }
 
-fn ensure_external_parent(
+pub(crate) fn resolve_external_parent(
+    connection: &rusqlite::Connection,
+    requested_id: PodcastId,
+    feed_identity: Option<&FeedIdentityV1>,
+) -> Result<PodcastId, StorageError> {
+    if connection
+        .query_row(
+            "SELECT 1 FROM pod0_podcasts WHERE podcast_id=?1",
+            [requested_id.into_bytes().as_slice()],
+            |_| Ok(()),
+        )
+        .optional()
+        .map_err(|error| StorageError::sqlite("find external episode parent", error))?
+        .is_some()
+    {
+        return Ok(requested_id);
+    }
+    let Some(feed) = feed_identity else {
+        return Ok(requested_id);
+    };
+    let stored: Option<Vec<u8>> = connection
+        .query_row(
+            "SELECT podcast_id FROM pod0_podcasts WHERE feed_key_v1=?1",
+            [&feed.comparison_key],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|error| StorageError::sqlite("resolve external feed parent", error))?;
+    stored.map_or(Ok(requested_id), |bytes| {
+        let bytes: [u8; 16] = bytes.try_into().map_err(|_| StorageError::CorruptSchema {
+            detail: "external podcast identity is malformed",
+        })?;
+        Ok(PodcastId::from_bytes(bytes))
+    })
+}
+
+pub(crate) fn ensure_external_parent(
     transaction: &Transaction<'_>,
     requested_id: PodcastId,
     feed_identity: Option<FeedIdentityV1>,
@@ -208,8 +272,8 @@ fn ensure_external_parent(
     Ok(resolved)
 }
 
-fn find_episode_id(
-    transaction: &Transaction<'_>,
+pub(crate) fn find_episode_id(
+    transaction: &rusqlite::Connection,
     podcast_id: PodcastId,
     guid: &str,
 ) -> Result<EpisodeId, StorageError> {

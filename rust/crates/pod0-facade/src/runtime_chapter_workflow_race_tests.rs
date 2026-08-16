@@ -13,11 +13,11 @@ fn changed_source_rejects_stale_bytes_and_requests_the_new_url() {
         Some("https://example.test/replacement-chapters.json"),
     );
 
-    facade.record_host_observation(response(&stale, 1, 200, valid_document()));
+    facade.record_leased_host_observation(leased_response(&stale, 1, 200, valid_document()));
     let replacement = one_request(&facade);
-    assert_ne!(replacement.request_id, stale.request_id);
+    assert_ne!(replacement.request.request_id, stale.request.request_id);
     assert!(matches!(
-        replacement.request,
+        replacement.request.request,
         HostRequest::FetchPublisherChapters { source_url, .. }
             if source_url == "https://example.test/replacement-chapters.json"
     ));
@@ -29,7 +29,7 @@ fn changed_source_rejects_stale_bytes_and_requests_the_new_url() {
 }
 
 #[test]
-fn source_replacement_cancels_exact_old_request_and_late_bytes_cannot_delete_new_success() {
+fn source_replacement_retires_old_request_and_late_bytes_cannot_delete_new_success() {
     let fixture = publisher_fixture();
     let facade = open(&fixture, 1_800_000_510_000);
     dispatch_ensure(&facade, fixture.episode_id, 70);
@@ -40,17 +40,13 @@ fn source_replacement_cancels_exact_old_request_and_late_bytes_cannot_delete_new
     );
 
     dispatch_ensure(&facade, fixture.episode_id, 71);
-    let cancellations = facade.next_host_cancellations(64);
-    assert_eq!(cancellations.len(), 1);
-    assert_eq!(cancellations[0].request_id, source_a.request_id);
-    assert_eq!(cancellations[0].cancellation_id, source_a.cancellation_id);
     let source_b = one_request(&facade);
-    assert_ne!(source_b.request_id, source_a.request_id);
+    assert_ne!(source_b.request.request_id, source_a.request.request_id);
 
-    facade.record_host_observation(response(&source_b, 1, 200, valid_document()));
+    facade.record_leased_host_observation(leased_response(&source_b, 1, 200, valid_document()));
     let succeeded = workflows(&facade, Some(fixture.episode_id)).publisher[0].clone();
     assert_eq!(succeeded.stage, PublisherChapterWorkflowStage::Succeeded);
-    facade.record_host_observation(response(&source_a, 1, 200, valid_document()));
+    facade.record_leased_host_observation(leased_response(&source_a, 1, 200, valid_document()));
     assert_eq!(
         workflows(&facade, Some(fixture.episode_id)).publisher[0],
         succeeded
@@ -65,15 +61,14 @@ fn source_replacement_ignores_old_response_before_new_response() {
     let source_a = one_request(&facade);
     set_source(&fixture, Some("https://example.test/source-b.json"));
     dispatch_ensure(&facade, fixture.episode_id, 73);
-    let _ = facade.next_host_cancellations(64);
     let source_b = one_request(&facade);
 
-    facade.record_host_observation(response(&source_a, 1, 200, valid_document()));
+    facade.record_leased_host_observation(leased_response(&source_a, 1, 200, valid_document()));
     assert_eq!(
         workflows(&facade, Some(fixture.episode_id)).publisher[0].request_id,
-        Some(source_b.request_id)
+        Some(source_b.request.request_id)
     );
-    facade.record_host_observation(response(&source_b, 1, 200, valid_document()));
+    facade.record_leased_host_observation(leased_response(&source_b, 1, 200, valid_document()));
     assert_eq!(
         workflows(&facade, Some(fixture.episode_id)).publisher[0].stage,
         PublisherChapterWorkflowStage::Succeeded
@@ -88,7 +83,6 @@ fn removing_and_readding_same_source_never_reuses_request_identity() {
     let first = one_request(&facade);
     set_source(&fixture, None);
     dispatch_ensure(&facade, fixture.episode_id, 75);
-    assert_eq!(facade.next_host_cancellations(64).len(), 1);
     assert!(
         workflows(&facade, Some(fixture.episode_id))
             .publisher
@@ -98,11 +92,11 @@ fn removing_and_readding_same_source_never_reuses_request_identity() {
     set_source(&fixture, Some("https://example.test/chapters.json"));
     dispatch_ensure(&facade, fixture.episode_id, 76);
     let readded = one_request(&facade);
-    assert_ne!(readded.request_id, first.request_id);
-    facade.record_host_observation(response(&first, 1, 200, valid_document()));
+    assert_ne!(readded.request.request_id, first.request.request_id);
+    facade.record_leased_host_observation(leased_response(&first, 1, 200, valid_document()));
     assert_eq!(
         workflows(&facade, Some(fixture.episode_id)).publisher[0].request_id,
-        Some(readded.request_id)
+        Some(readded.request.request_id)
     );
 }
 
@@ -116,17 +110,14 @@ fn timed_out_platform_and_cancelled_observations_follow_typed_policy() {
         let facade = open(&fixture, 1_800_000_540_000 + index as i64);
         dispatch_ensure(&facade, fixture.episode_id, 80 + index as u64);
         let request = one_request(&facade);
-        facade.record_host_observation(HostObservationEnvelope {
-            request_id: request.request_id,
-            cancellation_id: request.cancellation_id,
-            observed_request_revision: request.issued_revision,
-            sequence_number: 1,
-            observed_at: UnixTimestampMilliseconds::new(1),
-            observation: HostObservation::Failed {
+        facade.record_leased_host_observation(publisher_observation(
+            &request,
+            1,
+            HostObservation::Failed {
                 code,
                 safe_detail: None,
             },
-        });
+        ));
         let retry = workflows(&facade, Some(fixture.episode_id)).publisher[0].clone();
         assert_eq!(retry.stage, PublisherChapterWorkflowStage::RetryScheduled);
         assert!(matches!(
@@ -140,14 +131,11 @@ fn timed_out_platform_and_cancelled_observations_follow_typed_policy() {
     let facade = open(&fixture, 1_800_000_550_000);
     dispatch_ensure(&facade, fixture.episode_id, 82);
     let request = one_request(&facade);
-    facade.record_host_observation(HostObservationEnvelope {
-        request_id: request.request_id,
-        cancellation_id: request.cancellation_id,
-        observed_request_revision: request.issued_revision,
-        sequence_number: 1,
-        observed_at: UnixTimestampMilliseconds::new(1),
-        observation: HostObservation::Cancelled,
-    });
+    facade.record_leased_host_observation(publisher_observation(
+        &request,
+        1,
+        HostObservation::Cancelled,
+    ));
     assert_eq!(
         workflows(&facade, Some(fixture.episode_id)).publisher[0].stage,
         PublisherChapterWorkflowStage::Cancelled
@@ -176,7 +164,7 @@ fn selection_revision_conflict_is_terminal_and_preserves_newer_selection() {
         .unwrap()
         .artifact_id;
 
-    facade.record_host_observation(response(&request, 1, 200, valid_document()));
+    facade.record_leased_host_observation(leased_response(&request, 1, 200, valid_document()));
 
     let failed = workflows(&facade, Some(fixture.episode_id)).publisher[0].clone();
     assert_eq!(failed.stage, PublisherChapterWorkflowStage::Failed);
@@ -193,7 +181,7 @@ fn selection_revision_conflict_is_terminal_and_preserves_newer_selection() {
             .artifact_id,
         replacement_id
     );
-    assert!(facade.next_host_requests(64).is_empty());
+    assert!(facade.next_leased_host_requests(64).is_empty());
 }
 
 #[test]
@@ -205,14 +193,21 @@ fn accepted_observation_replays_after_same_process_write_failure() {
     let lock = Connection::open(&fixture.target).unwrap();
     lock.execute_batch("BEGIN IMMEDIATE").unwrap();
 
-    facade.record_host_observation(response(&request, 1, 200, valid_document()));
+    let observation = leased_response(&request, 1, 200, valid_document());
+    facade.record_leased_host_observation(observation.clone());
     assert_eq!(
         workflows(&facade, Some(fixture.episode_id)).publisher[0].stage,
         PublisherChapterWorkflowStage::Requested
     );
     lock.execute_batch("ROLLBACK").unwrap();
 
-    assert!(facade.next_host_requests(64).is_empty());
+    assert_eq!(
+        facade.record_leased_host_observation(observation),
+        HostObservationReceipt::Persisted {
+            request_id: request.request.request_id,
+            terminal: true,
+        }
+    );
     assert_eq!(
         workflows(&facade, Some(fixture.episode_id)).publisher[0].stage,
         PublisherChapterWorkflowStage::Succeeded
@@ -228,7 +223,7 @@ fn process_restart_after_http_success_reissues_until_durable_commit() {
     let lock = Connection::open(&fixture.target).unwrap();
     lock.execute_batch("BEGIN IMMEDIATE").unwrap();
 
-    facade.record_host_observation(response(&request, 1, 200, valid_document()));
+    facade.record_leased_host_observation(leased_response(&request, 1, 200, valid_document()));
     assert_eq!(
         workflows(&facade, Some(fixture.episode_id)).publisher[0].stage,
         PublisherChapterWorkflowStage::Requested
@@ -236,9 +231,10 @@ fn process_restart_after_http_success_reissues_until_durable_commit() {
     drop(facade);
     lock.execute_batch("ROLLBACK").unwrap();
 
-    let reopened = open(&fixture, 1_800_000_580_001);
-    assert_eq!(one_request(&reopened), request);
-    reopened.record_host_observation(response(&request, 1, 200, valid_document()));
+    let reopened = open(&fixture, request.lease.expires_at.value + 1);
+    let recovered = one_request(&reopened);
+    assert_eq!(recovered.request, request.request);
+    reopened.record_leased_host_observation(leased_response(&recovered, 1, 200, valid_document()));
     assert_eq!(
         workflows(&reopened, Some(fixture.episode_id)).publisher[0].stage,
         PublisherChapterWorkflowStage::Succeeded

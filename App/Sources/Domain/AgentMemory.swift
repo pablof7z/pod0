@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Agent Memory
 
-struct AgentMemory: Codable, Identifiable, Hashable, Sendable {
+struct AgentMemory: Identifiable, Hashable, Sendable {
     var id: UUID
     var revision: UInt64
     var content: String
@@ -25,18 +25,6 @@ struct AgentMemory: Codable, Identifiable, Hashable, Sendable {
         self.deleted = deleted
     }
 
-    private enum CodingKeys: String, CodingKey {
-        case id, revision, content, createdAt, deleted
-    }
-
-    init(from decoder: Decoder) throws {
-        let values = try decoder.container(keyedBy: CodingKeys.self)
-        id = try values.decode(UUID.self, forKey: .id)
-        revision = try values.decodeIfPresent(UInt64.self, forKey: .revision) ?? 1
-        content = try values.decode(String.self, forKey: .content)
-        createdAt = try values.decode(Date.self, forKey: .createdAt)
-        deleted = try values.decodeIfPresent(Bool.self, forKey: .deleted) ?? false
-    }
 }
 
 // MARK: - Compiled Agent Memory
@@ -47,7 +35,7 @@ struct AgentMemory: Codable, Identifiable, Hashable, Sendable {
 /// memory ids folded into this compile — if the current `agentMemories`
 /// id sequence (filtered to active, sorted by `createdAt`) matches, no
 /// recompile is needed.
-struct CompiledAgentMemory: Codable, Hashable, Sendable {
+struct CompiledAgentMemory: Hashable, Sendable {
     var text: String
     var compiledAt: Date
     var sourceMemoryCount: Int

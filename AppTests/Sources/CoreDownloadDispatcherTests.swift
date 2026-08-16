@@ -3,6 +3,21 @@ import Pod0Core
 import XCTest
 @testable import Podcastr
 
+func leasedHostRequest(_ request: HostRequestEnvelope) -> LeasedHostRequestEnvelope {
+    LeasedHostRequestEnvelope(
+        lease: PersistedEffectLeaseIdentity(
+            intentId: EffectIntentId(high: 101, low: 1),
+            authorizingActivityId: ActivityId(high: 102, low: 1),
+            correlationId: ActivityCorrelationId(high: 103, low: 1),
+            attemptId: EffectAttemptId(high: 104, low: 1),
+            leaseId: EffectLeaseId(high: 105, low: 1),
+            fence: 1,
+            expiresAt: UnixTimestampMilliseconds(value: 1_900_000_000_000)
+        ),
+        request: request
+    )
+}
+
 @MainActor
 final class CoreDownloadDispatcherTests: XCTestCase {
     func testDispatcherCorrelatesOrderedDownloadEventsAndExecutesRequestOnce() {
@@ -12,28 +27,29 @@ final class CoreDownloadDispatcherTests: XCTestCase {
             downloadHost: host,
             playbackHost: DownloadDispatcherPlaybackHost()
         )
-        let request = envelope(requestLow: 1)
-        var observations: [HostObservationEnvelope] = []
+        let request = leasedEnvelope(requestLow: 1)
+        var observations: [LeasedHostObservationEnvelope] = []
 
         dispatcher.execute(request) { observations.append($0) }
         dispatcher.execute(request) { _ in XCTFail("Duplicate request executed") }
         host.emit(
-            requestID: request.requestId,
+            requestID: request.request.requestId,
             sequence: 1,
-            observation: acceptedObservation(request)
+            observation: acceptedObservation(request.request)
         )
         host.emit(
-            requestID: request.requestId,
+            requestID: request.request.requestId,
             sequence: 2,
-            observation: stagedObservation(request)
+            observation: stagedObservation(request.request)
         )
 
         XCTAssertEqual(host.executeCount, 1)
-        XCTAssertEqual(observations.map(\.sequenceNumber), [1, 2])
+        XCTAssertEqual(observations.map(\.observation.sequenceNumber), [1, 2])
         XCTAssertTrue(observations.allSatisfy { value in
-            value.requestId == request.requestId
-                && value.cancellationId == request.cancellationId
-                && value.observedRequestRevision == request.issuedRevision
+            value.lease == request.lease
+                && value.observation.requestId == request.request.requestId
+                && value.observation.cancellationId == request.request.cancellationId
+                && value.observation.observedRequestRevision == request.request.issuedRevision
         })
     }
 
@@ -44,21 +60,21 @@ final class CoreDownloadDispatcherTests: XCTestCase {
             downloadHost: host,
             playbackHost: DownloadDispatcherPlaybackHost()
         )
-        let request = envelope(requestLow: 2)
-        var observations: [HostObservationEnvelope] = []
+        let request = leasedEnvelope(requestLow: 2)
+        var observations: [LeasedHostObservationEnvelope] = []
         dispatcher.execute(request) { observations.append($0) }
 
         dispatcher.cancel(
-            requestID: request.requestId,
-            cancellationID: request.cancellationId
+            requestID: request.request.requestId,
+            cancellationID: request.request.cancellationId
         )
         host.emit(
-            requestID: request.requestId,
+            requestID: request.request.requestId,
             sequence: 2,
-            observation: stagedObservation(request)
+            observation: stagedObservation(request.request)
         )
 
-        XCTAssertEqual(host.cancelledRequestIDs, [request.requestId])
+        XCTAssertEqual(host.cancelledRequestIDs, [request.request.requestId])
         XCTAssertTrue(observations.isEmpty)
         XCTAssertTrue(dispatcher.downloadRequests.isEmpty)
     }
@@ -69,14 +85,17 @@ final class CoreDownloadDispatcherTests: XCTestCase {
         )
         defer { try? FileManager.default.removeItem(at: url) }
         let outbox = try NativeHostObservationOutbox(fileURL: url)
-        let request = envelope(requestLow: 3)
-        let observation = HostObservationEnvelope(
-            requestId: request.requestId,
-            cancellationId: request.cancellationId,
-            observedRequestRevision: request.issuedRevision,
+        let request = leasedEnvelope(requestLow: 3)
+        let observation = LeasedHostObservationEnvelope(
+            lease: request.lease,
+            observation: HostObservationEnvelope(
+            requestId: request.request.requestId,
+            cancellationId: request.request.cancellationId,
+            observedRequestRevision: request.request.issuedRevision,
             sequenceNumber: 2,
             observedAt: UnixTimestampMilliseconds(value: 1_800_000_000_000),
-            observation: stagedObservation(request)
+            observation: stagedObservation(request.request)
+            )
         )
         try await outbox.persistBeforeDelivery(observation)
         let host = RecordingDownloadHost()
@@ -94,45 +113,9 @@ final class CoreDownloadDispatcherTests: XCTestCase {
         }
 
         XCTAssertTrue(dispatcher.observationRecoveryReady)
-        XCTAssertEqual(host.retiredRequestIDs, [request.requestId])
+        XCTAssertTrue(host.retiredRequestIDs.isEmpty)
         let pendingCount = await outbox.pendingCount()
-        XCTAssertEqual(pendingCount, 0)
-    }
-
-    func testOrphanCallbackIsOfferedToRustAndRejectedWithoutMutation() async throws {
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(
-            "pod0-download-orphan-\(UUID().uuidString).json"
-        )
-        defer { try? FileManager.default.removeItem(at: url) }
-        let outbox = try NativeHostObservationOutbox(fileURL: url)
-        let host = RecordingDownloadHost()
-        let dispatcher = Pod0NativeHostDispatcher(
-            feedHost: DownloadDispatcherFeedHost(),
-            downloadHost: host,
-            playbackHost: DownloadDispatcherPlaybackHost(),
-            observationOutbox: outbox
-        )
-        let facade = Pod0Facade()
-        dispatcher.bindDownloadOrphanObservations(to: facade)
-        let request = envelope(requestLow: 404)
-        let identity = try XCTUnwrap(CoreDownloadTaskIdentity(request))
-
-        host.emitOrphan(CoreDownloadOrphanObservation(
-            identity: identity,
-            sequenceNumber: 2,
-            observation: stagedObservation(request)
-        ))
-        for _ in 0 ..< 100 where host.retiredReceipts.isEmpty {
-            try await Task.sleep(for: .milliseconds(10))
-        }
-
-        guard case let .rejected(requestID, reason) = host.retiredReceipts.first else {
-            return XCTFail("Expected Rust to reject the orphan observation")
-        }
-        XCTAssertEqual(requestID, request.requestId)
-        XCTAssertEqual(reason, .unknownRequest)
-        let pendingCount = await outbox.pendingCount()
-        XCTAssertEqual(pendingCount, 0)
+        XCTAssertEqual(pendingCount, 1)
     }
 
     private func envelope(requestLow: UInt64) -> HostRequestEnvelope {
@@ -150,6 +133,21 @@ final class CoreDownloadDispatcherTests: XCTestCase {
                 enclosureUrl: "https://example.test/audio.mp3",
                 resumeKey: nil
             )
+        )
+    }
+
+    private func leasedEnvelope(requestLow: UInt64) -> LeasedHostRequestEnvelope {
+        LeasedHostRequestEnvelope(
+            lease: PersistedEffectLeaseIdentity(
+                intentId: EffectIntentId(high: 11, low: requestLow),
+                authorizingActivityId: ActivityId(high: 12, low: requestLow),
+                correlationId: ActivityCorrelationId(high: 13, low: requestLow),
+                attemptId: EffectAttemptId(high: 14, low: requestLow),
+                leaseId: EffectLeaseId(high: 15, low: requestLow),
+                fence: 1,
+                expiresAt: UnixTimestampMilliseconds(value: 1_800_000_010_000)
+            ),
+            request: envelope(requestLow: requestLow)
         )
     }
 

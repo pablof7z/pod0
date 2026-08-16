@@ -1,6 +1,5 @@
-use std::collections::BTreeMap;
-
 use pod0_domain::{CancellationId, CommandId, HostRequestId, StateRevision};
+use std::collections::BTreeMap;
 
 use crate::contract_state_download_validation::download_payload_is_bounded;
 use crate::contract_state_validation::{
@@ -9,6 +8,9 @@ use crate::contract_state_validation::{
 use crate::{
     CommandEnvelope, HostObservation, HostObservationEnvelope, HostRequest, HostRequestEnvelope,
 };
+
+#[path = "contract_state_request_kinds.rs"]
+mod request_kinds;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CommandRegistration {
@@ -93,55 +95,6 @@ impl HostRequestLedger {
         self.requests
             .get(&request_id)
             .map(|request| request.envelope.command_id)
-    }
-
-    #[must_use]
-    pub fn is_playback_observation_stream(&self, request_id: HostRequestId) -> bool {
-        self.requests.get(&request_id).is_some_and(|request| {
-            matches!(
-                request.envelope.request,
-                HostRequest::ObservePlayback { .. }
-            )
-        })
-    }
-
-    #[must_use]
-    pub fn is_chapter_model_request(&self, request_id: HostRequestId) -> bool {
-        self.requests.get(&request_id).is_some_and(|request| {
-            matches!(
-                request.envelope.request,
-                HostRequest::ExecuteChapterModel { .. }
-                    | HostRequest::RecoverChapterModelOperation { .. }
-            )
-        })
-    }
-
-    #[must_use]
-    pub fn is_transcript_request(&self, request_id: HostRequestId) -> bool {
-        self.requests.get(&request_id).is_some_and(|request| {
-            matches!(
-                request.envelope.request,
-                HostRequest::ExecuteTranscriptCapability { .. }
-            )
-        })
-    }
-
-    #[must_use]
-    pub fn is_playback_request(&self, request_id: HostRequestId) -> bool {
-        self.requests.get(&request_id).is_some_and(|request| {
-            matches!(
-                request.envelope.request,
-                HostRequest::LoadMedia { .. }
-                    | HostRequest::Play { .. }
-                    | HostRequest::Pause { .. }
-                    | HostRequest::Seek { .. }
-                    | HostRequest::SetRate { .. }
-                    | HostRequest::ArmNativeTimer { .. }
-                    | HostRequest::CancelNativeTimer { .. }
-                    | HostRequest::ObservePlayback { .. }
-                    | HostRequest::StopPlayback { .. }
-            )
-        })
     }
 
     #[must_use]

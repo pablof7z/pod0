@@ -27,9 +27,10 @@ final class Pod0NativeHostDispatcherNotificationTests: XCTestCase {
             deadlineAt: nil,
             request: request
         )
-        var observations: [HostObservationEnvelope] = []
+        let leased = leasedHostRequest(envelope)
+        var observations: [LeasedHostObservationEnvelope] = []
 
-        dispatcher.execute(envelope) { observations.append($0) }
+        dispatcher.execute(leased) { observations.append($0) }
         while notifications.deliveryCount == 0 {
             await Task.yield()
         }

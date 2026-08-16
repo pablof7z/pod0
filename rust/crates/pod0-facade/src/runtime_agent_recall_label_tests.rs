@@ -1,8 +1,6 @@
 use super::recall_test_support::{approve_next, start_command, uuid_string};
 use super::tests::{next_leased_agent_request, record_leased_agent_observation};
-use crate::runtime_recall_test_support::{
-    RecallFixture, evidence_input, recall_test_embedding, record,
-};
+use crate::runtime_recall_test_support::{RecallFixture, evidence_input, recall_test_embedding};
 use crate::*;
 
 /// Issue #190: the `query_transcripts` tool result must carry the speaker's
@@ -42,11 +40,11 @@ fn transcript_query_result_carries_speaker_label_and_display_name() {
         },
     );
     approve_next(&fixture);
-    let embed = fixture.base.facade.next_host_requests(1).remove(0);
-    let HostRequest::EmbedRecallQuery { query_id, .. } = &embed.request else {
+    let embed = next_leased_agent_request(&fixture.base.facade);
+    let HostRequest::EmbedRecallQuery { query_id, .. } = &embed.request.request else {
         panic!("expected recall embedding request");
     };
-    record(
+    record_leased_agent_observation(
         &fixture.base.facade,
         &embed,
         HostObservation::RecallQueryEmbedded {
@@ -56,12 +54,12 @@ fn transcript_query_result_carries_speaker_label_and_display_name() {
             },
         },
     );
-    let rerank = fixture.base.facade.next_host_requests(1).remove(0);
+    let rerank = next_leased_agent_request(&fixture.base.facade);
     assert!(matches!(
-        rerank.request,
+        rerank.request.request,
         HostRequest::RerankRecallCandidates { .. }
     ));
-    record(
+    record_leased_agent_observation(
         &fixture.base.facade,
         &rerank,
         HostObservation::Failed {
@@ -69,8 +67,8 @@ fn transcript_query_result_carries_speaker_label_and_display_name() {
             safe_detail: None,
         },
     );
-    let continuation = fixture.base.facade.next_host_requests(1).remove(0);
-    let HostRequest::ExecuteAgentModelTurn { execution } = &continuation.request else {
+    let continuation = next_leased_agent_request(&fixture.base.facade);
+    let HostRequest::ExecuteAgentModelTurn { execution } = &continuation.request.request else {
         panic!("expected final model continuation");
     };
     let evidence = execution

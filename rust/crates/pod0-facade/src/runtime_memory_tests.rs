@@ -4,7 +4,8 @@ use crate::runtime_agent_modules::tests::{
 use crate::runtime_playback_test_support::PlaybackFixture;
 use crate::*;
 use pod0_application::{
-    ActivityFact, CommandActivityIdentity, RequestDisposition, RequestRejectionReason,
+    ActivityActor, ActivityFact, ActivityOrigin, CommandActivityIdentity, RequestDisposition,
+    RequestRejectionReason, user_artifact_migration_command_id,
 };
 
 fn projection(facade: &Pod0Facade, scope: MemoryProjectionScope) -> MemoriesProjection {
@@ -54,6 +55,20 @@ fn activate(facade: &Pod0Facade) {
 
 fn activity(fixture: &PlaybackFixture, id: u64) -> Vec<pod0_application::CommittedActivityFact> {
     let command_id = CommandId::from_parts(80, id);
+    let correlation = CommandActivityIdentity::new(command_id).correlation_id();
+    pod0_storage::ActivityStore::open(&fixture.target)
+        .unwrap()
+        .page_for_correlation(correlation, None, 20)
+        .unwrap()
+        .items
+}
+
+fn memory_cutover_activity(
+    fixture: &PlaybackFixture,
+    generation: u64,
+) -> Vec<pod0_application::CommittedActivityFact> {
+    let source_id = CommandId::from_parts(0, generation);
+    let command_id = user_artifact_migration_command_id("memories", "commit", source_id);
     let correlation = CommandActivityIdentity::new(command_id).correlation_id();
     pod0_storage::ActivityStore::open(&fixture.target)
         .unwrap()
@@ -159,7 +174,25 @@ fn legacy_memory_cutover_preserves_compiled_provenance() {
         .facade
         .stage_legacy_memory_cutover(digest, 64, vec![memory], Some(compiled));
     fixture.facade.verify_legacy_memory_cutover(generation);
+    assert!(
+        projection(&fixture.facade, MemoryProjectionScope::All)
+            .memories
+            .is_empty()
+    );
+    assert!(memory_cutover_activity(&fixture, generation).is_empty());
     fixture.facade.commit_legacy_memory_cutover(generation);
+    let activity = memory_cutover_activity(&fixture, generation);
+    assert_eq!(activity.len(), 3);
+    assert!(activity.iter().all(|fact| {
+        fact.draft.actor == ActivityActor::Migration
+            && fact.draft.origin == ActivityOrigin::Migration
+    }));
+    assert!(matches!(
+        activity[2].draft.fact,
+        ActivityFact::AuthorityCutover { .. }
+    ));
+    fixture.facade.commit_legacy_memory_cutover(generation);
+    assert_eq!(memory_cutover_activity(&fixture, generation), activity);
 
     let projected = projection(&fixture.facade, MemoryProjectionScope::All);
     assert_eq!(projected.memories.len(), 1);
@@ -201,7 +234,7 @@ fn deferred_agent_record_memory_is_not_advertised_or_committed() {
             usage: None,
         },
     );
-    assert!(fixture.facade.next_host_requests(8).is_empty());
+    assert!(fixture.facade.next_leased_host_requests(8).is_empty());
     let memories = projection(&fixture.facade, MemoryProjectionScope::Active);
     assert!(memories.memories.is_empty());
 }

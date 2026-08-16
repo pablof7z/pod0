@@ -61,20 +61,12 @@ final class SharedAgentChatMessageMapperTests: XCTestCase {
             recallEvidence: [evidence(episodeID: episodeID)]
         )
 
-        let messages = SharedAgentChatMessageMapper.messages(from: [projection]) { id in
-            guard id == episodeID else { return nil }
-            return RecallEvidenceMetadata(
-                episodeTitle: "The Habit Loop",
-                podcastTitle: "Practical Minds"
-            )
-        }
+        let messages = SharedAgentChatMessageMapper.messages(from: [projection])
 
-        XCTAssertNil(messages[1].recallAnswer)
+        XCTAssertTrue(messages[1].recallEvidence.isEmpty)
         XCTAssertEqual(messages[2].text, "Agent action completed")
-        let answer = try XCTUnwrap(messages[3].recallAnswer)
-        XCTAssertEqual(answer.text, "The episode recommends obvious cues.")
-        XCTAssertEqual(answer.evidence.map(\.episodeTitle), ["The Habit Loop"])
-        XCTAssertEqual(answer.evidence.map(\.startMilliseconds), [47_125])
+        XCTAssertEqual(messages[3].recallEvidence.map(\.episodeId.uuid), [episodeID])
+        XCTAssertEqual(messages[3].recallEvidence.map(\.startMilliseconds), [47_125])
     }
 
     private func turn(

@@ -9,7 +9,7 @@ extension Pod0NativeHostDispatcher {
         _ leased: LeasedHostRequestEnvelope,
         delivery: @escaping LeasedDelivery
     ) {
-        execute(leased.request) { observation in
+        executePersistedLeaseRequest(leased.request) { observation in
             delivery(LeasedHostObservationEnvelope(
                 lease: leased.lease,
                 observation: observation

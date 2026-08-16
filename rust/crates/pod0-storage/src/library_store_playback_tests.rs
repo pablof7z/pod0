@@ -49,6 +49,7 @@ fn playback_slice_commits_selection_queue_resume_and_natural_advance_atomically(
             Some(first),
             PlaybackTransition::SessionStateChanged,
             None,
+            Vec::new(),
             1_800_000_000_002,
         )
         .unwrap();
@@ -63,6 +64,7 @@ fn playback_slice_commits_selection_queue_resume_and_natural_advance_atomically(
             Some(first),
             PlaybackTransition::SessionStateChanged,
             None,
+            Vec::new(),
             1_800_000_000_002,
         )
         .unwrap();
@@ -83,6 +85,7 @@ fn playback_slice_commits_selection_queue_resume_and_natural_advance_atomically(
             Some(second),
             PlaybackTransition::QueueChanged,
             None,
+            Vec::new(),
             1_800_000_000_003,
         )
         .unwrap();
@@ -97,6 +100,7 @@ fn playback_slice_commits_selection_queue_resume_and_natural_advance_atomically(
             Some(second),
             PlaybackTransition::QueueChanged,
             None,
+            Vec::new(),
             1_800_000_000_004,
         )
         .unwrap();
@@ -140,6 +144,7 @@ fn playback_slice_commits_selection_queue_resume_and_natural_advance_atomically(
             Some(first),
             PlaybackTransition::PositionCheckpointCommitted,
             None,
+            Vec::new(),
             1_800_000_000_005,
         )
         .unwrap();
@@ -153,6 +158,7 @@ fn playback_slice_commits_selection_queue_resume_and_natural_advance_atomically(
             Some(first),
             PlaybackTransition::SessionStateChanged,
             None,
+            Vec::new(),
             1_800_000_000_006,
         )
         .unwrap();
@@ -193,6 +199,7 @@ fn session_sleep_timer_is_cleared_once_without_erasing_other_playback_state() {
             Some(episode_id),
             PlaybackTransition::SessionStateChanged,
             None,
+            Vec::new(),
             1_800_000_000_001,
         )
         .unwrap();
@@ -206,6 +213,7 @@ fn session_sleep_timer_is_cleared_once_without_erasing_other_playback_state() {
             Some(episode_id),
             PlaybackTransition::SleepTimerChanged,
             None,
+            Vec::new(),
             1_800_000_000_002,
         )
         .unwrap();

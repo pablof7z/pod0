@@ -21,26 +21,29 @@ pub(crate) fn commit_evidence_observation(
     path: &std::path::Path,
     input: EvidenceObservationCommitInput,
 ) -> Result<EvidenceObservationCommitOutcome, StorageError> {
-    let plan = plan_evidence_observation(EvidenceObservationActivityInput {
-        request_id: input.observation.request_id,
-        episode_id: input.observation.episode_id,
-        generation_id: input.observation.generation_id,
-        intent_id: input.lease.intent_id,
-        attempt_id: input.lease.attempt_id,
-        authorizing_activity_id: input.lease.authorizing_activity_id,
-        correlation_id: input.lease.correlation_id,
-        observation: input.observation.clone(),
-    })
-    .map_err(|_| StorageError::InvalidActivity)?;
     let staged = input.observation.clone();
-    let receipt = TransitionCommit::open(path)?.commit_with_transaction_hooks(
+    let receipt = TransitionCommit::open(path)?.commit_planned_with_transaction_hooks(
         TransitionIngress {
             kind: TransitionIngressKind::HostObservation,
             id: input.lease.attempt_id.into_bytes(),
             fingerprint: fingerprint(&input),
         },
-        plan,
         input.committed_at,
+        |transaction| {
+            let current_revision = core_revision(transaction)?;
+            plan_evidence_observation(EvidenceObservationActivityInput {
+                request_id: input.observation.request_id,
+                episode_id: input.observation.episode_id,
+                generation_id: input.observation.generation_id,
+                intent_id: input.lease.intent_id,
+                attempt_id: input.lease.attempt_id,
+                authorizing_activity_id: input.lease.authorizing_activity_id,
+                correlation_id: input.lease.correlation_id,
+                current_revision,
+                observation: input.observation.clone(),
+            })
+            .map_err(|_| StorageError::InvalidActivity)
+        },
         |transaction| {
             crate::effect_outbox::stage_recall_observation_in_transaction(
                 transaction,
@@ -49,14 +52,14 @@ pub(crate) fn commit_evidence_observation(
             )
             .map_err(effect_error)
         },
-        |_transaction, expected, observation| {
-            if expected != pod0_domain::StateRevision::new(1)
-                || observation.episode_id != input.observation.episode_id
+        |transaction, expected, observation| {
+            if observation.episode_id != input.observation.episode_id
                 || observation.generation_id != input.observation.generation_id
             {
                 return Err(StorageError::RevisionConflict);
             }
-            Ok(pod0_domain::StateRevision::new(2))
+            require_core_revision(transaction, expected)?;
+            crate::library_store::advance_playback_revision(transaction)
         },
         |transaction| {
             crate::effect_outbox::complete_host_observation_in_transaction(transaction, input.lease)
@@ -66,6 +69,26 @@ pub(crate) fn commit_evidence_observation(
     Ok(EvidenceObservationCommitOutcome {
         replayed: receipt.replayed,
     })
+}
+
+fn core_revision(connection: &rusqlite::Connection) -> Result<pod0_domain::StateRevision, StorageError> {
+    let value: i64 = connection
+        .query_row(
+            "SELECT state_revision FROM pod0_playback_state WHERE singleton=1",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|error| StorageError::sqlite("read evidence observation revision", error))?;
+    super::application_support::revision(value)
+}
+
+fn require_core_revision(
+    connection: &rusqlite::Connection,
+    expected: pod0_domain::StateRevision,
+) -> Result<(), StorageError> {
+    (core_revision(connection)? == expected)
+        .then_some(())
+        .ok_or(StorageError::RevisionConflict)
 }
 
 fn fingerprint(input: &EvidenceObservationCommitInput) -> ContentDigest {

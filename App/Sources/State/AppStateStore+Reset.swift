@@ -35,22 +35,60 @@ extension AppStateStore {
     }
 
     private func resetProductState(preserving settings: Settings?) async throws {
-        guard let sharedLibrary else {
+        let locations = try persistence.userDataErasureLocations()
+        let client = fenceNativeStateForUserDataErasure()
+        await persistence.fenceForUserDataErasure()
+        await CostLedger.shared.fenceForUserDataErasure()
+        let signalStore = productSignals as? ProductSignalStore
+        await signalStore?.fenceForUserDataErasure()
+        let initial: UserDataErasureResult
+        if let pending = try recoverPendingErasure(locations: locations) {
+            initial = pending
+        } else {
+            guard let client else {
+                throw SharedLibraryError.unavailable
+            }
+            let expectedStoreID = try client.facade.storeIdentity()
+            let token = try client.facade.prepareErasure(
+                expectedStoreId: expectedStoreID,
+                nonce: Self.erasureNonce(),
+                retainedSettingsJson: try Self.encodeRetainedSettings(settings),
+                locations: locations
+            )
+            initial = try client.facade.confirmErasure(token: token)
+        }
+        let freshStoreID = try await NativeUserDataErasureExecutor.finish(
+            initial,
+            locations: locations
+        )
+        await persistence.resumeAfterUserDataErasure()
+        let freshState = try persistence.load()
+        let outcome = SharedLibraryBootstrap.run(
+            persistence: persistence,
+            legacyState: freshState
+        )
+        guard case .ready(let freshClient) = outcome,
+              try freshClient.facade.storeIdentity() == freshStoreID
+        else {
             throw SharedLibraryError.unavailable
         }
-        _ = try await sharedLibrary.execute(.resetListeningData)
-        widgetReloadTask?.cancel()
-        widgetReloadTask = nil
+        await signalStore?.resumeAfterUserDataErasure()
+        installFreshStateAfterUserDataErasure(freshState, client: freshClient)
+    }
 
-        performMutationBatch {
-            mutateState {
-                $0 = AppState()
-                if let settings { $0.settings = settings }
-            }
-            invalidateEpisodeProjections()
-        }
-        await persistence.flush(state)
-        SpotlightIndexer.clearAll()
-        await productSignals.deleteAll()
+    private static func encodeRetainedSettings(_ settings: Settings?) throws -> Data {
+        guard let settings else { return Data("{}".utf8) }
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.sortedKeys]
+        return try encoder.encode(settings)
+    }
+
+    private static func erasureNonce() -> Data {
+        var first = UUID().uuid
+        var second = UUID().uuid
+        var data = withUnsafeBytes(of: &first) { Data($0) }
+        data.append(withUnsafeBytes(of: &second) { Data($0) })
+        return data
     }
 }

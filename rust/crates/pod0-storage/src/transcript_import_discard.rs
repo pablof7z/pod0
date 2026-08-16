@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use pod0_domain::CommandId;
-use rusqlite::{TransactionBehavior, params};
+use rusqlite::{Transaction, TransactionBehavior, params};
 
 use crate::StorageError;
 use crate::migration_db::configure;
@@ -41,29 +41,47 @@ pub(crate) fn discard_transcript_import_with_diagnostic(
         let transaction = connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(|error| StorageError::sqlite("begin transcript import discard", error))?;
-        transaction
-            .execute(
-                "UPDATE pod0_transcript_imports SET state='discarded',diagnostic_code=?1,\
-                 verified_at_ms=NULL,committed_at_ms=NULL,discarded_at_ms=?2 WHERE import_id=?3",
-                params![
-                    diagnostic,
-                    discarded_at_ms,
-                    import_id.into_bytes().as_slice()
-                ],
-            )
-            .map_err(|error| StorageError::sqlite("discard transcript import", error))?;
-        transaction
-            .execute(
-                "DELETE FROM pod0_domain_cutovers WHERE domain='transcripts' AND state='staged' \
-                 AND core_revision=?1",
-                [to_i64(current.target_revision.value)?],
-            )
-            .map_err(|error| StorageError::sqlite("discard transcript cutover marker", error))?;
+        discard_transcript_import_in_transaction(
+            &transaction,
+            import_id,
+            current.target_revision.value,
+            discarded_at_ms,
+            diagnostic,
+        )?;
         transaction
             .commit()
             .map_err(|error| StorageError::sqlite("commit transcript import discard", error))?;
     }
     read_import_report(&connection, import_id, true)?.ok_or(StorageError::TranscriptImportNotFound)
+}
+
+pub(crate) fn discard_transcript_import_in_transaction(
+    transaction: &Transaction<'_>,
+    import_id: CommandId,
+    target_revision: u64,
+    discarded_at_ms: i64,
+    diagnostic: &'static str,
+) -> Result<(), StorageError> {
+    transaction
+        .execute(
+            "UPDATE pod0_transcript_imports SET state='discarded',diagnostic_code=?1,\
+             verified_at_ms=NULL,committed_at_ms=NULL,discarded_at_ms=?2 WHERE import_id=?3 \
+             AND state<>'committed'",
+            params![
+                diagnostic,
+                discarded_at_ms,
+                import_id.into_bytes().as_slice()
+            ],
+        )
+        .map_err(|error| StorageError::sqlite("discard transcript import", error))?;
+    transaction
+        .execute(
+            "DELETE FROM pod0_domain_cutovers WHERE domain='transcripts' AND state='staged' \
+             AND core_revision=?1",
+            [to_i64(target_revision)?],
+        )
+        .map_err(|error| StorageError::sqlite("discard transcript cutover marker", error))?;
+    Ok(())
 }
 
 fn to_i64(value: u64) -> Result<i64, StorageError> {

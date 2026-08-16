@@ -1,9 +1,13 @@
-use pod0_domain::{CommandId, EpisodeId, StateRevision};
+use pod0_domain::{
+    CancellationId, CommandId, DownloadAttemptId, DownloadIntentId, EpisodeId, HostRequestId,
+    StateRevision,
+};
 
 use crate::{
     ActivityDomain, ActivityFact, ActivitySubject, DownloadAdmissionActivityInput,
-    DownloadDispositionActivityInput, DownloadIntentOrigin, DurableInternalCommandRequest,
-    InternalCommandKind, RequestDisposition, plan_download_admission, plan_download_noop,
+    DownloadDispositionActivityInput, DownloadEffectAuthorization, DownloadIntentOrigin,
+    DurableInternalCommandRequest, InternalCommandKind, RequestDisposition,
+    plan_download_admission, plan_download_noop,
 };
 
 #[test]
@@ -15,6 +19,7 @@ fn admitted_download_records_the_typed_attempt_transition() {
         legacy_replay: false,
         state_changes: true,
         admitted: true,
+        effect: Some(download_effect(EpisodeId::from_parts(3, 4))),
         origin: DownloadIntentOrigin::User,
     })
     .unwrap();
@@ -23,7 +28,36 @@ fn admitted_download_records_the_typed_attempt_transition() {
         facts.get(1).unwrap().fact,
         ActivityFact::DomainTransition { .. }
     ));
-    assert!(effects.is_empty());
+    assert_eq!(effects.len(), 1);
+    let crate::DurableEffectExecution::Download { request } = &effects[0].request.execution else {
+        panic!("download authorization must retain an exact executable request");
+    };
+    assert_eq!(request.episode_id(), EpisodeId::from_parts(3, 4));
+    assert!(matches!(
+        request.action,
+        crate::DurableDownloadEffectAction::Start { .. }
+    ));
+}
+
+fn download_effect(episode_id: EpisodeId) -> DownloadEffectAuthorization {
+    DownloadEffectAuthorization {
+        request: crate::DurableDownloadEffectRequest {
+            request_id: HostRequestId::from_parts(5, 1),
+            command_id: CommandId::from_parts(1, 2),
+            cancellation_id: CancellationId::from_parts(5, 2),
+            issued_revision: StateRevision::new(5),
+            not_before: None,
+            deadline_at: None,
+            action: crate::DurableDownloadEffectAction::Start {
+                episode_id,
+                intent_id: DownloadIntentId::from_parts(5, 3),
+                attempt_id: DownloadAttemptId::from_parts(5, 4),
+                input_version: "input".to_owned(),
+                enclosure_url: "https://example.test/audio.mp3".to_owned(),
+                resume_key: None,
+            },
+        },
+    }
 }
 
 #[test]
@@ -83,6 +117,7 @@ fn active_workflow_is_a_no_change_disposition_without_an_effect() {
         legacy_replay: false,
         state_changes: false,
         admitted: true,
+        effect: None,
         origin: DownloadIntentOrigin::Playback,
     })
     .unwrap();

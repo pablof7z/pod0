@@ -2,11 +2,16 @@
 pub enum LibraryFeedTransition {
     SubscriptionChanged,
     FeedFetchStateChanged,
+    FeedDiscoveryStateChanged,
     EpisodeMetadataChanged,
     EpisodeStarredChanged,
     NotificationPreferenceChanged,
+    NotificationDeliveryStateChanged,
     TranscriptPreferenceChanged,
     ListeningDataReset,
+    ListeningAuthorityChanged,
+    FeedDiscoveryAuthorityChanged,
+    LibraryNetworkStateChanged,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -78,6 +83,7 @@ pub enum UserArtifactTransition {
     MemoryChanged,
     ClipChanged,
     CategoryChanged,
+    SpeakerIdentityChanged,
     SpeakerAssignmentChanged,
     SettingChanged,
 }
@@ -89,6 +95,9 @@ pub enum LifecycleTransition {
     RecoveryChanged,
     AuthorityCutoverChanged,
     UserDataErasureChanged,
+    WorkflowConfigurationChanged,
+    WorkflowCapabilitiesObserved,
+    WorkflowReconciliationPlanned,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

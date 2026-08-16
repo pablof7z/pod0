@@ -17,12 +17,12 @@ final class CoreTranscriptDispatcherTests: XCTestCase {
             playbackHost: TranscriptDispatcherPlaybackHost(),
             transcriptHost: host
         )
-        var delivered: [HostObservationEnvelope] = []
+        var delivered: [LeasedHostObservationEnvelope] = []
 
-        dispatcher.execute(envelope(id: 1)) { delivered.append($0) }
+        dispatcher.execute(leasedHostRequest(envelope(id: 1))) { delivered.append($0) }
 
         XCTAssertEqual(delivered.count, 1)
-        XCTAssertEqual(delivered[0].observation, .failed(
+        XCTAssertEqual(delivered[0].observation.observation, .failed(
             code: .platformFailure,
             safeDetail: "Durable transcript observation staging is unavailable"
         ))
@@ -42,7 +42,7 @@ final class CoreTranscriptDispatcherTests: XCTestCase {
             transcriptHost: host,
             observationOutbox: outbox
         )
-        let request = envelope(id: 2)
+        let request = leasedHostRequest(envelope(id: 2))
         let delivered = expectation(description: "transcript observation delivered")
         delivered.expectedFulfillmentCount = 1
 
@@ -63,13 +63,13 @@ final class CoreTranscriptDispatcherTests: XCTestCase {
             transcriptHost: host,
             observationOutbox: outbox
         )
-        let request = envelope(id: 3)
-        var delivered: [HostObservationEnvelope] = []
+        let request = leasedHostRequest(envelope(id: 3))
+        var delivered: [LeasedHostObservationEnvelope] = []
 
         dispatcher.execute(request) { delivered.append($0) }
         dispatcher.cancel(
-            requestID: request.requestId,
-            cancellationID: request.cancellationId
+            requestID: request.request.requestId,
+            cancellationID: request.request.cancellationId
         )
         await Task.yield()
         await Task.yield()

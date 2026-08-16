@@ -1,4 +1,6 @@
-use pod0_application::{AgentExecutionKind, AgentTurnStage, InternalCommandKind, agent_tool_policy};
+use pod0_application::{
+    AgentExecutionKind, AgentTurnStage, InternalCommandKind, agent_tool_policy,
+};
 
 use crate::runtime_state::FacadeState;
 
@@ -56,36 +58,9 @@ impl FacadeState {
             return false;
         };
         match execution {
-            AgentExecutionKind::RustCommit | AgentExecutionKind::RustProjection => {
-                let durable_handoff = matches!(
-                    state
-                        .projection()
-                        .proposal
-                        .as_ref()
-                        .map(|value| &value.action),
-                    Some(
-                        pod0_application::AgentToolAction::CreateNote { .. }
-                            | pod0_application::AgentToolAction::RecordMemory { .. }
-                            | pod0_application::AgentToolAction::CreateClip { .. }
-                            | pod0_application::AgentToolAction::WriteCategory { .. }
-                            | pod0_application::AgentToolAction::TagItems { .. }
-                    )
-                );
-                let recall_workflow = matches!(
-                    state
-                        .projection()
-                        .proposal
-                        .as_ref()
-                        .map(|value| &value.action),
-                    Some(pod0_application::AgentToolAction::QueryTranscripts { .. })
-                );
-                if (execution == AgentExecutionKind::RustCommit && !durable_handoff)
-                    || recall_workflow
-                {
-                    let _ = self.execute_internal_agent_action(store, state, self.now());
-                }
-            }
-            AgentExecutionKind::NativeCapability
+            AgentExecutionKind::RustCommit
+            | AgentExecutionKind::RustProjection
+            | AgentExecutionKind::NativeCapability
             | AgentExecutionKind::NativeConversationPresentation
             | AgentExecutionKind::NativeCapabilityAndNmpPublication => {}
         }
@@ -151,9 +126,9 @@ impl FacadeState {
                 .commit_agent_clip(command, self.now())
                 .and_then(|_| self.reload_clips()),
             pod0_application::AgentToolAction::WriteCategory { .. }
-            | pod0_application::AgentToolAction::TagItems { .. } => store
-                .commit_agent_category(command, self.now())
-                .map(|_| ()),
+            | pod0_application::AgentToolAction::TagItems { .. } => {
+                store.commit_agent_category(command, self.now()).map(|_| ())
+            }
             _ => return false,
         };
         if committed.is_err() {

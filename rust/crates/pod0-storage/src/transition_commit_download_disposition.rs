@@ -49,6 +49,7 @@ pub(crate) fn commit_download_internal_disposition(
                 current_revision: current,
                 state_changes: false,
                 admitted: false,
+                effect: None,
                 disposition,
             })
             .map_err(|_| StorageError::InvalidActivity)

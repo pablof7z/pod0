@@ -7,7 +7,6 @@ use pod0_domain::{EpisodeId, PlaybackSleepMode};
 use pod0_storage::PlaybackMutation;
 
 use crate::runtime_state::FacadeState;
-use crate::runtime_storage_commands::storage_failure;
 
 impl FacadeState {
     pub(super) fn play(
@@ -33,7 +32,25 @@ impl FacadeState {
                 subject: ActivitySubject::Episode { episode_id },
                 episode_id: Some(episode_id),
             });
-        if self.apply_playback_command_with_internal(
+        let must_reload = must_reload_for_play(self, episode_id);
+        let effects = if must_reload {
+            self.plan_active_load_effects(envelope, true, PlaybackTransitionCue::Immediate)
+        } else {
+            let mut requests = vec![(
+                "play",
+                HostRequest::Play {
+                    episode_id,
+                    transition_cue: PlaybackTransitionCue::Immediate,
+                },
+            )];
+            self.append_playback_stream_request(&mut requests);
+            self.playback_effects(envelope, requests)
+        };
+        let Some(effects) = effects else {
+            self.fail(envelope.command_id, CoreFailureCode::InvalidCommand);
+            return;
+        };
+        if self.apply_playback_command_with_internal_and_effects(
             envelope,
             fingerprint,
             PlaybackMutation::ReceiptOnly,
@@ -41,36 +58,17 @@ impl FacadeState {
                 episode_id: Some(episode_id),
             },
             internal_command,
+            effects,
         ) {
             self.playback.completion_checkpoint_fence_episode_id = None;
             self.playback.desired_playing = true;
             self.playback.timer_fired = false;
             self.playback.policy_state = pod0_application::PlaybackPolicyState::AwaitingHost;
             self.resume_playback_transcript_commands();
-            let must_reload = self.playback.media_episode_id != Some(episode_id)
-                || self
-                    .playback
-                    .last_observation
-                    .as_ref()
-                    .is_some_and(|value| value.ended)
-                || matches!(
-                    self.playback.host_state,
-                    pod0_application::PlaybackHostState::Failed
-                        | pod0_application::PlaybackHostState::Unsupported { .. }
-                );
             if must_reload {
-                self.load_active(envelope, true, PlaybackTransitionCue::Immediate);
-            } else {
-                self.issue_playback_request(
-                    envelope,
-                    "play",
-                    HostRequest::Play {
-                        episode_id,
-                        transition_cue: PlaybackTransitionCue::Immediate,
-                    },
-                );
-                self.ensure_playback_stream(envelope);
+                self.playback.media_episode_id = Some(episode_id);
             }
+            self.note_playback_stream_authorized(envelope);
         }
     }
 
@@ -86,17 +84,17 @@ impl FacadeState {
                 position_milliseconds,
             },
         );
-        if self.apply_playback_command(
+        if self.apply_playback_command_with_effects(
             envelope,
             fingerprint,
             mutation,
             OperationResult::PlaybackUpdated {
                 episode_id: Some(episode_id),
             },
+            vec![("pause", HostRequest::Pause { episode_id })],
         ) {
             self.playback.desired_playing = false;
             self.playback.policy_state = pod0_application::PlaybackPolicyState::Paused;
-            self.issue_playback_request(envelope, "pause", HostRequest::Pause { episode_id });
         }
     }
 
@@ -111,7 +109,7 @@ impl FacadeState {
             return;
         };
         let command_at_ms = self.now().value;
-        if self.apply_playback_command(
+        if self.apply_playback_command_with_effects(
             envelope,
             fingerprint,
             PlaybackMutation::Checkpoint {
@@ -121,12 +119,7 @@ impl FacadeState {
             OperationResult::PlaybackUpdated {
                 episode_id: Some(episode_id),
             },
-        ) {
-            self.playback.completion_checkpoint_fence_episode_id = None;
-            self.playback.position_command_fence_at_ms = Some(command_at_ms);
-            self.playback.last_position_commit_at_ms = Some(command_at_ms);
-            self.issue_playback_request(
-                envelope,
+            vec![(
                 "seek",
                 HostRequest::Seek {
                     episode_id,
@@ -134,7 +127,11 @@ impl FacadeState {
                     reason: pod0_domain::PlaybackSeekReason::UserRequested,
                     chapter_context: None,
                 },
-            );
+            )],
+        ) {
+            self.playback.completion_checkpoint_fence_episode_id = None;
+            self.playback.position_command_fence_at_ms = Some(command_at_ms);
+            self.playback.last_position_commit_at_ms = Some(command_at_ms);
         }
     }
 
@@ -148,42 +145,50 @@ impl FacadeState {
             );
             return;
         }
-        if self.apply_playback_command(
+        let next = self.listening.playback.queue.first().cloned();
+        let Some(next) = next else { return };
+        let Some(effects) = self.plan_episode_load_effects(
+            envelope,
+            next.episode_id,
+            next.segment,
+            true,
+            PlaybackTransitionCue::FadeIn {
+                duration_milliseconds: 250,
+            },
+        ) else {
+            self.fail(envelope.command_id, CoreFailureCode::NotFound);
+            return;
+        };
+        if self.apply_playback_command_with_durable_effects(
             envelope,
             fingerprint,
             PlaybackMutation::AdvanceQueue,
             OperationResult::QueueUpdated,
+            effects,
         ) {
             self.playback.completion_checkpoint_fence_episode_id = None;
             self.playback.desired_playing = self.listening.playback.active_episode_id.is_some();
-            self.load_active(
-                envelope,
-                true,
-                PlaybackTransitionCue::FadeIn {
-                    duration_milliseconds: 250,
-                },
-            );
+            self.playback.media_episode_id = Some(next.episode_id);
+            self.playback.policy_state = pod0_application::PlaybackPolicyState::AwaitingHost;
+            self.note_playback_stream_authorized(envelope);
         }
     }
 
     pub(super) fn timer_fired(&mut self, envelope: &CommandEnvelope, fingerprint: &str) {
         let episode_id = self.listening.playback.active_episode_id;
-        if self.apply_playback_command(
+        let effects = episode_id.map_or_else(Vec::new, |episode_id| {
+            vec![("timer-pause", HostRequest::Pause { episode_id })]
+        });
+        if self.apply_playback_command_with_effects(
             envelope,
             fingerprint,
             PlaybackMutation::SetSleepTimer(PlaybackSleepMode::Off),
             OperationResult::PlaybackUpdated { episode_id },
+            effects,
         ) {
             self.playback.timer_fired = true;
             self.playback.desired_playing = false;
             self.playback.policy_state = pod0_application::PlaybackPolicyState::Paused;
-            if let Some(episode_id) = episode_id {
-                self.issue_playback_request(
-                    envelope,
-                    "timer-pause",
-                    HostRequest::Pause { episode_id },
-                );
-            }
         }
     }
 
@@ -192,93 +197,18 @@ impl FacadeState {
             (value.episode_id == Some(episode_id)).then_some(value.position_milliseconds)
         })
     }
+}
 
-    pub(super) fn apply_playback_command(
-        &mut self,
-        envelope: &CommandEnvelope,
-        fingerprint: &str,
-        mutation: PlaybackMutation,
-        result: OperationResult,
-    ) -> bool {
-        self.apply_playback_command_with_internal(envelope, fingerprint, mutation, result, None)
-    }
-
-    fn apply_playback_command_with_internal(
-        &mut self,
-        envelope: &CommandEnvelope,
-        fingerprint: &str,
-        mutation: PlaybackMutation,
-        result: OperationResult,
-        internal_command: Option<DurableInternalCommandRequest>,
-    ) -> bool {
-        let episode_id =
-            playback_episode_hint(&mutation, self.listening.playback.active_episode_id);
-        let transition = playback_transition(&mutation);
-        let outcome = self
-            .store
+fn must_reload_for_play(state: &FacadeState, episode_id: EpisodeId) -> bool {
+    state.playback.media_episode_id != Some(episode_id)
+        || state
+            .playback
+            .last_observation
             .as_ref()
-            .ok_or(pod0_storage::StorageError::CutoverNotAuthoritative)
-            .and_then(|store| {
-                store.apply_playback_mutation(
-                    envelope.command_id,
-                    fingerprint,
-                    mutation,
-                    episode_id,
-                    transition,
-                    internal_command,
-                    self.now().value,
-                )
-            });
-        match outcome {
-            Ok(_) => match self.reload_listening() {
-                Ok(()) => {
-                    self.succeed(envelope.command_id, Some(result));
-                    true
-                }
-                Err(error) => {
-                    self.fail(envelope.command_id, storage_failure(error));
-                    false
-                }
-            },
-            Err(error) => {
-                self.fail(envelope.command_id, storage_failure(error));
-                false
-            }
-        }
-    }
-}
-
-pub(super) fn playback_episode_hint(
-    mutation: &PlaybackMutation,
-    active: Option<EpisodeId>,
-) -> Option<EpisodeId> {
-    match mutation {
-        PlaybackMutation::Select { episode_id, .. }
-        | PlaybackMutation::SetCompletion { episode_id, .. }
-        | PlaybackMutation::Checkpoint { episode_id, .. } => Some(*episode_id),
-        PlaybackMutation::Enqueue { entry, .. } => Some(entry.episode_id),
-        PlaybackMutation::RemoveEpisode(episode_id)
-        | PlaybackMutation::ResetProgress(episode_id) => Some(*episode_id),
-        _ => active,
-    }
-}
-
-pub(super) fn playback_transition(
-    mutation: &PlaybackMutation,
-) -> pod0_application::PlaybackTransition {
-    use pod0_application::PlaybackTransition;
-    match mutation {
-        PlaybackMutation::Enqueue { .. }
-        | PlaybackMutation::RemoveQueueEntry(_)
-        | PlaybackMutation::RemoveEpisode(_)
-        | PlaybackMutation::ReplaceQueueOrder(_)
-        | PlaybackMutation::ClearQueue
-        | PlaybackMutation::AdvanceQueue => PlaybackTransition::QueueChanged,
-        PlaybackMutation::SetRate(_) => PlaybackTransition::RateChanged,
-        PlaybackMutation::SetSleepTimer(_) => PlaybackTransition::SleepTimerChanged,
-        PlaybackMutation::Checkpoint { .. } | PlaybackMutation::ResetProgress(_) => {
-            PlaybackTransition::PositionCheckpointCommitted
-        }
-        _ => PlaybackTransition::SessionStateChanged,
-    }
+            .is_some_and(|value| value.ended)
+        || matches!(
+            state.playback.host_state,
+            pod0_application::PlaybackHostState::Failed
+                | pod0_application::PlaybackHostState::Unsupported { .. }
+        )
 }

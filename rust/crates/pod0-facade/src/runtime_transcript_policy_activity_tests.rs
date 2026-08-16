@@ -88,6 +88,7 @@ fn startup_resumes_an_authorized_playback_transcript_command() {
             Some(fixture.episode_id),
             PlaybackTransition::SessionStateChanged,
             Some(request),
+            Vec::new(),
             1_800_000_000_100,
         )
         .unwrap();

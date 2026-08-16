@@ -72,13 +72,13 @@ final class CorePlaybackHost: CorePlaybackHosting {
             engine.setSleepTimer(.off)
         case .observePlayback:
             break
-        case .fetchFeed, .fetchPublisherChapters:
+        case .fetchFeed, .fetchLibraryDocument, .fetchPublisherChapters:
             return .failed(code: .invalidResponse, safeDetail: "HTTP request sent to player")
         case .executeChapterModel, .recoverChapterModelOperation,
              .executeTranscriptCapability, .executeScheduledAgentTurn,
              .executeAgentModelTurn, .presentAgentApproval,
              .executeAgentCapability, .scheduleCoreWake,
-             .deliverNewEpisodeNotification:
+             .deliverNewEpisodeNotification, .cancelAuthorizedEffect:
             return .failed(code: .invalidResponse, safeDetail: "Core request sent to player")
         case .startEpisodeDownload, .cancelEpisodeDownload,
              .removeEpisodeDownloadArtifact:

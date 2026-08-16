@@ -51,12 +51,12 @@ enum NowPlayingSnapshotStore {
     /// App Group identifier — must match `Project.swift`'s `appGroupID` and the
     /// entitlements on both targets. Hard-coded here (rather than read from
     /// `Info.plist`) so the call site is synchronous and can't fail.
-    static let appGroupID = "group.com.podcastr.app"
+    nonisolated static let appGroupID = "group.com.podcastr.app"
 
     /// `UserDefaults` key holding the encoded `NowPlayingSnapshot`. Stored as
     /// `Data` (JSON) so adding/removing fields doesn't fight the keyed-archive
     /// type checks `UserDefaults` does for individual values.
-    static let defaultsKey = "now-playing-snapshot.v1"
+    nonisolated static let defaultsKey = "now-playing-snapshot.v1"
 
     /// Writes `snapshot` into the App Group defaults. No-op when the App
     /// Group isn't reachable (simulator misconfig, missing entitlement).

@@ -6,39 +6,22 @@ use pod0_domain::{
 use sha2::{Digest as _, Sha256};
 use url::Url;
 
+#[path = "publication_activity.rs"]
+mod activity;
+pub use activity::*;
+#[path = "publication_contract.rs"]
+mod contract;
+pub use contract::*;
+#[cfg(test)]
+#[path = "publication_activity_tests.rs"]
+mod activity_tests;
+
 pub const POD0_PODCAST_SHOW_KIND: u16 = 30_074;
 pub const POD0_PODCAST_EPISODE_KIND: u16 = 30_075;
 pub const POD0_PUBLICATION_SCHEMA_VERSION: u32 = 1;
 pub const MAX_PUBLICATION_FACTS: usize = 128;
 pub const MAX_PUBLICATION_DETAIL_BYTES: usize = 512;
 pub const MAX_PUBLICATION_URL_BYTES: usize = 8_192;
-
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
-pub struct Pod0PublicationDraft {
-    pub publication_id: PublicationId,
-    pub expected_author_hex: String,
-    pub correlation_token: String,
-    pub created_at_seconds: u64,
-    pub kind: u16,
-    pub tags: Vec<Vec<String>>,
-    pub content: String,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Record)]
-pub struct NMPPublicationReceiptLink {
-    pub publication_id: PublicationId,
-    pub receipt_id: u64,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
-pub struct PublicationStatusObservation {
-    pub kind: pod0_domain::PublicationFactKind,
-    pub route_id: Option<pod0_domain::PublicationRouteId>,
-    pub attempt: Option<u64>,
-    pub event_id_hex: Option<String>,
-    pub observed_at: Option<UnixTimestampMilliseconds>,
-    pub detail: Option<String>,
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PublicationValidationError {
@@ -51,54 +34,6 @@ pub enum PublicationValidationError {
     ArtifactMismatch,
     MissingGeneratedArtifact,
     PayloadTooLarge,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
-pub struct PublicationsProjection {
-    pub items: Vec<PublicationRecord>,
-    pub operations: Vec<crate::OperationProjection>,
-    pub has_more: bool,
-}
-
-impl PublicationsProjection {
-    pub fn enforce_bounds(&mut self, offset: usize, maximum: usize) {
-        self.items.sort_by_key(|item| {
-            (
-                std::cmp::Reverse(item.updated_at.value),
-                std::cmp::Reverse(item.publication_id),
-            )
-        });
-        self.has_more = self.items.len() > offset.saturating_add(maximum);
-        self.items = self
-            .items
-            .iter()
-            .skip(offset)
-            .take(maximum)
-            .cloned()
-            .collect();
-        if self.operations.len() > crate::MAX_OPERATION_ITEMS {
-            self.operations = self
-                .operations
-                .iter()
-                .rev()
-                .take(crate::MAX_OPERATION_ITEMS)
-                .cloned()
-                .collect::<Vec<_>>();
-            self.operations.reverse();
-        }
-        for item in &mut self.items {
-            if item.facts.len() > MAX_PUBLICATION_FACTS {
-                item.facts = item
-                    .facts
-                    .iter()
-                    .rev()
-                    .take(MAX_PUBLICATION_FACTS)
-                    .cloned()
-                    .collect::<Vec<_>>();
-                item.facts.reverse();
-            }
-        }
-    }
 }
 
 #[must_use]

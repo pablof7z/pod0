@@ -1,5 +1,6 @@
 use pod0_domain::{
-    CancellationId, ChapterArtifactId, CommandId, EpisodeId, HostRequestId, StateRevision,
+    CancellationId, ChapterArtifactId, ChapterArtifactInput, CommandId, EpisodeId, HostRequestId,
+    StateRevision, UnixTimestampMilliseconds,
 };
 
 pub use crate::chapter_workflow_combined::{ChapterWorkflowPage, ChapterWorkflowRecord};
@@ -93,4 +94,31 @@ pub struct PublisherChapterWorkflowFailureInput {
     pub retry_issued_revision: StateRevision,
     pub retry_deadline_at_ms: Option<i64>,
     pub observed_at_ms: i64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PublisherChapterObservationAction {
+    Complete {
+        artifact: ChapterArtifactInput,
+    },
+    Fail {
+        failure: PublisherChapterWorkflowFailureInput,
+        outcome_code: pod0_application::ActivityFailureCode,
+    },
+    Cancel,
+    Supersede,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PublisherChapterObservationCommitInput {
+    pub lease: pod0_application::PersistedEffectLeaseIdentity,
+    pub observation: pod0_application::HostObservationEnvelope,
+    pub action: PublisherChapterObservationAction,
+    pub committed_at: UnixTimestampMilliseconds,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PublisherChapterObservationCommitOutcome {
+    pub workflow: PublisherChapterWorkflowRecord,
+    pub replayed: bool,
 }

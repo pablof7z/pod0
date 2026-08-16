@@ -1,7 +1,8 @@
 use pod0_application::{
     CoreFailureCode, DownloadDesiredState, DownloadIntentOrigin, DownloadWorkflowAllowedActions,
     DownloadWorkflowFailure, DownloadWorkflowFailureCode, DownloadWorkflowProjection,
-    DownloadWorkflowStage, DownloadWorkflowsProjection,
+    DownloadWorkflowStage, DownloadWorkflowsProjection, WorkflowActionKind,
+    WorkflowActionTarget, WorkflowActionToken,
 };
 use pod0_domain::{EpisodeId, UnixTimestampMilliseconds};
 use pod0_storage::{
@@ -42,6 +43,22 @@ fn unavailable() -> DownloadWorkflowsProjection {
 fn project(record: DownloadWorkflowRecord) -> DownloadWorkflowProjection {
     let stage = stage(record.stage);
     let has_artifact = record.artifact_key.is_some();
+    let allowed_actions = DownloadWorkflowAllowedActions {
+        can_retry: matches!(
+            stage,
+            DownloadWorkflowStage::Failed | DownloadWorkflowStage::Cancelled
+        ),
+        can_cancel: matches!(
+            stage,
+            DownloadWorkflowStage::WaitingForEnvironment
+                | DownloadWorkflowStage::Requested
+                | DownloadWorkflowStage::HostAccepted
+                | DownloadWorkflowStage::Transferring
+                | DownloadWorkflowStage::RetryScheduled
+        ),
+        can_remove: stage == DownloadWorkflowStage::Succeeded
+            || (stage == DownloadWorkflowStage::Failed && has_artifact),
+    };
     DownloadWorkflowProjection {
         episode_id: record.episode_id,
         intent_id: record.intent_id,
@@ -66,22 +83,17 @@ fn project(record: DownloadWorkflowRecord) -> DownloadWorkflowProjection {
                 retryable: record.failure_retryable,
             }),
         updated_at: UnixTimestampMilliseconds::new(record.updated_at_ms),
-        allowed_actions: DownloadWorkflowAllowedActions {
-            can_retry: matches!(
-                stage,
-                DownloadWorkflowStage::Failed | DownloadWorkflowStage::Cancelled
-            ),
-            can_cancel: matches!(
-                stage,
-                DownloadWorkflowStage::WaitingForEnvironment
-                    | DownloadWorkflowStage::Requested
-                    | DownloadWorkflowStage::HostAccepted
-                    | DownloadWorkflowStage::Transferring
-                    | DownloadWorkflowStage::RetryScheduled
-            ),
-            can_remove: stage == DownloadWorkflowStage::Succeeded
-                || (stage == DownloadWorkflowStage::Failed && has_artifact),
-        },
+        retry_action: allowed_actions.can_retry.then(|| WorkflowActionToken::issue(
+            WorkflowActionKind::Retry,
+            WorkflowActionTarget::Download { episode_id: record.episode_id },
+            record.workflow_revision,
+        )),
+        cancel_action: allowed_actions.can_cancel.then(|| WorkflowActionToken::issue(
+            WorkflowActionKind::Cancel,
+            WorkflowActionTarget::Download { episode_id: record.episode_id },
+            record.workflow_revision,
+        )),
+        allowed_actions,
     }
 }
 

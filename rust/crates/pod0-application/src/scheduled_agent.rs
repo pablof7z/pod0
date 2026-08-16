@@ -4,6 +4,13 @@ use pod0_domain::{
 };
 use sha2::{Digest as _, Sha256};
 
+#[path = "scheduled_agent_activity.rs"]
+mod activity;
+pub use activity::*;
+#[cfg(test)]
+#[path = "scheduled_agent_activity_tests.rs"]
+mod activity_tests;
+
 pub const SCHEDULED_AGENT_POLICY_VERSION: u32 = 2;
 pub const MAX_SCHEDULED_AGENT_TASKS: u16 = 200;
 pub const MAX_SCHEDULED_AGENT_LABEL_BYTES: usize = 160;
@@ -57,7 +64,7 @@ pub enum ScheduledAgentStage {
     Unsupported { wire_code: u32 },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum ScheduledAgentFailureCode {
     MissingCredential,
     Offline,
@@ -142,7 +149,7 @@ impl ScheduledAgentProjection {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum ScheduledAgentContextRole {
     System,
     User,
@@ -151,13 +158,13 @@ pub enum ScheduledAgentContextRole {
     Unsupported { wire_code: u32 },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct ScheduledAgentContextMessage {
     pub role: ScheduledAgentContextRole,
     pub content: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct ScheduledAgentExecutionRequest {
     pub occurrence_id: ScheduledOccurrenceId,
     pub attempt_id: ScheduledAttemptId,
@@ -168,7 +175,7 @@ pub struct ScheduledAgentExecutionRequest {
     pub maximum_output_bytes: u64,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum ScheduledAgentExecutionObservation {
     Accepted {
         occurrence_id: ScheduledOccurrenceId,

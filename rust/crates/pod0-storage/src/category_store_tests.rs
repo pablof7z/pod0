@@ -40,7 +40,7 @@ fn creating_a_category_derives_a_slug_and_is_idempotent_under_replay() {
     assert_eq!(replayed, revision);
     assert_eq!(store.category_snapshot().unwrap().categories.len(), 1);
     let connection = rusqlite::Connection::open(&fixture.target).unwrap();
-    assert_eq!(activity_count(&connection), 2);
+    assert_eq!(activity_count(&connection), 5);
 }
 
 fn activity_count(connection: &rusqlite::Connection) -> i64 {

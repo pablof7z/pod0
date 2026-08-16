@@ -6,6 +6,7 @@
 
 use pod0_application::{
     ApplicationCommand, CommandEnvelope, HostObservation, HostObservationEnvelope, HostRequest,
+    LeasedHostObservationEnvelope,
 };
 use pod0_domain::{CancellationId, CommandId, UnixTimestampMilliseconds};
 use pod0_facade::Pod0Facade;
@@ -62,8 +63,8 @@ impl PodWorld {
     /// feed-fetch it finds; the named URL must be among them.
     pub fn accept_fetch_work(&mut self, url: &str) {
         self.ensure_started();
-        for request in self.facade().next_host_requests(16) {
-            if let HostRequest::FetchFeed { feed_url, .. } = &request.request {
+        for request in self.facade().next_leased_host_requests(16) {
+            if let HostRequest::FetchFeed { feed_url, .. } = &request.request.request {
                 self.accepted_fetches.insert(feed_url.clone(), request);
             }
         }
@@ -93,20 +94,23 @@ impl PodWorld {
         let n = self.next_count();
         let receipt = self
             .facade()
-            .record_host_observation(HostObservationEnvelope {
-                request_id: request.request_id,
-                cancellation_id: request.cancellation_id,
-                observed_request_revision: request.issued_revision,
-                sequence_number: 0,
-                observed_at: UnixTimestampMilliseconds::new(
-                    1_800_000_100_000 + i64::try_from(n).expect("fixture counter fits an i64"),
-                ),
-                observation: HostObservation::FeedBytesFetched {
-                    bytes,
-                    entity_tag: None,
-                    last_modified: None,
-                    response_url: url.to_owned(),
-                    http_status: 200,
+            .record_leased_host_observation(LeasedHostObservationEnvelope {
+                lease: request.lease,
+                observation: HostObservationEnvelope {
+                    request_id: request.request.request_id,
+                    cancellation_id: request.request.cancellation_id,
+                    observed_request_revision: request.request.issued_revision,
+                    sequence_number: 0,
+                    observed_at: UnixTimestampMilliseconds::new(
+                        1_800_000_100_000 + i64::try_from(n).expect("fixture counter fits an i64"),
+                    ),
+                    observation: HostObservation::FeedBytesFetched {
+                        bytes,
+                        entity_tag: None,
+                        last_modified: None,
+                        response_url: url.to_owned(),
+                        http_status: 200,
+                    },
                 },
             });
         self.last_receipt = Some(receipt);
@@ -173,7 +177,7 @@ impl PodWorld {
             .into_iter()
             .find(|request| {
                 matches!(
-                    &request.request,
+                    &request.request.request,
                     HostRequest::DeliverNewEpisodeNotification {
                         episode_title: title,
                         ..

@@ -28,16 +28,9 @@ extension Persistence {
         if sharedArtifactAuthority.withLock({ $0.clips }) {
             metadata.clips = []
         }
-        if sharedArtifactAuthority.withLock({ $0.scheduledAgents }) {
-            metadata.agentScheduledTasks = []
-        }
-        if sharedArtifactAuthority.withLock({ $0.memories }) {
-            metadata.agentMemories = []
-            metadata.compiledMemory = nil
-        }
-        if sharedArtifactAuthority.withLock({ $0.legacyAgentActivityRetired }) {
-            metadata.legacyAgentActivity = []
-        }
+        metadata.agentScheduledTasks = []
+        metadata.agentMemories = []
+        metadata.compiledMemory = nil
         return metadata
     }
 

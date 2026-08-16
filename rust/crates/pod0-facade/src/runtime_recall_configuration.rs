@@ -1,8 +1,4 @@
-use std::collections::BTreeSet;
-
-use pod0_application::{
-    CommandEnvelope, CoreFailureCode, HostCancellationRequest, OperationResult,
-};
+use pod0_application::{CommandEnvelope, CoreFailureCode, OperationResult};
 use pod0_domain::{ContentDigest, RecallConfigurationInput, StateRevision};
 
 use crate::runtime_evidence_state::{
@@ -107,7 +103,6 @@ impl FacadeState {
             self.succeed(envelope.command_id, Some(result));
             return;
         }
-        self.cancel_stale_recall_capabilities();
         let targets = match self.recall_reindex_targets() {
             Ok(value) => value,
             Err(_) => {
@@ -163,31 +158,5 @@ impl FacadeState {
                     })
                     .collect()
             })
-    }
-
-    fn cancel_stale_recall_capabilities(&mut self) {
-        let requests = self
-            .pending_evidence_indexes
-            .iter()
-            .map(|(request_id, pending)| (*request_id, pending.cancellation_id))
-            .chain(
-                self.pending_recalls
-                    .iter()
-                    .map(|(request_id, pending)| (*request_id, pending.cancellation_id)),
-            )
-            .collect::<Vec<_>>();
-        for (request_id, cancellation_id) in &requests {
-            self.host_cancellations.push_back(HostCancellationRequest {
-                request_id: *request_id,
-                cancellation_id: *cancellation_id,
-            });
-        }
-        let cancellation_ids = requests
-            .into_iter()
-            .map(|(_, cancellation_id)| cancellation_id)
-            .collect::<BTreeSet<_>>();
-        for cancellation_id in cancellation_ids {
-            self.cancel_operation(cancellation_id);
-        }
     }
 }

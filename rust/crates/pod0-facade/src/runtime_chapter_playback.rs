@@ -1,10 +1,9 @@
 use pod0_application::{
     ChapterPlaybackContext, CommandEnvelope, CoreFailureCode, HostRequest, OperationResult,
-    PlaybackHostState,
 };
 use pod0_domain::{
     CHAPTER_PLAYBACK_POLICY_VERSION, ChapterNavigationDirection, ChapterPlaybackSessionId,
-    CommandId, PlaybackSeekReason, decide_automatic_ad_skip, decide_chapter_navigation,
+    CommandId, decide_chapter_navigation,
 };
 use pod0_storage::PlaybackMutation;
 use sha2::{Digest, Sha256};
@@ -96,77 +95,27 @@ impl FacadeState {
                 position_milliseconds: value.target_milliseconds,
             }
         });
-        let Some(is_new) = self.commit_chapter_action(envelope, fingerprint, mutation) else {
+        let effects = decision.map_or_else(Vec::new, |decision| {
+            vec![(
+                "chapter-seek",
+                HostRequest::Seek {
+                    episode_id: supplied_context.episode_id,
+                    position_milliseconds: decision.target_milliseconds,
+                    reason: decision.reason,
+                    chapter_context: Some(supplied_context),
+                },
+            )]
+        });
+        let Some(is_new) = self.commit_chapter_action(envelope, fingerprint, mutation, effects)
+        else {
             return;
         };
-        let Some(decision) = decision.filter(|_| is_new) else {
+        if !is_new || decision.is_none() {
             return;
-        };
+        }
         let command_at_ms = self.now().value;
         self.playback.position_command_fence_at_ms = Some(command_at_ms);
         self.playback.last_position_commit_at_ms = Some(command_at_ms);
-        self.issue_playback_request(
-            envelope,
-            "chapter-seek",
-            HostRequest::Seek {
-                episode_id: supplied_context.episode_id,
-                position_milliseconds: decision.target_milliseconds,
-                reason: decision.reason,
-                chapter_context: Some(supplied_context),
-            },
-        );
-    }
-
-    pub(super) fn evaluate_automatic_ad_skip(
-        &mut self,
-        reaction: &CommandEnvelope,
-        observed_at_ms: i64,
-        position_milliseconds: u64,
-    ) -> bool {
-        let Some(active) = self.playback.chapter.as_ref() else {
-            return false;
-        };
-        let decision = decide_automatic_ad_skip(
-            &active.artifact,
-            position_milliseconds,
-            self.playback.auto_skip_ads,
-            self.playback.host_state == PlaybackHostState::Playing,
-            &self.playback.skipped_ad_span_ids,
-        );
-        let Some(decision) = decision else {
-            return false;
-        };
-        let Some(ad_span_id) = decision.ad_span_id else {
-            return false;
-        };
-        let context = active.context;
-        let committed = self.commit_playback_observation_mutation(
-            reaction,
-            "automatic-ad-skip",
-            PlaybackMutation::Checkpoint {
-                episode_id: context.episode_id,
-                position_milliseconds: decision.target_milliseconds,
-            },
-            observed_at_ms,
-        );
-        if committed.is_err() || self.reload_listening().is_err() {
-            self.playback.policy_state = pod0_application::PlaybackPolicyState::Failed;
-            return true;
-        }
-        self.playback.skipped_ad_span_ids.insert(ad_span_id);
-        self.playback.position_command_fence_at_ms = Some(observed_at_ms);
-        self.playback.last_position_commit_at_ms = Some(observed_at_ms);
-        self.issue_playback_request(
-            reaction,
-            "automatic-ad-skip",
-            HostRequest::Seek {
-                episode_id: context.episode_id,
-                position_milliseconds: decision.target_milliseconds,
-                reason: PlaybackSeekReason::AutomaticAdSkip,
-                chapter_context: Some(context),
-            },
-        );
-        true
     }
 
     fn commit_chapter_action(
@@ -174,12 +123,17 @@ impl FacadeState {
         envelope: &CommandEnvelope,
         fingerprint: &str,
         mutation: PlaybackMutation,
+        effects: Vec<(&str, HostRequest)>,
     ) -> Option<bool> {
-        let episode_id = crate::runtime_playback_actions::playback_episode_hint(
+        let episode_id = crate::runtime_playback_apply::playback_episode_hint(
             &mutation,
             self.listening.playback.active_episode_id,
         );
-        let transition = crate::runtime_playback_actions::playback_transition(&mutation);
+        let transition = crate::runtime_playback_apply::playback_transition(&mutation);
+        let Some(effects) = self.playback_effects(envelope, effects) else {
+            self.fail(envelope.command_id, CoreFailureCode::InvalidCommand);
+            return None;
+        };
         let outcome = self
             .store
             .as_ref()
@@ -192,6 +146,7 @@ impl FacadeState {
                     episode_id,
                     transition,
                     None,
+                    effects,
                     self.now().value,
                 )
             });

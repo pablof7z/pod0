@@ -110,9 +110,7 @@ struct Settings: Codable, Hashable, Sendable {
     /// Cleared after the Rust facade verifies its one-time import.
     var legacyRecallEmbeddingsModel: String?
     var legacyRecallEmbeddingsModelName: String?
-    /// Model used by `ImageGenerationService`. Multimodal models (Gemini/Banana,
-    /// GPT-image) route through /chat/completions; legacy DALL-E/FLUX use
-    /// /images/generations. Defaults to Gemini 2.5 Flash Image ("Nano Banana").
+    /// Reserved image-generation model selection for a future Rust-owned capability.
     var imageGenerationModel: String = "google/gemini-2.5-flash-image"
     var imageGenerationModelName: String = ""
     var legacyRecallRerankerEnabled: Bool?

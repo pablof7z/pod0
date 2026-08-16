@@ -38,6 +38,12 @@ pub(crate) fn commit_agent_turn_start(
                 current_revision: current,
                 committed_revision: projection.revision,
                 legacy_replay: legacy.is_some(),
+                model: super::effect_requests::model_effect_request(
+                    transaction,
+                    state,
+                    context.command_id,
+                    None,
+                )?,
             })
             .map(|plan| {
                 plan.map_mutation(|mutation| {

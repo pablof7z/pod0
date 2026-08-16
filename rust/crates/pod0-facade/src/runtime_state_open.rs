@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use pod0_application::{Clock, PlaybackPolicyState};
+use pod0_application::{Clock, InternalCommandKind, PlaybackPolicyState};
 use pod0_domain::StateRevision;
 use pod0_recall_index::RecallIndex;
 use pod0_storage::{
@@ -34,6 +34,14 @@ impl FacadeState {
             publication: publication_store,
         } = stores;
         let _ = store.clear_session_sleep_timer(clock.now().value)?;
+        for command in store.pending_download_finalization_commands(100)? {
+            let InternalCommandKind::FinalizeDownloadArtifact { request_id, .. } =
+                command.request.kind
+            else {
+                return Err(pod0_storage::StorageError::InvalidActivity);
+            };
+            let _ = store.finalize_pending_download_artifact(request_id, clock.now())?;
+        }
         let _ = store.recover_download_artifacts()?;
         let listening = store.snapshot()?;
         let new_episode_notification_settings = store.new_episode_notification_settings()?;
@@ -53,6 +61,7 @@ impl FacadeState {
             ..PlaybackRuntime::default()
         };
         let mut state = Self {
+            core_store_path: Some(store_path(&store)),
             clock,
             revision: StateRevision::new(
                 listening
@@ -86,10 +95,15 @@ impl FacadeState {
         state.rehydrate_feed_discovery_workflows()?;
         state.rehydrate_model_chapter_workflows()?;
         state.rehydrate_transcript_workflows()?;
-        state.resume_playback_transcript_commands();
-        state.rehydrate_scheduled_agent_workflows()?;
+        state.resume_workflow_internal_commands();
         state.rehydrate_agent_turns()?;
         state.rehydrate_publications()?;
+        state.rehydrate_recall_queries()?;
+        state.recover_recall_index_cutover()?;
         Ok(state)
     }
+}
+
+fn store_path(store: &LibraryStore) -> std::path::PathBuf {
+    store.authoritative_path().to_path_buf()
 }

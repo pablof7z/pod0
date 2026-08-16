@@ -9,6 +9,7 @@ final class Pod0NativeHostDispatcher {
     typealias Delivery = @MainActor (HostObservationEnvelope) -> Void
 
     let feedHost: any CoreFeedHosting
+    let libraryNetworkHost: CoreLibraryNetworkHost
     let downloadHost: any CoreDownloadHosting
     let notificationHost: any CoreNotificationHosting
     let publisherChapterHost: any CorePublisherChapterHosting
@@ -25,17 +26,8 @@ final class Pod0NativeHostDispatcher {
     let now: @MainActor () -> Date
     var activeTasks: [HostRequestId: ActiveTask] = [:]
     var playbackStreams: [HostRequestId: PlaybackStream] = [:]
-    var acknowledgementTasks: [HostRequestId: AcknowledgementTask] = [:]
-    var scheduledAgentAcknowledgementTasks: [HostRequestId: Task<Void, Never>] = [:]
-    var pendingScheduledAgentObservations: [HostRequestId: [HostObservationEnvelope]] = [:]
     var pendingScheduledAgentExecutions: [HostRequestId: PendingScheduledAgentExecution] = [:]
-    var scheduledAgentObservationCompletions: [HostRequestId: @MainActor () -> Void] = [:]
-    var retainedScheduledAgentObservationIDs: Set<HostRequestId> = []
-    var retainedObservationIDs: Set<HostRequestId> = []
-    var retainedObservationRetryTask: Task<Void, Never>?
-    var downloadAcknowledgementTasks: [HostRequestId: Task<Void, Never>] = [:]
     var downloadRequests: [HostRequestId: ActiveDownloadRequest] = [:]
-    var pendingDownloadObservations: [HostRequestId: [HostObservationEnvelope]] = [:]
     var observationRecoveryTask: Task<Void, Never>?
     var observationRecoveryReady: Bool
     var completedRequestIDs: Set<HostRequestId> = []
@@ -59,6 +51,7 @@ final class Pod0NativeHostDispatcher {
         observationOutbox: NativeHostObservationOutbox? = nil
     ) {
         self.feedHost = feedHost
+        self.libraryNetworkHost = CoreLibraryNetworkHost()
         self.downloadHost = downloadHost
         self.notificationHost = notificationHost
         self.publisherChapterHost = publisherChapterHost
@@ -84,7 +77,12 @@ final class Pod0NativeHostDispatcher {
         executionEnabled = true
     }
 
-    func execute(_ envelope: HostRequestEnvelope, delivery: @escaping Delivery) {
+    /// Raw envelope execution is intentionally reachable only from the leased
+    /// adapter. The architecture ratchet rejects every other production call.
+    func executePersistedLeaseRequest(
+        _ envelope: HostRequestEnvelope,
+        delivery: @escaping Delivery
+    ) {
         guard !isKnown(envelope.requestId) else { return }
         guard !isExpired(envelope) else {
             let observation: HostObservation
@@ -108,6 +106,19 @@ final class Pod0NativeHostDispatcher {
         }
 
         switch envelope.request {
+        case .cancelAuthorizedEffect(let targetRequestID):
+            cancel(
+                requestID: targetRequestID,
+                cancellationID: envelope.cancellationId
+            )
+            finish(
+                envelope,
+                sequenceNumber: 0,
+                observation: .authorizedEffectCancellationApplied(
+                    targetRequestId: targetRequestID
+                ),
+                delivery: delivery
+            )
         case .fetchFeed(
             let feedURL,
             let entityTag,
@@ -119,6 +130,22 @@ final class Pod0NativeHostDispatcher {
                 feedURL: feedURL,
                 entityTag: entityTag,
                 lastModified: lastModified,
+                maximumResponseBytes: maximumResponseBytes,
+                delivery: delivery
+            )
+        case .fetchLibraryDocument(
+            let workflowCommandID,
+            let step,
+            let url,
+            let accept,
+            let maximumResponseBytes
+        ):
+            startLibraryNetworkTask(
+                envelope,
+                workflowCommandID: workflowCommandID,
+                step: step,
+                url: url,
+                accept: accept,
                 maximumResponseBytes: maximumResponseBytes,
                 delivery: delivery
             )

@@ -37,7 +37,7 @@ fn stage_rows(
     Ok(())
 }
 
-fn verify_rows(
+pub(crate) fn verify_rows(
     transaction: &Transaction<'_>,
     report: &LegacyMemoryCutoverReport,
 ) -> Result<(), StorageError> {
@@ -80,7 +80,7 @@ fn clear_rows(transaction: &Transaction<'_>) -> Result<(), StorageError> {
     Ok(())
 }
 
-fn matching_report(
+pub(crate) fn matching_report(
     transaction: &Transaction<'_>,
     source_generation: u64,
 ) -> Result<LegacyMemoryCutoverReport, StorageError> {
@@ -188,6 +188,6 @@ fn unsigned(value: i64) -> Result<u64, StorageError> {
     })
 }
 
-fn to_i64(value: u64) -> Result<i64, StorageError> {
+pub(crate) fn to_i64(value: u64) -> Result<i64, StorageError> {
     i64::try_from(value).map_err(|_| StorageError::InvalidMemory)
 }

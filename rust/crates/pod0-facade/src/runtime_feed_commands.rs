@@ -176,9 +176,6 @@ impl FacadeState {
                     return;
                 }
                 let _ = self.reload_feed_fetches();
-                if let Some(record) = outcome.record {
-                    let _ = self.queue_feed_fetch_request(record);
-                }
                 self.succeed(
                     envelope.command_id,
                     Some(OperationResult::Podcast {

@@ -35,7 +35,7 @@ fn legacy_workflow_cutover_survives_each_restart_and_recovers_owned_work() {
         after_stage.transcript_workflow_cutover().stage,
         LegacyTranscriptWorkflowCutoverStage::Staged
     );
-    assert!(after_stage.next_host_requests(u16::MAX).is_empty());
+    assert!(after_stage.next_leased_host_requests(u16::MAX).is_empty());
     assert_eq!(
         after_stage
             .verify_legacy_transcript_workflow_cutover(generation)
@@ -104,7 +104,7 @@ fn verified_cutover_can_be_discarded_without_granting_rust_authority() {
         reopened.transcript_workflow_cutover().stage,
         LegacyTranscriptWorkflowCutoverStage::NotStarted
     );
-    assert!(reopened.next_host_requests(u16::MAX).is_empty());
+    assert!(reopened.next_leased_host_requests(u16::MAX).is_empty());
 }
 
 #[test]

@@ -55,19 +55,17 @@ import uniffi.pod0_application.FfiConverterTypeChapterObservationProjection
 import uniffi.pod0_application.FfiConverterTypeChapterProjectionScope
 import uniffi.pod0_application.FfiConverterTypeCommandEnvelope
 import uniffi.pod0_application.FfiConverterTypeDownloadIntentOrigin
-import uniffi.pod0_application.FfiConverterTypeHostCancellationRequest
-import uniffi.pod0_application.FfiConverterTypeHostObservationEnvelope
 import uniffi.pod0_application.FfiConverterTypeHostObservationReceipt
-import uniffi.pod0_application.FfiConverterTypeHostRequestEnvelope
 import uniffi.pod0_application.FfiConverterTypeLeasedHostObservationEnvelope
 import uniffi.pod0_application.FfiConverterTypeLeasedHostRequestEnvelope
+import uniffi.pod0_application.FfiConverterTypeLeasedNMPPublicationDraft
+import uniffi.pod0_application.FfiConverterTypeLeasedNMPPublicationObservation
+import uniffi.pod0_application.FfiConverterTypeLeasedNMPPublicationReceipt
 import uniffi.pod0_application.FfiConverterTypeLegacyAgentHistoryConversationInput
 import uniffi.pod0_application.FfiConverterTypeModelChapterObservation
 import uniffi.pod0_application.FfiConverterTypeNMPPublicationReceiptLink
-import uniffi.pod0_application.FfiConverterTypePod0PublicationDraft
 import uniffi.pod0_application.FfiConverterTypeProjectionEnvelope
 import uniffi.pod0_application.FfiConverterTypeProjectionRequest
-import uniffi.pod0_application.FfiConverterTypePublicationStatusObservation
 import uniffi.pod0_application.FfiConverterTypePublisherChapterObservation
 import uniffi.pod0_application.FfiConverterTypeScheduledAgentExecutionObservation
 import uniffi.pod0_application.FfiConverterTypeScheduledAgentExecutionRequest
@@ -82,19 +80,23 @@ import uniffi.pod0_application.FfiConverterTypeTranscriptWorkflowConfiguration
 import uniffi.pod0_application.FfiConverterTypeTranscriptWorkflowOrigin
 import uniffi.pod0_application.FfiConverterTypeTranscriptWorkflowPlan
 import uniffi.pod0_application.FfiConverterTypeTranscriptWorkflowPlanInput
-import uniffi.pod0_application.HostCancellationRequest
-import uniffi.pod0_application.HostObservationEnvelope
+import uniffi.pod0_application.FfiConverterTypeWorkflowActionDispatchResult
+import uniffi.pod0_application.FfiConverterTypeWorkflowActionToken
+import uniffi.pod0_application.FfiConverterTypeWorkflowCapabilitySnapshot
+import uniffi.pod0_application.FfiConverterTypeWorkflowCapabilitySnapshotInput
+import uniffi.pod0_application.FfiConverterTypeWorkflowConfiguration
+import uniffi.pod0_application.FfiConverterTypeWorkflowReconcilePlan
 import uniffi.pod0_application.HostObservationReceipt
-import uniffi.pod0_application.HostRequestEnvelope
 import uniffi.pod0_application.LeasedHostObservationEnvelope
 import uniffi.pod0_application.LeasedHostRequestEnvelope
+import uniffi.pod0_application.LeasedNmpPublicationDraft
+import uniffi.pod0_application.LeasedNmpPublicationObservation
+import uniffi.pod0_application.LeasedNmpPublicationReceipt
 import uniffi.pod0_application.LegacyAgentHistoryConversationInput
 import uniffi.pod0_application.ModelChapterObservation
 import uniffi.pod0_application.NmpPublicationReceiptLink
-import uniffi.pod0_application.Pod0PublicationDraft
 import uniffi.pod0_application.ProjectionEnvelope
 import uniffi.pod0_application.ProjectionRequest
-import uniffi.pod0_application.PublicationStatusObservation
 import uniffi.pod0_application.PublisherChapterObservation
 import uniffi.pod0_application.ScheduledAgentExecutionObservation
 import uniffi.pod0_application.ScheduledAgentExecutionRequest
@@ -109,10 +111,18 @@ import uniffi.pod0_application.TranscriptWorkflowConfiguration
 import uniffi.pod0_application.TranscriptWorkflowOrigin
 import uniffi.pod0_application.TranscriptWorkflowPlan
 import uniffi.pod0_application.TranscriptWorkflowPlanInput
+import uniffi.pod0_application.WorkflowActionDispatchResult
+import uniffi.pod0_application.WorkflowActionToken
+import uniffi.pod0_application.WorkflowCapabilitySnapshot
+import uniffi.pod0_application.WorkflowCapabilitySnapshotInput
+import uniffi.pod0_application.WorkflowConfiguration
+import uniffi.pod0_application.WorkflowReconcilePlan
+import uniffi.pod0_domain.ActivityCorrelationId
 import uniffi.pod0_domain.ClipRecord
 import uniffi.pod0_domain.CommandId
 import uniffi.pod0_domain.ContentDigest
 import uniffi.pod0_domain.EpisodeId
+import uniffi.pod0_domain.FfiConverterTypeActivityCorrelationId
 import uniffi.pod0_domain.FfiConverterTypeClipRecord
 import uniffi.pod0_domain.FfiConverterTypeCommandId
 import uniffi.pod0_domain.FfiConverterTypeContentDigest
@@ -121,7 +131,6 @@ import uniffi.pod0_domain.FfiConverterTypeListeningDomainSnapshot
 import uniffi.pod0_domain.FfiConverterTypeMemoryId
 import uniffi.pod0_domain.FfiConverterTypeNoteRecord
 import uniffi.pod0_domain.FfiConverterTypePodcastId
-import uniffi.pod0_domain.FfiConverterTypePublicationId
 import uniffi.pod0_domain.FfiConverterTypeScheduledTaskId
 import uniffi.pod0_domain.FfiConverterTypeSpeakerId
 import uniffi.pod0_domain.FfiConverterTypeStateRevision
@@ -131,7 +140,6 @@ import uniffi.pod0_domain.ListeningDomainSnapshot
 import uniffi.pod0_domain.MemoryId
 import uniffi.pod0_domain.NoteRecord
 import uniffi.pod0_domain.PodcastId
-import uniffi.pod0_domain.PublicationId
 import uniffi.pod0_domain.ScheduledTaskId
 import uniffi.pod0_domain.SpeakerId
 import uniffi.pod0_domain.StateRevision
@@ -149,19 +157,17 @@ import uniffi.pod0_application.RustBuffer as RustBufferChapterObservationProject
 import uniffi.pod0_application.RustBuffer as RustBufferChapterProjectionScope
 import uniffi.pod0_application.RustBuffer as RustBufferCommandEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferDownloadIntentOrigin
-import uniffi.pod0_application.RustBuffer as RustBufferHostCancellationRequest
-import uniffi.pod0_application.RustBuffer as RustBufferHostObservationEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferHostObservationReceipt
-import uniffi.pod0_application.RustBuffer as RustBufferHostRequestEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferLeasedHostObservationEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferLeasedHostRequestEnvelope
+import uniffi.pod0_application.RustBuffer as RustBufferLeasedNMPPublicationDraft
+import uniffi.pod0_application.RustBuffer as RustBufferLeasedNMPPublicationObservation
+import uniffi.pod0_application.RustBuffer as RustBufferLeasedNMPPublicationReceipt
 import uniffi.pod0_application.RustBuffer as RustBufferLegacyAgentHistoryConversationInput
 import uniffi.pod0_application.RustBuffer as RustBufferModelChapterObservation
 import uniffi.pod0_application.RustBuffer as RustBufferNMPPublicationReceiptLink
-import uniffi.pod0_application.RustBuffer as RustBufferPod0PublicationDraft
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionRequest
-import uniffi.pod0_application.RustBuffer as RustBufferPublicationStatusObservation
 import uniffi.pod0_application.RustBuffer as RustBufferPublisherChapterObservation
 import uniffi.pod0_application.RustBuffer as RustBufferScheduledAgentExecutionObservation
 import uniffi.pod0_application.RustBuffer as RustBufferScheduledAgentExecutionRequest
@@ -176,6 +182,13 @@ import uniffi.pod0_application.RustBuffer as RustBufferTranscriptWorkflowConfigu
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptWorkflowOrigin
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptWorkflowPlan
 import uniffi.pod0_application.RustBuffer as RustBufferTranscriptWorkflowPlanInput
+import uniffi.pod0_application.RustBuffer as RustBufferWorkflowActionDispatchResult
+import uniffi.pod0_application.RustBuffer as RustBufferWorkflowActionToken
+import uniffi.pod0_application.RustBuffer as RustBufferWorkflowCapabilitySnapshot
+import uniffi.pod0_application.RustBuffer as RustBufferWorkflowCapabilitySnapshotInput
+import uniffi.pod0_application.RustBuffer as RustBufferWorkflowConfiguration
+import uniffi.pod0_application.RustBuffer as RustBufferWorkflowReconcilePlan
+import uniffi.pod0_domain.RustBuffer as RustBufferActivityCorrelationId
 import uniffi.pod0_domain.RustBuffer as RustBufferClipRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferCommandId
 import uniffi.pod0_domain.RustBuffer as RustBufferContentDigest
@@ -184,7 +197,6 @@ import uniffi.pod0_domain.RustBuffer as RustBufferListeningDomainSnapshot
 import uniffi.pod0_domain.RustBuffer as RustBufferMemoryId
 import uniffi.pod0_domain.RustBuffer as RustBufferNoteRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferPodcastId
-import uniffi.pod0_domain.RustBuffer as RustBufferPublicationId
 import uniffi.pod0_domain.RustBuffer as RustBufferScheduledTaskId
 import uniffi.pod0_domain.RustBuffer as RustBufferSpeakerId
 import uniffi.pod0_domain.RustBuffer as RustBufferStateRevision
@@ -886,11 +898,15 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_func_stage_legacy_clip_import(
     ): Int
+    external fun uniffi_pod0_facade_checksum_func_make_workflow_capability_snapshot(
+    ): Int
     external fun uniffi_pod0_facade_checksum_func_plan_chapter_model_desired_state(
     ): Int
     external fun uniffi_pod0_facade_checksum_func_plan_chapter_model_request(
     ): Int
     external fun uniffi_pod0_facade_checksum_func_plan_transcript_workflow(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_plan_workflow_reconciliation(
     ): Int
     external fun uniffi_pod0_facade_checksum_func_project_chapter_contract(
     ): Int
@@ -940,6 +956,10 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_func_verify_staged_legacy_transcript_import(
     ): Int
+    external fun uniffi_pod0_facade_checksum_func_record_native_erasure_observation(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_func_recover_pending_erasure(
+    ): Int
     external fun uniffi_pod0_facade_checksum_method_projectionsubscriber_receive(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_agent_history_cutover(
@@ -961,6 +981,8 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_pod0_facade_checksum_method_pod0facade_download_cutover(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_download_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_latest_episode_activity_page(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_episode_activity_page(
     ): Int
@@ -986,10 +1008,6 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_dispatch(
     ): Int
-    external fun uniffi_pod0_facade_checksum_method_pod0facade_next_host_cancellations(
-    ): Int
-    external fun uniffi_pod0_facade_checksum_method_pod0facade_next_host_requests(
-    ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_next_leased_host_requests(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_next_nmp_publications(
@@ -997,8 +1015,6 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_pod0_facade_checksum_method_pod0facade_nmp_publication_receipt_links(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_plan_chapter_model_request(
-    ): Int
-    external fun uniffi_pod0_facade_checksum_method_pod0facade_record_host_observation(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_record_leased_host_observation(
     ): Int
@@ -1012,6 +1028,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_unsubscribe(
     ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_workflow_configuration(
+    ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_scheduled_agent_cutover(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_scheduled_agent_cutover(
@@ -1024,6 +1042,12 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_scheduled_agent_cutover(
     ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_causal_activity_page(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_operation_activity_page(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_support_activity_page(
+    ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_transcript_workflow_cutover(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_transcript_workflow_cutover(
@@ -1033,6 +1057,14 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_pod0_facade_checksum_method_pod0facade_transcript_workflow_cutover(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_transcript_workflow_cutover(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_confirm_erasure(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_prepare_erasure(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_store_identity(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_execute_workflow_action(
     ): Int
     external fun uniffi_pod0_facade_checksum_constructor_pod0facade_new(
     ): Int
@@ -1095,6 +1127,8 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_download_cutover(`ptr`: Long,`sourceGeneration`: Long,`candidates`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_latest_episode_activity_page(`ptr`: Long,`episodeId`: RustBufferEpisodeId.ByValue,`snapshotThroughSequence`: RustBuffer.ByValue,`beforeSequence`: RustBuffer.ByValue,`requestedCount`: Short,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_episode_activity_page(`ptr`: Long,`episodeId`: RustBufferEpisodeId.ByValue,`afterSequence`: RustBuffer.ByValue,`requestedCount`: Short,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_feed_discovery_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
@@ -1119,10 +1153,6 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_dispatch(`ptr`: Long,`command`: RustBufferCommandEnvelope.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): Unit
-    external fun uniffi_pod0_facade_fn_method_pod0facade_next_host_cancellations(`ptr`: Long,`maximumCount`: Short,uniffi_out_err: UniffiRustCallStatus,
-    ): RustBuffer.ByValue
-    external fun uniffi_pod0_facade_fn_method_pod0facade_next_host_requests(`ptr`: Long,`maximumCount`: Short,uniffi_out_err: UniffiRustCallStatus,
-    ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_next_leased_host_requests(`ptr`: Long,`maximumCount`: Short,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_next_nmp_publications(`ptr`: Long,`maximumCount`: Short,uniffi_out_err: UniffiRustCallStatus,
@@ -1131,13 +1161,11 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_plan_chapter_model_request(`ptr`: Long,`episodeId`: RustBufferEpisodeId.ByValue,`configuredModel`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBufferChapterModelPlan.ByValue
-    external fun uniffi_pod0_facade_fn_method_pod0facade_record_host_observation(`ptr`: Long,`observation`: RustBufferHostObservationEnvelope.ByValue,uniffi_out_err: UniffiRustCallStatus,
-    ): RustBufferHostObservationReceipt.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_record_leased_host_observation(`ptr`: Long,`observation`: RustBufferLeasedHostObservationEnvelope.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBufferHostObservationReceipt.ByValue
-    external fun uniffi_pod0_facade_fn_method_pod0facade_record_nmp_publication_observation(`ptr`: Long,`publicationId`: RustBufferPublicationId.ByValue,`observation`: RustBufferPublicationStatusObservation.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    external fun uniffi_pod0_facade_fn_method_pod0facade_record_nmp_publication_observation(`ptr`: Long,`observation`: RustBufferLeasedNMPPublicationObservation.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): Unit
-    external fun uniffi_pod0_facade_fn_method_pod0facade_record_nmp_publication_receipt(`ptr`: Long,`publicationId`: RustBufferPublicationId.ByValue,`receiptId`: Long,uniffi_out_err: UniffiRustCallStatus,
+    external fun uniffi_pod0_facade_fn_method_pod0facade_record_nmp_publication_receipt(`ptr`: Long,`receipt`: RustBufferLeasedNMPPublicationReceipt.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): Unit
     external fun uniffi_pod0_facade_fn_method_pod0facade_snapshot(`ptr`: Long,`request`: RustBufferProjectionRequest.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBufferProjectionEnvelope.ByValue
@@ -1145,6 +1173,8 @@ internal object UniffiLib {
     ): RustBufferSubscriptionId.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_unsubscribe(`ptr`: Long,`subscriptionId`: RustBufferSubscriptionId.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): Unit
+    external fun uniffi_pod0_facade_fn_method_pod0facade_workflow_configuration(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_scheduled_agent_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_scheduled_agent_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
@@ -1157,6 +1187,12 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_verify_legacy_scheduled_agent_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_causal_activity_page(`ptr`: Long,`correlationId`: RustBufferActivityCorrelationId.ByValue,`afterSequence`: RustBuffer.ByValue,`requestedCount`: Short,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_operation_activity_page(`ptr`: Long,`commandId`: RustBufferCommandId.ByValue,`afterSequence`: RustBuffer.ByValue,`requestedCount`: Short,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_support_activity_page(`ptr`: Long,`afterSequence`: RustBuffer.ByValue,`requestedCount`: Short,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_transcript_workflow_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_discard_staged_legacy_transcript_workflow_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
@@ -1167,6 +1203,18 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_verify_legacy_transcript_workflow_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_confirm_erasure(`ptr`: Long,`token`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_prepare_erasure(`ptr`: Long,`expectedStoreId`: RustBufferCommandId.ByValue,`nonce`: RustBuffer.ByValue,`retainedSettingsJson`: RustBuffer.ByValue,`locations`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): Long
+    external fun uniffi_pod0_facade_fn_method_pod0facade_store_identity(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBufferCommandId.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_execute_workflow_action(`ptr`: Long,`token`: RustBufferWorkflowActionToken.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBufferWorkflowActionDispatchResult.ByValue
+    external fun uniffi_pod0_facade_fn_clone_userdataerasuretoken(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): Long
+    external fun uniffi_pod0_facade_fn_free_userdataerasuretoken(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): Unit
     external fun uniffi_pod0_facade_fn_func_commit_staged_legacy_chapter_import(`sourceDatabasePath`: RustBuffer.ByValue,`artifactRootPath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_func_discard_staged_legacy_chapter_import(`targetPath`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1199,12 +1247,16 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_func_stage_legacy_clip_import(`sourcePath`: RustBuffer.ByValue,`sourceBackupPath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`targetSchemaBackupPath`: RustBuffer.ByValue,`expectedPlan`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,`targetStoreId`: RustBufferCommandId.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_make_workflow_capability_snapshot(`input`: RustBufferWorkflowCapabilitySnapshotInput.ByValue,`observedAt`: RustBufferUnixTimestampMilliseconds.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_func_plan_chapter_model_desired_state(`input`: RustBufferChapterModelDesiredStateInput.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBufferChapterModelDesiredStatePlan.ByValue
     external fun uniffi_pod0_facade_fn_func_plan_chapter_model_request(`input`: RustBufferChapterModelPlanInput.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBufferChapterModelPlan.ByValue
     external fun uniffi_pod0_facade_fn_func_plan_transcript_workflow(`input`: RustBufferTranscriptWorkflowPlanInput.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBufferTranscriptWorkflowPlan.ByValue
+    external fun uniffi_pod0_facade_fn_func_plan_workflow_reconciliation(`listening`: RustBufferListeningDomainSnapshot.ByValue,`configuration`: RustBufferWorkflowConfiguration.ByValue,`capabilities`: RustBufferWorkflowCapabilitySnapshot.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBufferWorkflowReconcilePlan.ByValue
     external fun uniffi_pod0_facade_fn_func_project_chapter_contract(`request`: RustBufferChapterContractRequest.ByValue,`scope`: RustBufferChapterProjectionScope.ByValue,`offset`: Int,`maxItems`: Short,uniffi_out_err: UniffiRustCallStatus,
     ): RustBufferChapterContractProjection.ByValue
     external fun uniffi_pod0_facade_fn_func_project_transcript_contract(`request`: RustBufferTranscriptCommitRequest.ByValue,`scope`: RustBufferTranscriptProjectionScope.ByValue,`offset`: Int,`maxItems`: Short,uniffi_out_err: UniffiRustCallStatus,
@@ -1252,6 +1304,10 @@ internal object UniffiLib {
     external fun uniffi_pod0_facade_fn_func_stage_legacy_transcript_import(`sourceDatabasePath`: RustBuffer.ByValue,`transcriptRootPath`: RustBuffer.ByValue,`legacyBackupRootPath`: RustBuffer.ByValue,`targetPath`: RustBuffer.ByValue,`targetSchemaBackupPath`: RustBuffer.ByValue,`expectedPlan`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,`targetStoreId`: RustBufferCommandId.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_func_verify_staged_legacy_transcript_import(`targetPath`: RustBuffer.ByValue,`legacyBackupRootPath`: RustBuffer.ByValue,`importId`: RustBufferCommandId.ByValue,`observedAtMilliseconds`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_record_native_erasure_observation(`locations`: RustBuffer.ByValue,`actionId`: RustBufferCommandId.ByValue,`observedAttempt`: Short,`succeeded`: Byte,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_func_recover_pending_erasure(`locations`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun ffi_pod0_facade_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
@@ -1420,6 +1476,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_pod0_facade_checksum_func_stage_legacy_clip_import() != 13972) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_pod0_facade_checksum_func_make_workflow_capability_snapshot() != 30609) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_pod0_facade_checksum_func_plan_chapter_model_desired_state() != 64724) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1427,6 +1486,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_func_plan_transcript_workflow() != 23453) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_plan_workflow_reconciliation() != 29772) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_func_project_chapter_contract() != 304) {
@@ -1501,6 +1563,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_pod0_facade_checksum_func_verify_staged_legacy_transcript_import() != 46313) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_pod0_facade_checksum_func_record_native_erasure_observation() != 62265) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_func_recover_pending_erasure() != 60464) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_pod0_facade_checksum_method_projectionsubscriber_receive() != 23861) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1532,6 +1600,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_download_cutover() != 2411) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_latest_episode_activity_page() != 65382) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_episode_activity_page() != 54347) {
@@ -1570,34 +1641,25 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_dispatch() != 36474) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_next_host_cancellations() != 35018) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_next_host_requests() != 62215) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_next_leased_host_requests() != 19145) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_next_nmp_publications() != 2989) {
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_next_nmp_publications() != 55983) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_nmp_publication_receipt_links() != 57711) {
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_nmp_publication_receipt_links() != 44581) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_plan_chapter_model_request() != 53024) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_host_observation() != 28085) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_leased_host_observation() != 16311) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_observation() != 8870) {
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_observation() != 55579) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_receipt() != 63944) {
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_receipt() != 24707) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_snapshot() != 17086) {
@@ -1607,6 +1669,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_unsubscribe() != 29741) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_workflow_configuration() != 40685) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_scheduled_agent_cutover() != 55891) {
@@ -1627,6 +1692,15 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_scheduled_agent_cutover() != 63971) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_causal_activity_page() != 52056) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_operation_activity_page() != 26793) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_support_activity_page() != 2557) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_transcript_workflow_cutover() != 1245) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1640,6 +1714,18 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_transcript_workflow_cutover() != 20379) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_confirm_erasure() != 17025) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_prepare_erasure() != 50717) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_store_identity() != 54288) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_execute_workflow_action() != 55223) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_constructor_pod0facade_new() != 63792) {
@@ -2176,6 +2262,8 @@ public interface Pod0FacadeInterface {
 
     fun `stageLegacyDownloadCutover`(`sourceGeneration`: kotlin.ULong, `candidates`: List<LegacyDownloadCutoverCandidate>): LegacyDownloadCutoverProjection
 
+    fun `latestEpisodeActivityPage`(`episodeId`: EpisodeId, `snapshotThroughSequence`: kotlin.ULong?, `beforeSequence`: kotlin.ULong?, `requestedCount`: kotlin.UShort): LatestEpisodeActivityPage
+
     fun `episodeActivityPage`(`episodeId`: EpisodeId, `afterSequence`: kotlin.ULong?, `requestedCount`: kotlin.UShort): EpisodeActivityPage
 
     fun `commitLegacyFeedDiscoveryCutover`(`sourceGeneration`: kotlin.ULong): LegacyFeedDiscoveryCutoverProjection
@@ -2200,13 +2288,9 @@ public interface Pod0FacadeInterface {
 
     fun `dispatch`(`command`: CommandEnvelope)
 
-    fun `nextHostCancellations`(`maximumCount`: kotlin.UShort): List<HostCancellationRequest>
-
-    fun `nextHostRequests`(`maximumCount`: kotlin.UShort): List<HostRequestEnvelope>
-
     fun `nextLeasedHostRequests`(`maximumCount`: kotlin.UShort): List<LeasedHostRequestEnvelope>
 
-    fun `nextNmpPublications`(`maximumCount`: kotlin.UShort): List<Pod0PublicationDraft>
+    fun `nextNmpPublications`(`maximumCount`: kotlin.UShort): List<LeasedNmpPublicationDraft>
 
     fun `nmpPublicationReceiptLinks`(): List<NmpPublicationReceiptLink>
 
@@ -2216,19 +2300,24 @@ public interface Pod0FacadeInterface {
      */
     fun `planChapterModelRequest`(`episodeId`: EpisodeId, `configuredModel`: kotlin.String): ChapterModelPlan
 
-    fun `recordHostObservation`(`observation`: HostObservationEnvelope): HostObservationReceipt
-
     fun `recordLeasedHostObservation`(`observation`: LeasedHostObservationEnvelope): HostObservationReceipt
 
-    fun `recordNmpPublicationObservation`(`publicationId`: PublicationId, `observation`: PublicationStatusObservation)
+    fun `recordNmpPublicationObservation`(`observation`: LeasedNmpPublicationObservation)
 
-    fun `recordNmpPublicationReceipt`(`publicationId`: PublicationId, `receiptId`: kotlin.ULong)
+    fun `recordNmpPublicationReceipt`(`receipt`: LeasedNmpPublicationReceipt)
 
     fun `snapshot`(`request`: ProjectionRequest): ProjectionEnvelope
 
     fun `subscribe`(`request`: ProjectionRequest, `subscriber`: ProjectionSubscriber): SubscriptionId
 
     fun `unsubscribe`(`subscriptionId`: SubscriptionId)
+
+    /**
+     * Reads the secret-free Rust-owned workflow policy for exact-revision
+     * native setting updates. Absence means the one-time import has not yet
+     * established authority.
+     */
+    fun `workflowConfiguration`(): WorkflowConfiguration?
 
     fun `commitLegacyScheduledAgentCutover`(`sourceGeneration`: kotlin.ULong): LegacyScheduledAgentCutoverProjection
 
@@ -2242,6 +2331,12 @@ public interface Pod0FacadeInterface {
 
     fun `verifyLegacyScheduledAgentCutover`(`sourceGeneration`: kotlin.ULong): LegacyScheduledAgentCutoverProjection
 
+    fun `causalActivityPage`(`correlationId`: ActivityCorrelationId, `afterSequence`: kotlin.ULong?, `requestedCount`: kotlin.UShort): EpisodeActivityPage
+
+    fun `operationActivityPage`(`commandId`: CommandId, `afterSequence`: kotlin.ULong?, `requestedCount`: kotlin.UShort): EpisodeActivityPage
+
+    fun `supportActivityPage`(`afterSequence`: kotlin.ULong?, `requestedCount`: kotlin.UShort): EpisodeActivityPage
+
     fun `commitLegacyTranscriptWorkflowCutover`(`sourceGeneration`: kotlin.ULong): LegacyTranscriptWorkflowCutoverProjection
 
     fun `discardStagedLegacyTranscriptWorkflowCutover`(`sourceGeneration`: kotlin.ULong): LegacyTranscriptWorkflowCutoverProjection
@@ -2251,6 +2346,19 @@ public interface Pod0FacadeInterface {
     fun `transcriptWorkflowCutover`(): LegacyTranscriptWorkflowCutoverProjection
 
     fun `verifyLegacyTranscriptWorkflowCutover`(`sourceGeneration`: kotlin.ULong): LegacyTranscriptWorkflowCutoverProjection
+
+    fun `confirmErasure`(`token`: UserDataErasureToken): UserDataErasureResult
+
+    fun `prepareErasure`(`expectedStoreId`: CommandId, `nonce`: kotlin.ByteArray, `retainedSettingsJson`: kotlin.ByteArray, `locations`: UserDataErasureLocations): UserDataErasureToken
+
+    fun `storeIdentity`(): CommandId
+
+    /**
+     * Executes only an exact action token emitted by the current Rust
+     * workflow projection. Native code cannot select configuration, target,
+     * or expected revision independently of that projection.
+     */
+    fun `executeWorkflowAction`(`token`: WorkflowActionToken): WorkflowActionDispatchResult
 
     companion object
 }
@@ -2508,6 +2616,23 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
     }
 
 
+    override fun `latestEpisodeActivityPage`(`episodeId`: EpisodeId, `snapshotThroughSequence`: kotlin.ULong?, `beforeSequence`: kotlin.ULong?, `requestedCount`: kotlin.UShort): LatestEpisodeActivityPage {
+            return FfiConverterTypeLatestEpisodeActivityPage.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_latest_episode_activity_page(
+        it,
+
+        FfiConverterTypeEpisodeId.lower(`episodeId`),
+        FfiConverterOptionalULong.lower(`snapshotThroughSequence`),
+        FfiConverterOptionalULong.lower(`beforeSequence`),
+        FfiConverterUShort.lower(`requestedCount`),_status)
+}
+    }
+    )
+    }
+
+
     override fun `episodeActivityPage`(`episodeId`: EpisodeId, `afterSequence`: kotlin.ULong?, `requestedCount`: kotlin.UShort): EpisodeActivityPage {
             return FfiConverterTypeEpisodeActivityPage.lift(
     callWithHandle {
@@ -2691,34 +2816,6 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
 
 
 
-    override fun `nextHostCancellations`(`maximumCount`: kotlin.UShort): List<HostCancellationRequest> {
-            return FfiConverterSequenceTypeHostCancellationRequest.lift(
-    callWithHandle {
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_next_host_cancellations(
-        it,
-
-        FfiConverterUShort.lower(`maximumCount`),_status)
-}
-    }
-    )
-    }
-
-
-    override fun `nextHostRequests`(`maximumCount`: kotlin.UShort): List<HostRequestEnvelope> {
-            return FfiConverterSequenceTypeHostRequestEnvelope.lift(
-    callWithHandle {
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_next_host_requests(
-        it,
-
-        FfiConverterUShort.lower(`maximumCount`),_status)
-}
-    }
-    )
-    }
-
-
     override fun `nextLeasedHostRequests`(`maximumCount`: kotlin.UShort): List<LeasedHostRequestEnvelope> {
             return FfiConverterSequenceTypeLeasedHostRequestEnvelope.lift(
     callWithHandle {
@@ -2733,8 +2830,8 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
     }
 
 
-    override fun `nextNmpPublications`(`maximumCount`: kotlin.UShort): List<Pod0PublicationDraft> {
-            return FfiConverterSequenceTypePod0PublicationDraft.lift(
+    override fun `nextNmpPublications`(`maximumCount`: kotlin.UShort): List<LeasedNmpPublicationDraft> {
+            return FfiConverterSequenceTypeLeasedNMPPublicationDraft.lift(
     callWithHandle {
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_next_nmp_publications(
@@ -2779,20 +2876,6 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
     }
 
 
-    override fun `recordHostObservation`(`observation`: HostObservationEnvelope): HostObservationReceipt {
-            return FfiConverterTypeHostObservationReceipt.lift(
-    callWithHandle {
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_record_host_observation(
-        it,
-
-        FfiConverterTypeHostObservationEnvelope.lower(`observation`),_status)
-}
-    }
-    )
-    }
-
-
     override fun `recordLeasedHostObservation`(`observation`: LeasedHostObservationEnvelope): HostObservationReceipt {
             return FfiConverterTypeHostObservationReceipt.lift(
     callWithHandle {
@@ -2807,29 +2890,27 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
     }
 
 
-    override fun `recordNmpPublicationObservation`(`publicationId`: PublicationId, `observation`: PublicationStatusObservation)
+    override fun `recordNmpPublicationObservation`(`observation`: LeasedNmpPublicationObservation)
         =
     callWithHandle {
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_record_nmp_publication_observation(
         it,
 
-        FfiConverterTypePublicationId.lower(`publicationId`),
-        FfiConverterTypePublicationStatusObservation.lower(`observation`),_status)
+        FfiConverterTypeLeasedNMPPublicationObservation.lower(`observation`),_status)
 }
     }
 
 
 
-    override fun `recordNmpPublicationReceipt`(`publicationId`: PublicationId, `receiptId`: kotlin.ULong)
+    override fun `recordNmpPublicationReceipt`(`receipt`: LeasedNmpPublicationReceipt)
         =
     callWithHandle {
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_record_nmp_publication_receipt(
         it,
 
-        FfiConverterTypePublicationId.lower(`publicationId`),
-        FfiConverterULong.lower(`receiptId`),_status)
+        FfiConverterTypeLeasedNMPPublicationReceipt.lower(`receipt`),_status)
 }
     }
 
@@ -2875,6 +2956,25 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
 }
     }
 
+
+
+
+    /**
+     * Reads the secret-free Rust-owned workflow policy for exact-revision
+     * native setting updates. Absence means the one-time import has not yet
+     * established authority.
+     */
+    @Throws(FacadeOpenException::class)override fun `workflowConfiguration`(): WorkflowConfiguration? {
+            return FfiConverterOptionalTypeWorkflowConfiguration.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FacadeOpenException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_workflow_configuration(
+        it,
+        _status)
+}
+    }
+    )
+    }
 
 
     override fun `commitLegacyScheduledAgentCutover`(`sourceGeneration`: kotlin.ULong): LegacyScheduledAgentCutoverProjection {
@@ -2966,6 +3066,53 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
     }
 
 
+    override fun `causalActivityPage`(`correlationId`: ActivityCorrelationId, `afterSequence`: kotlin.ULong?, `requestedCount`: kotlin.UShort): EpisodeActivityPage {
+            return FfiConverterTypeEpisodeActivityPage.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_causal_activity_page(
+        it,
+
+        FfiConverterTypeActivityCorrelationId.lower(`correlationId`),
+        FfiConverterOptionalULong.lower(`afterSequence`),
+        FfiConverterUShort.lower(`requestedCount`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `operationActivityPage`(`commandId`: CommandId, `afterSequence`: kotlin.ULong?, `requestedCount`: kotlin.UShort): EpisodeActivityPage {
+            return FfiConverterTypeEpisodeActivityPage.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_operation_activity_page(
+        it,
+
+        FfiConverterTypeCommandId.lower(`commandId`),
+        FfiConverterOptionalULong.lower(`afterSequence`),
+        FfiConverterUShort.lower(`requestedCount`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `supportActivityPage`(`afterSequence`: kotlin.ULong?, `requestedCount`: kotlin.UShort): EpisodeActivityPage {
+            return FfiConverterTypeEpisodeActivityPage.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_support_activity_page(
+        it,
+
+        FfiConverterOptionalULong.lower(`afterSequence`),
+        FfiConverterUShort.lower(`requestedCount`),_status)
+}
+    }
+    )
+    }
+
+
     override fun `commitLegacyTranscriptWorkflowCutover`(`sourceGeneration`: kotlin.ULong): LegacyTranscriptWorkflowCutoverProjection {
             return FfiConverterTypeLegacyTranscriptWorkflowCutoverProjection.lift(
     callWithHandle {
@@ -3032,6 +3179,72 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
         it,
 
         FfiConverterULong.lower(`sourceGeneration`),_status)
+}
+    }
+    )
+    }
+
+
+
+    @Throws(UserDataErasureException::class)override fun `confirmErasure`(`token`: UserDataErasureToken): UserDataErasureResult {
+            return FfiConverterTypeUserDataErasureResult.lift(
+    callWithHandle {
+    uniffiRustCallWithError(UserDataErasureException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_confirm_erasure(
+        it,
+
+        FfiConverterTypeUserDataErasureToken.lower(`token`),_status)
+}
+    }
+    )
+    }
+
+
+
+    @Throws(UserDataErasureException::class)override fun `prepareErasure`(`expectedStoreId`: CommandId, `nonce`: kotlin.ByteArray, `retainedSettingsJson`: kotlin.ByteArray, `locations`: UserDataErasureLocations): UserDataErasureToken {
+            return FfiConverterTypeUserDataErasureToken.lift(
+    callWithHandle {
+    uniffiRustCallWithError(UserDataErasureException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_prepare_erasure(
+        it,
+
+        FfiConverterTypeCommandId.lower(`expectedStoreId`),
+        FfiConverterByteArray.lower(`nonce`),
+        FfiConverterByteArray.lower(`retainedSettingsJson`),
+        FfiConverterTypeUserDataErasureLocations.lower(`locations`),_status)
+}
+    }
+    )
+    }
+
+
+
+    @Throws(UserDataErasureException::class)override fun `storeIdentity`(): CommandId {
+            return FfiConverterTypeCommandId.lift(
+    callWithHandle {
+    uniffiRustCallWithError(UserDataErasureException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_store_identity(
+        it,
+        _status)
+}
+    }
+    )
+    }
+
+
+
+    /**
+     * Executes only an exact action token emitted by the current Rust
+     * workflow projection. Native code cannot select configuration, target,
+     * or expected revision independently of that projection.
+     */override fun `executeWorkflowAction`(`token`: WorkflowActionToken): WorkflowActionDispatchResult {
+            return FfiConverterTypeWorkflowActionDispatchResult.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_execute_workflow_action(
+        it,
+
+        FfiConverterTypeWorkflowActionToken.lower(`token`),_status)
 }
     }
     )
@@ -3407,6 +3620,246 @@ public object FfiConverterTypeProjectionSubscriber: FfiConverter<ProjectionSubsc
 }
 
 
+// This template implements a class for working with a Rust struct via a handle
+// to the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque handle to the underlying Rust struct.
+//     Method calls need to read this handle from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its handle should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the handle, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the handle, but is interrupted
+//      before it can pass the handle over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read handle value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+public interface UserDataErasureTokenInterface {
+
+    companion object
+}
+
+open class UserDataErasureToken: Disposable, AutoCloseable, UserDataErasureTokenInterface
+{
+
+    @Suppress("UNUSED_PARAMETER")
+    /**
+     * @suppress
+     */
+    constructor(withHandle: UniffiWithHandle, handle: Long) {
+        this.handle = handle
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(handle))
+    }
+
+    /**
+     * @suppress
+     *
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noHandle: NoHandle) {
+        this.handle = 0
+        this.cleanable = null
+    }
+
+    protected val handle: Long
+    protected val cleanable: UniffiCleaner.Cleanable?
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    /**
+     * Whether the current object has been destroyed and its reference is gone in the Rust side.
+     */
+    val uniffiIsDestroyed: Boolean get() = wasDestroyed.get()
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithHandle(block: (handle: Long) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the handle being freed concurrently.
+        try {
+            return block(this.uniffiCloneHandle())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val handle: Long) : Runnable {
+        override fun run() {
+            if (handle == 0.toLong()) {
+                // Fake object created with `NoHandle`, don't try to free.
+                return;
+            }
+            uniffiRustCall { status ->
+                UniffiLib.uniffi_pod0_facade_fn_free_userdataerasuretoken(handle, status)
+            }
+        }
+    }
+
+    /**
+     * @suppress
+     */
+    fun uniffiCloneHandle(): Long {
+        if (handle == 0.toLong()) {
+            throw InternalException("uniffiCloneHandle() called on NoHandle object");
+        }
+        return uniffiRustCall() { status ->
+            UniffiLib.uniffi_pod0_facade_fn_clone_userdataerasuretoken(handle, status)
+        }
+    }
+
+
+
+
+
+
+
+
+    /**
+     * @suppress
+     */
+    companion object
+
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUserDataErasureToken: FfiConverter<UserDataErasureToken, Long> {
+    override fun lower(value: UserDataErasureToken): Long {
+        return value.uniffiCloneHandle()
+    }
+
+    override fun lift(value: Long): UserDataErasureToken {
+        return UserDataErasureToken(UniffiWithHandle, value)
+    }
+
+    override fun read(buf: ByteBuffer): UserDataErasureToken {
+        return lift(buf.getLong())
+    }
+
+    override fun allocationSize(value: UserDataErasureToken) = 8UL
+
+    override fun write(value: UserDataErasureToken, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
+
+
 
 data class EpisodeActivityDetail (
     val `label`: kotlin.String
@@ -3547,6 +4000,54 @@ public object FfiConverterTypeEpisodeActivityPage: FfiConverterRustBuffer<Episod
             FfiConverterBoolean.write(value.`available`, buf)
             FfiConverterSequenceTypeEpisodeActivityEntry.write(value.`items`, buf)
             FfiConverterOptionalULong.write(value.`nextAfterSequence`, buf)
+    }
+}
+
+
+
+data class LatestEpisodeActivityPage (
+    val `available`: kotlin.Boolean
+    ,
+    val `items`: List<EpisodeActivityEntry>
+    ,
+    val `snapshotThroughSequence`: kotlin.ULong?
+    ,
+    val `nextBeforeSequence`: kotlin.ULong?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLatestEpisodeActivityPage: FfiConverterRustBuffer<LatestEpisodeActivityPage> {
+    override fun read(buf: ByteBuffer): LatestEpisodeActivityPage {
+        return LatestEpisodeActivityPage(
+            FfiConverterBoolean.read(buf),
+            FfiConverterSequenceTypeEpisodeActivityEntry.read(buf),
+            FfiConverterOptionalULong.read(buf),
+            FfiConverterOptionalULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: LatestEpisodeActivityPage) = (
+            FfiConverterBoolean.allocationSize(value.`available`) +
+            FfiConverterSequenceTypeEpisodeActivityEntry.allocationSize(value.`items`) +
+            FfiConverterOptionalULong.allocationSize(value.`snapshotThroughSequence`) +
+            FfiConverterOptionalULong.allocationSize(value.`nextBeforeSequence`)
+    )
+
+    override fun write(value: LatestEpisodeActivityPage, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`available`, buf)
+            FfiConverterSequenceTypeEpisodeActivityEntry.write(value.`items`, buf)
+            FfiConverterOptionalULong.write(value.`snapshotThroughSequence`, buf)
+            FfiConverterOptionalULong.write(value.`nextBeforeSequence`, buf)
     }
 }
 
@@ -5906,6 +6407,59 @@ public object FfiConverterTypeLegacyTranscriptWorkflowCutoverProjection: FfiConv
 
 
 
+data class NativeErasureAction (
+    val `actionId`: CommandId
+    ,
+    val `operationId`: CommandId
+    ,
+    val `kind`: UserDataErasureTargetKind
+    ,
+    val `identifier`: kotlin.String
+    ,
+    val `attempt`: kotlin.UShort
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeNativeErasureAction: FfiConverterRustBuffer<NativeErasureAction> {
+    override fun read(buf: ByteBuffer): NativeErasureAction {
+        return NativeErasureAction(
+            FfiConverterTypeCommandId.read(buf),
+            FfiConverterTypeCommandId.read(buf),
+            FfiConverterTypeUserDataErasureTargetKind.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUShort.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: NativeErasureAction) = (
+            FfiConverterTypeCommandId.allocationSize(value.`actionId`) +
+            FfiConverterTypeCommandId.allocationSize(value.`operationId`) +
+            FfiConverterTypeUserDataErasureTargetKind.allocationSize(value.`kind`) +
+            FfiConverterString.allocationSize(value.`identifier`) +
+            FfiConverterUShort.allocationSize(value.`attempt`)
+    )
+
+    override fun write(value: NativeErasureAction, buf: ByteBuffer) {
+            FfiConverterTypeCommandId.write(value.`actionId`, buf)
+            FfiConverterTypeCommandId.write(value.`operationId`, buf)
+            FfiConverterTypeUserDataErasureTargetKind.write(value.`kind`, buf)
+            FfiConverterString.write(value.`identifier`, buf)
+            FfiConverterUShort.write(value.`attempt`, buf)
+    }
+}
+
+
+
 data class SharedListeningStorePreparation (
     val `fromVersion`: kotlin.UInt
     ,
@@ -5949,6 +6503,92 @@ public object FfiConverterTypeSharedListeningStorePreparation: FfiConverterRustB
             FfiConverterUInt.write(value.`toVersion`, buf)
             FfiConverterSequenceUInt.write(value.`appliedVersions`, buf)
             FfiConverterBoolean.write(value.`resumedFromJournal`, buf)
+    }
+}
+
+
+
+data class UserDataErasureLocations (
+    val `recoveryRoot`: kotlin.String
+    ,
+    val `allowedRoots`: List<kotlin.String>
+    ,
+    val `targets`: List<UserDataErasureTargetLocation>
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUserDataErasureLocations: FfiConverterRustBuffer<UserDataErasureLocations> {
+    override fun read(buf: ByteBuffer): UserDataErasureLocations {
+        return UserDataErasureLocations(
+            FfiConverterString.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterSequenceTypeUserDataErasureTargetLocation.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UserDataErasureLocations) = (
+            FfiConverterString.allocationSize(value.`recoveryRoot`) +
+            FfiConverterSequenceString.allocationSize(value.`allowedRoots`) +
+            FfiConverterSequenceTypeUserDataErasureTargetLocation.allocationSize(value.`targets`)
+    )
+
+    override fun write(value: UserDataErasureLocations, buf: ByteBuffer) {
+            FfiConverterString.write(value.`recoveryRoot`, buf)
+            FfiConverterSequenceString.write(value.`allowedRoots`, buf)
+            FfiConverterSequenceTypeUserDataErasureTargetLocation.write(value.`targets`, buf)
+    }
+}
+
+
+
+data class UserDataErasureTargetLocation (
+    val `kind`: UserDataErasureTargetKind
+    ,
+    val `location`: kotlin.String
+    ,
+    val `coveredBy`: UserDataErasureTargetKind?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUserDataErasureTargetLocation: FfiConverterRustBuffer<UserDataErasureTargetLocation> {
+    override fun read(buf: ByteBuffer): UserDataErasureTargetLocation {
+        return UserDataErasureTargetLocation(
+            FfiConverterTypeUserDataErasureTargetKind.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalTypeUserDataErasureTargetKind.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: UserDataErasureTargetLocation) = (
+            FfiConverterTypeUserDataErasureTargetKind.allocationSize(value.`kind`) +
+            FfiConverterString.allocationSize(value.`location`) +
+            FfiConverterOptionalTypeUserDataErasureTargetKind.allocationSize(value.`coveredBy`)
+    )
+
+    override fun write(value: UserDataErasureTargetLocation, buf: ByteBuffer) {
+            FfiConverterTypeUserDataErasureTargetKind.write(value.`kind`, buf)
+            FfiConverterString.write(value.`location`, buf)
+            FfiConverterOptionalTypeUserDataErasureTargetKind.write(value.`coveredBy`, buf)
     }
 }
 
@@ -6044,6 +6684,12 @@ sealed class FacadeOpenException: kotlin.Exception() {
             get() = ""
     }
 
+    class ErasureRecoveryRequired(
+        ) : FacadeOpenException() {
+        override val message
+            get() = ""
+    }
+
     class SchemaBlocked(
 
         val `reason`: SchemaBlockReason
@@ -6078,10 +6724,11 @@ public object FfiConverterTypeFacadeOpenError : FfiConverterRustBuffer<FacadeOpe
 
         return when(buf.getInt()) {
             1 -> FacadeOpenException.NotAuthoritative()
-            2 -> FacadeOpenException.SchemaBlocked(
+            2 -> FacadeOpenException.ErasureRecoveryRequired()
+            3 -> FacadeOpenException.SchemaBlocked(
                 FfiConverterTypeSchemaBlockReason.read(buf),
                 )
-            3 -> FacadeOpenException.StorageUnavailable()
+            4 -> FacadeOpenException.StorageUnavailable()
             else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
         }
     }
@@ -6089,6 +6736,10 @@ public object FfiConverterTypeFacadeOpenError : FfiConverterRustBuffer<FacadeOpe
     override fun allocationSize(value: FacadeOpenException): ULong {
         return when(value) {
             is FacadeOpenException.NotAuthoritative -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is FacadeOpenException.ErasureRecoveryRequired -> (
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
                 4UL
             )
@@ -6110,13 +6761,17 @@ public object FfiConverterTypeFacadeOpenError : FfiConverterRustBuffer<FacadeOpe
                 buf.putInt(1)
                 Unit
             }
-            is FacadeOpenException.SchemaBlocked -> {
+            is FacadeOpenException.ErasureRecoveryRequired -> {
                 buf.putInt(2)
+                Unit
+            }
+            is FacadeOpenException.SchemaBlocked -> {
+                buf.putInt(3)
                 FfiConverterTypeSchemaBlockReason.write(value.`reason`, buf)
                 Unit
             }
             is FacadeOpenException.StorageUnavailable -> {
-                buf.putInt(3)
+                buf.putInt(4)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
@@ -8438,6 +9093,221 @@ public object FfiConverterTypeSchemaBlockReason: FfiConverterRustBuffer<SchemaBl
 
 
 
+
+sealed class UserDataErasureException: kotlin.Exception() {
+
+    class Conflict(
+        ) : UserDataErasureException() {
+        override val message
+            get() = ""
+    }
+
+    class RecoveryRequired(
+        ) : UserDataErasureException() {
+        override val message
+            get() = ""
+    }
+
+
+
+
+
+    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<UserDataErasureException> {
+        override fun lift(error_buf: RustBuffer.ByValue): UserDataErasureException = FfiConverterTypeUserDataErasureError.lift(error_buf)
+    }
+
+
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUserDataErasureError : FfiConverterRustBuffer<UserDataErasureException> {
+    override fun read(buf: ByteBuffer): UserDataErasureException {
+
+
+        return when(buf.getInt()) {
+            1 -> UserDataErasureException.Conflict()
+            2 -> UserDataErasureException.RecoveryRequired()
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: UserDataErasureException): ULong {
+        return when(value) {
+            is UserDataErasureException.Conflict -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is UserDataErasureException.RecoveryRequired -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: UserDataErasureException, buf: ByteBuffer) {
+        when(value) {
+            is UserDataErasureException.Conflict -> {
+                buf.putInt(1)
+                Unit
+            }
+            is UserDataErasureException.RecoveryRequired -> {
+                buf.putInt(2)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
+
+
+
+sealed class UserDataErasureResult {
+
+    data class AwaitingNativeActions(
+        val `actions`: List<uniffi.pod0_facade.NativeErasureAction>) : UserDataErasureResult()
+
+    {
+
+
+        companion object
+    }
+
+    data class Complete(
+        val `freshStoreId`: uniffi.pod0_domain.CommandId) : UserDataErasureResult()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUserDataErasureResult : FfiConverterRustBuffer<UserDataErasureResult>{
+    override fun read(buf: ByteBuffer): UserDataErasureResult {
+        return when(buf.getInt()) {
+            1 -> UserDataErasureResult.AwaitingNativeActions(
+                FfiConverterSequenceTypeNativeErasureAction.read(buf),
+                )
+            2 -> UserDataErasureResult.Complete(
+                FfiConverterTypeCommandId.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: UserDataErasureResult): ULong = when(value) {
+        is UserDataErasureResult.AwaitingNativeActions -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterSequenceTypeNativeErasureAction.allocationSize(value.`actions`)
+            )
+        }
+        is UserDataErasureResult.Complete -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeCommandId.allocationSize(value.`freshStoreId`)
+            )
+        }
+    }
+
+    override fun write(value: UserDataErasureResult, buf: ByteBuffer) {
+        when(value) {
+            is UserDataErasureResult.AwaitingNativeActions -> {
+                buf.putInt(1)
+                FfiConverterSequenceTypeNativeErasureAction.write(value.`actions`, buf)
+                Unit
+            }
+            is UserDataErasureResult.Complete -> {
+                buf.putInt(2)
+                FfiConverterTypeCommandId.write(value.`freshStoreId`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+
+enum class UserDataErasureTargetKind {
+
+    CORE_SQLITE,
+    CORE_WAL,
+    CORE_SHM,
+    EPISODE_SQLITE,
+    EPISODE_WAL,
+    EPISODE_SHM,
+    RECALL_INDEX,
+    RECALL_INDEX_WAL,
+    RECALL_INDEX_SHM,
+    DOWNLOADED_MEDIA_ROOT,
+    STAGED_MEDIA_ROOT,
+    TRANSCRIPT_ARTIFACT_ROOT,
+    LEGACY_TRANSCRIPT_ROOT,
+    CHAPTER_ARTIFACT_ROOT,
+    MIGRATION_BACKUP_ROOT,
+    APPLICATION_STATE_PROJECTION,
+    NATIVE_OBSERVATION_OUTBOX,
+    NATIVE_OBSERVATION_LEASE,
+    AGENT_GENERATED_AUDIO_ROOT,
+    LEGACY_CHAT_HISTORY_ROOT,
+    LEGACY_WORKFLOW_STORE,
+    LEGACY_WORKFLOW_ARTIFACT_ROOT,
+    COST_LEDGER,
+    AGENT_CONVERSATION_POINTER,
+    SPOTLIGHT_INDEX,
+    NOW_PLAYING_PROJECTION,
+    PRODUCT_SIGNALS;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeUserDataErasureTargetKind: FfiConverterRustBuffer<UserDataErasureTargetKind> {
+    override fun read(buf: ByteBuffer) = try {
+
+        UserDataErasureTargetKind.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: UserDataErasureTargetKind) = 4UL
+
+    override fun write(value: UserDataErasureTargetKind, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
 /**
  * @suppress
  */
@@ -8559,6 +9429,70 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
         } else {
             buf.put(1)
             FfiConverterString.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeWorkflowCapabilitySnapshot: FfiConverterRustBuffer<WorkflowCapabilitySnapshot?> {
+    override fun read(buf: ByteBuffer): WorkflowCapabilitySnapshot? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeWorkflowCapabilitySnapshot.read(buf)
+    }
+
+    override fun allocationSize(value: WorkflowCapabilitySnapshot?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeWorkflowCapabilitySnapshot.allocationSize(value)
+        }
+    }
+
+    override fun write(value: WorkflowCapabilitySnapshot?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeWorkflowCapabilitySnapshot.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeWorkflowConfiguration: FfiConverterRustBuffer<WorkflowConfiguration?> {
+    override fun read(buf: ByteBuffer): WorkflowConfiguration? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeWorkflowConfiguration.read(buf)
+    }
+
+    override fun allocationSize(value: WorkflowConfiguration?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeWorkflowConfiguration.allocationSize(value)
+        }
+    }
+
+    override fun write(value: WorkflowConfiguration?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeWorkflowConfiguration.write(value, buf)
         }
     }
 }
@@ -9113,6 +10047,70 @@ public object FfiConverterOptionalTypeLegacyMemoryCutoverFailureCode: FfiConvert
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeUserDataErasureResult: FfiConverterRustBuffer<UserDataErasureResult?> {
+    override fun read(buf: ByteBuffer): UserDataErasureResult? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeUserDataErasureResult.read(buf)
+    }
+
+    override fun allocationSize(value: UserDataErasureResult?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeUserDataErasureResult.allocationSize(value)
+        }
+    }
+
+    override fun write(value: UserDataErasureResult?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeUserDataErasureResult.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeUserDataErasureTargetKind: FfiConverterRustBuffer<UserDataErasureTargetKind?> {
+    override fun read(buf: ByteBuffer): UserDataErasureTargetKind? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeUserDataErasureTargetKind.read(buf)
+    }
+
+    override fun allocationSize(value: UserDataErasureTargetKind?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeUserDataErasureTargetKind.allocationSize(value)
+        }
+    }
+
+    override fun write(value: UserDataErasureTargetKind?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeUserDataErasureTargetKind.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceUInt: FfiConverterRustBuffer<List<kotlin.UInt>> {
     override fun read(buf: ByteBuffer): List<kotlin.UInt> {
         val len = buf.getInt()
@@ -9141,52 +10139,24 @@ public object FfiConverterSequenceUInt: FfiConverterRustBuffer<List<kotlin.UInt>
 /**
  * @suppress
  */
-public object FfiConverterSequenceTypeHostCancellationRequest: FfiConverterRustBuffer<List<HostCancellationRequest>> {
-    override fun read(buf: ByteBuffer): List<HostCancellationRequest> {
+public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.String>> {
+    override fun read(buf: ByteBuffer): List<kotlin.String> {
         val len = buf.getInt()
-        return List<HostCancellationRequest>(len) {
-            FfiConverterTypeHostCancellationRequest.read(buf)
+        return List<kotlin.String>(len) {
+            FfiConverterString.read(buf)
         }
     }
 
-    override fun allocationSize(value: List<HostCancellationRequest>): ULong {
+    override fun allocationSize(value: List<kotlin.String>): ULong {
         val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeHostCancellationRequest.allocationSize(it) }.sum()
+        val sizeForItems = value.map { FfiConverterString.allocationSize(it) }.sum()
         return sizeForLength + sizeForItems
     }
 
-    override fun write(value: List<HostCancellationRequest>, buf: ByteBuffer) {
+    override fun write(value: List<kotlin.String>, buf: ByteBuffer) {
         buf.putInt(value.size)
         value.iterator().forEach {
-            FfiConverterTypeHostCancellationRequest.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeHostRequestEnvelope: FfiConverterRustBuffer<List<HostRequestEnvelope>> {
-    override fun read(buf: ByteBuffer): List<HostRequestEnvelope> {
-        val len = buf.getInt()
-        return List<HostRequestEnvelope>(len) {
-            FfiConverterTypeHostRequestEnvelope.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<HostRequestEnvelope>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeHostRequestEnvelope.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<HostRequestEnvelope>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeHostRequestEnvelope.write(it, buf)
+            FfiConverterString.write(it, buf)
         }
     }
 }
@@ -9215,6 +10185,34 @@ public object FfiConverterSequenceTypeLeasedHostRequestEnvelope: FfiConverterRus
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeLeasedHostRequestEnvelope.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeLeasedNMPPublicationDraft: FfiConverterRustBuffer<List<LeasedNmpPublicationDraft>> {
+    override fun read(buf: ByteBuffer): List<LeasedNmpPublicationDraft> {
+        val len = buf.getInt()
+        return List<LeasedNmpPublicationDraft>(len) {
+            FfiConverterTypeLeasedNMPPublicationDraft.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<LeasedNmpPublicationDraft>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeLeasedNMPPublicationDraft.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<LeasedNmpPublicationDraft>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeLeasedNMPPublicationDraft.write(it, buf)
         }
     }
 }
@@ -9271,34 +10269,6 @@ public object FfiConverterSequenceTypeNMPPublicationReceiptLink: FfiConverterRus
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeNMPPublicationReceiptLink.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypePod0PublicationDraft: FfiConverterRustBuffer<List<Pod0PublicationDraft>> {
-    override fun read(buf: ByteBuffer): List<Pod0PublicationDraft> {
-        val len = buf.getInt()
-        return List<Pod0PublicationDraft>(len) {
-            FfiConverterTypePod0PublicationDraft.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<Pod0PublicationDraft>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypePod0PublicationDraft.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<Pod0PublicationDraft>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypePod0PublicationDraft.write(it, buf)
         }
     }
 }
@@ -9642,6 +10612,70 @@ public object FfiConverterSequenceTypeLegacyTranscriptWorkflowCutoverCandidate: 
 
 
 
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeNativeErasureAction: FfiConverterRustBuffer<List<NativeErasureAction>> {
+    override fun read(buf: ByteBuffer): List<NativeErasureAction> {
+        val len = buf.getInt()
+        return List<NativeErasureAction>(len) {
+            FfiConverterTypeNativeErasureAction.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<NativeErasureAction>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeNativeErasureAction.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<NativeErasureAction>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeNativeErasureAction.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeUserDataErasureTargetLocation: FfiConverterRustBuffer<List<UserDataErasureTargetLocation>> {
+    override fun read(buf: ByteBuffer): List<UserDataErasureTargetLocation> {
+        val len = buf.getInt()
+        return List<UserDataErasureTargetLocation>(len) {
+            FfiConverterTypeUserDataErasureTargetLocation.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<UserDataErasureTargetLocation>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeUserDataErasureTargetLocation.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<UserDataErasureTargetLocation>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeUserDataErasureTargetLocation.write(it, buf)
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -9962,6 +10996,18 @@ public object FfiConverterSequenceTypeLegacyTranscriptWorkflowCutoverCandidate: 
     )
     }
 
+ fun `makeWorkflowCapabilitySnapshot`(`input`: WorkflowCapabilitySnapshotInput, `observedAt`: UnixTimestampMilliseconds): WorkflowCapabilitySnapshot? {
+            return FfiConverterOptionalTypeWorkflowCapabilitySnapshot.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_make_workflow_capability_snapshot(
+
+
+        FfiConverterTypeWorkflowCapabilitySnapshotInput.lower(`input`),
+        FfiConverterTypeUnixTimestampMilliseconds.lower(`observedAt`),_status)
+}
+    )
+    }
+
 
         /**
          * Classifies whether the temporary native workflow owes model work.
@@ -10000,6 +11046,23 @@ public object FfiConverterSequenceTypeLegacyTranscriptWorkflowCutoverCandidate: 
 
 
         FfiConverterTypeTranscriptWorkflowPlanInput.lower(`input`),_status)
+}
+    )
+    }
+
+
+        /**
+         * Pure shared planner used by the durable reconciliation transition. Native
+         * callers may announce capabilities, but cannot select workflow intent.
+         */ fun `planWorkflowReconciliation`(`listening`: ListeningDomainSnapshot, `configuration`: WorkflowConfiguration, `capabilities`: WorkflowCapabilitySnapshot): WorkflowReconcilePlan {
+            return FfiConverterTypeWorkflowReconcilePlan.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_plan_workflow_reconciliation(
+
+
+        FfiConverterTypeListeningDomainSnapshot.lower(`listening`),
+        FfiConverterTypeWorkflowConfiguration.lower(`configuration`),
+        FfiConverterTypeWorkflowCapabilitySnapshot.lower(`capabilities`),_status)
 }
     )
     }
@@ -10348,6 +11411,33 @@ public object FfiConverterSequenceTypeLegacyTranscriptWorkflowCutoverCandidate: 
         FfiConverterString.lower(`legacyBackupRootPath`),
         FfiConverterTypeCommandId.lower(`importId`),
         FfiConverterLong.lower(`observedAtMilliseconds`),_status)
+}
+    )
+    }
+
+
+    @Throws(UserDataErasureException::class) fun `recordNativeErasureObservation`(`locations`: UserDataErasureLocations, `actionId`: CommandId, `observedAttempt`: kotlin.UShort, `succeeded`: kotlin.Boolean): UserDataErasureResult {
+            return FfiConverterTypeUserDataErasureResult.lift(
+    uniffiRustCallWithError(UserDataErasureException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_record_native_erasure_observation(
+
+
+        FfiConverterTypeUserDataErasureLocations.lower(`locations`),
+        FfiConverterTypeCommandId.lower(`actionId`),
+        FfiConverterUShort.lower(`observedAttempt`),
+        FfiConverterBoolean.lower(`succeeded`),_status)
+}
+    )
+    }
+
+
+    @Throws(UserDataErasureException::class) fun `recoverPendingErasure`(`locations`: UserDataErasureLocations): UserDataErasureResult? {
+            return FfiConverterOptionalTypeUserDataErasureResult.lift(
+    uniffiRustCallWithError(UserDataErasureException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_func_recover_pending_erasure(
+
+
+        FfiConverterTypeUserDataErasureLocations.lower(`locations`),_status)
 }
     )
     }

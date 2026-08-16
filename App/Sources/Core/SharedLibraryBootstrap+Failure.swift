@@ -34,15 +34,11 @@ enum SharedLibraryBootstrapFailureCode: String {
              LegacyNoteMigrationError.SourceInvalid,
              LegacyTranscriptMigrationError.SourceInvalid:
             .sourceInvalid
-        case is LegacyScheduledAgentWorkflowMappingError:
-            .sourceInvalid
         case LegacyClipMigrationError.BackupConflict,
              LegacyListeningMigrationError.BackupConflict,
              LegacyNoteMigrationError.BackupConflict,
              LegacyTranscriptMigrationError.BackupConflict,
              LegacyWorkflowBackupError.backupConflict:
-            .backupConflict
-        case LegacyScheduledAgentWorkflowBackupError.backupConflict:
             .backupConflict
         case LegacyClipMigrationError.ImportConflict,
              LegacyListeningMigrationError.ImportConflict,
@@ -87,15 +83,7 @@ enum SharedLibraryBootstrapFailureCode: String {
              LegacyWorkflowBackupError.durabilityFailed,
              LegacyDownloadWorkflowBackupError.backupMissing,
              LegacyDownloadWorkflowBackupError.backupCorrupt,
-             LegacyDownloadWorkflowCutoverError.verificationFailed,
-             LegacyScheduledAgentWorkflowBackupError.backupMissing,
-             LegacyScheduledAgentWorkflowBackupError.backupCorrupt,
-             LegacyScheduledAgentWorkflowBackupError.evidenceMismatch,
-             LegacyScheduledAgentWorkflowCutoverError.verificationFailed,
-             LegacyAgentHistoryCutoverError.verificationFailed,
-             LegacyAgentRunLogRetirementError.verificationFailed,
-             LegacyAgentActivityRetirementError.verificationFailed,
-             LegacyScheduledAgentWorkflowRetirementError.verificationFailed:
+             LegacyDownloadWorkflowCutoverError.verificationFailed:
             .verificationFailed
         default:
             .unexpected

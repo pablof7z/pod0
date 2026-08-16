@@ -2,9 +2,7 @@ use pod0_application::{
     CoreFailureCode, ScheduledTaskDefinition, ScheduledTaskInput, scheduled_prompt_revision,
 };
 use pod0_domain::{ScheduledOccurrenceId, ScheduledTaskId, StateRevision};
-use pod0_storage::{
-    ScheduledAgentCommandContext, ScheduledAgentReconcileOutcome, ScheduledAgentStore, StorageError,
-};
+use pod0_storage::{ScheduledAgentCommandContext, StorageError};
 
 use super::command_fingerprint::scheduled_agent_command_fingerprint;
 use crate::runtime_state::FacadeState;
@@ -130,15 +128,9 @@ impl FacadeState {
             self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
             return;
         };
-        let request_ids = self.scheduled_request_ids_for_task(&store, task_id);
         let result = store
             .remove_task(self.scheduled_context(envelope), task_id, expected_revision)
             .map(|_| ());
-        if result.is_ok() {
-            for request_id in request_ids {
-                self.withdraw_scheduled_agent_request(request_id);
-            }
-        }
         self.finish_scheduled_agent_command(envelope.command_id, result);
     }
 
@@ -149,12 +141,7 @@ impl FacadeState {
         };
         let result = store.reconcile_due_runs(self.scheduled_context(envelope));
         match result {
-            Ok(ScheduledAgentReconcileOutcome { requests, .. }) => {
-                for request in requests {
-                    let _ = self.queue_scheduled_agent_request(request);
-                }
-                self.succeed(envelope.command_id, None);
-            }
+            Ok(_) => self.succeed(envelope.command_id, None),
             Err(error) => self.fail(envelope.command_id, storage_failure(error)),
         }
     }
@@ -169,11 +156,6 @@ impl FacadeState {
             self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
             return;
         };
-        let request_id = store
-            .occurrence(occurrence_id)
-            .ok()
-            .flatten()
-            .and_then(|occurrence| occurrence.request_id);
         let result = store
             .cancel_occurrence(
                 self.scheduled_context(envelope),
@@ -181,11 +163,6 @@ impl FacadeState {
                 expected_revision,
             )
             .map(|_| ());
-        if result.is_ok()
-            && let Some(request_id) = request_id
-        {
-            self.withdraw_scheduled_agent_request(request_id);
-        }
         self.finish_scheduled_agent_command(envelope.command_id, result);
     }
 
@@ -228,23 +205,5 @@ impl FacadeState {
             Ok(()) => self.succeed(command_id, None),
             Err(error) => self.fail(command_id, storage_failure(error)),
         }
-    }
-
-    fn scheduled_request_ids_for_task(
-        &self,
-        store: &ScheduledAgentStore,
-        task_id: ScheduledTaskId,
-    ) -> Vec<pod0_domain::HostRequestId> {
-        self.pending_scheduled_agents
-            .values()
-            .filter_map(|request| {
-                store
-                    .occurrence(request.execution.occurrence_id)
-                    .ok()
-                    .flatten()
-                    .filter(|occurrence| occurrence.task_id == task_id)
-                    .map(|_| request.request_id)
-            })
-            .collect()
     }
 }

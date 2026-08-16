@@ -9,40 +9,46 @@ use super::support::{request_id, submission_fence_id};
 use crate::{LibraryStore, StorageError};
 
 impl LibraryStore {
+    #[cfg(test)]
     pub fn fail_model_chapter_workflow(
         &self,
         input: ModelChapterFailureInput,
     ) -> Result<ModelChapterWorkflowRecord, StorageError> {
         validate_failure(&input)?;
-        self.write(|transaction| {
-            let mut record = exact_failure_record(transaction, &input)?;
-            if !matches!(
-                record.state,
-                ModelChapterWorkflowState::Requested
-                    | ModelChapterWorkflowState::RetryScheduled
-                    | ModelChapterWorkflowState::SubmissionAuthorized
-                    | ModelChapterWorkflowState::ProviderAccepted
-                    | ModelChapterWorkflowState::CompletionObserved
-            ) {
-                return Err(StorageError::ChapterWorkflowConflict);
-            }
-            if matches!(&input.disposition, ModelChapterFailureDisposition::Replan)
-                && record.may_have_submitted
-                && (record.state != ModelChapterWorkflowState::CompletionObserved
-                    || read_completion(transaction, input.request_id)?.is_none())
-            {
-                return Err(StorageError::ChapterWorkflowConflict);
-            }
-            record.workflow_revision = next_revision(record.workflow_revision)?;
-            record.failure_code = Some(input.failure_code);
-            record.failure_detail = input.failure_detail;
-            record.may_have_submitted |= input.may_have_submitted;
-            record.updated_at_ms = input.observed_at_ms;
-            apply_disposition(&mut record, input.disposition)?;
-            persist_workflow(transaction, &record)?;
-            read_workflow(transaction, record.episode_id)?
-                .ok_or(StorageError::ChapterWorkflowNotFound)
-        })
+        self.write(|transaction| Self::apply_model_chapter_failure(transaction, input))
+    }
+
+    pub(crate) fn apply_model_chapter_failure(
+        transaction: &rusqlite::Transaction<'_>,
+        input: ModelChapterFailureInput,
+    ) -> Result<ModelChapterWorkflowRecord, StorageError> {
+        validate_failure(&input)?;
+        let mut record = exact_failure_record(transaction, &input)?;
+        if !matches!(
+            record.state,
+            ModelChapterWorkflowState::Requested
+                | ModelChapterWorkflowState::RetryScheduled
+                | ModelChapterWorkflowState::SubmissionAuthorized
+                | ModelChapterWorkflowState::ProviderAccepted
+                | ModelChapterWorkflowState::CompletionObserved
+        ) {
+            return Err(StorageError::ChapterWorkflowConflict);
+        }
+        if matches!(&input.disposition, ModelChapterFailureDisposition::Replan)
+            && record.may_have_submitted
+            && (record.state != ModelChapterWorkflowState::CompletionObserved
+                || read_completion(transaction, input.request_id)?.is_none())
+        {
+            return Err(StorageError::ChapterWorkflowConflict);
+        }
+        record.workflow_revision = next_revision(record.workflow_revision)?;
+        record.failure_code = Some(input.failure_code);
+        record.failure_detail = input.failure_detail;
+        record.may_have_submitted |= input.may_have_submitted;
+        record.updated_at_ms = input.observed_at_ms;
+        apply_disposition(&mut record, input.disposition)?;
+        persist_workflow(transaction, &record)?;
+        read_workflow(transaction, record.episode_id)?.ok_or(StorageError::ChapterWorkflowNotFound)
     }
 }
 

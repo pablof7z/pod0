@@ -62,6 +62,10 @@ fn rejected_agent_artifact_is_consumed_and_completed_without_a_domain_transition
     assert_eq!(mutation, AgentArtifactMutation::None);
     assert!(matches!(disposition, RequestDisposition::Rejected { .. }));
     assert_eq!(facts.len(), 2);
-    assert!(facts.iter().all(|fact| !matches!(fact.fact, ActivityFact::DomainTransition { .. })));
+    assert!(
+        facts
+            .iter()
+            .all(|fact| !matches!(fact.fact, ActivityFact::DomainTransition { .. }))
+    );
     assert_eq!(commands[0].authorizing_fact_index, 1);
 }

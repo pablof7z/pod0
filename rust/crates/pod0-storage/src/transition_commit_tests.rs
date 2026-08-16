@@ -73,6 +73,7 @@ fn plan()
                 episode_id: Some(episode_id),
                 not_before: None,
                 deadline_at: None,
+                execution: exact_test_execution(),
             },
         }],
         vec![AuthorizedInternalCommand {
@@ -87,6 +88,20 @@ fn plan()
         }],
     )
     .unwrap()
+}
+
+fn exact_test_execution() -> pod0_application::DurableEffectExecution {
+    pod0_application::DurableEffectExecution::Lifecycle {
+        request: pod0_application::DurableLifecycleEffectRequest {
+            request_id: pod0_domain::HostRequestId::from_parts(80, 1),
+            command_id: pod0_domain::CommandId::from_parts(80, 2),
+            cancellation_id: pod0_domain::CancellationId::from_parts(80, 3),
+            issued_revision: StateRevision::INITIAL,
+            wake_at: UnixTimestampMilliseconds::new(1),
+            reason: pod0_application::CoreWakeReason::Unsupported { wire_code: 1 },
+            attempt: 1,
+        },
+    }
 }
 
 fn ingress(fingerprint: u8) -> TransitionIngress {

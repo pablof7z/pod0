@@ -1,14 +1,8 @@
-use pod0_application::{
-    ScheduledAgentAttemptPlan, ScheduledAgentOccurrenceState, begin_scheduled_agent_attempt,
-    reconcile_scheduled_occurrence,
-};
+use pod0_application::{ScheduledAgentAttemptPlan, ScheduledAgentOccurrenceState};
 use pod0_domain::ScheduledOccurrenceId;
 use rusqlite::{Connection, Transaction, params};
 
-use crate::scheduled_agent_store_read::{active_tasks, pending_requests, read_occurrence};
-use crate::scheduled_agent_store_tasks::{
-    command_receipt, finish_command, to_i64, validate_context,
-};
+use crate::scheduled_agent_store_tasks::{to_i64, validate_context};
 use crate::{
     ScheduledAgentCommandContext, ScheduledAgentReconcileOutcome, ScheduledAgentStore, StorageError,
 };
@@ -19,40 +13,20 @@ impl ScheduledAgentStore {
         context: ScheduledAgentCommandContext,
     ) -> Result<ScheduledAgentReconcileOutcome, StorageError> {
         validate_context(&context)?;
-        self.write(|transaction| {
-            if command_receipt(transaction, &context)?.is_some() {
-                return Ok(ScheduledAgentReconcileOutcome {
-                    created_occurrences: Vec::new(),
-                    requests: pending_requests(transaction, Some(context.command_id), u16::MAX)?,
-                });
-            }
-            let mut created_occurrences = Vec::new();
-            for definition in active_tasks(transaction)? {
-                let Some(occurrence) =
-                    reconcile_scheduled_occurrence(&definition, context.observed_at)
-                        .map_err(|_| StorageError::ScheduledAgentWorkflowConflict)?
-                else {
-                    continue;
-                };
-                if read_occurrence(transaction, occurrence.occurrence_id)?.is_none() {
-                    insert_occurrence(transaction, &definition, &occurrence)?;
-                    created_occurrences.push(occurrence.occurrence_id);
-                }
-            }
-            let candidates = retry_candidates(transaction, context.observed_at.value())?;
-            for occurrence_id in candidates {
-                let occurrence = read_occurrence(transaction, occurrence_id)?
-                    .ok_or(StorageError::ScheduledAgentWorkflowNotFound)?;
-                let plan = begin_scheduled_agent_attempt(&occurrence, context.observed_at)
-                    .map_err(|_| StorageError::ScheduledAgentWorkflowConflict)?;
-                persist_attempt(transaction, &context, &occurrence, &plan)?;
-            }
-            finish_command(transaction, &context, None, None)?;
-            Ok(ScheduledAgentReconcileOutcome {
-                created_occurrences,
-                requests: pending_requests(transaction, Some(context.command_id), u16::MAX)?,
-            })
-        })
+        crate::transition_commit::commit_scheduled_agent_reconcile(self.path(), context)
+    }
+
+    pub fn reconcile_due_runs_from_internal_command(
+        &self,
+        command: crate::PendingInternalCommand,
+        context: ScheduledAgentCommandContext,
+    ) -> Result<ScheduledAgentReconcileOutcome, StorageError> {
+        validate_context(&context)?;
+        crate::transition_commit::commit_scheduled_agent_internal_reconcile(
+            self.path(),
+            command,
+            context,
+        )
     }
 }
 
@@ -108,7 +82,7 @@ pub(crate) fn persist_occurrence_state(
     Ok(())
 }
 
-fn insert_occurrence(
+pub(crate) fn insert_occurrence(
     transaction: &Transaction<'_>,
     definition: &pod0_application::ScheduledTaskDefinition,
     occurrence: &ScheduledAgentOccurrenceState,
@@ -130,7 +104,7 @@ fn insert_occurrence(
     Ok(())
 }
 
-fn persist_attempt(
+pub(crate) fn persist_attempt(
     transaction: &Transaction<'_>,
     context: &ScheduledAgentCommandContext,
     previous: &ScheduledAgentOccurrenceState,
@@ -159,7 +133,7 @@ fn persist_attempt(
     Ok(())
 }
 
-fn retry_candidates(
+pub(crate) fn retry_candidates(
     connection: &Connection,
     now_ms: i64,
 ) -> Result<Vec<ScheduledOccurrenceId>, StorageError> {

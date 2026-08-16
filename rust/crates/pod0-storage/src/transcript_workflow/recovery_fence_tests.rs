@@ -1,5 +1,6 @@
 use super::model::{StoredTranscriptWorkflowStage, TranscriptSubmissionClaimInput};
 use super::test_support::{Fixture, NOW};
+use pod0_application::{ActivityActor, ActivityFact};
 
 #[test]
 fn restart_fences_authorized_but_unaccepted_submission_as_ambiguous() {
@@ -33,5 +34,24 @@ fn restart_fences_authorized_but_unaccepted_submission_as_ambiguous() {
     assert_eq!(
         blocked.failure_code.as_deref(),
         Some("ambiguous_submission")
+    );
+    let page = crate::ActivityStore::open(&fixture.transcript.import.target)
+        .unwrap()
+        .page_for_episode(fixture.episode_id, None, 100)
+        .unwrap();
+    let recovery = page
+        .items
+        .iter()
+        .filter(|item| item.draft.actor == ActivityActor::Recovery)
+        .collect::<Vec<_>>();
+    assert_eq!(recovery.len(), 2);
+    assert!(matches!(
+        recovery[1].draft.fact,
+        ActivityFact::DomainTransition { .. }
+    ));
+    assert!(
+        !serde_json::to_string(&recovery)
+            .unwrap()
+            .contains("provider recovery or explicit review")
     );
 }

@@ -1,4 +1,7 @@
-use pod0_application::{TranscriptCancellationActivityInput, plan_transcript_cancellation};
+use pod0_application::{
+    ActivitySubject, CancellationEffectTarget, TranscriptCancellationActivityInput,
+    plan_transcript_cancellation,
+};
 use pod0_domain::UnixTimestampMilliseconds;
 
 use super::TransitionCommit;
@@ -12,24 +15,32 @@ pub(crate) fn commit_transcript_cancellation(
     input: TranscriptWorkflowCancellationInput,
 ) -> Result<TranscriptWorkflowRecord, StorageError> {
     let store = crate::LibraryStore::open_authoritative(path)?;
-    let current = store
-        .transcript_workflow(input.episode_id)?
-        .ok_or(StorageError::TranscriptWorkflowNotFound)?;
-    let plan = plan_transcript_cancellation(TranscriptCancellationActivityInput {
-        command_id: input.command_id,
-        episode_id: input.episode_id,
-        workflow_id: current.request.workflow_id,
-        workflow_revision: input.expected_workflow_revision,
-    })
-    .map_err(|_| StorageError::InvalidActivity)?;
-    TransitionCommit::open(path)?.commit_with(
+    TransitionCommit::open(path)?.commit_planned_with(
         TransitionIngress {
             kind: TransitionIngressKind::ApplicationCommand,
             id: input.command_id.into_bytes(),
             fingerprint: input.command_fingerprint,
         },
-        plan,
         UnixTimestampMilliseconds::new(input.observed_at_ms),
+        |transaction| {
+            let current = crate::transcript_workflow::read_workflow(transaction, input.episode_id)?
+                .ok_or(StorageError::TranscriptWorkflowNotFound)?;
+            plan_transcript_cancellation(TranscriptCancellationActivityInput {
+                command_id: input.command_id,
+                episode_id: input.episode_id,
+                workflow_id: current.request.workflow_id,
+                workflow_revision: input.expected_workflow_revision,
+                target: current.request_id.map(|host_request_id| CancellationEffectTarget {
+                    subject: ActivitySubject::TranscriptWorkflow {
+                        workflow_id: current.request.workflow_id,
+                    },
+                    episode_id: Some(input.episode_id),
+                    host_request_id,
+                    cancellation_id: current.cancellation_id,
+                }),
+            })
+            .map_err(|_| StorageError::InvalidActivity)
+        },
         |transaction, expected, _| {
             Ok(
                 crate::transcript_workflow::apply_transcript_workflow_cancellation(

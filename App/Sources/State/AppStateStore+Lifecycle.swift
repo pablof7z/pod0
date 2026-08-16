@@ -28,6 +28,7 @@ extension AppStateStore {
         guard updated != state.settings else { return }
         Self.logger.info("iCloudSettingsSync: applying remote settings update")
         mutateState { $0.settings = updated }
+        WorkflowRuntime.shared.wake()
     }
 
     nonisolated static func migrateLegacyOpenRouterSecretIfNeeded(
@@ -56,10 +57,8 @@ extension AppStateStore {
     }
 
     func updateSettings(_ settings: Settings) {
-        let chapterModelChanged = settings.chapterCompilationModel
-            != state.settings.chapterCompilationModel
         mutateState { $0.settings = settings }
-        if chapterModelChanged { WorkflowRuntime.shared.wake() }
+        WorkflowRuntime.shared.wake()
     }
 
     /// Captures the latest unmigrated native state and awaits its authoritative

@@ -1,3 +1,4 @@
+use pod0_application::{ActivityFact, CommandActivityIdentity, RequestDisposition};
 use pod0_domain::{CommandId, StateRevision};
 
 use crate::chapter_workflow_test_support::*;
@@ -105,7 +106,12 @@ fn source_removal_preserves_generation_and_readd_uses_a_new_request_identity() {
     let first = ensure(&store, episode_id, 1, false);
     set_optional_chapter_source(&fixture, episode_id, None);
     let removed = store
-        .mark_publisher_chapter_source_absent(episode_id, 1_200)
+        .mark_publisher_chapter_source_absent(
+            episode_id,
+            CommandId::from_parts(1, 20),
+            1_200,
+            false,
+        )
         .unwrap()
         .unwrap();
     let tombstone = store
@@ -116,6 +122,42 @@ fn source_removal_preserves_generation_and_readd_uses_a_new_request_identity() {
     assert_eq!(tombstone.state, PublisherChapterWorkflowState::SourceAbsent);
     assert_eq!(tombstone.generation, first.generation);
     assert!(tombstone.request_id.is_none());
+    let activity = crate::ActivityStore::open(&fixture.target)
+        .unwrap()
+        .page_for_correlation(
+            CommandActivityIdentity::new(CommandId::from_parts(1, 20)).correlation_id(),
+            None,
+            100,
+        )
+        .unwrap();
+    assert_eq!(activity.items.len(), 2);
+    assert!(matches!(
+        activity.items[0].draft.fact,
+        ActivityFact::RequestDisposition {
+            disposition: RequestDisposition::Accepted
+        }
+    ));
+    store
+        .mark_publisher_chapter_source_absent(
+            episode_id,
+            CommandId::from_parts(1, 20),
+            1_201,
+            false,
+        )
+        .unwrap();
+    assert_eq!(
+        crate::ActivityStore::open(&fixture.target)
+            .unwrap()
+            .page_for_correlation(
+                CommandActivityIdentity::new(CommandId::from_parts(1, 20)).correlation_id(),
+                None,
+                100,
+            )
+            .unwrap()
+            .items
+            .len(),
+        2
+    );
 
     set_chapter_source(&fixture, episode_id, SOURCE_URL);
     let readded = ensure(&store, episode_id, 2, false);

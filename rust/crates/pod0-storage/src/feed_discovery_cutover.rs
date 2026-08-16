@@ -1,7 +1,6 @@
 use pod0_domain::{ContentDigest, UnixTimestampMilliseconds};
 use rusqlite::{Transaction, params};
 
-use crate::feed_discovery_cutover_commit::commit_cutover;
 use crate::feed_discovery_cutover_read::{read_report, read_staged_input};
 use crate::feed_discovery_cutover_validation::validate_input;
 use crate::{
@@ -77,7 +76,12 @@ impl LibraryStore {
         source_generation: u64,
         observed_at: UnixTimestampMilliseconds,
     ) -> Result<LegacyFeedDiscoveryCutoverReport, StorageError> {
-        self.write(|transaction| commit_cutover(transaction, source_generation, observed_at))
+        crate::transition_commit_feed_discovery_cutover::commit_feed_discovery_authority_cutover(
+            self.path(),
+            source_generation,
+            observed_at,
+        )?;
+        self.feed_discovery_cutover_report()
     }
 }
 

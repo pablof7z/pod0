@@ -1,20 +1,9 @@
 use pod0_application::{
-    ActivitySubject, AgentApprovalRequest, AgentCapabilityExecutionMode, AgentCapabilityRequest,
-    AgentGeneratedAudioTarget, AgentModelExecutionRequest, AgentToolAction, AgentTurnStage,
-    ExternalEffectKind, HostRequest, HostRequestEnvelope, LeasedHostRequestEnvelope,
-    MAX_AGENT_GENERATED_AUDIO_BYTES, MAX_AGENT_MODEL_OUTPUT_BYTES, RecallEmbeddingInput,
-    agent_generated_artifact_id, agent_tool_definitions, bounded_host_request_count,
+    ActivitySubject, ExternalEffectKind, HostRequestEnvelope, LeasedHostRequestEnvelope,
+    bounded_host_request_count,
 };
-use pod0_domain::{CancellationId, CommandId, HostRequestId};
-use pod0_recall_index::{RECALL_INDEX_DIMENSIONS, RecallIndexPlan};
-use sha2::{Digest as _, Sha256};
 
-use crate::runtime_evidence_commands::index_spans;
-use crate::runtime_evidence_state::{EvidenceIndexCompletion, PendingEvidenceIndex};
 use crate::runtime_state::FacadeState;
-use crate::runtime_transcript_workflow_mapping::host_request;
-
-const EFFECT_LEASE_MILLISECONDS: u32 = 120_000;
 
 impl FacadeState {
     pub(super) fn next_leased_transcript_requests(
@@ -25,16 +14,27 @@ impl FacadeState {
         let mut changed = false;
         let mut requests = Vec::with_capacity(maximum);
         while requests.len() < maximum {
+            if let Some(store) = &self.store {
+                changed |= store
+                    .prepare_expired_agent_capability_recovery(self.now())
+                    .unwrap_or(false);
+            }
+            changed |= self.reconcile_download_deadlines();
             changed |= self.prepare_transcript_host_request();
+            changed |= self.prepare_model_chapter_host_request();
             let Some(store) = self.store.clone() else {
                 break;
             };
-            let Ok(Some(lease)) = store.claim_next_effect(self.now(), EFFECT_LEASE_MILLISECONDS)
-            else {
+            let Ok(Some(lease)) = store.claim_next_effect_with_publisher_limit(
+                self.now(),
+                120_000,
+                pod0_application::MAX_ACTIVE_PUBLISHER_CHAPTER_REQUESTS,
+            ) else {
                 break;
             };
+            changed = true;
             let Some(request) = self.host_request_for_effect(&lease) else {
-                break;
+                continue;
             };
             if !self.host_requests.register(request.clone())
                 && !self.host_requests.matches_outstanding(&request)
@@ -59,241 +59,213 @@ impl FacadeState {
             ExternalEffectKind::AgentProvider => self.agent_model_request_for_effect(lease),
             ExternalEffectKind::AgentApproval => self.agent_approval_request_for_effect(lease),
             ExternalEffectKind::AgentCapability => self.agent_capability_request_for_effect(lease),
+            ExternalEffectKind::PublisherChapterProvider
+            | ExternalEffectKind::ModelChapterProvider => self.chapter_request_for_effect(lease),
+            ExternalEffectKind::Download => self.download_request_for_effect(lease),
+            ExternalEffectKind::Playback => self.playback_request_for_effect(lease),
+            ExternalEffectKind::FeedNetwork | ExternalEffectKind::Notification => {
+                self.feed_request_for_effect(lease)
+            }
+            ExternalEffectKind::ScheduledAgentProvider => {
+                self.scheduled_agent_request_for_effect(lease)
+            }
+            ExternalEffectKind::CoreWake => self.lifecycle_request_for_effect(lease),
+            ExternalEffectKind::Cancellation => self.cancellation_request_for_effect(lease),
+            ExternalEffectKind::LibraryNetwork => self.library_network_request_for_effect(lease),
             _ => None,
         }
     }
 
-    fn agent_capability_request_for_effect(
+    fn library_network_request_for_effect(
         &self,
         lease: &pod0_storage::EffectLease,
     ) -> Option<HostRequestEnvelope> {
-        let ActivitySubject::AgentTurn { turn_id } = lease.subject else {
+        let pod0_application::DurableEffectExecution::LibraryNetwork { request } =
+            &lease.request.execution
+        else {
             return None;
         };
-        let state = self.agent_store.as_ref()?.turn(turn_id).ok()??;
-        let projection = state.projection();
-        if projection.stage != AgentTurnStage::Executing {
-            return None;
-        }
-        let proposal = projection.proposal?;
-        let execution_fence_id = projection.execution_fence_id?;
-        let generated_audio_target =
-            matches!(proposal.action, AgentToolAction::GenerateTtsEpisode { .. }).then(|| {
-                AgentGeneratedAudioTarget {
-                    artifact_id: agent_generated_artifact_id(
-                        proposal.proposal_id,
-                        proposal.proposal_digest,
-                    ),
-                    maximum_bytes: MAX_AGENT_GENERATED_AUDIO_BYTES,
-                }
-            });
-        Some(HostRequestEnvelope {
-            request_id: pod0_application::agent_capability_request_id(
-                turn_id,
-                proposal.proposal_id,
-                execution_fence_id,
-            ),
-            command_id: CommandId::from_bytes(lease.intent_id.into_bytes()),
-            cancellation_id: state.cancellation_id(),
-            issued_revision: self.revision,
-            deadline_at: lease.request.deadline_at,
-            request: HostRequest::ExecuteAgentCapability {
-                capability: AgentCapabilityRequest {
-                    turn_id,
-                    proposal_id: proposal.proposal_id,
-                    proposal_digest: proposal.proposal_digest,
-                    execution_fence_id,
-                    execution_mode: if lease.fence == 1 {
-                        AgentCapabilityExecutionMode::Perform
-                    } else {
-                        AgentCapabilityExecutionMode::RecoverExisting
-                    },
-                    generated_audio_target,
-                    action: proposal.action,
+        (lease.subject
+            == ActivitySubject::Operation {
+                command_id: request.command_id,
+            }
+            && lease.request.deadline_at == request.deadline_at)
+            .then(|| HostRequestEnvelope {
+                request_id: request.request_id,
+                command_id: request.command_id,
+                cancellation_id: request.cancellation_id,
+                issued_revision: request.issued_revision,
+                deadline_at: request.deadline_at,
+                request: pod0_application::HostRequest::FetchLibraryDocument {
+                    workflow_command_id: request.command_id,
+                    step: request.step.clone(),
+                    url: request.http.url.clone(),
+                    accept: request.http.accept.clone(),
+                    maximum_response_bytes: request.http.maximum_response_bytes,
                 },
-            },
-        })
+            })
     }
 
-    fn agent_approval_request_for_effect(
+    fn cancellation_request_for_effect(
         &self,
         lease: &pod0_storage::EffectLease,
     ) -> Option<HostRequestEnvelope> {
-        let ActivitySubject::AgentTurn { turn_id } = lease.subject else {
+        let pod0_application::DurableEffectExecution::Cancellation { request } =
+            lease.request.execution
+        else {
             return None;
         };
-        let state = self.agent_store.as_ref()?.turn(turn_id).ok()??;
-        let projection = state.projection();
-        if projection.stage != AgentTurnStage::ApprovalRequired {
-            return None;
-        }
-        let proposal = projection.proposal?;
-        Some(HostRequestEnvelope {
-            request_id: pod0_application::agent_approval_request_id(
-                turn_id,
-                proposal.proposal_id,
-                proposal.proposal_digest,
-            ),
-            command_id: CommandId::from_bytes(lease.intent_id.into_bytes()),
-            cancellation_id: state.cancellation_id(),
-            issued_revision: self.revision,
-            deadline_at: lease.request.deadline_at,
-            request: HostRequest::PresentAgentApproval {
-                approval: AgentApprovalRequest { turn_id, proposal },
-            },
-        })
+        (lease.request.kind == ExternalEffectKind::Cancellation
+            && lease.request.deadline_at.is_none())
+        .then(|| request.to_host())
     }
 
-    fn agent_model_request_for_effect(
+    fn lifecycle_request_for_effect(
         &self,
         lease: &pod0_storage::EffectLease,
     ) -> Option<HostRequestEnvelope> {
-        let ActivitySubject::AgentTurn { turn_id } = lease.subject else {
+        let pod0_application::DurableEffectExecution::Lifecycle { request } =
+            &lease.request.execution
+        else {
             return None;
         };
-        let state = self.agent_store.as_ref()?.turn(turn_id).ok()??;
-        let projection = state.projection();
-        if projection.stage != AgentTurnStage::AwaitingModel {
+        (lease.request.kind == ExternalEffectKind::CoreWake
+            && lease.request.deadline_at.is_none()
+            && lease.request.episode_id == request_episode_id(request.reason))
+        .then(|| request.to_host())
+    }
+
+    fn feed_request_for_effect(
+        &self,
+        lease: &pod0_storage::EffectLease,
+    ) -> Option<HostRequestEnvelope> {
+        let pod0_application::DurableEffectExecution::Feed { request } = &lease.request.execution
+        else {
+            return None;
+        };
+        let subject_matches = match lease.subject {
+            ActivitySubject::Podcast { podcast_id } => {
+                request.podcast_id() == podcast_id && request.episode_id().is_none()
+            }
+            ActivitySubject::Episode { episode_id } => request.episode_id() == Some(episode_id),
+            _ => false,
+        };
+        (subject_matches && request.deadline_at == lease.request.deadline_at)
+            .then(|| request.to_host())
+    }
+
+    fn playback_request_for_effect(
+        &self,
+        lease: &pod0_storage::EffectLease,
+    ) -> Option<HostRequestEnvelope> {
+        let pod0_application::DurableEffectExecution::Playback { request } =
+            &lease.request.execution
+        else {
+            return None;
+        };
+        if request.episode_id() != lease.episode_id
+            || request.deadline_at != lease.request.deadline_at
+        {
             return None;
         }
-        let model_fence_id = projection.execution_fence_id?;
-        let available_tools = if projection.commit.is_some() {
-            Vec::new()
-        } else {
-            state.available_tools().to_vec()
-        };
-        let tool_definitions = agent_tool_definitions(&available_tools)?;
-        Some(HostRequestEnvelope {
-            request_id: crate::runtime_agent_modules::identity::model_request_id(
-                turn_id,
-                model_fence_id,
-            ),
-            command_id: CommandId::from_bytes(lease.intent_id.into_bytes()),
-            cancellation_id: state.cancellation_id(),
-            issued_revision: self.revision,
-            deadline_at: lease.request.deadline_at,
-            request: HostRequest::ExecuteAgentModelTurn {
-                execution: AgentModelExecutionRequest {
-                    conversation_id: projection.conversation_id,
-                    turn_id,
-                    model_fence_id,
-                    model_reference: state.model_reference().to_owned(),
-                    messages: self.agent_model_messages(&projection),
-                    tool_definitions,
-                    maximum_output_bytes: MAX_AGENT_MODEL_OUTPUT_BYTES,
-                },
-            },
-        })
+        Some(request.to_host())
     }
 
     fn transcript_request_for_effect(
         &self,
         lease: &pod0_storage::EffectLease,
     ) -> Option<HostRequestEnvelope> {
-        let ActivitySubject::TranscriptWorkflow { workflow_id } = lease.subject else {
+        let ActivitySubject::TranscriptWorkflow { .. } = lease.subject else {
             return None;
         };
-        let episode_id = lease.episode_id?;
-        let store = self.store.as_ref()?;
-        let record = store.transcript_workflow(episode_id).ok()??;
-        if record.request.workflow_id != workflow_id {
-            return None;
-        }
-        let podcast_id = self
-            .listening
-            .episodes
-            .iter()
-            .find(|episode| episode.episode_id == episode_id)?
-            .podcast_id;
-        let request = host_request(&record, podcast_id)?;
-        (lease.request.deadline_at == request.deadline_at).then_some(request)
-    }
-
-    fn recall_request_for_effect(
-        &mut self,
-        lease: &pod0_storage::EffectLease,
-    ) -> Option<HostRequestEnvelope> {
-        let ActivitySubject::Episode { episode_id } = lease.subject else {
+        let pod0_application::DurableEffectExecution::Transcript { request } =
+            &lease.request.execution
+        else {
             return None;
         };
-        let artifact = self
-            .evidence_store
-            .as_ref()?
-            .selected_artifact(episode_id)
-            .ok()??;
-        let spans = index_spans(&artifact);
-        let plan = self.recall_index.prepare_episode(
-            &spans,
-            self.begin_recall_index_operation(CancellationId::from_bytes(
-                lease.intent_id.into_bytes(),
-            ))
-            .cancellation(),
-        );
-        let requested = match plan.ok()? {
-            RecallIndexPlan::NeedsEmbeddings { spans } => spans,
-            RecallIndexPlan::Ready { .. } => Vec::new(),
-        };
-        let workflow = self
-            .store
-            .as_ref()?
-            .transcript_workflow(episode_id)
-            .ok()??;
-        let command_id = workflow.command_id;
-        let cancellation_id = workflow.cancellation_id;
-        let requested_span_ids = requested
-            .iter()
-            .map(|span| span.span_id)
-            .collect::<Vec<_>>();
-        let request_id = recall_request_id(lease.intent_id, &requested_span_ids);
-        self.pending_evidence_indexes.insert(
-            request_id,
-            PendingEvidenceIndex {
-                command_id,
-                cancellation_id,
-                episode_id,
-                generation_id: artifact.generation_id,
-                expected_span_count: u32::try_from(artifact.spans.len()).ok()?,
-                requested_span_ids,
-                completion: EvidenceIndexCompletion::TranscriptWorkflow {
-                    workflow_id: workflow.request.workflow_id,
-                    input_version: workflow.evidence_input_version?,
+        (lease.episode_id == Some(request.capability.context().episode_id)
+            && lease.request.deadline_at == request.deadline_at)
+            .then(|| pod0_application::HostRequestEnvelope {
+                request_id: request.request_id,
+                command_id: request.command_id,
+                cancellation_id: request.cancellation_id,
+                issued_revision: request.issued_revision,
+                deadline_at: request.deadline_at,
+                request: pod0_application::HostRequest::ExecuteTranscriptCapability {
+                    capability: request.capability.clone(),
                 },
-            },
-        );
-        Some(HostRequestEnvelope {
-            request_id,
-            command_id,
-            cancellation_id,
-            issued_revision: self.revision,
-            deadline_at: lease.request.deadline_at,
-            request: HostRequest::EmbedRecallSpans {
-                episode_id,
-                generation_id: artifact.generation_id,
-                provider: self.recall_configuration.embedding_provider,
-                model: self.recall_configuration.embedding_model.clone(),
-                spans: requested
-                    .into_iter()
-                    .map(|span| RecallEmbeddingInput {
-                        span_id: span.span_id,
-                        text: span.text,
-                    })
-                    .collect(),
-                maximum_dimensions: u16::try_from(RECALL_INDEX_DIMENSIONS).ok()?,
-            },
-        })
+            })
     }
 }
 
-fn recall_request_id(
-    intent_id: pod0_domain::EffectIntentId,
-    spans: &[pod0_domain::EvidenceSpanId],
-) -> HostRequestId {
-    let mut hash = Sha256::new();
-    hash.update(b"pod0/evidence/leased-request/v1");
-    hash.update(intent_id.into_bytes());
-    for span in spans {
-        hash.update(span.into_bytes());
+fn request_episode_id(reason: pod0_application::CoreWakeReason) -> Option<pod0_domain::EpisodeId> {
+    match reason {
+        pod0_application::CoreWakeReason::ModelChapterRetry { episode_id, .. }
+        | pod0_application::CoreWakeReason::TranscriptProviderRecovery { episode_id, .. }
+        | pod0_application::CoreWakeReason::TranscriptRetry { episode_id, .. }
+        | pod0_application::CoreWakeReason::FeedDiscoveryNotificationRetry { episode_id, .. } => {
+            Some(episode_id)
+        }
+        pod0_application::CoreWakeReason::ModelChapterFinalization { .. }
+        | pod0_application::CoreWakeReason::TranscriptFinalization { .. }
+        | pod0_application::CoreWakeReason::FeedFetchRetry { .. }
+        | pod0_application::CoreWakeReason::Unsupported { .. } => None,
     }
-    let digest: [u8; 32] = hash.finalize().into();
-    HostRequestId::from_bytes(digest[..16].try_into().expect("fixed digest prefix"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pod0_domain::*;
+
+    #[test]
+    fn transcript_lease_maps_only_its_exact_persisted_payload() {
+        let episode_id = EpisodeId::from_parts(213, 1);
+        let workflow_id = TranscriptWorkflowId::from_parts(213, 2);
+        let exact = pod0_application::DurableTranscriptEffectRequest {
+            request_id: HostRequestId::from_parts(213, 3),
+            command_id: CommandId::from_parts(213, 4),
+            cancellation_id: CancellationId::from_parts(213, 5),
+            issued_revision: StateRevision::new(6),
+            deadline_at: Some(UnixTimestampMilliseconds::new(2_000)),
+            capability: pod0_application::TranscriptCapabilityRequest::FetchPublisher {
+                context: pod0_application::TranscriptCapabilityContext {
+                    episode_id,
+                    podcast_id: PodcastId::from_parts(213, 7),
+                    source_revision: "immutable-source".to_owned(),
+                },
+                source_url: "https://example.com/transcript.vtt".to_owned(),
+                mime_hint: Some("text/vtt".to_owned()),
+                maximum_response_bytes: 100_000,
+            },
+        };
+        let mut lease = pod0_storage::EffectLease {
+            intent_id: EffectIntentId::from_parts(213, 8),
+            attempt_id: EffectAttemptId::from_parts(213, 9),
+            lease_id: EffectLeaseId::from_parts(213, 10),
+            fence: 1,
+            authorizing_activity_id: ActivityId::from_parts(213, 11),
+            correlation_id: ActivityCorrelationId::from_parts(213, 12),
+            subject: ActivitySubject::TranscriptWorkflow { workflow_id },
+            episode_id: Some(episode_id),
+            request: pod0_application::DurableExternalEffectRequest {
+                kind: ExternalEffectKind::TranscriptProvider,
+                subject: ActivitySubject::TranscriptWorkflow { workflow_id },
+                episode_id: Some(episode_id),
+                not_before: None,
+                deadline_at: exact.deadline_at,
+                execution: pod0_application::DurableEffectExecution::Transcript { request: exact },
+            },
+            expires_at: UnixTimestampMilliseconds::new(3_000),
+        };
+        let state = FacadeState::default();
+        assert!(matches!(
+            state.transcript_request_for_effect(&lease).unwrap().request,
+            pod0_application::HostRequest::ExecuteTranscriptCapability { capability:
+                pod0_application::TranscriptCapabilityRequest::FetchPublisher { source_url, .. } }
+                if source_url == "https://example.com/transcript.vtt"
+        ));
+        lease.episode_id = Some(EpisodeId::from_parts(213, 99));
+        assert!(state.transcript_request_for_effect(&lease).is_none());
+    }
 }

@@ -8,7 +8,6 @@ enum WorkflowProjectionAuthority: Sendable, Equatable {
     case sharedRustModelChapters
     case sharedRustDownloads
     case sharedRustTranscripts
-    case sharedRustScheduledAgents
 }
 
 extension WorkflowJobProjection {
@@ -40,10 +39,9 @@ extension WorkflowJobProjection {
         lastErrorMessage = workflow.failure?.safeDetail
         createdAt = workflow.updatedAt.date
         updatedAt = workflow.updatedAt.date
-        var actions: Set<WorkflowJobAction> = []
-        if workflow.allowedActions.canRetry { actions.insert(.retry) }
-        if workflow.allowedActions.canCancel { actions.insert(.cancel) }
-        allowedActions = actions
+        retryActionToken = workflow.retryAction
+        cancelActionToken = workflow.cancelAction
+        allowedActions = Self.actions(retry: retryActionToken, cancel: cancelActionToken)
         authority = .sharedRustDownloads
         coreWorkflowRevision = workflow.workflowRevision.value
     }
@@ -135,6 +133,8 @@ struct WorkflowJobProjection: Identifiable, Sendable, Equatable {
     let createdAt: Date
     let updatedAt: Date
     let allowedActions: Set<WorkflowJobAction>
+    let retryActionToken: WorkflowActionToken?
+    let cancelActionToken: WorkflowActionToken?
     let authority: WorkflowProjectionAuthority
     let coreWorkflowRevision: UInt64?
 
@@ -159,6 +159,8 @@ struct WorkflowJobProjection: Identifiable, Sendable, Equatable {
         createdAt = job.createdAt
         updatedAt = job.updatedAt
         allowedActions = Self.actions(for: job.state, errorClass: job.lastErrorClass)
+        retryActionToken = nil
+        cancelActionToken = nil
         authority = .swiftJobStore
         coreWorkflowRevision = nil
     }
@@ -190,10 +192,9 @@ struct WorkflowJobProjection: Identifiable, Sendable, Equatable {
         lastErrorMessage = workflow.failure?.safeDetail
         createdAt = workflow.createdAt.date
         updatedAt = workflow.updatedAt.date
-        var actions: Set<WorkflowJobAction> = []
-        if workflow.canRetry { actions.insert(.retry) }
-        if workflow.canCancel { actions.insert(.cancel) }
-        allowedActions = actions
+        retryActionToken = workflow.retryAction
+        cancelActionToken = workflow.cancelAction
+        allowedActions = Self.actions(retry: retryActionToken, cancel: cancelActionToken)
         authority = .sharedRustPublisherChapters
         coreWorkflowRevision = workflow.workflowRevision.value
     }
@@ -221,6 +222,23 @@ struct WorkflowJobProjection: Identifiable, Sendable, Equatable {
             }
         case .obsolete, .succeeded:
             return []
+        }
+    }
+
+    static func actions(
+        retry: WorkflowActionToken?,
+        cancel: WorkflowActionToken?
+    ) -> Set<WorkflowJobAction> {
+        var result: Set<WorkflowJobAction> = []
+        if retry != nil { result.insert(.retry) }
+        if cancel != nil { result.insert(.cancel) }
+        return result
+    }
+
+    func token(for action: WorkflowJobAction) -> WorkflowActionToken? {
+        switch action {
+        case .retry: retryActionToken
+        case .cancel: cancelActionToken
         }
     }
 

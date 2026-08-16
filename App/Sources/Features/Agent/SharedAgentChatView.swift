@@ -83,13 +83,7 @@ struct SharedAgentChatView: View {
     }
 
     private var visibleMessages: [ChatMessage] {
-        return SharedAgentChatMessageMapper.messages(from: session.turns) { episodeID in
-            guard let episode = store.episode(id: episodeID) else { return nil }
-            return RecallEvidenceMetadata(
-                episodeTitle: episode.title,
-                podcastTitle: store.podcast(id: episode.podcastID)?.title ?? "Unknown podcast"
-            )
-        }
+        SharedAgentChatMessageMapper.messages(from: session.turns)
     }
 
     @ToolbarContentBuilder
@@ -238,7 +232,7 @@ struct SharedAgentChatView: View {
         Task { await session.startTurn(input) }
     }
 
-    private func openRecallEvidence(_ evidence: RecallEvidence, responseID: UUID) {
+    private func openRecallEvidence(_ evidence: RecallEvidenceProjection, responseID: UUID) {
         _ = RecallPlaybackHandoff.open(
             evidence,
             responseID: responseID,

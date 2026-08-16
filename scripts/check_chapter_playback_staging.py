@@ -47,7 +47,9 @@ def validate(root: Path) -> list[str]:
     required = {
         "Rust next/previous decision": "decide_chapter_navigation" in policy,
         "Rust automatic ad decision": "decide_automatic_ad_skip" in policy,
-        "typed chapter seek context": "chapter_context: Some(context)" in runtime,
+        "typed chapter seek context": re.search(
+            r"chapter_context:\s*Some\((?:supplied_)?context\)", runtime
+        ) is not None,
         "one-second observation cadence": "minimum_interval_milliseconds: 1_000" in stream,
     }
     errors.extend(f"missing {name}" for name, present in required.items() if not present)

@@ -84,7 +84,7 @@ impl Pod0Facade {
     }
 }
 
-fn project(committed: CommittedActivityFact) -> EpisodeActivityEntry {
+pub(super) fn project(committed: CommittedActivityFact) -> EpisodeActivityEntry {
     let (kind, severity, title, summary) = presentation(committed.draft.fact);
     let mut details = vec![
         detail("Activity", opaque(committed.draft.activity_id.into_bytes())),
@@ -230,7 +230,7 @@ const fn disposition_severity(value: RequestDisposition) -> EpisodeActivitySever
 
 const fn outcome_severity(value: EffectOutcome) -> EpisodeActivitySeverity {
     match value {
-        EffectOutcome::Succeeded => EpisodeActivitySeverity::Success,
+        EffectOutcome::Progressed | EffectOutcome::Succeeded => EpisodeActivitySeverity::Success,
         EffectOutcome::Failed { .. } => EpisodeActivitySeverity::Failure,
         EffectOutcome::Cancelled | EffectOutcome::Superseded => EpisodeActivitySeverity::Warning,
         EffectOutcome::OutcomeUnknown => EpisodeActivitySeverity::Warning,

@@ -3,33 +3,275 @@
   "inventory": "host_requests",
   "source": "rust/crates/pod0-application/src/effects.rs#HostRequest",
   "items": [
-    {"variant":"FetchFeed","domain":"library_feed","target_executor":"CoreFeedHost","authorization_fact":"library_feed.effect_authorized","lease_required":true,"child_issue":216,"implementation_status":"current_delivery_not_universally_authorized"},
-    {"variant":"LoadMedia","domain":"playback","target_executor":"CorePlaybackHost","authorization_fact":"playback.effect_authorized","lease_required":true,"child_issue":214,"implementation_status":"current_delivery_not_universally_authorized"},
-    {"variant":"Play","domain":"playback","target_executor":"CorePlaybackHost","authorization_fact":"playback.effect_authorized","lease_required":true,"child_issue":214,"implementation_status":"current_delivery_not_universally_authorized"},
-    {"variant":"Pause","domain":"playback","target_executor":"CorePlaybackHost","authorization_fact":"playback.effect_authorized","lease_required":true,"child_issue":214,"implementation_status":"current_delivery_not_universally_authorized"},
-    {"variant":"Seek","domain":"playback","target_executor":"CorePlaybackHost","authorization_fact":"playback.effect_authorized","lease_required":true,"child_issue":214,"implementation_status":"current_delivery_not_universally_authorized"},
-    {"variant":"SetRate","domain":"playback","target_executor":"CorePlaybackHost","authorization_fact":"playback.effect_authorized","lease_required":true,"child_issue":214,"implementation_status":"current_delivery_not_universally_authorized"},
-    {"variant":"ArmNativeTimer","domain":"playback","target_executor":"CorePlaybackHost","authorization_fact":"playback.effect_authorized","lease_required":true,"child_issue":214,"implementation_status":"current_delivery_not_universally_authorized"},
-    {"variant":"CancelNativeTimer","domain":"playback","target_executor":"CorePlaybackHost","authorization_fact":"playback.effect_authorized","lease_required":true,"child_issue":214,"implementation_status":"current_delivery_not_universally_authorized"},
-    {"variant":"ObservePlayback","domain":"playback","target_executor":"CorePlaybackHost","authorization_fact":"playback.effect_authorized","lease_required":true,"child_issue":214,"implementation_status":"current_delivery_not_universally_authorized"},
-    {"variant":"StopPlayback","domain":"playback","target_executor":"CorePlaybackHost","authorization_fact":"playback.effect_authorized","lease_required":true,"child_issue":214,"implementation_status":"current_delivery_not_universally_authorized"},
-    {"variant":"EmbedRecallQuery","domain":"recall_knowledge","target_executor":"CoreRecallHost","authorization_fact":"recall_knowledge.effect_authorized","lease_required":true,"child_issue":215,"implementation_status":"current_delivery_not_universally_authorized"},
-    {"variant":"EmbedRecallSpans","domain":"recall_knowledge","target_executor":"CoreRecallHost","authorization_fact":"recall_knowledge.effect_authorized","lease_required":true,"child_issue":215,"implementation_status":"typed_atomic_authorization_and_persisted_effect_lease_for_transcript_evidence"},
-    {"variant":"RerankRecallCandidates","domain":"recall_knowledge","target_executor":"CoreRecallHost","authorization_fact":"recall_knowledge.effect_authorized","lease_required":true,"child_issue":215,"implementation_status":"current_delivery_not_universally_authorized"},
-    {"variant":"RemoveLegacyRecallIndexArtifacts","domain":"recall_knowledge","target_executor":"CoreRecallHost","authorization_fact":"recall_knowledge.effect_authorized","lease_required":true,"child_issue":215,"implementation_status":"current_delivery_not_universally_authorized"},
-    {"variant":"FetchPublisherChapters","domain":"chapter","target_executor":"CorePublisherChapterHost","authorization_fact":"chapter.effect_authorized","lease_required":true,"child_issue":213,"implementation_status":"current_delivery_not_universally_authorized"},
-    {"variant":"ExecuteChapterModel","domain":"chapter","target_executor":"CoreChapterModelHost","authorization_fact":"chapter.effect_authorized","lease_required":true,"child_issue":213,"implementation_status":"current_delivery_not_universally_authorized"},
-    {"variant":"RecoverChapterModelOperation","domain":"chapter","target_executor":"CoreChapterModelHost","authorization_fact":"chapter.effect_authorized","lease_required":true,"child_issue":213,"implementation_status":"current_delivery_not_universally_authorized"},
-    {"variant":"StartEpisodeDownload","domain":"download","target_executor":"CoreDownloadHost","authorization_fact":"download.effect_authorized","lease_required":true,"child_issue":214,"implementation_status":"current_delivery_not_universally_authorized"},
-    {"variant":"CancelEpisodeDownload","domain":"download","target_executor":"CoreDownloadHost","authorization_fact":"download.effect_authorized","lease_required":true,"child_issue":214,"implementation_status":"current_delivery_not_universally_authorized"},
-    {"variant":"RemoveEpisodeDownloadArtifact","domain":"download","target_executor":"CoreDownloadHost","authorization_fact":"download.effect_authorized","lease_required":true,"child_issue":214,"implementation_status":"current_delivery_not_universally_authorized"},
-    {"variant":"DeliverNewEpisodeNotification","domain":"library_feed","target_executor":"CoreNotificationHost","authorization_fact":"library_feed.effect_authorized","lease_required":true,"child_issue":216,"implementation_status":"current_delivery_not_universally_authorized"},
-    {"variant":"ExecuteTranscriptCapability","domain":"transcript","target_executor":"CoreTranscriptHost","authorization_fact":"transcript.effect_authorized","lease_required":true,"child_issue":213,"implementation_status":"typed_atomic_authorization_and_persisted_effect_lease"},
-    {"variant":"ExecuteScheduledAgentTurn","domain":"scheduled_agent","target_executor":"CoreScheduledAgentHost","authorization_fact":"scheduled_agent.effect_authorized","lease_required":true,"child_issue":215,"implementation_status":"current_delivery_not_universally_authorized"},
-    {"variant":"ExecuteAgentModelTurn","domain":"agent_publication","target_executor":"CoreAgentHost","authorization_fact":"agent_publication.effect_authorized","lease_required":true,"child_issue":215,"implementation_status":"persisted_lease_enforced_for_turn_start_model_phase"},
-    {"variant":"PresentAgentApproval","domain":"agent_publication","target_executor":"CoreAgentHost","authorization_fact":"agent_publication.effect_authorized","lease_required":true,"child_issue":215,"implementation_status":"persisted_lease_enforced"},
-    {"variant":"ExecuteAgentCapability","domain":"agent_publication","target_executor":"CoreAgentHost","authorization_fact":"agent_publication.effect_authorized","lease_required":true,"child_issue":215,"implementation_status":"persisted_lease_enforced_including_generated_audio_recovery"},
-    {"variant":"ScheduleCoreWake","domain":"lifecycle","target_executor":"Pod0NativeHostDispatcher","authorization_fact":"lifecycle.effect_authorized","lease_required":true,"child_issue":210,"implementation_status":"current_delivery_not_universally_authorized"},
-    {"variant":"Unsupported","domain":"boundary","target_executor":"Pod0NativeHostDispatcher","authorization_fact":"none_rejected_at_boundary","lease_required":false,"child_issue":210,"implementation_status":"boundary_rejection"}
+    {
+      "variant": "CancelAuthorizedEffect",
+      "domain": "lifecycle",
+      "target_executor": "Pod0NativeHostDispatcher",
+      "authorization_fact": "lifecycle.effect_authorized",
+      "lease_required": true,
+      "child_issue": 210,
+      "implementation_status": "exact_persisted_target_identity_and_lease_only_native_cancellation_delivery"
+    },
+    {
+      "variant": "FetchFeed",
+      "domain": "library_feed",
+      "target_executor": "CoreFeedHost",
+      "authorization_fact": "library_feed.effect_authorized",
+      "lease_required": true,
+      "child_issue": 216,
+      "implementation_status": "exact_payload_atomically_authorized_and_persisted_lease_enforced"
+    },
+    {
+      "variant": "LoadMedia",
+      "domain": "playback",
+      "target_executor": "CorePlaybackHost",
+      "authorization_fact": "playback.effect_authorized",
+      "lease_required": true,
+      "child_issue": 214,
+      "implementation_status": "exact_payload_atomically_authorized_and_leased"
+    },
+    {
+      "variant": "Play",
+      "domain": "playback",
+      "target_executor": "CorePlaybackHost",
+      "authorization_fact": "playback.effect_authorized",
+      "lease_required": true,
+      "child_issue": 214,
+      "implementation_status": "exact_payload_atomically_authorized_and_leased"
+    },
+    {
+      "variant": "Pause",
+      "domain": "playback",
+      "target_executor": "CorePlaybackHost",
+      "authorization_fact": "playback.effect_authorized",
+      "lease_required": true,
+      "child_issue": 214,
+      "implementation_status": "exact_payload_atomically_authorized_and_leased"
+    },
+    {
+      "variant": "Seek",
+      "domain": "playback",
+      "target_executor": "CorePlaybackHost",
+      "authorization_fact": "playback.effect_authorized",
+      "lease_required": true,
+      "child_issue": 214,
+      "implementation_status": "exact_payload_atomically_authorized_and_leased"
+    },
+    {
+      "variant": "SetRate",
+      "domain": "playback",
+      "target_executor": "CorePlaybackHost",
+      "authorization_fact": "playback.effect_authorized",
+      "lease_required": true,
+      "child_issue": 214,
+      "implementation_status": "exact_payload_atomically_authorized_and_leased"
+    },
+    {
+      "variant": "ArmNativeTimer",
+      "domain": "playback",
+      "target_executor": "CorePlaybackHost",
+      "authorization_fact": "playback.effect_authorized",
+      "lease_required": true,
+      "child_issue": 214,
+      "implementation_status": "exact_payload_atomically_authorized_and_leased"
+    },
+    {
+      "variant": "CancelNativeTimer",
+      "domain": "playback",
+      "target_executor": "CorePlaybackHost",
+      "authorization_fact": "playback.effect_authorized",
+      "lease_required": true,
+      "child_issue": 214,
+      "implementation_status": "exact_payload_atomically_authorized_and_leased"
+    },
+    {
+      "variant": "ObservePlayback",
+      "domain": "playback",
+      "target_executor": "CorePlaybackHost",
+      "authorization_fact": "playback.effect_authorized",
+      "lease_required": true,
+      "child_issue": 214,
+      "implementation_status": "exact_payload_leased_with_started_stream_lifetime_and_durable_sequence_fence"
+    },
+    {
+      "variant": "StopPlayback",
+      "domain": "playback",
+      "target_executor": "CorePlaybackHost",
+      "authorization_fact": "playback.effect_authorized",
+      "lease_required": true,
+      "child_issue": 214,
+      "implementation_status": "exact_payload_atomically_authorized_and_leased"
+    },
+    {
+      "variant": "EmbedRecallQuery",
+      "domain": "recall_knowledge",
+      "target_executor": "CoreRecallHost",
+      "authorization_fact": "recall_knowledge.effect_authorized",
+      "lease_required": true,
+      "child_issue": 215,
+      "implementation_status": "exact_serialized_persisted_execution_payload_and_lease_only_delivery"
+    },
+    {
+      "variant": "EmbedRecallSpans",
+      "domain": "recall_knowledge",
+      "target_executor": "CoreRecallHost",
+      "authorization_fact": "recall_knowledge.effect_authorized",
+      "lease_required": true,
+      "child_issue": 215,
+      "implementation_status": "typed_atomic_authorization_and_persisted_effect_lease_for_transcript_evidence"
+    },
+    {
+      "variant": "RerankRecallCandidates",
+      "domain": "recall_knowledge",
+      "target_executor": "CoreRecallHost",
+      "authorization_fact": "recall_knowledge.effect_authorized",
+      "lease_required": true,
+      "child_issue": 215,
+      "implementation_status": "exact_serialized_persisted_execution_payload_and_lease_only_delivery"
+    },
+    {
+      "variant": "RemoveLegacyRecallIndexArtifacts",
+      "domain": "recall_knowledge",
+      "target_executor": "CoreRecallHost",
+      "authorization_fact": "recall_knowledge.effect_authorized",
+      "lease_required": true,
+      "child_issue": 215,
+      "implementation_status": "exact_serialized_persisted_execution_payload_and_lease_only_delivery"
+    },
+    {
+      "variant": "FetchPublisherChapters",
+      "domain": "chapter",
+      "target_executor": "CorePublisherChapterHost",
+      "authorization_fact": "chapter.effect_authorized",
+      "lease_required": true,
+      "child_issue": 213,
+      "implementation_status": "typed_exact_persisted_effect_lease_and_atomic_authorization"
+    },
+    {
+      "variant": "ExecuteChapterModel",
+      "domain": "chapter",
+      "target_executor": "CoreChapterModelHost",
+      "authorization_fact": "chapter.effect_authorized",
+      "lease_required": true,
+      "child_issue": 213,
+      "implementation_status": "typed_paid_submission_authorization_exact_lease_observation_and_durable_internal_finalization"
+    },
+    {
+      "variant": "RecoverChapterModelOperation",
+      "domain": "chapter",
+      "target_executor": "CoreChapterModelHost",
+      "authorization_fact": "chapter.effect_authorized",
+      "lease_required": true,
+      "child_issue": 213,
+      "implementation_status": "typed_exact_recovery_lease_fenced_to_persisted_provider_operation"
+    },
+    {
+      "variant": "StartEpisodeDownload",
+      "domain": "download",
+      "target_executor": "CoreDownloadHost",
+      "authorization_fact": "download.effect_authorized",
+      "lease_required": true,
+      "child_issue": 214,
+      "implementation_status": "persisted_lease_enforced_with_durable_artifact_finalization"
+    },
+    {
+      "variant": "CancelEpisodeDownload",
+      "domain": "download",
+      "target_executor": "CoreDownloadHost",
+      "authorization_fact": "download.effect_authorized",
+      "lease_required": true,
+      "child_issue": 214,
+      "implementation_status": "persisted_lease_enforced"
+    },
+    {
+      "variant": "RemoveEpisodeDownloadArtifact",
+      "domain": "download",
+      "target_executor": "CoreDownloadHost",
+      "authorization_fact": "download.effect_authorized",
+      "lease_required": true,
+      "child_issue": 214,
+      "implementation_status": "persisted_lease_enforced"
+    },
+    {
+      "variant": "DeliverNewEpisodeNotification",
+      "domain": "library_feed",
+      "target_executor": "CoreNotificationHost",
+      "authorization_fact": "library_feed.effect_authorized",
+      "lease_required": true,
+      "child_issue": 216,
+      "implementation_status": "exact_payload_atomically_authorized_and_persisted_lease_enforced"
+    },
+    {
+      "variant": "ExecuteTranscriptCapability",
+      "domain": "transcript",
+      "target_executor": "CoreTranscriptHost",
+      "authorization_fact": "transcript.effect_authorized",
+      "lease_required": true,
+      "child_issue": 213,
+      "implementation_status": "typed_atomic_authorization_and_persisted_effect_lease"
+    },
+    {
+      "variant": "ExecuteScheduledAgentTurn",
+      "domain": "scheduled_agent",
+      "target_executor": "CoreScheduledAgentHost",
+      "authorization_fact": "scheduled_agent.effect_authorized",
+      "lease_required": true,
+      "child_issue": 215,
+      "implementation_status": "exact_serialized_persisted_execution_payload_and_lease_only_delivery"
+    },
+    {
+      "variant": "ExecuteAgentModelTurn",
+      "domain": "agent_publication",
+      "target_executor": "CoreAgentHost",
+      "authorization_fact": "agent_publication.effect_authorized",
+      "lease_required": true,
+      "child_issue": 215,
+      "implementation_status": "persisted_lease_enforced_for_turn_start_model_phase"
+    },
+    {
+      "variant": "PresentAgentApproval",
+      "domain": "agent_publication",
+      "target_executor": "CoreAgentHost",
+      "authorization_fact": "agent_publication.effect_authorized",
+      "lease_required": true,
+      "child_issue": 215,
+      "implementation_status": "persisted_lease_enforced"
+    },
+    {
+      "variant": "ExecuteAgentCapability",
+      "domain": "agent_publication",
+      "target_executor": "CoreAgentHost",
+      "authorization_fact": "agent_publication.effect_authorized",
+      "lease_required": true,
+      "child_issue": 215,
+      "implementation_status": "persisted_lease_enforced_including_generated_audio_recovery"
+    },
+    {
+      "variant": "ScheduleCoreWake",
+      "domain": "lifecycle",
+      "target_executor": "Pod0NativeHostDispatcher",
+      "authorization_fact": "lifecycle.effect_authorized",
+      "lease_required": true,
+      "child_issue": 210,
+      "implementation_status": "typed_exact_durable_lifecycle_effect_authorization_and_leased_delivery"
+    },
+    {
+      "variant": "Unsupported",
+      "domain": "boundary",
+      "target_executor": "Pod0NativeHostDispatcher",
+      "authorization_fact": "none_rejected_at_boundary",
+      "lease_required": false,
+      "child_issue": 210,
+      "implementation_status": "boundary_rejection"
+    },
+    {
+      "variant": "FetchLibraryDocument",
+      "domain": "library_feed",
+      "target_executor": "CoreLibraryNetworkHost",
+      "authorization_fact": "library_feed.effect_authorized",
+      "lease_required": true,
+      "child_issue": 216,
+      "implementation_status": "exact_serialized_http_capability_payload_and_persisted_lease_only_delivery"
+    }
   ]
 }

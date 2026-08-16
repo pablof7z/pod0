@@ -60,7 +60,7 @@ impl Fixture {
             policy_version: 1,
             provider: "openrouter".to_owned(),
             model: "model-a".to_owned(),
-            response_format_code: 0,
+            response_format_code: 1,
             maximum_completion_bytes: 64 * 1_024,
             duration_ms: Some(120_000),
             expected_artifact_source: ChapterArtifactSource::Generated,
@@ -74,12 +74,21 @@ impl Fixture {
         fingerprint: u8,
         force: Option<StateRevision>,
     ) -> ModelChapterWorkflowRecord {
+        self.ensure_command(fingerprint, u64::from(fingerprint), force)
+    }
+
+    pub(super) fn ensure_command(
+        &self,
+        fingerprint: u8,
+        command_suffix: u64,
+        force: Option<StateRevision>,
+    ) -> ModelChapterWorkflowRecord {
         let input = ModelChapterEnsureInput {
             episode_id: self.episode_id,
             configured_model: "openrouter:model-a".to_owned(),
             desired_plan: ModelChapterDesiredPlan::Ready(Box::new(self.request(fingerprint))),
-            command_id: CommandId::from_parts(20, u64::from(fingerprint)),
-            cancellation_id: CancellationId::from_parts(21, u64::from(fingerprint)),
+            command_id: CommandId::from_parts(20, command_suffix),
+            cancellation_id: CancellationId::from_parts(21, command_suffix),
             issued_revision: StateRevision::new(u64::from(fingerprint)),
             now_ms: NOW + i64::from(fingerprint),
             request_deadline_ms: NOW + 60_000 + i64::from(fingerprint),
@@ -208,7 +217,7 @@ fn restart_after_claim_becomes_ambiguous_and_never_reposts_implicitly() {
         ModelChapterSubmissionClaim::AlreadyClaimed(_)
     ));
 
-    let retried = fixture.ensure(2, Some(ambiguous.workflow_revision));
+    let retried = fixture.ensure_command(2, 2_002, Some(ambiguous.workflow_revision));
     assert_eq!(retried.generation, 2);
     assert_ne!(retried.request_id, ambiguous.request_id);
     assert_eq!(retried.state, ModelChapterWorkflowState::Requested);

@@ -12,8 +12,8 @@ use crate::{PendingInternalCommand, StorageError, TransitionIngress, TransitionI
 pub struct EvidenceAdmissionCommitInput {
     pub command: PendingInternalCommand,
     pub artifact: TranscriptEvidenceArtifact,
+    pub effect: Option<pod0_application::DurableEvidenceEmbeddingEffectRequest>,
     pub committed_at: pod0_domain::UnixTimestampMilliseconds,
-    pub deadline_at: pod0_domain::UnixTimestampMilliseconds,
 }
 
 pub(crate) fn commit_evidence_admission(
@@ -26,24 +26,25 @@ pub(crate) fn commit_evidence_admission(
     {
         return Err(StorageError::InvalidActivity);
     }
-    let plan = plan_evidence_admission(EvidenceAdmissionActivityInput {
-        internal_command_id: input.command.internal_command_id,
-        authorizing_activity_id: input.command.authorizing_activity_id,
-        correlation_id: input.command.correlation_id,
-        episode_id: input.artifact.version.episode_id,
-        artifact: input.artifact,
-        deadline_at: input.deadline_at,
-    })
-    .map_err(|_| StorageError::InvalidActivity)?;
-    let fingerprint = evidence_fingerprint(&plan);
-    TransitionCommit::open(path)?.commit_with(
+    let fingerprint = evidence_fingerprint(&input);
+    TransitionCommit::open(path)?.commit_planned_with(
         TransitionIngress {
             kind: TransitionIngressKind::InternalCommand,
             id: input.command.internal_command_id.into_bytes(),
             fingerprint,
         },
-        plan,
         input.committed_at,
+        |_| {
+            plan_evidence_admission(EvidenceAdmissionActivityInput {
+                internal_command_id: input.command.internal_command_id,
+                authorizing_activity_id: input.command.authorizing_activity_id,
+                correlation_id: input.command.correlation_id,
+                episode_id: input.artifact.version.episode_id,
+                artifact: input.artifact.clone(),
+                effect: input.effect.clone(),
+            })
+            .map_err(|_| StorageError::InvalidActivity)
+        },
         |transaction, expected, artifact| {
             if expected != StateRevision::INITIAL {
                 return Err(StorageError::RevisionConflict);
@@ -73,11 +74,11 @@ pub(crate) fn commit_evidence_admission(
     )
 }
 
-fn evidence_fingerprint(plan: &pod0_application::EvidenceAdmissionPlan) -> ContentDigest {
+fn evidence_fingerprint(input: &EvidenceAdmissionCommitInput) -> ContentDigest {
     let mut hash = Sha256::new();
     hash.update(b"pod0/evidence/admission/v1");
-    let (_, _, artifact, _, _, _, _) = plan.clone().into_parts();
-    hash.update(artifact.generation_id.into_bytes());
-    hash.update(artifact.integrity_digest.into_bytes());
+    hash.update(input.artifact.generation_id.into_bytes());
+    hash.update(input.artifact.integrity_digest.into_bytes());
+    hash.update(serde_json::to_vec(&input.effect).expect("typed evidence effect"));
     ContentDigest::from_bytes(hash.finalize().into())
 }

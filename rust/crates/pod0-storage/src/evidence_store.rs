@@ -1,13 +1,16 @@
 use std::path::{Path, PathBuf};
 
 use pod0_domain::{EpisodeId, EvidenceGenerationId, PodcastId, TranscriptEvidenceArtifact};
-use rusqlite::{Connection, Transaction, TransactionBehavior};
+use rusqlite::Connection;
+#[cfg(test)]
+use rusqlite::{Transaction, TransactionBehavior};
 
 use crate::evidence_codec::generation_id;
 use crate::evidence_store_read::{read_artifact, read_summary, selected_generation_id};
+#[cfg(test)]
+use crate::migration_db::configure;
 use crate::migration_db::{
-    configure, open_connection, user_version, validate_current_database_identity,
-    validate_open_database,
+    open_connection, user_version, validate_current_database_identity, validate_open_database,
 };
 use crate::{CURRENT_SCHEMA_VERSION, EvidenceGenerationSummary, StorageError};
 
@@ -135,6 +138,7 @@ impl EvidenceStore {
             .collect()
     }
 
+    #[cfg(test)]
     pub(crate) fn write<T>(
         &self,
         operation: impl FnOnce(&Transaction<'_>) -> Result<T, StorageError>,

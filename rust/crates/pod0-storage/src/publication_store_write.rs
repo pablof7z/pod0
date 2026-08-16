@@ -1,6 +1,3 @@
-use pod0_application::{
-    compose_generated_episode_publication, initial_publication_record, validate_publication_intent,
-};
 use pod0_domain::{
     CommandId, EpisodeRecord, PodcastRecord, PublicationId, PublicationIntent, PublicationRecord,
     StateRevision, UnixTimestampMilliseconds,
@@ -21,80 +18,60 @@ impl PublicationStore {
         podcast: &PodcastRecord,
         prepared_at: UnixTimestampMilliseconds,
     ) -> Result<PublicationPrepareOutcome, StorageError> {
-        validate_publication_intent(intent).map_err(|_| StorageError::InvalidPublication)?;
-        let candidate = initial_publication_record(intent, episode, prepared_at);
-        compose_generated_episode_publication(&candidate, episode, podcast)
-            .map_err(|_| StorageError::InvalidPublication)?;
-        if !is_lower_hex(command_fingerprint, 64) {
-            return Err(StorageError::InvalidPublication);
-        }
-        self.write(|transaction| {
-            if let Some(existing) = command_receipt(transaction, command_id, command_fingerprint)? {
-                return Ok(PublicationPrepareOutcome::Duplicate(existing));
-            }
-            if let Some(existing) = read_publication(transaction, candidate.publication_id)? {
-                if !same_semantics(&existing, &candidate) {
-                    return Err(StorageError::PublicationConflict);
-                }
-                insert_command(
-                    transaction,
-                    command_id,
-                    command_fingerprint,
-                    existing.publication_id,
-                    prepared_at,
-                )?;
-                return Ok(PublicationPrepareOutcome::Duplicate(existing));
-            }
-            insert_publication(transaction, &candidate)?;
-            insert_command(
-                transaction,
-                command_id,
-                command_fingerprint,
-                candidate.publication_id,
-                prepared_at,
-            )?;
-            Ok(PublicationPrepareOutcome::Applied(candidate))
-        })
+        crate::transition_commit::commit_publication_prepare(
+            &self.path,
+            command_id,
+            command_fingerprint,
+            intent,
+            episode,
+            podcast,
+            prepared_at,
+        )
     }
 
-    pub fn record_receipt(
+    pub fn record_leased_receipt(
         &self,
-        publication_id: PublicationId,
-        receipt_id: u64,
+        input: pod0_application::LeasedNMPPublicationReceipt,
         observed_at: UnixTimestampMilliseconds,
     ) -> Result<PublicationRecord, StorageError> {
-        self.write(|transaction| {
-            let current = read_publication(transaction, publication_id)?
-                .ok_or(StorageError::PublicationNotFound)?;
-            if current
-                .receipt_id
-                .is_some_and(|stored| stored != receipt_id)
-            {
-                return Err(StorageError::PublicationConflict);
-            }
-            if current.receipt_id == Some(receipt_id) {
-                return Ok(current);
-            }
-            let revision = next_revision(current.revision)?;
-            transaction
-                .execute(
-                    "UPDATE pod0_publications SET receipt_id=?1,state_revision=?2,updated_at_ms=?3 \
-                     WHERE publication_id=?4",
-                    params![
-                        receipt_id.to_be_bytes().as_slice(),
-                        i64::try_from(revision.value)
-                            .map_err(|_| StorageError::InvalidPublication)?,
-                        observed_at.value,
-                        publication_id.into_bytes().as_slice(),
-                    ],
-                )
-                .map_err(|error| StorageError::sqlite("record publication receipt", error))?;
-            read_publication(transaction, publication_id)?.ok_or(StorageError::PublicationNotFound)
-        })
+        crate::transition_commit::commit_publication_receipt(&self.path, input, observed_at)
     }
 }
 
-fn insert_publication(
+pub(crate) fn record_receipt_in_transaction(
+    transaction: &Transaction<'_>,
+    publication_id: PublicationId,
+    receipt_id: u64,
+    observed_at: UnixTimestampMilliseconds,
+) -> Result<PublicationRecord, StorageError> {
+    let current =
+        read_publication(transaction, publication_id)?.ok_or(StorageError::PublicationNotFound)?;
+    if current
+        .receipt_id
+        .is_some_and(|stored| stored != receipt_id)
+    {
+        return Err(StorageError::PublicationConflict);
+    }
+    if current.receipt_id == Some(receipt_id) {
+        return Ok(current);
+    }
+    let revision = next_revision(current.revision)?;
+    transaction
+        .execute(
+            "UPDATE pod0_publications SET receipt_id=?1,state_revision=?2,updated_at_ms=?3 \
+             WHERE publication_id=?4",
+            params![
+                receipt_id.to_be_bytes().as_slice(),
+                i64::try_from(revision.value).map_err(|_| StorageError::InvalidPublication)?,
+                observed_at.value,
+                publication_id.into_bytes().as_slice(),
+            ],
+        )
+        .map_err(|error| StorageError::sqlite("record publication receipt", error))?;
+    read_publication(transaction, publication_id)?.ok_or(StorageError::PublicationNotFound)
+}
+
+pub(crate) fn insert_publication(
     transaction: &Transaction<'_>,
     record: &PublicationRecord,
 ) -> Result<(), StorageError> {
@@ -132,7 +109,7 @@ fn insert_publication(
     Ok(())
 }
 
-fn command_receipt(
+pub(crate) fn command_receipt(
     transaction: &Transaction<'_>,
     command_id: CommandId,
     fingerprint: &str,
@@ -159,7 +136,7 @@ fn command_receipt(
     }
 }
 
-fn insert_command(
+pub(crate) fn insert_command(
     transaction: &Transaction<'_>,
     command_id: CommandId,
     fingerprint: &str,
@@ -181,7 +158,7 @@ fn insert_command(
     Ok(())
 }
 
-fn same_semantics(left: &PublicationRecord, right: &PublicationRecord) -> bool {
+pub(crate) fn same_semantics(left: &PublicationRecord, right: &PublicationRecord) -> bool {
     left.publication_id == right.publication_id
         && left.artifact_id == right.artifact_id
         && left.artifact_kind == right.artifact_kind
@@ -199,11 +176,4 @@ fn next_revision(current: StateRevision) -> Result<StateRevision, StorageError> 
         .checked_add(1)
         .map(StateRevision::new)
         .ok_or(StorageError::PublicationConflict)
-}
-
-fn is_lower_hex(value: &str, length: usize) -> bool {
-    value.len() == length
-        && value
-            .bytes()
-            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }

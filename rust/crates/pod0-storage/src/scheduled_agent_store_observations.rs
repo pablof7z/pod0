@@ -26,18 +26,15 @@ type AttemptDatabaseRow = (
 );
 
 impl ScheduledAgentStore {
-    pub fn apply_observation(
+    pub fn apply_leased_observation(
         &self,
-        input: ScheduledAgentObservationInput,
+        input: crate::ScheduledAgentLeasedObservationInput,
     ) -> Result<ScheduledAgentObservationOutcome, StorageError> {
-        if input.observed_at.value() < 0 {
-            return Err(StorageError::ScheduledAgentWorkflowConflict);
-        }
-        self.write(|transaction| apply_observation(transaction, &input))
+        crate::transition_commit::commit_scheduled_agent_observation(self.path(), input)
     }
 }
 
-fn apply_observation(
+pub(crate) fn apply_observation_in_transaction(
     transaction: &Transaction<'_>,
     input: &ScheduledAgentObservationInput,
 ) -> Result<ScheduledAgentObservationOutcome, StorageError> {
@@ -113,7 +110,7 @@ pub(crate) struct AttemptRow {
     pub(crate) last_fingerprint: Option<[u8; 32]>,
 }
 
-fn read_attempt(
+pub(crate) fn read_attempt(
     transaction: &Transaction<'_>,
     request_id: pod0_domain::HostRequestId,
 ) -> Result<Option<AttemptRow>, StorageError> {

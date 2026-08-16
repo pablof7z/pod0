@@ -1,11 +1,12 @@
 use pod0_application::{
-    ScheduledAgentExecutionObservation, ScheduledAgentFailureCode, ScheduledAgentStage,
-    scheduled_generated_artifact_id,
+    ScheduledAgentExecutionObservation, ScheduledAgentStage, scheduled_generated_artifact_id,
 };
-use pod0_domain::{ContentDigest, GeneratedArtifactId};
+use pod0_domain::{ContentDigest, GeneratedArtifactId, UnixTimestampMilliseconds};
 use rusqlite::Connection;
 
-use crate::scheduled_agent_store_test_support::{ScheduledFixture, time};
+use crate::scheduled_agent_store_test_support::{
+    ScheduledFixture, apply_scheduled_observation, claim_scheduled_effect, time,
+};
 use crate::*;
 
 #[test]
@@ -37,13 +38,12 @@ fn task_reconcile_and_requested_restart_are_durable_and_idempotent() {
     assert_eq!(duplicate.requests, vec![request.clone()]);
 
     let reopened = ScheduledAgentStore::open_authoritative(&fixture.path).unwrap();
-    let recovery = reopened.recover_after_restart(time(2_100)).unwrap();
-    assert_eq!(recovery.reissued_requests, vec![request]);
-    assert!(recovery.ambiguous_occurrences.is_empty());
+    assert_eq!(reopened.pending_host_requests(20).unwrap(), vec![request]);
+    assert!(claim_scheduled_effect(&fixture.path, 2_100).fence > 0);
 }
 
 #[test]
-fn accepted_restart_fails_closed_as_ambiguous_without_resubmission() {
+fn accepted_restart_remains_fenced_even_after_the_original_lease_expires() {
     let fixture = ScheduledFixture::new();
     let definition = fixture.definition(1, 2_000);
     fixture
@@ -59,9 +59,11 @@ fn accepted_restart_fails_closed_as_ambiguous_without_resubmission() {
         .unwrap()
         .requests
         .remove(0);
-    let outcome = fixture
-        .store
-        .apply_observation(ScheduledAgentObservationInput {
+    let lease = claim_scheduled_effect(&fixture.path, 2_000);
+    let outcome = apply_scheduled_observation(
+        &fixture,
+        &lease,
+        ScheduledAgentObservationInput {
             request_id: request.request_id,
             cancellation_id: request.cancellation_id,
             observed_request_revision: request.issued_revision,
@@ -72,29 +74,31 @@ fn accepted_restart_fails_closed_as_ambiguous_without_resubmission() {
                 attempt_id: request.execution.attempt_id,
                 provider_operation_id: Some("provider-operation".to_owned()),
             },
-        })
-        .unwrap();
+        },
+    )
+    .unwrap();
     assert!(matches!(
         outcome,
         ScheduledAgentObservationOutcome::Updated(_)
     ));
 
-    let recovery = fixture.store.recover_after_restart(time(2_200)).unwrap();
-    assert!(recovery.reissued_requests.is_empty());
-    assert_eq!(
-        recovery.ambiguous_occurrences,
-        vec![request.execution.occurrence_id]
+    let reopened = ScheduledAgentStore::open_authoritative(&fixture.path).unwrap();
+    assert!(
+        EffectOutbox::open(&fixture.path)
+            .unwrap()
+            .claim_next_generated(
+                UnixTimestampMilliseconds::new(lease.expires_at.value + 1),
+                300_000,
+            )
+            .unwrap()
+            .is_none()
     );
-    let state = fixture
-        .store
+    let state = reopened
         .occurrence(request.execution.occurrence_id)
         .unwrap()
         .unwrap();
-    assert_eq!(state.stage, ScheduledAgentStage::Ambiguous);
-    assert_eq!(
-        state.failure.unwrap().code,
-        ScheduledAgentFailureCode::UnsafeToRetry
-    );
+    assert_eq!(state.stage, ScheduledAgentStage::HostAccepted);
+    assert!(state.failure.is_none());
 }
 
 #[test]
@@ -114,6 +118,7 @@ fn completion_atomically_selects_artifact_and_advances_recurrence_once() {
         .unwrap()
         .requests
         .remove(0);
+    let lease = claim_scheduled_effect(&fixture.path, 2_000);
     let artifact_id = scheduled_generated_artifact_id(request.execution.attempt_id);
     let digest = ContentDigest::from_bytes([7; 32]);
     let completion = ScheduledAgentObservationInput {
@@ -130,7 +135,7 @@ fn completion_atomically_selects_artifact_and_advances_recurrence_once() {
             output_excerpt: "A bounded generated briefing".to_owned(),
         },
     };
-    let outcome = fixture.store.apply_observation(completion.clone()).unwrap();
+    let outcome = apply_scheduled_observation(&fixture, &lease, completion.clone()).unwrap();
     let ScheduledAgentObservationOutcome::Updated(state) = outcome else {
         panic!("updated")
     };
@@ -139,7 +144,7 @@ fn completion_atomically_selects_artifact_and_advances_recurrence_once() {
     assert_eq!(task.last_run_at, Some(time(2_500)));
     assert_eq!(task.next_run_at, time(2_500 + 86_400_000));
     assert!(matches!(
-        fixture.store.apply_observation(completion).unwrap(),
+        apply_scheduled_observation(&fixture, &lease, completion).unwrap(),
         ScheduledAgentObservationOutcome::Duplicate(_)
     ));
     let connection = Connection::open(&fixture.path).unwrap();
@@ -176,9 +181,11 @@ fn noncanonical_completion_rolls_back_occurrence_artifact_and_recurrence() {
         .unwrap()
         .requests
         .remove(0);
-    let result = fixture
-        .store
-        .apply_observation(ScheduledAgentObservationInput {
+    let lease = claim_scheduled_effect(&fixture.path, 4_000);
+    let result = apply_scheduled_observation(
+        &fixture,
+        &lease,
+        ScheduledAgentObservationInput {
             request_id: request.request_id,
             cancellation_id: request.cancellation_id,
             observed_request_revision: request.issued_revision,
@@ -191,7 +198,8 @@ fn noncanonical_completion_rolls_back_occurrence_artifact_and_recurrence() {
                 output_digest: ContentDigest::from_bytes([9; 32]),
                 output_excerpt: "Conflicting artifact".to_owned(),
             },
-        });
+        },
+    );
     assert_eq!(result, Err(StorageError::ScheduledAgentWorkflowConflict));
     assert_eq!(
         fixture
@@ -223,9 +231,11 @@ fn complete_task(fixture: &ScheduledFixture, value: u64) {
         .unwrap()
         .requests
         .remove(0);
-    fixture
-        .store
-        .apply_observation(ScheduledAgentObservationInput {
+    let lease = claim_scheduled_effect(&fixture.path, due);
+    apply_scheduled_observation(
+        fixture,
+        &lease,
+        ScheduledAgentObservationInput {
             request_id: request.request_id,
             cancellation_id: request.cancellation_id,
             observed_request_revision: request.issued_revision,
@@ -238,6 +248,7 @@ fn complete_task(fixture: &ScheduledFixture, value: u64) {
                 output_digest: ContentDigest::from_bytes([8; 32]),
                 output_excerpt: "First artifact".to_owned(),
             },
-        })
-        .unwrap();
+        },
+    )
+    .unwrap();
 }

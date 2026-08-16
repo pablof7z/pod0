@@ -78,7 +78,7 @@ fn replay_after_later_mutation_returns_the_original_clip_and_collection_revision
         .operations
         .iter()
         .find(|operation| operation.command_id == CommandId::from_parts(70, 1))
-        .and_then(|operation| operation.result);
+        .and_then(|operation| operation.result.clone());
     assert!(matches!(
         create_result,
         Some(OperationResult::ClipCreated {
@@ -91,7 +91,7 @@ fn replay_after_later_mutation_returns_the_original_clip_and_collection_revision
         .operations
         .iter()
         .find(|operation| operation.command_id == CommandId::from_parts(70, 2))
-        .and_then(|operation| operation.result);
+        .and_then(|operation| operation.result.clone());
     assert!(matches!(
         update_result,
         Some(OperationResult::ClipUpdated {
@@ -170,7 +170,7 @@ fn deletion_and_clear_replays_keep_their_original_outcomes_after_later_commands(
             .operations
             .iter()
             .find(|operation| operation.command_id == CommandId::from_parts(70, id))
-            .and_then(|operation| operation.result)
+            .and_then(|operation| operation.result.clone())
     };
     assert!(matches!(
         result(11),

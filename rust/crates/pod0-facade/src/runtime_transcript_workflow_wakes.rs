@@ -91,29 +91,6 @@ impl FacadeState {
     }
 
     pub(super) fn withdraw_core_wakes_for_transcript(&mut self, record: &TranscriptWorkflowRecord) {
-        let wake_ids = self
-            .pending_core_wakes
-            .iter()
-            .filter_map(|(request_id, reason)| {
-                transcript_reason_matches(*reason, record).then_some(*request_id)
-            })
-            .collect::<Vec<_>>();
-        for request_id in wake_ids {
-            self.pending_core_wakes.remove(&request_id);
-            self.host_queue
-                .retain(|request| request.request_id != request_id);
-            self.host_requests.retire(request_id);
-        }
-    }
-}
-
-fn transcript_reason_matches(reason: CoreWakeReason, record: &TranscriptWorkflowRecord) -> bool {
-    match reason {
-        CoreWakeReason::TranscriptProviderRecovery { episode_id, .. }
-        | CoreWakeReason::TranscriptRetry { episode_id, .. } => episode_id == record.episode_id,
-        CoreWakeReason::TranscriptFinalization { request_id } => {
-            Some(request_id) == record.request_id
-        }
-        _ => false,
+        self.cancel_lifecycle_wakes(record.command_id, record.cancellation_id);
     }
 }

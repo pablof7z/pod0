@@ -9,12 +9,15 @@ fun qualifyModelChapterRuntime(facade: Pod0Facade, episodeId: EpisodeId) {
         null,
         ApplicationCommand.EnsureModelChapters(episodeId, "ollama:llama3.2"),
     ))
-    val request = facade.nextHostRequests(1u.toUShort()).single()
+    val leased = facade.nextLeasedHostRequests(1u.toUShort()).single()
+    val request = leased.request
     val execute = request.request
     check(execute is HostRequest.ExecuteChapterModel)
     check(execute.execution.provider == "ollama")
     check(execute.execution.model == "llama3.2")
-    val receipt = facade.recordHostObservation(HostObservationEnvelope(
+    val receipt = facade.recordLeasedHostObservation(LeasedHostObservationEnvelope(
+        leased.lease,
+        HostObservationEnvelope(
         request.requestId,
         request.cancellationId,
         request.issuedRevision,
@@ -37,6 +40,7 @@ fun qualifyModelChapterRuntime(facade: Pod0Facade, episodeId: EpisodeId) {
                 "completed",
                 null,
             ),
+        ),
         ),
     ))
     check(receipt == HostObservationReceipt.Persisted(request.requestId, true))

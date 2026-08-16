@@ -44,6 +44,9 @@ pub struct HostRequestEnvelope {
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum HostRequest {
+    CancelAuthorizedEffect {
+        target_request_id: HostRequestId,
+    },
     FetchFeed {
         feed_url: String,
         entity_tag: Option<String>,
@@ -154,6 +157,13 @@ pub enum HostRequest {
         podcast_id: pod0_domain::PodcastId,
         podcast_title: String,
         episode_title: String,
+    },
+    FetchLibraryDocument {
+        workflow_command_id: CommandId,
+        step: crate::LibraryNetworkStep,
+        url: String,
+        accept: String,
+        maximum_response_bytes: u64,
     },
     ExecuteTranscriptCapability {
         capability: crate::TranscriptCapabilityRequest,

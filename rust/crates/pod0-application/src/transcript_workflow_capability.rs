@@ -9,14 +9,14 @@ use crate::{
     TranscriptWorkflowFailureCode,
 };
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct TranscriptCapabilityContext {
     pub episode_id: EpisodeId,
     pub podcast_id: PodcastId,
     pub source_revision: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum TranscriptCapabilityRequest {
     FetchPublisher {
         context: TranscriptCapabilityContext,

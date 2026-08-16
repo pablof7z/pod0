@@ -74,7 +74,9 @@ final class ModelChapterWorkflowProjectionTests: XCTestCase {
             mayHaveSubmitted: failure?.mayHaveSubmitted ?? false,
             createdAt: UnixTimestampMilliseconds(value: 1_000),
             updatedAt: UnixTimestampMilliseconds(value: 2_000),
-            allowedActions: actions
+            allowedActions: actions,
+            retryAction: nil,
+            cancelAction: nil
         )
     }
 }

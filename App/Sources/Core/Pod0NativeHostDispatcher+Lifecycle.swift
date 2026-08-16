@@ -5,9 +5,6 @@ extension Pod0NativeHostDispatcher {
         activeTasks[requestID] != nil
             || downloadRequests[requestID] != nil
             || playbackStreams[requestID] != nil
-            || acknowledgementTasks[requestID] != nil
-            || scheduledAgentAcknowledgementTasks[requestID] != nil
-            || pendingScheduledAgentObservations[requestID]?.isEmpty == false
             || pendingScheduledAgentExecutions[requestID] != nil
             || completedRequestIDs.contains(requestID)
     }

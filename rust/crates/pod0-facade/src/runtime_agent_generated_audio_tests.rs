@@ -165,7 +165,7 @@ fn generated_audio_evidence_atomically_commits_a_restart_safe_episode() {
 #[test]
 fn restart_requeues_generated_audio_only_for_existing_artifact_recovery() {
     let fixture = PlaybackFixture::new();
-    let (_, capability) = start(&fixture, 2);
+    let (command, capability) = start(&fixture, 2);
     let HostRequest::ExecuteAgentCapability {
         capability: original,
     } = &capability.request.request
@@ -182,9 +182,11 @@ fn restart_requeues_generated_audio_only_for_existing_artifact_recovery() {
         std::sync::Arc::new(FixedClock(capability.lease.expires_at.value + 1)),
     );
     let recovered = reopened.next_leased_host_requests(1).remove(0);
+    assert_ne!(recovered.request.request_id, capability.request.request_id);
+    assert_ne!(recovered.request.command_id, capability.request.command_id);
     let HostRequest::ExecuteAgentCapability {
         capability: request,
-    } = recovered.request.request
+    } = &recovered.request.request
     else {
         panic!("expected recovered capability");
     };
@@ -197,4 +199,70 @@ fn restart_requeues_generated_audio_only_for_existing_artifact_recovery() {
         original.generated_audio_target
     );
     assert_eq!(request.proposal_id, original.proposal_id);
+    assert!(reopened.next_leased_host_requests(1).is_empty());
+    let connection = rusqlite::Connection::open(&fixture.target).unwrap();
+    let recovery_receipts: i64 = connection
+        .query_row(
+            "SELECT count(*) FROM pod0_transition_receipts WHERE ingress_code=5 AND ingress_id=?1",
+            [capability.lease.attempt_id.into_bytes().as_slice()],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(recovery_receipts, 1);
+    let original_state: i64 = connection
+        .query_row(
+            "SELECT state_code FROM pod0_effect_intents WHERE intent_id=?1",
+            [capability.lease.intent_id.into_bytes().as_slice()],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(original_state, 3);
+    assert!(matches!(
+        record_leased_agent_observation(
+            &reopened,
+            &capability,
+            HostObservation::AgentCapabilityObserved {
+                turn_id: original.turn_id,
+                proposal_id: original.proposal_id,
+                execution_fence_id: original.execution_fence_id,
+                outcome: AgentCapabilityOutcome::Cancelled,
+            },
+        ),
+        HostObservationReceipt::Rejected { .. }
+    ));
+    let conversation_id = ConversationId::from_bytes(command.command_id.into_bytes());
+    let Projection::AgentConversation { value } = reopened
+        .snapshot(ProjectionRequest {
+            scope: ProjectionScope::AgentConversation { conversation_id },
+            offset: 0,
+            max_items: 1,
+        })
+        .projection
+    else {
+        panic!("expected conversation");
+    };
+    let turn = &value.turns[0];
+    reopened.dispatch(CommandEnvelope {
+        command_id: CommandId::from_parts(301, 20),
+        cancellation_id: CancellationId::from_parts(302, 20),
+        expected_revision: None,
+        command: ApplicationCommand::CancelAgentTurn {
+            turn_id: turn.turn_id,
+            expected_turn_revision: turn.revision,
+        },
+    });
+    assert!(reopened.next_leased_host_requests(1).is_empty());
+    assert!(matches!(
+        record_leased_agent_observation(
+            &reopened,
+            &recovered,
+            HostObservation::AgentCapabilityObserved {
+                turn_id: request.turn_id,
+                proposal_id: request.proposal_id,
+                execution_fence_id: request.execution_fence_id,
+                outcome: AgentCapabilityOutcome::Cancelled,
+            },
+        ),
+        HostObservationReceipt::Rejected { .. }
+    ));
 }

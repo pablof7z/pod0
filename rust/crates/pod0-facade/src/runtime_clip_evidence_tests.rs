@@ -53,25 +53,12 @@ fn clip_evidence_survives_replacement_restart_and_unsubscribe_until_bounds_chang
     next_input.source_payload_digest = ContentDigest::from_bytes([0x88; 32]);
     next_input.segments[0].text.push_str(" Updated.");
     let next = pod0_application::build_evidence_artifact(&next_input, evidence_policy()).unwrap();
-    let store = pod0_storage::EvidenceStore::open(&fixture.base.target).unwrap();
-    store
-        .stage_artifact(CommandId::from_parts(80, 1), &next, 1_800_000_002_000)
-        .unwrap();
-    store
-        .verify_generation(
-            CommandId::from_parts(80, 2),
-            next.generation_id,
-            1_800_000_002_001,
-        )
-        .unwrap();
-    store
-        .select_generation(
-            CommandId::from_parts(80, 3),
-            fixture.base.episode_id,
-            next.generation_id,
-            1_800_000_002_002,
-        )
-        .unwrap();
+    crate::runtime_recall_test_support::commit_test_evidence(
+        &fixture.base,
+        CommandId::from_parts(80, 1),
+        &next,
+        2_000,
+    );
 
     fixture.base.facade.dispatch(envelope(
         21,

@@ -18,34 +18,81 @@ impl LibraryStore {
         &self,
         input: ModelChapterEnsureInput,
     ) -> Result<ModelChapterEnsureOutcome, StorageError> {
-        validate_ensure_values(
-            &input.configured_model,
-            input.now_ms,
-            input.request_deadline_ms,
-            input.max_attempts,
-        )?;
-        self.write(|transaction| {
-            let existing = read_workflow(transaction, input.episode_id)?;
-            validate_forced_revision(existing.as_ref(), input.force_retry_from_revision)?;
-            validate_plan(transaction, &input)?;
-            if let Some(record) = existing.as_ref() {
-                if should_keep(record, &input) {
-                    return Ok(ModelChapterEnsureOutcome::Existing(record.clone()));
-                }
-                if protects_attempt(record) && !explicit_retry_allowed(record, &input) {
-                    return mark_replan_pending(transaction, record, &input);
-                }
-            }
-            let record = replacement_record(existing.as_ref(), &input)?;
-            persist_workflow(transaction, &record)?;
-            let stored = read_workflow(transaction, input.episode_id)?
-                .ok_or(StorageError::ChapterWorkflowNotFound)?;
-            Ok(ModelChapterEnsureOutcome::Changed {
-                record: stored,
-                replaced: existing.map(Box::new),
-            })
-        })
+        crate::transition_commit::commit_model_chapter_admission(self.path(), input)
     }
+
+    pub fn ensure_model_chapter_workflow_from_internal_command(
+        &self,
+        command: crate::PendingInternalCommand,
+        input: ModelChapterEnsureInput,
+    ) -> Result<ModelChapterEnsureOutcome, StorageError> {
+        crate::transition_commit::commit_model_chapter_internal_admission(
+            self.path(),
+            command,
+            input,
+        )
+    }
+}
+
+pub(crate) fn model_chapter_admission_state(
+    transaction: &rusqlite::Transaction<'_>,
+    input: &ModelChapterEnsureInput,
+) -> Result<(StateRevision, bool), StorageError> {
+    validate_input(transaction, input)?;
+    let existing = read_workflow(transaction, input.episode_id)?;
+    let current = existing
+        .as_ref()
+        .map_or(StateRevision::INITIAL, |record| record.workflow_revision);
+    let changes = existing.as_ref().is_none_or(|record| {
+        !should_keep(record, input)
+            && !(protects_attempt(record)
+                && !explicit_retry_allowed(record, input)
+                && record.replan_pending
+                && record.desired_configured_model == input.configured_model)
+    });
+    Ok((current, changes))
+}
+
+pub(crate) fn apply_model_chapter_ensure(
+    transaction: &rusqlite::Transaction<'_>,
+    input: &ModelChapterEnsureInput,
+) -> Result<ModelChapterEnsureOutcome, StorageError> {
+    validate_input(transaction, input)?;
+    let existing = read_workflow(transaction, input.episode_id)?;
+    validate_forced_revision(existing.as_ref(), input.force_retry_from_revision)?;
+    if let Some(record) = existing.as_ref() {
+        if should_keep(record, input) {
+            return Ok(ModelChapterEnsureOutcome::Existing(record.clone()));
+        }
+        if protects_attempt(record) && !explicit_retry_allowed(record, input) {
+            return mark_replan_pending(transaction, record, input);
+        }
+    }
+    let record = replacement_record(existing.as_ref(), input)?;
+    persist_workflow(transaction, &record)?;
+    let stored = read_workflow(transaction, input.episode_id)?
+        .ok_or(StorageError::ChapterWorkflowNotFound)?;
+    Ok(ModelChapterEnsureOutcome::Changed {
+        record: stored,
+        replaced: existing.map(Box::new),
+    })
+}
+
+fn validate_input(
+    transaction: &rusqlite::Transaction<'_>,
+    input: &ModelChapterEnsureInput,
+) -> Result<(), StorageError> {
+    validate_ensure_values(
+        &input.configured_model,
+        input.now_ms,
+        input.request_deadline_ms,
+        input.max_attempts,
+    )?;
+    validate_forced_revision(
+        read_workflow(transaction, input.episode_id)?.as_ref(),
+        input.force_retry_from_revision,
+    )?;
+    validate_plan(transaction, input)
 }
 
 fn validate_plan(

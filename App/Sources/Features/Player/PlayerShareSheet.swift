@@ -168,8 +168,6 @@ struct PlayerShareSheet: View {
                 Haptics.error()
                 return
             }
-            // Surface the one-time hint when we'd otherwise silently degrade.
-            // Falls through to the mechanical fallback below regardless.
             if !LLMProviderCredentialResolver.hasAPIKey(for: modelReference.provider) {
                 AutoSnipController.shared.noLLMKeyHintPending = true
                 await saveQuoteClip(from: transcript.segment(at: playhead))
@@ -195,8 +193,6 @@ struct PlayerShareSheet: View {
                     source: .touch
                 )
             } else {
-                // Mechanical fallback so a failed LLM call still lets the
-                // user share something. Same shape as the pre-LLM behavior.
                 await saveQuoteClip(from: transcript.segment(at: playhead))
             }
         }

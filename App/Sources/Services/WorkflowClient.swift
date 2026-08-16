@@ -1,15 +1,13 @@
 import Foundation
 import Observation
 import Pod0Core
-import os.log
 
-/// Temporary Swift application adapter for the durable workflow system.
-/// Native views declare bounded interests, render projections, and dispatch
-/// typed intents without opening workflow storage or the runtime singleton.
+/// Temporary native adapter for bounded Rust workflow projections.
+/// Durable workflow policy remains in Rust; #210 removes this exception once
+/// reconciliation and action routing are typed shared-core contracts.
 @MainActor
 @Observable
 final class WorkflowClient {
-    typealias Loader = @Sendable (WorkflowProjectionQuery) async throws -> [WorkflowJobProjection]
     typealias PublisherLoader = @Sendable (WorkflowProjectionQuery) async
         -> [PublisherChapterWorkflowProjection]
     typealias ModelChapterLoader = @Sendable (WorkflowProjectionQuery) async
@@ -19,57 +17,25 @@ final class WorkflowClient {
     typealias TranscriptLoader = @Sendable (WorkflowProjectionQuery) async
         -> [TranscriptWorkflowProjection]
 
-    nonisolated private static let logger = Logger.app("WorkflowClient")
     private(set) var revision: UInt64 = 0
     private var jobsByID: [UUID: WorkflowJobProjection] = [:]
-    private var swiftJobsByID: [UUID: WorkflowJobProjection] = [:]
     private var corePublisherJobsByID: [UUID: WorkflowJobProjection] = [:]
     private var coreModelChapterJobsByID: [UUID: WorkflowJobProjection] = [:]
     private var coreDownloadJobsByID: [UUID: WorkflowJobProjection] = [:]
     private var coreTranscriptJobsByID: [UUID: WorkflowJobProjection] = [:]
-    var coreScheduledAgentJobsByID: [UUID: WorkflowJobProjection] = [:]
     private var latestByKey: [WorkflowJobKey: WorkflowJobProjection] = [:]
 
     @ObservationIgnored private var registrations: [UUID: WorkflowProjectionRequest] = [:]
-    @ObservationIgnored private var loader: Loader?
     @ObservationIgnored private var publisherLoader: PublisherLoader?
     @ObservationIgnored private var modelChapterLoader: ModelChapterLoader?
     @ObservationIgnored private var downloadLoader: DownloadLoader?
     @ObservationIgnored private var transcriptLoader: TranscriptLoader?
-    @ObservationIgnored private var databaseURL: URL?
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     @ObservationIgnored private var generation: UInt64 = 0
-    @ObservationIgnored private var changeObserver: NSObjectProtocol?
     @ObservationIgnored private let coalescingDelayNanoseconds: UInt64
 
-    init(
-        loader: Loader? = nil,
-        coalescingDelayNanoseconds: UInt64 = 40_000_000
-    ) {
-        self.loader = loader
+    init(coalescingDelayNanoseconds: UInt64 = 40_000_000) {
         self.coalescingDelayNanoseconds = coalescingDelayNanoseconds
-        changeObserver = NotificationCenter.default.addObserver(
-            forName: .workflowJobStoreDidChange,
-            object: nil,
-            queue: .main
-        ) { [weak self] notification in
-            let changedPath = (notification.object as? NSString).map(String.init)
-            MainActor.assumeIsolated { self?.receiveChange(at: changedPath) }
-        }
-    }
-
-    func attach(jobStore: JobStore) {
-        guard databaseURL?.standardizedFileURL != jobStore.fileURL.standardizedFileURL else {
-            refresh()
-            return
-        }
-        databaseURL = jobStore.fileURL
-        loader = { query in
-            try await Task.detached(priority: .userInitiated) {
-                try jobStore.projections(for: query)
-            }.value
-        }
-        refresh()
     }
 
     func attachPublisherChapterCore(loader: @escaping PublisherLoader) {
@@ -119,17 +85,11 @@ final class WorkflowClient {
     func jobs(kind: WorkflowProjectionKind) -> [WorkflowJobProjection] {
         jobsByID.values
             .filter { $0.kind == kind }
-            .sorted {
-                if $0.updatedAt != $1.updatedAt { return $0.updatedAt > $1.updatedAt }
-                return $0.id.uuidString > $1.id.uuidString
-            }
+            .sorted(by: Self.newestFirst)
     }
 
     func allJobs() -> [WorkflowJobProjection] {
-        jobsByID.values.sorted {
-            if $0.updatedAt != $1.updatedAt { return $0.updatedAt > $1.updatedAt }
-            return $0.id.uuidString > $1.id.uuidString
-        }
+        jobsByID.values.sorted(by: Self.newestFirst)
     }
 
     @discardableResult
@@ -155,60 +115,40 @@ final class WorkflowClient {
         generation &+= 1
         let requestedGeneration = generation
         loadTask?.cancel()
-        guard let query = mergedQuery() else {
+        guard let query = mergedQuery(), hasLoader else {
             replaceJobs(
-                [],
-                publisherWorkflows: [],
-                modelChapterWorkflows: [],
+                publisher: [], modelChapters: [], downloads: [], transcripts: [],
                 generation: requestedGeneration
             )
             return
         }
-        let loader = loader
         let publisherLoader = publisherLoader
         let modelChapterLoader = modelChapterLoader
         let downloadLoader = downloadLoader
         let transcriptLoader = transcriptLoader
-        guard loader != nil || publisherLoader != nil || modelChapterLoader != nil
-                || downloadLoader != nil || transcriptLoader != nil else {
-            replaceJobs(
-                [],
-                publisherWorkflows: [],
-                modelChapterWorkflows: [],
-                generation: requestedGeneration
-            )
-            return
-        }
         let delay = immediately ? 0 : coalescingDelayNanoseconds
         loadTask = Task { @MainActor [weak self] in
-            do {
-                if delay > 0 { try await Task.sleep(nanoseconds: delay) }
-                let jobs = try await loader?(query) ?? []
-                let publisherWorkflows = await publisherLoader?(query) ?? []
-                let modelChapterWorkflows = await modelChapterLoader?(query) ?? []
-                let downloadWorkflows = await downloadLoader?(query) ?? []
-                let transcriptWorkflows = await transcriptLoader?(query) ?? []
-                guard !Task.isCancelled else { return }
-                self?.replaceJobs(
-                    jobs,
-                    publisherWorkflows: publisherWorkflows,
-                    modelChapterWorkflows: modelChapterWorkflows,
-                    downloadWorkflows: downloadWorkflows,
-                    transcriptWorkflows: transcriptWorkflows,
-                    generation: requestedGeneration
-                )
-            } catch is CancellationError {
-                return
-            } catch {
-                Self.logger.error("Unable to refresh workflow projection: \(error, privacy: .public)")
+            if delay > 0 {
+                do { try await Task.sleep(nanoseconds: delay) } catch { return }
             }
+            let publisher = await publisherLoader?(query) ?? []
+            let modelChapters = await modelChapterLoader?(query) ?? []
+            let downloads = await downloadLoader?(query) ?? []
+            let transcripts = await transcriptLoader?(query) ?? []
+            guard !Task.isCancelled else { return }
+            self?.replaceJobs(
+                publisher: publisher.map(WorkflowJobProjection.init),
+                modelChapters: modelChapters.map(WorkflowJobProjection.init),
+                downloads: downloads.map(WorkflowJobProjection.init),
+                transcripts: transcripts.map(WorkflowJobProjection.init),
+                generation: requestedGeneration
+            )
         }
     }
 
-    private func receiveChange(at changedPath: String?) {
-        guard let databaseURL,
-              changedPath == databaseURL.standardizedFileURL.path else { return }
-        refresh()
+    private var hasLoader: Bool {
+        publisherLoader != nil || modelChapterLoader != nil
+            || downloadLoader != nil || transcriptLoader != nil
     }
 
     private func mergedQuery() -> WorkflowProjectionQuery? {
@@ -233,46 +173,42 @@ final class WorkflowClient {
         )
     }
 
-    private func replaceJobs(
-        _ jobs: [WorkflowJobProjection],
-        publisherWorkflows: [PublisherChapterWorkflowProjection],
-        modelChapterWorkflows: [ModelChapterWorkflowProjection],
-        downloadWorkflows: [DownloadWorkflowProjection] = [],
-        transcriptWorkflows: [TranscriptWorkflowProjection] = [],
+    private static func newestFirst(
+        _ lhs: WorkflowJobProjection,
+        _ rhs: WorkflowJobProjection
+    ) -> Bool {
+        if lhs.updatedAt != rhs.updatedAt { return lhs.updatedAt > rhs.updatedAt }
+        return lhs.id.uuidString > rhs.id.uuidString
+    }
+
+    func replaceJobs(
+        publisher: [WorkflowJobProjection],
+        modelChapters: [WorkflowJobProjection],
+        downloads: [WorkflowJobProjection],
+        transcripts: [WorkflowJobProjection],
         generation: UInt64
     ) {
         guard generation == self.generation else { return }
-        swiftJobsByID = Dictionary(uniqueKeysWithValues: jobs.map { ($0.id, $0) })
-        corePublisherJobsByID = Dictionary(uniqueKeysWithValues: publisherWorkflows.map {
-            let projection = WorkflowJobProjection(publisherChapterWorkflow: $0)
-            return (projection.id, projection)
-        })
-        coreModelChapterJobsByID = Dictionary(uniqueKeysWithValues: modelChapterWorkflows.map {
-            let projection = WorkflowJobProjection(modelChapterWorkflow: $0)
-            return (projection.id, projection)
-        })
-        coreDownloadJobsByID = Dictionary(uniqueKeysWithValues: downloadWorkflows.map {
-            let projection = WorkflowJobProjection(downloadWorkflow: $0)
-            return (projection.id, projection)
-        })
-        coreTranscriptJobsByID = Dictionary(uniqueKeysWithValues: transcriptWorkflows.map {
-            let projection = WorkflowJobProjection(transcriptWorkflow: $0)
-            return (projection.id, projection)
-        })
+        corePublisherJobsByID = Dictionary(uniqueKeysWithValues: publisher.map { ($0.id, $0) })
+        coreModelChapterJobsByID = Dictionary(
+            uniqueKeysWithValues: modelChapters.map { ($0.id, $0) }
+        )
+        coreDownloadJobsByID = Dictionary(uniqueKeysWithValues: downloads.map { ($0.id, $0) })
+        coreTranscriptJobsByID = Dictionary(
+            uniqueKeysWithValues: transcripts.map { ($0.id, $0) }
+        )
         mergeJobs()
     }
 
     func mergeJobs() {
-        let chapterJobs = corePublisherJobsByID.merging(coreModelChapterJobsByID) { _, model in model }
-        let coreJobs = chapterJobs.merging(coreDownloadJobsByID) { _, download in download }
-            .merging(coreTranscriptJobsByID) { _, transcript in transcript }
-            .merging(coreScheduledAgentJobsByID) { _, scheduled in scheduled }
-        let replacement = swiftJobsByID.merging(coreJobs) { _, core in core }
+        let chapterJobs = corePublisherJobsByID.merging(coreModelChapterJobsByID) { _, rhs in rhs }
+        let replacement = chapterJobs
+            .merging(coreDownloadJobsByID) { _, rhs in rhs }
+            .merging(coreTranscriptJobsByID) { _, rhs in rhs }
         guard replacement != jobsByID else { return }
         jobsByID = replacement
         var latest: [WorkflowJobKey: WorkflowJobProjection] = [:]
-        for job in replacement.values.sorted(by: { $0.updatedAt > $1.updatedAt })
-            where latest[job.key] == nil {
+        for job in replacement.values.sorted(by: Self.newestFirst) where latest[job.key] == nil {
             latest[job.key] = job
         }
         latestByKey = latest

@@ -49,7 +49,7 @@ fn rust_projection_tool_runs_as_a_durable_internal_command_and_leased_continuati
     assert!(execution.messages.iter().any(|message| {
         message.role == AgentMessageRole::Tool && message.content.contains("podcasts")
     }));
-    assert!(fixture.facade.next_host_requests(8).is_empty());
+    assert!(fixture.facade.next_leased_host_requests(8).is_empty());
 
     let connection = rusqlite::Connection::open(&fixture.target).unwrap();
     let consumed: i64 = connection

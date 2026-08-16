@@ -17,22 +17,24 @@ impl crate::LibraryStore {
         disposition: RequestDisposition,
         observed_at: UnixTimestampMilliseconds,
     ) -> Result<crate::CommitReceipt, StorageError> {
-        let plan = plan_transcript_request_disposition(TranscriptDispositionActivityInput {
-            command_id,
-            episode_id,
-            state_revision,
-            origin,
-            disposition,
-        })
-        .map_err(|_| StorageError::InvalidActivity)?;
-        TransitionCommit::open(self.path())?.commit_no_state_change(
+        TransitionCommit::open(self.path())?.commit_planned_with(
             TransitionIngress {
                 kind: TransitionIngressKind::ApplicationCommand,
                 id: command_id.into_bytes(),
                 fingerprint,
             },
-            plan,
             observed_at,
+            |_| {
+                plan_transcript_request_disposition(TranscriptDispositionActivityInput {
+                    command_id,
+                    episode_id,
+                    state_revision,
+                    origin,
+                    disposition,
+                })
+                .map_err(|_| StorageError::InvalidActivity)
+            },
+            |_, expected, ()| Ok(expected),
         )
     }
 }
@@ -53,28 +55,29 @@ pub(crate) fn commit_transcript_admission(
 ) -> Result<TranscriptWorkflowEnsureOutcome, StorageError> {
     validate_ensure(&input)?;
     let store = crate::LibraryStore::open_authoritative(path)?;
-    let existing = store.transcript_workflow(input.episode_id)?;
-    let exact_replay = existing
-        .as_ref()
-        .is_some_and(|record| replays(record, &input));
     let origin = origin(&input.request.origin)?;
-    let plan = plan_transcript_admission(TranscriptAdmissionActivityInput {
-        command_id: input.command_id,
-        episode_id: input.episode_id,
-        workflow_id: input.request.workflow_id,
-        current_workflow_revision: existing.as_ref().map(|record| record.workflow_revision),
-        exact_replay,
-        origin,
-    })
-    .map_err(|_| StorageError::InvalidActivity)?;
-    let receipt = TransitionCommit::open(path)?.commit_with(
+    let receipt = TransitionCommit::open(path)?.commit_planned_with(
         TransitionIngress {
             kind: TransitionIngressKind::ApplicationCommand,
             id: input.command_id.into_bytes(),
             fingerprint,
         },
-        plan,
         UnixTimestampMilliseconds::new(input.now_ms),
+        |transaction| {
+            let existing =
+                crate::transcript_workflow::read_workflow(transaction, input.episode_id)?;
+            plan_transcript_admission(TranscriptAdmissionActivityInput {
+                command_id: input.command_id,
+                episode_id: input.episode_id,
+                workflow_id: input.request.workflow_id,
+                current_workflow_revision: existing.as_ref().map(|record| record.workflow_revision),
+                exact_replay: existing
+                    .as_ref()
+                    .is_some_and(|record| replays(record, &input)),
+                origin,
+            })
+            .map_err(|_| StorageError::InvalidActivity)
+        },
         |transaction, expected, mutation| match mutation {
             TranscriptAdmissionMutation::Ensure => {
                 Ok(
@@ -96,7 +99,7 @@ pub(crate) fn commit_transcript_admission(
     let record = store
         .transcript_workflow(input.episode_id)?
         .ok_or(StorageError::TranscriptWorkflowNotFound)?;
-    if exact_replay || receipt.replayed {
+    if receipt.replayed || receipt.disposition == RequestDisposition::Duplicate {
         Ok(TranscriptWorkflowEnsureOutcome::Existing(record))
     } else {
         Ok(TranscriptWorkflowEnsureOutcome::Changed(record))
@@ -125,28 +128,29 @@ pub(crate) fn commit_transcript_internal_admission(
         return Err(StorageError::InvalidActivity);
     }
     let store = crate::LibraryStore::open_authoritative(path)?;
-    let existing = store.transcript_workflow(input.episode_id)?;
-    let exact_replay = existing
-        .as_ref()
-        .is_some_and(|record| replays(record, &input));
-    let plan = plan_transcript_internal_admission(TranscriptInternalAdmissionActivityInput {
-        internal_command_id: command.internal_command_id,
-        authorizing_activity_id: command.authorizing_activity_id,
-        correlation_id: command.correlation_id,
-        episode_id: input.episode_id,
-        workflow_id: input.request.workflow_id,
-        current_workflow_revision: existing.as_ref().map(|record| record.workflow_revision),
-        exact_replay,
-    })
-    .map_err(|_| StorageError::InvalidActivity)?;
-    let receipt = TransitionCommit::open(path)?.commit_with(
+    let receipt = TransitionCommit::open(path)?.commit_planned_with(
         TransitionIngress {
             kind: TransitionIngressKind::InternalCommand,
             id: command.internal_command_id.into_bytes(),
             fingerprint,
         },
-        plan,
         UnixTimestampMilliseconds::new(input.now_ms),
+        |transaction| {
+            let existing =
+                crate::transcript_workflow::read_workflow(transaction, input.episode_id)?;
+            plan_transcript_internal_admission(TranscriptInternalAdmissionActivityInput {
+                internal_command_id: command.internal_command_id,
+                authorizing_activity_id: command.authorizing_activity_id,
+                correlation_id: command.correlation_id,
+                episode_id: input.episode_id,
+                workflow_id: input.request.workflow_id,
+                current_workflow_revision: existing.as_ref().map(|record| record.workflow_revision),
+                exact_replay: existing
+                    .as_ref()
+                    .is_some_and(|record| replays(record, &input)),
+            })
+            .map_err(|_| StorageError::InvalidActivity)
+        },
         |transaction, expected, mutation| match mutation {
             TranscriptAdmissionMutation::Ensure => {
                 Ok(
@@ -168,7 +172,7 @@ pub(crate) fn commit_transcript_internal_admission(
     let record = store
         .transcript_workflow(input.episode_id)?
         .ok_or(StorageError::TranscriptWorkflowNotFound)?;
-    if exact_replay || receipt.replayed {
+    if receipt.replayed || receipt.disposition == RequestDisposition::Duplicate {
         Ok(TranscriptWorkflowEnsureOutcome::Existing(record))
     } else {
         Ok(TranscriptWorkflowEnsureOutcome::Changed(record))

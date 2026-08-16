@@ -66,8 +66,8 @@ final class Pod0CoreFacadeLifecycleTests: XCTestCase {
         )
 
         // Cancellation withdraws the queued fetch before native code claims it.
-        XCTAssertTrue(facade.nextHostRequests(maximumCount: 64).allSatisfy { envelope in
-            if case .fetchFeed = envelope.request { return false }
+        XCTAssertTrue(facade.nextLeasedHostRequests(maximumCount: 64).allSatisfy { leased in
+            if case .fetchFeed = leased.request.request { return false }
             return true
         })
         let cancelledProjection = facade.snapshot(request: request)

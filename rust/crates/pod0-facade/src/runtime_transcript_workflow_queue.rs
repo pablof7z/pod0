@@ -1,4 +1,3 @@
-use pod0_application::HostCancellationRequest;
 use pod0_domain::HostRequestId;
 use pod0_storage::{
     StoredTranscriptWorkflowStage, TranscriptSubmissionClaim, TranscriptSubmissionClaimInput,
@@ -48,13 +47,7 @@ impl FacadeState {
         let Some((request_id, episode_id)) = self
             .pending_transcripts
             .iter()
-            .find(|(request_id, _)| {
-                !self
-                    .host_queue
-                    .iter()
-                    .any(|item| item.request_id == **request_id)
-                    && !self.host_requests.is_transcript_request(**request_id)
-            })
+            .find(|(request_id, _)| !self.host_requests.is_transcript_request(**request_id))
             .map(|(request_id, episode_id)| (*request_id, *episode_id))
         else {
             return false;
@@ -144,18 +137,8 @@ impl FacadeState {
         let Some(request_id) = record.request_id else {
             return;
         };
-        let was_queued = self
-            .host_queue
-            .iter()
-            .any(|item| item.request_id == request_id);
-        self.host_queue.retain(|item| item.request_id != request_id);
         self.pending_transcripts.remove(&request_id);
-        if self.host_requests.cancel_request(request_id) && !was_queued {
-            self.host_cancellations.push_back(HostCancellationRequest {
-                request_id,
-                cancellation_id: record.cancellation_id,
-            });
-        }
+        self.host_requests.cancel_request(request_id);
         self.host_requests.retire(request_id);
     }
 

@@ -2,7 +2,8 @@ use pod0_application::{
     TranscriptObservationActivityInput, plan_transcript_observation,
     transcript_observation_semantics,
 };
-use pod0_domain::ContentDigest;
+use pod0_domain::{ContentDigest, EpisodeId};
+use rusqlite::OptionalExtension;
 use sha2::{Digest as _, Sha256};
 
 use super::TransitionCommit;
@@ -16,33 +17,34 @@ pub(crate) fn commit_transcript_observation(
     input: TranscriptObservationCommitInput,
 ) -> Result<TranscriptObservationCommitOutcome, StorageError> {
     let store = crate::LibraryStore::open_authoritative(path)?;
-    let current = workflow_for_observation(&store, &input)?;
     let (outcome, transition) = transcript_observation_semantics(&input.observation.observation);
-    let plan = plan_transcript_observation(TranscriptObservationActivityInput {
-        command_id: current.command_id,
-        request_id: input.observation.request_id,
-        episode_id: current.episode_id,
-        workflow_id: current.request.workflow_id,
-        workflow_revision: current.workflow_revision,
-        intent_id: input.lease.intent_id,
-        attempt_id: input.lease.attempt_id,
-        authorizing_activity_id: input.lease.authorizing_activity_id,
-        correlation_id: input.lease.correlation_id,
-        outcome,
-        transition,
-    })
-    .map_err(|_| StorageError::InvalidActivity)?;
     let staged_observation = input.observation.clone();
     let mutation_observation = input.observation.clone();
     let decision = input.decision.clone();
-    let receipt = TransitionCommit::open(path)?.commit_with_transaction_hooks(
+    let receipt = TransitionCommit::open(path)?.commit_planned_with_transaction_hooks(
         TransitionIngress {
             kind: TransitionIngressKind::HostObservation,
             id: input.lease.attempt_id.into_bytes(),
             fingerprint: observation_fingerprint(&input),
         },
-        plan,
         input.committed_at,
+        |transaction| {
+            let current = workflow_for_observation(transaction, &input)?;
+            plan_transcript_observation(TranscriptObservationActivityInput {
+                command_id: current.command_id,
+                request_id: input.observation.request_id,
+                episode_id: current.episode_id,
+                workflow_id: current.request.workflow_id,
+                workflow_revision: current.workflow_revision,
+                intent_id: input.lease.intent_id,
+                attempt_id: input.lease.attempt_id,
+                authorizing_activity_id: input.lease.authorizing_activity_id,
+                correlation_id: input.lease.correlation_id,
+                outcome,
+                transition,
+            })
+            .map_err(|_| StorageError::InvalidActivity)
+        },
         |transaction| {
             crate::effect_outbox::stage_host_observation_in_transaction(
                 transaction,
@@ -53,9 +55,7 @@ pub(crate) fn commit_transcript_observation(
             .map_err(effect_error)
         },
         |transaction, expected, _| {
-            let before =
-                crate::transcript_workflow::read_workflow(transaction, current.episode_id)?
-                    .ok_or(StorageError::TranscriptWorkflowNotFound)?;
+            let before = workflow_for_observation(transaction, &input)?;
             if before.workflow_revision != expected {
                 return Err(StorageError::RevisionConflict);
             }
@@ -74,7 +74,7 @@ pub(crate) fn commit_transcript_observation(
         },
     )?;
     let workflow = store
-        .transcript_workflow(current.episode_id)?
+        .transcript_workflow_for_effect_intent(input.lease.intent_id)?
         .ok_or(StorageError::TranscriptWorkflowNotFound)?;
     Ok(TranscriptObservationCommitOutcome {
         workflow,
@@ -83,11 +83,25 @@ pub(crate) fn commit_transcript_observation(
 }
 
 fn workflow_for_observation(
-    store: &crate::LibraryStore,
+    transaction: &rusqlite::Transaction<'_>,
     input: &TranscriptObservationCommitInput,
 ) -> Result<crate::TranscriptWorkflowRecord, StorageError> {
-    let workflow = store
-        .transcript_workflow_for_effect_intent(input.lease.intent_id)?
+    let episode: Option<Vec<u8>> = transaction
+        .query_row(
+            "SELECT episode_id FROM pod0_effect_intents WHERE intent_id=?1
+             AND effect_kind_code=7 AND subject_code=6",
+            [input.lease.intent_id.into_bytes().as_slice()],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|error| StorageError::sqlite("read transcript effect subject", error))?;
+    let episode_id = EpisodeId::from_bytes(
+        episode
+            .ok_or(StorageError::TranscriptWorkflowNotFound)?
+            .try_into()
+            .map_err(|_| StorageError::InvalidActivity)?,
+    );
+    let workflow = crate::transcript_workflow::read_workflow(transaction, episode_id)?
         .ok_or(StorageError::TranscriptWorkflowNotFound)?;
     if workflow.request_id != Some(input.observation.request_id) {
         return Err(StorageError::StaleTranscriptAttempt);

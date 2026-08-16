@@ -1,5 +1,6 @@
 use crate::runtime_playback_test_support::{
-    PlaybackFixture, dispatch, playback, record_observation,
+    PlaybackFixture, PlaybackTestRequest, dispatch, next_playback_requests, playback,
+    record_observation,
 };
 use crate::*;
 
@@ -7,7 +8,7 @@ use crate::*;
 fn automatic_ad_skip_is_coarse_bounded_and_resets_only_with_a_new_session() {
     let fixture = PlaybackFixture::new_with_chapters();
     fixture.dispatch(120, PlaybackCommand::Restore);
-    let requests = fixture.facade.next_host_requests(u16::MAX);
+    let requests = next_playback_requests(&fixture.facade);
     let stream = requests
         .into_iter()
         .find(|request| matches!(request.request, HostRequest::ObservePlayback { .. }))
@@ -22,7 +23,7 @@ fn automatic_ad_skip_is_coarse_bounded_and_resets_only_with_a_new_session() {
         0,
         PlaybackHostState::Playing,
     );
-    assert!(chapter_seeks(&fixture.facade.next_host_requests(u16::MAX)).is_empty());
+    assert!(chapter_seeks(&next_playback_requests(&fixture.facade)).is_empty());
     fixture.dispatch(
         121,
         PlaybackCommand::SetPreferences {
@@ -31,7 +32,7 @@ fn automatic_ad_skip_is_coarse_bounded_and_resets_only_with_a_new_session() {
             auto_skip_ads: true,
         },
     );
-    assert!(fixture.facade.next_host_requests(u16::MAX).is_empty());
+    assert!(next_playback_requests(&fixture.facade).is_empty());
 
     record(
         &fixture.facade,
@@ -41,7 +42,7 @@ fn automatic_ad_skip_is_coarse_bounded_and_resets_only_with_a_new_session() {
         0,
         PlaybackHostState::Paused,
     );
-    assert!(chapter_seeks(&fixture.facade.next_host_requests(u16::MAX)).is_empty());
+    assert!(chapter_seeks(&next_playback_requests(&fixture.facade)).is_empty());
     record(
         &fixture.facade,
         &stream,
@@ -50,7 +51,7 @@ fn automatic_ad_skip_is_coarse_bounded_and_resets_only_with_a_new_session() {
         0,
         PlaybackHostState::Playing,
     );
-    let requests = fixture.facade.next_host_requests(u16::MAX);
+    let requests = next_playback_requests(&fixture.facade);
     assert!(matches!(
         chapter_seeks(&requests).single().request,
         HostRequest::Seek {
@@ -77,14 +78,14 @@ fn automatic_ad_skip_is_coarse_bounded_and_resets_only_with_a_new_session() {
         1_000,
         PlaybackHostState::Playing,
     );
-    assert!(chapter_seeks(&fixture.facade.next_host_requests(u16::MAX)).is_empty());
+    assert!(chapter_seeks(&next_playback_requests(&fixture.facade)).is_empty());
     fixture.dispatch(
         122,
         PlaybackCommand::Seek {
             position_milliseconds: 1_000,
         },
     );
-    let manual = fixture.facade.next_host_requests(u16::MAX);
+    let manual = next_playback_requests(&fixture.facade);
     assert!(manual.iter().any(|request| matches!(
         request.request,
         HostRequest::Seek {
@@ -101,11 +102,11 @@ fn automatic_ad_skip_is_coarse_bounded_and_resets_only_with_a_new_session() {
         1_000,
         PlaybackHostState::Playing,
     );
-    assert!(chapter_seeks(&fixture.facade.next_host_requests(u16::MAX)).is_empty());
+    assert!(chapter_seeks(&next_playback_requests(&fixture.facade)).is_empty());
 
     let reopened = Pod0Facade::open(fixture.target.to_string_lossy().into_owned()).unwrap();
     dispatch(&reopened, 130, PlaybackCommand::Restore);
-    let requests = reopened.next_host_requests(u16::MAX);
+    let requests = next_playback_requests(&reopened);
     let reopened_stream = requests
         .into_iter()
         .find(|request| matches!(request.request, HostRequest::ObservePlayback { .. }))
@@ -127,7 +128,7 @@ fn automatic_ad_skip_is_coarse_bounded_and_resets_only_with_a_new_session() {
     assert_ne!(reopened_context.session_id, context.session_id);
     record(&reopened, &stream, 6, 5_500, 0, PlaybackHostState::Playing);
     assert!(
-        chapter_seeks(&reopened.next_host_requests(u16::MAX)).is_empty(),
+        chapter_seeks(&next_playback_requests(&reopened)).is_empty(),
         "an observation stream from the prior playback session must be rejected"
     );
     record(
@@ -138,15 +139,12 @@ fn automatic_ad_skip_is_coarse_bounded_and_resets_only_with_a_new_session() {
         0,
         PlaybackHostState::Playing,
     );
-    assert_eq!(
-        chapter_seeks(&reopened.next_host_requests(u16::MAX)).len(),
-        1
-    );
+    assert_eq!(chapter_seeks(&next_playback_requests(&reopened)).len(), 1);
 }
 
 fn record(
     facade: &Pod0Facade,
-    stream: &HostRequestEnvelope,
+    stream: &PlaybackTestRequest,
     sequence: u64,
     observed_at: i64,
     position: u64,
@@ -169,7 +167,7 @@ fn record(
     );
 }
 
-fn chapter_seeks(requests: &[HostRequestEnvelope]) -> Vec<&HostRequestEnvelope> {
+fn chapter_seeks(requests: &[PlaybackTestRequest]) -> Vec<&PlaybackTestRequest> {
     requests
         .iter()
         .filter(|request| {

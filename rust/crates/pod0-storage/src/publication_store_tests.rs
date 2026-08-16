@@ -12,8 +12,8 @@ use pod0_domain::{
 use tempfile::TempDir;
 
 use crate::{
-    CURRENT_SCHEMA_VERSION, CoreStoreMigrator, MigrationClock, PublicationPrepareOutcome,
-    PublicationStore,
+    CURRENT_SCHEMA_VERSION, CoreStoreMigrator, EffectOutbox, MigrationClock,
+    PublicationPrepareOutcome, PublicationStore,
 };
 
 struct Clock;
@@ -129,6 +129,15 @@ impl Fixture {
             )
             .unwrap()
     }
+
+    fn publication_lease(&self) -> pod0_application::PersistedEffectLeaseIdentity {
+        EffectOutbox::open(&self.path)
+            .unwrap()
+            .claim_next_publication(UnixTimestampMilliseconds::new(1_800_000_001_100), 300_000)
+            .unwrap()
+            .unwrap()
+            .lease
+    }
 }
 
 #[test]
@@ -159,11 +168,15 @@ fn correlation_is_durable_before_nmp_acceptance_and_command_replay_is_exact() {
 fn receipt_and_exact_status_facts_survive_restart_without_collapsing_mixed_evidence() {
     let fixture = Fixture::new();
     let publication_id = fixture.prepare().record().publication_id;
+    let lease = fixture.publication_lease();
     fixture
         .store
-        .record_receipt(
-            publication_id,
-            u64::MAX - 2,
+        .record_leased_receipt(
+            pod0_application::LeasedNMPPublicationReceipt {
+                lease,
+                publication_id,
+                receipt_id: u64::MAX - 2,
+            },
             UnixTimestampMilliseconds::new(1_800_000_002_000),
         )
         .unwrap();
@@ -177,18 +190,24 @@ fn receipt_and_exact_status_facts_survive_restart_without_collapsing_mixed_evide
     };
     let acknowledged = fixture
         .store
-        .observe(
-            publication_id,
-            &ack,
+        .observe_leased(
+            pod0_application::LeasedNMPPublicationObservation {
+                lease,
+                publication_id,
+                observation: ack.clone(),
+            },
             UnixTimestampMilliseconds::new(1_800_000_003_000),
         )
         .unwrap();
     assert_eq!(acknowledged.stage, PublicationStage::Acknowledged);
     let duplicate = fixture
         .store
-        .observe(
-            publication_id,
-            &ack,
+        .observe_leased(
+            pod0_application::LeasedNMPPublicationObservation {
+                lease,
+                publication_id,
+                observation: ack,
+            },
             UnixTimestampMilliseconds::new(1_800_000_004_000),
         )
         .unwrap();
@@ -196,15 +215,18 @@ fn receipt_and_exact_status_facts_survive_restart_without_collapsing_mixed_evide
 
     let mixed = fixture
         .store
-        .observe(
-            publication_id,
-            &PublicationStatusObservation {
-                kind: PublicationFactKind::Rejected,
-                route_id: Some(PublicationRouteId::from_parts(3, 4)),
-                attempt: None,
-                event_id_hex: None,
-                observed_at: None,
-                detail: Some("policy".into()),
+        .observe_leased(
+            pod0_application::LeasedNMPPublicationObservation {
+                lease,
+                publication_id,
+                observation: PublicationStatusObservation {
+                    kind: PublicationFactKind::Rejected,
+                    route_id: Some(PublicationRouteId::from_parts(3, 4)),
+                    attempt: None,
+                    event_id_hex: None,
+                    observed_at: None,
+                    detail: Some("policy".into()),
+                },
             },
             UnixTimestampMilliseconds::new(1_800_000_005_000),
         )
@@ -224,29 +246,35 @@ fn receipt_and_exact_status_facts_survive_restart_without_collapsing_mixed_evide
 
 #[test]
 fn not_found_and_unreadable_reattachment_outcomes_remain_distinct() {
-    let fixture = Fixture::new();
-    let publication_id = fixture.prepare().record().publication_id;
+    let mut recorded = Vec::new();
     for kind in [
         PublicationFactKind::ReattachmentNotFound,
         PublicationFactKind::ReattachmentUnreadable,
     ] {
+        let fixture = Fixture::new();
+        let publication_id = fixture.prepare().record().publication_id;
+        let lease = fixture.publication_lease();
         fixture
             .store
-            .observe(
-                publication_id,
-                &PublicationStatusObservation {
-                    kind,
-                    route_id: None,
-                    attempt: None,
-                    event_id_hex: None,
-                    observed_at: None,
-                    detail: None,
+            .observe_leased(
+                pod0_application::LeasedNMPPublicationObservation {
+                    lease,
+                    publication_id,
+                    observation: PublicationStatusObservation {
+                        kind,
+                        route_id: None,
+                        attempt: None,
+                        event_id_hex: None,
+                        observed_at: None,
+                        detail: None,
+                    },
                 },
                 UnixTimestampMilliseconds::new(1_800_000_006_000),
             )
             .unwrap();
+        let record = fixture.store.publication(publication_id).unwrap().unwrap();
+        assert_eq!(record.stage, PublicationStage::Blocked);
+        recorded.push(record.facts[0].kind);
     }
-    let record = fixture.store.publication(publication_id).unwrap().unwrap();
-    assert_eq!(record.stage, PublicationStage::Blocked);
-    assert_ne!(record.facts[0].kind, record.facts[1].kind);
+    assert_ne!(recorded[0], recorded[1]);
 }

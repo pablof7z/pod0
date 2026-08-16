@@ -20,6 +20,26 @@ impl LibraryStore {
         &self.path
     }
 
+    pub fn authoritative_path(&self) -> &Path {
+        &self.path
+    }
+
+    pub fn store_identity(&self) -> Result<CommandId, StorageError> {
+        let connection = open_current(&self.path, true)?;
+        let bytes: Vec<u8> = connection
+            .query_row(
+                "SELECT store_id FROM pod0_store_metadata WHERE singleton=1",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| StorageError::sqlite("read store identity", error))?;
+        Ok(CommandId::from_bytes(bytes.try_into().map_err(|_| {
+            StorageError::CorruptSchema {
+                detail: "store identity width",
+            }
+        })?))
+    }
+
     pub fn open_authoritative(path: &Path) -> Result<Self, StorageError> {
         let connection = open_current(path, true)?;
         validate_open_database(&connection, CURRENT_SCHEMA_VERSION)?;
@@ -111,37 +131,10 @@ impl LibraryStore {
 }
 
 pub fn commit_listening_cutover(path: &Path, observed_at_ms: i64) -> Result<bool, StorageError> {
-    let mut connection = open_current(path, false)?;
-    configure(&connection)?;
-    let transaction = connection
-        .transaction_with_behavior(TransactionBehavior::Immediate)
-        .map_err(|error| StorageError::sqlite("begin listening cutover", error))?;
-    let state: Option<String> = transaction
-        .query_row(
-            "SELECT state FROM pod0_domain_cutovers WHERE domain='listening'",
-            [],
-            |row| row.get(0),
-        )
-        .optional()
-        .map_err(|error| StorageError::sqlite("read listening cutover", error))?;
-    let was_already_authoritative = match state.as_deref() {
-        Some("authoritative") => true,
-        Some("staged") => {
-            transaction
-                .execute(
-                    "UPDATE pod0_domain_cutovers SET state='authoritative',committed_at_ms=?1 \
-                     WHERE domain='listening' AND state='staged'",
-                    [observed_at_ms],
-                )
-                .map_err(|error| StorageError::sqlite("commit listening cutover", error))?;
-            false
-        }
-        _ => return Err(StorageError::ImportNotFound),
-    };
-    transaction
-        .commit()
-        .map_err(|error| StorageError::sqlite("commit listening cutover", error))?;
-    Ok(was_already_authoritative)
+    crate::transition_commit_listening_cutover::commit_listening_authority_cutover(
+        path,
+        observed_at_ms,
+    )
 }
 
 pub(crate) fn command_was_applied(
@@ -175,6 +168,28 @@ pub(crate) fn finish_command(
     fingerprint: &str,
     observed_at_ms: i64,
 ) -> Result<StateRevision, StorageError> {
+    let revision = advance_playback_revision(transaction)?;
+    let next = i64::try_from(revision.value).map_err(|_| StorageError::CorruptSchema {
+        detail: "core revision is malformed",
+    })?;
+    transaction
+        .execute(
+            "INSERT INTO pod0_library_commands(command_id,command_fingerprint,applied_revision,\
+             completed_at_ms) VALUES(?1,?2,?3,?4)",
+            params![
+                command_id.into_bytes().as_slice(),
+                fingerprint,
+                next,
+                observed_at_ms
+            ],
+        )
+        .map_err(|error| StorageError::sqlite("record library command receipt", error))?;
+    Ok(revision)
+}
+
+pub(crate) fn advance_playback_revision(
+    transaction: &Transaction<'_>,
+) -> Result<StateRevision, StorageError> {
     let current: i64 = transaction
         .query_row(
             "SELECT state_revision FROM pod0_playback_state WHERE singleton=1",
@@ -197,18 +212,6 @@ pub(crate) fn finish_command(
             [next],
         )
         .map_err(|error| StorageError::sqlite("advance cutover revision", error))?;
-    transaction
-        .execute(
-            "INSERT INTO pod0_library_commands(command_id,command_fingerprint,applied_revision,\
-             completed_at_ms) VALUES(?1,?2,?3,?4)",
-            params![
-                command_id.into_bytes().as_slice(),
-                fingerprint,
-                next,
-                observed_at_ms
-            ],
-        )
-        .map_err(|error| StorageError::sqlite("record library command receipt", error))?;
     Ok(StateRevision::new(u64::try_from(next).map_err(|_| {
         StorageError::CorruptSchema {
             detail: "core revision is malformed",

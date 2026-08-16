@@ -4,6 +4,8 @@ struct DataStorageSettingsView: View {
     @Environment(AppStateStore.self) private var store
     @State private var storageSummary: String?
     @State private var showClearConfirmation = false
+    @State private var isClearing = false
+    @State private var clearFailure: String?
 
     var body: some View {
         List {
@@ -18,8 +20,17 @@ struct DataStorageSettingsView: View {
         .alert("Clear All Data?", isPresented: $showClearConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Clear All Data", role: .destructive) {
-                store.clearAllData()
-                Haptics.success()
+                isClearing = true
+                clearFailure = nil
+                Task { @MainActor in
+                    do {
+                        try await store.clearAllDataAndWait()
+                        Haptics.success()
+                    } catch {
+                        clearFailure = "Deletion could not finish safely. Restart Podcastr to resume."
+                    }
+                    isClearing = false
+                }
             }
         } message: {
             Text("This permanently deletes your Podcastr library. API credentials, settings, and cached network data are preserved.")
@@ -68,11 +79,12 @@ struct DataStorageSettingsView: View {
 
     private var destructiveSection: some View {
         Section {
-            Button("Clear All Data", role: .destructive) {
+            Button(isClearing ? "Clearing…" : "Clear All Data", role: .destructive) {
                 showClearConfirmation = true
             }
+            .disabled(isClearing)
         } footer: {
-            Text("Deletes Podcastr product data. Credentials and cached network data stay intact.")
+            Text(clearFailure ?? "Deletes Podcastr product data. Credentials and cached network data stay intact.")
         }
     }
 

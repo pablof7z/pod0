@@ -59,12 +59,13 @@ actor NMPClient {
     }
 
     func publishPending(from facade: Pod0Facade) {
-        for draft in facade.nextNmpPublications(maximumCount: 8) {
-            Task { await publish(draft, to: facade) }
+        for publication in facade.nextNmpPublications(maximumCount: 8) {
+            Task { await publish(publication, to: facade) }
         }
     }
 
-    private func publish(_ draft: Pod0PublicationDraft, to facade: Pod0Facade) async {
+    private func publish(_ publication: LeasedNmpPublicationDraft, to facade: Pod0Facade) async {
+        let draft = publication.draft
         do {
             let engine = try requireEngine()
             let receipt = try await engine.publish(WriteIntent(
@@ -78,20 +79,28 @@ actor NMPClient {
                 identity: .explicit(pubkey: draft.expectedAuthorHex),
                 correlation: draft.correlationToken
             ))
-            facade.recordNmpPublicationReceipt(
+            facade.recordNmpPublicationReceipt(receipt: LeasedNmpPublicationReceipt(
+                lease: publication.lease,
                 publicationId: draft.publicationId,
                 receiptId: receipt.id
-            )
-            facade.recordNmpPublicationObservation(
+            ))
+            facade.recordNmpPublicationObservation(observation: LeasedNmpPublicationObservation(
+                lease: publication.lease,
                 publicationId: draft.publicationId,
                 observation: .nmpAccepted
+            ))
+            await consume(
+                receipt,
+                publicationID: draft.publicationId,
+                lease: publication.lease,
+                in: facade
             )
-            await consume(receipt, publicationID: draft.publicationId, in: facade)
         } catch {
-            facade.recordNmpPublicationObservation(
+            facade.recordNmpPublicationObservation(observation: LeasedNmpPublicationObservation(
+                lease: publication.lease,
                 publicationId: draft.publicationId,
                 observation: .nmpFailure("NMP publication failed")
-            )
+            ))
         }
     }
 
@@ -100,29 +109,38 @@ actor NMPClient {
         do {
             switch try requireEngine().reattachReceipt(id: link.receiptId) {
             case .attached(let receipt):
-                await consume(receipt, publicationID: link.publicationId, in: facade)
+                await consume(
+                    receipt,
+                    publicationID: link.publicationId,
+                    lease: link.lease,
+                    in: facade
+                )
             case .notFound:
-                facade.recordNmpPublicationObservation(
+                facade.recordNmpPublicationObservation(observation: LeasedNmpPublicationObservation(
+                    lease: link.lease,
                     publicationId: link.publicationId,
                     observation: .nmpReattachmentNotFound
-                )
+                ))
             case .retainedButUnreadable:
-                facade.recordNmpPublicationObservation(
+                facade.recordNmpPublicationObservation(observation: LeasedNmpPublicationObservation(
+                    lease: link.lease,
                     publicationId: link.publicationId,
                     observation: .nmpReattachmentUnreadable
-                )
+                ))
             }
         } catch {
-            facade.recordNmpPublicationObservation(
+            facade.recordNmpPublicationObservation(observation: LeasedNmpPublicationObservation(
+                lease: link.lease,
                 publicationId: link.publicationId,
                 observation: .nmpFailure("NMP receipt reattachment failed")
-            )
+            ))
         }
     }
 
     private func consume(
         _ receipt: Receipt,
         publicationID: PublicationId,
+        lease: PersistedEffectLeaseIdentity,
         in facade: Pod0Facade
     ) async {
         guard activeReceiptIDs.insert(receipt.id).inserted else { return }
@@ -130,17 +148,19 @@ actor NMPClient {
         do {
             for try await fact in receipt.status {
                 for observation in fact.pod0Observations {
-                    facade.recordNmpPublicationObservation(
+                    facade.recordNmpPublicationObservation(observation: LeasedNmpPublicationObservation(
+                        lease: lease,
                         publicationId: publicationID,
                         observation: observation
-                    )
+                    ))
                 }
             }
         } catch {
-            facade.recordNmpPublicationObservation(
+            facade.recordNmpPublicationObservation(observation: LeasedNmpPublicationObservation(
+                lease: lease,
                 publicationId: publicationID,
                 observation: .nmpFailure("NMP receipt stream interrupted")
-            )
+            ))
         }
     }
 }

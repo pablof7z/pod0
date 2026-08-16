@@ -1,10 +1,13 @@
 use std::path::{Path, PathBuf};
 
-use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior};
+use rusqlite::{Connection, OptionalExtension};
+#[cfg(test)]
+use rusqlite::{Transaction, TransactionBehavior};
 
+#[cfg(test)]
+use crate::migration_db::configure;
 use crate::migration_db::{
-    configure, open_connection, user_version, validate_current_database_identity,
-    validate_open_database,
+    open_connection, user_version, validate_current_database_identity, validate_open_database,
 };
 use crate::transcript_authority::require_transcript_authoritative;
 use crate::{CURRENT_SCHEMA_VERSION, StorageError};
@@ -46,6 +49,7 @@ impl TranscriptStore {
         operation(&connection)
     }
 
+    #[cfg(test)]
     pub(crate) fn write<T>(
         &self,
         operation: impl FnOnce(&Transaction<'_>) -> Result<T, StorageError>,
@@ -54,11 +58,11 @@ impl TranscriptStore {
         configure(&connection)?;
         let transaction = connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
-            .map_err(|error| StorageError::sqlite("begin transcript command", error))?;
+            .map_err(|error| StorageError::sqlite("begin transcript test command", error))?;
         let output = operation(&transaction)?;
         transaction
             .commit()
-            .map_err(|error| StorageError::sqlite("commit transcript command", error))?;
+            .map_err(|error| StorageError::sqlite("commit transcript test command", error))?;
         Ok(output)
     }
 }

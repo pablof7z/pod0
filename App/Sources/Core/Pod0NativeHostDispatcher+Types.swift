@@ -14,13 +14,6 @@ extension Pod0NativeHostDispatcher {
         let delivery: Delivery
     }
 
-    struct AcknowledgementTask {
-        let envelope: HostRequestEnvelope
-        let observation: HostObservationEnvelope
-        let completion: @MainActor () -> Void
-        let task: Task<Void, Never>
-    }
-
     struct PlaybackStream {
         let envelope: HostRequestEnvelope
         let episodeID: EpisodeId?

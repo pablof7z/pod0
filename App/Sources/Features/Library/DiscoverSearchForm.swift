@@ -1,6 +1,6 @@
 import SwiftUI
 import os.log
-
+import Pod0Core
 // MARK: - DiscoverSearchForm
 
 /// "Search" segment body in `AddShowSheet`. Drives Apple's iTunes Search
@@ -20,7 +20,6 @@ import os.log
 ///   - search-level error       — inline label above results
 ///   - per-row subscribe error  — red ⚠ icon on the row, tap to expand
 struct DiscoverSearchForm: View {
-
     nonisolated private static let logger = Logger.app("AddShowSearch")
 
     let store: AppStateStore
@@ -35,20 +34,20 @@ struct DiscoverSearchForm: View {
 
     @State private var query: String = ""
     @State private var isSearching: Bool = false
-    @State private var results: [ITunesSearchClient.Result] = []
+    @State private var results: [PodcastDirectoryEntry] = []
     @State private var lastCompletedSearchTerm: String?
     @State private var searchError: String?
     /// Per-row subscribe failure messages, keyed by `collectionId`. Cleared
     /// when the user taps a fresh attempt on the same row.
-    @State private var rowErrors: [Int: String] = [:]
+    @State private var rowErrors: [UInt64: String] = [:]
     /// Rows whose error caption is currently expanded. Toggling the ⚠
     /// chip adds/removes the row's id here.
-    @State private var expandedErrorIDs: Set<Int> = []
+    @State private var expandedErrorIDs: Set<UInt64> = []
     @State private var searchTask: Task<Void, Never>?
 
     /// Trending podcasts shown when the query is empty — fetched once
     /// per sheet appearance, then cached.
-    @State private var trending: [ITunesSearchClient.Result] = []
+    @State private var trending: [PodcastDirectoryEntry] = []
     @State private var isLoadingTrending: Bool = false
     @State private var trendingFetched: Bool = false
 
@@ -201,7 +200,7 @@ struct DiscoverSearchForm: View {
                 .padding(.horizontal, AppTheme.Spacing.lg)
                 .padding(.bottom, AppTheme.Spacing.xs)
 
-                ForEach(trending) { result in
+                ForEach(trending, id: \.collectionId) { result in
                     DiscoverResultRow(
                         result: result,
                         isSubscribing: isSubscribing(result),
@@ -231,7 +230,7 @@ struct DiscoverSearchForm: View {
                         Spacer()
                     }
                 }
-                ForEach(results) { result in
+                ForEach(results, id: \.collectionId) { result in
                     DiscoverResultRow(
                         result: result,
                         isSubscribing: isSubscribing(result),
@@ -267,12 +266,12 @@ struct DiscoverSearchForm: View {
     /// Fetch progress is a durable Rust projection, not local view state:
     /// the row spins while the committed subscription's feed fetch is still
     /// owed, and it keeps spinning across sheet dismissal or relaunch.
-    private func isSubscribing(_ result: ITunesSearchClient.Result) -> Bool {
+    private func isSubscribing(_ result: PodcastDirectoryEntry) -> Bool {
         guard let url = result.feedURL else { return false }
         return store.isFeedFetchInFlight(feedURL: url)
     }
 
-    private func isAlreadySubscribed(_ result: ITunesSearchClient.Result) -> Bool {
+    private func isAlreadySubscribed(_ result: PodcastDirectoryEntry) -> Bool {
         guard let url = result.feedURL,
               let podcast = store.podcast(feedURL: url) else { return false }
         // Just knowing about the feed (e.g. from a prior external play)
@@ -304,7 +303,7 @@ struct DiscoverSearchForm: View {
         requestSearchFocus()
     }
 
-    private func toggleErrorExpansion(for id: Int) {
+    private func toggleErrorExpansion(for id: UInt64) {
         if expandedErrorIDs.contains(id) {
             expandedErrorIDs.remove(id)
         } else {
@@ -351,7 +350,8 @@ struct DiscoverSearchForm: View {
         searchError = nil
         defer { isSearching = false }
         do {
-            let fetched = try await ITunesSearchClient.search(term)
+            guard let shared = store.sharedLibrary else { throw SharedLibraryError.unavailable }
+            let fetched = try await shared.searchPodcastDirectory(term)
             guard !Task.isCancelled else { return }
             results = fetched
             lastCompletedSearchTerm = term
@@ -372,11 +372,11 @@ struct DiscoverSearchForm: View {
     private func loadTrending() async {
         isLoadingTrending = true
         defer { isLoadingTrending = false }
-        let fetched = (try? await ITunesSearchClient.topPodcasts()) ?? []
+        let fetched = (try? await store.sharedLibrary?.loadTopPodcasts()) ?? []
         trending = fetched
     }
 
-    private func subscribe(to result: ITunesSearchClient.Result) async {
+    private func subscribe(to result: PodcastDirectoryEntry) async {
         guard let feedURL = result.feedURL else {
             // No feedUrl in the iTunes payload — surface as a per-row error
             // so the user understands why this specific show won't subscribe.

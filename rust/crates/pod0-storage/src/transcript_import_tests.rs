@@ -11,6 +11,9 @@ use crate::{
     read_transcript_import_entries,
 };
 
+#[path = "transcript_import_authority_tests.rs"]
+mod authority;
+
 #[test]
 fn selected_transcript_is_backed_up_staged_verified_committed_and_reopened_losslessly() {
     let fixture = TranscriptImportFixture::current();

@@ -18,7 +18,7 @@ fn chapter_commit_is_durable_bounded_and_replay_safe_across_restart() {
             .operations
             .iter()
             .find(|operation| operation.command_id == command.command_id)
-            .and_then(|operation| operation.result),
+            .and_then(|operation| operation.result.clone()),
         Some(OperationResult::ChapterCommitted { receipt })
             if receipt.selection_revision.value == 2 && receipt.chapter_count == 2
     ));
@@ -35,7 +35,10 @@ fn chapter_commit_is_durable_bounded_and_replay_safe_across_restart() {
     let replayed = chapter(&reopened, ChapterProjectionScope::Summary, 0, 20);
     assert_eq!(replayed.summary.unwrap().selection_revision.value, 2);
     assert!(matches!(
-        replayed.operations.last().and_then(|operation| operation.result),
+        replayed
+            .operations
+            .last()
+            .and_then(|operation| operation.result.clone()),
         Some(OperationResult::ChapterCommitted { receipt })
             if receipt.selection_revision.value == 2
     ));

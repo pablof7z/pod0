@@ -34,7 +34,7 @@ async fn no_fetch_work_remains(w: &mut PodWorld) {
     let drained = w.drain_all_host_requests();
     let fetches: Vec<&str> = drained
         .iter()
-        .filter_map(|request| match &request.request {
+        .filter_map(|request| match &request.request.request {
             HostRequest::FetchFeed { feed_url, .. } => Some(feed_url.as_str()),
             _ => None,
         })
@@ -53,11 +53,13 @@ async fn host_told_to_abandon_announcement(w: &mut PodWorld) {
         "the host never accepted an announcement, so no cancellation could target it"
     );
     let accepted = accepted.expect("guarded above");
-    let cancellations = w.drain_host_cancellations();
+    let cancellations = w.drain_all_host_requests();
     assert!(
-        cancellations
-            .iter()
-            .any(|cancellation| cancellation.request_id == accepted.request_id),
-        "expected a host cancellation for the accepted announcement; got {cancellations:?}"
+        cancellations.iter().any(|cancellation| matches!(
+            cancellation.request.request,
+            HostRequest::CancelAuthorizedEffect { target_request_id }
+                if target_request_id == accepted.request.request_id
+        )),
+        "expected a leased host cancellation for the accepted announcement; got {cancellations:?}"
     );
 }

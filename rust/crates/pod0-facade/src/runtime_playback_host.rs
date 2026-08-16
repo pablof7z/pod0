@@ -9,6 +9,114 @@ use sha2::{Digest, Sha256};
 use crate::runtime_state::FacadeState;
 
 impl FacadeState {
+    pub(super) fn playback_effects(
+        &self,
+        envelope: &CommandEnvelope,
+        requests: Vec<(&str, HostRequest)>,
+    ) -> Option<Vec<pod0_application::DurablePlaybackEffectRequest>> {
+        requests
+            .into_iter()
+            .map(|(tag, request)| {
+                pod0_application::DurablePlaybackEffectRequest::from_host(HostRequestEnvelope {
+                    request_id: playback_request_id(envelope.command_id, tag),
+                    command_id: envelope.command_id,
+                    cancellation_id: envelope.cancellation_id,
+                    issued_revision: self.revision,
+                    deadline_at: None,
+                    request,
+                })
+            })
+            .collect()
+    }
+
+    pub(super) fn append_playback_stream_request<'a>(
+        &self,
+        requests: &mut Vec<(&'a str, HostRequest)>,
+    ) {
+        if self.playback.observation_request_id.is_none() {
+            requests.push((
+                "observe",
+                HostRequest::ObservePlayback {
+                    episode_id: None,
+                    minimum_interval_milliseconds: 1_000,
+                },
+            ));
+        }
+    }
+
+    pub(super) fn note_playback_stream_authorized(&mut self, envelope: &CommandEnvelope) {
+        if self.playback.observation_request_id.is_none() {
+            self.playback.observation_request_id =
+                Some(playback_request_id(envelope.command_id, "observe"));
+        }
+    }
+
+    pub(super) fn plan_active_load_effects(
+        &mut self,
+        envelope: &CommandEnvelope,
+        play_after_load: bool,
+        transition_cue: PlaybackTransitionCue,
+    ) -> Option<Vec<pod0_application::DurablePlaybackEffectRequest>> {
+        self.sync_active_chapter(envelope.command_id).ok()?;
+        let episode_id = self.listening.playback.active_episode_id?;
+        self.plan_episode_load_effects(
+            envelope,
+            episode_id,
+            self.listening.playback.active_segment,
+            play_after_load,
+            transition_cue,
+        )
+    }
+
+    pub(super) fn plan_episode_load_effects(
+        &self,
+        envelope: &CommandEnvelope,
+        episode_id: EpisodeId,
+        segment: Option<pod0_domain::PlaybackSegment>,
+        play_after_load: bool,
+        transition_cue: PlaybackTransitionCue,
+    ) -> Option<Vec<pod0_application::DurablePlaybackEffectRequest>> {
+        let episode = self
+            .listening
+            .episodes
+            .iter()
+            .find(|episode| episode.episode_id == episode_id)?;
+        let mut requests = vec![
+            (
+                "load",
+                HostRequest::LoadMedia {
+                    episode_id,
+                    audio_url: episode.enclosure_url.clone(),
+                    start_position_milliseconds: pod0_domain::playback_start_position(
+                        episode, segment,
+                    ),
+                },
+            ),
+            (
+                "load-rate",
+                HostRequest::SetRate {
+                    episode_id,
+                    rate: self.listening.playback.rate,
+                },
+            ),
+            (
+                "load-timer",
+                timer_request(self.listening.playback.sleep_mode, episode_id)?,
+            ),
+        ];
+        if play_after_load {
+            requests.push((
+                "load-play",
+                HostRequest::Play {
+                    episode_id,
+                    transition_cue,
+                },
+            ));
+        }
+        self.append_playback_stream_request(&mut requests);
+        self.playback_effects(envelope, requests)
+    }
+
     pub(super) fn set_sleep_timer(
         &mut self,
         envelope: &CommandEnvelope,
@@ -23,144 +131,17 @@ impl FacadeState {
             return;
         }
         let episode_id = self.listening.playback.active_episode_id;
-        if !self.apply_playback_command(
+        let effects = episode_id
+            .and_then(|episode_id| timer_request(mode, episode_id))
+            .map_or_else(Vec::new, |request| vec![("sleep", request)]);
+        if self.apply_playback_command_with_effects(
             envelope,
             fingerprint,
             PlaybackMutation::SetSleepTimer(mode),
             OperationResult::PlaybackUpdated { episode_id },
+            effects,
         ) {
-            return;
-        }
-        self.playback.timer_fired = false;
-        let Some(episode_id) = episode_id else { return };
-        let request = match mode {
-            PlaybackSleepMode::Off => HostRequest::CancelNativeTimer { episode_id },
-            PlaybackSleepMode::Duration {
-                duration_milliseconds,
-            } => HostRequest::ArmNativeTimer {
-                episode_id,
-                mode: NativeTimerMode::Duration {
-                    duration_milliseconds,
-                },
-            },
-            PlaybackSleepMode::EndOfEpisode => HostRequest::ArmNativeTimer {
-                episode_id,
-                mode: NativeTimerMode::EndOfEpisode,
-            },
-            PlaybackSleepMode::Unsupported { .. } => unreachable!(),
-        };
-        self.issue_playback_request(envelope, "sleep", request);
-    }
-
-    pub(super) fn load_active(
-        &mut self,
-        envelope: &CommandEnvelope,
-        play_after_load: bool,
-        transition_cue: PlaybackTransitionCue,
-    ) {
-        let _ = self.sync_active_chapter(envelope.command_id);
-        let Some(episode_id) = self.listening.playback.active_episode_id else {
-            self.playback.policy_state = pod0_application::PlaybackPolicyState::Idle;
-            return;
-        };
-        let Some(episode) = self
-            .listening
-            .episodes
-            .iter()
-            .find(|episode| episode.episode_id == episode_id)
-        else {
-            self.fail(envelope.command_id, CoreFailureCode::NotFound);
-            return;
-        };
-        let start_position_milliseconds =
-            pod0_domain::playback_start_position(episode, self.listening.playback.active_segment);
-        let audio_url = episode.enclosure_url.clone();
-        let rate = self.listening.playback.rate;
-        self.playback.media_episode_id = Some(episode_id);
-        self.playback.policy_state = pod0_application::PlaybackPolicyState::AwaitingHost;
-        self.issue_playback_request(
-            envelope,
-            "load",
-            HostRequest::LoadMedia {
-                episode_id,
-                audio_url,
-                start_position_milliseconds,
-            },
-        );
-        self.issue_playback_request(
-            envelope,
-            "load-rate",
-            HostRequest::SetRate { episode_id, rate },
-        );
-        self.issue_timer_for_active(envelope, episode_id);
-        if play_after_load {
-            self.issue_playback_request(
-                envelope,
-                "load-play",
-                HostRequest::Play {
-                    episode_id,
-                    transition_cue,
-                },
-            );
-        }
-        self.ensure_playback_stream(envelope);
-    }
-
-    fn issue_timer_for_active(&mut self, envelope: &CommandEnvelope, episode_id: EpisodeId) {
-        let request = match self.listening.playback.sleep_mode {
-            PlaybackSleepMode::Off => HostRequest::CancelNativeTimer { episode_id },
-            PlaybackSleepMode::Duration {
-                duration_milliseconds,
-            } => HostRequest::ArmNativeTimer {
-                episode_id,
-                mode: NativeTimerMode::Duration {
-                    duration_milliseconds,
-                },
-            },
-            PlaybackSleepMode::EndOfEpisode => HostRequest::ArmNativeTimer {
-                episode_id,
-                mode: NativeTimerMode::EndOfEpisode,
-            },
-            PlaybackSleepMode::Unsupported { .. } => return,
-        };
-        self.issue_playback_request(envelope, "load-timer", request);
-    }
-
-    pub(super) fn ensure_playback_stream(&mut self, envelope: &CommandEnvelope) {
-        if self.playback.observation_request_id.is_some() {
-            return;
-        }
-        let request_id = self.issue_playback_request(
-            envelope,
-            "observe",
-            HostRequest::ObservePlayback {
-                episode_id: None,
-                minimum_interval_milliseconds: 1_000,
-            },
-        );
-        self.playback.observation_request_id = request_id;
-    }
-
-    pub(super) fn issue_playback_request(
-        &mut self,
-        envelope: &CommandEnvelope,
-        tag: &str,
-        request: HostRequest,
-    ) -> Option<HostRequestId> {
-        let request_id = playback_request_id(envelope.command_id, tag);
-        let request = HostRequestEnvelope {
-            request_id,
-            command_id: envelope.command_id,
-            cancellation_id: envelope.cancellation_id,
-            issued_revision: self.revision,
-            deadline_at: None,
-            request,
-        };
-        if self.host_requests.register(request.clone()) {
-            self.host_queue.push_back(request);
-            Some(request_id)
-        } else {
-            None
+            self.playback.timer_fired = false;
         }
     }
 }
@@ -174,4 +155,23 @@ fn playback_request_id(command_id: CommandId, tag: &str) -> HostRequestId {
     let mut bytes = [0_u8; 16];
     bytes.copy_from_slice(&digest[..16]);
     HostRequestId::from_bytes(bytes)
+}
+
+fn timer_request(mode: PlaybackSleepMode, episode_id: EpisodeId) -> Option<HostRequest> {
+    Some(match mode {
+        PlaybackSleepMode::Off => HostRequest::CancelNativeTimer { episode_id },
+        PlaybackSleepMode::Duration {
+            duration_milliseconds,
+        } => HostRequest::ArmNativeTimer {
+            episode_id,
+            mode: NativeTimerMode::Duration {
+                duration_milliseconds,
+            },
+        },
+        PlaybackSleepMode::EndOfEpisode => HostRequest::ArmNativeTimer {
+            episode_id,
+            mode: NativeTimerMode::EndOfEpisode,
+        },
+        PlaybackSleepMode::Unsupported { .. } => return None,
+    })
 }

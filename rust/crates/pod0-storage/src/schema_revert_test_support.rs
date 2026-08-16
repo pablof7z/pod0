@@ -10,6 +10,12 @@
 /// need at least this much dropped. Callers append whatever else their target
 /// version also requires before it.
 pub(crate) const TABLES_ADDED_AFTER_V13: &str = "
+    DROP TABLE pod0_library_network_workflows;
+    DROP TABLE pod0_workflow_capability_snapshot;
+    DROP TABLE pod0_workflow_configuration;
+    DROP TABLE pod0_legacy_effect_recovery_v40;
+    DROP TABLE pod0_recall_index_cutover_workflow;
+    DROP TABLE pod0_recall_queries;
     DROP TABLE pod0_effect_attempts;
     DROP TABLE pod0_effect_intents;
     DROP TABLE pod0_internal_command_intents;

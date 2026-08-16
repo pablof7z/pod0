@@ -4,8 +4,9 @@ use pod0_application::{
     qualify_model_chapter_observation,
 };
 use pod0_storage::{
-    ModelChapterFailureDisposition, ModelChapterSuccessInput, ModelChapterWorkflowRecord,
-    ModelChapterWorkflowState, StorageError,
+    ModelChapterFailureDisposition, ModelChapterFailureInput, ModelChapterFinalizationAction,
+    ModelChapterSuccessInput, ModelChapterWorkflowRecord, ModelChapterWorkflowState,
+    PendingInternalCommand, StorageError,
 };
 
 use crate::runtime_state::FacadeState;
@@ -16,6 +17,30 @@ impl FacadeState {
     pub(super) fn resume_staged_model_completion(
         &mut self,
         request_id: pod0_domain::HostRequestId,
+    ) -> bool {
+        let Some(store) = self.store.clone() else {
+            return false;
+        };
+        let command = store
+            .pending_internal_commands(100)
+            .ok()
+            .and_then(|commands| {
+                commands.into_iter().find(|command| {
+                    matches!(
+                        command.request.kind,
+                        pod0_application::InternalCommandKind::FinalizeModelChapters {
+                            request_id: pending
+                        } if pending == request_id
+                    )
+                })
+            });
+        command.is_some_and(|command| self.finish_staged_model_completion(request_id, command))
+    }
+
+    fn finish_staged_model_completion(
+        &mut self,
+        request_id: pod0_domain::HostRequestId,
+        command: PendingInternalCommand,
     ) -> bool {
         let Some(store) = self.store.clone() else {
             return false;
@@ -40,13 +65,16 @@ impl FacadeState {
         };
         if !self.selected_transcript_is_current(record.episode_id, active) {
             return self.fail_staged_model_completion(
+                command,
                 &record,
                 ChapterModelFailureEvidence::StaleTranscript,
             );
         }
         let mode = match self.model_observation_mode(active) {
             Ok(value) => value,
-            Err(evidence) => return self.fail_staged_model_completion(&record, evidence),
+            Err(evidence) => {
+                return self.fail_staged_model_completion(command, &record, evidence);
+            }
         };
         let Some(episode) = self
             .listening
@@ -55,6 +83,7 @@ impl FacadeState {
             .find(|episode| episode.episode_id == completion.episode_id)
         else {
             return self.fail_staged_model_completion(
+                command,
                 &record,
                 ChapterModelFailureEvidence::InvalidRequest,
             );
@@ -82,20 +111,25 @@ impl FacadeState {
                 unreachable!()
             };
             return self.fail_staged_model_completion(
+                command,
                 &record,
                 ChapterModelFailureEvidence::Qualification { reason },
             );
         };
-        match store.complete_model_chapter_workflow(ModelChapterSuccessInput {
-            episode_id: record.episode_id,
-            request_id,
-            generation: record.generation,
-            submission_fence_id: record
-                .submission_fence_id
-                .expect("completion-observed workflow has a fence"),
-            artifact,
-            completed_at_ms: self.now().value,
-        }) {
+        match store.finalize_model_chapters_from_internal_command(
+            command.clone(),
+            ModelChapterFinalizationAction::Success(ModelChapterSuccessInput {
+                episode_id: record.episode_id,
+                request_id,
+                generation: record.generation,
+                submission_fence_id: record
+                    .submission_fence_id
+                    .expect("completion-observed workflow has a fence"),
+                artifact,
+                completed_at_ms: self.now().value,
+            }),
+            self.now(),
+        ) {
             Ok(_) => {
                 let _ = self.reload_listening();
                 self.advance_revision();
@@ -103,10 +137,12 @@ impl FacadeState {
                 true
             }
             Err(StorageError::ChapterRevisionConflict) => self.fail_staged_model_completion(
+                command,
                 &record,
                 ChapterModelFailureEvidence::SelectionChanged,
             ),
             Err(StorageError::InvalidChapterArtifact) => self.fail_staged_model_completion(
+                command,
                 &record,
                 ChapterModelFailureEvidence::StaleTranscript,
             ),
@@ -159,6 +195,7 @@ impl FacadeState {
 
     fn fail_staged_model_completion(
         &mut self,
+        command: PendingInternalCommand,
         record: &ModelChapterWorkflowRecord,
         evidence: ChapterModelFailureEvidence,
     ) -> bool {
@@ -168,6 +205,34 @@ impl FacadeState {
         } else {
             ModelChapterFailureDisposition::Block
         };
-        self.commit_model_chapter_failure(record, evidence, disposition, None)
+        let Some(store) = self.store.clone() else {
+            return false;
+        };
+        let Some(request_id) = record.request_id else {
+            return false;
+        };
+        let Some(submission_fence_id) = record.submission_fence_id else {
+            return false;
+        };
+        store
+            .finalize_model_chapters_from_internal_command(
+                command,
+                ModelChapterFinalizationAction::Failure(ModelChapterFailureInput {
+                    episode_id: record.episode_id,
+                    request_id,
+                    generation: record.generation,
+                    submission_fence_id,
+                    failure_code: crate::runtime_chapter_model_mapping::failure_wire(
+                        classification.code,
+                    )
+                    .to_owned(),
+                    failure_detail: None,
+                    may_have_submitted: classification.may_have_submitted,
+                    disposition,
+                    observed_at_ms: self.now().value,
+                }),
+                self.now(),
+            )
+            .is_ok()
     }
 }

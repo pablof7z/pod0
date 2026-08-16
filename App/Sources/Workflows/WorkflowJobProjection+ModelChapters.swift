@@ -23,10 +23,9 @@ extension WorkflowJobProjection {
         lastErrorMessage = workflow.failure?.safeDetail
         createdAt = workflow.createdAt.date
         updatedAt = workflow.updatedAt.date
-        var actions: Set<WorkflowJobAction> = []
-        if workflow.allowedActions.canRetry { actions.insert(.retry) }
-        if workflow.allowedActions.canCancel { actions.insert(.cancel) }
-        allowedActions = actions
+        retryActionToken = workflow.retryAction
+        cancelActionToken = workflow.cancelAction
+        allowedActions = Self.actions(retry: retryActionToken, cancel: cancelActionToken)
         authority = .sharedRustModelChapters
         coreWorkflowRevision = workflow.workflowRevision.value
     }

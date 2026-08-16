@@ -1,6 +1,6 @@
 import Foundation
 
-struct AgentScheduledTask: Codable, Identifiable, Equatable, Sendable {
+struct AgentScheduledTask: Identifiable, Equatable, Sendable {
     let id: UUID
     var label: String
     var prompt: String

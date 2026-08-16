@@ -23,8 +23,8 @@ REQUIRED_TOKENS = {
         "request.maximumCompletionBytes",
     ),
     "App/Sources/Workflows/WorkflowRuntime.swift": (
-        "case .sharedRustPublisherChapters:",
-        "case .sharedRustModelChapters:", "ensureModelChapters(",
+        "projection.token(for: action)", "executeWorkflowAction(token)",
+        ".reconcileWorkflowOpportunity(",
     ),
     "App/Sources/Services/WorkflowClient.swift": (
         "attachPublisherChapterCore(", "corePublisherJobsByID",
@@ -38,12 +38,10 @@ REQUIRED_TOKENS = {
         "compactMap(\\.swiftJobKind)",
     ),
     "App/Sources/Core/SharedLibraryClient+PublisherChapterWorkflows.swift": (
-        ".ensurePublisherChapters(", ".retryPublisherChapters(",
-        ".cancelPublisherChapters(", ".chapterWorkflows(episodeId:",
+        "publisherChapterWorkflows", ".chapterWorkflows(episodeId:",
     ),
     "App/Sources/Core/SharedLibraryClient+ModelChapterWorkflows.swift": (
-        ".ensureModelChapters(", ".retryModelChapters(",
-        ".cancelModelChapters(", ".chapterWorkflows(episodeId:",
+        "modelChapterWorkflows", ".chapterWorkflows(episodeId:",
     ),
     "App/Sources/Core/CorePublisherChapterHost.swift": (
         "session.bytes(for: request)", ".publisherChaptersFetched(",
@@ -63,6 +61,10 @@ REQUIRED_TOKENS = {
 }
 
 SHARED_POLICY_TOKENS = {
+    "rust/crates/pod0-facade/src/workflow_action_facade.rs": (
+        "WorkflowActionToken", "RetryPublisherChapters", "CancelPublisherChapters",
+        "RetryModelChapters", "CancelModelChapters",
+    ),
     "rust/crates/pod0-application/src/chapter_model_policy.rs": (
         "pub fn plan_chapter_model_desired_state",
         "pub fn plan_chapter_model_request",

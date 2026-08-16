@@ -11,16 +11,14 @@ final class Pod0NativeHostDispatcherAgentTests: XCTestCase {
         let outbox = try NativeHostObservationOutbox(fileURL: outboxURL)
         let agent = ControlledDispatcherAgentHost()
         let dispatcher = makeDispatcher(agent: agent, outbox: outbox)
-        let request = agentEnvelope(requestID: 1)
-        let facade = Pod0Facade()
+        let request = leasedAgentEnvelope(requestID: 1)
         let started = expectation(description: "agent capability started")
         let retired = expectation(description: "agent observation retired")
         agent.onStart = { started.fulfill() }
 
         dispatcher.execute(request) { observation in
-            dispatcher.record(observation, for: request, in: facade) {
-                retired.fulfill()
-            }
+            XCTAssertEqual(observation.lease, request.lease)
+            retired.fulfill()
         }
         dispatcher.execute(request) { _ in
             XCTFail("Duplicate active request must not deliver")
@@ -38,7 +36,7 @@ final class Pod0NativeHostDispatcherAgentTests: XCTestCase {
         await Task.yield()
 
         XCTAssertEqual(agent.callCount, 1)
-        XCTAssertTrue(dispatcher.isKnown(request.requestId))
+        XCTAssertTrue(dispatcher.isKnown(request.request.requestId))
     }
 
     func testAgentCancellationReleasesTaskAndSuppressesLateResult() async throws {
@@ -47,22 +45,22 @@ final class Pod0NativeHostDispatcherAgentTests: XCTestCase {
         let outbox = try NativeHostObservationOutbox(fileURL: outboxURL)
         let agent = ControlledDispatcherAgentHost()
         let dispatcher = makeDispatcher(agent: agent, outbox: outbox)
-        let request = agentEnvelope(requestID: 2)
+        let request = leasedAgentEnvelope(requestID: 2)
         let started = expectation(description: "agent capability started")
         agent.onStart = { started.fulfill() }
-        var observations: [HostObservationEnvelope] = []
+        var observations: [LeasedHostObservationEnvelope] = []
 
         dispatcher.execute(request) { observations.append($0) }
         await fulfillment(of: [started], timeout: 1)
 
         dispatcher.cancel(
-            requestID: request.requestId,
-            cancellationID: request.cancellationId
+            requestID: request.request.requestId,
+            cancellationID: request.request.cancellationId
         )
         await Task.yield()
 
         XCTAssertTrue(dispatcher.activeTasks.isEmpty)
-        XCTAssertTrue(dispatcher.isKnown(request.requestId))
+        XCTAssertTrue(dispatcher.isKnown(request.request.requestId))
         XCTAssertTrue(agent.taskWasCancelled)
 
         agent.complete(with: capabilityObservation(requestID: 2))
@@ -112,6 +110,21 @@ final class Pod0NativeHostDispatcherAgentTests: XCTestCase {
                 generatedAudioTarget: nil,
                 action: .noArguments(tool: .pausePlayback)
             ))
+        )
+    }
+
+    private func leasedAgentEnvelope(requestID: UInt64) -> LeasedHostRequestEnvelope {
+        LeasedHostRequestEnvelope(
+            lease: PersistedEffectLeaseIdentity(
+                intentId: EffectIntentId(high: 10, low: requestID),
+                authorizingActivityId: ActivityId(high: 11, low: requestID),
+                correlationId: ActivityCorrelationId(high: 12, low: requestID),
+                attemptId: EffectAttemptId(high: 13, low: requestID),
+                leaseId: EffectLeaseId(high: 14, low: requestID),
+                fence: 1,
+                expiresAt: UnixTimestampMilliseconds(value: 1_800_000_010_000)
+            ),
+            request: agentEnvelope(requestID: requestID)
         )
     }
 

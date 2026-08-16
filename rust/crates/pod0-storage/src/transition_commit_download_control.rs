@@ -38,6 +38,15 @@ pub(crate) fn commit_download_cancel(
                 )
             })
         },
+        |existing| {
+            existing
+                .filter(|record| record.attempt_id.is_some())
+                .map(|record| {
+                    crate::download_effect_request::cancel(record, command_id, issued_revision)
+                        .map(|request| pod0_application::DownloadEffectAuthorization { request })
+                })
+                .transpose()
+        },
         |transaction| {
             apply_download_cancel(
                 transaction,
@@ -61,7 +70,8 @@ pub(crate) fn commit_download_remove(
     let command_fingerprint = input.command_fingerprint.clone();
     let episode_id = input.episode_id;
     let now_ms = input.now_ms;
-    let planning_input = input.clone();
+    let rejection_input = input.clone();
+    let effect_input = input.clone();
     let (receipt, existing) = commit_control(
         path,
         command_id,
@@ -71,7 +81,7 @@ pub(crate) fn commit_download_remove(
         now_ms,
         move |existing| {
             let mut rejection =
-                control_rejection(existing, planning_input.expected_revision, |record| {
+                control_rejection(existing, rejection_input.expected_revision, |record| {
                     matches!(
                         record.stage,
                         StoredDownloadStage::Succeeded | StoredDownloadStage::Failed
@@ -81,6 +91,14 @@ pub(crate) fn commit_download_remove(
                 rejection = Some(RequestRejectionReason::MissingPrerequisite);
             }
             rejection
+        },
+        move |existing| {
+            existing
+                .map(|record| {
+                    crate::download_effect_request::remove(record, &effect_input)
+                        .map(|request| pod0_application::DownloadEffectAuthorization { request })
+                })
+                .transpose()
         },
         |transaction| apply_download_remove(transaction, input),
     )?;
@@ -96,6 +114,12 @@ fn commit_control(
     operation: DownloadControlOperation,
     now_ms: i64,
     reject: impl FnOnce(Option<&DownloadWorkflowRecord>) -> Option<RequestRejectionReason>,
+    authorize_effect: impl FnOnce(
+        Option<&DownloadWorkflowRecord>,
+    ) -> Result<
+        Option<pod0_application::DownloadEffectAuthorization>,
+        StorageError,
+    >,
     mutate: impl FnOnce(&rusqlite::Transaction<'_>) -> Result<DownloadWorkflowTransition, StorageError>,
 ) -> Result<(crate::CommitReceipt, Option<DownloadWorkflowRecord>), StorageError> {
     let prior = std::cell::RefCell::new(None);
@@ -125,6 +149,11 @@ fn commit_control(
             } else {
                 reject(existing.as_ref())
             };
+            let effect = if !legacy && rejection.is_none() {
+                authorize_effect(existing.as_ref())?
+            } else {
+                None
+            };
             *prior.borrow_mut() = existing;
             plan_download_control(DownloadControlActivityInput {
                 command_id,
@@ -133,6 +162,7 @@ fn commit_control(
                 legacy_replay: legacy,
                 operation,
                 rejection,
+                effect,
             })
             .map_err(|_| StorageError::InvalidActivity)
         },
@@ -143,7 +173,9 @@ fn commit_control(
                 if actual != expected {
                     return Err(StorageError::RevisionConflict);
                 }
-                Ok(mutate(transaction)?.record.workflow_revision)
+                let revision = mutate(transaction)?.record.workflow_revision;
+                super::download::retire_download_effects(transaction, episode_id)?;
+                Ok(revision)
             }
             DownloadControlMutation::RecordRejection => {
                 let actual = workflow(transaction, episode_id)?

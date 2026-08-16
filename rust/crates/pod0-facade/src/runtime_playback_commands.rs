@@ -35,7 +35,24 @@ impl FacadeState {
                         pod0_application::PlaybackHostState::Failed
                             | pod0_application::PlaybackHostState::Unsupported { .. }
                     );
-                if self.apply_playback_command(
+                let effects = if selection_is_unchanged && media_is_reusable {
+                    let mut requests = Vec::new();
+                    self.append_playback_stream_request(&mut requests);
+                    self.playback_effects(envelope, requests)
+                } else {
+                    self.plan_episode_load_effects(
+                        envelope,
+                        episode_id,
+                        segment,
+                        false,
+                        PlaybackTransitionCue::Immediate,
+                    )
+                };
+                let Some(effects) = effects else {
+                    self.fail(envelope.command_id, CoreFailureCode::NotFound);
+                    return;
+                };
+                if self.apply_playback_command_with_durable_effects(
                     envelope,
                     fingerprint,
                     PlaybackMutation::Select {
@@ -46,28 +63,44 @@ impl FacadeState {
                     OperationResult::PlaybackUpdated {
                         episode_id: Some(episode_id),
                     },
+                    effects,
                 ) {
                     self.playback.completion_checkpoint_fence_episode_id = None;
                     if selection_is_unchanged && media_is_reusable {
-                        self.ensure_playback_stream(envelope);
+                        self.note_playback_stream_authorized(envelope);
                     } else {
                         self.playback.desired_playing = false;
                         self.playback.timer_fired = false;
-                        self.load_active(envelope, false, PlaybackTransitionCue::Immediate);
+                        self.playback.media_episode_id = Some(episode_id);
+                        self.playback.policy_state =
+                            pod0_application::PlaybackPolicyState::AwaitingHost;
+                        self.note_playback_stream_authorized(envelope);
                     }
                 }
             }
             PlaybackCommand::Restore => {
-                if self.apply_playback_command(
+                let Some(effects) = self.plan_active_load_effects(
+                    envelope,
+                    false,
+                    PlaybackTransitionCue::Immediate,
+                ) else {
+                    self.fail(envelope.command_id, CoreFailureCode::NotFound);
+                    return;
+                };
+                if self.apply_playback_command_with_durable_effects(
                     envelope,
                     fingerprint,
                     PlaybackMutation::ReceiptOnly,
                     OperationResult::PlaybackUpdated {
                         episode_id: self.listening.playback.active_episode_id,
                     },
+                    effects,
                 ) {
                     self.playback.desired_playing = false;
-                    self.load_active(envelope, false, PlaybackTransitionCue::Immediate);
+                    self.playback.media_episode_id = self.listening.playback.active_episode_id;
+                    self.playback.policy_state =
+                        pod0_application::PlaybackPolicyState::AwaitingHost;
+                    self.note_playback_stream_authorized(envelope);
                 }
             }
             PlaybackCommand::Play {
@@ -154,21 +187,22 @@ impl FacadeState {
             }
             PlaybackCommand::AdvanceQueue => self.advance_queue(envelope, fingerprint),
             PlaybackCommand::SetRate { rate } => {
-                if self.apply_playback_command(
+                let effects = self
+                    .listening
+                    .playback
+                    .active_episode_id
+                    .map_or_else(Vec::new, |episode_id| {
+                        vec![("rate", HostRequest::SetRate { episode_id, rate })]
+                    });
+                self.apply_playback_command_with_effects(
                     envelope,
                     fingerprint,
                     PlaybackMutation::SetRate(rate),
                     OperationResult::PlaybackUpdated {
                         episode_id: self.listening.playback.active_episode_id,
                     },
-                ) && let Some(episode_id) = self.listening.playback.active_episode_id
-                {
-                    self.issue_playback_request(
-                        envelope,
-                        "rate",
-                        HostRequest::SetRate { episode_id, rate },
-                    );
-                }
+                    effects,
+                );
             }
             PlaybackCommand::SetSleepTimer { mode } => {
                 self.set_sleep_timer(envelope, fingerprint, mode);

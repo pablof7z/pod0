@@ -1,13 +1,11 @@
 use std::fs;
 use std::path::Path;
 
-use rusqlite::{OptionalExtension, params};
+use rusqlite::OptionalExtension;
 
-use crate::download_store_artifact::complete_request;
 use crate::download_store_artifact_file::{
     artifact_key, file_metadata_matches, install_staged, sync_parent, verified_file,
 };
-use crate::download_store_read::workflow;
 use crate::{
     DownloadRecoveryReport, DownloadWorkflowRecord, LibraryStore, StorageError, StoredDownloadStage,
 };
@@ -118,29 +116,26 @@ impl LibraryStore {
         record: &DownloadWorkflowRecord,
         now_ms: i64,
     ) -> Result<DownloadWorkflowRecord, StorageError> {
-        self.write(|transaction| {
-            if let Some(attempt_id)=record.attempt_id {
-                transaction.execute(
-                    "UPDATE pod0_download_attempts SET state='failed',failure_code='invalid_artifact',\
-                     failure_detail=NULL,staged_path=NULL,staged_byte_count=NULL,staged_digest=NULL,\
-                     updated_at_ms=?1 WHERE attempt_id=?2 AND state!='succeeded'",
-                    params![now_ms,attempt_id.into_bytes().as_slice()],
-                ).map_err(|error| StorageError::sqlite("repair invalid download attempt",error))?;
-            }
-            if let Some(request_id)=record.request_id { complete_request(transaction,request_id,0,now_ms)?; }
-            transaction.execute(
-                "UPDATE pod0_episodes SET download_code=1,download_wire_code=NULL,\
-                 download_ref_version=NULL,download_ref_key=NULL,download_byte_count=NULL WHERE episode_id=?1",
-                [record.episode_id.into_bytes().as_slice()],
-            ).map_err(|error| StorageError::sqlite("clear invalid episode download",error))?;
-            transaction.execute(
-                "UPDATE pod0_download_workflows SET stage='failed',workflow_revision=workflow_revision+1,\
-                 request_id=NULL,deadline_at_ms=NULL,not_before_ms=NULL,artifact_key=NULL,\
-                 artifact_byte_count=NULL,artifact_digest=NULL,failure_code='invalid_artifact',\
-                 failure_detail=NULL,failure_retryable=0,updated_at_ms=?1 WHERE episode_id=?2",
-                params![now_ms,record.episode_id.into_bytes().as_slice()],
-            ).map_err(|error| StorageError::sqlite("repair invalid download workflow",error))?;
-            workflow(transaction,record.episode_id)?.ok_or(StorageError::DownloadWorkflowNotFound)
-        })
+        if matches!(
+            self.download_workflow_authority()?,
+            crate::DownloadWorkflowAuthorityState::Staged { .. }
+        ) {
+            self.write(|transaction| {
+                crate::transition_commit::download_artifact_recovery::apply_repair(
+                    transaction,
+                    record,
+                    now_ms,
+                )
+            })?;
+            return self
+                .download_workflow(record.episode_id)?
+                .ok_or(StorageError::DownloadWorkflowNotFound);
+        }
+        crate::transition_commit::commit_download_artifact_recovery(
+            self.path(),
+            record,
+            crate::transition_commit::DownloadArtifactRecovery::RepairInvalid,
+            now_ms,
+        )
     }
 }

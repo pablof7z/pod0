@@ -8,6 +8,10 @@ use pod0_application::{
 use crate::runtime_playback_test_support::PlaybackFixture;
 use crate::*;
 
+#[path = "runtime_download_admission_test_episode.rs"]
+mod episode;
+use episode::add_episode;
+
 #[derive(Clone, Copy)]
 struct FixedClock(i64);
 
@@ -42,46 +46,6 @@ fn workflows(facade: &Pod0Facade, episode_id: EpisodeId) -> DownloadWorkflowsPro
     value
 }
 
-fn add_episode(fixture: &PlaybackFixture, id: u64, published_at: i64) -> EpisodeId {
-    let audio_url = format!("https://automatic.example/{id}.mp3");
-    dispatch(
-        &fixture.facade,
-        100 + id,
-        ApplicationCommand::UpsertExternalEpisode {
-            episode: pod0_application::ExternalEpisodeInput {
-                podcast_id: fixture.podcast_id,
-                feed_url: None,
-                podcast_title: "Automatic fixture".to_owned(),
-                audio_url: audio_url.clone(),
-                guid: None,
-                title: format!("Automatic episode {id}"),
-                description: String::new(),
-                published_at: UnixTimestampMilliseconds::new(published_at),
-                enclosure_mime_type: Some("audio/mpeg".to_owned()),
-                image_url: None,
-                duration_milliseconds: Some(120_000),
-            },
-        },
-    );
-    let Projection::Library { value } = fixture
-        .facade
-        .snapshot(ProjectionRequest {
-            scope: ProjectionScope::Library,
-            offset: 0,
-            max_items: 20,
-        })
-        .projection
-    else {
-        panic!("expected library projection")
-    };
-    value
-        .episodes
-        .iter()
-        .find(|episode| episode.enclosure_url == audio_url)
-        .unwrap()
-        .episode_id
-}
-
 #[test]
 fn waiting_request_is_admitted_by_environment_and_survives_restart() {
     let fixture = PlaybackFixture::new();
@@ -103,7 +67,7 @@ fn waiting_request_is_admitted_by_environment_and_survives_restart() {
         waiting.workflows[0].stage,
         DownloadWorkflowStage::WaitingForEnvironment
     );
-    assert!(fixture.facade.next_host_requests(20).is_empty());
+    assert!(fixture.facade.next_leased_host_requests(20).is_empty());
 
     dispatch(
         &fixture.facade,
@@ -115,16 +79,20 @@ fn waiting_request_is_admitted_by_environment_and_survives_restart() {
             },
         },
     );
-    let request = fixture.facade.next_host_requests(20).pop().unwrap();
+    let request = fixture.facade.next_leased_host_requests(20).pop().unwrap();
     assert!(matches!(
-        request.request,
+        request.request.request,
         HostRequest::StartEpisodeDownload { .. }
     ));
 
-    let reopened = Pod0Facade::open(fixture.target.to_string_lossy().into_owned()).unwrap();
-    let recovered = reopened.next_host_requests(20).pop().unwrap();
-    assert_eq!(recovered, request);
-    assert!(reopened.next_host_requests(20).is_empty());
+    let reopened = Pod0Facade::open_with_clock(
+        fixture.target.to_string_lossy().into_owned(),
+        Arc::new(FixedClock(request.lease.expires_at.value + 1)),
+    );
+    let recovered = reopened.next_leased_host_requests(20).pop().unwrap();
+    assert_eq!(recovered.request, request.request);
+    assert!(recovered.lease.fence > request.lease.fence);
+    assert!(reopened.next_leased_host_requests(20).is_empty());
 }
 
 #[test]
@@ -175,7 +143,7 @@ fn automatic_waiting_request_is_retired_when_policy_becomes_obsolete() {
         .remove(0);
     assert_eq!(retired.stage, DownloadWorkflowStage::Cancelled);
     assert_eq!(retired.desired_state, DownloadDesiredState::Absent);
-    assert!(fixture.facade.next_host_requests(20).is_empty());
+    assert!(fixture.facade.next_leased_host_requests(20).is_empty());
 }
 
 #[test]
@@ -229,7 +197,7 @@ fn automatic_candidates_select_latest_n_in_rust_regardless_of_input_order() {
         workflow.origin == DownloadIntentOrigin::Automatic
             && workflow.stage == DownloadWorkflowStage::WaitingForEnvironment
     }));
-    assert!(fixture.facade.next_host_requests(20).is_empty());
+    assert!(fixture.facade.next_leased_host_requests(20).is_empty());
     let store = pod0_storage::LibraryStore::open_authoritative(&fixture.target).unwrap();
     assert!(store.pending_internal_commands(100).unwrap().is_empty());
     let activity = pod0_storage::ActivityStore::open(&fixture.target)

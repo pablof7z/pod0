@@ -270,6 +270,8 @@ pub struct TranscriptWorkflowProjection {
     pub failure: Option<TranscriptWorkflowFailure>,
     pub updated_at: UnixTimestampMilliseconds,
     pub allowed_actions: TranscriptWorkflowAllowedActions,
+    pub retry_action: Option<crate::WorkflowActionToken>,
+    pub cancel_action: Option<crate::WorkflowActionToken>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]

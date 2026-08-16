@@ -8,8 +8,10 @@ fn unresolved_request_rehydrates_with_the_exact_identity() {
     dispatch_ensure(&facade, fixture.episode_id, 1);
     let first = one_request(&facade);
 
-    let reopened = open(&fixture, 1_800_000_100_000);
-    assert_eq!(one_request(&reopened), first);
+    let reopened = open(&fixture, first.lease.expires_at.value + 1);
+    let recovered = one_request(&reopened);
+    assert_eq!(recovered.request, first.request);
+    assert!(recovered.lease.fence > first.lease.fence);
     let projection = workflows(&reopened, Some(fixture.episode_id));
     assert!(projection.failure.is_none());
     assert_eq!(projection.publisher.len(), 1);
@@ -26,7 +28,7 @@ fn valid_response_commits_once_and_survives_restart() {
     dispatch_ensure(&facade, fixture.episode_id, 2);
     let request = one_request(&facade);
 
-    facade.record_host_observation(response(&request, 1, 200, valid_document()));
+    facade.record_leased_host_observation(leased_response(&request, 1, 200, valid_document()));
     let succeeded = workflows(&facade, Some(fixture.episode_id)).publisher[0].clone();
     assert_eq!(succeeded.stage, PublisherChapterWorkflowStage::Succeeded);
     assert!(succeeded.selected_artifact_id.is_some());
@@ -34,7 +36,7 @@ fn valid_response_commits_once_and_survives_restart() {
         .snapshot(workflow_request(Some(fixture.episode_id)))
         .state_revision;
 
-    facade.record_host_observation(response(&request, 1, 200, valid_document()));
+    facade.record_leased_host_observation(leased_response(&request, 1, 200, valid_document()));
     assert_eq!(
         facade
             .snapshot(workflow_request(Some(fixture.episode_id)))
@@ -43,7 +45,7 @@ fn valid_response_commits_once_and_survives_restart() {
     );
 
     let reopened = open(&fixture, 1_800_000_200_000);
-    assert!(reopened.next_host_requests(64).is_empty());
+    assert!(reopened.next_leased_host_requests(64).is_empty());
     assert_eq!(
         workflows(&reopened, Some(fixture.episode_id)).publisher[0].selected_artifact_id,
         succeeded.selected_artifact_id
@@ -56,12 +58,12 @@ fn already_current_artifact_does_not_issue_another_request() {
     let facade = open(&fixture, 1_800_000_250_000);
     dispatch_ensure(&facade, fixture.episode_id, 20);
     let request = one_request(&facade);
-    facade.record_host_observation(response(&request, 1, 200, valid_document()));
+    facade.record_leased_host_observation(leased_response(&request, 1, 200, valid_document()));
     let current = workflows(&facade, Some(fixture.episode_id)).publisher[0].clone();
 
     dispatch_ensure(&facade, fixture.episode_id, 21);
 
-    assert!(facade.next_host_requests(64).is_empty());
+    assert!(facade.next_leased_host_requests(64).is_empty());
     assert_eq!(
         workflows(&facade, Some(fixture.episode_id)).publisher[0],
         current
@@ -92,7 +94,7 @@ fn malformed_empty_missing_and_oversized_documents_fail_typed_in_rust() {
         let facade = open(&fixture, 1_800_000_260_000 + index as i64);
         dispatch_ensure(&facade, fixture.episode_id, 30 + index as u64);
         let request = one_request(&facade);
-        facade.record_host_observation(response(&request, 1, status, bytes));
+        facade.record_leased_host_observation(leased_response(&request, 1, status, bytes));
         let failed = workflows(&facade, Some(fixture.episode_id)).publisher[0].clone();
         assert_eq!(failed.stage, PublisherChapterWorkflowStage::Failed);
         assert_eq!(failed.failure.unwrap().code, expected);
@@ -102,7 +104,7 @@ fn malformed_empty_missing_and_oversized_documents_fail_typed_in_rust() {
     let facade = open(&fixture, 1_800_000_270_000);
     dispatch_ensure(&facade, fixture.episode_id, 40);
     let request = one_request(&facade);
-    facade.record_host_observation(response(
+    facade.record_leased_host_observation(leased_response(
         &request,
         1,
         200,
@@ -122,15 +124,16 @@ fn stale_request_revision_is_ignored_without_consuming_the_request() {
     let facade = open(&fixture, 1_800_000_280_000);
     dispatch_ensure(&facade, fixture.episode_id, 50);
     let request = one_request(&facade);
-    let mut stale = response(&request, 1, 200, valid_document());
-    stale.observed_request_revision = StateRevision::new(request.issued_revision.value + 1);
-    facade.record_host_observation(stale);
+    let mut stale = leased_response(&request, 1, 200, valid_document());
+    stale.observation.observed_request_revision =
+        StateRevision::new(request.request.issued_revision.value + 1);
+    facade.record_leased_host_observation(stale);
     assert_eq!(
         workflows(&facade, Some(fixture.episode_id)).publisher[0].stage,
         PublisherChapterWorkflowStage::Requested
     );
 
-    facade.record_host_observation(response(&request, 1, 200, valid_document()));
+    facade.record_leased_host_observation(leased_response(&request, 1, 200, valid_document()));
     assert_eq!(
         workflows(&facade, Some(fixture.episode_id)).publisher[0].stage,
         PublisherChapterWorkflowStage::Succeeded
@@ -144,26 +147,24 @@ fn transient_failure_schedules_a_rust_timed_retry_and_rehydrates_it() {
     let facade = open(&fixture, now);
     dispatch_ensure(&facade, fixture.episode_id, 3);
     let first = one_request(&facade);
-    facade.record_host_observation(HostObservationEnvelope {
-        request_id: first.request_id,
-        cancellation_id: first.cancellation_id,
-        observed_request_revision: first.issued_revision,
-        sequence_number: 1,
-        observed_at: UnixTimestampMilliseconds::new(now + 1),
-        observation: HostObservation::Failed {
+    facade.record_leased_host_observation(publisher_observation(
+        &first,
+        1,
+        HostObservation::Failed {
             code: HostFailureCode::Offline,
             safe_detail: None,
         },
-    });
+    ));
 
-    let retry = one_request(&facade);
-    assert_ne!(retry.request_id, first.request_id);
+    let retry_facade = open(&fixture, now + 30_000);
+    let retry = one_request(&retry_facade);
+    assert_ne!(retry.request.request_id, first.request.request_id);
     assert_eq!(
-        retry.deadline_at,
+        retry.request.deadline_at,
         Some(UnixTimestampMilliseconds::new(now + 60_000))
     );
     assert!(matches!(
-        retry.request,
+        retry.request.request,
         HostRequest::FetchPublisherChapters {
             not_before: Some(UnixTimestampMilliseconds { value }),
             ..
@@ -176,8 +177,9 @@ fn transient_failure_schedules_a_rust_timed_retry_and_rehydrates_it() {
     );
     assert_eq!(projection.publisher[0].attempt, 2);
 
-    let reopened = open(&fixture, now);
-    assert_eq!(one_request(&reopened), retry);
+    let reopened = open(&fixture, retry.lease.expires_at.value + 1);
+    let recovered = one_request(&reopened);
+    assert_eq!(recovered.request, retry.request);
 }
 
 #[test]
@@ -186,7 +188,7 @@ fn terminal_failure_can_be_retried_then_cancelled_through_typed_commands() {
     let facade = open(&fixture, 1_800_000_400_000);
     dispatch_ensure(&facade, fixture.episode_id, 4);
     let first = one_request(&facade);
-    facade.record_host_observation(response(&first, 1, 404, Vec::new()));
+    facade.record_leased_host_observation(leased_response(&first, 1, 404, Vec::new()));
     let failed = workflows(&facade, Some(fixture.episode_id)).publisher[0].clone();
     assert_eq!(failed.stage, PublisherChapterWorkflowStage::Failed);
     assert_eq!(
@@ -214,12 +216,17 @@ fn terminal_failure_can_be_retried_then_cancelled_through_typed_commands() {
             expected_workflow_revision: retried.workflow_revision,
         },
     });
-    assert!(facade.next_host_requests(64).is_empty());
+    assert!(facade.next_leased_host_requests(64).is_empty());
     assert_eq!(
         workflows(&facade, Some(fixture.episode_id)).publisher[0].stage,
         PublisherChapterWorkflowStage::Cancelled
     );
-    facade.record_host_observation(response(&retried_request, 1, 200, valid_document()));
+    facade.record_leased_host_observation(leased_response(
+        &retried_request,
+        1,
+        200,
+        valid_document(),
+    ));
     assert_eq!(
         workflows(&facade, Some(fixture.episode_id)).publisher[0].stage,
         PublisherChapterWorkflowStage::Cancelled
@@ -231,7 +238,7 @@ fn no_chapters_url_produces_no_workflow_or_native_request() {
     let fixture = empty_fixture();
     let facade = open(&fixture, 1_800_000_600_000);
     dispatch_ensure(&facade, fixture.episode_id, 8);
-    assert!(facade.next_host_requests(64).is_empty());
+    assert!(facade.next_leased_host_requests(64).is_empty());
     assert!(
         workflows(&facade, Some(fixture.episode_id))
             .publisher

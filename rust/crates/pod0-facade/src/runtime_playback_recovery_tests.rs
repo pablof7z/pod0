@@ -1,5 +1,6 @@
 use crate::runtime_playback_test_support::{
-    PlaybackFixture, add_external_episode, dispatch, playback, record_observation, record_playback,
+    PlaybackFixture, add_external_episode, dispatch, next_playback_requests, playback,
+    record_observation, record_playback,
 };
 use crate::*;
 
@@ -14,7 +15,7 @@ fn selecting_loaded_episode_is_idempotent_while_playing() {
             label: None,
         },
     );
-    let initial = fixture.facade.next_host_requests(u16::MAX);
+    let initial = next_playback_requests(&fixture.facade);
     let load = initial
         .iter()
         .find(|request| matches!(request.request, HostRequest::LoadMedia { .. }))
@@ -32,9 +33,7 @@ fn selecting_loaded_episode_is_idempotent_while_playing() {
             transcript_configuration: None,
         },
     );
-    let play = fixture
-        .facade
-        .next_host_requests(u16::MAX)
+    let play = next_playback_requests(&fixture.facade)
         .into_iter()
         .find(|request| matches!(request.request, HostRequest::Play { .. }))
         .unwrap();
@@ -55,7 +54,7 @@ fn selecting_loaded_episode_is_idempotent_while_playing() {
         },
     );
 
-    assert!(fixture.facade.next_host_requests(u16::MAX).is_empty());
+    assert!(next_playback_requests(&fixture.facade).is_empty());
     assert_eq!(
         fixture.playback().current.unwrap().policy_state,
         PlaybackPolicyState::Playing
@@ -66,23 +65,24 @@ fn selecting_loaded_episode_is_idempotent_while_playing() {
 fn failed_media_is_reloaded_before_playing_again() {
     let fixture = PlaybackFixture::new();
     fixture.dispatch(50, PlaybackCommand::Restore);
-    let load = fixture
-        .facade
-        .next_host_requests(u16::MAX)
+    let load = next_playback_requests(&fixture.facade)
         .into_iter()
         .find(|request| matches!(request.request, HostRequest::LoadMedia { .. }))
         .unwrap();
     fixture
         .facade
-        .record_host_observation(HostObservationEnvelope {
-            request_id: load.request_id,
-            cancellation_id: load.cancellation_id,
-            observed_request_revision: load.issued_revision,
-            sequence_number: 0,
-            observed_at: UnixTimestampMilliseconds::new(2_000),
-            observation: HostObservation::Failed {
-                code: HostFailureCode::MediaUnavailable,
-                safe_detail: None,
+        .record_leased_host_observation(LeasedHostObservationEnvelope {
+            lease: load.lease,
+            observation: HostObservationEnvelope {
+                request_id: load.request_id,
+                cancellation_id: load.cancellation_id,
+                observed_request_revision: load.issued_revision,
+                sequence_number: 0,
+                observed_at: UnixTimestampMilliseconds::new(2_000),
+                observation: HostObservation::Failed {
+                    code: HostFailureCode::MediaUnavailable,
+                    safe_detail: None,
+                },
             },
         });
 
@@ -92,7 +92,7 @@ fn failed_media_is_reloaded_before_playing_again() {
             transcript_configuration: None,
         },
     );
-    let effects = fixture.facade.next_host_requests(u16::MAX);
+    let effects = next_playback_requests(&fixture.facade);
     assert!(effects.iter().any(|request| matches!(
         request.request,
         HostRequest::LoadMedia { episode_id, .. } if episode_id == fixture.episode_id
@@ -134,9 +134,7 @@ fn adjacent_segments_from_one_episode_advance_without_stopping() {
             placement: QueuePlacement::Back,
         },
     );
-    let stream = fixture
-        .facade
-        .next_host_requests(u16::MAX)
+    let stream = next_playback_requests(&fixture.facade)
         .into_iter()
         .find(|request| matches!(request.request, HostRequest::ObservePlayback { .. }))
         .unwrap();
@@ -154,7 +152,7 @@ fn adjacent_segments_from_one_episode_advance_without_stopping() {
     let current = fixture.playback().current.unwrap();
     assert_eq!(current.episode_id, fixture.episode_id);
     assert_eq!(current.segment, Some(second));
-    let effects = fixture.facade.next_host_requests(u16::MAX);
+    let effects = next_playback_requests(&fixture.facade);
     assert!(effects.iter().any(|request| matches!(
         request.request,
         HostRequest::LoadMedia { episode_id, start_position_milliseconds: 30_000, .. }
@@ -170,11 +168,11 @@ fn adjacent_segments_from_one_episode_advance_without_stopping() {
 fn empty_manual_advance_does_not_restart_active_media() {
     let fixture = PlaybackFixture::new();
     fixture.dispatch(70, PlaybackCommand::Restore);
-    let _ = fixture.facade.next_host_requests(u16::MAX);
+    let _ = next_playback_requests(&fixture.facade);
 
     fixture.dispatch(71, PlaybackCommand::AdvanceQueue);
 
-    assert!(fixture.facade.next_host_requests(u16::MAX).is_empty());
+    assert!(next_playback_requests(&fixture.facade).is_empty());
     assert_eq!(
         fixture.playback().current.unwrap().episode_id,
         fixture.episode_id
@@ -239,7 +237,7 @@ fn restart_restores_queue_resume_rate_and_clears_session_timer() {
     assert_eq!(current.policy_state, PlaybackPolicyState::Paused);
 
     dispatch(&reopened, 86, PlaybackCommand::Restore);
-    let effects = reopened.next_host_requests(u16::MAX);
+    let effects = next_playback_requests(&reopened);
     assert!(effects.iter().any(|request| matches!(
         request.request,
         HostRequest::LoadMedia {

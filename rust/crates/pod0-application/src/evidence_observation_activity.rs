@@ -20,6 +20,7 @@ pub struct EvidenceObservationActivityInput {
     pub attempt_id: EffectAttemptId,
     pub authorizing_activity_id: ActivityId,
     pub correlation_id: ActivityCorrelationId,
+    pub current_revision: StateRevision,
     pub observation: DurableRecallHostObservation,
 }
 
@@ -50,9 +51,16 @@ pub fn plan_evidence_observation(
         episode_id: Some(input.episode_id),
         fact,
     };
+    let committed_revision = StateRevision::new(
+        input
+            .current_revision
+            .value
+            .checked_add(1)
+            .ok_or(TransitionPlanError::RevisionExhausted)?,
+    );
     TransitionPlan::new(
         transaction_id,
-        StateRevision::new(1),
+        input.current_revision,
         input.observation,
         NonEmptyActivityFacts::from_head_and_tail(
             base(
@@ -76,8 +84,8 @@ pub fn plan_evidence_observation(
                         kind: DomainTransitionKind::RecallKnowledge(
                             RecallKnowledgeTransition::EvidenceGenerationChanged,
                         ),
-                        previous_revision: StateRevision::new(1),
-                        committed_revision: StateRevision::new(2),
+                        previous_revision: input.current_revision,
+                        committed_revision,
                     },
                 ),
             ],

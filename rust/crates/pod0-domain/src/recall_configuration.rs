@@ -8,14 +8,14 @@ pub const DEFAULT_RECALL_EMBEDDING_MODEL: &str = "openai/text-embedding-3-large"
 pub const DEFAULT_RECALL_RERANK_MODEL: &str = "cohere/rerank-v3.5";
 pub const MAX_RECALL_MODEL_ID_BYTES: usize = 256;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum RecallEmbeddingProvider {
     OpenRouter,
     Ollama,
     Unsupported { wire_code: u32 },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum RecallRerankProvider {
     OpenRouter,
     Unsupported { wire_code: u32 },

@@ -1,8 +1,8 @@
 use pod0_domain::{
     ActivityCorrelationId, ActivityId, ActivityTransactionId, AgentTurnId, ClipId, CommandId,
     ConversationId, EffectAttemptId, EffectIntentId, EpisodeId, HostRequestId, InternalCommandId,
-    MemoryId, NoteId, PodcastId, PublicationId, ScheduledOccurrenceId, StateRevision,
-    TranscriptWorkflowId, UnixTimestampMilliseconds,
+    MemoryId, NoteId, PodcastId, PublicationId, ScheduledOccurrenceId, SpeakerEntityId,
+    StateRevision, TranscriptArtifactId, TranscriptWorkflowId, UnixTimestampMilliseconds,
 };
 
 use crate::DomainTransitionKind;
@@ -78,6 +78,12 @@ pub enum ActivitySubject {
     Clip {
         clip_id: ClipId,
     },
+    SpeakerEntity {
+        speaker_entity_id: SpeakerEntityId,
+    },
+    TranscriptArtifact {
+        artifact_id: TranscriptArtifactId,
+    },
     Operation {
         command_id: CommandId,
     },
@@ -111,6 +117,7 @@ pub enum ExternalEffectKind {
     FeedNetwork,
     Playback,
     RecallProvider,
+    /// Legacy read-only wire value. New chapter work must use one of the typed kinds below.
     ChapterProvider,
     Download,
     Notification,
@@ -122,6 +129,10 @@ pub enum ExternalEffectKind {
     CoreWake,
     Filesystem,
     Publication,
+    PublisherChapterProvider,
+    ModelChapterProvider,
+    Cancellation,
+    LibraryNetwork,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -141,6 +152,7 @@ pub enum ActivityFailureCode {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum EffectOutcome {
+    Progressed,
     Succeeded,
     Failed { code: ActivityFailureCode },
     Cancelled,
@@ -180,89 +192,6 @@ pub enum ActivityFact {
     AuthorityCutover {
         domain: ActivityDomain,
     },
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct DurableExternalEffectRequest {
-    pub kind: ExternalEffectKind,
-    pub subject: ActivitySubject,
-    pub episode_id: Option<EpisodeId>,
-    pub not_before: Option<UnixTimestampMilliseconds>,
-    pub deadline_at: Option<UnixTimestampMilliseconds>,
-}
-
-pub trait ExternalEffectRequest {
-    fn effect_kind(&self) -> ExternalEffectKind;
-    fn subject(&self) -> ActivitySubject;
-    fn episode_id(&self) -> Option<EpisodeId>;
-}
-
-impl ExternalEffectRequest for DurableExternalEffectRequest {
-    fn effect_kind(&self) -> ExternalEffectKind {
-        self.kind
-    }
-
-    fn subject(&self) -> ActivitySubject {
-        self.subject
-    }
-
-    fn episode_id(&self) -> Option<EpisodeId> {
-        self.episode_id
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum InternalCommandKind {
-    BuildTranscriptEvidence,
-    EnsureTranscriptWorkflow {
-        origin: crate::TranscriptWorkflowOrigin,
-        configuration: crate::TranscriptWorkflowConfiguration,
-    },
-    RequestEpisodeDownload {
-        origin: crate::DownloadIntentOrigin,
-    },
-    AdvanceAgentTurn {
-        turn_id: AgentTurnId,
-    },
-    ExecuteAgentProjection {
-        turn_id: AgentTurnId,
-    },
-    ExecuteAgentTool {
-        turn_id: AgentTurnId,
-    },
-    CompleteAgentTool {
-        turn_id: AgentTurnId,
-        completion: AgentToolCompletion,
-    },
-}
-
-include!("agent_tool_completion.rs");
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct DurableInternalCommandRequest {
-    pub kind: InternalCommandKind,
-    pub target: ActivityDomain,
-    pub subject: ActivitySubject,
-    pub episode_id: Option<EpisodeId>,
-}
-
-pub trait InternalCommandRequest {
-    fn target_domain(&self) -> ActivityDomain;
-    fn subject(&self) -> ActivitySubject;
-    fn episode_id(&self) -> Option<EpisodeId>;
-}
-
-impl InternalCommandRequest for DurableInternalCommandRequest {
-    fn target_domain(&self) -> ActivityDomain {
-        self.target
-    }
-
-    fn subject(&self) -> ActivitySubject {
-        self.subject
-    }
-
-    fn episode_id(&self) -> Option<EpisodeId> {
-        self.episode_id
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

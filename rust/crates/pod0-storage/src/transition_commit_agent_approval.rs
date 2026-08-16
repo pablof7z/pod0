@@ -72,7 +72,7 @@ pub(crate) fn commit_agent_approval_observation(
                 episode_id: None,
                 outcome: EffectOutcome::Succeeded,
                 transition: AgentPublicationTransition::ApprovalChanged,
-                next_effect: None,
+                next_authorization: None,
                 advance_turn: !replay && after.projection().stage
                     == pod0_application::AgentTurnStage::Authorized,
             })

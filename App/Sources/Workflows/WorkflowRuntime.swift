@@ -1,4 +1,5 @@
 import Foundation
+import Pod0Core
 
 /// Native opportunity adapter for Rust-owned durable workflows.
 ///
@@ -11,8 +12,6 @@ final class WorkflowRuntime {
 
     private weak var appStore: AppStateStore?
     private weak var client: WorkflowClient?
-    private var wakeTask: Task<Void, Never>?
-    private var wakeRequested = false
     private init() {}
 
     func attach(store: AppStateStore) {
@@ -27,11 +26,11 @@ final class WorkflowRuntime {
     }
 
     func startAndReconcile() async {
-        await reconcile()
+        await reconcile(reason: .launch)
     }
 
     func reconcileOpportunity() async {
-        await reconcile()
+        await reconcile(reason: .libraryChanged)
     }
 
     func requestTranscript(episodeID: UUID, provider: STTProvider? = nil) {
@@ -42,93 +41,104 @@ final class WorkflowRuntime {
         _ action: WorkflowJobAction,
         on projection: WorkflowJobProjection
     ) async -> WorkflowJobActionResult {
-        switch projection.authority {
-        case .sharedRustPublisherChapters:
-            return await appStore?.sharedLibrary?.performPublisherChapterAction(
-                action,
-                on: projection
-            ) ?? .failed
-        case .sharedRustModelChapters:
-            return await appStore?.sharedLibrary?.performModelChapterAction(
-                action,
-                on: projection
-            ) ?? .failed
-        case .sharedRustDownloads:
-            return await appStore?.sharedLibrary?.performDownloadAction(
-                action,
-                on: projection
-            ) ?? .failed
-        case .sharedRustTranscripts:
-            return await appStore?.sharedLibrary?.performTranscriptAction(
-                action,
-                on: projection
-            ) ?? .failed
-        case .sharedRustScheduledAgents:
-            return await appStore?.sharedLibrary?.performScheduledAgentAction(
-                action,
-                on: projection
-            ) ?? .failed
-        case .swiftJobStore:
-            // Decode-only legacy rows are never actionable product work.
-            return .notAllowed
-        }
+        guard let token = projection.token(for: action),
+              let shared = appStore?.sharedLibrary else { return .notAllowed }
+        return shared.executeWorkflowAction(token).swiftValue(for: action)
     }
 
     func wake() {
-        guard appStore != nil else { return }
-        wakeRequested = true
-        guard wakeTask == nil else { return }
-        wakeTask = Task { @MainActor [weak self] in
-            guard let self else { return }
-            repeat {
-                wakeRequested = false
-                await reconcile()
-            } while wakeRequested && !Task.isCancelled
-            wakeTask = nil
-            if wakeRequested && !Task.isCancelled { wake() }
-        }
+        announceCapabilityChange(reason: .libraryChanged)
     }
 
-    private func reconcile() async {
-        guard let store = appStore else { return }
-        let episodes = store.state.episodes
+    func announceCredentialAvailabilityChanged() {
+        announceCapabilityChange(reason: .credentialChanged)
+    }
+
+    private func announceCapabilityChange(reason: WorkflowOpportunityReason) {
+        Task { @MainActor [weak self] in await self?.reconcile(reason: reason) }
+    }
+
+    private func reconcile(reason: WorkflowOpportunityReason) async {
+        guard let store = appStore, let shared = store.sharedLibrary else { return }
         let settings = store.state.settings
-        store.sharedLibrary?.ensurePublisherChapters(
-            episodeIDs: episodes.map(\.id)
+        let configuration = WorkflowConfigurationInput(
+            transcriptProvider: settings.sttProvider.coreValue,
+            elevenLabsModel: settings.elevenLabsSTTModel,
+            assemblyAiModel: settings.assemblyAISTTModel,
+            openRouterModel: settings.openRouterWhisperModel,
+            autoPublisherTranscripts: settings.autoIngestPublisherTranscripts,
+            autoProviderTranscripts: settings.autoFallbackToScribe,
+            chapterModel: settings.chapterCompilationModel
         )
-        let transcriptStartPolicies = store.state.subscriptions.reduce(
-            into: [UUID: TranscriptStartPolicy]()
-        ) { policies, subscription in
-            policies[subscription.podcastID] = subscription.transcriptStartPolicy
+        let current: WorkflowConfiguration?
+        do {
+            current = try shared.workflowConfiguration()
+        } catch {
+            return
         }
-        let transcriptOpportunities = await Task.detached(priority: .utility) {
-            SharedLibraryClient.transcriptWorkflowOpportunities(
-                episodes: episodes,
-                settings: settings,
-                startPolicies: transcriptStartPolicies
-            )
-        }.value
-        store.sharedLibrary?.ensureTranscriptWorkflows(transcriptOpportunities)
-        let transcriptSnapshots: [TranscriptWorkflowSnapshot]
-        if let sharedLibrary = store.sharedLibrary {
-            let facade = sharedLibrary.facade
-            let episodeIDs = episodes.compactMap { episode -> UUID? in
-                guard case .ready = episode.transcriptState else { return nil }
-                return episode.id
+        if current == nil {
+            do {
+                _ = try await shared.executeCommitted(.importLegacyWorkflowConfiguration(
+                    configuration: configuration,
+                    sourceGeneration: ContentDigest(word0: 41, word1: 1, word2: 0, word3: 0)
+                ))
+            } catch {
+                return
             }
-            transcriptSnapshots = await Task.detached(priority: .utility) {
-                SharedLibraryClient.transcriptWorkflowSnapshots(
-                    facade: facade,
-                    episodeIDs: episodeIDs
-                )
-            }.value
-        } else {
-            transcriptSnapshots = []
         }
-        store.sharedLibrary?.ensureModelChapters(
-            transcripts: transcriptSnapshots,
-            configuredModel: settings.chapterCompilationModel
+        guard let authoritative = try? shared.workflowConfiguration() else { return }
+        if authoritative.value != configuration {
+            do {
+                _ = try await shared.executeCommitted(.setWorkflowConfiguration(
+                    expectedConfigurationRevision: authoritative.revision,
+                    configuration: configuration
+                ))
+            } catch {
+                return
+            }
+        }
+        let capabilities = WorkflowCapabilitySnapshotInput(
+            credentials: TranscriptCredentialCapabilities(
+                elevenLabs: ElevenLabsCredentialStore.hasAPIKey(),
+                assemblyAi: AssemblyAICredentialStore.hasAPIKey(),
+                openRouter: OpenRouterCredentialStore.hasAPIKey(),
+                appleSpeech: true
+            ),
+            localAudio: store.state.episodes.compactMap { episode in
+                guard let url = episode.downloadState.localFileURL,
+                      FileManager.default.fileExists(atPath: url.path) else { return nil }
+                return LocalAudioCapability(
+                    episodeId: EpisodeId(uuid: episode.id),
+                    localAudioUrl: url.absoluteString
+                )
+            }
         )
-        store.sharedLibrary?.reconcileScheduledAgents()
+        let observedAt = UnixTimestampMilliseconds(date: Date())
+        guard let snapshot = makeWorkflowCapabilitySnapshot(
+            input: capabilities,
+            observedAt: observedAt
+        ) else { return }
+        _ = try? await shared.executeCommitted(.observeWorkflowCapabilities(
+            capabilities: capabilities
+        ))
+        _ = try? await shared.executeCommitted(.reconcileWorkflowOpportunity(
+            opportunity: WorkflowOpportunity(
+                reason: reason,
+                observedAt: observedAt,
+                capabilitySnapshotId: snapshot.snapshotId
+            )
+        ))
+    }
+}
+
+private extension WorkflowActionDispatchResult {
+    func swiftValue(for action: WorkflowJobAction) -> WorkflowJobActionResult {
+        switch self {
+        case .accepted: .accepted(action)
+        case .stale: .stale
+        case .notAllowed, .invalidToken: .notAllowed
+        case .notFound: .notFound
+        case .storageUnavailable: .failed
+        }
     }
 }

@@ -1,10 +1,7 @@
-use crate::runtime_command_fingerprint::command_fingerprint;
-use crate::runtime_command_fingerprint::command_fingerprint_digest;
-use crate::runtime_state::FacadeState;
-use pod0_application::{ApplicationCommand, CommandEnvelope, CoreFailureCode};
+use crate::runtime_command_fingerprint::{command_fingerprint, command_fingerprint_digest};
+use pod0_application::{ApplicationCommand, CommandEnvelope};
 use pod0_storage::StoredFeedFetchIntent;
-
-mod listening;
+use crate::runtime_state::FacadeState;
 
 impl FacadeState {
     pub(super) fn accept_command(&mut self, envelope: CommandEnvelope) -> bool {
@@ -28,6 +25,12 @@ impl FacadeState {
             }
             ApplicationCommand::HydratePodcastMetadata { podcast_id } => {
                 self.start_metadata_refresh(&envelope, &fingerprint, podcast_id)
+            }
+            command @ (ApplicationCommand::SearchPodcastDirectory { .. }
+            | ApplicationCommand::LoadTopPodcasts { .. }
+            | ApplicationCommand::ImportSharedEpisode { .. }
+            | ApplicationCommand::SearchPodcastCatalog { .. }) => {
+                self.accept_library_network_command(&envelope, &fingerprint, command)
             }
             ApplicationCommand::UpsertSyntheticPodcast { podcast } => {
                 self.upsert_synthetic_podcast(&envelope, &fingerprint, podcast)
@@ -68,16 +71,17 @@ impl FacadeState {
             }
             ApplicationCommand::ResetListeningData => self.reset_all(&envelope, &fingerprint),
             ApplicationCommand::CancelOperation { cancellation_id } => {
-                self.cancel_operation(cancellation_id);
-                self.succeed(envelope.command_id, None);
+                if self.cancel_operation_with_activity(
+                    &envelope,
+                    command_fingerprint_digest(&envelope.command),
+                    cancellation_id,
+                ) {
+                    self.succeed(envelope.command_id, None);
+                }
             }
-            ApplicationCommand::RequestPlayback { episode_id } => self.reject_application_request(
-                &envelope,
-                pod0_application::ActivitySubject::Episode { episode_id },
-                Some(episode_id),
-                pod0_application::RequestRejectionReason::MissingSubject,
-                CoreFailureCode::NotFound,
-            ),
+            ApplicationCommand::RequestPlayback { episode_id } => {
+                self.reject_missing_playback_episode(&envelope, episode_id)
+            }
             ApplicationCommand::Playback { command } => {
                 self.accept_playback_command(&envelope, &fingerprint, command)
             }
@@ -100,6 +104,12 @@ impl FacadeState {
                 expected_configuration_revision,
                 configuration,
             ),
+            command @ (ApplicationCommand::ImportLegacyWorkflowConfiguration { .. }
+            | ApplicationCommand::SetWorkflowConfiguration { .. }
+            | ApplicationCommand::ObserveWorkflowCapabilities { .. }
+            | ApplicationCommand::ReconcileWorkflowOpportunity { .. }) => {
+                self.accept_workflow_configuration_command(&envelope, command)
+            }
             ApplicationCommand::RebuildTranscriptEvidence { input, policy } => {
                 self.rebuild_transcript_evidence(&envelope, input, policy);
             }
@@ -180,7 +190,12 @@ impl FacadeState {
             ApplicationCommand::CancelPublisherChapters {
                 episode_id,
                 expected_workflow_revision,
-            } => self.cancel_publisher_chapters(&envelope, episode_id, expected_workflow_revision),
+            } => self.cancel_publisher_chapters(
+                &envelope,
+                command_fingerprint_digest(&envelope.command),
+                episode_id,
+                expected_workflow_revision,
+            ),
             ApplicationCommand::EnsureModelChapters {
                 episode_id,
                 configured_model,
@@ -198,7 +213,12 @@ impl FacadeState {
             ApplicationCommand::CancelModelChapters {
                 episode_id,
                 expected_workflow_revision,
-            } => self.cancel_model_chapters(&envelope, episode_id, expected_workflow_revision),
+            } => self.cancel_model_chapters(
+                &envelope,
+                command_fingerprint_digest(&envelope.command),
+                episode_id,
+                expected_workflow_revision,
+            ),
             ApplicationCommand::CreateNote {
                 text,
                 kind,
@@ -268,17 +288,11 @@ impl FacadeState {
             | ApplicationCommand::ClearClips { .. }) => {
                 self.route_clip_command(&envelope, &fingerprint, command)
             }
-            ApplicationCommand::Unsupported { wire_code } => self.reject_application_request(
-                &envelope,
-                pod0_application::ActivitySubject::Global,
-                None,
-                pod0_application::RequestRejectionReason::UnsupportedCode { wire_code },
-                CoreFailureCode::Unsupported { wire_code },
-            ),
+            ApplicationCommand::Unsupported { wire_code } => {
+                self.reject_unsupported_command(&envelope, wire_code)
+            }
         }
         self.trim_operations();
         true
     }
 }
-
-include!("runtime_commands_download.rs");

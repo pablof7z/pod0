@@ -3,17 +3,16 @@
 //! Four admissible observables, all on the public facade surface:
 //! projection SNAPSHOTS (`snapshot`), event-driven DELIVERIES to a live
 //! subscriber (`subscribe`/`unsubscribe`), drained HOST WORK
-//! (`next_host_requests`/`next_host_cancellations`), and the typed RECEIPT
-//! `record_host_observation` returned. Nothing here opens the database or
+//! (`next_leased_host_requests`), and the typed
+//! RECEIPT `record_leased_host_observation` returned. Nothing here opens the database or
 //! peeks at facade internals — if a fact is not visible through those four,
 //! a scenario may not claim it.
 
 use std::sync::{Arc, Mutex};
 
 use pod0_application::{
-    FeedFetchProjection, HostCancellationRequest, HostRequest, HostRequestEnvelope,
-    LibraryProjection, OperationProjection, Projection, ProjectionEnvelope, ProjectionRequest,
-    ProjectionScope,
+    FeedFetchProjection, HostRequest, LeasedHostRequestEnvelope, LibraryProjection,
+    OperationProjection, Projection, ProjectionEnvelope, ProjectionRequest, ProjectionScope,
 };
 use pod0_domain::StateRevision;
 use pod0_facade::ProjectionSubscriber;
@@ -111,11 +110,11 @@ impl PodWorld {
 
     /// Drain the host-work queue to exhaustion, as a host draining until
     /// empty would. Bounded batches are the contract; the loop is the host's.
-    pub fn drain_all_host_requests(&self) -> Vec<HostRequestEnvelope> {
+    pub fn drain_all_host_requests(&self) -> Vec<LeasedHostRequestEnvelope> {
         let facade = self.facade();
         let mut drained = Vec::new();
         loop {
-            let batch = facade.next_host_requests(16);
+            let batch = facade.next_leased_host_requests(16);
             if batch.is_empty() {
                 return drained;
             }
@@ -123,13 +122,9 @@ impl PodWorld {
         }
     }
 
-    pub fn drain_host_cancellations(&self) -> Vec<HostCancellationRequest> {
-        self.facade().next_host_cancellations(16)
-    }
-
     /// The accepted-but-undelivered announcement, for claims about work the
     /// host is already holding.
-    pub fn accepted_announcement(&self) -> Option<&HostRequestEnvelope> {
+    pub fn accepted_announcement(&self) -> Option<&LeasedHostRequestEnvelope> {
         self.accepted_announcement.as_ref()
     }
 
@@ -156,11 +151,11 @@ impl PodWorld {
     }
 
     /// Count the feed fetches for `url` in a drained batch.
-    pub fn feed_fetches_for(requests: &[HostRequestEnvelope], url: &str) -> usize {
+    pub fn feed_fetches_for(requests: &[LeasedHostRequestEnvelope], url: &str) -> usize {
         requests
             .iter()
             .filter(|request| {
-                matches!(&request.request, HostRequest::FetchFeed { feed_url, .. } if feed_url == url)
+                matches!(&request.request.request, HostRequest::FetchFeed { feed_url, .. } if feed_url == url)
             })
             .count()
     }

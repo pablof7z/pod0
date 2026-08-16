@@ -1,5 +1,8 @@
 use std::path::Path;
 
+// Migration staging is deliberately outside note authority: authoritative reads and every
+// product mutation reject these rows until `commit_note_cutover` atomically activates them.
+
 use pod0_domain::{CommandId, NoteRecord, StateRevision};
 use rusqlite::{Transaction, TransactionBehavior, params};
 
@@ -125,30 +128,7 @@ pub fn read_note_import(
 }
 
 pub fn commit_note_cutover(path: &Path, observed_at_ms: i64) -> Result<bool, StorageError> {
-    let mut connection = open_connection(path, false)?;
-    configure(&connection)?;
-    let transaction = connection
-        .transaction_with_behavior(TransactionBehavior::Immediate)
-        .map_err(|error| StorageError::sqlite("begin note cutover", error))?;
-    let state = cutover_state(&transaction)?;
-    let already = match state.as_deref() {
-        Some("authoritative") => true,
-        Some("staged") => {
-            transaction
-                .execute(
-                    "UPDATE pod0_domain_cutovers SET state='authoritative',committed_at_ms=?1 \
-                 WHERE domain='notes' AND state='staged'",
-                    [observed_at_ms],
-                )
-                .map_err(|error| StorageError::sqlite("commit note cutover", error))?;
-            false
-        }
-        _ => return Err(StorageError::ImportNotFound),
-    };
-    transaction
-        .commit()
-        .map_err(|error| StorageError::sqlite("commit note cutover", error))?;
-    Ok(already)
+    crate::transition_commit::commit_note_cutover(path, observed_at_ms)
 }
 
 fn insert_import(

@@ -1,18 +1,3 @@
-fn reason_matches_record(reason: CoreWakeReason, record: &ModelChapterWorkflowRecord) -> bool {
-    match reason {
-        CoreWakeReason::ModelChapterRetry { episode_id, .. } => episode_id == record.episode_id,
-        CoreWakeReason::ModelChapterFinalization { request_id } => {
-            Some(request_id) == record.request_id
-        }
-        CoreWakeReason::TranscriptProviderRecovery { .. }
-        | CoreWakeReason::TranscriptRetry { .. }
-        | CoreWakeReason::TranscriptFinalization { .. }
-        | CoreWakeReason::FeedDiscoveryNotificationRetry { .. }
-        | CoreWakeReason::FeedFetchRetry { .. } => false,
-        CoreWakeReason::Unsupported { .. } => false,
-    }
-}
-
 fn wake_request_id(reason: CoreWakeReason, wake_at_ms: i64) -> HostRequestId {
     let mut hash = Sha256::new();
     hash.update(b"pod0-core-wake-v1\0");

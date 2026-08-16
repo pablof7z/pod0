@@ -24,6 +24,7 @@ pub enum SchemaBlockReason {
 #[derive(Debug, uniffi::Error)]
 pub enum FacadeOpenError {
     NotAuthoritative,
+    ErasureRecoveryRequired,
     SchemaBlocked { reason: SchemaBlockReason },
     StorageUnavailable,
 }
@@ -32,6 +33,7 @@ impl std::fmt::Display for FacadeOpenError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter.write_str(match self {
             Self::NotAuthoritative => "shared listening store is not authoritative",
+            Self::ErasureRecoveryRequired => "user-data erasure requires forward recovery",
             Self::SchemaBlocked {
                 reason: SchemaBlockReason::StoreNewerThanApp,
             } => "shared listening store was written by a newer build",

@@ -21,6 +21,9 @@ pub struct HostObservationEnvelope {
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum HostObservation {
+    AuthorizedEffectCancellationApplied {
+        target_request_id: HostRequestId,
+    },
     FeedBytesFetched {
         bytes: Vec<u8>,
         entity_tag: Option<String>,
@@ -104,6 +107,14 @@ pub enum HostObservation {
     NewEpisodeNotificationDelivered {
         occurrence_id: pod0_domain::FeedDiscoveryOccurrenceId,
         episode_id: EpisodeId,
+    },
+    LibraryDocumentFetched {
+        workflow_command_id: pod0_domain::CommandId,
+        step: crate::LibraryNetworkStep,
+        bytes: Vec<u8>,
+        response_url: String,
+        mime_type: Option<String>,
+        http_status: u16,
     },
     TranscriptCapabilityObserved {
         observation: crate::TranscriptCapabilityObservation,

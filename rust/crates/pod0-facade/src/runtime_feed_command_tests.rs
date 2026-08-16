@@ -58,28 +58,26 @@ fn command_deadlines_are_deterministic_from_the_injected_kernel_clock() {
     let second_request = subscribe_fetch_request(&second.facade);
     assert_eq!(first_request, second_request);
     assert_eq!(
-        first_request.deadline_at,
+        first_request.request.deadline_at,
         Some(UnixTimestampMilliseconds::new(
             1_800_000_000_000 + 24 * 60 * 60 * 1_000
         ))
     );
 }
 
-
-fn subscribe_fetch_request(facade: &Pod0Facade) -> HostRequestEnvelope {
+fn subscribe_fetch_request(facade: &Pod0Facade) -> LeasedHostRequestEnvelope {
     facade
-        .next_host_requests(20)
+        .next_leased_host_requests(20)
         .into_iter()
         .find(|request| {
             matches!(
-                &request.request,
+                &request.request.request,
                 HostRequest::FetchFeed { feed_url, .. }
                     if feed_url == "https://example.test/feed"
             )
         })
         .expect("subscribe command should issue one bounded host request")
 }
-
 
 #[test]
 fn cancellation_prevents_late_host_observation_from_committing() {
@@ -101,32 +99,67 @@ fn cancellation_prevents_late_host_observation_from_committing() {
             cancellation_id: CancellationId::from_parts(0, 10),
         },
     ));
+    let cancellation = facade
+        .next_leased_host_requests(20)
+        .into_iter()
+        .find(|leased| {
+            matches!(
+                leased.request.request,
+                HostRequest::CancelAuthorizedEffect { target_request_id }
+                    if target_request_id == request.request.request_id
+            )
+        })
+        .expect("cancellation must be delivered only as a persisted exact lease");
+    let cancellation_receipt = facade.record_leased_host_observation(
+        LeasedHostObservationEnvelope {
+            lease: cancellation.lease,
+            observation: HostObservationEnvelope {
+                request_id: cancellation.request.request_id,
+                cancellation_id: cancellation.request.cancellation_id,
+                observed_request_revision: cancellation.request.issued_revision,
+                sequence_number: 0,
+                observed_at: UnixTimestampMilliseconds::new(
+                    cancellation.lease.expires_at.value - 1,
+                ),
+                observation: HostObservation::AuthorizedEffectCancellationApplied {
+                    target_request_id: request.request.request_id,
+                },
+            },
+        },
+    );
+    assert!(matches!(
+        cancellation_receipt,
+        HostObservationReceipt::Persisted { terminal: true, .. }
+    ));
     let revision_after_cancel = facade.snapshot(library_request()).state_revision;
 
-    let receipt = facade.record_host_observation(HostObservationEnvelope {
-        request_id: request.request_id,
-        cancellation_id: request.cancellation_id,
-        observed_request_revision: request.issued_revision,
-        sequence_number: 0,
-        observed_at: UnixTimestampMilliseconds::new(1_800_000_100_000),
-        observation: HostObservation::FeedBytesFetched {
-            bytes: br#"<rss version="2.0"><channel><title>Late</title>
+    let receipt = facade.record_leased_host_observation(LeasedHostObservationEnvelope {
+        lease: request.lease,
+        observation: HostObservationEnvelope {
+            request_id: request.request.request_id,
+            cancellation_id: request.request.cancellation_id,
+            observed_request_revision: request.request.issued_revision,
+            sequence_number: 0,
+            observed_at: UnixTimestampMilliseconds::new(1_800_000_100_000),
+            observation: HostObservation::FeedBytesFetched {
+                bytes: br#"<rss version="2.0"><channel><title>Late</title>
 <item><title>Late episode</title><guid>late-cancelled-episode</guid>
 <enclosure url="https://example.test/late.mp3" type="audio/mpeg"/></item>
 </channel></rss>"#
-                .to_vec(),
-            entity_tag: None,
-            last_modified: None,
-            response_url: "https://example.test/feed".to_owned(),
-            http_status: 200,
+                    .to_vec(),
+                entity_tag: None,
+                last_modified: None,
+                response_url: "https://example.test/feed".to_owned(),
+                http_status: 200,
+            },
         },
     });
 
     assert_eq!(
         receipt,
         HostObservationReceipt::Rejected {
-            request_id: request.request_id,
-            reason: HostObservationRejection::Cancelled
+            request_id: request.request.request_id,
+            reason: HostObservationRejection::StaleWorkflow
         }
     );
     let snapshot = facade.snapshot(library_request());
@@ -146,7 +179,6 @@ fn cancellation_prevents_late_host_observation_from_committing() {
     );
 }
 
-
 #[test]
 fn host_request_drain_is_safe_when_limit_exceeds_queue_length() {
     let fixture = PlaybackFixture::new();
@@ -158,12 +190,12 @@ fn host_request_drain_is_safe_when_limit_exceeds_queue_length() {
         },
     ));
 
-    let drained = fixture.facade.next_host_requests(u16::MAX);
+    let drained = fixture.facade.next_leased_host_requests(u16::MAX);
     let matching_fetches = drained
         .iter()
         .filter(|request| {
             matches!(
-                &request.request,
+                &request.request.request,
                 HostRequest::FetchFeed { feed_url, .. }
                     if feed_url == "https://example.test/feed"
             )
@@ -173,9 +205,13 @@ fn host_request_drain_is_safe_when_limit_exceeds_queue_length() {
         matching_fetches, 1,
         "subscribe must issue exactly one FetchFeed for the requested URL"
     );
-    assert!(fixture.facade.next_host_requests(u16::MAX).is_empty());
+    assert!(
+        fixture
+            .facade
+            .next_leased_host_requests(u16::MAX)
+            .is_empty()
+    );
 }
-
 
 #[test]
 fn cancellation_removes_native_work_that_has_not_started() {
@@ -198,9 +234,8 @@ fn cancellation_removes_native_work_that_has_not_started() {
     assert!(
         fixture
             .facade
-            .next_host_requests(u16::MAX)
+            .next_leased_host_requests(u16::MAX)
             .iter()
-            .all(|request| !matches!(&request.request, HostRequest::FetchFeed { .. }))
+            .all(|request| !matches!(&request.request.request, HostRequest::FetchFeed { .. }))
     );
 }
-

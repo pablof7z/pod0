@@ -661,6 +661,8 @@ public protocol Pod0FacadeProtocol: AnyObject, Sendable {
 
     func stageLegacyDownloadCutover(sourceGeneration: UInt64, candidates: [LegacyDownloadCutoverCandidate])  -> LegacyDownloadCutoverProjection
 
+    func latestEpisodeActivityPage(episodeId: EpisodeId, snapshotThroughSequence: UInt64?, beforeSequence: UInt64?, requestedCount: UInt16)  -> LatestEpisodeActivityPage
+
     func episodeActivityPage(episodeId: EpisodeId, afterSequence: UInt64?, requestedCount: UInt16)  -> EpisodeActivityPage
 
     func commitLegacyFeedDiscoveryCutover(sourceGeneration: UInt64)  -> LegacyFeedDiscoveryCutoverProjection
@@ -685,13 +687,9 @@ public protocol Pod0FacadeProtocol: AnyObject, Sendable {
 
     func dispatch(command: CommandEnvelope)
 
-    func nextHostCancellations(maximumCount: UInt16)  -> [HostCancellationRequest]
-
-    func nextHostRequests(maximumCount: UInt16)  -> [HostRequestEnvelope]
-
     func nextLeasedHostRequests(maximumCount: UInt16)  -> [LeasedHostRequestEnvelope]
 
-    func nextNmpPublications(maximumCount: UInt16)  -> [Pod0PublicationDraft]
+    func nextNmpPublications(maximumCount: UInt16)  -> [LeasedNmpPublicationDraft]
 
     func nmpPublicationReceiptLinks()  -> [NmpPublicationReceiptLink]
 
@@ -701,19 +699,24 @@ public protocol Pod0FacadeProtocol: AnyObject, Sendable {
      */
     func planChapterModelRequest(episodeId: EpisodeId, configuredModel: String)  -> ChapterModelPlan
 
-    func recordHostObservation(observation: HostObservationEnvelope)  -> HostObservationReceipt
-
     func recordLeasedHostObservation(observation: LeasedHostObservationEnvelope)  -> HostObservationReceipt
 
-    func recordNmpPublicationObservation(publicationId: PublicationId, observation: PublicationStatusObservation)
+    func recordNmpPublicationObservation(observation: LeasedNmpPublicationObservation)
 
-    func recordNmpPublicationReceipt(publicationId: PublicationId, receiptId: UInt64)
+    func recordNmpPublicationReceipt(receipt: LeasedNmpPublicationReceipt)
 
     func snapshot(request: ProjectionRequest)  -> ProjectionEnvelope
 
     func subscribe(request: ProjectionRequest, subscriber: ProjectionSubscriber)  -> SubscriptionId
 
     func unsubscribe(subscriptionId: SubscriptionId)
+
+    /**
+     * Reads the secret-free Rust-owned workflow policy for exact-revision
+     * native setting updates. Absence means the one-time import has not yet
+     * established authority.
+     */
+    func workflowConfiguration() throws  -> WorkflowConfiguration?
 
     func commitLegacyScheduledAgentCutover(sourceGeneration: UInt64)  -> LegacyScheduledAgentCutoverProjection
 
@@ -727,6 +730,12 @@ public protocol Pod0FacadeProtocol: AnyObject, Sendable {
 
     func verifyLegacyScheduledAgentCutover(sourceGeneration: UInt64)  -> LegacyScheduledAgentCutoverProjection
 
+    func causalActivityPage(correlationId: ActivityCorrelationId, afterSequence: UInt64?, requestedCount: UInt16)  -> EpisodeActivityPage
+
+    func operationActivityPage(commandId: CommandId, afterSequence: UInt64?, requestedCount: UInt16)  -> EpisodeActivityPage
+
+    func supportActivityPage(afterSequence: UInt64?, requestedCount: UInt16)  -> EpisodeActivityPage
+
     func commitLegacyTranscriptWorkflowCutover(sourceGeneration: UInt64)  -> LegacyTranscriptWorkflowCutoverProjection
 
     func discardStagedLegacyTranscriptWorkflowCutover(sourceGeneration: UInt64)  -> LegacyTranscriptWorkflowCutoverProjection
@@ -736,6 +745,19 @@ public protocol Pod0FacadeProtocol: AnyObject, Sendable {
     func transcriptWorkflowCutover()  -> LegacyTranscriptWorkflowCutoverProjection
 
     func verifyLegacyTranscriptWorkflowCutover(sourceGeneration: UInt64)  -> LegacyTranscriptWorkflowCutoverProjection
+
+    func confirmErasure(token: UserDataErasureToken) throws  -> UserDataErasureResult
+
+    func prepareErasure(expectedStoreId: CommandId, nonce: Data, retainedSettingsJson: Data, locations: UserDataErasureLocations) throws  -> UserDataErasureToken
+
+    func storeIdentity() throws  -> CommandId
+
+    /**
+     * Executes only an exact action token emitted by the current Rust
+     * workflow projection. Native code cannot select configuration, target,
+     * or expected revision independently of that projection.
+     */
+    func executeWorkflowAction(token: WorkflowActionToken)  -> WorkflowActionDispatchResult
 
 }
 open class Pod0Facade: Pod0FacadeProtocol, @unchecked Sendable {
@@ -912,6 +934,19 @@ open func stageLegacyDownloadCutover(sourceGeneration: UInt64, candidates: [Lega
 })
 }
 
+open func latestEpisodeActivityPage(episodeId: EpisodeId, snapshotThroughSequence: UInt64?, beforeSequence: UInt64?, requestedCount: UInt16) -> LatestEpisodeActivityPage  {
+    return try!  FfiConverterTypeLatestEpisodeActivityPage_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_latest_episode_activity_page(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeEpisodeId_lower(episodeId),
+        FfiConverterOptionUInt64.lower(snapshotThroughSequence),
+        FfiConverterOptionUInt64.lower(beforeSequence),
+        FfiConverterUInt16.lower(requestedCount),uniffiCallStatus
+    )
+})
+}
+
 open func episodeActivityPage(episodeId: EpisodeId, afterSequence: UInt64?, requestedCount: UInt16) -> EpisodeActivityPage  {
     return try!  FfiConverterTypeEpisodeActivityPage_lift(try! rustCall() {
         uniffiCallStatus in
@@ -1047,26 +1082,6 @@ open func dispatch(command: CommandEnvelope)  {try! rustCall() {
 }
 }
 
-open func nextHostCancellations(maximumCount: UInt16) -> [HostCancellationRequest]  {
-    return try!  FfiConverterSequenceTypeHostCancellationRequest.lift(try! rustCall() {
-        uniffiCallStatus in
-    uniffi_pod0_facade_fn_method_pod0facade_next_host_cancellations(
-            self.uniffiCloneHandle(),
-        FfiConverterUInt16.lower(maximumCount),uniffiCallStatus
-    )
-})
-}
-
-open func nextHostRequests(maximumCount: UInt16) -> [HostRequestEnvelope]  {
-    return try!  FfiConverterSequenceTypeHostRequestEnvelope.lift(try! rustCall() {
-        uniffiCallStatus in
-    uniffi_pod0_facade_fn_method_pod0facade_next_host_requests(
-            self.uniffiCloneHandle(),
-        FfiConverterUInt16.lower(maximumCount),uniffiCallStatus
-    )
-})
-}
-
 open func nextLeasedHostRequests(maximumCount: UInt16) -> [LeasedHostRequestEnvelope]  {
     return try!  FfiConverterSequenceTypeLeasedHostRequestEnvelope.lift(try! rustCall() {
         uniffiCallStatus in
@@ -1077,8 +1092,8 @@ open func nextLeasedHostRequests(maximumCount: UInt16) -> [LeasedHostRequestEnve
 })
 }
 
-open func nextNmpPublications(maximumCount: UInt16) -> [Pod0PublicationDraft]  {
-    return try!  FfiConverterSequenceTypePod0PublicationDraft.lift(try! rustCall() {
+open func nextNmpPublications(maximumCount: UInt16) -> [LeasedNmpPublicationDraft]  {
+    return try!  FfiConverterSequenceTypeLeasedNMPPublicationDraft.lift(try! rustCall() {
         uniffiCallStatus in
     uniffi_pod0_facade_fn_method_pod0facade_next_nmp_publications(
             self.uniffiCloneHandle(),
@@ -1111,16 +1126,6 @@ open func planChapterModelRequest(episodeId: EpisodeId, configuredModel: String)
 })
 }
 
-open func recordHostObservation(observation: HostObservationEnvelope) -> HostObservationReceipt  {
-    return try!  FfiConverterTypeHostObservationReceipt_lift(try! rustCall() {
-        uniffiCallStatus in
-    uniffi_pod0_facade_fn_method_pod0facade_record_host_observation(
-            self.uniffiCloneHandle(),
-        FfiConverterTypeHostObservationEnvelope_lower(observation),uniffiCallStatus
-    )
-})
-}
-
 open func recordLeasedHostObservation(observation: LeasedHostObservationEnvelope) -> HostObservationReceipt  {
     return try!  FfiConverterTypeHostObservationReceipt_lift(try! rustCall() {
         uniffiCallStatus in
@@ -1131,22 +1136,20 @@ open func recordLeasedHostObservation(observation: LeasedHostObservationEnvelope
 })
 }
 
-open func recordNmpPublicationObservation(publicationId: PublicationId, observation: PublicationStatusObservation)  {try! rustCall() {
+open func recordNmpPublicationObservation(observation: LeasedNmpPublicationObservation)  {try! rustCall() {
         uniffiCallStatus in
     uniffi_pod0_facade_fn_method_pod0facade_record_nmp_publication_observation(
             self.uniffiCloneHandle(),
-        FfiConverterTypePublicationId_lower(publicationId),
-        FfiConverterTypePublicationStatusObservation_lower(observation),uniffiCallStatus
+        FfiConverterTypeLeasedNMPPublicationObservation_lower(observation),uniffiCallStatus
     )
 }
 }
 
-open func recordNmpPublicationReceipt(publicationId: PublicationId, receiptId: UInt64)  {try! rustCall() {
+open func recordNmpPublicationReceipt(receipt: LeasedNmpPublicationReceipt)  {try! rustCall() {
         uniffiCallStatus in
     uniffi_pod0_facade_fn_method_pod0facade_record_nmp_publication_receipt(
             self.uniffiCloneHandle(),
-        FfiConverterTypePublicationId_lower(publicationId),
-        FfiConverterUInt64.lower(receiptId),uniffiCallStatus
+        FfiConverterTypeLeasedNMPPublicationReceipt_lower(receipt),uniffiCallStatus
     )
 }
 }
@@ -1179,6 +1182,20 @@ open func unsubscribe(subscriptionId: SubscriptionId)  {try! rustCall() {
         FfiConverterTypeSubscriptionId_lower(subscriptionId),uniffiCallStatus
     )
 }
+}
+
+    /**
+     * Reads the secret-free Rust-owned workflow policy for exact-revision
+     * native setting updates. Absence means the one-time import has not yet
+     * established authority.
+     */
+open func workflowConfiguration()throws  -> WorkflowConfiguration?  {
+    return try  FfiConverterOptionTypeWorkflowConfiguration.lift(try rustCallWithError(FfiConverterTypeFacadeOpenError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_workflow_configuration(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
 }
 
 open func commitLegacyScheduledAgentCutover(sourceGeneration: UInt64) -> LegacyScheduledAgentCutoverProjection  {
@@ -1246,6 +1263,41 @@ open func verifyLegacyScheduledAgentCutover(sourceGeneration: UInt64) -> LegacyS
 })
 }
 
+open func causalActivityPage(correlationId: ActivityCorrelationId, afterSequence: UInt64?, requestedCount: UInt16) -> EpisodeActivityPage  {
+    return try!  FfiConverterTypeEpisodeActivityPage_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_causal_activity_page(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeActivityCorrelationId_lower(correlationId),
+        FfiConverterOptionUInt64.lower(afterSequence),
+        FfiConverterUInt16.lower(requestedCount),uniffiCallStatus
+    )
+})
+}
+
+open func operationActivityPage(commandId: CommandId, afterSequence: UInt64?, requestedCount: UInt16) -> EpisodeActivityPage  {
+    return try!  FfiConverterTypeEpisodeActivityPage_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_operation_activity_page(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeCommandId_lower(commandId),
+        FfiConverterOptionUInt64.lower(afterSequence),
+        FfiConverterUInt16.lower(requestedCount),uniffiCallStatus
+    )
+})
+}
+
+open func supportActivityPage(afterSequence: UInt64?, requestedCount: UInt16) -> EpisodeActivityPage  {
+    return try!  FfiConverterTypeEpisodeActivityPage_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_support_activity_page(
+            self.uniffiCloneHandle(),
+        FfiConverterOptionUInt64.lower(afterSequence),
+        FfiConverterUInt16.lower(requestedCount),uniffiCallStatus
+    )
+})
+}
+
 open func commitLegacyTranscriptWorkflowCutover(sourceGeneration: UInt64) -> LegacyTranscriptWorkflowCutoverProjection  {
     return try!  FfiConverterTypeLegacyTranscriptWorkflowCutoverProjection_lift(try! rustCall() {
         uniffiCallStatus in
@@ -1294,6 +1346,53 @@ open func verifyLegacyTranscriptWorkflowCutover(sourceGeneration: UInt64) -> Leg
     uniffi_pod0_facade_fn_method_pod0facade_verify_legacy_transcript_workflow_cutover(
             self.uniffiCloneHandle(),
         FfiConverterUInt64.lower(sourceGeneration),uniffiCallStatus
+    )
+})
+}
+
+open func confirmErasure(token: UserDataErasureToken)throws  -> UserDataErasureResult  {
+    return try  FfiConverterTypeUserDataErasureResult_lift(try rustCallWithError(FfiConverterTypeUserDataErasureError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_confirm_erasure(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeUserDataErasureToken_lower(token),uniffiCallStatus
+    )
+})
+}
+
+open func prepareErasure(expectedStoreId: CommandId, nonce: Data, retainedSettingsJson: Data, locations: UserDataErasureLocations)throws  -> UserDataErasureToken  {
+    return try  FfiConverterTypeUserDataErasureToken_lift(try rustCallWithError(FfiConverterTypeUserDataErasureError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_prepare_erasure(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeCommandId_lower(expectedStoreId),
+        FfiConverterData.lower(nonce),
+        FfiConverterData.lower(retainedSettingsJson),
+        FfiConverterTypeUserDataErasureLocations_lower(locations),uniffiCallStatus
+    )
+})
+}
+
+open func storeIdentity()throws  -> CommandId  {
+    return try  FfiConverterTypeCommandId_lift(try rustCallWithError(FfiConverterTypeUserDataErasureError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_store_identity(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+
+    /**
+     * Executes only an exact action token emitted by the current Rust
+     * workflow projection. Native code cannot select configuration, target,
+     * or expected revision independently of that projection.
+     */
+open func executeWorkflowAction(token: WorkflowActionToken) -> WorkflowActionDispatchResult  {
+    return try!  FfiConverterTypeWorkflowActionDispatchResult_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_execute_workflow_action(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeWorkflowActionToken_lower(token),uniffiCallStatus
     )
 })
 }
@@ -1552,6 +1651,112 @@ public func FfiConverterTypeProjectionSubscriber_lower(_ value: ProjectionSubscr
 
 
 
+
+
+public protocol UserDataErasureTokenProtocol: AnyObject, Sendable {
+
+}
+open class UserDataErasureToken: UserDataErasureTokenProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_pod0_facade_fn_clone_userdataerasuretoken(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_pod0_facade_fn_free_userdataerasuretoken(handle, $0) }
+    }
+
+
+
+
+
+
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUserDataErasureToken: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = UserDataErasureToken
+
+    public static func lift(_ handle: UInt64) throws -> UserDataErasureToken {
+        return UserDataErasureToken(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: UserDataErasureToken) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UserDataErasureToken {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: UserDataErasureToken, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUserDataErasureToken_lift(_ handle: UInt64) throws -> UserDataErasureToken {
+    return try FfiConverterTypeUserDataErasureToken.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUserDataErasureToken_lower(_ value: UserDataErasureToken) -> UInt64 {
+    return FfiConverterTypeUserDataErasureToken.lower(value)
+}
+
+
+
+
 public struct EpisodeActivityDetail: Equatable, Hashable {
     public let label: String
     public let value: String
@@ -1735,6 +1940,68 @@ public func FfiConverterTypeEpisodeActivityPage_lift(_ buf: RustBuffer) throws -
 #endif
 public func FfiConverterTypeEpisodeActivityPage_lower(_ value: EpisodeActivityPage) -> RustBuffer {
     return FfiConverterTypeEpisodeActivityPage.lower(value)
+}
+
+
+public struct LatestEpisodeActivityPage: Equatable, Hashable {
+    public let available: Bool
+    public let items: [EpisodeActivityEntry]
+    public let snapshotThroughSequence: UInt64?
+    public let nextBeforeSequence: UInt64?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(available: Bool, items: [EpisodeActivityEntry], snapshotThroughSequence: UInt64?, nextBeforeSequence: UInt64?) {
+        self.available = available
+        self.items = items
+        self.snapshotThroughSequence = snapshotThroughSequence
+        self.nextBeforeSequence = nextBeforeSequence
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LatestEpisodeActivityPage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLatestEpisodeActivityPage: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LatestEpisodeActivityPage {
+        return
+            try LatestEpisodeActivityPage(
+                available: FfiConverterBool.read(from: &buf),
+                items: FfiConverterSequenceTypeEpisodeActivityEntry.read(from: &buf),
+                snapshotThroughSequence: FfiConverterOptionUInt64.read(from: &buf),
+                nextBeforeSequence: FfiConverterOptionUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LatestEpisodeActivityPage, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.available, into: &buf)
+        FfiConverterSequenceTypeEpisodeActivityEntry.write(value.items, into: &buf)
+        FfiConverterOptionUInt64.write(value.snapshotThroughSequence, into: &buf)
+        FfiConverterOptionUInt64.write(value.nextBeforeSequence, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLatestEpisodeActivityPage_lift(_ buf: RustBuffer) throws -> LatestEpisodeActivityPage {
+    return try FfiConverterTypeLatestEpisodeActivityPage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLatestEpisodeActivityPage_lower(_ value: LatestEpisodeActivityPage) -> RustBuffer {
+    return FfiConverterTypeLatestEpisodeActivityPage.lower(value)
 }
 
 
@@ -4636,6 +4903,72 @@ public func FfiConverterTypeLegacyTranscriptWorkflowCutoverProjection_lower(_ va
 }
 
 
+public struct NativeErasureAction: Equatable, Hashable {
+    public let actionId: CommandId
+    public let operationId: CommandId
+    public let kind: UserDataErasureTargetKind
+    public let identifier: String
+    public let attempt: UInt16
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(actionId: CommandId, operationId: CommandId, kind: UserDataErasureTargetKind, identifier: String, attempt: UInt16) {
+        self.actionId = actionId
+        self.operationId = operationId
+        self.kind = kind
+        self.identifier = identifier
+        self.attempt = attempt
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension NativeErasureAction: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNativeErasureAction: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NativeErasureAction {
+        return
+            try NativeErasureAction(
+                actionId: FfiConverterTypeCommandId.read(from: &buf),
+                operationId: FfiConverterTypeCommandId.read(from: &buf),
+                kind: FfiConverterTypeUserDataErasureTargetKind.read(from: &buf),
+                identifier: FfiConverterString.read(from: &buf),
+                attempt: FfiConverterUInt16.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NativeErasureAction, into buf: inout [UInt8]) {
+        FfiConverterTypeCommandId.write(value.actionId, into: &buf)
+        FfiConverterTypeCommandId.write(value.operationId, into: &buf)
+        FfiConverterTypeUserDataErasureTargetKind.write(value.kind, into: &buf)
+        FfiConverterString.write(value.identifier, into: &buf)
+        FfiConverterUInt16.write(value.attempt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNativeErasureAction_lift(_ buf: RustBuffer) throws -> NativeErasureAction {
+    return try FfiConverterTypeNativeErasureAction.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNativeErasureAction_lower(_ value: NativeErasureAction) -> RustBuffer {
+    return FfiConverterTypeNativeErasureAction.lower(value)
+}
+
+
 public struct SharedListeningStorePreparation: Equatable, Hashable {
     public let fromVersion: UInt32
     public let toVersion: UInt32
@@ -4695,6 +5028,122 @@ public func FfiConverterTypeSharedListeningStorePreparation_lift(_ buf: RustBuff
 #endif
 public func FfiConverterTypeSharedListeningStorePreparation_lower(_ value: SharedListeningStorePreparation) -> RustBuffer {
     return FfiConverterTypeSharedListeningStorePreparation.lower(value)
+}
+
+
+public struct UserDataErasureLocations: Equatable, Hashable {
+    public let recoveryRoot: String
+    public let allowedRoots: [String]
+    public let targets: [UserDataErasureTargetLocation]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(recoveryRoot: String, allowedRoots: [String], targets: [UserDataErasureTargetLocation]) {
+        self.recoveryRoot = recoveryRoot
+        self.allowedRoots = allowedRoots
+        self.targets = targets
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension UserDataErasureLocations: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUserDataErasureLocations: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UserDataErasureLocations {
+        return
+            try UserDataErasureLocations(
+                recoveryRoot: FfiConverterString.read(from: &buf),
+                allowedRoots: FfiConverterSequenceString.read(from: &buf),
+                targets: FfiConverterSequenceTypeUserDataErasureTargetLocation.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: UserDataErasureLocations, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.recoveryRoot, into: &buf)
+        FfiConverterSequenceString.write(value.allowedRoots, into: &buf)
+        FfiConverterSequenceTypeUserDataErasureTargetLocation.write(value.targets, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUserDataErasureLocations_lift(_ buf: RustBuffer) throws -> UserDataErasureLocations {
+    return try FfiConverterTypeUserDataErasureLocations.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUserDataErasureLocations_lower(_ value: UserDataErasureLocations) -> RustBuffer {
+    return FfiConverterTypeUserDataErasureLocations.lower(value)
+}
+
+
+public struct UserDataErasureTargetLocation: Equatable, Hashable {
+    public let kind: UserDataErasureTargetKind
+    public let location: String
+    public let coveredBy: UserDataErasureTargetKind?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(kind: UserDataErasureTargetKind, location: String, coveredBy: UserDataErasureTargetKind?) {
+        self.kind = kind
+        self.location = location
+        self.coveredBy = coveredBy
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension UserDataErasureTargetLocation: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUserDataErasureTargetLocation: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UserDataErasureTargetLocation {
+        return
+            try UserDataErasureTargetLocation(
+                kind: FfiConverterTypeUserDataErasureTargetKind.read(from: &buf),
+                location: FfiConverterString.read(from: &buf),
+                coveredBy: FfiConverterOptionTypeUserDataErasureTargetKind.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: UserDataErasureTargetLocation, into buf: inout [UInt8]) {
+        FfiConverterTypeUserDataErasureTargetKind.write(value.kind, into: &buf)
+        FfiConverterString.write(value.location, into: &buf)
+        FfiConverterOptionTypeUserDataErasureTargetKind.write(value.coveredBy, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUserDataErasureTargetLocation_lift(_ buf: RustBuffer) throws -> UserDataErasureTargetLocation {
+    return try FfiConverterTypeUserDataErasureTargetLocation.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUserDataErasureTargetLocation_lower(_ value: UserDataErasureTargetLocation) -> RustBuffer {
+    return FfiConverterTypeUserDataErasureTargetLocation.lower(value)
 }
 
 
@@ -4892,6 +5341,7 @@ enum FacadeOpenError: Swift.Error, Equatable, Hashable, Foundation.LocalizedErro
 
 
     case NotAuthoritative
+    case ErasureRecoveryRequired
     case SchemaBlocked(reason: SchemaBlockReason
     )
     case StorageUnavailable
@@ -4925,10 +5375,11 @@ public struct FfiConverterTypeFacadeOpenError: FfiConverterRustBuffer {
 
 
         case 1: return .NotAuthoritative
-        case 2: return .SchemaBlocked(
+        case 2: return .ErasureRecoveryRequired
+        case 3: return .SchemaBlocked(
             reason: try FfiConverterTypeSchemaBlockReason.read(from: &buf)
             )
-        case 3: return .StorageUnavailable
+        case 4: return .StorageUnavailable
 
          default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -4945,13 +5396,17 @@ public struct FfiConverterTypeFacadeOpenError: FfiConverterRustBuffer {
             writeInt(&buf, Int32(1))
 
 
-        case let .SchemaBlocked(reason):
+        case .ErasureRecoveryRequired:
             writeInt(&buf, Int32(2))
+
+
+        case let .SchemaBlocked(reason):
+            writeInt(&buf, Int32(3))
             FfiConverterTypeSchemaBlockReason.write(reason, into: &buf)
 
 
         case .StorageUnavailable:
-            writeInt(&buf, Int32(3))
+            writeInt(&buf, Int32(4))
 
         }
     }
@@ -7712,6 +8167,396 @@ public func FfiConverterTypeSchemaBlockReason_lower(_ value: SchemaBlockReason) 
 }
 
 
+
+public
+enum UserDataErasureError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+
+
+
+    case Conflict
+    case RecoveryRequired
+
+
+
+
+
+
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+
+}
+
+#if compiler(>=6)
+extension UserDataErasureError: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUserDataErasureError: FfiConverterRustBuffer {
+    typealias SwiftType = UserDataErasureError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UserDataErasureError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+
+
+
+        case 1: return .Conflict
+        case 2: return .RecoveryRequired
+
+         default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UserDataErasureError, into buf: inout [UInt8]) {
+        switch value {
+
+
+
+
+
+        case .Conflict:
+            writeInt(&buf, Int32(1))
+
+
+        case .RecoveryRequired:
+            writeInt(&buf, Int32(2))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUserDataErasureError_lift(_ buf: RustBuffer) throws -> UserDataErasureError {
+    return try FfiConverterTypeUserDataErasureError.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUserDataErasureError_lower(_ value: UserDataErasureError) -> RustBuffer {
+    return FfiConverterTypeUserDataErasureError.lower(value)
+}
+
+
+
+public enum UserDataErasureResult: Equatable, Hashable {
+
+    case awaitingNativeActions(actions: [NativeErasureAction]
+    )
+    case complete(freshStoreId: CommandId
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension UserDataErasureResult: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUserDataErasureResult: FfiConverterRustBuffer {
+    typealias SwiftType = UserDataErasureResult
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UserDataErasureResult {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .awaitingNativeActions(actions: try FfiConverterSequenceTypeNativeErasureAction.read(from: &buf)
+        )
+
+        case 2: return .complete(freshStoreId: try FfiConverterTypeCommandId.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UserDataErasureResult, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case let .awaitingNativeActions(actions):
+            writeInt(&buf, Int32(1))
+            FfiConverterSequenceTypeNativeErasureAction.write(actions, into: &buf)
+
+
+        case let .complete(freshStoreId):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeCommandId.write(freshStoreId, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUserDataErasureResult_lift(_ buf: RustBuffer) throws -> UserDataErasureResult {
+    return try FfiConverterTypeUserDataErasureResult.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUserDataErasureResult_lower(_ value: UserDataErasureResult) -> RustBuffer {
+    return FfiConverterTypeUserDataErasureResult.lower(value)
+}
+
+
+
+
+public enum UserDataErasureTargetKind: Equatable, Hashable {
+
+    case coreSqlite
+    case coreWal
+    case coreShm
+    case episodeSqlite
+    case episodeWal
+    case episodeShm
+    case recallIndex
+    case recallIndexWal
+    case recallIndexShm
+    case downloadedMediaRoot
+    case stagedMediaRoot
+    case transcriptArtifactRoot
+    case legacyTranscriptRoot
+    case chapterArtifactRoot
+    case migrationBackupRoot
+    case applicationStateProjection
+    case nativeObservationOutbox
+    case nativeObservationLease
+    case agentGeneratedAudioRoot
+    case legacyChatHistoryRoot
+    case legacyWorkflowStore
+    case legacyWorkflowArtifactRoot
+    case costLedger
+    case agentConversationPointer
+    case spotlightIndex
+    case nowPlayingProjection
+    case productSignals
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension UserDataErasureTargetKind: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUserDataErasureTargetKind: FfiConverterRustBuffer {
+    typealias SwiftType = UserDataErasureTargetKind
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UserDataErasureTargetKind {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .coreSqlite
+
+        case 2: return .coreWal
+
+        case 3: return .coreShm
+
+        case 4: return .episodeSqlite
+
+        case 5: return .episodeWal
+
+        case 6: return .episodeShm
+
+        case 7: return .recallIndex
+
+        case 8: return .recallIndexWal
+
+        case 9: return .recallIndexShm
+
+        case 10: return .downloadedMediaRoot
+
+        case 11: return .stagedMediaRoot
+
+        case 12: return .transcriptArtifactRoot
+
+        case 13: return .legacyTranscriptRoot
+
+        case 14: return .chapterArtifactRoot
+
+        case 15: return .migrationBackupRoot
+
+        case 16: return .applicationStateProjection
+
+        case 17: return .nativeObservationOutbox
+
+        case 18: return .nativeObservationLease
+
+        case 19: return .agentGeneratedAudioRoot
+
+        case 20: return .legacyChatHistoryRoot
+
+        case 21: return .legacyWorkflowStore
+
+        case 22: return .legacyWorkflowArtifactRoot
+
+        case 23: return .costLedger
+
+        case 24: return .agentConversationPointer
+
+        case 25: return .spotlightIndex
+
+        case 26: return .nowPlayingProjection
+
+        case 27: return .productSignals
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: UserDataErasureTargetKind, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .coreSqlite:
+            writeInt(&buf, Int32(1))
+
+
+        case .coreWal:
+            writeInt(&buf, Int32(2))
+
+
+        case .coreShm:
+            writeInt(&buf, Int32(3))
+
+
+        case .episodeSqlite:
+            writeInt(&buf, Int32(4))
+
+
+        case .episodeWal:
+            writeInt(&buf, Int32(5))
+
+
+        case .episodeShm:
+            writeInt(&buf, Int32(6))
+
+
+        case .recallIndex:
+            writeInt(&buf, Int32(7))
+
+
+        case .recallIndexWal:
+            writeInt(&buf, Int32(8))
+
+
+        case .recallIndexShm:
+            writeInt(&buf, Int32(9))
+
+
+        case .downloadedMediaRoot:
+            writeInt(&buf, Int32(10))
+
+
+        case .stagedMediaRoot:
+            writeInt(&buf, Int32(11))
+
+
+        case .transcriptArtifactRoot:
+            writeInt(&buf, Int32(12))
+
+
+        case .legacyTranscriptRoot:
+            writeInt(&buf, Int32(13))
+
+
+        case .chapterArtifactRoot:
+            writeInt(&buf, Int32(14))
+
+
+        case .migrationBackupRoot:
+            writeInt(&buf, Int32(15))
+
+
+        case .applicationStateProjection:
+            writeInt(&buf, Int32(16))
+
+
+        case .nativeObservationOutbox:
+            writeInt(&buf, Int32(17))
+
+
+        case .nativeObservationLease:
+            writeInt(&buf, Int32(18))
+
+
+        case .agentGeneratedAudioRoot:
+            writeInt(&buf, Int32(19))
+
+
+        case .legacyChatHistoryRoot:
+            writeInt(&buf, Int32(20))
+
+
+        case .legacyWorkflowStore:
+            writeInt(&buf, Int32(21))
+
+
+        case .legacyWorkflowArtifactRoot:
+            writeInt(&buf, Int32(22))
+
+
+        case .costLedger:
+            writeInt(&buf, Int32(23))
+
+
+        case .agentConversationPointer:
+            writeInt(&buf, Int32(24))
+
+
+        case .spotlightIndex:
+            writeInt(&buf, Int32(25))
+
+
+        case .nowPlayingProjection:
+            writeInt(&buf, Int32(26))
+
+
+        case .productSignals:
+            writeInt(&buf, Int32(27))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUserDataErasureTargetKind_lift(_ buf: RustBuffer) throws -> UserDataErasureTargetKind {
+    return try FfiConverterTypeUserDataErasureTargetKind.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUserDataErasureTargetKind_lower(_ value: UserDataErasureTargetKind) -> RustBuffer {
+    return FfiConverterTypeUserDataErasureTargetKind.lower(value)
+}
+
+
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -7803,6 +8648,54 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterString.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeWorkflowCapabilitySnapshot: FfiConverterRustBuffer {
+    typealias SwiftType = WorkflowCapabilitySnapshot?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeWorkflowCapabilitySnapshot.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeWorkflowCapabilitySnapshot.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeWorkflowConfiguration: FfiConverterRustBuffer {
+    typealias SwiftType = WorkflowConfiguration?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeWorkflowConfiguration.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeWorkflowConfiguration.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -8219,6 +9112,54 @@ fileprivate struct FfiConverterOptionTypeLegacyMemoryCutoverFailureCode: FfiConv
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeUserDataErasureResult: FfiConverterRustBuffer {
+    typealias SwiftType = UserDataErasureResult?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeUserDataErasureResult.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeUserDataErasureResult.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeUserDataErasureTargetKind: FfiConverterRustBuffer {
+    typealias SwiftType = UserDataErasureTargetKind?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeUserDataErasureTargetKind.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeUserDataErasureTargetKind.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceUInt32: FfiConverterRustBuffer {
     typealias SwiftType = [UInt32]
 
@@ -8244,48 +9185,23 @@ fileprivate struct FfiConverterSequenceUInt32: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-fileprivate struct FfiConverterSequenceTypeHostCancellationRequest: FfiConverterRustBuffer {
-    typealias SwiftType = [HostCancellationRequest]
+fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
+    typealias SwiftType = [String]
 
-    public static func write(_ value: [HostCancellationRequest], into buf: inout [UInt8]) {
+    public static func write(_ value: [String], into buf: inout [UInt8]) {
         let len = Int32(value.count)
         writeInt(&buf, len)
         for item in value {
-            FfiConverterTypeHostCancellationRequest.write(item, into: &buf)
+            FfiConverterString.write(item, into: &buf)
         }
     }
 
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [HostCancellationRequest] {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [String] {
         let len: Int32 = try readInt(&buf)
-        var seq = [HostCancellationRequest]()
+        var seq = [String]()
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
-            seq.append(try FfiConverterTypeHostCancellationRequest.read(from: &buf))
-        }
-        return seq
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-fileprivate struct FfiConverterSequenceTypeHostRequestEnvelope: FfiConverterRustBuffer {
-    typealias SwiftType = [HostRequestEnvelope]
-
-    public static func write(_ value: [HostRequestEnvelope], into buf: inout [UInt8]) {
-        let len = Int32(value.count)
-        writeInt(&buf, len)
-        for item in value {
-            FfiConverterTypeHostRequestEnvelope.write(item, into: &buf)
-        }
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [HostRequestEnvelope] {
-        let len: Int32 = try readInt(&buf)
-        var seq = [HostRequestEnvelope]()
-        seq.reserveCapacity(Int(len))
-        for _ in 0 ..< len {
-            seq.append(try FfiConverterTypeHostRequestEnvelope.read(from: &buf))
+            seq.append(try FfiConverterString.read(from: &buf))
         }
         return seq
     }
@@ -8311,6 +9227,31 @@ fileprivate struct FfiConverterSequenceTypeLeasedHostRequestEnvelope: FfiConvert
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeLeasedHostRequestEnvelope.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeLeasedNMPPublicationDraft: FfiConverterRustBuffer {
+    typealias SwiftType = [LeasedNmpPublicationDraft]
+
+    public static func write(_ value: [LeasedNmpPublicationDraft], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeLeasedNMPPublicationDraft.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [LeasedNmpPublicationDraft] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [LeasedNmpPublicationDraft]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeLeasedNMPPublicationDraft.read(from: &buf))
         }
         return seq
     }
@@ -8361,31 +9302,6 @@ fileprivate struct FfiConverterSequenceTypeNMPPublicationReceiptLink: FfiConvert
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeNMPPublicationReceiptLink.read(from: &buf))
-        }
-        return seq
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-fileprivate struct FfiConverterSequenceTypePod0PublicationDraft: FfiConverterRustBuffer {
-    typealias SwiftType = [Pod0PublicationDraft]
-
-    public static func write(_ value: [Pod0PublicationDraft], into buf: inout [UInt8]) {
-        let len = Int32(value.count)
-        writeInt(&buf, len)
-        for item in value {
-            FfiConverterTypePod0PublicationDraft.write(item, into: &buf)
-        }
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Pod0PublicationDraft] {
-        let len: Int32 = try readInt(&buf)
-        var seq = [Pod0PublicationDraft]()
-        seq.reserveCapacity(Int(len))
-        for _ in 0 ..< len {
-            seq.append(try FfiConverterTypePod0PublicationDraft.read(from: &buf))
         }
         return seq
     }
@@ -8690,6 +9606,56 @@ fileprivate struct FfiConverterSequenceTypeLegacyTranscriptWorkflowCutoverCandid
         return seq
     }
 }
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeNativeErasureAction: FfiConverterRustBuffer {
+    typealias SwiftType = [NativeErasureAction]
+
+    public static func write(_ value: [NativeErasureAction], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeNativeErasureAction.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [NativeErasureAction] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [NativeErasureAction]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeNativeErasureAction.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeUserDataErasureTargetLocation: FfiConverterRustBuffer {
+    typealias SwiftType = [UserDataErasureTargetLocation]
+
+    public static func write(_ value: [UserDataErasureTargetLocation], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUserDataErasureTargetLocation.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UserDataErasureTargetLocation] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UserDataErasureTargetLocation]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeUserDataErasureTargetLocation.read(from: &buf))
+        }
+        return seq
+    }
+}
 public func commitStagedLegacyChapterImport(sourceDatabasePath: String, artifactRootPath: String, targetPath: String, importId: CommandId) -> LegacyChapterMigrationProjection  {
     return try!  FfiConverterTypeLegacyChapterMigrationProjection_lift(try! rustCall() {
         uniffiCallStatus in
@@ -8857,6 +9823,15 @@ public func stageLegacyClipImport(sourcePath: String, sourceBackupPath: String, 
     )
 })
 }
+public func makeWorkflowCapabilitySnapshot(input: WorkflowCapabilitySnapshotInput, observedAt: UnixTimestampMilliseconds) -> WorkflowCapabilitySnapshot?  {
+    return try!  FfiConverterOptionTypeWorkflowCapabilitySnapshot.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_make_workflow_capability_snapshot(
+        FfiConverterTypeWorkflowCapabilitySnapshotInput_lower(input),
+        FfiConverterTypeUnixTimestampMilliseconds_lower(observedAt),uniffiCallStatus
+    )
+})
+}
 /**
  * Classifies whether the temporary native workflow owes model work.
  */
@@ -8887,6 +9862,20 @@ public func planTranscriptWorkflow(input: TranscriptWorkflowPlanInput) -> Transc
         uniffiCallStatus in
     uniffi_pod0_facade_fn_func_plan_transcript_workflow(
         FfiConverterTypeTranscriptWorkflowPlanInput_lower(input),uniffiCallStatus
+    )
+})
+}
+/**
+ * Pure shared planner used by the durable reconciliation transition. Native
+ * callers may announce capabilities, but cannot select workflow intent.
+ */
+public func planWorkflowReconciliation(listening: ListeningDomainSnapshot, configuration: WorkflowConfiguration, capabilities: WorkflowCapabilitySnapshot) -> WorkflowReconcilePlan  {
+    return try!  FfiConverterTypeWorkflowReconcilePlan_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_plan_workflow_reconciliation(
+        FfiConverterTypeListeningDomainSnapshot_lower(listening),
+        FfiConverterTypeWorkflowConfiguration_lower(configuration),
+        FfiConverterTypeWorkflowCapabilitySnapshot_lower(capabilities),uniffiCallStatus
     )
 })
 }
@@ -9149,6 +10138,25 @@ public func verifyStagedLegacyTranscriptImport(targetPath: String, legacyBackupR
     )
 })
 }
+public func recordNativeErasureObservation(locations: UserDataErasureLocations, actionId: CommandId, observedAttempt: UInt16, succeeded: Bool)throws  -> UserDataErasureResult  {
+    return try  FfiConverterTypeUserDataErasureResult_lift(try rustCallWithError(FfiConverterTypeUserDataErasureError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_record_native_erasure_observation(
+        FfiConverterTypeUserDataErasureLocations_lower(locations),
+        FfiConverterTypeCommandId_lower(actionId),
+        FfiConverterUInt16.lower(observedAttempt),
+        FfiConverterBool.lower(succeeded),uniffiCallStatus
+    )
+})
+}
+public func recoverPendingErasure(locations: UserDataErasureLocations)throws  -> UserDataErasureResult?  {
+    return try  FfiConverterOptionTypeUserDataErasureResult.lift(try rustCallWithError(FfiConverterTypeUserDataErasureError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_func_recover_pending_erasure(
+        FfiConverterTypeUserDataErasureLocations_lower(locations),uniffiCallStatus
+    )
+})
+}
 
 private enum InitializationResult {
     case ok
@@ -9213,6 +10221,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_pod0_facade_checksum_func_stage_legacy_clip_import() != 13972) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_pod0_facade_checksum_func_make_workflow_capability_snapshot() != 30609) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_pod0_facade_checksum_func_plan_chapter_model_desired_state() != 64724) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -9220,6 +10231,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_func_plan_transcript_workflow() != 23453) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_plan_workflow_reconciliation() != 29772) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_func_project_chapter_contract() != 304) {
@@ -9294,6 +10308,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_pod0_facade_checksum_func_verify_staged_legacy_transcript_import() != 46313) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_pod0_facade_checksum_func_record_native_erasure_observation() != 62265) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_func_recover_pending_erasure() != 60464) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_pod0_facade_checksum_method_projectionsubscriber_receive() != 23861) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -9325,6 +10345,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_stage_legacy_download_cutover() != 2411) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_latest_episode_activity_page() != 65382) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_episode_activity_page() != 54347) {
@@ -9363,34 +10386,25 @@ private let initializationResult: InitializationResult = {
     if (uniffi_pod0_facade_checksum_method_pod0facade_dispatch() != 36474) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_next_host_cancellations() != 35018) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_next_host_requests() != 62215) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_pod0_facade_checksum_method_pod0facade_next_leased_host_requests() != 19145) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_next_nmp_publications() != 2989) {
+    if (uniffi_pod0_facade_checksum_method_pod0facade_next_nmp_publications() != 55983) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_nmp_publication_receipt_links() != 57711) {
+    if (uniffi_pod0_facade_checksum_method_pod0facade_nmp_publication_receipt_links() != 44581) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_plan_chapter_model_request() != 53024) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_record_host_observation() != 28085) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_pod0_facade_checksum_method_pod0facade_record_leased_host_observation() != 16311) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_observation() != 8870) {
+    if (uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_observation() != 55579) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_receipt() != 63944) {
+    if (uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_receipt() != 24707) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_snapshot() != 17086) {
@@ -9400,6 +10414,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_unsubscribe() != 29741) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_workflow_configuration() != 40685) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_scheduled_agent_cutover() != 55891) {
@@ -9420,6 +10437,15 @@ private let initializationResult: InitializationResult = {
     if (uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_scheduled_agent_cutover() != 63971) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_causal_activity_page() != 52056) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_operation_activity_page() != 26793) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_support_activity_page() != 2557) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_transcript_workflow_cutover() != 1245) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -9433,6 +10459,18 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_transcript_workflow_cutover() != 20379) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_confirm_erasure() != 17025) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_prepare_erasure() != 50717) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_store_identity() != 54288) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_execute_workflow_action() != 55223) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_constructor_pod0facade_new() != 63792) {

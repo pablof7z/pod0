@@ -1,7 +1,7 @@
 use pod0_application::{
     AgentActionObservation, AgentActionOutcome, AgentCapabilityOutcome,
     AgentEffectObservationActivityInput, AgentPublicationTransition, AgentWorkflowAcceptance,
-    DurableAgentCapabilityOutcome, EffectOutcome, ExternalEffectKind, agent_host_failure_outcome,
+    DurableAgentCapabilityOutcome, EffectOutcome, agent_host_failure_outcome,
     continuation_model_fence_id, plan_agent_effect_observation,
 };
 use pod0_domain::{AgentTurnId, CommandId, ContentDigest, StateRevision};
@@ -67,9 +67,20 @@ pub(crate) fn commit_agent_capability_observation(
                 after.projection().revision
             };
             let generated = generated_audio_input(&after, &input.observation)?;
-            let next_effect = (!replay && after.projection().stage
-                == pod0_application::AgentTurnStage::AwaitingModel)
-                .then_some(ExternalEffectKind::AgentProvider);
+            let next_authorization = if !replay
+                && after.projection().stage == pod0_application::AgentTurnStage::AwaitingModel
+            {
+                Some(pod0_application::AgentEffectAuthorization::Model(
+                    super::effect_requests::model_effect_request(
+                        transaction,
+                        &after,
+                        command_id,
+                        None,
+                    )?,
+                ))
+            } else {
+                None
+            };
             plan_agent_effect_observation(AgentEffectObservationActivityInput {
                 command_id,
                 request_id: input.observation.request_id,
@@ -83,7 +94,7 @@ pub(crate) fn commit_agent_capability_observation(
                 episode_id: generated.as_ref().map(|value| value.episode_id),
                 outcome: effect_outcome,
                 transition: AgentPublicationTransition::ToolStateChanged,
-                next_effect,
+                next_authorization,
                 advance_turn: false,
             })
             .map(|plan| plan.map_mutation(|mutation| (mutation, after, replay, generated)))
@@ -275,25 +286,4 @@ fn effect_turn(
     bytes.map(|value| value.try_into().map(AgentTurnId::from_bytes).map_err(|_| StorageError::InvalidActivity)).transpose()?.ok_or(StorageError::AgentTurnNotFound)
 }
 
-fn observation_fingerprint(input: &AgentCapabilityObservationCommitInput) -> ContentDigest {
-    let mut hash = Sha256::new();
-    hash.update(b"pod0/agent/capability-effect-observation/v1");
-    hash.update(input.lease.intent_id.into_bytes());
-    hash.update(input.lease.attempt_id.into_bytes());
-    hash.update(input.lease.lease_id.into_bytes());
-    hash.update(input.lease.fence.to_be_bytes());
-    hash.update(serde_json::to_vec(&input.observation).expect("typed durable observation"));
-    ContentDigest::from_bytes(hash.finalize().into())
-}
-
-fn effect_error(error: EffectOutboxError) -> StorageError {
-    match error {
-        EffectOutboxError::StaleLease => StorageError::AgentTurnConflict,
-        EffectOutboxError::InvalidRecord | EffectOutboxError::InvalidLeaseDuration => {
-            StorageError::InvalidActivity
-        }
-        EffectOutboxError::Storage => StorageError::Sqlite {
-            operation: "commit agent capability effect observation",
-        },
-    }
-}
+include!("transition_commit_agent_capability_support.rs");

@@ -6,6 +6,37 @@ use pod0_domain::{
 use super::model::ModelChapterWorkflowRecord;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ModelChapterObservationAction {
+    ProviderAccepted(ModelChapterProviderAcceptedInput),
+    Completion(ModelChapterCompletionInput),
+    Failure {
+        input: ModelChapterFailureInput,
+        outcome: pod0_application::EffectOutcome,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ModelChapterObservationCommitInput {
+    pub lease: pod0_application::PersistedEffectLeaseIdentity,
+    pub observation: pod0_application::HostObservationEnvelope,
+    pub action: ModelChapterObservationAction,
+    pub committed_at: pod0_domain::UnixTimestampMilliseconds,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ModelChapterObservationCommitOutcome {
+    pub workflow: ModelChapterWorkflowRecord,
+    pub replayed: bool,
+    pub terminal_effect: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ModelChapterFinalizationAction {
+    Success(super::complete::ModelChapterSuccessInput),
+    Failure(ModelChapterFailureInput),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ModelChapterCompletionRecord {
     pub request_id: HostRequestId,
     pub episode_id: EpisodeId,

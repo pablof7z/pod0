@@ -72,20 +72,6 @@ pub(super) fn turn(facade: &Pod0Facade, command_id: CommandId) -> AgentTurnProje
     value.turns.into_iter().next().expect("turn must exist")
 }
 
-pub(super) fn observe(
-    request: &HostRequestEnvelope,
-    observation: HostObservation,
-) -> HostObservationEnvelope {
-    HostObservationEnvelope {
-        request_id: request.request_id,
-        cancellation_id: request.cancellation_id,
-        observed_request_revision: request.issued_revision,
-        sequence_number: 1,
-        observed_at: UnixTimestampMilliseconds::new(1_900_000_000_000),
-        observation,
-    }
-}
-
 pub(super) fn uuid_string(bytes: [u8; 16]) -> String {
     let hex = bytes
         .iter()

@@ -4,23 +4,24 @@ use pod0_domain::{
 };
 
 use crate::{
-    ActivityActor, ActivityFact, ActivityFactDraft, ActivityFailureCode, ActivityOrigin,
-    ActivitySubject, AgentPublicationTransition, AuthorizedExternalEffect, DomainTransitionKind,
+    ActivityActor, ActivityFact, ActivityFactDraft, ActivityOrigin, ActivitySubject,
+    AgentPublicationTransition, AuthorizedExternalEffect, DomainTransitionKind,
     DurableExternalEffectRequest, DurableInternalCommandRequest, EffectObservationActivityIdentity,
-    EffectOutcome, ExternalEffectKind, HostFailureCode, NonEmptyActivityFacts, RequestDisposition,
-    TransitionPlan, TransitionPlanError,
+    EffectOutcome, ExternalEffectKind, NonEmptyActivityFacts, RequestDisposition, TransitionPlan,
+    TransitionPlanError,
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AgentTurnStartActivityInput {
     pub command_id: CommandId,
     pub turn_id: AgentTurnId,
     pub current_revision: StateRevision,
     pub committed_revision: StateRevision,
     pub legacy_replay: bool,
+    pub model: crate::DurableAgentModelEffectRequest,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AgentEffectObservationActivityInput {
     pub command_id: CommandId,
     pub request_id: HostRequestId,
@@ -34,8 +35,34 @@ pub struct AgentEffectObservationActivityInput {
     pub episode_id: Option<EpisodeId>,
     pub outcome: EffectOutcome,
     pub transition: AgentPublicationTransition,
-    pub next_effect: Option<ExternalEffectKind>,
+    pub next_authorization: Option<AgentEffectAuthorization>,
     pub advance_turn: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AgentEffectAuthorization {
+    Model(crate::DurableAgentModelEffectRequest),
+    Approval(crate::DurableAgentApprovalEffectRequest),
+    Capability(crate::DurableAgentCapabilityEffectRequest),
+}
+
+impl AgentEffectAuthorization {
+    fn into_parts(self) -> (ExternalEffectKind, crate::DurableEffectExecution) {
+        match self {
+            Self::Model(request) => (
+                ExternalEffectKind::AgentProvider,
+                crate::DurableEffectExecution::AgentModel { request },
+            ),
+            Self::Approval(request) => (
+                ExternalEffectKind::AgentApproval,
+                crate::DurableEffectExecution::AgentApproval { request },
+            ),
+            Self::Capability(request) => (
+                ExternalEffectKind::AgentCapability,
+                crate::DurableEffectExecution::AgentCapability { request },
+            ),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -89,21 +116,36 @@ pub fn plan_agent_effect_observation(
             },
         ),
     ];
-    let effects = input.next_effect.map_or_else(Vec::new, |kind| {
-        let intent_id = identity.effect_intent_id(0);
-        tail.push(base(3, ActivityFact::EffectAuthorized { intent_id, kind }));
-        vec![AuthorizedExternalEffect {
-            intent_id,
-            authorizing_fact_index: 3,
-            request: DurableExternalEffectRequest {
-                kind,
-                subject,
-                episode_id: input.episode_id,
-                not_before: None,
-                deadline_at: None,
-            },
-        }]
-    });
+    let effects = input
+        .next_authorization
+        .map_or_else(Vec::new, |authorization| {
+            let (kind, execution) = authorization.into_parts();
+            let intent_id = identity.effect_intent_id(0);
+            tail.push(base(3, ActivityFact::EffectAuthorized { intent_id, kind }));
+            vec![AuthorizedExternalEffect {
+                intent_id,
+                authorizing_fact_index: 3,
+                request: DurableExternalEffectRequest {
+                    kind,
+                    subject,
+                    episode_id: input.episode_id,
+                    not_before: None,
+                    deadline_at: match &execution {
+                        crate::DurableEffectExecution::AgentModel { request } => {
+                            request.deadline_at
+                        }
+                        crate::DurableEffectExecution::AgentApproval { request } => {
+                            request.deadline_at
+                        }
+                        crate::DurableEffectExecution::AgentCapability { request } => {
+                            request.deadline_at
+                        }
+                        _ => unreachable!("agent authorization is exact"),
+                    },
+                    execution,
+                },
+            }]
+        });
     let commands = if input.advance_turn {
         let internal_command_id = identity.internal_command_id(0);
         let index = tail.len() + 1;
@@ -147,26 +189,7 @@ pub fn plan_agent_effect_observation(
     )
 }
 
-#[must_use]
-pub const fn agent_host_failure_outcome(code: HostFailureCode) -> EffectOutcome {
-    let code = match code {
-        HostFailureCode::Offline => ActivityFailureCode::Offline,
-        HostFailureCode::TimedOut => ActivityFailureCode::TimedOut,
-        HostFailureCode::PermissionDenied => ActivityFailureCode::PermissionDenied,
-        HostFailureCode::InvalidResponse => ActivityFailureCode::InvalidResponse,
-        HostFailureCode::ResponseTooLarge => ActivityFailureCode::ResponseTooLarge,
-        HostFailureCode::MediaUnavailable => ActivityFailureCode::MediaUnavailable,
-        HostFailureCode::ProviderUnavailable | HostFailureCode::IndexUnavailable => {
-            ActivityFailureCode::ProviderUnavailable
-        }
-        HostFailureCode::Unauthorized => ActivityFailureCode::Unauthorized,
-        HostFailureCode::PlatformFailure => ActivityFailureCode::PlatformFailure,
-        HostFailureCode::Unsupported { wire_code } => {
-            ActivityFailureCode::Unsupported { wire_code }
-        }
-    };
-    EffectOutcome::Failed { code }
-}
+include!("agent_host_failure.rs");
 
 #[path = "agent_cancellation_activity.rs"]
 mod cancellation;
@@ -258,7 +281,10 @@ pub fn plan_agent_turn_start(
                 subject,
                 episode_id: None,
                 not_before: None,
-                deadline_at: None,
+                deadline_at: input.model.deadline_at,
+                execution: crate::DurableEffectExecution::AgentModel {
+                    request: input.model,
+                },
             },
         }],
         Vec::new(),

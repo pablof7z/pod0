@@ -17,7 +17,7 @@ protocol VoiceSessionClient: AnyObject, Sendable {
 
 /// Single arbiter of `AVAudioSession` for the whole app. Three current callers
 /// share a process-wide audio session: the podcast `AudioEngine`, the existing
-/// `VoiceItemService` (note dictation), and the future `AudioConversationManager`
+/// note dictation and the future `AudioConversationManager`
 /// (voice-mode conversational agent, Lane 8). Without coordination the three
 /// fight over `setCategory` / `setMode` and the mic/speaker route flickers.
 ///
@@ -41,7 +41,7 @@ final class AudioSessionCoordinator {
     ///
     /// - `.idle`: no caller has asked to play or record. Session deactivated.
     /// - `.podcastPlayback`: `.playback` + `.spokenAudio`, route ducks for Siri.
-    /// - `.voiceCapture`: `.record` + `.measurement`, used by `VoiceItemService`
+    /// - `.voiceCapture`: `.record` + `.measurement`, used for note dictation
     ///   for note dictation (no playback).
     /// - `.duckedForVoice`: `.playAndRecord` + `.voiceChat` with AEC. Used while
     ///   the user is conversing with the agent.
@@ -149,8 +149,7 @@ final class AudioSessionCoordinator {
     }
 
     private func configureVoiceCapture() throws {
-        // Mirrors what `VoiceItemService` sets today so a future migration is
-        // a one-line change there: `try AudioSessionCoordinator.shared.activate(.voiceCapture)`.
+        // Native audio-session capability configuration; product policy remains Rust-owned.
         try session.setCategory(.record, mode: .measurement, options: .duckOthers)
         try session.setActive(true, options: .notifyOthersOnDeactivation)
     }

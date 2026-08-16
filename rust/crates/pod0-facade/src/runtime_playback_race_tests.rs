@@ -1,5 +1,6 @@
 use crate::runtime_playback_test_support::{
-    PlaybackFixture, add_external_episode, library_request, record_observation,
+    PlaybackFixture, add_external_episode, library_request, next_playback_requests,
+    record_observation,
 };
 use crate::*;
 
@@ -8,9 +9,7 @@ fn ended_observation_for_replaced_episode_cannot_complete_new_active_item() {
     let fixture = PlaybackFixture::new();
     let replacement = add_external_episode(&fixture, 90);
     fixture.dispatch(91, PlaybackCommand::Restore);
-    let stream = fixture
-        .facade
-        .next_host_requests(u16::MAX)
+    let stream = next_playback_requests(&fixture.facade)
         .into_iter()
         .find(|request| matches!(request.request, HostRequest::ObservePlayback { .. }))
         .unwrap();
@@ -22,7 +21,7 @@ fn ended_observation_for_replaced_episode_cannot_complete_new_active_item() {
             label: None,
         },
     );
-    let _ = fixture.facade.next_host_requests(u16::MAX);
+    let _ = next_playback_requests(&fixture.facade);
 
     record_observation(
         &fixture.facade,
@@ -42,7 +41,7 @@ fn ended_observation_for_replaced_episode_cannot_complete_new_active_item() {
 
     assert_eq!(fixture.playback().current.unwrap().episode_id, replacement);
     assert!(!episode_is_completed(&fixture.facade, replacement));
-    assert!(fixture.facade.next_host_requests(u16::MAX).is_empty());
+    assert!(next_playback_requests(&fixture.facade).is_empty());
 }
 
 #[test]
@@ -50,9 +49,7 @@ fn cancelled_playback_stream_rejects_late_position_and_completion() {
     let fixture = PlaybackFixture::new();
     let completed_before = episode_is_completed(&fixture.facade, fixture.episode_id);
     fixture.dispatch(100, PlaybackCommand::Restore);
-    let stream = fixture
-        .facade
-        .next_host_requests(u16::MAX)
+    let stream = next_playback_requests(&fixture.facade)
         .into_iter()
         .find(|request| matches!(request.request, HostRequest::ObservePlayback { .. }))
         .unwrap();
@@ -93,9 +90,7 @@ fn cancelled_playback_stream_rejects_late_position_and_completion() {
 fn end_callback_captured_before_seek_cannot_overwrite_seek_or_complete_episode() {
     let fixture = PlaybackFixture::new();
     fixture.dispatch(110, PlaybackCommand::Restore);
-    let stream = fixture
-        .facade
-        .next_host_requests(u16::MAX)
+    let stream = next_playback_requests(&fixture.facade)
         .into_iter()
         .find(|request| matches!(request.request, HostRequest::ObservePlayback { .. }))
         .unwrap();
@@ -105,7 +100,7 @@ fn end_callback_captured_before_seek_cannot_overwrite_seek_or_complete_episode()
             position_milliseconds: 10_000,
         },
     );
-    let _ = fixture.facade.next_host_requests(u16::MAX);
+    let _ = next_playback_requests(&fixture.facade);
 
     record_observation(
         &fixture.facade,
@@ -138,9 +133,7 @@ fn end_callback_captured_before_seek_cannot_overwrite_seek_or_complete_episode()
 fn late_position_cannot_undo_explicit_completion_until_user_resumes() {
     let fixture = PlaybackFixture::new();
     fixture.dispatch(120, PlaybackCommand::Restore);
-    let stream = fixture
-        .facade
-        .next_host_requests(u16::MAX)
+    let stream = next_playback_requests(&fixture.facade)
         .into_iter()
         .find(|request| matches!(request.request, HostRequest::ObservePlayback { .. }))
         .unwrap();
@@ -200,7 +193,7 @@ fn late_position_cannot_undo_explicit_completion_until_user_resumes() {
             transcript_configuration: None,
         },
     );
-    let _ = fixture.facade.next_host_requests(u16::MAX);
+    let _ = next_playback_requests(&fixture.facade);
     record_observation(
         &fixture.facade,
         &stream,

@@ -58,6 +58,8 @@ pub struct PublisherChapterWorkflowProjection {
     pub updated_at: UnixTimestampMilliseconds,
     pub can_retry: bool,
     pub can_cancel: bool,
+    pub retry_action: Option<crate::WorkflowActionToken>,
+    pub cancel_action: Option<crate::WorkflowActionToken>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
@@ -89,6 +91,8 @@ pub struct ModelChapterWorkflowProjection {
     pub created_at: UnixTimestampMilliseconds,
     pub updated_at: UnixTimestampMilliseconds,
     pub allowed_actions: crate::ModelChapterWorkflowAllowedActions,
+    pub retry_action: Option<crate::WorkflowActionToken>,
+    pub cancel_action: Option<crate::WorkflowActionToken>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
@@ -132,6 +136,10 @@ pub fn publisher_chapter_retry_delay_milliseconds(attempt: u16) -> i64 {
         .saturating_mul(2_i64.saturating_pow(exponent))
         .min(3_600_000)
 }
+
+#[path = "chapter_workflow_activity.rs"]
+mod activity;
+pub use activity::*;
 
 #[cfg(test)]
 mod tests {

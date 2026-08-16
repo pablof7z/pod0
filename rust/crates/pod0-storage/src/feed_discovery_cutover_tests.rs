@@ -125,6 +125,20 @@ fn staged_legacy_work_is_inert_then_commits_once_and_recovers_after_restart() {
             .unwrap(),
         committed
     );
+    let migration_id =
+        crate::transition_commit_feed_discovery_cutover::feed_cutover_migration_id(generation);
+    let correlation = pod0_application::CommandActivityIdentity::new(migration_id).correlation_id();
+    let facts = crate::ActivityStore::open(&fixture.target)
+        .unwrap()
+        .page_for_correlation(correlation, None, 10)
+        .unwrap();
+    assert_eq!(facts.items.len(), 3);
+    assert!(facts.items.iter().any(|item| matches!(
+        item.draft.fact,
+        pod0_application::ActivityFact::AuthorityCutover {
+            domain: pod0_application::ActivityDomain::LibraryFeed
+        }
+    )));
     assert!(
         reopened
             .new_episode_notification_settings()

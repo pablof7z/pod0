@@ -60,6 +60,9 @@ extension Persistence {
     }
 
     var legacyTranscriptRootURL: URL {
+        if fileURL.standardizedFileURL != Self.applicationStateFileURL.standardizedFileURL {
+            return episodeStore.fileURL.appendingPathExtension("legacy-transcripts")
+        }
         if let support = try? FileManager.default.url(
             for: .applicationSupportDirectory,
             in: .userDomainMask,
@@ -79,6 +82,9 @@ extension Persistence {
     }
 
     var legacyChapterArtifactRootURL: URL {
+        if fileURL.standardizedFileURL != Self.applicationStateFileURL.standardizedFileURL {
+            return episodeStore.fileURL.appendingPathExtension("legacy-workflow-artifacts")
+        }
         if let support = try? FileManager.default.url(
             for: .applicationSupportDirectory,
             in: .userDomainMask,
@@ -109,29 +115,11 @@ extension Persistence {
         episodeStore.fileURL.appendingPathExtension("feed-discovery-workflow-backups")
     }
 
-    var legacyScheduledAgentWorkflowBackupRootURL: URL {
-        episodeStore.fileURL.appendingPathExtension("scheduled-agent-workflow-backups")
-    }
-
-    var legacyAgentHistoryBackupRootURL: URL {
-        episodeStore.fileURL.appendingPathExtension("agent-history-backups")
-    }
-
-    var legacyAgentRunLogURL: URL {
-        let support = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first ?? FileManager.default.temporaryDirectory
-        return support
-            .appendingPathComponent("AgentRunLog", isDirectory: true)
-            .appendingPathComponent("runs.json", isDirectory: false)
-    }
-
-    var legacyAgentMemoryBackupRootURL: URL {
-        episodeStore.fileURL.appendingPathExtension("agent-memory-backups")
-    }
 
     var legacyRecallIndexURL: URL? {
+        if fileURL.standardizedFileURL != Self.applicationStateFileURL.standardizedFileURL {
+            return episodeStore.fileURL.appendingPathExtension("legacy-vectors.sqlite")
+        }
         guard let support = try? FileManager.default.url(
             for: .applicationSupportDirectory,
             in: .userDomainMask,
@@ -164,11 +152,7 @@ extension Persistence {
             legacyChapterBackupRootURL,
             legacyTranscriptWorkflowBackupRootURL,
             legacyDownloadWorkflowBackupURL,
-            legacyFeedDiscoveryWorkflowBackupRootURL,
-            legacyScheduledAgentWorkflowBackupRootURL,
-            legacyAgentHistoryBackupRootURL,
-            legacyAgentRunLogURL,
-            legacyAgentMemoryBackupRootURL
+            legacyFeedDiscoveryWorkflowBackupRootURL
         ]
         urls.append(contentsOf: (1...32).map {
             sharedCoreSchemaBackupURL(targetVersion: UInt32($0))

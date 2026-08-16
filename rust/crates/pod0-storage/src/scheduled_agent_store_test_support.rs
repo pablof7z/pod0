@@ -6,8 +6,9 @@ use rusqlite::Connection;
 use tempfile::TempDir;
 
 use crate::{
-    CURRENT_SCHEMA_VERSION, CoreStoreMigrator, MigrationClock, ScheduledAgentCommandContext,
-    ScheduledAgentStore,
+    CURRENT_SCHEMA_VERSION, CoreStoreMigrator, EffectLease, EffectOutbox, MigrationClock,
+    ScheduledAgentCommandContext, ScheduledAgentLeasedObservationInput,
+    ScheduledAgentObservationInput, ScheduledAgentObservationOutcome, ScheduledAgentStore,
 };
 
 pub(crate) struct ScheduledFixture {
@@ -75,6 +76,34 @@ impl MigrationClock for FixedClock {
 
 pub(crate) fn time(value: i64) -> UnixTimestampMilliseconds {
     UnixTimestampMilliseconds::new(value)
+}
+
+pub(crate) fn claim_scheduled_effect(path: &std::path::Path, now_ms: i64) -> EffectLease {
+    let lease = EffectOutbox::open(path)
+        .unwrap()
+        .claim_next_generated(time(now_ms), 300_000)
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        lease.request.kind,
+        pod0_application::ExternalEffectKind::ScheduledAgentProvider
+    );
+    lease
+}
+
+pub(crate) fn apply_scheduled_observation(
+    fixture: &ScheduledFixture,
+    lease: &EffectLease,
+    observation: ScheduledAgentObservationInput,
+) -> Result<ScheduledAgentObservationOutcome, crate::StorageError> {
+    let committed_at = observation.observed_at;
+    fixture
+        .store
+        .apply_leased_observation(ScheduledAgentLeasedObservationInput {
+            lease: lease.identity(),
+            observation,
+            committed_at,
+        })
 }
 
 pub(crate) fn activate(path: &std::path::Path) {

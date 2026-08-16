@@ -5,7 +5,7 @@ use pod0_domain::{
 
 /// Durable product work that needs a native wake without exposing native
 /// scheduler concepts to the product kernel.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum CoreWakeReason {
     ModelChapterRetry {
         episode_id: EpisodeId,

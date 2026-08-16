@@ -1,6 +1,8 @@
 #[path = "transition_commit_agent.rs"]
 mod agent;
 pub(crate) use agent::commit_agent_turn_start;
+#[path = "agent_effect_requests.rs"]
+mod effect_requests;
 #[path = "transition_commit_agent_observation.rs"]
 mod agent_observation;
 pub(crate) use agent_observation::commit_agent_model_observation;
@@ -13,6 +15,9 @@ pub(crate) use agent_execution::commit_agent_execution;
 #[path = "transition_commit_agent_capability.rs"]
 mod agent_capability;
 pub(crate) use agent_capability::commit_agent_capability_observation;
+#[path = "transition_commit_agent_capability_recovery.rs"]
+mod agent_capability_recovery;
+pub(crate) use agent_capability_recovery::commit_expired_agent_capability_recovery;
 #[path = "transition_commit_agent_capability_generated.rs"]
 mod agent_capability_generated;
 #[path = "transition_commit_agent_cancellation.rs"]
@@ -21,6 +26,9 @@ pub(crate) use agent_cancellation::commit_agent_cancellation;
 #[path = "transition_commit_agent_projection.rs"]
 mod agent_projection;
 pub(crate) use agent_projection::commit_agent_projection_result;
+#[path = "transition_commit_agent_recall.rs"]
+mod agent_recall;
+pub(crate) use agent_recall::commit_agent_recall_observation;
 #[path = "transition_commit_agent_note.rs"]
 mod agent_note;
 #[path = "transition_commit_agent_artifact_support.rs"]

@@ -7,7 +7,7 @@ use pod0_application::{
 use pod0_storage::ActivityStore;
 
 use crate::runtime_download_workflow_tests::{
-    FixedClock, dispatch, observe_wifi, request_download, staged_observation, workflows,
+    FixedClock, dispatch, leased_staged_observation, observe_wifi, request_download, workflows,
 };
 use crate::runtime_playback_test_support::PlaybackFixture;
 use crate::*;
@@ -37,7 +37,7 @@ fn cancel_and_remove_are_typed_atomic_transitions_with_durable_rejections() {
         }
     )));
     request_download(&fixture, 2);
-    let start = fixture.facade.next_host_requests(20).pop().unwrap();
+    let start = fixture.facade.next_leased_host_requests(20).pop().unwrap();
     let revision = workflows(&fixture.facade, fixture.episode_id).workflows[0].workflow_revision;
     dispatch(
         &fixture.facade,
@@ -63,9 +63,14 @@ fn cancel_and_remove_are_typed_atomic_transitions_with_durable_rejections() {
     request_download(&fixture, 5);
     let request = fixture
         .facade
-        .next_host_requests(20)
+        .next_leased_host_requests(20)
         .into_iter()
-        .find(|request| matches!(request.request, HostRequest::StartEpisodeDownload { .. }))
+        .find(|request| {
+            matches!(
+                request.request.request,
+                HostRequest::StartEpisodeDownload { .. }
+            )
+        })
         .unwrap();
     let media = fixture
         .target
@@ -74,12 +79,14 @@ fn cancel_and_remove_are_typed_atomic_transitions_with_durable_rejections() {
         .join("remove-activity.media");
     let bytes = b"remove activity media";
     std::fs::write(&media, bytes).unwrap();
-    fixture.facade.record_host_observation(staged_observation(
-        &request,
-        1,
-        media.to_string_lossy().into_owned(),
-        bytes.len() as u64,
-    ));
+    fixture
+        .facade
+        .record_leased_host_observation(leased_staged_observation(
+            &request,
+            1,
+            media.to_string_lossy().into_owned(),
+            bytes.len() as u64,
+        ));
     let succeeded = workflows(&fixture.facade, fixture.episode_id).workflows[0].workflow_revision;
     dispatch(
         &fixture.facade,

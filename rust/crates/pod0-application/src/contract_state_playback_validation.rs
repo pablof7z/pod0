@@ -12,7 +12,8 @@ pub(super) fn playback_request_episode_id(
         | Request::ArmNativeTimer { episode_id, .. }
         | Request::CancelNativeTimer { episode_id }
         | Request::StopPlayback { episode_id } => Some(*episode_id),
-        Request::FetchFeed { .. }
+        Request::CancelAuthorizedEffect { .. }
+        | Request::FetchFeed { .. }
         | Request::ObservePlayback { .. }
         | Request::EmbedRecallQuery { .. }
         | Request::EmbedRecallSpans { .. }
@@ -24,6 +25,7 @@ pub(super) fn playback_request_episode_id(
         | Request::CancelEpisodeDownload { .. }
         | Request::RemoveEpisodeDownloadArtifact { .. }
         | Request::DeliverNewEpisodeNotification { .. }
+        | Request::FetchLibraryDocument { .. }
         | Request::ExecuteTranscriptCapability { .. }
         | Request::ExecuteScheduledAgentTurn { .. }
         | Request::ExecuteAgentModelTurn { .. }

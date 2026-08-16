@@ -1,10 +1,14 @@
 use crate::runtime_chapter_workflow_test_support::{
-    dispatch_ensure, one_request, open, response, set_source, valid_document, workflows,
+    dispatch_ensure, open, response, set_source, valid_document, workflows,
 };
 use crate::runtime_playback_test_support::PlaybackFixture;
 use crate::*;
+use pod0_application::{ActivityFact, ChapterTransition, DomainTransitionKind, ExternalEffectKind};
 
 mod recovery;
+#[path = "runtime_chapter_model_workflow_test_completion.rs"]
+mod test_completion;
+use test_completion::model_completion;
 
 fn fixture() -> PlaybackFixture {
     let fixture = PlaybackFixture::new_with_transcript(true);
@@ -33,13 +37,13 @@ fn ensure_with_model(
     });
 }
 
-fn model_request(facade: &Pod0Facade) -> HostRequestEnvelope {
-    let requests = facade.next_host_requests(64);
+fn model_request(facade: &Pod0Facade) -> LeasedHostRequestEnvelope {
+    let requests = facade.next_leased_host_requests(64);
     requests
         .into_iter()
-        .find(|request| {
+        .find(|leased| {
             matches!(
-                request.request,
+                leased.request.request,
                 HostRequest::ExecuteChapterModel { .. }
                     | HostRequest::RecoverChapterModelOperation { .. }
             )
@@ -47,59 +51,24 @@ fn model_request(facade: &Pod0Facade) -> HostRequestEnvelope {
         .expect("model request")
 }
 
-fn completion(request: &HostRequestEnvelope) -> HostObservationEnvelope {
+fn completion(request: &LeasedHostRequestEnvelope) -> HostObservationEnvelope {
     model_completion(
-        request,
+        &request.request,
         r#"{"chapters":[{"start":0,"title":"Opening"},{"start":30,"title":"Context"},{"start":60,"title":"Deep dive"},{"start":90,"title":"Close"}],"ads":[]}"#,
         "llama3.2:latest",
     )
 }
 
-fn model_completion(
-    request: &HostRequestEnvelope,
-    completion: &str,
-    resolved_model: &str,
-) -> HostObservationEnvelope {
-    let (episode_id, generation, submission_fence_id) = match request.request {
-        HostRequest::ExecuteChapterModel {
-            episode_id,
-            generation,
-            submission_fence_id,
-            ..
-        }
-        | HostRequest::RecoverChapterModelOperation {
-            episode_id,
-            generation,
-            submission_fence_id,
-            ..
-        } => (episode_id, generation, submission_fence_id),
-        _ => panic!("expected model request"),
-    };
-    HostObservationEnvelope {
-        request_id: request.request_id,
-        cancellation_id: request.cancellation_id,
-        observed_request_revision: request.issued_revision,
-        sequence_number: 1,
-        observed_at: UnixTimestampMilliseconds::new(1_800_000_100_000),
-        observation: HostObservation::ChapterModelCompleted {
-            episode_id,
-            generation,
-            submission_fence_id,
-            completion: ChapterModelCompletionObservation {
-                completion: completion.into(),
-                provider: "ollama".into(),
-                model: resolved_model.into(),
-                prompt_tokens: Some(100),
-                completion_tokens: Some(50),
-                cached_tokens: Some(0),
-                reasoning_tokens: Some(0),
-                cost_microusd: None,
-                provider_operation_id: None,
-                provider_status: Some("completed".into()),
-                provider_generated_at: Some(UnixTimestampMilliseconds::new(1_800_000_099_000)),
-            },
-        },
-    }
+fn record_model_observation(
+    facade: &Pod0Facade,
+    request: &LeasedHostRequestEnvelope,
+    mut observation: HostObservationEnvelope,
+) -> HostObservationReceipt {
+    observation.observed_at = request.lease.expires_at;
+    facade.record_leased_host_observation(LeasedHostObservationEnvelope {
+        lease: request.lease,
+        observation,
+    })
 }
 
 #[test]
@@ -107,10 +76,13 @@ fn changed_model_reenriches_the_original_publisher_artifact() {
     let fixture = PlaybackFixture::new_with_transcript(true);
     set_source(&fixture, Some("https://example.test/chapters.json"));
     dispatch_ensure(&fixture.facade, fixture.episode_id, 90);
-    let publisher_request = one_request(&fixture.facade);
-    fixture
-        .facade
-        .record_host_observation(response(&publisher_request, 1, 200, valid_document()));
+    let publisher = fixture.facade.next_leased_host_requests(1).pop().unwrap();
+    fixture.facade.record_leased_host_observation(
+        pod0_application::LeasedHostObservationEnvelope {
+            lease: publisher.lease,
+            observation: response(&publisher.request, 1, 200, valid_document()),
+        },
+    );
     let publisher_id = workflows(&fixture.facade, Some(fixture.episode_id)).publisher[0]
         .selected_artifact_id
         .expect("publisher artifact");
@@ -132,14 +104,15 @@ fn changed_model_reenriches_the_original_publisher_artifact() {
         pod0_storage::ModelChapterWorkflowMode::Enrich
     );
     assert_eq!(first_request.base_artifact_id, Some(publisher_id));
-    fixture.facade.record_host_observation(model_completion(
-        &first,
+    let observation = model_completion(
+        &first.request,
         r#"{"summaries":[{"index":0,"summary":"First model"}],"ads":[]}"#,
         "llama3.2:latest",
-    ));
+    );
+    record_model_observation(&fixture.facade, &first, observation);
 
     ensure(&fixture.facade, fixture.episode_id, 92);
-    assert!(fixture.facade.next_host_requests(64).is_empty());
+    assert!(fixture.facade.next_leased_host_requests(64).is_empty());
 
     ensure_with_model(&fixture.facade, fixture.episode_id, 93, "ollama:qwen3:8b");
     let _replanned = model_request(&fixture.facade);
@@ -208,21 +181,40 @@ fn model_request_is_claimed_before_delivery_and_completion_has_durable_ack() {
         claimed.state,
         pod0_storage::ModelChapterWorkflowState::SubmissionAuthorized
     );
-    assert!(fixture.facade.next_host_requests(64).is_empty());
+    let activity = pod0_storage::ActivityStore::open(&fixture.target)
+        .unwrap()
+        .page_for_episode(fixture.episode_id, None, 100)
+        .unwrap()
+        .items;
+    assert!(activity.iter().any(|item| matches!(
+        item.draft.fact,
+        ActivityFact::DomainTransition {
+            kind: DomainTransitionKind::Chapter(ChapterTransition::ModelWorkflowStateChanged),
+            ..
+        }
+    )));
+    assert!(activity.iter().any(|item| matches!(
+        item.draft.fact,
+        ActivityFact::EffectAuthorized {
+            kind: ExternalEffectKind::ModelChapterProvider,
+            ..
+        }
+    )));
+    assert!(fixture.facade.next_leased_host_requests(64).is_empty());
 
     let observation = completion(&request);
     assert_eq!(
-        fixture.facade.record_host_observation(observation.clone()),
+        record_model_observation(&fixture.facade, &request, observation.clone()),
         HostObservationReceipt::Persisted {
-            request_id: request.request_id,
+            request_id: request.request.request_id,
             terminal: true,
         }
     );
     assert_eq!(
-        fixture.facade.record_host_observation(observation),
-        HostObservationReceipt::Persisted {
-            request_id: request.request_id,
-            terminal: true,
+        record_model_observation(&fixture.facade, &request, observation),
+        HostObservationReceipt::Rejected {
+            request_id: request.request.request_id,
+            reason: HostObservationRejection::Duplicate,
         }
     );
     let projection = workflows(&fixture.facade, Some(fixture.episode_id));
@@ -250,7 +242,7 @@ fn model_request_is_claimed_before_delivery_and_completion_has_durable_ack() {
         completed.source_version.clone().unwrap()
     );
     ensure(&fixture.facade, fixture.episode_id, 9);
-    assert!(fixture.facade.next_host_requests(64).is_empty());
+    assert!(fixture.facade.next_leased_host_requests(64).is_empty());
     let adopted = workflows(&fixture.facade, Some(fixture.episode_id)).model[0].clone();
     assert_eq!(adopted.stage, ModelChapterWorkflowStage::Succeeded);
     assert_eq!(adopted.generation, completed.generation);
@@ -263,7 +255,7 @@ fn model_request_is_claimed_before_delivery_and_completion_has_durable_ack() {
     );
     ensure(&reopened, fixture.episode_id, 10);
     assert!(
-        reopened.next_host_requests(64).is_empty(),
+        reopened.next_leased_host_requests(64).is_empty(),
         "reopening and re-ensuring an exact durable completion must never spend twice"
     );
 }

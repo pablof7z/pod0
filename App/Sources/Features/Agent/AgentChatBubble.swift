@@ -1,4 +1,5 @@
 import SwiftUI
+import Pod0Core
 
 // MARK: - Layout constants
 
@@ -64,7 +65,7 @@ struct AgentChatBubble: View {
     /// Called when the user requests regeneration of the last assistant response.
     /// When `nil`, no Regenerate action appears in the context menu.
     var onRegenerate: (() -> Void)? = nil
-    var onOpenRecallEvidence: (RecallEvidence, UUID) -> Void = { _, _ in }
+    var onOpenRecallEvidence: (RecallEvidenceProjection, UUID) -> Void = { _, _ in }
 
     // MARK: - Pluralization helpers
 

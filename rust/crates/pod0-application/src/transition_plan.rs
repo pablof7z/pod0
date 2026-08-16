@@ -137,6 +137,7 @@ pub enum TransitionPlanError {
     MultipleRequestDispositions,
     RevisionExhausted,
     DispositionRequiresTransition,
+    InvalidEffectAuthorization,
     TooManyInternalCommands,
 }
 

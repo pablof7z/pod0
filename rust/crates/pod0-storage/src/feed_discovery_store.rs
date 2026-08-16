@@ -2,7 +2,9 @@ use pod0_domain::{
     CommandId, EpisodeId, FeedDiscoveryItemId, FeedDiscoveryOccurrenceId, PodcastId,
     UnixTimestampMilliseconds,
 };
-use rusqlite::{Connection, OptionalExtension, Transaction, params};
+#[cfg(test)]
+use rusqlite::OptionalExtension;
+use rusqlite::{Connection, Transaction, params};
 
 use crate::{
     AppliedFeed, FeedDiscoveryItemRecord, FeedDiscoveryOccurrenceRecord, LibraryStore, StorageError,
@@ -79,6 +81,7 @@ pub(crate) fn insert_occurrence(
     Ok(occurrence_id)
 }
 
+#[cfg(test)]
 pub(crate) fn apply_receipt_for_command(
     transaction: &Transaction<'_>,
     command_id: CommandId,

@@ -5,9 +5,11 @@ pub const fn host_request_owner(request: &HostRequest) -> ActivityOwner {
     use ActivityDomain as Domain;
     use HostRequest as Request;
     match request {
+        Request::CancelAuthorizedEffect { .. } => ActivityOwner::CorrelatedEffect,
         Request::FetchFeed { .. } | Request::DeliverNewEpisodeNotification { .. } => {
             ActivityOwner::Domain(Domain::LibraryFeed)
         }
+        Request::FetchLibraryDocument { .. } => ActivityOwner::Domain(Domain::LibraryFeed),
         Request::LoadMedia { .. }
         | Request::Play { .. }
         | Request::Pause { .. }

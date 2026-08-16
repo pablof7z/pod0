@@ -1,17 +1,18 @@
 import SwiftUI
+import Pod0Core
 
 struct AgentAssistantMessageView: View {
     let message: ChatMessage
     let onRegenerate: (() -> Void)?
-    let onOpenEvidence: (RecallEvidence, UUID) -> Void
+    let onOpenEvidence: (RecallEvidenceProjection, UUID) -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: AppTheme.Spacing.sm) {
             AgentAvatarView()
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
                 messageText
-                if let answer = message.recallAnswer {
-                    ForEach(answer.evidence) { evidence in
+                if !message.recallEvidence.isEmpty {
+                    ForEach(message.recallEvidence, id: \.spanId) { evidence in
                         RecallEvidenceCard(evidence: evidence) {
                             onOpenEvidence(evidence, message.id)
                         }

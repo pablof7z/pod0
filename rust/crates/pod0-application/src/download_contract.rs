@@ -123,6 +123,8 @@ pub struct DownloadWorkflowProjection {
     pub failure: Option<DownloadWorkflowFailure>,
     pub updated_at: UnixTimestampMilliseconds,
     pub allowed_actions: DownloadWorkflowAllowedActions,
+    pub retry_action: Option<crate::WorkflowActionToken>,
+    pub cancel_action: Option<crate::WorkflowActionToken>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]

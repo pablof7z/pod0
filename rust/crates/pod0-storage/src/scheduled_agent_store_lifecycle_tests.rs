@@ -2,7 +2,9 @@ use pod0_application::{
     ScheduledAgentExecutionObservation, ScheduledAgentFailureCode, ScheduledAgentStage,
 };
 
-use crate::scheduled_agent_store_test_support::{ScheduledFixture, time};
+use crate::scheduled_agent_store_test_support::{
+    ScheduledFixture, apply_scheduled_observation, claim_scheduled_effect, time,
+};
 use crate::{
     ScheduledAgentObservationInput, ScheduledAgentObservationOutcome, ScheduledAgentStore,
     StorageError,
@@ -12,9 +14,11 @@ use crate::{
 fn retry_block_and_cancel_transitions_survive_reopen() {
     let fixture = ScheduledFixture::new();
     let network = start(&fixture, 1, 2_000);
-    let failed = fixture
-        .store
-        .apply_observation(observation(
+    let network_lease = claim_scheduled_effect(&fixture.path, 2_000);
+    let failed = apply_scheduled_observation(
+        &fixture,
+        &network_lease,
+        observation(
             &network,
             1,
             2_100,
@@ -25,8 +29,9 @@ fn retry_block_and_cancel_transitions_survive_reopen() {
                 safe_detail: Some("network unavailable".to_owned()),
                 retry_after_milliseconds: Some(500),
             },
-        ))
-        .unwrap();
+        ),
+    )
+    .unwrap();
     let ScheduledAgentObservationOutcome::Updated(retry) = failed else {
         panic!("updated")
     };
@@ -68,9 +73,11 @@ fn retry_block_and_cancel_transitions_survive_reopen() {
     );
 
     let blocked_request = start(&fixture, 2, 4_000);
-    let blocked = fixture
-        .store
-        .apply_observation(observation(
+    let blocked_lease = claim_scheduled_effect(&fixture.path, 4_000);
+    let blocked = apply_scheduled_observation(
+        &fixture,
+        &blocked_lease,
+        observation(
             &blocked_request,
             1,
             4_100,
@@ -81,8 +88,9 @@ fn retry_block_and_cancel_transitions_survive_reopen() {
                 safe_detail: None,
                 retry_after_milliseconds: None,
             },
-        ))
-        .unwrap();
+        ),
+    )
+    .unwrap();
     let ScheduledAgentObservationOutcome::Updated(blocked) = blocked else {
         panic!("updated")
     };
@@ -94,6 +102,7 @@ fn retry_block_and_cancel_transitions_survive_reopen() {
 fn stale_and_conflicting_observations_never_mutate_authority() {
     let fixture = ScheduledFixture::new();
     let request = start(&fixture, 1, 2_000);
+    let lease = claim_scheduled_effect(&fixture.path, 2_000);
     let accepted = observation(
         &request,
         7,
@@ -104,12 +113,12 @@ fn stale_and_conflicting_observations_never_mutate_authority() {
             provider_operation_id: Some("provider-1".to_owned()),
         },
     );
-    let first = fixture.store.apply_observation(accepted.clone()).unwrap();
+    let first = apply_scheduled_observation(&fixture, &lease, accepted.clone()).unwrap();
     let ScheduledAgentObservationOutcome::Updated(expected) = first else {
         panic!("updated")
     };
     assert!(matches!(
-        fixture.store.apply_observation(accepted).unwrap(),
+        apply_scheduled_observation(&fixture, &lease, accepted).unwrap(),
         ScheduledAgentObservationOutcome::Duplicate(_)
     ));
     let conflict = observation(
@@ -123,8 +132,8 @@ fn stale_and_conflicting_observations_never_mutate_authority() {
         },
     );
     assert_eq!(
-        fixture.store.apply_observation(conflict),
-        Err(StorageError::ScheduledAgentWorkflowConflict)
+        apply_scheduled_observation(&fixture, &lease, conflict),
+        Err(StorageError::ActivityCommandConflict)
     );
     let stale = observation(
         &request,
@@ -136,7 +145,7 @@ fn stale_and_conflicting_observations_never_mutate_authority() {
         },
     );
     assert!(matches!(
-        fixture.store.apply_observation(stale).unwrap(),
+        apply_scheduled_observation(&fixture, &lease, stale).unwrap(),
         ScheduledAgentObservationOutcome::Stale
     ));
     assert_eq!(
@@ -153,6 +162,7 @@ fn stale_and_conflicting_observations_never_mutate_authority() {
 fn removing_a_task_fences_an_already_accepted_provider_attempt() {
     let fixture = ScheduledFixture::new();
     let request = start(&fixture, 1, 2_000);
+    let lease = claim_scheduled_effect(&fixture.path, 2_000);
     let accepted = observation(
         &request,
         0,
@@ -163,16 +173,17 @@ fn removing_a_task_fences_an_already_accepted_provider_attempt() {
             provider_operation_id: None,
         },
     );
-    fixture.store.apply_observation(accepted).unwrap();
+    apply_scheduled_observation(&fixture, &lease, accepted).unwrap();
     let occurrence = fixture
         .store
         .occurrence(request.execution.occurrence_id)
         .unwrap()
         .unwrap();
     let task = fixture.store.task(occurrence.task_id).unwrap().unwrap();
+    let removal = fixture.context(20, 2_200);
     fixture
         .store
-        .remove_task(fixture.context(20, 2_200), task.task_id, task.revision)
+        .remove_task(removal, task.task_id, task.revision)
         .unwrap();
     assert_eq!(
         fixture
@@ -183,6 +194,29 @@ fn removing_a_task_fences_an_already_accepted_provider_attempt() {
             .stage,
         ScheduledAgentStage::Obsolete
     );
+    let activity = crate::ActivityStore::open(&fixture.path)
+        .unwrap()
+        .page_for_correlation(
+            pod0_application::CommandActivityIdentity::new(removal.command_id).correlation_id(),
+            None,
+            20,
+        )
+        .unwrap();
+    assert!(activity.items.iter().any(|item| matches!(
+        item.draft.fact,
+        pod0_application::ActivityFact::DomainTransition {
+            kind: pod0_application::DomainTransitionKind::ScheduledAgent(
+                pod0_application::ScheduledAgentActivityTransition::OccurrenceStateChanged
+            ),
+            ..
+        }
+    )));
+    assert!(activity.items.iter().any(|item| matches!(
+        item.draft.fact,
+        pod0_application::ActivityFact::RecoveryTransition {
+            outcome: pod0_application::EffectOutcome::Superseded
+        }
+    )));
     let late = observation(
         &request,
         1,
@@ -197,10 +231,10 @@ fn removing_a_task_fences_an_already_accepted_provider_attempt() {
             output_excerpt: "Late output".to_owned(),
         },
     );
-    assert!(matches!(
-        fixture.store.apply_observation(late).unwrap(),
-        ScheduledAgentObservationOutcome::Stale
-    ));
+    assert_eq!(
+        apply_scheduled_observation(&fixture, &lease, late),
+        Err(StorageError::StaleScheduledAgentAttempt)
+    );
 }
 
 fn start(

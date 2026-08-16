@@ -19,36 +19,34 @@ pub(crate) fn commit_transcript_submission(
     input: TranscriptSubmissionClaimInput,
 ) -> Result<TranscriptSubmissionClaim, StorageError> {
     let store = crate::LibraryStore::open_authoritative(path)?;
-    let current = store
-        .transcript_workflow(input.episode_id)?
-        .ok_or(StorageError::TranscriptWorkflowNotFound)?;
-    if current.request_id != Some(input.request_id)
-        || current.attempt_id != Some(input.attempt_id)
-        || current.submission_fence_id != Some(input.submission_fence_id)
-    {
-        return Err(StorageError::StaleTranscriptAttempt);
-    }
-    if current.stage.protects_submission() {
-        return Ok(TranscriptSubmissionClaim::AlreadyClaimed(current));
-    }
-    let plan = plan_transcript_submission(TranscriptSubmissionActivityInput {
-        request_id: input.request_id,
-        command_id: current.command_id,
-        episode_id: current.episode_id,
-        workflow_id: current.request.workflow_id,
-        workflow_revision: current.workflow_revision,
-        origin: origin(&current.request.origin)?,
-        deadline_at: current.deadline_at_ms.map(UnixTimestampMilliseconds::new),
-    })
-    .map_err(|_| StorageError::InvalidActivity)?;
-    let receipt = TransitionCommit::open(path)?.commit_with(
+    let receipt = TransitionCommit::open(path)?.commit_planned_with(
         TransitionIngress {
             kind: TransitionIngressKind::ScheduledWake,
             id: input.request_id.into_bytes(),
             fingerprint: fingerprint(input),
         },
-        plan,
         UnixTimestampMilliseconds::new(input.now_ms),
+        |transaction| {
+            let current = exact_submission_record(transaction, input)?;
+            if current.stage.protects_submission() {
+                return Err(StorageError::TranscriptWorkflowConflict);
+            }
+            plan_transcript_submission(TranscriptSubmissionActivityInput {
+                request_id: input.request_id,
+                command_id: current.command_id,
+                episode_id: current.episode_id,
+                workflow_id: current.request.workflow_id,
+                workflow_revision: current.workflow_revision,
+                origin: origin(&current.request.origin)?,
+                deadline_at: current.deadline_at_ms.map(UnixTimestampMilliseconds::new),
+                execution: crate::transcript_effect_request::exact_transcript_request(
+                    transaction,
+                    &current,
+                    true,
+                )?,
+            })
+            .map_err(|_| StorageError::InvalidActivity)
+        },
         |transaction, expected, _| {
             require_authoritative(transaction)?;
             let record = exact_attempt(
@@ -88,35 +86,23 @@ pub(crate) fn commit_transcript_publisher_effect(
     now_ms: i64,
 ) -> Result<crate::TranscriptWorkflowRecord, StorageError> {
     let store = crate::LibraryStore::open_authoritative(path)?;
-    let current = store
-        .transcript_workflow(episode_id)?
-        .filter(|record| record.request_id == Some(request_id))
-        .ok_or(StorageError::StaleTranscriptAttempt)?;
-    if current.stage != crate::StoredTranscriptWorkflowStage::PublisherRequested {
-        return Err(StorageError::TranscriptWorkflowConflict);
-    }
-    let activity = TranscriptSubmissionActivityInput {
-        request_id,
-        command_id: current.command_id,
-        episode_id,
-        workflow_id: current.request.workflow_id,
-        workflow_revision: current.workflow_revision,
-        origin: origin(&current.request.origin)?,
-        deadline_at: current.deadline_at_ms.map(UnixTimestampMilliseconds::new),
-    };
-    let ingress_id = TranscriptEffectActivityIdentity::new(request_id, current.workflow_revision)
-        .effect_intent_id(0)
-        .into_bytes();
-    let plan =
-        plan_transcript_publisher_effect(activity).map_err(|_| StorageError::InvalidActivity)?;
-    TransitionCommit::open(path)?.commit_with(
-        TransitionIngress {
-            kind: TransitionIngressKind::ScheduledWake,
-            id: ingress_id,
-            fingerprint: publisher_fingerprint(&current),
-        },
-        plan,
+    TransitionCommit::open(path)?.commit_resolved_ingress_with(
         UnixTimestampMilliseconds::new(now_ms),
+        |transaction| {
+            let current = publisher_record(transaction, episode_id, request_id)?;
+            Ok(TransitionIngress {
+                kind: TransitionIngressKind::ScheduledWake,
+                id: TranscriptEffectActivityIdentity::new(request_id, current.workflow_revision)
+                    .effect_intent_id(0)
+                    .into_bytes(),
+                fingerprint: publisher_fingerprint(&current),
+            })
+        },
+        |transaction| {
+            let current = publisher_record(transaction, episode_id, request_id)?;
+            plan_transcript_publisher_effect(activity_input(transaction, &current, request_id, true)?)
+                .map_err(|_| StorageError::InvalidActivity)
+        },
         |transaction, expected, ()| {
             require_authoritative(transaction)?;
             let record = crate::transcript_workflow::read_workflow(transaction, episode_id)?
@@ -142,37 +128,23 @@ pub(crate) fn commit_transcript_recovery_effect(
     now_ms: i64,
 ) -> Result<crate::TranscriptWorkflowRecord, StorageError> {
     let store = crate::LibraryStore::open_authoritative(path)?;
-    let current = store
-        .transcript_workflow(episode_id)?
-        .filter(|record| record.request_id == Some(request_id))
-        .ok_or(StorageError::StaleTranscriptAttempt)?;
-    if current.stage != crate::StoredTranscriptWorkflowStage::ProviderAccepted
-        || current.not_before_ms.is_some_and(|value| value > now_ms)
-    {
-        return Err(StorageError::TranscriptWorkflowConflict);
-    }
-    let activity = TranscriptSubmissionActivityInput {
-        request_id,
-        command_id: current.command_id,
-        episode_id,
-        workflow_id: current.request.workflow_id,
-        workflow_revision: current.workflow_revision,
-        origin: origin(&current.request.origin)?,
-        deadline_at: None,
-    };
-    let ingress_id = TranscriptEffectActivityIdentity::new(request_id, current.workflow_revision)
-        .effect_intent_id(0)
-        .into_bytes();
-    let plan =
-        plan_transcript_recovery_effect(activity).map_err(|_| StorageError::InvalidActivity)?;
-    TransitionCommit::open(path)?.commit_with(
-        TransitionIngress {
-            kind: TransitionIngressKind::Recovery,
-            id: ingress_id,
-            fingerprint: recovery_fingerprint(&current),
-        },
-        plan,
+    TransitionCommit::open(path)?.commit_resolved_ingress_with(
         UnixTimestampMilliseconds::new(now_ms),
+        |transaction| {
+            let current = recovery_record(transaction, episode_id, request_id, now_ms)?;
+            Ok(TransitionIngress {
+                kind: TransitionIngressKind::Recovery,
+                id: TranscriptEffectActivityIdentity::new(request_id, current.workflow_revision)
+                    .effect_intent_id(0)
+                    .into_bytes(),
+                fingerprint: recovery_fingerprint(&current),
+            })
+        },
+        |transaction| {
+            let current = recovery_record(transaction, episode_id, request_id, now_ms)?;
+            plan_transcript_recovery_effect(activity_input(transaction, &current, request_id, false)?)
+                .map_err(|_| StorageError::InvalidActivity)
+        },
         |transaction, expected, ()| {
             require_authoritative(transaction)?;
             let record = crate::transcript_workflow::read_workflow(transaction, episode_id)?
@@ -189,6 +161,82 @@ pub(crate) fn commit_transcript_recovery_effect(
     store
         .transcript_workflow(episode_id)?
         .ok_or(StorageError::TranscriptWorkflowNotFound)
+}
+
+fn exact_submission_record(
+    transaction: &rusqlite::Transaction<'_>,
+    input: TranscriptSubmissionClaimInput,
+) -> Result<crate::TranscriptWorkflowRecord, StorageError> {
+    let current = crate::transcript_workflow::read_workflow(transaction, input.episode_id)?
+        .ok_or(StorageError::TranscriptWorkflowNotFound)?;
+    if current.request_id != Some(input.request_id)
+        || current.attempt_id != Some(input.attempt_id)
+        || current.submission_fence_id != Some(input.submission_fence_id)
+    {
+        return Err(StorageError::StaleTranscriptAttempt);
+    }
+    Ok(current)
+}
+
+fn publisher_record(
+    transaction: &rusqlite::Transaction<'_>,
+    episode_id: EpisodeId,
+    request_id: HostRequestId,
+) -> Result<crate::TranscriptWorkflowRecord, StorageError> {
+    let current = exact_request_record(transaction, episode_id, request_id)?;
+    if current.stage != crate::StoredTranscriptWorkflowStage::PublisherRequested {
+        return Err(StorageError::TranscriptWorkflowConflict);
+    }
+    Ok(current)
+}
+
+fn recovery_record(
+    transaction: &rusqlite::Transaction<'_>,
+    episode_id: EpisodeId,
+    request_id: HostRequestId,
+    now_ms: i64,
+) -> Result<crate::TranscriptWorkflowRecord, StorageError> {
+    let current = exact_request_record(transaction, episode_id, request_id)?;
+    if current.stage != crate::StoredTranscriptWorkflowStage::ProviderAccepted
+        || current.not_before_ms.is_some_and(|value| value > now_ms)
+    {
+        return Err(StorageError::TranscriptWorkflowConflict);
+    }
+    Ok(current)
+}
+
+fn exact_request_record(
+    transaction: &rusqlite::Transaction<'_>,
+    episode_id: EpisodeId,
+    request_id: HostRequestId,
+) -> Result<crate::TranscriptWorkflowRecord, StorageError> {
+    crate::transcript_workflow::read_workflow(transaction, episode_id)?
+        .filter(|record| record.request_id == Some(request_id))
+        .ok_or(StorageError::StaleTranscriptAttempt)
+}
+
+fn activity_input(
+    transaction: &rusqlite::Transaction<'_>,
+    current: &crate::TranscriptWorkflowRecord,
+    request_id: HostRequestId,
+    include_deadline: bool,
+) -> Result<TranscriptSubmissionActivityInput, StorageError> {
+    Ok(TranscriptSubmissionActivityInput {
+        request_id,
+        command_id: current.command_id,
+        episode_id: current.episode_id,
+        workflow_id: current.request.workflow_id,
+        workflow_revision: current.workflow_revision,
+        origin: origin(&current.request.origin)?,
+        deadline_at: include_deadline
+            .then(|| current.deadline_at_ms.map(UnixTimestampMilliseconds::new))
+            .flatten(),
+        execution: crate::transcript_effect_request::exact_transcript_request(
+            transaction,
+            current,
+            include_deadline,
+        )?,
+    })
 }
 
 fn origin(value: &str) -> Result<TranscriptWorkflowOrigin, StorageError> {

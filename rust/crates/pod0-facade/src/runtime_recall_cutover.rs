@@ -1,107 +1,141 @@
 use std::collections::BTreeSet;
 
 use pod0_application::{
-    CommandEnvelope, CoreFailureCode, HostObservation, HostRequest, HostRequestEnvelope,
-    OperationResult, OperationStage,
+    CommandEnvelope, CoreFailureCode, HostFailureCode, HostObservationReceipt,
+    HostObservationRejection, LeasedHostObservationEnvelope, OperationResult, OperationStage,
+    RecallIndexCutoverHostOutcome,
 };
-use pod0_domain::{CancellationId, CommandId, HostRequestId, UnixTimestampMilliseconds};
 
+use crate::runtime_chapter_model_receipts::{persisted, retain};
+use crate::runtime_leased_observations::rejected_payload;
 use crate::runtime_state::{FacadeState, failure};
-
-#[derive(Clone, Copy, Debug)]
-pub(super) struct PendingRecallCutover {
-    pub command_id: CommandId,
-    pub cancellation_id: CancellationId,
-}
 
 impl FacadeState {
     pub(super) fn start_recall_index_cutover(&mut self, envelope: &CommandEnvelope) {
-        match self.recall_index.legacy_cutover_is_committed() {
-            Ok(true) => {
-                self.succeed(
-                    envelope.command_id,
-                    Some(OperationResult::RecallIndexCutoverCommitted {
-                        schema_version: pod0_recall_index::RECALL_INDEX_SCHEMA_VERSION,
-                        removed_legacy_file_count: 0,
-                    }),
-                );
-                return;
-            }
-            Ok(false) => {}
+        let Some(store) = self.store.clone() else {
+            self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
+            return;
+        };
+        let already_committed = match self.recall_index.legacy_cutover_is_committed() {
+            Ok(value) => value,
             Err(_) => {
                 self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
                 return;
             }
-        }
-        match self.selected_active_generations_are_ready() {
-            Ok(true) => {}
-            Ok(false) | Err(()) => {
-                self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
-                return;
-            }
-        }
-
-        let request_id = HostRequestId::from_bytes(envelope.command_id.into_bytes());
-        let request = HostRequestEnvelope {
-            request_id,
-            command_id: envelope.command_id,
-            cancellation_id: envelope.cancellation_id,
-            issued_revision: self.revision,
-            deadline_at: Some(UnixTimestampMilliseconds::new(
-                self.now().value.saturating_add(60_000),
-            )),
-            request: HostRequest::RemoveLegacyRecallIndexArtifacts,
         };
-        if !self.host_requests.register(request.clone()) {
-            self.fail(envelope.command_id, CoreFailureCode::InvalidCommand);
-            return;
-        }
-        self.pending_recall_cutovers.insert(
-            request_id,
-            PendingRecallCutover {
-                command_id: envelope.command_id,
-                cancellation_id: envelope.cancellation_id,
-            },
+        let prerequisites_ready = self
+            .selected_active_generations_are_ready()
+            .unwrap_or(false);
+        let outcome = store.start_recall_index_cutover(
+            envelope.command_id,
+            &crate::runtime_command_fingerprint::command_fingerprint(&envelope.command),
+            envelope.cancellation_id,
+            already_committed,
+            prerequisites_ready,
+            self.now(),
         );
-        self.host_queue.push_back(request);
-        self.finish(envelope.command_id, OperationStage::Running, None, None);
+        match outcome {
+            Ok(pod0_storage::RecallIndexCutoverStartOutcome::Authorized(_)) => {
+                self.finish(envelope.command_id, OperationStage::Running, None, None);
+            }
+            Ok(pod0_storage::RecallIndexCutoverStartOutcome::AlreadyComplete) => {
+                self.succeed(envelope.command_id, Some(cutover_result(0)));
+            }
+            Ok(pod0_storage::RecallIndexCutoverStartOutcome::MissingPrerequisite) => {
+                self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
+            }
+            Err(_) => self.fail(envelope.command_id, CoreFailureCode::InvalidCommand),
+        }
     }
 
-    pub(super) fn finish_recall_index_cutover(
+    pub(super) fn record_leased_recall_index_cutover_observation(
         &mut self,
-        pending: PendingRecallCutover,
-        observation: HostObservation,
-    ) {
-        match observation {
-            HostObservation::LegacyRecallIndexArtifactsRemoved { removed_file_count } => {
-                match self.recall_index.commit_legacy_cutover(removed_file_count) {
-                    Ok(receipt) => self.succeed(
-                        pending.command_id,
-                        Some(OperationResult::RecallIndexCutoverCommitted {
-                            schema_version: receipt.schema_version,
-                            removed_legacy_file_count: receipt.removed_legacy_file_count,
-                        }),
-                    ),
-                    Err(_) => {
-                        self.fail(pending.command_id, CoreFailureCode::StorageUnavailable);
-                    }
+        leased: LeasedHostObservationEnvelope,
+        observation: pod0_application::DurableRecallIndexCutoverHostObservation,
+    ) -> (bool, HostObservationReceipt) {
+        let request_id = observation.request_id;
+        let Some(store) = self.store.clone() else {
+            return (false, retain(request_id));
+        };
+        let outcome = observation.outcome.clone();
+        let (workflow, replayed) = match store.commit_recall_index_cutover_observation(
+            leased.lease,
+            observation,
+            self.now(),
+        ) {
+            Ok(value) => value,
+            Err(pod0_storage::StorageError::RevisionConflict) => return (false, stale(request_id)),
+            Err(_) => return (false, retain(request_id)),
+        };
+        if replayed {
+            return (false, duplicate(request_id));
+        }
+        self.host_requests.retire(request_id);
+        match outcome {
+            RecallIndexCutoverHostOutcome::ArtifactsRemoved { removed_file_count } => {
+                if self
+                    .finish_durable_recall_cutover(workflow.command_id, removed_file_count)
+                    .is_err()
+                {
+                    self.fail(workflow.command_id, CoreFailureCode::StorageUnavailable);
+                    return (true, persisted(request_id, false));
                 }
             }
-            HostObservation::Cancelled => self.finish(
-                pending.command_id,
+            RecallIndexCutoverHostOutcome::Cancelled => self.finish(
+                workflow.command_id,
                 OperationStage::Cancelled,
                 Some(failure(CoreFailureCode::Cancelled)),
                 None,
             ),
-            HostObservation::Failed { .. } => {
-                self.fail(pending.command_id, CoreFailureCode::HostUnavailable);
+            RecallIndexCutoverHostOutcome::Failed { code, .. } => {
+                self.fail(workflow.command_id, cutover_host_failure(code));
             }
-            HostObservation::Unsupported { wire_code } => self.fail(
-                pending.command_id,
-                CoreFailureCode::Unsupported { wire_code },
-            ),
-            _ => self.fail(pending.command_id, CoreFailureCode::HostRejected),
         }
+        self.advance_revision();
+        (true, persisted(request_id, true))
+    }
+
+    pub(super) fn recover_recall_index_cutover(
+        &mut self,
+    ) -> Result<(), pod0_storage::StorageError> {
+        let Some(store) = self.store.clone() else {
+            return Ok(());
+        };
+        let Some(workflow) = store.recall_index_cutover_workflow()? else {
+            return Ok(());
+        };
+        if let pod0_storage::RecallIndexCutoverStage::HostObserved { removed_file_count } =
+            workflow.stage
+        {
+            self.finish_durable_recall_cutover(workflow.command_id, removed_file_count)?;
+        }
+        Ok(())
+    }
+
+    fn finish_durable_recall_cutover(
+        &mut self,
+        command_id: pod0_domain::CommandId,
+        removed_file_count: u32,
+    ) -> Result<(), pod0_storage::StorageError> {
+        let count = u8::try_from(removed_file_count)
+            .map_err(|_| pod0_storage::StorageError::InvalidActivity)?;
+        let receipt = self
+            .recall_index
+            .commit_legacy_cutover(count)
+            .map_err(|_| pod0_storage::StorageError::InvalidActivity)?;
+        let store = self
+            .store
+            .clone()
+            .ok_or(pod0_storage::StorageError::CutoverNotAuthoritative)?;
+        store.finalize_recall_index_cutover(command_id, removed_file_count, self.now())?;
+        self.succeed(
+            command_id,
+            Some(OperationResult::RecallIndexCutoverCommitted {
+                schema_version: receipt.schema_version,
+                removed_legacy_file_count: receipt.removed_legacy_file_count,
+            }),
+        );
+        Ok(())
     }
 
     fn selected_active_generations_are_ready(&self) -> Result<bool, ()> {
@@ -112,28 +146,47 @@ impl FacadeState {
             .transpose()
             .map_err(|_| ())?
             .unwrap_or_default();
-        let active_episode_ids = self
+        let active = self
             .listening
             .episodes
             .iter()
             .map(|episode| episode.episode_id)
             .collect::<BTreeSet<_>>();
         for generation in selected {
-            if !active_episode_ids.contains(&generation.episode_id) {
-                continue;
-            }
-            if !self
-                .recall_index
-                .generation_is_ready(
-                    generation.episode_id,
-                    generation.generation_id,
-                    generation.span_count,
-                )
-                .map_err(|_| ())?
+            if active.contains(&generation.episode_id)
+                && !self
+                    .recall_index
+                    .generation_is_ready(
+                        generation.episode_id,
+                        generation.generation_id,
+                        generation.span_count,
+                    )
+                    .map_err(|_| ())?
             {
                 return Ok(false);
             }
         }
         Ok(true)
     }
+}
+
+fn cutover_result(removed_legacy_file_count: u8) -> OperationResult {
+    OperationResult::RecallIndexCutoverCommitted {
+        schema_version: pod0_recall_index::RECALL_INDEX_SCHEMA_VERSION,
+        removed_legacy_file_count,
+    }
+}
+fn cutover_host_failure(code: HostFailureCode) -> CoreFailureCode {
+    match code {
+        HostFailureCode::Unauthorized => CoreFailureCode::Unauthorized,
+        HostFailureCode::PermissionDenied => CoreFailureCode::HostRejected,
+        HostFailureCode::Unsupported { wire_code } => CoreFailureCode::Unsupported { wire_code },
+        _ => CoreFailureCode::HostUnavailable,
+    }
+}
+fn stale(id: pod0_domain::HostRequestId) -> HostObservationReceipt {
+    rejected_payload(id, HostObservationRejection::StaleWorkflow)
+}
+fn duplicate(id: pod0_domain::HostRequestId) -> HostObservationReceipt {
+    rejected_payload(id, HostObservationRejection::Duplicate)
 }

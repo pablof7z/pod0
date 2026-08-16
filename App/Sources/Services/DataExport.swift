@@ -55,7 +55,6 @@ enum DataExport {
     static func redactedState(from state: AppState) -> AppState {
         var copy = state
         copy.settings.legacyOpenRouterAPIKey = nil
-        copy.legacyAgentActivity = []
         return copy
     }
 

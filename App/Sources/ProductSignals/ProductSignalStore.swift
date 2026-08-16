@@ -18,6 +18,7 @@ actor ProductSignalStore: ProductSignalSink {
     private var archive: Archive
     private var signalIDs: Set<UUID>
     private var processSessionID: UUID?
+    private var erasureFenced = false
 
     init(fileURL: URL? = nil) {
         self.fileURL = fileURL ?? Self.defaultFileURL()
@@ -32,7 +33,9 @@ actor ProductSignalStore: ProductSignalSink {
     }
 
     func record(_ observation: ProductSignalObservation) async {
-        guard archive.isEnabled, signalIDs.insert(observation.signalID).inserted else { return }
+        guard !erasureFenced,
+              archive.isEnabled,
+              signalIDs.insert(observation.signalID).inserted else { return }
         archive.signals.append(ProductSignal(
             observation: observation,
             anonymousInstallID: archive.anonymousInstallID
@@ -71,6 +74,20 @@ actor ProductSignalStore: ProductSignalSink {
         archive.signals.removeAll()
         signalIDs.removeAll()
         archive.anonymousInstallID = UUID()
+        persistFailOpen()
+    }
+
+    func fenceForUserDataErasure() {
+        erasureFenced = true
+        archive.signals.removeAll()
+        signalIDs.removeAll()
+        archive.anonymousInstallID = UUID()
+        archive.activeSessionID = nil
+        processSessionID = nil
+    }
+
+    func resumeAfterUserDataErasure() {
+        erasureFenced = false
         persistFailOpen()
     }
 
@@ -126,6 +143,8 @@ actor ProductSignalStore: ProductSignalSink {
               archive.schemaVersion == ProductSignal.currentSchemaVersion else { return nil }
         return archive
     }
+
+    nonisolated static var erasureFileURL: URL { defaultFileURL() }
 
     private static func defaultFileURL() -> URL {
         let support = (try? FileManager.default.url(

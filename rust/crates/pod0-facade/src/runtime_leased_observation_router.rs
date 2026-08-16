@@ -34,9 +34,11 @@ impl FacadeState {
         };
         match effect_kind {
             ExternalEffectKind::AgentCapability => {
-                let Some(agent) = pod0_application::DurableAgentCapabilityHostObservation::from_host(
-                    &leased.observation,
-                ) else {
+                let Some(agent) =
+                    pod0_application::DurableAgentCapabilityHostObservation::from_host(
+                        &leased.observation,
+                    )
+                else {
                     return mismatched(request_id);
                 };
                 return self.record_leased_agent_capability_observation(leased, agent);
@@ -57,11 +59,88 @@ impl FacadeState {
                 return self.record_leased_agent_model_observation(leased, agent);
             }
             ExternalEffectKind::RecallProvider => {
+                let execution = store.effect_request(leased.lease.intent_id).ok().flatten();
+                if execution.as_ref().is_some_and(|request| {
+                    matches!(
+                        request.execution,
+                        pod0_application::DurableEffectExecution::RecallIndexCutover { .. }
+                    )
+                }) {
+                    let Some(cutover) =
+                        pod0_application::DurableRecallIndexCutoverHostObservation::from_host(
+                            &leased.observation,
+                        )
+                    else {
+                        return mismatched(request_id);
+                    };
+                    return self.record_leased_recall_index_cutover_observation(leased, cutover);
+                }
+                if execution.as_ref().is_some_and(|request| {
+                    matches!(
+                        request.execution,
+                        pod0_application::DurableEffectExecution::RecallQuery { .. }
+                    )
+                }) {
+                    let Some(recall) =
+                        pod0_application::DurableAgentRecallHostObservation::from_host(
+                            &leased.observation,
+                        )
+                    else {
+                        return mismatched(request_id);
+                    };
+                    return self.record_leased_query_recall_observation(leased, recall);
+                }
+                let is_agent_recall = execution.is_some_and(|request| {
+                    matches!(
+                        request.execution,
+                        pod0_application::DurableEffectExecution::AgentRecall { .. }
+                    )
+                });
+                if is_agent_recall {
+                    let Some(recall) =
+                        pod0_application::DurableAgentRecallHostObservation::from_host(
+                            &leased.observation,
+                        )
+                    else {
+                        return mismatched(request_id);
+                    };
+                    return self.record_leased_agent_recall_observation(leased, recall);
+                }
                 let Some(recall) = DurableRecallHostObservation::from_host(&leased.observation)
                 else {
                     return mismatched(request_id);
                 };
                 return self.record_leased_recall_observation(leased, recall);
+            }
+            ExternalEffectKind::PublisherChapterProvider => {
+                return self.record_leased_publisher_chapter_observation(leased);
+            }
+            ExternalEffectKind::ModelChapterProvider => {
+                return self.record_leased_model_chapter_observation(leased);
+            }
+            ExternalEffectKind::Download => {
+                return self.record_leased_download_observation(leased);
+            }
+            ExternalEffectKind::Playback => {
+                return self.record_leased_playback_observation(leased);
+            }
+            ExternalEffectKind::FeedNetwork => {
+                return self.record_leased_feed_observation(leased);
+            }
+            ExternalEffectKind::Notification => {
+                return self.record_leased_feed_notification_observation(leased);
+            }
+            ExternalEffectKind::ScheduledAgentProvider => {
+                return self.record_leased_scheduled_agent_observation(leased);
+            }
+            ExternalEffectKind::CoreWake => {
+                return self.record_leased_lifecycle_wake_observation(leased);
+            }
+            ExternalEffectKind::Cancellation => {
+                return self.record_leased_cancellation_observation(leased);
+            }
+            ExternalEffectKind::LibraryNetwork => {
+                return self.record_leased_library_network_observation(leased);
             }
             ExternalEffectKind::TranscriptProvider => {}
             _ => return mismatched(request_id),

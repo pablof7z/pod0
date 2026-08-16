@@ -49,6 +49,13 @@ pub struct ScheduledAgentObservationInput {
     pub observation: ScheduledAgentExecutionObservation,
 }
 
+#[derive(Clone, Debug)]
+pub struct ScheduledAgentLeasedObservationInput {
+    pub lease: pod0_application::PersistedEffectLeaseIdentity,
+    pub observation: ScheduledAgentObservationInput,
+    pub committed_at: UnixTimestampMilliseconds,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ScheduledAgentObservationOutcome {
     Updated(ScheduledAgentOccurrenceState),
@@ -72,12 +79,6 @@ pub struct ScheduledOccurrencePage {
 pub struct ScheduledAgentReconcileOutcome {
     pub created_occurrences: Vec<ScheduledOccurrenceId>,
     pub requests: Vec<ScheduledAgentHostRequestRecord>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ScheduledAgentRecoveryReport {
-    pub reissued_requests: Vec<ScheduledAgentHostRequestRecord>,
-    pub ambiguous_occurrences: Vec<ScheduledOccurrenceId>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

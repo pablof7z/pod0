@@ -10,6 +10,8 @@ use crate::{
     TransitionPlan, TransitionPlanError,
 };
 
+include!("agent_capability_recovery_activity.rs");
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AgentExecutionActivityInput {
     pub internal_command_id: InternalCommandId,
@@ -26,11 +28,19 @@ pub enum AgentExecutionContinuation {
     None,
     NativeCapability,
     RustProjection,
+    AgentRecall,
     RustTool { target: crate::ActivityDomain },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BeginAgentExecution;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AgentExecutionActivityRequest {
+    pub continuation: AgentExecutionContinuation,
+    pub recall: Option<crate::DurableAgentRecallEffectRequest>,
+    pub capability: Option<crate::DurableAgentCapabilityEffectRequest>,
+}
 
 pub type AgentExecutionPlan = TransitionPlan<
     BeginAgentExecution,
@@ -40,6 +50,20 @@ pub type AgentExecutionPlan = TransitionPlan<
 
 pub fn plan_agent_execution(
     input: AgentExecutionActivityInput,
+) -> Result<AgentExecutionPlan, TransitionPlanError> {
+    plan_agent_execution_with_request(
+        input,
+        AgentExecutionActivityRequest {
+            continuation: input.continuation,
+            recall: None,
+            capability: None,
+        },
+    )
+}
+
+pub fn plan_agent_execution_with_request(
+    input: AgentExecutionActivityInput,
+    request: AgentExecutionActivityRequest,
 ) -> Result<AgentExecutionPlan, TransitionPlanError> {
     if input.committed_revision.value != input.current_revision.value.saturating_add(1) {
         return Err(TransitionPlanError::DispositionRequiresTransition);
@@ -73,30 +97,50 @@ pub fn plan_agent_execution(
             committed_revision: input.committed_revision,
         },
     )];
-    let effects = if input.continuation == AgentExecutionContinuation::NativeCapability {
+    let effect = match request.continuation {
+        AgentExecutionContinuation::NativeCapability => {
+            let capability = request
+                .capability
+                .ok_or(TransitionPlanError::InvalidEffectAuthorization)?;
+            Some((
+                ExternalEffectKind::AgentCapability,
+                capability.deadline_at,
+                crate::DurableEffectExecution::AgentCapability {
+                    request: capability,
+                },
+            ))
+        }
+        AgentExecutionContinuation::AgentRecall => {
+            let recall = request
+                .recall
+                .ok_or(TransitionPlanError::InvalidEffectAuthorization)?;
+            Some((
+                ExternalEffectKind::RecallProvider,
+                Some(recall.deadline_at),
+                crate::DurableEffectExecution::AgentRecall { request: recall },
+            ))
+        }
+        _ => None,
+    };
+    let effects = if let Some((kind, deadline_at, execution)) = effect {
         let intent_id = identity.effect_intent_id(0);
-        tail.push(base(
-            2,
-            ActivityFact::EffectAuthorized {
-                intent_id,
-                kind: ExternalEffectKind::AgentCapability,
-            },
-        ));
+        tail.push(base(2, ActivityFact::EffectAuthorized { intent_id, kind }));
         vec![AuthorizedExternalEffect {
             intent_id,
             authorizing_fact_index: 2,
             request: DurableExternalEffectRequest {
-                kind: ExternalEffectKind::AgentCapability,
+                kind,
                 subject,
                 episode_id: None,
                 not_before: None,
-                deadline_at: None,
+                deadline_at,
+                execution,
             },
         }]
     } else {
         Vec::new()
     };
-    let internal_target = match input.continuation {
+    let internal_target = match request.continuation {
         AgentExecutionContinuation::RustProjection => Some(crate::ActivityDomain::AgentPublication),
         AgentExecutionContinuation::RustTool { target } => Some(target),
         _ => None,
@@ -114,7 +158,7 @@ pub fn plan_agent_execution(
             internal_command_id,
             authorizing_fact_index: 2,
             command: DurableInternalCommandRequest {
-                kind: match input.continuation {
+                kind: match request.continuation {
                     AgentExecutionContinuation::RustProjection => {
                         crate::InternalCommandKind::ExecuteAgentProjection {
                             turn_id: input.turn_id,
@@ -157,7 +201,7 @@ pub fn plan_agent_execution(
 mod tool_handoff;
 pub use tool_handoff::*;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AgentProjectionCompletionActivityInput {
     pub internal_command_id: InternalCommandId,
     pub authorizing_activity_id: ActivityId,
@@ -165,7 +209,7 @@ pub struct AgentProjectionCompletionActivityInput {
     pub turn_id: AgentTurnId,
     pub current_revision: StateRevision,
     pub committed_revision: StateRevision,
-    pub authorize_continuation_model: bool,
+    pub continuation_model: Option<crate::DurableAgentModelEffectRequest>,
 }
 
 pub fn plan_agent_projection_completion(
@@ -203,7 +247,7 @@ pub fn plan_agent_projection_completion(
             committed_revision: input.committed_revision,
         },
     )];
-    let effects = if input.authorize_continuation_model {
+    let effects = if let Some(model) = input.continuation_model {
         let intent_id = identity.effect_intent_id(0);
         tail.push(base(
             2,
@@ -220,7 +264,8 @@ pub fn plan_agent_projection_completion(
                 subject,
                 episode_id: None,
                 not_before: None,
-                deadline_at: None,
+                deadline_at: model.deadline_at,
+                execution: crate::DurableEffectExecution::AgentModel { request: model },
             },
         }]
     } else {

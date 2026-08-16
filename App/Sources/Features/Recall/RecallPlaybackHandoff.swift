@@ -1,15 +1,17 @@
 import Foundation
+import Pod0Core
 
 enum RecallPlaybackHandoff {
     @MainActor
     @discardableResult
     static func open(
-        _ evidence: RecallEvidence,
+        _ evidence: RecallEvidenceProjection,
         responseID: UUID,
         store: AppStateStore,
         playback: PlaybackState
     ) -> Bool {
-        guard let episode = store.episode(id: evidence.episodeID) else { return false }
+        guard let episodeID = evidence.episodeId.uuid,
+              let episode = store.episode(id: episodeID) else { return false }
         playback.setEpisode(episode)
         playback.seek(to: Double(evidence.startMilliseconds) / 1_000)
         if !playback.isPlaying { playback.play() }

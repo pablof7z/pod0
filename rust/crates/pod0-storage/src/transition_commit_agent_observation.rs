@@ -51,9 +51,19 @@ pub(crate) fn commit_agent_model_observation(
             {
                 return Err(StorageError::AgentTurnConflict);
             }
-            let next_effect = (!replay && after.projection().stage
-                == pod0_application::AgentTurnStage::ApprovalRequired)
-                .then_some(pod0_application::ExternalEffectKind::AgentApproval);
+            let next_authorization = if !replay
+                && after.projection().stage == pod0_application::AgentTurnStage::ApprovalRequired
+            {
+                Some(pod0_application::AgentEffectAuthorization::Approval(
+                    super::effect_requests::approval_effect_request(
+                        &after,
+                        command_id,
+                        None,
+                    )?,
+                ))
+            } else {
+                None
+            };
             let committed = if replay {
                 StateRevision::new(before_revision.value + 1)
             } else {
@@ -72,7 +82,7 @@ pub(crate) fn commit_agent_model_observation(
                 episode_id: None,
                 outcome: effect_outcome,
                 transition: AgentPublicationTransition::TurnStateChanged,
-                next_effect,
+                next_authorization,
                 advance_turn: !replay && after.projection().stage
                     == pod0_application::AgentTurnStage::Authorized,
             })

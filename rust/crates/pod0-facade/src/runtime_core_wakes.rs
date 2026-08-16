@@ -1,7 +1,5 @@
-use pod0_application::{
-    CoreWakeReason, HostCancellationRequest, HostObservation, HostRequest, HostRequestEnvelope,
-};
-use pod0_domain::{HostRequestId, UnixTimestampMilliseconds};
+use pod0_application::{CoreWakeReason, DurableLifecycleEffectRequest};
+use pod0_domain::HostRequestId;
 use pod0_storage::ModelChapterWorkflowRecord;
 use sha2::{Digest as _, Sha256};
 
@@ -50,19 +48,11 @@ impl FacadeState {
         )
     }
 
-    pub(super) fn finish_core_wake(
+    pub(super) fn apply_core_wake_reaction(
         &mut self,
-        wake_request_id: HostRequestId,
-        observation: HostObservation,
+        reason: CoreWakeReason,
+        reached: bool,
     ) -> bool {
-        let Some(reason) = self.pending_core_wakes.remove(&wake_request_id) else {
-            return false;
-        };
-        self.host_requests.retire(wake_request_id);
-        let reached = matches!(
-            observation,
-            HostObservation::CoreWakeReached { reason: observed } if observed == reason
-        );
         match reason {
             CoreWakeReason::ModelChapterRetry {
                 episode_id,
@@ -80,14 +70,12 @@ impl FacadeState {
                 }) else {
                     return true;
                 };
-                if reached
+                if !(reached
                     && record
                         .not_before_ms
-                        .is_none_or(|value| value <= self.now().value)
+                        .is_none_or(|value| value <= self.now().value))
                 {
-                    self.queue_model_chapter_request(&record);
-                } else {
-                    self.schedule_model_retry_wake(&record);
+                    return self.schedule_model_retry_wake(&record);
                 }
                 true
             }
@@ -141,42 +129,14 @@ impl FacadeState {
                 }
                 true
             }
-            CoreWakeReason::FeedDiscoveryNotificationRetry { .. } => {
-                let _ = self.reconcile_feed_discovery_workflows();
-                true
-            }
-            CoreWakeReason::FeedFetchRetry { .. } => {
-                let _ = self.admit_feed_fetch_requests();
-                true
-            }
+            CoreWakeReason::FeedDiscoveryNotificationRetry { .. }
+            | CoreWakeReason::FeedFetchRetry { .. } => true,
             CoreWakeReason::Unsupported { .. } => true,
         }
     }
 
     pub(super) fn withdraw_core_wakes_for_model(&mut self, record: &ModelChapterWorkflowRecord) {
-        let wake_ids = self
-            .pending_core_wakes
-            .iter()
-            .filter_map(|(request_id, reason)| {
-                reason_matches_record(*reason, record).then_some(*request_id)
-            })
-            .collect::<Vec<_>>();
-        for request_id in wake_ids {
-            self.pending_core_wakes.remove(&request_id);
-            let was_queued = self
-                .host_queue
-                .iter()
-                .any(|request| request.request_id == request_id);
-            self.host_queue
-                .retain(|request| request.request_id != request_id);
-            if self.host_requests.cancel_request(request_id) && !was_queued {
-                self.host_cancellations.push_back(HostCancellationRequest {
-                    request_id,
-                    cancellation_id: record.cancellation_id,
-                });
-            }
-            self.host_requests.retire(request_id);
-        }
+        self.cancel_lifecycle_wakes(record.command_id, record.cancellation_id);
     }
 
     pub(super) fn pending_model_record(
@@ -201,31 +161,44 @@ impl FacadeState {
         wake_at_ms: i64,
         reason: CoreWakeReason,
     ) -> bool {
-        if wake_at_ms < 0
-            || self
-                .pending_core_wakes
-                .values()
-                .any(|value| *value == reason)
-        {
+        if wake_at_ms < 0 {
             return false;
         }
-        let request = HostRequestEnvelope {
+        let request = DurableLifecycleEffectRequest {
             request_id: wake_request_id(reason, wake_at_ms),
             command_id,
             cancellation_id,
             issued_revision,
-            deadline_at: None,
-            request: HostRequest::ScheduleCoreWake {
-                wake_at: UnixTimestampMilliseconds::new(wake_at_ms),
-                reason,
-            },
+            wake_at: pod0_domain::UnixTimestampMilliseconds::new(wake_at_ms),
+            reason,
+            attempt: 1,
         };
-        if !self.host_requests.register(request.clone()) {
-            return false;
+        self.store
+            .as_ref()
+            .is_some_and(|store| store.authorize_lifecycle_wake(request, self.now()).is_ok())
+    }
+
+    pub(super) fn cancel_lifecycle_wakes(
+        &mut self,
+        command_id: pod0_domain::CommandId,
+        cancellation_id: pod0_domain::CancellationId,
+    ) {
+        let mut hash = Sha256::new();
+        hash.update(b"pod0-lifecycle-wake-cancel-v1\0");
+        hash.update(command_id.into_bytes());
+        hash.update(cancellation_id.into_bytes());
+        let digest: [u8; 32] = hash.finalize().into();
+        let cancellation_command =
+            pod0_domain::CommandId::from_bytes(digest[..16].try_into().expect("digest prefix"));
+        let fingerprint = pod0_domain::ContentDigest::from_bytes(digest);
+        if let Some(store) = &self.store {
+            let _ = store.cancel_durable_lifecycle_wakes(
+                cancellation_command,
+                fingerprint,
+                cancellation_id,
+                self.now(),
+            );
         }
-        self.pending_core_wakes.insert(request.request_id, reason);
-        self.host_queue.push_back(request);
-        true
     }
 }
 

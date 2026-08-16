@@ -1,11 +1,75 @@
 use pod0_domain::{AutoDownloadMode, AutoDownloadPolicy};
+use rusqlite::Connection;
 
 use crate::feed_discovery_store_test_support::*;
-use crate::feed_discovery_workflow_store_tests::{
-    refresh_five, subscribe_with_existing_episode,
-};
+use crate::feed_discovery_workflow_store_tests::{refresh_five, subscribe_with_existing_episode};
 use crate::listening_import_test_support::id;
 use crate::{FeedDiscoveryEffectKind, LibraryStore};
+
+#[test]
+fn recovery_identity_replays_across_restart_without_poll_fact_growth() {
+    let (fixture, store) = empty_authoritative_store();
+    let podcast = podcast(&store);
+    subscribe_with_existing_episode(&store, &podcast);
+    let _ = refresh_five(&store, &podcast, BASE_TIME + 2);
+
+    assert_eq!(
+        store
+            .plan_pending_feed_discoveries(BASE_TIME + 3, 10)
+            .unwrap(),
+        1
+    );
+    assert_eq!(recovery_receipt_count(&fixture.target), 1);
+    drop(store);
+
+    let reopened = LibraryStore::open_authoritative(&fixture.target).unwrap();
+    assert_eq!(
+        reopened
+            .plan_pending_feed_discoveries(BASE_TIME + 4, 10)
+            .unwrap(),
+        0
+    );
+    assert_eq!(recovery_receipt_count(&fixture.target), 1);
+    drop(reopened);
+
+    let replayed = LibraryStore::open_authoritative(&fixture.target).unwrap();
+    assert_eq!(
+        replayed
+            .plan_pending_feed_discoveries(BASE_TIME + 5, 10)
+            .unwrap(),
+        0
+    );
+    assert_eq!(recovery_receipt_count(&fixture.target), 1);
+}
+
+#[test]
+fn expiry_crossing_admits_a_new_recovery_decision_without_clock_poll_identity() {
+    let (_fixture, store) = empty_authoritative_store();
+    let podcast = podcast(&store);
+    subscribe_with_existing_episode(&store, &podcast);
+    let _ = refresh_five(&store, &podcast, BASE_TIME + 2);
+    store
+        .plan_pending_feed_discoveries(BASE_TIME + 3, 10)
+        .unwrap();
+    assert_eq!(notifications(&store, i64::MAX).len(), 3);
+
+    assert_eq!(
+        store
+            .reconcile_feed_discovery_preferences(BASE_TIME + 3)
+            .unwrap(),
+        0
+    );
+    assert_eq!(notifications(&store, i64::MAX).len(), 3);
+
+    let expires_at = BASE_TIME + 2 + pod0_application::FEED_DISCOVERY_NOTIFICATION_TTL_MILLISECONDS;
+    assert_eq!(
+        store
+            .reconcile_feed_discovery_preferences(expires_at)
+            .unwrap(),
+        1
+    );
+    assert!(notifications(&store, i64::MAX).is_empty());
+}
 
 #[test]
 fn off_and_all_new_download_policies_apply_to_the_original_batch() {
@@ -30,16 +94,10 @@ fn off_and_all_new_download_policies_apply_to_the_original_batch() {
     off_store
         .plan_pending_feed_discoveries(BASE_TIME + 3, 10)
         .unwrap();
-    assert!(
-        off_store
-            .pending_feed_discovery_effects(
-                FeedDiscoveryEffectKind::Download,
-                BASE_TIME + 3,
-                10,
-            )
-            .unwrap()
-            .is_empty()
-    );
+    assert!(off_store
+        .pending_feed_discovery_effects(FeedDiscoveryEffectKind::Download, BASE_TIME + 3, 10,)
+        .unwrap()
+        .is_empty());
 
     let (_all_fixture, all_store) = empty_authoritative_store();
     let all_podcast = podcast(&all_store);
@@ -64,11 +122,7 @@ fn off_and_all_new_download_policies_apply_to_the_original_batch() {
         .unwrap();
     assert_eq!(
         all_store
-            .pending_feed_discovery_effects(
-                FeedDiscoveryEffectKind::Download,
-                BASE_TIME + 3,
-                10,
-            )
+            .pending_feed_discovery_effects(FeedDiscoveryEffectKind::Download, BASE_TIME + 3, 10,)
             .unwrap()
             .len(),
         5
@@ -176,5 +230,16 @@ fn enable_notifications(
 fn notifications(store: &LibraryStore, now_ms: i64) -> Vec<crate::FeedDiscoveryEffectRecord> {
     store
         .pending_feed_discovery_effects(FeedDiscoveryEffectKind::Notification, now_ms, 10)
+        .unwrap()
+}
+
+fn recovery_receipt_count(path: &std::path::Path) -> i64 {
+    Connection::open(path)
+        .unwrap()
+        .query_row(
+            "SELECT COUNT(*) FROM pod0_transition_receipts WHERE ingress_code=5",
+            [],
+            |row| row.get(0),
+        )
         .unwrap()
 }

@@ -32,6 +32,33 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
             hash.update(b"hydrate-metadata\0");
             hash.update(podcast_id.into_bytes());
         }
+        ApplicationCommand::SearchPodcastDirectory { query, limit } => {
+            hash.update(b"search-podcast-directory\0");
+            hash.update(query.as_bytes());
+            hash.update([0]);
+            hash.update(limit.to_be_bytes());
+        }
+        ApplicationCommand::LoadTopPodcasts { storefront, limit } => {
+            hash.update(b"load-top-podcasts\0");
+            hash.update(storefront.as_bytes());
+            hash.update([0]);
+            hash.update(limit.to_be_bytes());
+        }
+        ApplicationCommand::ImportSharedEpisode { source_url } => {
+            hash.update(b"import-shared-episode\0");
+            hash.update(source_url.as_bytes());
+        }
+        ApplicationCommand::SearchPodcastCatalog {
+            episode_query,
+            podcast_hint,
+            limit,
+        } => {
+            hash.update(b"search-podcast-catalog\0");
+            hash.update(episode_query.as_bytes());
+            hash.update([0]);
+            hash.update(podcast_hint.as_deref().unwrap_or_default().as_bytes());
+            hash.update(limit.to_be_bytes());
+        }
         ApplicationCommand::UpsertSyntheticPodcast { .. }
         | ApplicationCommand::UpsertExternalEpisode { .. } => {
             hash_podcast_upsert(&mut hash, command)
@@ -118,6 +145,30 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
             hash.update(expected_configuration_revision.value.to_be_bytes());
             hash.update(configuration.stored_embedding_model_id.as_bytes());
             hash.update([0, u8::from(configuration.reranker_enabled)]);
+        }
+        ApplicationCommand::ImportLegacyWorkflowConfiguration {
+            configuration,
+            source_generation,
+        } => {
+            hash.update(b"import-legacy-workflow-configuration\0");
+            hash.update(serde_json::to_vec(configuration).unwrap_or_default());
+            hash.update(source_generation.into_bytes());
+        }
+        ApplicationCommand::SetWorkflowConfiguration {
+            expected_configuration_revision,
+            configuration,
+        } => {
+            hash.update(b"set-workflow-configuration\0");
+            hash.update(expected_configuration_revision.value.to_be_bytes());
+            hash.update(serde_json::to_vec(configuration).unwrap_or_default());
+        }
+        ApplicationCommand::ObserveWorkflowCapabilities { capabilities } => {
+            hash.update(b"observe-workflow-capabilities\0");
+            hash.update(serde_json::to_vec(capabilities).unwrap_or_default());
+        }
+        ApplicationCommand::ReconcileWorkflowOpportunity { opportunity } => {
+            hash.update(b"reconcile-workflow-opportunity\0");
+            hash.update(serde_json::to_vec(opportunity).unwrap_or_default());
         }
         ApplicationCommand::RebuildTranscriptEvidence { input, policy } => {
             hash_evidence_input(&mut hash, input, *policy);

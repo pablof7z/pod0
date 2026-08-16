@@ -25,6 +25,8 @@ fn workflow_projection_is_bounded() {
                 failure: None,
                 updated_at: UnixTimestampMilliseconds::new(index as i64),
                 allowed_actions: transcript_allowed_actions(TranscriptWorkflowStage::Requested),
+                retry_action: None,
+                cancel_action: None,
             })
             .collect(),
         has_more: false,

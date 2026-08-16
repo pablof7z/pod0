@@ -10,11 +10,10 @@ use pod0_domain::{
 use rusqlite::{Connection, params};
 
 use crate::recovery_test_support::Fixture;
-use crate::{
-    ActivityStore, StorageError, TransitionCommit, TransitionIngress, TransitionIngressKind,
-};
+use crate::transition_commit::TransitionCommit;
+use crate::{ActivityStore, StorageError, TransitionIngress, TransitionIngressKind};
 
-fn draft(
+pub(crate) fn draft(
     activity: u64,
     transaction: u64,
     correlation: u64,
@@ -37,7 +36,7 @@ fn draft(
     }
 }
 
-fn append(
+pub(crate) fn append(
     path: &std::path::Path,
     ingress_value: u64,
     value: ActivityFactDraft,
@@ -178,6 +177,37 @@ fn episode_timeline_includes_only_direct_facts_and_their_causal_ancestors() {
             .collect::<Vec<_>>(),
         vec![parent.activity_id, child.activity_id]
     );
+}
+
+#[test]
+fn causal_operation_and_support_queries_are_bounded_and_distinct() {
+    let fixture = Fixture::new();
+    fixture.migrate_to_current(6).unwrap();
+    let episode = EpisodeId::from_parts(10, 25);
+    append(&fixture.store, 1, draft(1, 1, 21, episode), 100).unwrap();
+    append(&fixture.store, 2, draft(2, 2, 21, episode), 101).unwrap();
+    append(&fixture.store, 3, draft(3, 3, 22, episode), 102).unwrap();
+    let store = ActivityStore::open(&fixture.store).unwrap();
+
+    let causal = store
+        .page_for_correlation(ActivityCorrelationId::from_parts(3, 21), None, 20)
+        .unwrap();
+    assert_eq!(sequences(&causal), [1, 2]);
+    let operation = store
+        .page_for_operation(CommandId::from_parts(4, 1), None, 20)
+        .unwrap();
+    assert_eq!(sequences(&operation), [1, 2]);
+
+    let first = store.page_for_support(None, 2).unwrap();
+    assert_eq!(sequences(&first), [1, 2]);
+    let second = store
+        .page_for_support(first.next_after_sequence, 2)
+        .unwrap();
+    assert_eq!(sequences(&second), [3]);
+}
+
+fn sequences(page: &crate::ActivityPage) -> Vec<u64> {
+    page.items.iter().map(|item| item.sequence).collect()
 }
 
 #[test]

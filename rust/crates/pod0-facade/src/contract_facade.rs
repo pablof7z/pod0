@@ -3,9 +3,29 @@ use pod0_application::{
     ChapterModelDesiredStatePlan, ChapterModelPlan, ChapterModelPlanInput, ChapterProjectionScope,
     TranscriptCapabilityObservation, TranscriptCapabilityRequest, TranscriptCapabilityValidation,
     TranscriptCommitRequest, TranscriptContractProjection, TranscriptProjectionScope,
-    TranscriptWorkflowPlan, TranscriptWorkflowPlanInput,
+    TranscriptWorkflowPlan, TranscriptWorkflowPlanInput, WorkflowCapabilitySnapshot,
+    WorkflowCapabilitySnapshotInput, WorkflowConfiguration, WorkflowReconcilePlan,
 };
-use pod0_domain::{EpisodeId, SpeakerId};
+use pod0_domain::{EpisodeId, ListeningDomainSnapshot, SpeakerId, UnixTimestampMilliseconds};
+
+#[uniffi::export]
+pub fn make_workflow_capability_snapshot(
+    input: WorkflowCapabilitySnapshotInput,
+    observed_at: UnixTimestampMilliseconds,
+) -> Option<WorkflowCapabilitySnapshot> {
+    WorkflowCapabilitySnapshot::from_input(input, observed_at).ok()
+}
+
+/// Pure shared planner used by the durable reconciliation transition. Native
+/// callers may announce capabilities, but cannot select workflow intent.
+#[uniffi::export]
+pub fn plan_workflow_reconciliation(
+    listening: ListeningDomainSnapshot,
+    configuration: WorkflowConfiguration,
+    capabilities: WorkflowCapabilitySnapshot,
+) -> WorkflowReconcilePlan {
+    pod0_application::plan_workflow_reconciliation(&listening, &configuration, &capabilities)
+}
 
 /// Produces bounded, state-shaped evidence for the typed transcript contract.
 #[uniffi::export]

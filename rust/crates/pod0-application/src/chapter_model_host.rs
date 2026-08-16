@@ -4,7 +4,7 @@ use crate::ChapterModelResponseFormat;
 
 /// The minimum provider request a native host needs to execute. Durable
 /// workflow identity, provenance, and qualification inputs stay in Rust.
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct ChapterModelExecutionRequest {
     pub provider: String,
     pub model: String,

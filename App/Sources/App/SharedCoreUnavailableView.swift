@@ -69,8 +69,6 @@ struct SharedCoreUnavailableView: View {
         }
     }
 
-    #if DEBUG
     /// Test seam: the rendered description, without reaching into SwiftUI.
     var messageForTesting: String { copy.message }
-    #endif
 }

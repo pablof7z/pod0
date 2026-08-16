@@ -1,5 +1,8 @@
 use std::path::Path;
 
+// Migration staging is deliberately outside clip authority: authoritative reads and every
+// product mutation reject these rows until `commit_clip_cutover` atomically activates them.
+
 use pod0_domain::{ClipRecord, CommandId, StateRevision};
 use rusqlite::{Transaction, TransactionBehavior, params};
 
@@ -9,7 +12,6 @@ use crate::clip_import_store_support::{
 };
 use crate::clip_store_codec::encode_source;
 use crate::clip_store_read::read_clip_snapshot;
-use crate::legacy_clip_source::{digest, inspect_clip_source};
 use crate::migration_db::{configure, open_connection, user_version};
 use crate::{
     CURRENT_SCHEMA_VERSION, ClipBackupEvidence, ClipImportReport, ClipImportVerification,
@@ -130,8 +132,7 @@ pub fn commit_clip_cutover(
     path: &Path,
     observed_at_ms: i64,
 ) -> Result<bool, StorageError> {
-    let mut connection = open_connection(path, false)?;
-    configure(&connection)?;
+    let connection = open_connection(path, true)?;
     let version = user_version(&connection)?;
     if version != CURRENT_SCHEMA_VERSION {
         return Err(StorageError::CorruptSchema {
@@ -139,59 +140,12 @@ pub fn commit_clip_cutover(
         });
     }
     crate::schema::validate_schema(&connection, version)?;
-    let transaction = connection
-        .transaction_with_behavior(TransactionBehavior::Immediate)
-        .map_err(|error| StorageError::sqlite("begin clip cutover", error))?;
-    let already = match cutover_state(&transaction)?.as_deref() {
-        Some("authoritative") => true,
-        Some("staged") => {
-            let import_bytes: Vec<u8> = transaction
-                .query_row(
-                    "SELECT source_import_id FROM pod0_clip_state WHERE singleton=1",
-                    [],
-                    |row| row.get(0),
-                )
-                .map_err(|error| StorageError::sqlite("read staged clip import", error))?;
-            let import_id = crate::model::command_id(&import_bytes)?;
-            let report = stored_clip_import_report(&transaction, import_id, None)?
-                .ok_or(StorageError::ImportNotFound)?;
-            let snapshot = read_clip_snapshot(&transaction)?;
-            if snapshot.clips.len() != report.plan.clip_count as usize
-                || digest(&snapshot.clips) != report.plan.source_hash
-            {
-                return Err(StorageError::CorruptSchema {
-                    detail: "staged clip snapshot does not match its verified import",
-                });
-            }
-            let current = inspect_clip_source(source_path)?;
-            if current.plan.source_kind != report.plan.source_kind
-                || current.plan.source_hash != report.plan.source_hash
-                || current.clips != snapshot.clips
-            {
-                discard_staged_clip_import(&transaction)?;
-                transaction
-                    .commit()
-                    .map_err(|error| StorageError::sqlite("discard stale clip import", error))?;
-                return Err(StorageError::SourceChanged);
-            }
-            transaction
-                .execute(
-                    "UPDATE pod0_domain_cutovers SET state='authoritative',committed_at_ms=?1 \
-                     WHERE domain='clips' AND state='staged'",
-                    [observed_at_ms],
-                )
-                .map_err(|error| StorageError::sqlite("commit clip cutover", error))?;
-            false
-        }
-        _ => return Err(StorageError::ImportNotFound),
-    };
-    transaction
-        .commit()
-        .map_err(|error| StorageError::sqlite("commit clip cutover", error))?;
-    Ok(already)
+    crate::transition_commit::commit_clip_cutover(source_path, path, observed_at_ms)
 }
 
-fn discard_staged_clip_import(transaction: &Transaction<'_>) -> Result<(), StorageError> {
+pub(crate) fn discard_staged_clip_import(
+    transaction: &Transaction<'_>,
+) -> Result<(), StorageError> {
     for (sql, operation) in [
         ("DELETE FROM pod0_clips", "discard staged clips"),
         ("DELETE FROM pod0_clip_state", "discard staged clip state"),

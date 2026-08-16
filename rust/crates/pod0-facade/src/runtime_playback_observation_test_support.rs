@@ -2,7 +2,7 @@ use super::*;
 
 pub(crate) fn record_playback(
     facade: &Pod0Facade,
-    stream: &HostRequestEnvelope,
+    stream: &PlaybackTestRequest,
     sequence_number: u64,
     observed_at: i64,
     position: u64,
@@ -32,18 +32,21 @@ pub(crate) fn record_playback(
 
 pub(crate) fn record_observation(
     facade: &Pod0Facade,
-    request: &HostRequestEnvelope,
+    request: &PlaybackTestRequest,
     sequence_number: u64,
     observed_at: i64,
     value: PlaybackLifecycleObservation,
 ) {
-    facade.record_host_observation(HostObservationEnvelope {
-        request_id: request.request_id,
-        cancellation_id: request.cancellation_id,
-        observed_request_revision: request.issued_revision,
-        sequence_number,
-        observed_at: UnixTimestampMilliseconds::new(observed_at),
-        observation: HostObservation::PlaybackObserved { value },
+    facade.record_leased_host_observation(LeasedHostObservationEnvelope {
+        lease: request.lease,
+        observation: HostObservationEnvelope {
+            request_id: request.request_id,
+            cancellation_id: request.cancellation_id,
+            observed_request_revision: request.issued_revision,
+            sequence_number,
+            observed_at: UnixTimestampMilliseconds::new(observed_at),
+            observation: HostObservation::PlaybackObserved { value },
+        },
     });
 }
 

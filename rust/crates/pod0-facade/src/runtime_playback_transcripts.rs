@@ -69,28 +69,28 @@ impl FacadeState {
                 command.request.kind,
                 InternalCommandKind::EnsureTranscriptWorkflow { .. }
             ) {
-                self.execute_playback_transcript_command(&store, command);
+                let _ = self.execute_playback_transcript_command(&store, command);
             }
         }
     }
 
-    fn execute_playback_transcript_command(
+    pub(super) fn execute_playback_transcript_command(
         &mut self,
         store: &LibraryStore,
         command: PendingInternalCommand,
-    ) {
+    ) -> bool {
         let InternalCommandKind::EnsureTranscriptWorkflow {
             origin,
             configuration,
         } = command.request.kind.clone()
         else {
-            return;
+            return false;
         };
         let Some(episode_id) = command.request.episode_id else {
-            return;
+            return false;
         };
         if !self.transcript_origin_is_allowed(episode_id, origin) {
-            self.consume_transcript_command(
+            return self.consume_transcript_command(
                 store,
                 command,
                 episode_id,
@@ -98,23 +98,21 @@ impl FacadeState {
                     reason: RequestRejectionReason::NotAllowed,
                 },
             );
-            return;
         }
         let Ok(existing) = store.transcript_workflow(episode_id) else {
-            return;
+            return false;
         };
         if existing.is_some() {
-            self.consume_transcript_command(
+            return self.consume_transcript_command(
                 store,
                 command,
                 episode_id,
                 RequestDisposition::Duplicate,
             );
-            return;
         }
         let Some(runtime_plan) = self.transcript_workflow_plan(episode_id, origin, configuration)
         else {
-            self.consume_transcript_command(
+            return self.consume_transcript_command(
                 store,
                 command,
                 episode_id,
@@ -122,22 +120,20 @@ impl FacadeState {
                     reason: RequestRejectionReason::MissingSubject,
                 },
             );
-            return;
         };
         let request = match runtime_plan.plan.generation {
             TranscriptGenerationDecision::Ensure => runtime_plan.plan.request,
             TranscriptGenerationDecision::Current => {
-                self.consume_transcript_command(
+                return self.consume_transcript_command(
                     store,
                     command,
                     episode_id,
                     RequestDisposition::AlreadyComplete,
                 );
-                return;
             }
             TranscriptGenerationDecision::AwaitingCredential { .. }
             | TranscriptGenerationDecision::AwaitingLocalAudio => {
-                self.consume_transcript_command(
+                return self.consume_transcript_command(
                     store,
                     command,
                     episode_id,
@@ -145,10 +141,9 @@ impl FacadeState {
                         reason: RequestRejectionReason::MissingPrerequisite,
                     },
                 );
-                return;
             }
             TranscriptGenerationDecision::Blocked { .. } => {
-                self.consume_transcript_command(
+                return self.consume_transcript_command(
                     store,
                     command,
                     episode_id,
@@ -156,10 +151,9 @@ impl FacadeState {
                         reason: RequestRejectionReason::Invalid,
                     },
                 );
-                return;
             }
             TranscriptGenerationDecision::NotRequested => {
-                self.consume_transcript_command(
+                return self.consume_transcript_command(
                     store,
                     command,
                     episode_id,
@@ -167,10 +161,9 @@ impl FacadeState {
                         reason: RequestRejectionReason::NotAllowed,
                     },
                 );
-                return;
             }
         };
-        let Some(request) = request else { return };
+        let Some(request) = request else { return false };
         let now = self.now().value;
         let attempt = existing
             .as_ref()
@@ -221,7 +214,9 @@ impl FacadeState {
             }
             self.advance_revision();
             self.queue_transcript_request(&record);
+            return true;
         }
+        false
     }
 
     fn consume_transcript_command(
@@ -230,14 +225,15 @@ impl FacadeState {
         command: PendingInternalCommand,
         episode_id: EpisodeId,
         disposition: RequestDisposition,
-    ) {
-        let _ = store.record_transcript_internal_disposition(
+    ) -> bool {
+        store.record_transcript_internal_disposition(
             command,
             episode_id,
             self.revision,
             disposition,
             self.now(),
-        );
+        )
+        .is_ok()
     }
 }
 

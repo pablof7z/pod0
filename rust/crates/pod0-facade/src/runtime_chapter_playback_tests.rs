@@ -1,11 +1,13 @@
-use crate::runtime_playback_test_support::{PlaybackFixture, dispatch, playback};
+use crate::runtime_playback_test_support::{
+    PlaybackFixture, PlaybackTestRequest, dispatch, next_playback_requests, playback,
+};
 use crate::*;
 
 #[test]
 fn typed_navigation_uses_the_selected_artifact_and_cannot_replay_a_seek() {
     let fixture = PlaybackFixture::new_with_chapters();
     fixture.dispatch(100, PlaybackCommand::Restore);
-    let _ = fixture.facade.next_host_requests(u16::MAX);
+    let _ = next_playback_requests(&fixture.facade);
     let context = fixture
         .playback()
         .current
@@ -24,7 +26,7 @@ fn typed_navigation_uses_the_selected_artifact_and_cannot_replay_a_seek() {
             position_milliseconds: 0,
         },
     );
-    let requests = fixture.facade.next_host_requests(u16::MAX);
+    let requests = next_playback_requests(&fixture.facade);
     assert_eq!(chapter_seeks(&requests).len(), 1);
     assert!(matches!(
         chapter_seeks(&requests)[0].request,
@@ -51,11 +53,11 @@ fn typed_navigation_uses_the_selected_artifact_and_cannot_replay_a_seek() {
             position_milliseconds: 0,
         },
     );
-    assert!(fixture.facade.next_host_requests(u16::MAX).is_empty());
+    assert!(next_playback_requests(&fixture.facade).is_empty());
 
     let reopened = Pod0Facade::open(fixture.target.to_string_lossy().into_owned()).unwrap();
     dispatch(&reopened, 100, PlaybackCommand::Restore);
-    let _ = reopened.next_host_requests(u16::MAX);
+    let _ = next_playback_requests(&reopened);
     assert_eq!(
         playback(&reopened).current.unwrap().chapter_context,
         Some(context),
@@ -70,7 +72,7 @@ fn typed_navigation_uses_the_selected_artifact_and_cannot_replay_a_seek() {
         },
     );
     assert!(
-        chapter_seeks(&reopened.next_host_requests(u16::MAX)).is_empty(),
+        chapter_seeks(&next_playback_requests(&reopened)).is_empty(),
         "the durable command receipt must suppress a repeated native seek"
     );
 }
@@ -79,7 +81,7 @@ fn typed_navigation_uses_the_selected_artifact_and_cannot_replay_a_seek() {
 fn previous_navigation_preserves_restart_semantics_and_rejects_stale_sessions() {
     let fixture = PlaybackFixture::new_with_chapters();
     fixture.dispatch(110, PlaybackCommand::Restore);
-    let _ = fixture.facade.next_host_requests(u16::MAX);
+    let _ = next_playback_requests(&fixture.facade);
     let context = fixture.playback().current.unwrap().chapter_context.unwrap();
 
     fixture.dispatch(
@@ -89,7 +91,7 @@ fn previous_navigation_preserves_restart_semantics_and_rejects_stale_sessions() 
             position_milliseconds: 61_000,
         },
     );
-    let requests = fixture.facade.next_host_requests(u16::MAX);
+    let requests = next_playback_requests(&fixture.facade);
     assert!(matches!(
         chapter_seeks(&requests).single().request,
         HostRequest::Seek {
@@ -106,7 +108,7 @@ fn previous_navigation_preserves_restart_semantics_and_rejects_stale_sessions() 
             position_milliseconds: 64_000,
         },
     );
-    let requests = fixture.facade.next_host_requests(u16::MAX);
+    let requests = next_playback_requests(&fixture.facade);
     assert!(matches!(
         chapter_seeks(&requests).single().request,
         HostRequest::Seek {
@@ -127,7 +129,7 @@ fn previous_navigation_preserves_restart_semantics_and_rejects_stale_sessions() 
             position_milliseconds: 0,
         },
     );
-    assert!(chapter_seeks(&fixture.facade.next_host_requests(u16::MAX)).is_empty());
+    assert!(chapter_seeks(&next_playback_requests(&fixture.facade)).is_empty());
     let playback = fixture.playback();
     let operation = playback
         .operations
@@ -141,7 +143,7 @@ fn previous_navigation_preserves_restart_semantics_and_rejects_stale_sessions() 
     );
 }
 
-fn chapter_seeks(requests: &[HostRequestEnvelope]) -> Vec<&HostRequestEnvelope> {
+fn chapter_seeks(requests: &[PlaybackTestRequest]) -> Vec<&PlaybackTestRequest> {
     requests
         .iter()
         .filter(|request| {

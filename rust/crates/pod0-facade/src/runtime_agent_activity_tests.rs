@@ -6,8 +6,6 @@ fn agent_model_call_is_authorized_leased_and_observed_across_restart() {
     let fixture = PlaybackFixture::new();
     let command = super::tests::start_command(9_001);
     fixture.facade.dispatch(command.clone());
-    assert!(fixture.facade.next_host_requests(1).is_empty());
-
     let reopened = Pod0Facade::open(fixture.target.to_string_lossy().into_owned()).unwrap();
     let leased = reopened.next_leased_host_requests(1).remove(0);
     let HostRequest::ExecuteAgentModelTurn { execution } = &leased.request.request else {

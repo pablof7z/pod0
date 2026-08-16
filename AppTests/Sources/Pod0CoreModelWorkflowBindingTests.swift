@@ -121,7 +121,9 @@ final class Pod0CoreModelWorkflowBindingTests: XCTestCase {
             allowedActions: ModelChapterWorkflowAllowedActions(
                 canRetry: false,
                 canCancel: false
-            )
+            ),
+            retryAction: nil,
+            cancelAction: nil
         )
         XCTAssertEqual(projection.stage, .providerAccepted)
     }

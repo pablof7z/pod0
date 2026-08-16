@@ -103,6 +103,31 @@ pub(super) fn apply_mutation(
             position_milliseconds,
             observed_at_ms,
         )?,
+        PlaybackMutation::CheckpointAndAdvanceQueue {
+            episode_id,
+            position_milliseconds,
+        } => {
+            checkpoint(
+                transaction,
+                episode_id,
+                position_milliseconds,
+                observed_at_ms,
+            )?;
+            advance_queue(transaction)?;
+        }
+        PlaybackMutation::CheckpointAndFinishActive {
+            episode_id,
+            position_milliseconds,
+            suppress_auto_advance,
+        } => {
+            checkpoint(
+                transaction,
+                episode_id,
+                position_milliseconds,
+                observed_at_ms,
+            )?;
+            finish_active(transaction, observed_at_ms, suppress_auto_advance)?;
+        }
         PlaybackMutation::FinishActive {
             suppress_auto_advance,
         } => finish_active(transaction, observed_at_ms, suppress_auto_advance)?,

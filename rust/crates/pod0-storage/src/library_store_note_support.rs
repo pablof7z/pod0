@@ -1,6 +1,9 @@
 use pod0_domain::{
     CommandId, NoteAuthor, NoteEvidenceReference, NoteId, NoteTarget, StateRevision,
 };
+
+// Transaction-only components for typed note commits. This module cannot open or commit a store;
+// all production entry points that reach it are owned by `transition_commit_*` modules.
 use rusqlite::{Connection, OptionalExtension, Transaction, params};
 
 use crate::library_store::finish_command;

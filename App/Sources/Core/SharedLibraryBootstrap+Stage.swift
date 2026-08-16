@@ -1,6 +1,10 @@
 enum SharedLibraryBootstrapStage: String {
     case storePreparation
     case listening
+    case listeningInspection
+    case listeningStaging
+    case listeningVerification
+    case listeningCommit
     case notes
     case clips
     case transcriptInspection
@@ -16,9 +20,4 @@ enum SharedLibraryBootstrapStage: String {
     case downloadWorkflowCutover
     case feedDiscoveryWorkflowCutover
     case transcriptWorkflowCutover
-    case scheduledAgentWorkflowCutover
-    case agentHistoryCutover
-    case agentRunLogRetirement
-    case agentMemoryCutover
-    case agentActivityRetirement
 }

@@ -1,16 +1,12 @@
 use pod0_application::{
-    AgentCapabilityExecutionMode, AgentExecutionKind, AgentTurnStage, AgentTurnStart,
-    AgentTurnState, AgentWorkflowAcceptance, ApplicationCommand, CommandEnvelope, CoreFailureCode,
-    OperationResult, RequestDisposition, RequestRejectionReason, agent_tool_policy,
+    AgentTurnStage, AgentTurnStart, AgentTurnState, ApplicationCommand, CommandEnvelope,
+    CoreFailureCode, OperationResult, RequestDisposition, RequestRejectionReason,
     product_proof_agent_tools,
 };
-use pod0_domain::{AgentTurnId, ConversationId, StateRevision, UnixTimestampMilliseconds};
-use pod0_storage::{AgentAuditKind, AgentCommandContext, StorageError};
+use pod0_domain::{AgentTurnId, ConversationId, StateRevision};
+use pod0_storage::AgentCommandContext;
 
-use crate::runtime_agent_modules::identity::{
-    agent_command_id, agent_execution_fence_id, agent_fingerprint, agent_turn_id, model_fence_id,
-};
-use crate::runtime_agent_modules::persistence::persist_agent_update;
+use crate::runtime_agent_modules::identity::{agent_fingerprint, agent_turn_id, model_fence_id};
 use crate::runtime_state::FacadeState;
 use crate::runtime_storage_commands::storage_failure;
 
@@ -133,11 +129,9 @@ impl FacadeState {
         );
         match result {
             Ok(outcome) if outcome.disposition == RequestDisposition::Accepted => {
-                self.retire_agent_recalls_for_turn(turn_id);
                 if let Some(cancellation_id) = outcome.cancellation_id {
                     self.cancel_operation(cancellation_id);
                 }
-                self.withdraw_agent_requests(turn_id);
                 self.succeed(envelope.command_id, None);
             }
             Ok(outcome) => self.fail(
@@ -157,54 +151,6 @@ impl FacadeState {
                 },
             ),
             Err(error) => self.fail(envelope.command_id, storage_failure(error)),
-        }
-    }
-
-    pub(crate) fn begin_authorized_agent_action(
-        &mut self,
-        store: &pod0_storage::AgentStore,
-        mut state: AgentTurnState,
-        observed_at: UnixTimestampMilliseconds,
-    ) -> Result<(), StorageError> {
-        let before = state.projection();
-        let proposal = before
-            .proposal
-            .as_ref()
-            .ok_or(StorageError::InvalidAgentState)?;
-        let fence = agent_execution_fence_id(proposal.proposal_id, proposal.proposal_digest);
-        if state.begin_execution(fence, observed_at) != AgentWorkflowAcceptance::Updated {
-            return Err(StorageError::AgentTurnConflict);
-        }
-        let command_id = agent_command_id(b"begin-execution", before.turn_id);
-        let state = persist_agent_update(
-            store,
-            command_id,
-            b"pod0:agent-begin-execution:v1",
-            AgentAuditKind::ExecutionStarted,
-            before.revision,
-            state,
-            observed_at,
-        )?;
-        let execution = state
-            .projection()
-            .proposal
-            .as_ref()
-            .map(|proposal| agent_tool_policy(proposal.action.tool()).execution)
-            .ok_or(StorageError::InvalidAgentState)?;
-        match execution {
-            AgentExecutionKind::RustCommit | AgentExecutionKind::RustProjection => {
-                self.execute_internal_agent_action(store, state, observed_at)
-            }
-            AgentExecutionKind::NativeCapability
-            | AgentExecutionKind::NativeConversationPresentation
-            | AgentExecutionKind::NativeCapabilityAndNmpPublication => {
-                let _ = self.queue_agent_capability_request(
-                    command_id,
-                    &state,
-                    AgentCapabilityExecutionMode::Perform,
-                );
-                Ok(())
-            }
         }
     }
 }

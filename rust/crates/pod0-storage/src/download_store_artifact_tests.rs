@@ -132,6 +132,21 @@ fn recovery_adopts_after_each_filesystem_transaction_boundary() {
                 .unwrap()
                 .is_empty()
         );
+        assert!(reopened
+            .activity_page_for_episode(fixture.episode_id, None, 100)
+            .unwrap()
+            .items
+            .iter()
+            .any(|fact| fact.draft.origin == pod0_application::ActivityOrigin::Recovery
+                && matches!(
+                    fact.draft.fact,
+                    pod0_application::ActivityFact::DomainTransition {
+                        kind: pod0_application::DomainTransitionKind::Download(
+                            pod0_application::DownloadTransition::AttemptStateChanged
+                        ),
+                        ..
+                    }
+                )));
     }
 }
 
@@ -170,6 +185,13 @@ fn missing_staged_and_corrupt_canonical_files_become_typed_repair_state() {
         .unwrap();
     assert_eq!(repaired.stage, StoredDownloadStage::Failed);
     assert_eq!(repaired.failure_code.as_deref(), Some("invalid_artifact"));
+    assert!(missing
+        .store
+        .activity_page_for_episode(missing.episode_id, None, 100)
+        .unwrap()
+        .items
+        .iter()
+        .any(|fact| fact.draft.origin == pod0_application::ActivityOrigin::Recovery));
 
     let staged_corrupt = DownloadFixture::new();
     let requested = staged_corrupt.ensure(1, true);

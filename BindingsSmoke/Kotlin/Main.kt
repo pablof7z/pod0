@@ -74,7 +74,7 @@ fun main(args: Array<String>) {
                 ApplicationCommand.CancelOperation(CancellationId(0UL, 4UL)),
             ),
         )
-        check(facade.nextHostRequests(64u.toUShort()).isEmpty())
+        check(facade.nextLeasedHostRequests(64u.toUShort()).isEmpty())
         val cancelledProjection = facade.snapshot(request).projection
         check(cancelledProjection is Projection.Library)
         check(cancelledProjection.value.feedFetches.isEmpty())

@@ -55,7 +55,9 @@ final class PublisherChapterWorkflowProjectionTests: XCTestCase {
             createdAt: UnixTimestampMilliseconds(value: 1_000),
             updatedAt: UnixTimestampMilliseconds(value: 2_000),
             canRetry: canRetry,
-            canCancel: canCancel
+            canCancel: canCancel,
+            retryAction: nil,
+            cancelAction: nil
         )
     }
 }

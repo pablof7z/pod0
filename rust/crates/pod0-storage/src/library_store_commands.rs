@@ -4,10 +4,10 @@ use pod0_domain::{
 use rusqlite::{OptionalExtension, params};
 
 use crate::StorageError;
-use crate::library_store::{LibraryStore, command_was_applied, finish_command};
+use crate::library_store::LibraryStore;
 use crate::library_store_clip_support::set_clip_revision;
-use crate::library_store_note_support::finish_note_command;
 use crate::listening_db_codec::{auto_download, bool_value, transcript_start_policy};
+use pod0_application::{ActivitySubject, LibraryFeedTransition};
 
 impl LibraryStore {
     pub fn set_episode_starred(
@@ -34,49 +34,12 @@ impl LibraryStore {
         command_fingerprint: &str,
         observed_at_ms: i64,
     ) -> Result<StateRevision, StorageError> {
-        self.write(|transaction| {
-            if let Some(revision) =
-                command_was_applied(transaction, command_id, command_fingerprint)?
-            {
-                return Ok(revision);
-            }
-            transaction
-                .execute("DELETE FROM pod0_queue_entries", [])
-                .map_err(|error| StorageError::sqlite("reset listening queue", error))?;
-            transaction
-                .execute("DELETE FROM pod0_clips", [])
-                .map_err(|error| StorageError::sqlite("reset clips", error))?;
-            transaction
-                .execute("DELETE FROM pod0_notes", [])
-                .map_err(|error| StorageError::sqlite("reset notes", error))?;
-            transaction.execute(
-                "UPDATE pod0_playback_state SET active_episode_id=NULL,playback_rate_permille=1000,\
-                 sleep_mode_code=1,sleep_duration_ms=NULL,sleep_wire_code=NULL,\
-                 auto_mark_played_at_natural_end=1,auto_play_next=1,\
-                 active_segment_start_ms=NULL,active_segment_end_ms=NULL,\
-                 active_segment_label=NULL,last_position_committed_at_ms=NULL WHERE singleton=1",
-                [],
-            ).map_err(|error| StorageError::sqlite("reset listening playback", error))?;
-            transaction
-                .execute("DELETE FROM pod0_episode_feed_metadata", [])
-                .map_err(|error| StorageError::sqlite("reset episode metadata", error))?;
-            transaction
-                .execute("DELETE FROM pod0_episodes", [])
-                .map_err(|error| StorageError::sqlite("reset listening episodes", error))?;
-            transaction
-                .execute("DELETE FROM pod0_subscriptions", [])
-                .map_err(|error| StorageError::sqlite("reset subscriptions", error))?;
-            transaction
-                .execute("DELETE FROM pod0_podcasts", [])
-                .map_err(|error| StorageError::sqlite("reset podcasts", error))?;
-            transaction
-                .execute("DELETE FROM pod0_library_commands", [])
-                .map_err(|error| StorageError::sqlite("reset command receipts", error))?;
-            let revision =
-                finish_note_command(transaction, command_id, command_fingerprint, observed_at_ms)?;
-            set_clip_revision(transaction, revision)?;
-            Ok(revision)
-        })
+        self.reset_listening_data_with_effects(
+            command_id,
+            command_fingerprint,
+            Vec::new(),
+            observed_at_ms,
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -89,30 +52,35 @@ impl LibraryStore {
         last_modified: Option<String>,
         observed_at_ms: i64,
     ) -> Result<StateRevision, StorageError> {
-        self.write(|transaction| {
-            if let Some(revision) =
-                command_was_applied(transaction, command_id, command_fingerprint)?
-            {
-                return Ok(revision);
-            }
-            let changed = transaction
-                .execute(
-                    "UPDATE pod0_podcasts SET last_refreshed_at_ms=?1,\
+        self.commit_library_activity(
+            command_id,
+            command_fingerprint,
+            ActivitySubject::Podcast { podcast_id },
+            None,
+            LibraryFeedTransition::FeedFetchStateChanged,
+            observed_at_ms,
+            |_| Ok((true, (entity_tag, last_modified))),
+            |transaction, (entity_tag, last_modified)| {
+                let changed = transaction
+                    .execute(
+                        "UPDATE pod0_podcasts SET last_refreshed_at_ms=?1,\
                  etag=COALESCE(?2,etag),last_modified=COALESCE(?3,last_modified) \
                  WHERE podcast_id=?4",
-                    params![
-                        observed_at_ms,
-                        entity_tag,
-                        last_modified,
-                        podcast_id.into_bytes().as_slice()
-                    ],
-                )
-                .map_err(|error| StorageError::sqlite("record not-modified feed", error))?;
-            if changed != 1 {
-                return Err(StorageError::EntityNotFound);
-            }
-            finish_command(transaction, command_id, command_fingerprint, observed_at_ms)
-        })
+                        params![
+                            observed_at_ms,
+                            entity_tag,
+                            last_modified,
+                            podcast_id.into_bytes().as_slice()
+                        ],
+                    )
+                    .map_err(|error| StorageError::sqlite("record not-modified feed", error))?;
+                if changed != 1 {
+                    return Err(StorageError::EntityNotFound);
+                }
+                Ok(())
+            },
+            |_, _| Ok(()),
+        )
     }
 
     pub fn unsubscribe(
@@ -122,52 +90,56 @@ impl LibraryStore {
         podcast_id: PodcastId,
         observed_at_ms: i64,
     ) -> Result<StateRevision, StorageError> {
-        self.write(|transaction| {
-            if let Some(revision) =
-                command_was_applied(transaction, command_id, command_fingerprint)?
-            {
-                return Ok(revision);
-            }
-            let exists: Option<i64> = transaction
-                .query_row(
-                    "SELECT 1 FROM pod0_podcasts WHERE podcast_id=?1",
-                    [podcast_id.into_bytes().as_slice()],
-                    |row| row.get(0),
-                )
-                .optional()
-                .map_err(|error| StorageError::sqlite("find podcast for removal", error))?;
-            if exists.is_none() {
-                return Err(StorageError::EntityNotFound);
-            }
-            transaction
-                .execute(
-                    "DELETE FROM pod0_queue_entries WHERE episode_id IN \
+        self.commit_library_activity(
+            command_id,
+            command_fingerprint,
+            ActivitySubject::Podcast { podcast_id },
+            None,
+            LibraryFeedTransition::SubscriptionChanged,
+            observed_at_ms,
+            |transaction| {
+                let exists: Option<i64> = transaction
+                    .query_row(
+                        "SELECT 1 FROM pod0_podcasts WHERE podcast_id=?1",
+                        [podcast_id.into_bytes().as_slice()],
+                        |row| row.get(0),
+                    )
+                    .optional()
+                    .map_err(|error| StorageError::sqlite("find podcast for removal", error))?;
+                if exists.is_none() {
+                    return Err(StorageError::EntityNotFound);
+                }
+                Ok((true, ()))
+            },
+            |transaction, ()| {
+                transaction
+                    .execute(
+                        "DELETE FROM pod0_queue_entries WHERE episode_id IN \
                  (SELECT episode_id FROM pod0_episodes WHERE podcast_id=?1)",
-                    [podcast_id.into_bytes().as_slice()],
-                )
-                .map_err(|error| StorageError::sqlite("remove podcast queue entries", error))?;
-            transaction.execute(
+                        [podcast_id.into_bytes().as_slice()],
+                    )
+                    .map_err(|error| StorageError::sqlite("remove podcast queue entries", error))?;
+                transaction.execute(
                 "UPDATE pod0_playback_state SET active_episode_id=NULL WHERE active_episode_id IN \
                  (SELECT episode_id FROM pod0_episodes WHERE podcast_id=?1)",
                 [podcast_id.into_bytes().as_slice()],
             ).map_err(|error| StorageError::sqlite("clear removed active episode", error))?;
-            transaction
-                .execute(
-                    "DELETE FROM pod0_subscriptions WHERE podcast_id=?1",
-                    [podcast_id.into_bytes().as_slice()],
-                )
-                .map_err(|error| StorageError::sqlite("remove subscription", error))?;
-            transaction
-                .execute(
-                    "UPDATE pod0_podcasts SET library_visible=0 WHERE podcast_id=?1",
-                    [podcast_id.into_bytes().as_slice()],
-                )
-                .map_err(|error| StorageError::sqlite("hide unsubscribed podcast", error))?;
-            let revision =
-                finish_command(transaction, command_id, command_fingerprint, observed_at_ms)?;
-            set_clip_revision(transaction, revision)?;
-            Ok(revision)
-        })
+                transaction
+                    .execute(
+                        "DELETE FROM pod0_subscriptions WHERE podcast_id=?1",
+                        [podcast_id.into_bytes().as_slice()],
+                    )
+                    .map_err(|error| StorageError::sqlite("remove subscription", error))?;
+                transaction
+                    .execute(
+                        "UPDATE pod0_podcasts SET library_visible=0 WHERE podcast_id=?1",
+                        [podcast_id.into_bytes().as_slice()],
+                    )
+                    .map_err(|error| StorageError::sqlite("hide unsubscribed podcast", error))?;
+                Ok(())
+            },
+            set_clip_revision,
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -181,59 +153,93 @@ impl LibraryStore {
         transcript_policy: Option<TranscriptStartPolicy>,
         observed_at_ms: i64,
     ) -> Result<StateRevision, StorageError> {
-        self.write(|transaction| {
-            if let Some(revision) =
-                command_was_applied(transaction, command_id, command_fingerprint)?
-            {
-                return Ok(revision);
-            }
-            if let Some(policy) = auto_download_policy {
-                let (code, wire, latest) = auto_download(&policy.mode);
-                let changed = transaction
-                    .execute(
-                        "UPDATE pod0_subscriptions SET auto_download_code=?1,\
-                     auto_download_wire_code=?2,auto_download_latest_count=?3,wifi_only=?4 \
-                     WHERE podcast_id=?5",
-                        params![
-                            code,
-                            wire,
-                            latest,
-                            bool_value(policy.wifi_only),
-                            podcast_id.into_bytes().as_slice()
-                        ],
+        let transition = if transcript_policy.is_some() {
+            LibraryFeedTransition::TranscriptPreferenceChanged
+        } else if notifications_enabled.is_some() {
+            LibraryFeedTransition::NotificationPreferenceChanged
+        } else {
+            LibraryFeedTransition::SubscriptionChanged
+        };
+        self.commit_library_activity(
+            command_id,
+            command_fingerprint,
+            ActivitySubject::Podcast { podcast_id },
+            None,
+            transition,
+            observed_at_ms,
+            |transaction| {
+                let exists: Option<i64> = transaction
+                    .query_row(
+                        "SELECT 1 FROM pod0_subscriptions WHERE podcast_id=?1",
+                        [podcast_id.into_bytes().as_slice()],
+                        |row| row.get(0),
                     )
+                    .optional()
                     .map_err(|error| {
-                        StorageError::sqlite("update auto-download preference", error)
+                        StorageError::sqlite("find subscription for preference", error)
                     })?;
-                if changed != 1 {
+                if exists.is_none() {
                     return Err(StorageError::EntityNotFound);
                 }
-            }
-            if let Some(enabled) = notifications_enabled {
-                let changed = transaction.execute(
+                Ok((
+                    true,
+                    (
+                        auto_download_policy,
+                        notifications_enabled,
+                        transcript_policy,
+                    ),
+                ))
+            },
+            |transaction, (auto_download_policy, notifications_enabled, transcript_policy)| {
+                if let Some(policy) = auto_download_policy {
+                    let (code, wire, latest) = auto_download(&policy.mode);
+                    let changed = transaction
+                        .execute(
+                            "UPDATE pod0_subscriptions SET auto_download_code=?1,\
+                     auto_download_wire_code=?2,auto_download_latest_count=?3,wifi_only=?4 \
+                     WHERE podcast_id=?5",
+                            params![
+                                code,
+                                wire,
+                                latest,
+                                bool_value(policy.wifi_only),
+                                podcast_id.into_bytes().as_slice()
+                            ],
+                        )
+                        .map_err(|error| {
+                            StorageError::sqlite("update auto-download preference", error)
+                        })?;
+                    if changed != 1 {
+                        return Err(StorageError::EntityNotFound);
+                    }
+                }
+                if let Some(enabled) = notifications_enabled {
+                    let changed = transaction.execute(
                     "UPDATE pod0_subscriptions SET notifications_enabled=?1 WHERE podcast_id=?2",
                     params![bool_value(enabled), podcast_id.into_bytes().as_slice()],
                 ).map_err(|error| StorageError::sqlite("update notification preference", error))?;
-                if changed != 1 {
-                    return Err(StorageError::EntityNotFound);
+                    if changed != 1 {
+                        return Err(StorageError::EntityNotFound);
+                    }
                 }
-            }
-            if let Some(policy) = transcript_policy {
-                let (code, wire) = transcript_start_policy(&policy);
-                let changed = transaction
-                    .execute(
-                        "UPDATE pod0_subscriptions SET transcript_start_policy_code=?1,\
+                if let Some(policy) = transcript_policy {
+                    let (code, wire) = transcript_start_policy(&policy);
+                    let changed = transaction
+                        .execute(
+                            "UPDATE pod0_subscriptions SET transcript_start_policy_code=?1,\
                      transcript_start_policy_wire_code=?2 WHERE podcast_id=?3",
-                        params![code, wire, podcast_id.into_bytes().as_slice()],
-                    )
-                    .map_err(|error| {
-                        StorageError::sqlite("update transcript start preference", error)
-                    })?;
-                if changed != 1 {
-                    return Err(StorageError::EntityNotFound);
+                            params![code, wire, podcast_id.into_bytes().as_slice()],
+                        )
+                        .map_err(|error| {
+                            StorageError::sqlite("update transcript start preference", error)
+                        })?;
+                    if changed != 1 {
+                        return Err(StorageError::EntityNotFound);
+                    }
                 }
-            }
-            finish_command(transaction, command_id, command_fingerprint, observed_at_ms)
-        })
+                Ok(())
+            },
+            |_, _| Ok(()),
+        )
     }
 }

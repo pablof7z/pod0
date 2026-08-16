@@ -1,4 +1,7 @@
 use pod0_domain::{CommandId, MemoryId, MemoryRevision, StateRevision};
+
+// Transaction-only components for typed memory commits. This module cannot open or commit a
+// store; all production entry points that reach it are owned by `transition_commit_*` modules.
 use rusqlite::{Connection, OptionalExtension, Transaction};
 
 use crate::library_store::finish_command;

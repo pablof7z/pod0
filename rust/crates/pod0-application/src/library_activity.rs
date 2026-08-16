@@ -22,7 +22,9 @@ pub enum EpisodeStarredMutation {
         starred: bool,
     },
     RecordNoChange,
-    LegacyDuplicate,
+    LegacyDuplicate {
+        committed_revision: StateRevision,
+    },
 }
 
 pub type EpisodeStarredPlan = TransitionPlan<
@@ -95,7 +97,11 @@ pub fn plan_episode_starred(
             )
         }
         RequestDisposition::Duplicate => (
-            EpisodeStarredMutation::LegacyDuplicate,
+            EpisodeStarredMutation::LegacyDuplicate {
+                committed_revision: state
+                    .legacy_command_revision
+                    .expect("duplicate has legacy revision"),
+            },
             NonEmptyActivityFacts::new(disposition_fact),
         ),
         _ => (

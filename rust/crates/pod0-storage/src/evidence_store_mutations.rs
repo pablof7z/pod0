@@ -1,15 +1,21 @@
 use pod0_domain::{CommandId, EpisodeId, EvidenceGenerationId};
-use rusqlite::{OptionalExtension, params};
+#[cfg(test)]
+use rusqlite::OptionalExtension;
+use rusqlite::params;
 
+#[cfg(test)]
+use crate::EvidencePruneReceipt;
 use crate::evidence_commands::{EvidenceOperation, fingerprint, record, replay};
+#[cfg(test)]
 use crate::evidence_store::EvidenceStore;
 use crate::evidence_store_read::{read_artifact, read_summary, selected_generation_id};
 use crate::{
-    EvidenceGenerationState, EvidencePruneReceipt, EvidenceSelectionReceipt,
-    EvidenceVerificationReceipt, StorageError,
+    EvidenceGenerationState, EvidenceSelectionReceipt, EvidenceVerificationReceipt, StorageError,
 };
 
+#[cfg(test)]
 impl EvidenceStore {
+    #[cfg(test)]
     pub fn verify_generation(
         &self,
         command_id: CommandId,
@@ -21,6 +27,7 @@ impl EvidenceStore {
         })
     }
 
+    #[cfg(test)]
     pub fn select_generation(
         &self,
         command_id: CommandId,
@@ -39,6 +46,7 @@ impl EvidenceStore {
         })
     }
 
+    #[cfg(test)]
     pub fn prune_unselected_generation(
         &self,
         command_id: CommandId,

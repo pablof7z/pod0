@@ -11,20 +11,10 @@ final class SharedEpisodeImportCoordinator {
         case failed(message: String)
     }
 
-    /// Failures below this many attempts are left queued for retry on the
-    /// next foreground consume; a transient network hiccup should not
-    /// permanently discard a shared episode the user can no longer re-share.
-    static let maxAttempts = 3
-
     private(set) var phase: Phase?
 
-    @ObservationIgnored private let resolver: SharedEpisodeResolver
     @ObservationIgnored private var isConsuming = false
     @ObservationIgnored private var dismissalTask: Task<Void, Never>?
-
-    init(resolver: SharedEpisodeResolver = SharedEpisodeResolver()) {
-        self.resolver = resolver
-    }
 
     func consumePending(
         store: AppStateStore,
@@ -61,6 +51,7 @@ final class SharedEpisodeImportCoordinator {
             do {
                 let episode = try await importEpisode(
                     from: request.sourceURL,
+                    requestID: request.id,
                     store: store
                 )
                 try requestStore.remove(request)
@@ -71,13 +62,6 @@ final class SharedEpisodeImportCoordinator {
                 phase = .downloadStarted(title: episode.title)
                 onImported(episode.id)
             } catch {
-                if request.attemptCount + 1 < Self.maxAttempts {
-                    var retried = request
-                    retried.attemptCount += 1
-                    try? requestStore.update(retried)
-                } else {
-                    try? requestStore.remove(request)
-                }
                 presentFailure(error)
                 break
             }
@@ -91,52 +75,20 @@ final class SharedEpisodeImportCoordinator {
 
     private func importEpisode(
         from sourceURL: URL,
+        requestID: UUID,
         store: AppStateStore
     ) async throws -> Episode {
-        let resolved = try await resolver.resolve(sourceURL)
-        let podcastID: UUID
-        if let feedURL = resolved.feedURL {
-            podcastID = store.state.podcasts.first(where: {
-                Self.comparableFeedURL($0.feedURL) == Self.comparableFeedURL(feedURL)
-            })?.id ?? Self.stablePodcastID(for: feedURL.absoluteString)
-        } else {
-            podcastID = Self.stablePodcastID(
-                for: "synthetic:\(resolved.podcastTitle.lowercased())"
-            )
-            if store.podcast(id: podcastID) == nil {
-                _ = try await store.upsertSyntheticPodcastAndWait(
-                    Podcast(
-                        id: podcastID,
-                        kind: .synthetic,
-                        title: resolved.podcastTitle,
-                        imageURL: resolved.imageURL,
-                        description: "Episode shared into Pod0"
-                    )
-                )
-            }
+        guard let sharedLibrary = store.sharedLibrary else {
+            throw SharedLibraryError.unavailable
         }
-
-        let episode = try await store.upsertExternalEpisodeAndWait(
-            podcastID: podcastID,
-            feedURL: resolved.feedURL,
-            podcastTitle: resolved.podcastTitle,
-            audioURL: resolved.audioURL,
-            guid: resolved.guid,
-            title: resolved.title,
-            description: resolved.description,
-            publishedAt: resolved.publishedAt,
-            enclosureMimeType: resolved.enclosureMIMEType,
-            imageURL: resolved.imageURL,
-            duration: resolved.duration
+        let episodeID = try await sharedLibrary.importSharedEpisode(
+            sourceURL: sourceURL,
+            requestID: requestID
         )
-        if resolved.feedURL != nil {
-            // Commit-immediately: the metadata fetch is a durable Rust
-            // workflow, so nothing waits on the host round trip.
-            _ = try? await store.sharedLibrary?.executeCommitted(.hydratePodcastMetadata(
-                podcastId: PodcastId(uuid: episode.podcastID)
-            ))
+        guard let episode = store.episode(id: episodeID) else {
+            throw SharedLibraryError.unavailable
         }
-        return store.episode(id: episode.id) ?? episode
+        return episode
     }
 
     private func presentFailure(_ error: Error) {
@@ -158,30 +110,4 @@ final class SharedEpisodeImportCoordinator {
         }
     }
 
-    private static func comparableFeedURL(_ url: URL?) -> String? {
-        guard let url else { return nil }
-        return url.absoluteString
-            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-            .lowercased()
-    }
-
-    private static func stablePodcastID(for identity: String) -> UUID {
-        let bytes = Array(identity.utf8)
-        var first: UInt64 = 14_695_981_039_346_656_037
-        var second: UInt64 = 7_809_847_782_465_536_322
-        for byte in bytes {
-            first = (first ^ UInt64(byte)) &* 1_099_511_628_211
-            second = (second ^ UInt64(byte &+ 31)) &* 1_099_511_628_211
-        }
-        var value = withUnsafeBytes(of: first.bigEndian, Array.init)
-        value.append(contentsOf: withUnsafeBytes(of: second.bigEndian, Array.init))
-        value[6] = (value[6] & 0x0F) | 0x50
-        value[8] = (value[8] & 0x3F) | 0x80
-        return UUID(uuid: (
-            value[0], value[1], value[2], value[3],
-            value[4], value[5], value[6], value[7],
-            value[8], value[9], value[10], value[11],
-            value[12], value[13], value[14], value[15]
-        ))
-    }
 }

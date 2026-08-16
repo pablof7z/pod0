@@ -5,11 +5,13 @@ pub const fn host_observation_owner(observation: &HostObservation) -> ActivityOw
     use ActivityDomain as Domain;
     use HostObservation as Observation;
     match observation {
+        Observation::AuthorizedEffectCancellationApplied { .. } => ActivityOwner::CorrelatedEffect,
         Observation::FeedBytesFetched { .. }
         | Observation::FeedNotModified { .. }
         | Observation::NewEpisodeNotificationDelivered { .. } => {
             ActivityOwner::Domain(Domain::LibraryFeed)
         }
+        Observation::LibraryDocumentFetched { .. } => ActivityOwner::Domain(Domain::LibraryFeed),
         Observation::PlaybackObserved { .. } => ActivityOwner::Domain(Domain::Playback),
         Observation::RecallQueryEmbedded { .. }
         | Observation::RecallSpansEmbedded { .. }

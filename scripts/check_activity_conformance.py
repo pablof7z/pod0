@@ -101,6 +101,34 @@ def run_self_test() -> int:
         if not any("direct native capability" in error for error in errors):
             print("activity conformance missed native capability bypass", file=sys.stderr)
             return 1
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        write_fixture(root, extra_command=False)
+        bypass = root / "App/Sources/Core/LegacyDrain.swift"
+        bypass.write_text(
+            "facade.nextHostRequests(maximumCount: 1)\n"
+            "facade.recordHostObservation(observation: value)\n",
+            encoding="utf-8",
+        )
+        errors = validate(root)
+        if not any("nextHostRequests(" in error for error in errors) or not any(
+            "recordHostObservation(" in error for error in errors
+        ):
+            print("activity conformance missed unleased native ingress", file=sys.stderr)
+            return 1
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        write_fixture(root, extra_command=False)
+        bypass = root / "rust/crates/pod0-storage/src/bypass.rs"
+        bypass.write_text(
+            "fn bypass(commit: Commit, ingress: Ingress, plan: Plan, at: At) {"
+            " commit.commit_with(ingress, plan, at, mutate); }",
+            encoding="utf-8",
+        )
+        errors = validate(root)
+        if not any("prebuilt transition plan bypass" in error for error in errors):
+            print("activity conformance missed prebuilt plan bypass", file=sys.stderr)
+            return 1
     print("Activity conformance negative fixtures passed")
     return 0
 

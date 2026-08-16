@@ -80,9 +80,12 @@ def validate(root: Path) -> list[str]:
     for path in sorted(set(registered) - set(actual)):
         errors.append(f"stale Rust business-logic exception: {path}")
     maximum = policy.get("maximum_exception_files")
-    if not isinstance(maximum, int) or len(rows) > maximum:
+    if not isinstance(maximum, int):
+        errors.append("native business-logic exception ceiling must be an integer")
+    elif len(rows) != maximum:
         errors.append(
-            f"native business-logic exceptions grew: {len(rows)} > {maximum}"
+            "native business-logic exception ceiling must equal the exact "
+            f"current set: {len(rows)} != {maximum}"
         )
     allowed_roles = set(policy.get("allowed_roles", []))
     for path, row in registered.items():
@@ -173,6 +176,16 @@ def run_self_test() -> int:
         write_fixture(root, extra_symbol=True)
         if not any("declarations changed" in item for item in validate(root)):
             print("Rust business-logic checker missed new policy", file=sys.stderr)
+            return 1
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        write_fixture(root, extra_symbol=False)
+        policy_path = root / "docs/architecture/rust-business-logic-exceptions.json"
+        policy = json.loads(policy_path.read_text(encoding="utf-8"))
+        policy["maximum_exception_files"] = 2
+        policy_path.write_text(json.dumps(policy), encoding="utf-8")
+        if not any("ceiling must equal" in item for item in validate(root)):
+            print("Rust business-logic checker permitted ceiling slack", file=sys.stderr)
             return 1
     print("Rust business-logic negative fixtures passed")
     return 0

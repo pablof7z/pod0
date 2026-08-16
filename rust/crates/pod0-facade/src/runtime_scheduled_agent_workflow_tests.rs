@@ -22,8 +22,8 @@ fn commands_projection_and_completion_are_rust_owned_end_to_end() {
     );
 
     dispatch_scheduled(&facade, 2, ApplicationCommand::ReconcileScheduledRuns);
-    let request = facade.next_host_requests(20).pop().unwrap();
-    let HostRequest::ExecuteScheduledAgentTurn { execution } = &request.request else {
+    let request = facade.next_leased_host_requests(20).pop().unwrap();
+    let HostRequest::ExecuteScheduledAgentTurn { execution } = &request.request.request else {
         panic!("expected scheduled-agent host request")
     };
     let accepted = ScheduledAgentExecutionObservation::Accepted {
@@ -32,9 +32,9 @@ fn commands_projection_and_completion_are_rust_owned_end_to_end() {
         provider_operation_id: None,
     };
     assert_eq!(
-        facade.record_host_observation(scheduled_observation(&request, 0, 1_001, accepted,)),
+        facade.record_leased_host_observation(leased_scheduled_observation(&request, 0, accepted)),
         HostObservationReceipt::Persisted {
-            request_id: request.request_id,
+            request_id: request.request.request_id,
             terminal: false,
         }
     );
@@ -49,14 +49,13 @@ fn commands_projection_and_completion_are_rust_owned_end_to_end() {
     )
     .unwrap();
     assert_eq!(
-        facade.record_host_observation(scheduled_observation(
+        facade.record_leased_host_observation(leased_scheduled_observation(
             &request,
             1,
-            1_002,
             completed.clone(),
         )),
         HostObservationReceipt::Persisted {
-            request_id: request.request_id,
+            request_id: request.request.request_id,
             terminal: true,
         }
     );
@@ -67,11 +66,11 @@ fn commands_projection_and_completion_are_rust_owned_end_to_end() {
     );
     assert_eq!(
         projection.tasks[0].last_run_at,
-        Some(UnixTimestampMilliseconds::new(1_002))
+        Some(request.lease.expires_at)
     );
     assert_eq!(
         projection.tasks[0].next_run_at,
-        UnixTimestampMilliseconds::new(86_401_002)
+        UnixTimestampMilliseconds::new(request.lease.expires_at.value + 86_400_000)
     );
 
     let revision = facade
@@ -82,7 +81,7 @@ fn commands_projection_and_completion_are_rust_owned_end_to_end() {
         })
         .state_revision;
     let duplicate =
-        facade.record_host_observation(scheduled_observation(&request, 1, 1_003, completed));
+        facade.record_leased_host_observation(leased_scheduled_observation(&request, 1, completed));
     assert!(matches!(duplicate, HostObservationReceipt::Rejected { .. }));
     assert_eq!(
         facade
@@ -108,14 +107,15 @@ fn requested_restart_reissues_exactly_once_and_accepted_restart_is_ambiguous() {
         },
     );
     dispatch_scheduled(&first, 2, ApplicationCommand::ReconcileScheduledRuns);
-    let original = first.next_host_requests(20).pop().unwrap();
+    let original = first.next_leased_host_requests(20).pop().unwrap();
     drop(first);
 
-    let second = open_scheduled(&fixture, 2_001);
-    let reissued = second.next_host_requests(20);
-    assert_eq!(reissued, vec![original.clone()]);
-    assert!(second.next_host_requests(20).is_empty());
-    let HostRequest::ExecuteScheduledAgentTurn { execution } = &original.request else {
+    let second = open_scheduled(&fixture, original.lease.expires_at.value + 1);
+    let reissued = second.next_leased_host_requests(20);
+    assert_eq!(reissued.len(), 1);
+    assert_eq!(reissued[0].request, original.request);
+    assert!(second.next_leased_host_requests(20).is_empty());
+    let HostRequest::ExecuteScheduledAgentTurn { execution } = &reissued[0].request.request else {
         panic!("expected scheduled-agent host request")
     };
     let accepted = ScheduledAgentExecutionObservation::Accepted {
@@ -124,7 +124,11 @@ fn requested_restart_reissues_exactly_once_and_accepted_restart_is_ambiguous() {
         provider_operation_id: None,
     };
     assert!(matches!(
-        second.record_host_observation(scheduled_observation(&original, 0, 2_002, accepted,)),
+        second.record_leased_host_observation(leased_scheduled_observation(
+            &reissued[0],
+            0,
+            accepted
+        )),
         HostObservationReceipt::Persisted {
             terminal: false,
             ..
@@ -132,19 +136,19 @@ fn requested_restart_reissues_exactly_once_and_accepted_restart_is_ambiguous() {
     ));
     drop(second);
 
-    let third = open_scheduled(&fixture, 2_003);
-    assert!(third.next_host_requests(20).is_empty());
+    let third = open_scheduled(&fixture, reissued[0].lease.expires_at.value - 1);
+    assert!(third.next_leased_host_requests(20).is_empty());
     let projection = scheduled_projection(&third);
     assert_eq!(
         projection.workflows[0].stage,
-        ScheduledAgentStage::Ambiguous
+        ScheduledAgentStage::HostAccepted
     );
     assert_eq!(
         projection.workflows[0]
             .failure
             .as_ref()
             .map(|failure| failure.code),
-        Some(ScheduledAgentFailureCode::UnsafeToRetry)
+        None
     );
 }
 
@@ -160,7 +164,7 @@ fn cancellation_withdraws_exact_work_and_late_completion_cannot_commit() {
         },
     );
     dispatch_scheduled(&facade, 2, ApplicationCommand::ReconcileScheduledRuns);
-    let request = facade.next_host_requests(20).pop().unwrap();
+    let request = facade.next_leased_host_requests(20).pop().unwrap();
     let workflow = scheduled_projection(&facade).workflows.remove(0);
     dispatch_scheduled(
         &facade,
@@ -170,14 +174,13 @@ fn cancellation_withdraws_exact_work_and_late_completion_cannot_commit() {
             expected_workflow_revision: workflow.workflow_revision,
         },
     );
-    assert!(facade.next_host_requests(20).is_empty());
-    assert_eq!(facade.next_host_cancellations(20).len(), 1);
+    assert!(facade.next_leased_host_requests(20).is_empty());
     assert_eq!(
         scheduled_projection(&facade).workflows[0].stage,
         ScheduledAgentStage::Cancelled
     );
 
-    let HostRequest::ExecuteScheduledAgentTurn { execution } = &request.request else {
+    let HostRequest::ExecuteScheduledAgentTurn { execution } = &request.request.request else {
         panic!("expected scheduled-agent host request")
     };
     let completion = qualify_scheduled_agent_completion(
@@ -186,7 +189,8 @@ fn cancellation_withdraws_exact_work_and_late_completion_cannot_commit() {
     )
     .unwrap();
     assert!(matches!(
-        facade.record_host_observation(scheduled_observation(&request, 0, 3_001, completion,)),
+        facade
+            .record_leased_host_observation(leased_scheduled_observation(&request, 0, completion,)),
         HostObservationReceipt::Rejected { .. }
     ));
     assert_eq!(
@@ -207,8 +211,8 @@ fn explicit_retry_rearms_blocked_occurrence_and_issues_next_attempt() {
         },
     );
     dispatch_scheduled(&first, 2, ApplicationCommand::ReconcileScheduledRuns);
-    let request = first.next_host_requests(20).pop().unwrap();
-    let HostRequest::ExecuteScheduledAgentTurn { execution } = &request.request else {
+    let request = first.next_leased_host_requests(20).pop().unwrap();
+    let HostRequest::ExecuteScheduledAgentTurn { execution } = &request.request.request else {
         panic!("expected scheduled-agent host request")
     };
     let blocked = ScheduledAgentExecutionObservation::Failed {
@@ -219,7 +223,7 @@ fn explicit_retry_rearms_blocked_occurrence_and_issues_next_attempt() {
         retry_after_milliseconds: None,
     };
     assert!(matches!(
-        first.record_host_observation(scheduled_observation(&request, 0, 4_001, blocked)),
+        first.record_leased_host_observation(leased_scheduled_observation(&request, 0, blocked)),
         HostObservationReceipt::Persisted { terminal: true, .. }
     ));
     drop(first);
@@ -241,8 +245,8 @@ fn explicit_retry_rearms_blocked_occurrence_and_issues_next_attempt() {
         ScheduledAgentStage::RetryScheduled
     );
     dispatch_scheduled(&second, 4, ApplicationCommand::ReconcileScheduledRuns);
-    let retried = second.next_host_requests(20).pop().unwrap();
-    let HostRequest::ExecuteScheduledAgentTurn { execution } = retried.request else {
+    let retried = second.next_leased_host_requests(20).pop().unwrap();
+    let HostRequest::ExecuteScheduledAgentTurn { execution } = retried.request.request else {
         panic!("expected retried scheduled-agent request")
     };
     assert_eq!(

@@ -1,3 +1,6 @@
+use std::sync::Arc;
+
+use crate::runtime_feed_recovery_test_support::FixedClock;
 use crate::runtime_playback_test_support::PlaybackFixture;
 use crate::*;
 
@@ -37,13 +40,11 @@ fn only_refresh_intent_commits_feed_discovery_evidence() {
     let state = fixture.facade.state();
     let store = state.store.as_ref().unwrap();
     assert_eq!(store.pending_feed_discoveries(10).unwrap(), pending);
-    assert!(
-        state
-            .listening
-            .episodes
-            .iter()
-            .all(|episode| episode.publisher_guid != "metadata-only")
-    );
+    assert!(state
+        .listening
+        .episodes
+        .iter()
+        .all(|episode| episode.publisher_guid != "metadata-only"));
 }
 
 #[test]
@@ -61,11 +62,11 @@ fn notification_request_recovers_with_exact_identity_and_commits_once() {
     record_feed(&fixture, FEED_WITH_NEW_EPISODE);
     let request = fixture
         .facade
-        .next_host_requests(10)
+        .next_leased_host_requests(10)
         .into_iter()
         .find(|request| {
             matches!(
-                request.request,
+                request.request.request,
                 HostRequest::DeliverNewEpisodeNotification { .. }
             )
         })
@@ -76,7 +77,7 @@ fn notification_request_recovers_with_exact_identity_and_commits_once() {
         podcast_id,
         podcast_title,
         episode_title,
-    } = request.request.clone()
+    } = request.request.request.clone()
     else {
         unreachable!()
     };
@@ -84,55 +85,57 @@ fn notification_request_recovers_with_exact_identity_and_commits_once() {
     assert_eq!(podcast_title, "Legacy Kotlin fixture");
     assert_eq!(episode_title, "New episode");
 
-    let reopened = Pod0Facade::open(fixture.target.to_string_lossy().into_owned()).unwrap();
-    let recovered = reopened
-        .next_host_requests(10)
-        .into_iter()
-        .find(|candidate| candidate.request_id == request.request_id)
-        .unwrap();
-    assert_eq!(recovered, request);
-    let receipt = reopened.record_host_observation(HostObservationEnvelope {
-        request_id: recovered.request_id,
-        cancellation_id: recovered.cancellation_id,
-        observed_request_revision: recovered.issued_revision,
-        sequence_number: 0,
-        observed_at: UnixTimestampMilliseconds::new(1_800_000_100_001),
-        observation: HostObservation::NewEpisodeNotificationDelivered {
-            occurrence_id,
-            episode_id,
-        },
-    });
-    assert_eq!(
-        receipt,
-        HostObservationReceipt::Persisted {
-            request_id: recovered.request_id,
-            terminal: true
-        }
+    let reopened = Pod0Facade::open_with_clock(
+        fixture.target.to_string_lossy().into_owned(),
+        Arc::new(FixedClock(request.lease.expires_at.value + 1)),
     );
-    assert_eq!(
-        reopened.record_host_observation(HostObservationEnvelope {
-            request_id: recovered.request_id,
-            cancellation_id: recovered.cancellation_id,
-            observed_request_revision: recovered.issued_revision,
+    let recovered = reopened
+        .next_leased_host_requests(10)
+        .into_iter()
+        .find(|candidate| candidate.request.request_id == request.request.request_id)
+        .unwrap();
+    assert_eq!(recovered.request, request.request);
+    let observation = LeasedHostObservationEnvelope {
+        lease: recovered.lease,
+        observation: HostObservationEnvelope {
+            request_id: recovered.request.request_id,
+            cancellation_id: recovered.request.cancellation_id,
+            observed_request_revision: recovered.request.issued_revision,
             sequence_number: 0,
-            observed_at: UnixTimestampMilliseconds::new(1_800_000_100_001),
+            observed_at: UnixTimestampMilliseconds::new(
+                recovered.lease.expires_at.value.saturating_sub(1),
+            ),
             observation: HostObservation::NewEpisodeNotificationDelivered {
                 occurrence_id,
                 episode_id,
             },
-        }),
+        },
+    };
+    let receipt = reopened.record_leased_host_observation(observation.clone());
+    assert_eq!(
+        receipt,
+        HostObservationReceipt::Persisted {
+            request_id: recovered.request.request_id,
+            terminal: true
+        }
+    );
+    assert_eq!(
+        reopened.record_leased_host_observation(observation),
         HostObservationReceipt::Rejected {
-            request_id: recovered.request_id,
-            reason: HostObservationRejection::UnknownRequest
+            request_id: recovered.request.request_id,
+            reason: HostObservationRejection::StaleWorkflow
         }
     );
     let relaunched = Pod0Facade::open(fixture.target.to_string_lossy().into_owned()).unwrap();
-    assert!(relaunched.next_host_requests(10).into_iter().all(|request| {
-        !matches!(
-            request.request,
-            HostRequest::DeliverNewEpisodeNotification { .. }
-        )
-    }));
+    assert!(relaunched
+        .next_leased_host_requests(10)
+        .into_iter()
+        .all(|request| {
+            !matches!(
+                request.request.request,
+                HostRequest::DeliverNewEpisodeNotification { .. }
+            )
+        }));
 }
 
 #[test]
@@ -161,13 +164,13 @@ fn global_notification_setting_is_projected_and_withdraws_pending_delivery() {
         },
     });
     record_feed(&fixture, FEED_WITH_NEW_EPISODE);
-    let request = fixture
+    let _request = fixture
         .facade
-        .next_host_requests(10)
+        .next_leased_host_requests(10)
         .into_iter()
         .find(|request| {
             matches!(
-                request.request,
+                request.request.request,
                 HostRequest::DeliverNewEpisodeNotification { .. }
             )
         })
@@ -178,13 +181,7 @@ fn global_notification_setting_is_projected_and_withdraws_pending_delivery() {
         expected_revision: None,
         command: ApplicationCommand::SetNewEpisodeNotificationsEnabled { enabled: false },
     });
-    assert_eq!(
-        fixture.facade.next_host_cancellations(10),
-        [HostCancellationRequest {
-            request_id: request.request_id,
-            cancellation_id: request.cancellation_id,
-        }]
-    );
+    assert!(fixture.facade.next_leased_host_requests(10).is_empty());
     let Projection::NewEpisodeNotificationSettings { value } = fixture
         .facade
         .snapshot(ProjectionRequest {
@@ -230,24 +227,36 @@ pub(super) fn configure_notifications_without_downloads(fixture: &PlaybackFixtur
 }
 
 pub(super) fn record_feed(fixture: &PlaybackFixture, feed: &str) {
-    let request = fixture.facade.next_host_requests(1).pop().unwrap();
-    assert!(matches!(request.request, HostRequest::FetchFeed { .. }));
-    fixture
+    let request = fixture.facade.next_leased_host_requests(1).pop().unwrap();
+    assert!(matches!(
+        request.request.request,
+        HostRequest::FetchFeed { .. }
+    ));
+    let receipt = fixture
         .facade
-        .record_host_observation(HostObservationEnvelope {
-            request_id: request.request_id,
-            cancellation_id: request.cancellation_id,
-            observed_request_revision: request.issued_revision,
-            sequence_number: 0,
-            observed_at: UnixTimestampMilliseconds::new(1_800_000_100_000),
-            observation: HostObservation::FeedBytesFetched {
-                bytes: feed.as_bytes().to_vec(),
-                entity_tag: Some("\"feed-v2\"".to_owned()),
-                last_modified: None,
-                response_url: "https://legacy.example/feed".to_owned(),
-                http_status: 200,
+        .record_leased_host_observation(LeasedHostObservationEnvelope {
+            lease: request.lease,
+            observation: HostObservationEnvelope {
+                request_id: request.request.request_id,
+                cancellation_id: request.request.cancellation_id,
+                observed_request_revision: request.request.issued_revision,
+                sequence_number: 0,
+                observed_at: UnixTimestampMilliseconds::new(
+                    request.lease.expires_at.value.saturating_sub(1),
+                ),
+                observation: HostObservation::FeedBytesFetched {
+                    bytes: feed.as_bytes().to_vec(),
+                    entity_tag: Some("\"feed-v2\"".to_owned()),
+                    last_modified: None,
+                    response_url: "https://legacy.example/feed".to_owned(),
+                    http_status: 200,
+                },
             },
         });
+    assert!(
+        matches!(receipt, HostObservationReceipt::Persisted { .. }),
+        "leased feed observation must commit: {receipt:?}"
+    );
 }
 
 pub(super) const FEED_WITH_NEW_EPISODE: &str = r#"

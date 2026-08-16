@@ -1,10 +1,6 @@
-use pod0_application::{
-    HostRequest, HostRequestEnvelope, MAX_TRANSCRIPT_CAPABILITY_RESPONSE_BYTES,
-    TranscriptCapabilityContext, TranscriptCapabilityRequest, TranscriptProvider,
-    TranscriptWorkflowOrigin, TranscriptWorkflowRequest,
-};
-use pod0_domain::{HostRequestId, UnixTimestampMilliseconds};
-use pod0_storage::{StoredTranscriptWorkflowRequest, TranscriptWorkflowRecord};
+use pod0_application::{TranscriptProvider, TranscriptWorkflowOrigin, TranscriptWorkflowRequest};
+use pod0_domain::HostRequestId;
+use pod0_storage::StoredTranscriptWorkflowRequest;
 
 pub(super) fn stored_request(
     request: TranscriptWorkflowRequest,
@@ -21,82 +17,6 @@ pub(super) fn stored_request(
         publisher_mime_hint: request.publisher_mime_hint,
         publisher_first: request.publisher_first,
         provider_fallback_enabled: request.provider_fallback_enabled,
-    }
-}
-
-pub(super) fn host_request(
-    record: &TranscriptWorkflowRecord,
-    podcast_id: pod0_domain::PodcastId,
-) -> Option<HostRequestEnvelope> {
-    let context = TranscriptCapabilityContext {
-        episode_id: record.episode_id,
-        podcast_id,
-        source_revision: record.request.source_revision.clone(),
-    };
-    let capability = match record.stage {
-        pod0_storage::StoredTranscriptWorkflowStage::PublisherRequested => {
-            TranscriptCapabilityRequest::FetchPublisher {
-                context,
-                source_url: record.request.publisher_transcript_url.clone()?,
-                mime_hint: record.request.publisher_mime_hint.clone(),
-                maximum_response_bytes: MAX_TRANSCRIPT_CAPABILITY_RESPONSE_BYTES,
-            }
-        }
-        pod0_storage::StoredTranscriptWorkflowStage::SubmissionAuthorized => {
-            let attempt_id = record.attempt_id?;
-            match provider(&record.request.provider) {
-                TranscriptProvider::AppleSpeech => TranscriptCapabilityRequest::TranscribeLocal {
-                    context,
-                    attempt_id,
-                    audio_url: record.request.local_audio_url.clone()?,
-                    locale: None,
-                },
-                provider => TranscriptCapabilityRequest::SubmitProvider {
-                    context,
-                    attempt_id,
-                    submission_fence_id: record.submission_fence_id?,
-                    provider,
-                    model: record.request.model.clone(),
-                    audio_url: record.request.remote_audio_url.clone(),
-                    maximum_response_bytes: MAX_TRANSCRIPT_CAPABILITY_RESPONSE_BYTES,
-                },
-            }
-        }
-        pod0_storage::StoredTranscriptWorkflowStage::ProviderAccepted => {
-            TranscriptCapabilityRequest::RecoverProvider {
-                context,
-                attempt_id: record.attempt_id?,
-                submission_fence_id: record.submission_fence_id?,
-                provider: provider(&record.request.provider),
-                model: record.request.model.clone(),
-                external_operation_id: record.external_operation_id.clone()?,
-                provider_status: record.provider_status.clone(),
-                maximum_response_bytes: MAX_TRANSCRIPT_CAPABILITY_RESPONSE_BYTES,
-            }
-        }
-        _ => return None,
-    };
-    Some(HostRequestEnvelope {
-        request_id: record.request_id?,
-        command_id: record.command_id,
-        cancellation_id: record.cancellation_id,
-        issued_revision: record.issued_revision,
-        deadline_at: (record.stage
-            != pod0_storage::StoredTranscriptWorkflowStage::ProviderAccepted)
-            .then_some(record.deadline_at_ms)
-            .flatten()
-            .map(UnixTimestampMilliseconds::new),
-        request: HostRequest::ExecuteTranscriptCapability { capability },
-    })
-}
-
-pub(super) fn provider(value: &str) -> TranscriptProvider {
-    match value {
-        "assembly-ai" => TranscriptProvider::AssemblyAi,
-        "elevenlabs-scribe" => TranscriptProvider::ElevenLabsScribe,
-        "openrouter-whisper" => TranscriptProvider::OpenRouterWhisper,
-        "apple-speech" => TranscriptProvider::AppleSpeech,
-        _ => TranscriptProvider::Unsupported { wire_code: 1 },
     }
 }
 

@@ -5,7 +5,7 @@ use pod0_domain::{
 };
 
 use crate::listening_import_test_support::*;
-use crate::{LibraryStore, commit_listening_cutover};
+use crate::{commit_listening_cutover, LibraryStore};
 
 #[test]
 fn cutover_is_atomic_idempotent_and_required_for_runtime_writes() {
@@ -19,6 +19,20 @@ fn cutover_is_atomic_idempotent_and_required_for_runtime_writes() {
     assert!(commit_listening_cutover(&fixture.target, 1_800_000_000_001).unwrap());
     let store = LibraryStore::open_authoritative(&fixture.target).unwrap();
     assert_eq!(store.snapshot().unwrap().subscriptions.len(), 1);
+    let migration_id =
+        crate::transition_commit_listening_cutover::migration_id(b"listening", id(1));
+    let correlation = pod0_application::CommandActivityIdentity::new(migration_id).correlation_id();
+    let facts = crate::ActivityStore::open(&fixture.target)
+        .unwrap()
+        .page_for_correlation(correlation, None, 10)
+        .unwrap();
+    assert_eq!(facts.items.len(), 3);
+    assert!(facts.items.iter().any(|item| matches!(
+        item.draft.fact,
+        pod0_application::ActivityFact::AuthorityCutover {
+            domain: pod0_application::ActivityDomain::LibraryFeed
+        }
+    )));
 }
 
 #[test]
@@ -196,6 +210,8 @@ fn external_episode_and_placeholder_are_durable_without_creating_a_subscription(
 
 #[path = "library_store_activity_tests.rs"]
 mod activity;
+#[path = "library_store_feed_activity_tests.rs"]
+mod feed_activity;
 
 #[test]
 fn listening_reset_clears_library_and_playback_but_preserves_authority() {

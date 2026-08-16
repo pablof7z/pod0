@@ -41,6 +41,12 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../../../schema/migrations/0035_speaker_identity.sql"),
     include_str!("../../../schema/migrations/0036_feed_fetch_workflows.sql"),
     include_str!("../../../schema/migrations/0037_activity_journal.sql"),
+    include_str!("../../../schema/migrations/0038_recall_workflows.sql"),
+    include_str!("../../../schema/migrations/0039_exact_effect_payloads.sql"),
+    include_str!("../../../schema/migrations/0040_fence_legacy_domain_effects.sql"),
+    include_str!("../../../schema/migrations/0041_workflow_configuration.sql"),
+    include_str!("../../../schema/migrations/0042_durable_cancellation_effects.sql"),
+    include_str!("../../../schema/migrations/0043_library_network_workflows.sql"),
 ];
 
 pub(crate) fn migration_sql(version: u32) -> Option<&'static str> {
@@ -67,6 +73,9 @@ pub(crate) fn apply_step(
                 [store_id.into_bytes().as_slice()],
             )
             .map_err(|error| StorageError::sqlite("record store identity", error))?;
+    }
+    if version == 40 {
+        crate::transition_commit::append_v40_legacy_recovery_facts(transaction, observed_at_ms)?;
     }
     transaction
         .pragma_update(None, "application_id", APPLICATION_ID)

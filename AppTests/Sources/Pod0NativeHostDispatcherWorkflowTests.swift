@@ -11,7 +11,7 @@ final class Pod0NativeHostDispatcherWorkflowTests: XCTestCase {
             publisherChapterHost: WorkflowSuspendingPublisherHost(),
             playbackHost: WorkflowPlaybackHost()
         )
-        let request = envelope(
+        let request = leasedHostRequest(envelope(
             requestID: 20,
             request: .fetchPublisherChapters(
                 episodeId: EpisodeId(high: 1, low: 2),
@@ -19,14 +19,14 @@ final class Pod0NativeHostDispatcherWorkflowTests: XCTestCase {
                 notBefore: nil,
                 maximumResponseBytes: 4_096
             )
-        )
-        var observations: [HostObservationEnvelope] = []
+        ))
+        var observations: [LeasedHostObservationEnvelope] = []
 
         dispatcher.execute(request) { observations.append($0) }
         await Task.yield()
         dispatcher.cancel(
-            requestID: request.requestId,
-            cancellationID: request.cancellationId
+            requestID: request.request.requestId,
+            cancellationID: request.request.cancellationId
         )
         await Task.yield()
         await Task.yield()
@@ -68,7 +68,7 @@ final class Pod0NativeHostDispatcherWorkflowTests: XCTestCase {
         }
 
         XCTAssertEqual(dispatcher.activeTasks.count, 2)
-        XCTAssertEqual(facade.nextHostRequests(maximumCount: 64).count, 1)
+        XCTAssertEqual(facade.nextLeasedHostRequests(maximumCount: 64).count, 1)
         dispatcher.shutdown()
     }
 
@@ -84,40 +84,16 @@ final class Pod0NativeHostDispatcherWorkflowTests: XCTestCase {
                 maximumArchiveBytes: 8_192
             )
         )
-        try await outbox.persistBeforeDelivery(observation(requestID: 40))
-        let dispatcher = Pod0NativeHostDispatcher(
-            feedHost: WorkflowSuspendingFeedHost(),
-            playbackHost: WorkflowPlaybackHost(),
-            observationOutbox: outbox
-        )
-        dispatcher.observationRecoveryReady = true
-        dispatcher.activateExecution()
-        let request = envelope(
-            requestID: 41,
-            request: transcriptRecoveryRequest(requestID: 41)
-        )
-        var completionCount = 0
-
-        dispatcher.record(
-            observation(requestID: 41),
-            for: request,
+        try await outbox.persistBeforeDelivery(leasedObservation(requestID: 40))
+        let recorder = CoreDurableObservationRecorder(outbox: outbox)
+        let receipt = await recorder.recordRetaining(
+            leasedObservation(requestID: 41),
             in: Pod0Facade()
-        ) { completionCount += 1 }
-        let acknowledgement = try XCTUnwrap(dispatcher.acknowledgementTasks[request.requestId])
-        await acknowledgement.task.value
+        )
 
-        XCTAssertEqual(dispatcher.acknowledgementTasks.count, 1)
-        XCTAssertEqual(dispatcher.retainedObservationIDs, [request.requestId])
-        XCTAssertEqual(completionCount, 0)
-
-        dispatcher.executePendingRequests(from: Pod0Facade())
-        let retry = try XCTUnwrap(dispatcher.retainedObservationRetryTask)
-        await retry.value
-
-        XCTAssertEqual(dispatcher.acknowledgementTasks.count, 1)
-        XCTAssertEqual(dispatcher.retainedObservationIDs, [request.requestId])
-        XCTAssertEqual(completionCount, 0)
-        dispatcher.shutdown()
+        XCTAssertEqual(receipt, .retainAndRetry(requestId: HostRequestId(high: 0, low: 41)))
+        let pendingCount = await outbox.pendingCount()
+        XCTAssertEqual(pendingCount, 1)
     }
 
     private func envelope(requestID: UInt64, request: HostRequest) -> HostRequestEnvelope {
@@ -156,6 +132,21 @@ final class Pod0NativeHostDispatcherWorkflowTests: XCTestCase {
             sequenceNumber: 0,
             observedAt: UnixTimestampMilliseconds(value: 1_700_000_000_000),
             observation: .failed(code: .platformFailure, safeDetail: "Bounded failure")
+        )
+    }
+
+    private func leasedObservation(requestID: UInt64) -> LeasedHostObservationEnvelope {
+        LeasedHostObservationEnvelope(
+            lease: PersistedEffectLeaseIdentity(
+                intentId: EffectIntentId(high: 1, low: requestID),
+                authorizingActivityId: ActivityId(high: 2, low: requestID),
+                correlationId: ActivityCorrelationId(high: 3, low: requestID),
+                attemptId: EffectAttemptId(high: 4, low: requestID),
+                leaseId: EffectLeaseId(high: 5, low: requestID),
+                fence: 1,
+                expiresAt: UnixTimestampMilliseconds(value: 1_800_000_010_000)
+            ),
+            observation: observation(requestID: requestID)
         )
     }
 }

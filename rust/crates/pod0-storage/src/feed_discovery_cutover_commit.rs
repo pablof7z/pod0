@@ -7,7 +7,7 @@ use sha2::{Digest as _, Sha256};
 use crate::feed_discovery_cutover::to_i64;
 use crate::feed_discovery_cutover_read::{read_report, read_staged_input};
 use crate::feed_discovery_cutover_validation::validate_input;
-use crate::library_store::{command_was_applied, finish_command};
+use crate::library_store::command_was_applied;
 use crate::{
     FeedDiscoveryCutoverState, LegacyFeedDiscoveryCandidate, LegacyFeedDiscoveryCutoverReport,
     LegacyFeedDiscoveryDisposition, LegacyFeedDiscoveryEffectKind, StorageError,
@@ -18,6 +18,7 @@ pub(super) fn commit_cutover(
     transaction: &Transaction<'_>,
     source_generation: u64,
     observed_at: UnixTimestampMilliseconds,
+    committed_revision: pod0_domain::StateRevision,
 ) -> Result<LegacyFeedDiscoveryCutoverReport, StorageError> {
     let report = read_report(transaction)?;
     match report.state {
@@ -34,8 +35,13 @@ pub(super) fn commit_cutover(
     if report.source_fingerprint != Some(feed_discovery_cutover_source_fingerprint(&input)) {
         return Err(StorageError::FeedDiscoveryCutoverConflict);
     }
-    import_notification_setting(transaction, &input, observed_at.value())?;
-    import_occurrences(transaction, &input.candidates, observed_at.value())?;
+    import_notification_setting(transaction, &input, observed_at.value(), committed_revision)?;
+    import_occurrences(
+        transaction,
+        &input.candidates,
+        observed_at.value(),
+        committed_revision,
+    )?;
     transaction
         .execute(
             "UPDATE pod0_feed_discovery_cutover
@@ -54,27 +60,23 @@ fn import_notification_setting(
     transaction: &Transaction<'_>,
     input: &crate::LegacyFeedDiscoveryCutoverInput,
     now_ms: i64,
+    committed_revision: pod0_domain::StateRevision,
 ) -> Result<(), StorageError> {
     let fingerprint = digest_hex(input.backup_digest.into_bytes());
-    let revision = if let Some(revision) =
-        command_was_applied(transaction, input.notification_command_id, &fingerprint)?
-    {
-        revision
-    } else {
-        finish_command(
-            transaction,
-            input.notification_command_id,
-            &fingerprint,
-            now_ms,
-        )?
-    };
+    record_imported_command(
+        transaction,
+        input.notification_command_id,
+        &fingerprint,
+        committed_revision,
+        now_ms,
+    )?;
     transaction
         .execute(
             "UPDATE pod0_new_episode_notification_settings
              SET enabled=?1,revision=?2,updated_at_ms=?3 WHERE singleton=1",
             params![
                 i64::from(input.notifications_enabled),
-                to_i64(revision.value)?,
+                to_i64(committed_revision.value)?,
                 now_ms
             ],
         )
@@ -86,6 +88,7 @@ fn import_occurrences(
     transaction: &Transaction<'_>,
     candidates: &[LegacyFeedDiscoveryCandidate],
     now_ms: i64,
+    committed_revision: pod0_domain::StateRevision,
 ) -> Result<(), StorageError> {
     let mut groups: BTreeMap<[u8; 16], Vec<&LegacyFeedDiscoveryCandidate>> = BTreeMap::new();
     for candidate in candidates {
@@ -95,7 +98,7 @@ fn import_occurrences(
             .push(candidate);
     }
     for group in groups.into_values() {
-        import_occurrence(transaction, &group, now_ms)?;
+        import_occurrence(transaction, &group, now_ms, committed_revision)?;
     }
     Ok(())
 }
@@ -104,13 +107,20 @@ fn import_occurrence(
     transaction: &Transaction<'_>,
     candidates: &[&LegacyFeedDiscoveryCandidate],
     now_ms: i64,
+    committed_revision: pod0_domain::StateRevision,
 ) -> Result<(), StorageError> {
     let first = candidates
         .first()
         .copied()
         .ok_or(StorageError::InvalidFeedDiscoveryCutover)?;
     let command_fingerprint = occurrence_fingerprint(first);
-    finish_command(transaction, first.command_id, &command_fingerprint, now_ms)?;
+    record_imported_command(
+        transaction,
+        first.command_id,
+        &command_fingerprint,
+        committed_revision,
+        now_ms,
+    )?;
     let mut episodes: BTreeMap<[u8; 16], &LegacyFeedDiscoveryCandidate> = BTreeMap::new();
     for candidate in candidates {
         episodes
@@ -157,6 +167,35 @@ fn import_occurrence(
     for candidate in candidates {
         insert_effect(transaction, candidate, now_ms)?;
     }
+    Ok(())
+}
+
+fn record_imported_command(
+    transaction: &Transaction<'_>,
+    command_id: pod0_domain::CommandId,
+    fingerprint: &str,
+    committed_revision: pod0_domain::StateRevision,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    if let Some(existing) = command_was_applied(transaction, command_id, fingerprint)? {
+        return if existing == committed_revision {
+            Ok(())
+        } else {
+            Err(StorageError::FeedDiscoveryCutoverConflict)
+        };
+    }
+    transaction
+        .execute(
+            "INSERT INTO pod0_library_commands(command_id,command_fingerprint,applied_revision,\
+             completed_at_ms) VALUES(?1,?2,?3,?4)",
+            params![
+                command_id.into_bytes().as_slice(),
+                fingerprint,
+                to_i64(committed_revision.value)?,
+                now_ms
+            ],
+        )
+        .map_err(|error| StorageError::sqlite("record imported feed command", error))?;
     Ok(())
 }
 
@@ -217,51 +256,4 @@ fn insert_effect(
     Ok(())
 }
 
-fn effect_stage(
-    disposition: LegacyFeedDiscoveryDisposition,
-) -> (&'static str, Option<&'static str>) {
-    match disposition {
-        LegacyFeedDiscoveryDisposition::Pending => ("pending", None),
-        LegacyFeedDiscoveryDisposition::Succeeded => ("succeeded", None),
-        LegacyFeedDiscoveryDisposition::Obsolete => ("obsolete", Some("legacy_obsolete")),
-        LegacyFeedDiscoveryDisposition::Failed => ("failed", Some("legacy_failed")),
-        LegacyFeedDiscoveryDisposition::Ambiguous => {
-            ("succeeded", Some("legacy_ambiguous_delivery"))
-        }
-    }
-}
-
-fn effect_identity(
-    occurrence_id: FeedDiscoveryOccurrenceId,
-    episode_id: EpisodeId,
-    kind: LegacyFeedDiscoveryEffectKind,
-) -> (Option<pod0_domain::CommandId>, pod0_domain::CancellationId) {
-    match kind {
-        LegacyFeedDiscoveryEffectKind::Download => (
-            Some(pod0_application::feed_discovery_download_command_id(
-                occurrence_id,
-                episode_id,
-            )),
-            pod0_application::feed_discovery_download_cancellation_id(occurrence_id, episode_id),
-        ),
-        LegacyFeedDiscoveryEffectKind::Notification => (
-            None,
-            pod0_application::feed_discovery_notification_cancellation_id(
-                occurrence_id,
-                episode_id,
-            ),
-        ),
-    }
-}
-
-fn occurrence_fingerprint(candidate: &LegacyFeedDiscoveryCandidate) -> String {
-    let mut hash = Sha256::new();
-    hash.update(b"pod0-legacy-feed-discovery-occurrence-v1");
-    hash.update(candidate.occurrence_id.into_bytes());
-    hash.update(candidate.command_id.into_bytes());
-    digest_hex(hash.finalize().into())
-}
-
-fn digest_hex(bytes: [u8; 32]) -> String {
-    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
-}
+include!("feed_discovery_cutover_commit_helpers.rs");

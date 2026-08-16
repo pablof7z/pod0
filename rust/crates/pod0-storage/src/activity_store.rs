@@ -1,12 +1,14 @@
 use std::path::{Path, PathBuf};
 
 use pod0_application::{
-    ActivityActor, ActivityFact, ActivityFactDraft, ActivityOrigin, ActivitySubject,
-    CommittedActivityFact, NonEmptyActivityFacts,
+    ActivityFact, ActivityFactDraft, CommittedActivityFact, NonEmptyActivityFacts,
 };
 use pod0_domain::UnixTimestampMilliseconds;
 use rusqlite::{Connection, Transaction, params};
 
+use crate::activity_store_codec::{
+    actor_code, fact_code, origin_code, subject, verify_stored_draft,
+};
 use crate::activity_store_model::{ActivityPage, MAX_ACTIVITY_PAGE_ITEMS};
 use crate::migration_db::{
     open_connection, user_version, validate_current_database_identity, validate_open_database,
@@ -16,7 +18,7 @@ use crate::{CURRENT_SCHEMA_VERSION, StorageError};
 
 #[derive(Clone, Debug)]
 pub struct ActivityStore {
-    path: PathBuf,
+    pub(super) path: PathBuf,
 }
 
 impl ActivityStore {
@@ -61,6 +63,34 @@ impl ActivityStore {
         )
     }
 
+    pub fn page_for_operation(
+        &self,
+        command_id: pod0_domain::CommandId,
+        after_sequence: Option<u64>,
+        requested_count: u16,
+    ) -> Result<ActivityPage, StorageError> {
+        self.page(
+            "correlation_id IN (SELECT correlation_id FROM pod0_activity_facts \
+             WHERE command_id=?1) AND sequence>?2",
+            command_id.into_bytes().as_slice(),
+            after_sequence,
+            requested_count,
+        )
+    }
+
+    pub fn page_for_support(
+        &self,
+        after_sequence: Option<u64>,
+        requested_count: u16,
+    ) -> Result<ActivityPage, StorageError> {
+        self.page(
+            "length(?1)>=0 AND sequence>?2",
+            &[],
+            after_sequence,
+            requested_count,
+        )
+    }
+
     fn page(
         &self,
         predicate: &str,
@@ -74,7 +104,9 @@ impl ActivityStore {
         let page_size = requested_count.clamp(1, MAX_ACTIVITY_PAGE_ITEMS);
         let limit = i64::from(page_size) + 1;
         let sql = format!(
-            "SELECT sequence,committed_at_ms,payload_json FROM pod0_activity_facts \
+            "SELECT sequence,committed_at_ms,payload_json,activity_id,transaction_id,correlation_id,\
+             caused_by_activity_id,command_id,host_request_id,actor_code,origin_code,subject_code,\
+             subject_id,episode_id,fact_code FROM pod0_activity_facts \
              WHERE {predicate} ORDER BY sequence ASC LIMIT ?3"
         );
         let mut statement = connection
@@ -170,20 +202,21 @@ pub(crate) fn append_activity_facts(
     Ok(committed)
 }
 
-fn open_current(path: &Path, read_only: bool) -> Result<Connection, StorageError> {
+pub(super) fn open_current(path: &Path, read_only: bool) -> Result<Connection, StorageError> {
     let connection = open_connection(path, read_only)?;
     let version = user_version(&connection)?;
     validate_current_database_identity(&connection, version)?;
     Ok(connection)
 }
 
-fn decode_committed(row: &rusqlite::Row<'_>) -> rusqlite::Result<CommittedActivityFact> {
+pub(super) fn decode_committed(row: &rusqlite::Row<'_>) -> rusqlite::Result<CommittedActivityFact> {
     let sequence: i64 = row.get(0)?;
     let committed_at: i64 = row.get(1)?;
     let payload: String = row.get(2)?;
     let draft: ActivityFactDraft = serde_json::from_str(&payload).map_err(|error| {
         rusqlite::Error::FromSqlConversionFailure(2, rusqlite::types::Type::Text, Box::new(error))
     })?;
+    verify_stored_draft(row, &draft)?;
     let sequence = u64::try_from(sequence).map_err(|error| {
         rusqlite::Error::FromSqlConversionFailure(
             0,
@@ -196,64 +229,4 @@ fn decode_committed(row: &rusqlite::Row<'_>) -> rusqlite::Result<CommittedActivi
         committed_at: UnixTimestampMilliseconds::new(committed_at),
         draft,
     })
-}
-
-const fn actor_code(value: ActivityActor) -> u8 {
-    match value {
-        ActivityActor::User => 1,
-        ActivityActor::System => 2,
-        ActivityActor::Agent => 3,
-        ActivityActor::Recovery => 4,
-        ActivityActor::Migration => 5,
-        ActivityActor::Unsupported { .. } => 255,
-    }
-}
-
-const fn origin_code(value: ActivityOrigin) -> u8 {
-    match value {
-        ActivityOrigin::UserInterface => 1,
-        ActivityOrigin::AutomaticPolicy => 2,
-        ActivityOrigin::Playback => 3,
-        ActivityOrigin::AgentTool => 4,
-        ActivityOrigin::ScheduledWork => 5,
-        ActivityOrigin::HostObservation => 6,
-        ActivityOrigin::Recovery => 7,
-        ActivityOrigin::Migration => 8,
-        ActivityOrigin::InternalCommand => 9,
-        ActivityOrigin::Unsupported { .. } => 255,
-    }
-}
-
-fn subject(value: ActivitySubject) -> (u8, Option<[u8; 16]>) {
-    match value {
-        ActivitySubject::Global => (0, None),
-        ActivitySubject::Podcast { podcast_id } => (1, Some(podcast_id.into_bytes())),
-        ActivitySubject::Episode { episode_id } => (2, Some(episode_id.into_bytes())),
-        ActivitySubject::Conversation { conversation_id } => {
-            (3, Some(conversation_id.into_bytes()))
-        }
-        ActivitySubject::AgentTurn { turn_id } => (4, Some(turn_id.into_bytes())),
-        ActivitySubject::ScheduledOccurrence { occurrence_id } => {
-            (5, Some(occurrence_id.into_bytes()))
-        }
-        ActivitySubject::TranscriptWorkflow { workflow_id } => (6, Some(workflow_id.into_bytes())),
-        ActivitySubject::Publication { publication_id } => (7, Some(publication_id.into_bytes())),
-        ActivitySubject::Note { note_id } => (8, Some(note_id.into_bytes())),
-        ActivitySubject::Memory { memory_id } => (9, Some(memory_id.into_bytes())),
-        ActivitySubject::Clip { clip_id } => (10, Some(clip_id.into_bytes())),
-        ActivitySubject::Operation { command_id } => (11, Some(command_id.into_bytes())),
-    }
-}
-
-const fn fact_code(value: ActivityFact) -> u8 {
-    match value {
-        ActivityFact::RequestDisposition { .. } => 1,
-        ActivityFact::DomainTransition { .. } => 2,
-        ActivityFact::PlaybackCheckpoint { .. } => 3,
-        ActivityFact::EffectAuthorized { .. } => 4,
-        ActivityFact::EffectObserved { .. } => 5,
-        ActivityFact::InternalCommandAuthorized { .. } => 6,
-        ActivityFact::RecoveryTransition { .. } => 7,
-        ActivityFact::AuthorityCutover { .. } => 8,
-    }
 }

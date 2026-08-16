@@ -34,7 +34,7 @@ fn automatic_retry_uses_kernel_time_and_a_typed_native_wake() {
     });
     let request = fixture
         .facade
-        .next_host_requests(1)
+        .next_leased_host_requests(1)
         .into_iter()
         .next()
         .unwrap();
@@ -43,30 +43,33 @@ fn automatic_retry_uses_kernel_time_and_a_typed_native_wake() {
         generation,
         submission_fence_id,
         ..
-    } = request.request
+    } = request.request.request
     else {
         panic!("expected model execution")
     };
     assert_eq!(
         fixture
             .facade
-            .record_host_observation(HostObservationEnvelope {
-                request_id: request.request_id,
-                cancellation_id: request.cancellation_id,
-                observed_request_revision: request.issued_revision,
-                sequence_number: 1,
-                observed_at: UnixTimestampMilliseconds::new(time.load(Ordering::SeqCst)),
-                observation: HostObservation::ChapterModelFailed {
-                    episode_id,
-                    generation,
-                    submission_fence_id,
-                    code: ChapterModelHostFailureCode::HttpResponse { status_code: 429 },
-                    safe_detail: None,
-                    retry_after_milliseconds: Some(30_000),
-                },
+            .record_leased_host_observation(LeasedHostObservationEnvelope {
+                lease: request.lease,
+                observation: HostObservationEnvelope {
+                    request_id: request.request.request_id,
+                    cancellation_id: request.request.cancellation_id,
+                    observed_request_revision: request.request.issued_revision,
+                    sequence_number: 1,
+                    observed_at: request.lease.expires_at,
+                    observation: HostObservation::ChapterModelFailed {
+                        episode_id,
+                        generation,
+                        submission_fence_id,
+                        code: ChapterModelHostFailureCode::HttpResponse { status_code: 429 },
+                        safe_detail: None,
+                        retry_after_milliseconds: Some(30_000),
+                    },
+                }
             }),
         HostObservationReceipt::Persisted {
-            request_id: request.request_id,
+            request_id: request.request.request_id,
             terminal: true,
         }
     );
@@ -81,39 +84,44 @@ fn automatic_retry_uses_kernel_time_and_a_typed_native_wake() {
         .unwrap();
     assert_eq!(retry.not_before_ms, Some(1_800_000_430_000));
 
-    let wake = fixture
-        .facade
-        .next_host_requests(1)
+    let reopened = Pod0Facade::open_with_clock(
+        fixture.target.to_string_lossy().into_owned(),
+        Arc::new(MutableClock(Arc::clone(&time))),
+    );
+    let wake = reopened
+        .next_leased_host_requests(1)
         .into_iter()
         .next()
         .unwrap();
-    let HostRequest::ScheduleCoreWake { wake_at, reason } = wake.request else {
+    let HostRequest::ScheduleCoreWake { wake_at, reason } = wake.request.request else {
         panic!("retry must request an event-driven wake")
     };
     assert_eq!(wake_at.value, retry.not_before_ms.unwrap());
     time.store(wake_at.value, Ordering::SeqCst);
     assert_eq!(
-        fixture
-            .facade
-            .record_host_observation(HostObservationEnvelope {
-                request_id: wake.request_id,
-                cancellation_id: wake.cancellation_id,
-                observed_request_revision: wake.issued_revision,
+        reopened.record_leased_host_observation(LeasedHostObservationEnvelope {
+            lease: wake.lease,
+            observation: HostObservationEnvelope {
+                request_id: wake.request.request_id,
+                cancellation_id: wake.request.cancellation_id,
+                observed_request_revision: wake.request.issued_revision,
                 sequence_number: 1,
                 observed_at: wake_at,
                 observation: HostObservation::CoreWakeReached { reason },
-            }),
-        HostObservationReceipt::AcceptedTransient {
-            request_id: wake.request_id,
+            },
+        }),
+        HostObservationReceipt::Persisted {
+            request_id: wake.request.request_id,
+            terminal: true,
         }
     );
     assert!(matches!(
-        fixture
-            .facade
-            .next_host_requests(1)
+        reopened
+            .next_leased_host_requests(1)
             .into_iter()
             .next()
             .unwrap()
+            .request
             .request,
         HostRequest::ExecuteChapterModel { generation: 2, .. }
     ));

@@ -17,6 +17,55 @@ impl LibraryStore {
         )
     }
 
+    pub fn activity_page_for_correlation(
+        &self,
+        correlation_id: pod0_domain::ActivityCorrelationId,
+        after_sequence: Option<u64>,
+        requested_count: u16,
+    ) -> Result<crate::ActivityPage, StorageError> {
+        crate::ActivityStore::open(self.path())?.page_for_correlation(
+            correlation_id,
+            after_sequence,
+            requested_count,
+        )
+    }
+
+    pub fn activity_page_for_operation(
+        &self,
+        command_id: pod0_domain::CommandId,
+        after_sequence: Option<u64>,
+        requested_count: u16,
+    ) -> Result<crate::ActivityPage, StorageError> {
+        crate::ActivityStore::open(self.path())?.page_for_operation(
+            command_id,
+            after_sequence,
+            requested_count,
+        )
+    }
+
+    pub fn support_activity_page(
+        &self,
+        after_sequence: Option<u64>,
+        requested_count: u16,
+    ) -> Result<crate::ActivityPage, StorageError> {
+        crate::ActivityStore::open(self.path())?.page_for_support(after_sequence, requested_count)
+    }
+
+    pub fn latest_activity_page_for_episode(
+        &self,
+        episode_id: EpisodeId,
+        snapshot_through_sequence: Option<u64>,
+        before_sequence: Option<u64>,
+        requested_count: u16,
+    ) -> Result<crate::LatestActivityPage, StorageError> {
+        crate::ActivityStore::open(self.path())?.latest_page_for_episode(
+            episode_id,
+            snapshot_through_sequence,
+            before_sequence,
+            requested_count,
+        )
+    }
+
     pub fn commit_evidence_admission(
         &self,
         input: crate::transition_commit::EvidenceAdmissionCommitInput,
@@ -69,11 +118,86 @@ impl LibraryStore {
             .claim_next_generated(now, lease_duration_milliseconds)
     }
 
+    pub fn claim_next_effect_with_publisher_limit(
+        &self,
+        now: pod0_domain::UnixTimestampMilliseconds,
+        lease_duration_milliseconds: u32,
+        maximum_active_publisher_chapters: u16,
+    ) -> Result<Option<crate::EffectLease>, crate::EffectOutboxError> {
+        crate::EffectOutbox::open(self.path())?.claim_next_generated_with_publisher_limit(
+            now,
+            lease_duration_milliseconds,
+            maximum_active_publisher_chapters,
+        )
+    }
+
+    pub fn prepare_expired_agent_capability_recovery(
+        &self,
+        now: pod0_domain::UnixTimestampMilliseconds,
+    ) -> Result<bool, StorageError> {
+        crate::transition_commit::commit_expired_agent_capability_recovery(self.path(), now)
+    }
+
+    pub fn claim_next_publication_effect(
+        &self,
+        now: pod0_domain::UnixTimestampMilliseconds,
+        lease_duration_milliseconds: u32,
+    ) -> Result<Option<crate::PublicationEffectLease>, crate::EffectOutboxError> {
+        crate::EffectOutbox::open(self.path())?
+            .claim_next_publication(now, lease_duration_milliseconds)
+    }
+
+    pub fn active_publication_lease(
+        &self,
+        publication_id: pod0_domain::PublicationId,
+    ) -> Result<Option<pod0_application::PersistedEffectLeaseIdentity>, crate::EffectOutboxError>
+    {
+        crate::EffectOutbox::open(self.path())?.active_publication_lease(publication_id)
+    }
+
     pub fn effect_kind(
         &self,
         intent_id: pod0_domain::EffectIntentId,
     ) -> Result<Option<pod0_application::ExternalEffectKind>, crate::EffectOutboxError> {
         crate::EffectOutbox::open(self.path())?.effect_kind(intent_id)
+    }
+
+    pub fn effect_request(
+        &self,
+        intent_id: pod0_domain::EffectIntentId,
+    ) -> Result<Option<pod0_application::DurableExternalEffectRequest>, crate::EffectOutboxError>
+    {
+        crate::EffectOutbox::open(self.path())?.effect_request(intent_id)
+    }
+
+    pub fn active_evidence_embedding_effects(
+        &self,
+    ) -> Result<Vec<pod0_application::DurableEvidenceEmbeddingEffectRequest>, StorageError> {
+        self.read(|connection| {
+            let mut statement = connection
+                .prepare(
+                    "SELECT request_json FROM pod0_effect_intents \
+                     WHERE effect_kind_code=3 AND state_code IN(1,2) ORDER BY rowid",
+                )
+                .map_err(|error| StorageError::sqlite("read active evidence effects", error))?;
+            let rows = statement
+                .query_map([], |row| row.get::<_, String>(0))
+                .map_err(|error| StorageError::sqlite("query active evidence effects", error))?;
+            let mut requests = Vec::new();
+            for row in rows {
+                let payload = row.map_err(|error| {
+                    StorageError::sqlite("decode active evidence effect", error)
+                })?;
+                let effect: pod0_application::DurableExternalEffectRequest =
+                    serde_json::from_str(&payload).map_err(|_| StorageError::InvalidActivity)?;
+                if let pod0_application::DurableEffectExecution::EvidenceEmbedding { request } =
+                    effect.execution
+                {
+                    requests.push(request);
+                }
+            }
+            Ok(requests)
+        })
     }
 
     pub fn cancel_transcript_workflow(

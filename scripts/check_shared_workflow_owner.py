@@ -39,12 +39,25 @@ FORBIDDEN = (
 
 RUNTIME_TOKENS = (
     "Native opportunity adapter for Rust-owned durable workflows",
-    "ensurePublisherChapters",
-    "ensureTranscriptWorkflows",
-    "ensureModelChapters",
-    "reconcileScheduledAgents",
-    "case .swiftJobStore:",
-    "return .notAllowed",
+    ".importLegacyWorkflowConfiguration(",
+    ".setWorkflowConfiguration(",
+    ".observeWorkflowCapabilities(",
+    ".reconcileWorkflowOpportunity(",
+    "projection.token(for: action)",
+    "executeWorkflowAction(token)",
+)
+
+RUNTIME_FORBIDDEN = (
+    "ensurePublisherChapters(",
+    "ensureTranscriptWorkflows(",
+    "ensureModelChapters(",
+    "reconcileScheduledAgents(",
+    ".retryPublisherChapters(",
+    ".cancelPublisherChapters(",
+    ".retryModelChapters(",
+    ".cancelModelChapters(",
+    ".retryTranscriptWorkflow(",
+    ".cancelTranscriptWorkflow(",
 )
 
 RECOVERY_TESTS = {
@@ -113,6 +126,21 @@ def validate(root: Path) -> list[str]:
         list(RUNTIME_TOKENS),
         "native opportunity adapter",
     ))
+    runtime = (root / "App/Sources/Workflows/WorkflowRuntime.swift").read_text(encoding="utf-8")
+    errors.extend(
+        f"App/Sources/Workflows/WorkflowRuntime.swift: direct workflow child admission {token!r} bypasses Rust reconciliation"
+        for token in RUNTIME_FORBIDDEN
+        if token in runtime
+    )
+    production_swift = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (root / "App/Sources").rglob("*.swift")
+    )
+    errors.extend(
+        f"App/Sources: native reconstruction of Rust workflow action {token!r}"
+        for token in RUNTIME_FORBIDDEN[4:]
+        if token in production_swift
+    )
     errors.extend(require_tokens(
         root,
         "App/Sources/Workflows/WorkJob.swift",

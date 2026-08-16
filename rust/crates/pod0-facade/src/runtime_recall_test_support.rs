@@ -18,25 +18,7 @@ impl RecallFixture {
         let artifact = build_evidence_artifact(&evidence_input(&base), evidence_policy()).unwrap();
         assert!(artifact.spans.len() >= 2);
         if with_evidence {
-            let store = pod0_storage::EvidenceStore::open(&base.target).unwrap();
-            store
-                .stage_artifact(CommandId::from_parts(20, 1), &artifact, 1_800_000_000_100)
-                .unwrap();
-            store
-                .verify_generation(
-                    CommandId::from_parts(20, 2),
-                    artifact.generation_id,
-                    1_800_000_000_101,
-                )
-                .unwrap();
-            store
-                .select_generation(
-                    CommandId::from_parts(20, 3),
-                    artifact.version.episode_id,
-                    artifact.generation_id,
-                    1_800_000_000_102,
-                )
-                .unwrap();
+            commit_test_evidence(&base, CommandId::from_parts(20, 1), &artifact, 100);
             base.facade.dispatch(CommandEnvelope {
                 command_id: CommandId::from_parts(29, 1),
                 cancellation_id: CancellationId::from_parts(29, 2),
@@ -68,6 +50,24 @@ impl RecallFixture {
     pub(super) fn projection(&self, query_id: u64) -> RecallResultProjection {
         recall_projection(&self.base.facade, query_id)
     }
+}
+
+pub(super) fn commit_test_evidence(
+    base: &PlaybackFixture,
+    command_id: CommandId,
+    artifact: &pod0_domain::TranscriptEvidenceArtifact,
+    offset: i64,
+) {
+    pod0_storage::LibraryStore::open_authoritative(&base.target)
+        .unwrap()
+        .commit_evidence_rebuild(
+            command_id,
+            ContentDigest::from_bytes(command_id.into_bytes().repeat(2).try_into().unwrap()),
+            artifact,
+            None,
+            1_800_000_000_000 + offset,
+        )
+        .unwrap();
 }
 
 pub(super) fn evidence_input(base: &PlaybackFixture) -> TranscriptEvidenceInput {
@@ -160,25 +160,35 @@ pub(super) fn recall_request(query_id: u64) -> ProjectionRequest {
 
 pub(super) fn record(
     facade: &Pod0Facade,
-    request: &HostRequestEnvelope,
+    request: &LeasedHostRequestEnvelope,
     observation: HostObservation,
-) {
-    facade.record_host_observation(HostObservationEnvelope {
-        request_id: request.request_id,
-        cancellation_id: request.cancellation_id,
-        observed_request_revision: request.issued_revision,
+) -> HostObservationReceipt {
+    let envelope = &request.request;
+    let observation = HostObservationEnvelope {
+        request_id: envelope.request_id,
+        cancellation_id: envelope.cancellation_id,
+        observed_request_revision: envelope.issued_revision,
         sequence_number: 0,
-        observed_at: UnixTimestampMilliseconds::new(1_800_000_000_200),
+        observed_at: request.lease.expires_at,
         observation,
-    });
+    };
+    facade.record_leased_host_observation(LeasedHostObservationEnvelope {
+        lease: request.lease,
+        observation,
+    })
 }
 
 pub(super) fn run_ready_recall(rerank_failure: bool) -> RecallResultProjection {
     let fixture = RecallFixture::new(true);
     fixture.dispatch(1, 1, "  durable   habit cues ");
     advance_to_rerank(&fixture, 1);
-    let rerank = fixture.base.facade.next_host_requests(1).pop().unwrap();
-    let HostRequest::RerankRecallCandidates { candidates, .. } = &rerank.request else {
+    let rerank = fixture
+        .base
+        .facade
+        .next_leased_host_requests(1)
+        .pop()
+        .unwrap();
+    let HostRequest::RerankRecallCandidates { candidates, .. } = &rerank.request.request else {
         panic!("expected rerank request");
     };
     let revision = fixture
@@ -221,8 +231,13 @@ pub(super) fn run_ready_recall(rerank_failure: bool) -> RecallResultProjection {
 }
 
 pub(super) fn advance_to_rerank(fixture: &RecallFixture, query_id: u64) {
-    let embed = fixture.base.facade.next_host_requests(1).pop().unwrap();
-    let HostRequest::EmbedRecallQuery { text, .. } = &embed.request else {
+    let embed = fixture
+        .base
+        .facade
+        .next_leased_host_requests(1)
+        .pop()
+        .unwrap();
+    let HostRequest::EmbedRecallQuery { text, .. } = &embed.request.request else {
         panic!("expected embedding request");
     };
     assert!(!text.contains("  "));

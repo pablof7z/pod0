@@ -3,150 +3,1488 @@
   "inventory": "implementation_surfaces",
   "source": "repository source scan",
   "items": [
-    {"kind":"diagnostics_projection","path":"rust/crates/pod0-facade/src/episode_activity_projection.rs","surface":"episode_diagnostics","target_owner":"RustActivityJournalProjection","child_issue":218,"implementation_status":"authoritative_redacted_append_only_journal_projection"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_state_open.rs","surface":"startup_rehydration","target_owner":"LifecycleRecoveryStateMachine","child_issue":210,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_agent_recovery.rs","surface":"agent_recovery","target_owner":"AgentPublicationStateMachine","child_issue":215,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_agent_observations.rs","surface":"agent_observation_retry","target_owner":"AgentPublicationStateMachine","child_issue":215,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_agent_recall_observations.rs","surface":"agent_recall_observation_retry","target_owner":"AgentPublicationStateMachine","child_issue":215,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_chapter_model_completion.rs","surface":"chapter_completion_recovery","target_owner":"ChapterStateMachine","child_issue":213,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_chapter_model_queue.rs","surface":"chapter_model_rehydration","target_owner":"ChapterStateMachine","child_issue":213,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_chapter_workflow.rs","surface":"publisher_chapter_rehydration","target_owner":"ChapterStateMachine","child_issue":213,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_download_workflow.rs","surface":"download_rehydration","target_owner":"DownloadStateMachine","child_issue":214,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_feed_workflow.rs","surface":"feed_fetch_rehydration","target_owner":"LibraryFeedStateMachine","child_issue":216,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_feed_discovery_workflow.rs","surface":"feed_discovery_reconciliation","target_owner":"LibraryFeedStateMachine","child_issue":216,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_observations_pending.rs","surface":"pending_observation_retry","target_owner":"CorrelatedEffectOwner","child_issue":210,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_publication.rs","surface":"publication_rehydration","target_owner":"AgentPublicationStateMachine","child_issue":215,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_scheduled_agent_queue.rs","surface":"scheduled_agent_rehydration","target_owner":"ScheduledAgentStateMachine","child_issue":215,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_transcript_workflow_queue.rs","surface":"transcript_rehydration","target_owner":"TranscriptStateMachine","child_issue":213,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_transcript_workflow_completion.rs","surface":"transcript_evidence_materialization_recovery","target_owner":"TranscriptAndRecallStateMachines","child_issue":213,"implementation_status":"durable_observation_replay_and_typed_completion_commit"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime.rs","surface":"host_drain_reconciliation","target_owner":"LifecycleRecoveryStateMachine","child_issue":210,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_agent_commands.rs","surface":"agent_command_recovery","target_owner":"AgentPublicationStateMachine","child_issue":215,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_chapter_model_observations.rs","surface":"chapter_observation_recovery","target_owner":"ChapterStateMachine","child_issue":213,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_core_wakes.rs","surface":"core_wake_reconciliation","target_owner":"LifecycleRecoveryStateMachine","child_issue":210,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_download_admission.rs","surface":"download_admission_reconciliation","target_owner":"DownloadStateMachine","child_issue":214,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_download_commands.rs","surface":"download_command_recovery","target_owner":"DownloadStateMachine","child_issue":214,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_feed_observations.rs","surface":"feed_observation_recovery","target_owner":"LibraryFeedStateMachine","child_issue":216,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_observations.rs","surface":"observation_reconciliation","target_owner":"CorrelatedEffectOwner","child_issue":210,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_scheduled_agent_commands.rs","surface":"scheduled_command_recovery","target_owner":"ScheduledAgentStateMachine","child_issue":215,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_scheduled_agent_observations.rs","surface":"scheduled_observation_recovery","target_owner":"ScheduledAgentStateMachine","child_issue":215,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"rust/crates/pod0-facade/src/runtime_subscription_commands.rs","surface":"subscription_reconciliation","target_owner":"LibraryFeedStateMachine","child_issue":216,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"recovery","path":"App/Sources/Core/Pod0NativeHostDispatcher+Model.swift","surface":"native_observation_transport_replay","target_owner":"RustOwnerViaObservationIngress","child_issue":212,"implementation_status":"current_recovery_not_universally_committed"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/activity_store.rs","domain":"activity_journal","target_boundary":"TransitionCommit","child_issue":207,"implementation_status":"crate_private_append_foundation"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/effect_outbox.rs","domain":"effect_delivery","target_boundary":"PersistedRustEffectLease","child_issue":209,"implementation_status":"durable_claim_and_observation_staging"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/effect_outbox_agent_observation.rs","domain":"agent_publication","target_boundary":"TransitionCommit","child_issue":215,"implementation_status":"private_exact_agent_model_lease_staging"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/effect_outbox_observation.rs","domain":"effect_delivery","target_boundary":"PersistedRustEffectLease","child_issue":209,"implementation_status":"durable_exact_lease_observation_staging"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/transition_commit_planned.rs","domain":"activity_authority","target_boundary":"TransitionCommit","child_issue":208,"implementation_status":"sole_capability_guarded_activity_committer_with_atomic_planning"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/transition_commit_library.rs","domain":"library_feed_listening","target_boundary":"TransitionCommit","child_issue":216,"implementation_status":"episode_starred_typed_adapter"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/transition_commit_write.rs","domain":"activity_authority","target_boundary":"TransitionCommit","child_issue":208,"implementation_status":"private_atomic_writer_component"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/agent_generated_audio_store.rs","domain":"agent_publication","target_boundary":"TransitionCommit","child_issue":215,"implementation_status":"transition_commit_transaction_hook_authoritative_legacy_adapter_pending_deletion"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/agent_history_cutover.rs","domain":"agent_publication","target_boundary":"TransitionCommit","child_issue":215,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/agent_store.rs","domain":"agent_publication","target_boundary":"TransitionCommit","child_issue":215,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/category_store_write_support.rs","domain":"user_artifact","target_boundary":"TransitionCommit","child_issue":217,"implementation_status":"private_transition_commit_writer"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/chapter_import_commit.rs","domain":"transcript_chapter_knowledge","target_boundary":"TransitionCommit","child_issue":213,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/chapter_import_discard.rs","domain":"transcript_chapter_knowledge","target_boundary":"TransitionCommit","child_issue":213,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/chapter_import_store_rows.rs","domain":"transcript_chapter_knowledge","target_boundary":"TransitionCommit","child_issue":213,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/chapter_import_verification.rs","domain":"transcript_chapter_knowledge","target_boundary":"TransitionCommit","child_issue":213,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/chapter_store_write_artifact.rs","domain":"transcript_chapter_knowledge","target_boundary":"TransitionCommit","child_issue":213,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/chapter_workflow_store.rs","domain":"transcript_chapter_knowledge","target_boundary":"TransitionCommit","child_issue":213,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/chapter_workflow_store_adopt.rs","domain":"transcript_chapter_knowledge","target_boundary":"TransitionCommit","child_issue":213,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/chapter_workflow_store_complete.rs","domain":"transcript_chapter_knowledge","target_boundary":"TransitionCommit","child_issue":213,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/chapter_workflow_store_write.rs","domain":"transcript_chapter_knowledge","target_boundary":"TransitionCommit","child_issue":213,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/clip_import_store.rs","domain":"user_artifact","target_boundary":"TransitionCommit","child_issue":217,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/download_store.rs","domain":"download","target_boundary":"TransitionCommit","child_issue":214,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/download_store_artifact.rs","domain":"download","target_boundary":"TransitionCommit","child_issue":214,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/download_store_artifact_recovery.rs","domain":"download","target_boundary":"TransitionCommit","child_issue":214,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/download_store_cancel.rs","domain":"download","target_boundary":"TransitionCommit","child_issue":214,"implementation_status":"private_atomic_writer_component"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/download_store_cutover.rs","domain":"download","target_boundary":"TransitionCommit","child_issue":214,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/download_store_cutover_discard.rs","domain":"download","target_boundary":"TransitionCommit","child_issue":214,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/download_store_cutover_entry.rs","domain":"download","target_boundary":"TransitionCommit","child_issue":214,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/download_store_observations.rs","domain":"download","target_boundary":"TransitionCommit","child_issue":214,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/download_store_request.rs","domain":"download","target_boundary":"TransitionCommit","child_issue":214,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/download_store_retry.rs","domain":"download","target_boundary":"TransitionCommit","child_issue":214,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/download_store_environment.rs","domain":"download","target_boundary":"TransitionCommit","child_issue":214,"implementation_status":"private_atomic_writer_component"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/download_store_write.rs","domain":"download","target_boundary":"TransitionCommit","child_issue":214,"implementation_status":"private_atomic_writer_component"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/evidence_commands.rs","domain":"transcript_chapter_knowledge","target_boundary":"TransitionCommit","child_issue":213,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/evidence_store_mutations.rs","domain":"transcript_chapter_knowledge","target_boundary":"TransitionCommit","child_issue":213,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/evidence_store_stage.rs","domain":"transcript_chapter_knowledge","target_boundary":"TransitionCommit","child_issue":213,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/feed_discovery_cutover.rs","domain":"library_feed_listening","target_boundary":"TransitionCommit","child_issue":216,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/feed_discovery_cutover_commit.rs","domain":"library_feed_listening","target_boundary":"TransitionCommit","child_issue":216,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/feed_discovery_store.rs","domain":"library_feed_listening","target_boundary":"TransitionCommit","child_issue":216,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/feed_discovery_workflow_store.rs","domain":"library_feed_listening","target_boundary":"TransitionCommit","child_issue":216,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/feed_discovery_workflow_store_policy.rs","domain":"library_feed_listening","target_boundary":"TransitionCommit","child_issue":216,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/feed_discovery_workflow_store_read.rs","domain":"library_feed_listening","target_boundary":"TransitionCommit","child_issue":216,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/feed_fetch_store.rs","domain":"library_feed_listening","target_boundary":"TransitionCommit","child_issue":216,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/library_store.rs","domain":"library_feed_listening","target_boundary":"TransitionCommit","child_issue":216,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/library_store_categories.rs","domain":"user_artifact","target_boundary":"TransitionCommit","child_issue":217,"implementation_status":"public_adapter_and_private_transition_writer"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/library_store_category_members.rs","domain":"user_artifact","target_boundary":"TransitionCommit","child_issue":217,"implementation_status":"public_adapter_and_private_transition_writer"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/library_store_chapters.rs","domain":"transcript_chapter_knowledge","target_boundary":"TransitionCommit","child_issue":213,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/library_store_clip_support.rs","domain":"user_artifact","target_boundary":"TransitionCommit","child_issue":217,"implementation_status":"private_clip_revision_and_evidence_writer_component"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/library_store_clip_create.rs","domain":"user_artifact","target_boundary":"TransitionCommit","child_issue":217,"implementation_status":"private_atomic_clip_create_writer_component"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/library_store_clip_mutation.rs","domain":"user_artifact","target_boundary":"TransitionCommit","child_issue":217,"implementation_status":"private_atomic_clip_mutation_writer_component"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/library_store_commands.rs","domain":"library_feed_listening","target_boundary":"TransitionCommit","child_issue":216,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/library_store_external.rs","domain":"library_feed_listening","target_boundary":"TransitionCommit","child_issue":216,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/library_store_feed.rs","domain":"library_feed_listening","target_boundary":"TransitionCommit","child_issue":216,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/library_store_memory_write.rs","domain":"user_artifact","target_boundary":"TransitionCommit","child_issue":217,"implementation_status":"private_atomic_memory_writer_component"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/library_store_note_support.rs","domain":"user_artifact","target_boundary":"TransitionCommit","child_issue":217,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/library_store_notes.rs","domain":"user_artifact","target_boundary":"TransitionCommit","child_issue":217,"implementation_status":"transition_commit_adapters_with_private_transaction_writers"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/library_store_note_create.rs","domain":"user_artifact","target_boundary":"TransitionCommit","child_issue":217,"implementation_status":"transition_commit_transaction_hook_authoritative_legacy_adapter_retained"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/transition_commit_agent_cancellation.rs","domain":"agent_publication","target_boundary":"TransitionCommit","child_issue":215,"implementation_status":"transition_commit_authoritative"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/library_store_playback_apply.rs","domain":"library_feed_listening","target_boundary":"TransitionCommit","child_issue":216,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/library_store_playback_queue.rs","domain":"library_feed_listening","target_boundary":"TransitionCommit","child_issue":216,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/listening_store_write.rs","domain":"library_feed_listening","target_boundary":"TransitionCommit","child_issue":216,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/listening_store_write_entities.rs","domain":"library_feed_listening","target_boundary":"TransitionCommit","child_issue":216,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/memory_cutover_store.rs","domain":"user_artifact","target_boundary":"TransitionCommit","child_issue":217,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/memory_cutover_store_rows.rs","domain":"user_artifact","target_boundary":"TransitionCommit","child_issue":217,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/memory_store_support.rs","domain":"user_artifact","target_boundary":"TransitionCommit","child_issue":217,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/note_import_store.rs","domain":"user_artifact","target_boundary":"TransitionCommit","child_issue":217,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/publication_store_observe.rs","domain":"agent_publication","target_boundary":"TransitionCommit","child_issue":215,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/publication_store_write.rs","domain":"agent_publication","target_boundary":"TransitionCommit","child_issue":215,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/recall_configuration_store.rs","domain":"recall_knowledge","target_boundary":"TransitionCommit","child_issue":215,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/retained_orphan_parent.rs","domain":"library_feed_listening","target_boundary":"TransitionCommit","child_issue":216,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/scheduled_agent_cutover.rs","domain":"agent_publication","target_boundary":"TransitionCommit","child_issue":215,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/scheduled_agent_cutover_stage.rs","domain":"agent_publication","target_boundary":"TransitionCommit","child_issue":215,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/scheduled_agent_store_actions.rs","domain":"agent_publication","target_boundary":"TransitionCommit","child_issue":215,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/scheduled_agent_store_completion.rs","domain":"agent_publication","target_boundary":"TransitionCommit","child_issue":215,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/scheduled_agent_store_observations.rs","domain":"agent_publication","target_boundary":"TransitionCommit","child_issue":215,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/scheduled_agent_store_reconcile.rs","domain":"agent_publication","target_boundary":"TransitionCommit","child_issue":215,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/scheduled_agent_store_recovery.rs","domain":"agent_publication","target_boundary":"TransitionCommit","child_issue":215,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/scheduled_agent_store_tasks.rs","domain":"agent_publication","target_boundary":"TransitionCommit","child_issue":215,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/speaker_store_write.rs","domain":"user_artifact","target_boundary":"TransitionCommit","child_issue":217,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/transcript_authority.rs","domain":"transcript_chapter_knowledge","target_boundary":"TransitionCommit","child_issue":213,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/transcript_import_commit.rs","domain":"transcript_chapter_knowledge","target_boundary":"TransitionCommit","child_issue":213,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/transcript_import_discard.rs","domain":"transcript_chapter_knowledge","target_boundary":"TransitionCommit","child_issue":213,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/transcript_import_store_write.rs","domain":"transcript_chapter_knowledge","target_boundary":"TransitionCommit","child_issue":213,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/transcript_import_verification.rs","domain":"transcript_chapter_knowledge","target_boundary":"TransitionCommit","child_issue":213,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/transcript_store_write.rs","domain":"transcript_chapter_knowledge","target_boundary":"TransitionCommit","child_issue":213,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/transcript_store_write_artifact.rs","domain":"transcript_chapter_knowledge","target_boundary":"TransitionCommit","child_issue":213,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"authoritative_mutation_module","path":"rust/crates/pod0-storage/src/transcript_store_write_rows.rs","domain":"transcript_chapter_knowledge","target_boundary":"TransitionCommit","child_issue":213,"implementation_status":"legacy_direct_mutator_registered"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/ChapterModelTransport.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/CoreAgentCapabilityExecutor.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/CoreAgentHost.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/CoreChapterModelHost.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/CoreDownloadHost.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/CoreDownloadHosting.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/CoreFeedHost.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/CoreNotificationHost.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/CorePlaybackHost.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/CorePublisherChapterHost.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/CoreRecallHost.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/CoreRecallHosting.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/CoreScheduledAgentHost.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/CoreTranscriptHost.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/CoreTranscriptTransport.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/DeferredAgentHost.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/DeferredPlaybackHost.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/LiveCoreTranscriptTransport.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/Pod0NativeHostDispatcher+Agent.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/Pod0NativeHostDispatcher+Feed.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/Pod0NativeHostDispatcher+LeasedExecution.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"lease_identity_preserving_adapter"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/Pod0NativeHostDispatcher+Model.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/Pod0NativeHostDispatcher+Notifications.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/Pod0NativeHostDispatcher+PublisherChapters.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/Pod0NativeHostDispatcher+Recall.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/Pod0NativeHostDispatcher+ScheduledAgent.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/Pod0NativeHostDispatcher+Transcripts.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/Pod0NativeHostDispatcher.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/SharedAgentConversationRuntime.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"},
-    {"kind":"native_execution_module","path":"App/Sources/Core/SharedLibraryClient+Commands.swift","target_boundary":"PersistedRustEffectLease","child_issue":212,"implementation_status":"registered_native_surface_pending_lease_enforcement"}
+    {
+      "kind": "diagnostics_projection",
+      "path": "rust/crates/pod0-facade/src/episode_activity_projection.rs",
+      "surface": "episode_diagnostics",
+      "target_owner": "RustActivityJournalProjection",
+      "child_issue": 218,
+      "implementation_status": "authoritative_redacted_append_only_journal_projection"
+    },
+    {
+      "kind": "diagnostics_projection",
+      "path": "rust/crates/pod0-facade/src/episode_activity_latest_projection.rs",
+      "surface": "stable_newest_first_episode_diagnostics",
+      "target_owner": "RustActivityJournalProjection",
+      "child_issue": 218,
+      "implementation_status": "bounded_frozen_snapshot_pagination_across_concurrent_appends_and_relaunch"
+    },
+    {
+      "kind": "diagnostics_projection",
+      "path": "rust/crates/pod0-facade/src/support_activity_projection.rs",
+      "surface": "causal_operation_and_global_support_diagnostics",
+      "target_owner": "RustActivityJournalProjection",
+      "child_issue": 218,
+      "implementation_status": "bounded_redacted_read_only_causal_operation_and_support_projections"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_state_open.rs",
+      "surface": "startup_rehydration",
+      "target_owner": "LifecycleRecoveryStateMachine",
+      "child_issue": 210,
+      "implementation_status": "typed_recovery_reauthorizes_exact_durable_lifecycle_effects"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_workflow_configuration.rs",
+      "surface": "workflow_configuration_and_opportunity_reconciliation",
+      "target_owner": "WorkflowReconciliationStateMachine",
+      "child_issue": 210,
+      "implementation_status": "typed_configuration_capability_and_opportunity_transition_commit_adapters"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_workflow_internal_commands.rs",
+      "surface": "durable_workflow_internal_command_recovery",
+      "target_owner": "WorkflowReconciliationStateMachine",
+      "child_issue": 210,
+      "implementation_status": "typed_restart_safe_internal_command_consumption_with_atomic_owner_transition_commits"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_agent_recovery.rs",
+      "surface": "agent_recovery",
+      "target_owner": "AgentPublicationStateMachine",
+      "child_issue": 215,
+      "implementation_status": "read_only_rehydration_with_durable_internal_commands_and_typed_capability_ambiguity_recovery_transition"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_chapter_model_completion.rs",
+      "surface": "chapter_completion_recovery",
+      "target_owner": "ChapterStateMachine",
+      "child_issue": 213,
+      "implementation_status": "typed_internal_command_consumption_and_atomic_finalization"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_chapter_model_leased_observations.rs",
+      "surface": "chapter_model_leased_observations",
+      "target_owner": "ChapterStateMachine",
+      "child_issue": 213,
+      "implementation_status": "typed_exact_lease_observation_and_internal_finalization_authorization"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_chapter_model_queue.rs",
+      "surface": "chapter_model_rehydration",
+      "target_owner": "ChapterStateMachine",
+      "child_issue": 213,
+      "implementation_status": "typed_recovery_transition_and_effect_releasing_scheduler"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_chapter_workflow.rs",
+      "surface": "publisher_chapter_rehydration",
+      "target_owner": "ChapterStateMachine",
+      "child_issue": 213,
+      "implementation_status": "durable_effect_outbox_rehydration_and_read_only_capacity_projection"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_chapter_workflow_commands.rs",
+      "surface": "publisher_chapter_source_recovery",
+      "target_owner": "ChapterStateMachine",
+      "child_issue": 213,
+      "implementation_status": "typed_deterministic_recovery_ingress_and_persisted_effect_authorization"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_download_workflow.rs",
+      "surface": "download_rehydration",
+      "target_owner": "DownloadStateMachine",
+      "child_issue": 214,
+      "implementation_status": "durable_outbox_rehydration_without_in_memory_delivery_leg_and_typed_timeout_reconciliation"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_feed_workflow.rs",
+      "surface": "feed_fetch_rehydration",
+      "target_owner": "LibraryFeedStateMachine",
+      "child_issue": 216,
+      "implementation_status": "durable_exact_effect_lease_rehydration_without_host_queue"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_feed_leased_observations.rs",
+      "surface": "feed_leased_observation_recovery",
+      "target_owner": "LibraryFeedStateMachine",
+      "child_issue": 216,
+      "implementation_status": "typed_exact_lease_observation_and_atomic_feed_transition_commit"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_feed_notification_leased_observations.rs",
+      "surface": "feed_notification_leased_observation_recovery",
+      "target_owner": "LibraryFeedStateMachine",
+      "child_issue": 216,
+      "implementation_status": "typed_exact_notification_lease_observation_and_atomic_transition_commit"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_feed_discovery_workflow.rs",
+      "surface": "feed_discovery_reconciliation",
+      "target_owner": "LibraryFeedStateMachine",
+      "child_issue": 216,
+      "implementation_status": "typed_atomic_state_versioned_recovery_transition_commit"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_library_network_commands.rs",
+      "surface": "library_network_rehydration",
+      "target_owner": "LibraryNetworkStateMachine",
+      "child_issue": 216,
+      "implementation_status": "durable_workflow_projection_and_restart_safe_exact_effect_rehydration"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_publication.rs",
+      "surface": "publication_rehydration",
+      "target_owner": "AgentPublicationStateMachine",
+      "child_issue": 215,
+      "implementation_status": "dedicated_exact_publication_lease_and_typed_receipt_status_transition_commits"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_recall_commands.rs",
+      "surface": "recall_query_rehydration",
+      "target_owner": "RecallKnowledgeStateMachine",
+      "child_issue": 215,
+      "implementation_status": "durable_recall_workflow_projection_rehydration_and_exact_effect_delivery"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_recall_cutover.rs",
+      "surface": "recall_index_cutover_recovery",
+      "target_owner": "RecallKnowledgeStateMachine",
+      "child_issue": 215,
+      "implementation_status": "typed_durable_cutover_recovery_and_exact_leased_observation"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_transcript_workflow_queue.rs",
+      "surface": "transcript_rehydration",
+      "target_owner": "TranscriptStateMachine",
+      "child_issue": 213,
+      "implementation_status": "read_only_rehydration_scheduler_with_typed_ambiguous_submission_recovery_and_existing_typed_effect_authority"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_transcript_workflow_completion.rs",
+      "surface": "transcript_evidence_materialization_recovery",
+      "target_owner": "TranscriptAndRecallStateMachines",
+      "child_issue": 213,
+      "implementation_status": "durable_observation_replay_and_typed_completion_commit"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_transcript_effect_leases.rs",
+      "surface": "durable_effect_claim_and_routing",
+      "target_owner": "RustEffectLeaseRouter",
+      "child_issue": 212,
+      "implementation_status": "sole_exact_persisted_effect_claim_and_host_request_projection"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_agent_commands.rs",
+      "surface": "agent_command_recovery",
+      "target_owner": "AgentPublicationStateMachine",
+      "child_issue": 215,
+      "implementation_status": "typed_agent_command_transition_commit_adapters"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_core_wakes.rs",
+      "surface": "core_wake_reconciliation",
+      "target_owner": "LifecycleRecoveryStateMachine",
+      "child_issue": 210,
+      "implementation_status": "typed_transition_commit_lifecycle_recovery_without_in_memory_queue"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_download_admission.rs",
+      "surface": "download_admission_reconciliation",
+      "target_owner": "DownloadStateMachine",
+      "child_issue": 214,
+      "implementation_status": "typed_state_derived_transition_commit_reconciliation"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_download_commands.rs",
+      "surface": "download_command_recovery",
+      "target_owner": "DownloadStateMachine",
+      "child_issue": 214,
+      "implementation_status": "typed_transition_commit_command_adapters_with_exact_effect_authorization"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_scheduled_agent_commands.rs",
+      "surface": "scheduled_command_recovery",
+      "target_owner": "ScheduledAgentStateMachine",
+      "child_issue": 215,
+      "implementation_status": "typed_scheduled_command_transition_commit_adapters"
+    },
+    {
+      "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_subscription_commands.rs",
+      "surface": "subscription_reconciliation",
+      "target_owner": "LibraryFeedStateMachine",
+      "child_issue": 216,
+      "implementation_status": "typed_command_transition_followed_by_typed_discovery_reconciliation"
+    },
+    {
+      "kind": "recovery",
+      "path": "App/Sources/Core/Pod0NativeHostDispatcher+Model.swift",
+      "surface": "native_observation_transport_replay",
+      "target_owner": "RustOwnerViaObservationIngress",
+      "child_issue": 212,
+      "implementation_status": "durable_replay_preserves_exact_persisted_lease_and_records_via_leased_ingress"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/activity_store.rs",
+      "domain": "activity_journal",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 207,
+      "implementation_status": "crate_private_append_foundation"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/effect_outbox.rs",
+      "domain": "effect_delivery",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 209,
+      "implementation_status": "durable_claim_and_observation_staging"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/effect_outbox_agent_observation.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "private_exact_agent_model_lease_staging"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/effect_outbox_chapter_observation.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "private_exact_publisher_and_model_lease_staging"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/effect_outbox_download_observation.rs",
+      "domain": "download",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 214,
+      "implementation_status": "private_exact_download_lease_staging"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/effect_outbox_playback_observation.rs",
+      "domain": "playback",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 214,
+      "implementation_status": "exact_leased_stream_cursor_and_terminal_observation_staging"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/effect_outbox_publication.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "dedicated_exact_publication_lease_claim"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/effect_outbox_observation.rs",
+      "domain": "effect_delivery",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 209,
+      "implementation_status": "durable_exact_lease_observation_staging"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_planned.rs",
+      "domain": "activity_authority",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 208,
+      "implementation_status": "sole_capability_guarded_activity_committer_with_atomic_planning"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_library.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "episode_starred_typed_adapter"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_playback_effects.rs",
+      "domain": "playback",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 214,
+      "implementation_status": "private_atomic_stream_supersession_writer"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_feed_fetch.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "typed_atomic_feed_fetch_admission_and_exact_effect_authorization"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_feed_observation.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "typed_exact_lease_observation_and_atomic_feed_transition_commit"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_feed_observation_support.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "private_feed_observation_mutation_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_feed_notification.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "typed_notification_admission_and_exact_effect_authorization"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_feed_notification_observation.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "typed_exact_notification_lease_observation_and_atomic_transition_commit"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_download_cutover.rs",
+      "domain": "download",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 214,
+      "implementation_status": "typed_atomic_authority_cutover_and_activity_append"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_note_cutover.rs",
+      "domain": "user_artifact",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "typed_atomic_authority_cutover_and_activity_append"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_clip_cutover.rs",
+      "domain": "user_artifact",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "typed_atomic_authority_cutover_and_activity_append"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_memory_cutover.rs",
+      "domain": "user_artifact",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "typed_atomic_authority_cutover_and_activity_append"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_publication_observation.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "typed_exact_lease_receipt_observation_and_atomic_publication_transition_commit"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_agent_recall_stage.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "private_atomic_effect_attempt_staging_under_agent_recall_transition_commit"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_agent_capability_recovery.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "typed_ambiguous_attempt_recovery_transition_with_exact_recovery_payload"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_legacy_effect_recovery.rs",
+      "domain": "activity_authority",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 219,
+      "implementation_status": "private_v40_legacy_effect_recovery_fact_planner_and_linker_using_transition_commit_append_authority"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_recall_cutover.rs",
+      "domain": "recall_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "typed_atomic_recall_index_cutover_admission_and_exact_effect_authorization"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_recall_cutover_observation.rs",
+      "domain": "recall_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "typed_exact_cutover_lease_observation_and_atomic_finalization"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/recall_workflow_store.rs",
+      "domain": "recall_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "read_projection_and_public_typed_query_transition_adapter_with_private_atomic_writer"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_recall_query_observation.rs",
+      "domain": "recall_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "typed_exact_recall_query_lease_observation_and_atomic_transition_commit"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_lifecycle_observation_stage.rs",
+      "domain": "lifecycle",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 210,
+      "implementation_status": "private_exact_lease_observation_staging_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_scheduled_agent_effects.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "private_scheduled_effect_authorization_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_scheduled_agent_actions.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "typed_atomic_scheduled_occurrence_retry_cancel_and_effect_fencing"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_cancellation.rs",
+      "domain": "playback",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 214,
+      "implementation_status": "durable_command_cancellation_and_effect_supersession"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_cancellation_observation.rs",
+      "domain": "lifecycle",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 210,
+      "implementation_status": "typed_exact_leased_native_cancellation_observation_and_atomic_effect_completion"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_reset_listening.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "atomic_erasure_playback_effect_supersession_and_stop_authorization"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_listening_cutover.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "typed_atomic_listening_authority_cutover_and_activity_append"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_reset_listening_apply.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "private_reset_mutation_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_chapter_publisher_cancel.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "publisher_command_cancellation_and_effect_retirement_authority"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_chapter_model_cancel.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "model_command_cancellation_and_typed_effect_retirement_authority"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_chapter_model_provider_recovery.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "typed_provider_accepted_recovery_transition_supersedes_execute_and_authorizes_exact_recover_effect"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_chapter_cancellation_hook.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "private_atomic_chapter_workflow_cancellation_hook_under_generic_exact_effect_transition_commit"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_chapter_source_absent.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "typed_atomic_publisher_source_absence_transition"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_write.rs",
+      "domain": "activity_authority",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 208,
+      "implementation_status": "private_atomic_writer_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/agent_generated_audio_store.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "private_transition_commit_generated_audio_projection_helper"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/agent_history_cutover.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "typed_transition_commit_adapter_no_direct_sql"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_agent_history_cutover.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "typed_migration_transition_commit_for_stage_verify_authority_and_discard"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/agent_store.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "private_transition_commit_projection_writer_with_test_only_direct_helpers"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/scheduled_agent_store_command_receipts.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "private_scheduled_command_receipt_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/category_store_write_support.rs",
+      "domain": "user_artifact",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "private_transition_commit_writer"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/chapter_import_commit.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "typed_atomic_migration_cutover_authority_and_activity_append"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/chapter_import_discard.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "pre_authority_staging_lifecycle_only"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/chapter_import_store_rows.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "private_pre_authority_staging_row_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/chapter_import_verification.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "pre_authority_verification_with_private_typed_rejection_corruption_hook"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/chapter_store_write_artifact.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "private_atomic_artifact_component_reachable_from_staging_or_typed_commit"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/chapter_workflow_store_adopt.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "private_transaction_component_of_typed_admission"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/chapter_workflow_store_complete.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "private_transaction_component_with_test_only_direct_adapter"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/chapter_workflow_store_write.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "typed_production_adapters_with_private_transaction_components_and_test_only_direct_adapters"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/clip_import_store.rs",
+      "domain": "user_artifact",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "pre_authority_staging_only_authority_flip_delegated_to_typed_transition_commit"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/download_store.rs",
+      "domain": "download",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 214,
+      "implementation_status": "read_projection_and_public_typed_reconciliation_adapters_with_private_atomic_writers"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/download_store_artifact.rs",
+      "domain": "download",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 214,
+      "implementation_status": "authoritative_transition_commit_artifact_adoption_with_test_only_staging_adapter"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/download_store_cancel.rs",
+      "domain": "download",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 214,
+      "implementation_status": "private_atomic_writer_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/download_store_cutover.rs",
+      "domain": "download",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 214,
+      "implementation_status": "pre_authority_staging_and_typed_atomic_authority_flip_adapter"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/download_store_cutover_discard.rs",
+      "domain": "download",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 214,
+      "implementation_status": "pre_authority_staged_migration_discard_only"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/download_store_cutover_entry.rs",
+      "domain": "download",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 214,
+      "implementation_status": "private_pre_authority_staging_row_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/download_store_observations.rs",
+      "domain": "download",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 214,
+      "implementation_status": "private_atomic_observation_writer_reachable_from_typed_transition_commit"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/download_store_request.rs",
+      "domain": "download",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 214,
+      "implementation_status": "private_exact_request_attempt_and_fencing_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/download_store_retry.rs",
+      "domain": "download",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 214,
+      "implementation_status": "private_typed_retry_mutation_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/download_store_environment.rs",
+      "domain": "download",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 214,
+      "implementation_status": "private_atomic_writer_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/download_store_finalization.rs",
+      "domain": "download",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 214,
+      "implementation_status": "private_atomic_finalization_queue_writer"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/download_store_write.rs",
+      "domain": "download",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 214,
+      "implementation_status": "private_atomic_writer_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_download.rs",
+      "domain": "download",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 214,
+      "implementation_status": "typed_atomic_admission_and_effect_authority"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_download_artifact_recovery.rs",
+      "domain": "download",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 214,
+      "implementation_status": "typed_atomic_artifact_recovery_and_activity_append"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_download_finalization_apply.rs",
+      "domain": "download",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 214,
+      "implementation_status": "private_internal_command_finalization_writer"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/evidence_commands.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "private_idempotency_receipt_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/evidence_store_mutations.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "private_atomic_verify_select_components_with_test_only_direct_adapters"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/evidence_store_stage.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "private_atomic_stage_component_with_test_only_direct_adapter"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/feed_discovery_cutover.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "pre_authority_staging_adapter_and_typed_atomic_authority_cutover"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/feed_discovery_cutover_commit.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "private_cutover_mutation_component_reachable_only_from_transition_commit"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/feed_discovery_store.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "production_read_model_and_test_only_characterization_adapter"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/feed_discovery_workflow_store.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "typed_atomic_state_versioned_recovery_transition_adapters"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/feed_discovery_workflow_store_policy.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "typed_notification_preference_transition_and_private_recovery_mutations"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/library_store.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "authoritative_read_adapter_and_typed_listening_cutover_delegate"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/library_store_categories.rs",
+      "domain": "user_artifact",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "public_adapter_and_private_transition_writer"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/library_store_category_members.rs",
+      "domain": "user_artifact",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "public_adapter_and_private_transition_writer"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/library_store_chapters.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "private_atomic_chapter_writer_reachable_from_typed_transition_commits"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/library_store_clip_support.rs",
+      "domain": "user_artifact",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "private_clip_revision_and_evidence_writer_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/library_store_clip_create.rs",
+      "domain": "user_artifact",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "private_atomic_clip_create_writer_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/library_store_clip_mutation.rs",
+      "domain": "user_artifact",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "private_atomic_clip_mutation_writer_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/library_store_commands.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "typed_atomic_library_transition_adapters"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/library_store_external.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "typed_atomic_external_episode_transition_adapter"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/library_store_feed.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "private_feed_mutation_components_and_test_only_characterization_adapter"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/library_store_memory_write.rs",
+      "domain": "user_artifact",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "private_atomic_memory_writer_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/library_store_note_support.rs",
+      "domain": "user_artifact",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "transaction_only_components_reachable_from_typed_transition_commit"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/library_store_notes.rs",
+      "domain": "user_artifact",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "transition_commit_adapters_with_private_transaction_writers"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/library_store_note_create.rs",
+      "domain": "user_artifact",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "public_transition_commit_adapter_with_private_atomic_writer"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_agent_cancellation.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "transition_commit_authoritative"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/library_store_playback_apply.rs",
+      "domain": "playback",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 214,
+      "implementation_status": "private_playback_transition_mutation_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/library_store_playback_queue.rs",
+      "domain": "playback",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 214,
+      "implementation_status": "private_playback_transition_mutation_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/listening_store_write.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "pre_authority_staging_only_product_reads_fail_closed"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/listening_store_write_entities.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "pre_authority_staging_only_product_reads_fail_closed"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/memory_cutover_store.rs",
+      "domain": "user_artifact",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "inactive_stage_verify_discard_only_authority_flip_delegated_to_typed_transition_commit"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/memory_cutover_store_rows.rs",
+      "domain": "user_artifact",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "private_inactive_migration_row_components"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/memory_store_support.rs",
+      "domain": "user_artifact",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "transaction_only_components_reachable_from_typed_transition_commit"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/note_import_store.rs",
+      "domain": "user_artifact",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "pre_authority_staging_only_authority_flip_delegated_to_typed_transition_commit"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/publication_store_observe.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "public_typed_leased_transition_commit_adapter_with_private_atomic_projection_helper"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/publication_store_write.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "public_typed_transition_commit_adapters_with_private_atomic_projection_helpers"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/recall_configuration_store.rs",
+      "domain": "recall_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "public_typed_transition_commit_adapters_with_private_configuration_projection_helpers"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/workflow_configuration_store.rs",
+      "domain": "lifecycle",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 210,
+      "implementation_status": "typed_transition_commit_configuration_and_capability_adapters_with_private_projection_helpers"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/retained_orphan_parent.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "private_authoritative_mutation_component_reachable_from_transition_commit"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_scheduled_agent_cutover.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "typed_migration_transition_commit_for_stage_verify_authority_and_discard"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/scheduled_agent_cutover_stage.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "private_migration_staging_helper_owned_by_cutover_transition_commit"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/scheduled_agent_store_completion.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "private_scheduled_observation_transition_commit_completion_helper"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/scheduled_agent_store_observations.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "public_typed_leased_transition_commit_adapter_with_private_projection_helpers"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/scheduled_agent_store_reconcile.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "public_typed_transition_commit_adapter_with_private_attempt_projection_helpers"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/scheduled_agent_store_tasks.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "public_typed_transition_commit_adapters_with_private_task_projection_helpers"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/speaker_store_write.rs",
+      "domain": "user_artifact",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "public_transition_commit_adapter_with_private_atomic_writer"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/effect_outbox_scheduled_agent_observation.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "private_exact_scheduled_agent_lease_staging"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transcript_authority.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "private_transaction_authority_projection_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transcript_import_commit.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "typed_atomic_migration_cutover_authority_and_activity_append"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transcript_import_discard.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "pre_authority_staging_lifecycle_with_private_typed_rejection_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transcript_import_store_write.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "pre_authority_staging_only"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transcript_import_verification.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "pre_authority_verification_only"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transcript_store_write.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "private_atomic_transcript_writer_reachable_only_from_typed_transition_commit"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transcript_store_write_artifact.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "private_atomic_artifact_row_component"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transcript_store_write_rows.rs",
+      "domain": "transcript_chapter_knowledge",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 213,
+      "implementation_status": "private_validation_and_row_writer_component"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/ChapterModelTransport.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/CoreAgentCapabilityExecutor.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/CoreAgentHost.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/CoreChapterModelHost.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/CoreDownloadHost.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/CoreDownloadHosting.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/CoreFeedHost.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/CoreNotificationHost.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/CorePlaybackHost.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/CorePublisherChapterHost.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/CoreRecallHost.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/CoreRecallHosting.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/CoreScheduledAgentHost.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/CoreTranscriptHost.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/CoreTranscriptTransport.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/DeferredAgentHost.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/DeferredPlaybackHost.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/LiveCoreTranscriptTransport.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/Pod0NativeHostDispatcher+Agent.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/Pod0NativeHostDispatcher+Feed.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/Pod0NativeHostDispatcher+LibraryNetwork.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 216,
+      "implementation_status": "executes_only_exact_persisted_library_network_leases_and_records_leased_observations"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/Pod0NativeHostDispatcher+LeasedExecution.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "lease_identity_preserving_adapter"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/Pod0NativeHostDispatcher+Model.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/Pod0NativeHostDispatcher+Notifications.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/Pod0NativeHostDispatcher+PublisherChapters.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/Pod0NativeHostDispatcher+Recall.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/Pod0NativeHostDispatcher+ScheduledAgent.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/Pod0NativeHostDispatcher+Transcripts.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 212,
+      "implementation_status": "production_execution_requires_persisted_rust_lease_and_leased_durable_observation_ingress"
+    },
+    {
+      "kind": "native_execution_module",
+      "path": "App/Sources/Core/NativeUserDataErasureExecutor.swift",
+      "target_boundary": "PersistedRustEffectLease",
+      "child_issue": 217,
+      "implementation_status": "executes_only_exact_marker_backed_native_erasure_leases_and_records_attempt_qualified_terminal_observations"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/library_network_store.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "read_only_projection_adapter_and_private_transition_mutation_helpers"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_library_network_admission.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "typed_atomic_library_network_admission_and_exact_effect_authorization"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/library_store_external_apply.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "private_transaction_only_episode_import_mutation_used_by_library_network_transition_commit"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_library_network_observation.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "exact_lease_validated_atomic_observation_followup_import_fact_and_receipt_commit"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_library_network_observation_support.rs",
+      "domain": "library_feed_listening",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 216,
+      "implementation_status": "private_deterministic_ingress_identity_fingerprint_and_revision_helpers"
+    }
   ]
 }

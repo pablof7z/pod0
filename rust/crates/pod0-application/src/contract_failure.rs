@@ -1,4 +1,4 @@
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct CoreFailure {
     pub code: CoreFailureCode,
     pub safe_detail: Option<String>,
@@ -6,7 +6,7 @@ pub struct CoreFailure {
     pub user_action: UserAction,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum CoreFailureCode {
     InvalidCommand,
     InvalidFeedUrl,
@@ -27,7 +27,7 @@ pub enum CoreFailureCode {
     Unsupported { wire_code: u32 },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum Retryability {
     Never,
     Automatic,
@@ -35,7 +35,7 @@ pub enum Retryability {
     Unsupported { wire_code: u32 },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum UserAction {
     None,
     Retry,

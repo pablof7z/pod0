@@ -60,17 +60,20 @@ enum SharedLibraryBootstrap {
             )
             stage = .listening
             do {
+                stage = .listeningCommit
                 _ = try commitStagedLegacyListeningImport(
                     targetPath: target.path,
                     observedAtMilliseconds: observedAt
                 )
             } catch LegacyListeningMigrationError.ImportNotFound {
+                stage = .listeningInspection
                 let plan = try inspectLegacyListeningSource(
                     sourcePath: persistence.episodeStore.fileURL.path
                 )
                 let importID = stableID(
                     "pod0-listening-import:\(plan.sourceHash):\(plan.sourceGeneration)"
                 )
+                stage = .listeningStaging
                 let report = try stageLegacyListeningImport(
                     sourcePath: persistence.episodeStore.fileURL.path,
                     sourceBackupPath: persistence.legacyListeningBackupURL.path,
@@ -81,6 +84,7 @@ enum SharedLibraryBootstrap {
                     targetStoreId: storeID,
                     observedAtMilliseconds: observedAt
                 )
+                stage = .listeningVerification
                 let verification = try readStagedLegacyListeningImport(
                     targetPath: target.path,
                     importId: importID
@@ -93,6 +97,7 @@ enum SharedLibraryBootstrap {
                 else {
                     throw SharedLibraryBootstrapError.verificationFailed
                 }
+                stage = .listeningCommit
                 _ = try commitStagedLegacyListeningImport(
                     targetPath: target.path,
                     observedAtMilliseconds: observedAt
@@ -212,35 +217,6 @@ enum SharedLibraryBootstrap {
                 jobStore: legacyJobStore,
                 backupRoot: persistence.legacyTranscriptWorkflowBackupRootURL
             )
-            stage = .scheduledAgentWorkflowCutover
-            let legacyChatHistory = try LegacyChatHistorySource()
-            try LegacyScheduledAgentWorkflowCutover.run(
-                facade: facade,
-                persistence: persistence,
-                state: legacyState,
-                jobStore: legacyJobStore,
-                history: legacyChatHistory,
-                backupRoot: persistence.legacyScheduledAgentWorkflowBackupRootURL
-            )
-            stage = .agentHistoryCutover
-            try LegacyAgentHistoryCutover.run(
-                facade: facade,
-                source: legacyChatHistory,
-                backupRoot: persistence.legacyAgentHistoryBackupRootURL
-            )
-            stage = .agentRunLogRetirement
-            try LegacyAgentRunLogRetirement.run(
-                fileURL: persistence.legacyAgentRunLogURL
-            )
-            stage = .agentMemoryCutover
-            try LegacyAgentMemoryCutover.run(
-                facade: facade,
-                persistence: persistence,
-                state: legacyState,
-                backupRoot: persistence.legacyAgentMemoryBackupRootURL
-            )
-            stage = .agentActivityRetirement
-            try persistence.retireLegacyAgentActivitySource(state: legacyState)
             let observationOutbox = try NativeHostObservationOutbox(
                 fileURL: persistence.nativeHostObservationOutboxURL
             )

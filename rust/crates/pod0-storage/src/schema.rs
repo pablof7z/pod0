@@ -4,6 +4,10 @@ use crate::model::StorageError;
 use crate::schema_introspection::{require_columns, table_names};
 pub(crate) use crate::schema_migrations::apply_step;
 
+#[path = "schema_library_network.rs"]
+mod library_network;
+#[path = "schema_listening.rs"]
+mod listening;
 #[path = "schema_recall_configuration.rs"]
 mod recall_configuration;
 
@@ -89,132 +93,7 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
         )?;
     }
     if version >= 4 {
-        require_columns(
-            connection,
-            "pod0_listening_imports",
-            &[
-                "backup_byte_count",
-                "episode_count",
-                "import_id",
-                "podcast_count",
-                "source_generation",
-                "source_hash",
-                "source_kind",
-                "state",
-                "subscription_count",
-                "target_revision",
-                "verified_at_ms",
-            ],
-        )?;
-        let mut podcast_columns = vec![
-            "author",
-            "categories_json",
-            "description",
-            "discovered_at_ms",
-            "etag",
-            "feed_key_v1",
-            "feed_url",
-            "image_url",
-            "kind_code",
-            "kind_wire_code",
-            "language",
-            "last_modified",
-            "last_refreshed_at_ms",
-            "podcast_id",
-            "source_import_id",
-            "title",
-            "title_is_placeholder",
-        ];
-        if version >= 11 {
-            podcast_columns.push("library_visible");
-        }
-        require_columns(connection, "pod0_podcasts", &podcast_columns)?;
-        let mut subscription_columns = vec![
-            "auto_download_code",
-            "auto_download_latest_count",
-            "auto_download_wire_code",
-            "default_playback_rate_permille",
-            "notifications_enabled",
-            "podcast_id",
-            "source_import_id",
-            "subscribed_at_ms",
-            "wifi_only",
-        ];
-        if version >= 32 {
-            subscription_columns.extend([
-                "transcript_start_policy_code",
-                "transcript_start_policy_wire_code",
-            ]);
-        }
-        require_columns(connection, "pod0_subscriptions", &subscription_columns)?;
-        require_columns(
-            connection,
-            "pod0_episodes",
-            &[
-                "completion_cause_code",
-                "completion_cause_wire_code",
-                "completion_code",
-                "description",
-                "download_byte_count",
-                "download_code",
-                "download_ref_key",
-                "download_ref_version",
-                "download_wire_code",
-                "duration_ms",
-                "enclosure_mime_type",
-                "enclosure_url",
-                "episode_id",
-                "image_url",
-                "is_starred",
-                "legacy_payload",
-                "podcast_id",
-                "published_at_ms",
-                "publisher_guid",
-                "resume_position_ms",
-                "source_import_id",
-                "title",
-                "transcript_code",
-                "transcript_ref_key",
-                "transcript_ref_version",
-                "transcript_source_code",
-                "transcript_source_wire_code",
-                "transcript_wire_code",
-            ],
-        )?;
-        let mut playback_columns = vec![
-            "active_episode_id",
-            "auto_mark_played_at_natural_end",
-            "auto_play_next",
-            "playback_rate_permille",
-            "singleton",
-            "sleep_duration_ms",
-            "sleep_mode_code",
-            "sleep_wire_code",
-            "source_import_id",
-            "state_revision",
-        ];
-        if version >= 6 {
-            playback_columns.extend([
-                "active_segment_end_ms",
-                "active_segment_label",
-                "active_segment_start_ms",
-                "last_position_committed_at_ms",
-            ]);
-        }
-        require_columns(connection, "pod0_playback_state", &playback_columns)?;
-        require_columns(
-            connection,
-            "pod0_queue_entries",
-            &[
-                "episode_id",
-                "label",
-                "queue_entry_id",
-                "segment_end_ms",
-                "segment_start_ms",
-                "sort_order",
-                "source_import_id",
-            ],
-        )?;
+        listening::validate_listening_schema(connection, version)?;
     }
     if version >= 5 {
         crate::schema_library::validate_library_schema(connection)?;
@@ -283,6 +162,56 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
     }
     if version >= 37 {
         crate::schema_activity::validate_activity_schema(connection)?;
+    }
+    if version >= 38 {
+        require_columns(
+            connection,
+            "pod0_recall_queries",
+            &[
+                "cancellation_id",
+                "command_id",
+                "created_at_ms",
+                "evidence_json",
+                "failure_json",
+                "query_id",
+                "query_json",
+                "revision",
+                "stage_json",
+                "updated_at_ms",
+            ],
+        )?;
+        require_columns(
+            connection,
+            "pod0_recall_index_cutover_workflow",
+            &[
+                "cancellation_id",
+                "command_id",
+                "removed_file_count",
+                "revision",
+                "singleton",
+                "stage",
+                "updated_at_ms",
+            ],
+        )?;
+    }
+    if version >= 40 {
+        require_columns(
+            connection,
+            "pod0_legacy_effect_recovery_v40",
+            &[
+                "intent_id",
+                "prior_fence",
+                "prior_intent_state_code",
+                "recovery_activity_id",
+                "recovery_code",
+            ],
+        )?;
+    }
+    if version >= 41 {
+        crate::schema_workflow_configuration::validate(connection)?;
+    }
+    if version >= 43 {
+        library_network::validate(connection)?;
     }
     Ok(())
 }

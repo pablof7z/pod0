@@ -37,11 +37,6 @@ struct AppState: Codable, Sendable {
     /// Per-category user preferences keyed by `PodcastCategory.id`.
     var categorySettings: [UUID: CategorySettings] = [:]
     var settings: Settings = Settings()
-    /// Decode-only compatibility source for the retired Swift agent activity
-    /// log. Shared-library bootstrap removes this payload after Rust agent
-    /// history and memory authority are verified. It must never be rendered,
-    /// exported, or written by product code.
-    var legacyAgentActivity: [LegacyAgentActivityEntry] = []
     /// User-authored transcript excerpts. See `Clip` and the composer in
     /// `App/Sources/Features/EpisodeDetail/Clip/`.
     var clips: [Clip] = []
@@ -59,11 +54,9 @@ struct AppState: Codable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case persistenceGeneration
         case podcasts, subscriptions, episodes
-        case notes, agentMemories, compiledMemory, settings
+        case notes, settings
         case categories, categorySettings
-        case legacyAgentActivity = "agentActivity"
         case clips
-        case agentScheduledTasks
         case lastPlayedEpisodeID
     }
 
@@ -95,17 +88,10 @@ struct AppState: Codable, Sendable {
 
         episodes = try c.decodeIfPresent([Episode].self, forKey: .episodes) ?? []
         notes = try c.decodeIfPresent([Note].self, forKey: .notes) ?? []
-        agentMemories = try c.decodeIfPresent([AgentMemory].self, forKey: .agentMemories) ?? []
-        compiledMemory = try c.decodeIfPresent(CompiledAgentMemory.self, forKey: .compiledMemory)
         categories = try c.decodeIfPresent([PodcastCategory].self, forKey: .categories) ?? []
         categorySettings = try c.decodeIfPresent([UUID: CategorySettings].self, forKey: .categorySettings) ?? [:]
         settings = try c.decodeIfPresent(Settings.self, forKey: .settings) ?? Settings()
-        legacyAgentActivity = try c.decodeIfPresent(
-            [LegacyAgentActivityEntry].self,
-            forKey: .legacyAgentActivity
-        ) ?? []
         clips = try c.decodeIfPresent([Clip].self, forKey: .clips) ?? []
-        agentScheduledTasks = try c.decodeIfPresent([AgentScheduledTask].self, forKey: .agentScheduledTasks) ?? []
         lastPlayedEpisodeID = try c.decodeIfPresent(UUID.self, forKey: .lastPlayedEpisodeID)
     }
 

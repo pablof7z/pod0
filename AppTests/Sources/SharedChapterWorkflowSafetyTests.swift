@@ -60,73 +60,6 @@ final class SharedChapterWorkflowSafetyTests: XCTestCase {
         )
     }
 
-    func testInitialPublisherOpportunitySkipsTenThousandSourceFreeEpisodes() {
-        let episodes = (0..<10_000).map { projectedEpisode(index: $0, chaptersURL: nil) }
-        let snapshot = librarySnapshot(episodes: episodes)
-        let requested = episodes.compactMap { $0.episodeId.uuid }
-
-        XCTAssertTrue(PublisherChapterOpportunityPlanner.changedEpisodeIDs(
-            previous: nil,
-            current: snapshot
-        ).isEmpty)
-        XCTAssertTrue(PublisherChapterOpportunityPlanner.requestedEpisodeIDs(
-            requested: requested,
-            current: snapshot,
-            excluding: []
-        ).isEmpty)
-    }
-
-    func testInitialPublisherOpportunityIncludesOnlyNonEmptySourcesOnce() throws {
-        let missing = projectedEpisode(index: 1, chaptersURL: nil)
-        let blank = projectedEpisode(index: 2, chaptersURL: " \n ")
-        let sourced = projectedEpisode(index: 3, chaptersURL: "https://example.com/chapters.json")
-        let snapshot = librarySnapshot(episodes: [missing, blank, sourced])
-        let sourcedID = try XCTUnwrap(sourced.episodeId.uuid)
-        let requested = [missing, blank, sourced].compactMap { $0.episodeId.uuid }
-
-        XCTAssertEqual(PublisherChapterOpportunityPlanner.changedEpisodeIDs(
-            previous: nil,
-            current: snapshot
-        ), [sourcedID])
-        let first = PublisherChapterOpportunityPlanner.requestedEpisodeIDs(
-            requested: requested,
-            current: snapshot,
-            excluding: []
-        )
-        XCTAssertEqual(first, [sourcedID])
-        XCTAssertTrue(PublisherChapterOpportunityPlanner.requestedEpisodeIDs(
-            requested: requested,
-            current: snapshot,
-            excluding: Set(first)
-        ).isEmpty)
-    }
-
-    func testPublisherSourceAddReplaceAndRemovalAreAnnounced() {
-        let previous = librarySnapshot(episodes: [
-            projectedEpisode(index: 1, chaptersURL: nil),
-            projectedEpisode(index: 2, chaptersURL: "https://example.com/old.json"),
-            projectedEpisode(index: 3, chaptersURL: "https://example.com/remove.json"),
-            projectedEpisode(index: 4, chaptersURL: nil),
-            projectedEpisode(index: 5, chaptersURL: "https://example.com/same.json"),
-        ])
-        let current = librarySnapshot(episodes: [
-            projectedEpisode(index: 1, chaptersURL: "https://example.com/added.json"),
-            projectedEpisode(index: 2, chaptersURL: "https://example.com/new.json"),
-            projectedEpisode(index: 3, chaptersURL: nil),
-            projectedEpisode(index: 4, chaptersURL: nil),
-            projectedEpisode(index: 5, chaptersURL: "https://example.com/same.json"),
-            projectedEpisode(index: 6, chaptersURL: nil),
-        ])
-
-        XCTAssertEqual(
-            Set(PublisherChapterOpportunityPlanner.changedEpisodeIDs(
-                previous: previous,
-                current: current
-            )),
-            Set(current.episodes.prefix(3).compactMap { $0.episodeId.uuid })
-        )
-    }
-
     private func publisherQualification(
         episode: Episode,
         title: String
@@ -147,46 +80,6 @@ final class SharedChapterWorkflowSafetyTests: XCTestCase {
             generatedAt: UnixTimestampMilliseconds(value: 1_700_000_000_000),
             durationMilliseconds: 60_000
         ))
-    }
-
-    private func librarySnapshot(episodes: [EpisodeRecord]) -> SharedLibrarySnapshot {
-        SharedLibrarySnapshot(
-            podcasts: [],
-            subscriptions: [],
-            episodes: episodes,
-            feedFetches: [],
-            chaptersByEpisodeID: [:],
-            operations: []
-        )
-    }
-
-    private func projectedEpisode(index: Int, chaptersURL: String?) -> EpisodeRecord {
-        EpisodeRecord(
-            episodeId: EpisodeId(high: 0xA11CE, low: UInt64(index + 1)),
-            podcastId: PodcastId(high: 0xB0D0, low: 1),
-            publisherGuid: "episode-\(index)",
-            title: "Episode \(index)",
-            description: "",
-            publishedAt: UnixTimestampMilliseconds(value: Int64(index)),
-            durationMilliseconds: nil,
-            enclosureUrl: "https://example.com/\(index).mp3",
-            enclosureMimeType: "audio/mpeg",
-            imageUrl: nil,
-            feedMetadata: EpisodeFeedMetadata(
-                publisherTranscript: nil,
-                chaptersUrl: chaptersURL,
-                persons: [],
-                soundBites: []
-            ),
-            listening: EpisodeListeningState(
-                resumePositionMilliseconds: 0,
-                completion: .inProgress
-            ),
-            isStarred: false,
-            download: .unavailable,
-            transcript: .unavailable,
-            generatedAudio: nil
-        )
     }
 
     private func makeStore() -> Fixture {

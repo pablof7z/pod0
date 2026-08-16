@@ -12,7 +12,7 @@ pub enum EffectOutboxError {
     InvalidRecord,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EffectLease {
     pub intent_id: EffectIntentId,
     pub attempt_id: EffectAttemptId,
@@ -26,9 +26,15 @@ pub struct EffectLease {
     pub expires_at: UnixTimestampMilliseconds,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PublicationEffectLease {
+    pub lease: pod0_application::PersistedEffectLeaseIdentity,
+    pub draft: pod0_application::Pod0PublicationDraft,
+}
+
 impl EffectLease {
     #[must_use]
-    pub const fn identity(self) -> pod0_application::PersistedEffectLeaseIdentity {
+    pub const fn identity(&self) -> pod0_application::PersistedEffectLeaseIdentity {
         pod0_application::PersistedEffectLeaseIdentity {
             intent_id: self.intent_id,
             authorizing_activity_id: self.authorizing_activity_id,

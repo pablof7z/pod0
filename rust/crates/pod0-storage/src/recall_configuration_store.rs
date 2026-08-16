@@ -1,5 +1,5 @@
 use crate::StorageError;
-use crate::library_store::{LibraryStore, command_was_applied, finish_command};
+use crate::library_store::LibraryStore;
 use crate::listening_db_codec::bool_value;
 use pod0_domain::{
     CommandId, ContentDigest, RecallConfiguration, RecallConfigurationInput,
@@ -33,29 +33,14 @@ impl LibraryStore {
         source_generation: ContentDigest,
         observed_at_ms: i64,
     ) -> Result<RecallConfigurationMutation, StorageError> {
-        self.write(|transaction| {
-            if let Some(existing) = read_configuration(transaction)? {
-                return Ok(RecallConfigurationMutation {
-                    configuration: existing,
-                    changed: false,
-                    imported: false,
-                });
-            }
-            let revision =
-                finish_command(transaction, command_id, command_fingerprint, observed_at_ms)?;
-            let configuration = RecallConfiguration::legacy_or_default(input, revision);
-            insert_configuration(
-                transaction,
-                &configuration,
-                Some(source_generation),
-                observed_at_ms,
-            )?;
-            Ok(RecallConfigurationMutation {
-                configuration,
-                changed: true,
-                imported: true,
-            })
-        })
+        crate::transition_commit::commit_recall_configuration_import(
+            self.path(),
+            command_id,
+            command_fingerprint,
+            input,
+            source_generation,
+            observed_at_ms,
+        )
     }
 
     pub fn set_recall_configuration(
@@ -66,60 +51,21 @@ impl LibraryStore {
         input: RecallConfigurationInput,
         observed_at_ms: i64,
     ) -> Result<RecallConfigurationMutation, StorageError> {
-        self.write(|transaction| {
-            if command_was_applied(transaction, command_id, command_fingerprint)?.is_some() {
-                let configuration = read_configuration(transaction)?
-                    .ok_or(StorageError::RecallConfigurationNotFound)?;
-                return Ok(RecallConfigurationMutation {
-                    configuration,
-                    changed: false,
-                    imported: false,
-                });
-            }
-            let stored = read_configuration(transaction)?;
-            let current = stored.clone().unwrap_or_default();
-            if current.revision != expected_revision {
-                return Err(StorageError::RevisionConflict);
-            }
-            let candidate = RecallConfiguration::validate(
-                input,
-                StateRevision::INITIAL,
-                RecallConfigurationOrigin::User,
-            )
-            .map_err(|_| StorageError::InvalidRecallConfiguration)?;
-            if candidate.input() == current.input() {
-                return Ok(RecallConfigurationMutation {
-                    configuration: current,
-                    changed: false,
-                    imported: false,
-                });
-            }
-            let revision =
-                finish_command(transaction, command_id, command_fingerprint, observed_at_ms)?;
-            let configuration = RecallConfiguration::validate(
-                candidate.input(),
-                revision,
-                RecallConfigurationOrigin::User,
-            )
-            .map_err(|_| StorageError::InvalidRecallConfiguration)?;
-            if stored.is_some() {
-                update_configuration(transaction, &configuration, observed_at_ms)?;
-            } else {
-                insert_configuration(transaction, &configuration, None, observed_at_ms)?;
-            }
-            Ok(RecallConfigurationMutation {
-                configuration,
-                changed: true,
-                imported: false,
-            })
-        })
+        crate::transition_commit::commit_recall_configuration_set(
+            self.path(),
+            command_id,
+            command_fingerprint,
+            expected_revision,
+            input,
+            observed_at_ms,
+        )
     }
 }
 const RECALL_CONFIGURATION_SELECT: &str = "SELECT schema_version,revision,origin,embedding_provider,embedding_model,\
      stored_embedding_model_id,embedding_dimensions,embedding_space_digest,\
      reranker_enabled,reranker_provider,reranker_model \
      FROM pod0_recall_configuration WHERE singleton=1";
-fn read_configuration(
+pub(crate) fn read_configuration(
     transaction: &Transaction<'_>,
 ) -> Result<Option<RecallConfiguration>, StorageError> {
     transaction
@@ -145,7 +91,7 @@ fn decode_configuration(row: &Row<'_>) -> rusqlite::Result<StoredRecallConfigura
     })
 }
 
-fn insert_configuration(
+pub(crate) fn insert_configuration(
     transaction: &Transaction<'_>,
     value: &RecallConfiguration,
     source_generation: Option<ContentDigest>,
@@ -164,7 +110,7 @@ fn insert_configuration(
     Ok(())
 }
 
-fn update_configuration(
+pub(crate) fn update_configuration(
     transaction: &Transaction<'_>,
     value: &RecallConfiguration,
     observed_at_ms: i64,

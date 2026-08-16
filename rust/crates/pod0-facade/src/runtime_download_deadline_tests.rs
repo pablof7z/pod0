@@ -53,7 +53,7 @@ fn expired_request_is_fenced_and_retried_only_after_policy_delay() {
         .facade
         .state()
         .set_clock(Arc::new(FixedClock(expired_at)));
-    assert!(fixture.facade.next_host_requests(20).is_empty());
+    assert!(fixture.facade.next_leased_host_requests(20).is_empty());
     let Projection::Downloads { value } = fixture
         .facade
         .snapshot(ProjectionRequest {
@@ -92,9 +92,9 @@ fn expired_request_is_fenced_and_retried_only_after_policy_delay() {
     fixture.facade.state().set_clock(Arc::new(FixedClock(
         expired_at + pod0_application::DOWNLOAD_RETRY_DELAY_MILLISECONDS,
     )));
-    let retry = fixture.facade.next_host_requests(20).pop().unwrap();
+    let retry = fixture.facade.next_leased_host_requests(20).pop().unwrap();
     assert!(matches!(
-        retry.request,
+        retry.request.request,
         HostRequest::StartEpisodeDownload { .. }
     ));
 }

@@ -5,15 +5,14 @@ use pod0_application::{
 };
 use pod0_domain::{
     ActivityCorrelationId, ActivityId, ActivityTransactionId, CommandId, ContentDigest,
-    EffectAttemptId, EffectIntentId, EffectLeaseId, EpisodeId, StateRevision,
+    EffectAttemptId, EffectIntentId, EffectLeaseId, EpisodeId, HostRequestId, StateRevision,
     UnixTimestampMilliseconds,
 };
 use rusqlite::{Connection, params};
 
 use crate::recovery_test_support::Fixture;
-use crate::{
-    EffectOutbox, EffectOutboxError, TransitionCommit, TransitionIngress, TransitionIngressKind,
-};
+use crate::transition_commit::TransitionCommit;
+use crate::{EffectOutbox, EffectOutboxError, TransitionIngress, TransitionIngressKind};
 
 fn commit_effect(path: &std::path::Path) -> EffectIntentId {
     let episode_id = EpisodeId::from_parts(10, 1);
@@ -39,6 +38,7 @@ fn commit_effect(path: &std::path::Path) -> EffectIntentId {
         episode_id: Some(episode_id),
         not_before: Some(UnixTimestampMilliseconds::new(1_000)),
         deadline_at: Some(UnixTimestampMilliseconds::new(10_000)),
+        execution: exact_test_execution(),
     };
     let plan = TransitionPlan::new(
         transaction_id,
@@ -80,6 +80,20 @@ fn commit_effect(path: &std::path::Path) -> EffectIntentId {
         )
         .unwrap();
     intent_id
+}
+
+fn exact_test_execution() -> pod0_application::DurableEffectExecution {
+    pod0_application::DurableEffectExecution::Lifecycle {
+        request: pod0_application::DurableLifecycleEffectRequest {
+            request_id: HostRequestId::from_parts(15, 2),
+            command_id: CommandId::from_parts(15, 1),
+            cancellation_id: pod0_domain::CancellationId::from_parts(15, 3),
+            issued_revision: StateRevision::INITIAL,
+            wake_at: UnixTimestampMilliseconds::new(1_000),
+            reason: pod0_application::CoreWakeReason::Unsupported { wire_code: 1 },
+            attempt: 1,
+        },
+    }
 }
 
 #[test]

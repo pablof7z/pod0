@@ -89,7 +89,9 @@ fn missing_category_is_durably_rejected_and_consumed() {
             proposed_tool_call: Some(AgentModelToolCallObservation {
                 provider_call_id: "missing-category-call".to_owned(),
                 tool_name: "write_category".to_owned(),
-                arguments_json: r#"{"category_id":"eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee","name":"Missing"}"#.to_owned(),
+                arguments_json:
+                    r#"{"category_id":"eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee","name":"Missing"}"#
+                        .to_owned(),
             }),
             usage: None,
         },

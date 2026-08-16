@@ -3,7 +3,7 @@ use pod0_application::{
     MODEL_CHAPTER_REQUEST_DEADLINE_MILLISECONDS, MODEL_CHAPTER_WORKFLOW_MAX_ATTEMPTS,
     OperationStage,
 };
-use pod0_domain::{EpisodeId, StateRevision};
+use pod0_domain::{ContentDigest, EpisodeId, StateRevision};
 use pod0_storage::{
     LibraryStore, ModelChapterDesiredPlan, ModelChapterEnsureInput, ModelChapterEnsureOutcome,
     ModelChapterWorkflowState,
@@ -68,6 +68,7 @@ impl FacadeState {
     pub(super) fn cancel_model_chapters(
         &mut self,
         envelope: &CommandEnvelope,
+        fingerprint: ContentDigest,
         episode_id: EpisodeId,
         expected_revision: StateRevision,
     ) {
@@ -85,7 +86,13 @@ impl FacadeState {
                 return;
             }
         };
-        match store.cancel_model_chapter_workflow(episode_id, expected_revision, self.now().value) {
+        match store.cancel_model_chapter_command(
+            envelope.command_id,
+            fingerprint,
+            episode_id,
+            expected_revision,
+            self.now().value,
+        ) {
             Ok(_) => {
                 self.withdraw_model_chapter_request(&existing);
                 self.advance_revision();
@@ -158,21 +165,13 @@ impl FacadeState {
                     ModelChapterWorkflowState::Requested
                         | ModelChapterWorkflowState::RetryScheduled
                 ) {
-                    self.queue_model_chapter_request(&record);
                     self.finish(envelope.command_id, OperationStage::Running, None, None);
                 } else {
                     self.succeed(envelope.command_id, None);
                 }
                 true
             }
-            Ok(ModelChapterEnsureOutcome::Existing(record)) => {
-                if matches!(
-                    record.state,
-                    ModelChapterWorkflowState::Requested
-                        | ModelChapterWorkflowState::RetryScheduled
-                ) {
-                    self.queue_model_chapter_request(&record);
-                }
+            Ok(ModelChapterEnsureOutcome::Existing(_)) => {
                 self.succeed(envelope.command_id, None);
                 true
             }

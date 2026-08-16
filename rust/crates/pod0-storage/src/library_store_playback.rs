@@ -44,6 +44,15 @@ pub enum PlaybackMutation {
         episode_id: EpisodeId,
         position_milliseconds: u64,
     },
+    CheckpointAndAdvanceQueue {
+        episode_id: EpisodeId,
+        position_milliseconds: u64,
+    },
+    CheckpointAndFinishActive {
+        episode_id: EpisodeId,
+        position_milliseconds: u64,
+        suppress_auto_advance: bool,
+    },
     FinishActive {
         suppress_auto_advance: bool,
     },
@@ -67,6 +76,7 @@ impl LibraryStore {
         episode_id: Option<EpisodeId>,
         transition: PlaybackTransition,
         internal_command: Option<pod0_application::DurableInternalCommandRequest>,
+        effects: Vec<pod0_application::DurablePlaybackEffectRequest>,
         observed_at_ms: i64,
     ) -> Result<PlaybackMutationResult, StorageError> {
         crate::transition_commit::commit_playback_mutation(
@@ -77,6 +87,7 @@ impl LibraryStore {
             episode_id,
             transition,
             internal_command,
+            effects,
             observed_at_ms,
         )
     }
@@ -97,6 +108,7 @@ impl LibraryStore {
             snapshot.playback.active_episode_id,
             PlaybackTransition::SleepTimerChanged,
             None,
+            Vec::new(),
             observed_at_ms,
         )
         .map(|result| result.revision)

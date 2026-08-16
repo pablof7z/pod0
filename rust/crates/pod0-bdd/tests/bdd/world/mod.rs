@@ -34,7 +34,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use pod0_application::{CommandEnvelope, HostObservationReceipt, HostRequestEnvelope};
+use pod0_application::{CommandEnvelope, HostObservationReceipt, LeasedHostRequestEnvelope};
 use pod0_domain::{StateRevision, SubscriptionId};
 use pod0_facade::Pod0Facade;
 
@@ -74,9 +74,9 @@ pub struct PodWorld {
     /// Subscribe commands by feed URL, so prose can keep naming the URL.
     subscribes: BTreeMap<String, IssuedSubscribe>,
     /// Feed-fetch work the host has accepted (drained) but not yet answered.
-    accepted_fetches: BTreeMap<String, HostRequestEnvelope>,
+    accepted_fetches: BTreeMap<String, LeasedHostRequestEnvelope>,
     /// The new-episode announcement the host accepted but has not delivered.
-    accepted_announcement: Option<HostRequestEnvelope>,
+    accepted_announcement: Option<LeasedHostRequestEnvelope>,
     /// The receipt the facade returned for the most recent host observation.
     last_receipt: Option<HostObservationReceipt>,
 

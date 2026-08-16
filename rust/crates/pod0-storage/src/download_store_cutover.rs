@@ -93,61 +93,12 @@ impl LibraryStore {
         source_generation: u64,
         committed_at_ms: i64,
     ) -> Result<DownloadWorkflowAuthorityState, StorageError> {
-        if source_generation == 0 || committed_at_ms < 0 {
-            return Err(StorageError::DownloadWorkflowConflict);
-        }
         let _ = self.recover_download_artifacts()?;
-        self.write(|transaction| match read_authority(transaction)? {
-            DownloadWorkflowAuthorityState::Staged {
-                source_generation: staged,
-            } if staged == source_generation => {
-                let invalid: bool = transaction
-                    .query_row(
-                        "SELECT EXISTS(SELECT 1 FROM pod0_download_workflows \
-                         WHERE stage NOT IN('succeeded','requested'))",
-                        [],
-                        |row| row.get(0),
-                    )
-                    .map_err(|error| {
-                        StorageError::sqlite("verify staged download cutover", error)
-                    })?;
-                if invalid {
-                    return Err(StorageError::DownloadWorkflowConflict);
-                }
-                transaction
-                    .execute(
-                        "UPDATE pod0_episodes SET download_code=1,download_wire_code=NULL,\
-                         download_ref_version=NULL,download_ref_key=NULL,download_byte_count=NULL \
-                         WHERE episode_id IN(SELECT episode_id FROM pod0_download_workflows \
-                         WHERE stage='requested')",
-                        [],
-                    )
-                    .map_err(|error| {
-                        StorageError::sqlite("clear restarted legacy downloads", error)
-                    })?;
-                transaction
-                    .execute(
-                        "UPDATE pod0_domain_cutovers SET state='authoritative',committed_at_ms=?1 \
-                         WHERE domain=?2 AND state='staged' AND source_generation=?3",
-                        params![
-                            committed_at_ms,
-                            CUTOVER_DOMAIN,
-                            u64_to_i64(source_generation)?
-                        ],
-                    )
-                    .map_err(|error| StorageError::sqlite("commit download cutover", error))?;
-                if transaction.changes() != 1 {
-                    return Err(StorageError::DownloadWorkflowConflict);
-                }
-                Ok(DownloadWorkflowAuthorityState::Authoritative { source_generation })
-            }
-            DownloadWorkflowAuthorityState::Authoritative {
-                source_generation: current,
-            } if current == source_generation => {
-                Ok(DownloadWorkflowAuthorityState::Authoritative { source_generation })
-            }
-            _ => Err(StorageError::DownloadWorkflowConflict),
-        })
+        crate::transition_commit::commit_download_cutover(
+            self.path(),
+            source_generation,
+            committed_at_ms,
+        )
     }
 
     pub fn download_cutover_report(&self) -> Result<LegacyDownloadCutoverReport, StorageError> {

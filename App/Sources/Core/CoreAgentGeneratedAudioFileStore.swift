@@ -82,6 +82,10 @@ actor CoreAgentGeneratedAudioFileStore {
         )
     }
 
+    nonisolated static func erasureRootURL() throws -> URL {
+        try audioDirectory()
+    }
+
     private func resolvedDirectory() throws -> URL {
         if let explicitDirectory { return explicitDirectory }
         return try Self.audioDirectory()

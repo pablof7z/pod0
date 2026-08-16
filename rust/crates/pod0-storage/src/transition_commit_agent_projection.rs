@@ -74,6 +74,16 @@ pub(crate) fn commit_agent_projection_result(
                     return Err(StorageError::AgentTurnConflict);
                 }
             }
+            let continuation_model = if after.projection().stage == AgentTurnStage::AwaitingModel {
+                Some(super::effect_requests::model_effect_request(
+                    transaction,
+                    &after,
+                    CommandId::from_bytes(command.internal_command_id.into_bytes()),
+                    None,
+                )?)
+            } else {
+                None
+            };
             plan_agent_projection_completion(AgentProjectionCompletionActivityInput {
                 internal_command_id: command.internal_command_id,
                 authorizing_activity_id: command.authorizing_activity_id,
@@ -81,7 +91,7 @@ pub(crate) fn commit_agent_projection_result(
                 turn_id,
                 current_revision: before_projection.revision,
                 committed_revision: after.projection().revision,
-                authorize_continuation_model: after.projection().stage == AgentTurnStage::AwaitingModel,
+                continuation_model,
             })
             .map(|plan| plan.map_mutation(|mutation| (mutation, after)))
             .map_err(|_| StorageError::InvalidActivity)

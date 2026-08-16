@@ -1,19 +1,30 @@
+#[cfg(test)]
 use std::collections::BTreeMap;
 
-use pod0_domain::{CommandId, EpisodeId, EpisodeRecord, PodcastId, PodcastRecord};
+#[cfg(test)]
+use pod0_domain::CommandId;
+use pod0_domain::{EpisodeId, EpisodeRecord, PodcastId, PodcastRecord};
 use rusqlite::{OptionalExtension, Transaction, params};
 use sha2::{Digest, Sha256};
 
 use crate::StorageError;
+#[cfg(test)]
 use crate::feed_discovery_store::{
     NewFeedDiscoveryItem, apply_receipt_for_command, insert_apply_receipt, insert_occurrence,
 };
+#[cfg(test)]
 use crate::feed_discovery_store_model::AppliedFeed;
 use crate::library_feed_codec;
-use crate::library_store::{LibraryStore, command_was_applied, finish_command, source_import_id};
+use crate::library_store::{LibraryStore, source_import_id};
+#[cfg(test)]
+use crate::library_store::{command_was_applied, finish_command};
 use crate::listening_db_codec::{bool_value, i64_value, podcast_kind};
 
 impl LibraryStore {
+    /// Characterization-only adapter for legacy feed fixtures. Production
+    /// observations use `commit_feed_fetch_observation` and its atomic
+    /// TransitionCommit hook.
+    #[cfg(test)]
     #[allow(clippy::too_many_arguments)]
     pub fn apply_feed(
         &self,
@@ -247,7 +258,7 @@ pub(crate) fn upsert_episode(
     Ok((EpisodeId::from_bytes(actual_id), existing_id.is_none()))
 }
 
-fn podcast_has_episodes(
+pub(crate) fn podcast_has_episodes(
     transaction: &Transaction<'_>,
     podcast_id: PodcastId,
 ) -> Result<bool, StorageError> {

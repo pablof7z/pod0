@@ -58,13 +58,6 @@ fn transcript_workflow_commits_indexes_and_survives_relaunch() {
             },
         },
     };
-    assert!(matches!(
-        fixture.facade.record_host_observation(observation.clone()),
-        HostObservationReceipt::Rejected {
-            reason: HostObservationRejection::StaleWorkflow,
-            ..
-        }
-    ));
     let mut stale_lease = leased.lease;
     stale_lease.fence = stale_lease.fence.saturating_add(1);
     assert!(matches!(
@@ -190,10 +183,10 @@ fn transcript_workflow_commits_indexes_and_survives_relaunch() {
     );
     assert!(
         reopened
-            .next_host_requests(u16::MAX)
+            .next_leased_host_requests(u16::MAX)
             .into_iter()
             .all(|request| !matches!(
-                request.request,
+                request.request.request,
                 HostRequest::ExecuteTranscriptCapability { .. }
             ))
     );

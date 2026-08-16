@@ -63,6 +63,12 @@ RECOVERY_CALL = re.compile(
 NATIVE_EXECUTION = re.compile(
     r"protocol Core\w+Hosting|func start\w*Task\s*\(|func execute\s*\("
 )
+NATIVE_EXECUTION_EXCLUSIONS = {
+    # Application-command/projection adapters whose generic `execute` methods
+    # are not native HostRequest capability execution.
+    "App/Sources/Core/SharedAgentConversationRuntime.swift",
+    "App/Sources/Core/SharedLibraryClient+Commands.swift",
+}
 ALLOWED_ISSUES = set(range(205, 220))
 MUTATION_EXCLUSIONS = {"migration.rs", "migration_db.rs", "migration_journal.rs"}
 class DuplicateKeyError(ValueError):
@@ -157,7 +163,7 @@ def detected_native_executors(root: Path) -> set[str]:
     for path in (root / "App/Sources/Core").glob("*.swift"):
         if NATIVE_EXECUTION.search(path.read_text(encoding="utf-8")):
             result.add(path.relative_to(root).as_posix())
-    return result
+    return result - NATIVE_EXECUTION_EXCLUSIONS
 
 
 def exact_set_errors(

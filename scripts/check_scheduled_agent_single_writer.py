@@ -11,10 +11,20 @@ import sys
 
 DELETED_PATHS = (
     "App/Sources/Workflows/ScheduledAgentRunJobExecutor.swift",
+    "App/Sources/Core/LegacyScheduledAgentWorkflowBackup.swift",
+    "App/Sources/Core/LegacyScheduledAgentWorkflowCutover.swift",
+    "App/Sources/Core/LegacyScheduledAgentWorkflowMapper.swift",
+    "App/Sources/Core/LegacyScheduledAgentWorkflowSnapshot.swift",
+    "App/Sources/State/Persistence+SharedScheduledAgents.swift",
+    "App/Sources/Workflows/JobStore+LegacyScheduledAgentCutover.swift",
 )
 
 FORBIDDEN = (
     (re.compile(r"\bScheduledAgentRunJobExecutor\b"), "retired Swift executor"),
+    (
+        re.compile(r"\bLegacyScheduledAgentWorkflow(?:Cutover|Mapper|Snapshot|Backup)\b"),
+        "deleted Swift scheduled-agent cutover",
+    ),
     (re.compile(r"\bDesiredStatePlanner\s*\(\s*\)\s*\.plan\b"), "Swift scheduling policy"),
     (re.compile(r"\b(?:markTaskRun|advanceCompletedScheduledOccurrences)\s*\("), "Swift recurrence writer"),
     (
@@ -37,16 +47,8 @@ FORBIDDEN = (
 )
 
 REQUIRED = {
-    "App/Sources/Core/SharedLibraryBootstrap.swift": (
-        "LegacyScheduledAgentWorkflowCutover.run",
-    ),
     "App/Sources/Workflows/JobStore+Database.swift": (
         "$0 != .scheduledAgentRun",
-    ),
-    "App/Sources/State/Persistence+SharedScheduledAgents.swift": (
-        "activateSharedScheduledAgentAuthority",
-        "DELETE FROM jobs WHERE kind='scheduledAgentRun'",
-        "DELETE FROM artifacts WHERE kind='scheduledOutput'",
     ),
     "App/Sources/Core/SharedLibraryClient+ScheduledAgents.swift": (
         ".ensureScheduledTask",
@@ -57,6 +59,16 @@ REQUIRED = {
     ),
     "rust/crates/pod0-application/src/contract.rs": (
         "RetryScheduledRun",
+    ),
+    "rust/crates/pod0-facade/src/runtime_scheduled_agent_effect_leases.rs": (
+        "DurableEffectExecution::ScheduledAgent",
+    ),
+    "rust/crates/pod0-facade/src/runtime_scheduled_agent_leased_observations.rs": (
+        "record_leased_scheduled_agent_observation",
+        "LeasedHostObservationEnvelope",
+    ),
+    "rust/crates/pod0-storage/src/transition_commit_scheduled_agent_observation.rs": (
+        "commit_scheduled_agent_observation",
     ),
 }
 
@@ -101,6 +113,7 @@ def self_test() -> None:
     assert not findings("App/Sources/Good.swift", "// ScheduledAgentRunJobExecutor")
     samples = (
         "let executor = ScheduledAgentRunJobExecutor()",
+        "let cutover = LegacyScheduledAgentWorkflowCutover()",
         "DesiredStatePlanner().plan(input)",
         "store.markTaskRun(id: id)",
         "store.advanceCompletedScheduledOccurrences(from: jobs)",

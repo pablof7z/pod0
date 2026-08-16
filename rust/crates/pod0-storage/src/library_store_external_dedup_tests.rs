@@ -40,7 +40,7 @@ fn external_episode_dedupes_on_publisher_guid_even_when_audio_url_differs() {
     let second = store
         .upsert_external_episode(
             id(16),
-            &"g".repeat(64),
+            &"e".repeat(64),
             requested_podcast_id,
             Some(feed),
             "External show",

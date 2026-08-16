@@ -80,6 +80,7 @@ fn effect_requires_the_matching_authorization_fact() {
                 episode_id: Some(EpisodeId::from_parts(0, 3)),
                 not_before: None,
                 deadline_at: None,
+                execution: exact_test_execution(),
             },
         }],
         Vec::<AuthorizedInternalCommand<DurableInternalCommandRequest>>::new(),
@@ -138,6 +139,7 @@ fn matching_effect_and_internal_command_authorizations_are_valid() {
                 episode_id: Some(EpisodeId::from_parts(0, 3)),
                 not_before: None,
                 deadline_at: None,
+                execution: exact_test_execution(),
             },
         }],
         vec![AuthorizedInternalCommand {
@@ -154,6 +156,20 @@ fn matching_effect_and_internal_command_authorizations_are_valid() {
         }],
     );
     assert!(result.is_ok());
+}
+
+fn exact_test_execution() -> crate::DurableEffectExecution {
+    crate::DurableEffectExecution::Lifecycle {
+        request: crate::DurableLifecycleEffectRequest {
+            request_id: pod0_domain::HostRequestId::from_parts(90, 1),
+            command_id: CommandId::from_parts(90, 2),
+            cancellation_id: pod0_domain::CancellationId::from_parts(90, 3),
+            issued_revision: StateRevision::INITIAL,
+            wake_at: pod0_domain::UnixTimestampMilliseconds::new(1),
+            reason: crate::CoreWakeReason::Unsupported { wire_code: 1 },
+            attempt: 1,
+        },
+    }
 }
 
 #[test]

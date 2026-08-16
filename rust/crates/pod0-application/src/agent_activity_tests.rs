@@ -4,21 +4,46 @@ use pod0_domain::{
 };
 
 use crate::{
-    AgentCancellationActivityInput, AgentCancellationMutation,
-    AgentEffectObservationActivityInput, AgentPublicationTransition, AgentTurnStartActivityInput,
-    AgentTurnStartMutation, EffectOutcome, ExternalEffectKind, RequestDisposition,
+    AgentApprovalRequest, AgentEffectAuthorization, AgentModelExecutionRequest,
+    AgentCancellationActivityInput, AgentCancellationMutation, AgentEffectObservationActivityInput,
+    AgentPublicationTransition, AgentProposalProjection, AgentToolAction, AgentAuthority,
+    AgentTurnStartActivityInput, AgentTurnStartMutation, DurableAgentApprovalEffectRequest,
+    DurableAgentModelEffectRequest, EffectOutcome, ExternalEffectKind, RequestDisposition,
     RequestRejectionReason, plan_agent_cancellation, plan_agent_effect_observation,
     plan_agent_turn_start,
 };
 
+fn model(command_id: CommandId, turn_id: AgentTurnId) -> DurableAgentModelEffectRequest {
+    let fence = pod0_domain::AgentExecutionFenceId::from_parts(5, 6);
+    DurableAgentModelEffectRequest {
+        request_id: crate::agent_model_request_id(turn_id, fence),
+        command_id,
+        cancellation_id: pod0_domain::CancellationId::from_parts(7, 8),
+        issued_revision: StateRevision::new(1),
+        deadline_at: None,
+        execution: AgentModelExecutionRequest {
+            conversation_id: pod0_domain::ConversationId::from_parts(9, 10),
+            turn_id,
+            model_fence_id: fence,
+            model_reference: "model".into(),
+            messages: Vec::new(),
+            tool_definitions: Vec::new(),
+            maximum_output_bytes: 1,
+        },
+    }
+}
+
 #[test]
 fn agent_start_couples_state_transition_and_model_effect() {
+    let command_id = CommandId::from_parts(1, 2);
+    let turn_id = AgentTurnId::from_parts(3, 4);
     let plan = plan_agent_turn_start(AgentTurnStartActivityInput {
-        command_id: CommandId::from_parts(1, 2),
-        turn_id: AgentTurnId::from_parts(3, 4),
+        command_id,
+        turn_id,
         current_revision: StateRevision::INITIAL,
         committed_revision: StateRevision::new(1),
         legacy_replay: false,
+        model: model(command_id, turn_id),
     })
     .unwrap();
     let (_, _, mutation, facts, effects, commands, disposition) = plan.into_parts();
@@ -66,10 +91,20 @@ fn cancellation_has_a_transition_only_when_accepted() {
 #[test]
 fn model_observation_retires_exact_attempt_and_can_authorize_one_next_phase() {
     let cause = ActivityId::from_parts(6, 7);
+    let turn_id = AgentTurnId::from_parts(3, 4);
+    let proposal = AgentProposalProjection {
+        proposal_id: pod0_domain::AgentProposalId::from_parts(1, 1),
+        proposal_digest: pod0_domain::ContentDigest::from_bytes([1; 32]),
+        revision: StateRevision::new(2),
+        action: AgentToolAction::NoArguments {
+            tool: crate::AgentToolName::PausePlayback,
+        },
+        required_authority: AgentAuthority::OneShotApproval,
+    };
     let plan = plan_agent_effect_observation(AgentEffectObservationActivityInput {
         command_id: CommandId::from_parts(1, 2),
         request_id: HostRequestId::from_parts(2, 3),
-        turn_id: AgentTurnId::from_parts(3, 4),
+        turn_id,
         current_revision: StateRevision::new(1),
         committed_revision: StateRevision::new(2),
         intent_id: EffectIntentId::from_parts(4, 5),
@@ -79,7 +114,16 @@ fn model_observation_retires_exact_attempt_and_can_authorize_one_next_phase() {
         episode_id: None,
         outcome: EffectOutcome::Succeeded,
         transition: AgentPublicationTransition::TurnStateChanged,
-        next_effect: Some(ExternalEffectKind::AgentApproval),
+        next_authorization: Some(AgentEffectAuthorization::Approval(
+            DurableAgentApprovalEffectRequest {
+                request_id: HostRequestId::from_parts(2, 3),
+                command_id: CommandId::from_parts(1, 2),
+                cancellation_id: pod0_domain::CancellationId::from_parts(8, 9),
+                issued_revision: StateRevision::new(2),
+                deadline_at: None,
+                approval: AgentApprovalRequest { turn_id, proposal },
+            },
+        )),
         advance_turn: false,
     })
     .unwrap();
@@ -98,12 +142,15 @@ fn model_observation_retires_exact_attempt_and_can_authorize_one_next_phase() {
 
 #[test]
 fn legacy_agent_start_replay_never_authorizes_another_paid_call() {
+    let command_id = CommandId::from_parts(1, 2);
+    let turn_id = AgentTurnId::from_parts(3, 4);
     let plan = plan_agent_turn_start(AgentTurnStartActivityInput {
-        command_id: CommandId::from_parts(1, 2),
-        turn_id: AgentTurnId::from_parts(3, 4),
+        command_id,
+        turn_id,
         current_revision: StateRevision::new(1),
         committed_revision: StateRevision::new(1),
         legacy_replay: true,
+        model: model(command_id, turn_id),
     })
     .unwrap();
     let (_, _, mutation, facts, effects, commands, disposition) = plan.into_parts();

@@ -28,14 +28,14 @@ final class Pod0NativeModelWorkflowIntegrationTests: XCTestCase {
         let firstPendingCount = await outbox.pendingCount()
         XCTAssertEqual(firstCallCount, 1)
         XCTAssertEqual(firstPendingCount, 0)
-        XCTAssertTrue(fixture.facade.nextHostRequests(maximumCount: 64).isEmpty)
+        XCTAssertTrue(fixture.facade.nextLeasedHostRequests(maximumCount: 64).isEmpty)
 
         ensure(fixture.facade, episodeID: fixture.episodeID, commandLow: 2)
         dispatcher.executePendingRequests(from: fixture.facade)
         try await Task.sleep(for: .milliseconds(50))
         let repeatedCallCount = await modelHost.callCount()
         XCTAssertEqual(repeatedCallCount, 1)
-        XCTAssertTrue(fixture.facade.nextHostRequests(maximumCount: 64).isEmpty)
+        XCTAssertTrue(fixture.facade.nextLeasedHostRequests(maximumCount: 64).isEmpty)
         dispatcher.shutdown()
     }
 
@@ -43,7 +43,7 @@ final class Pod0NativeModelWorkflowIntegrationTests: XCTestCase {
         let fixture = try makeFixture()
         defer { dispose(fixture) }
         ensure(fixture.facade, episodeID: fixture.episodeID, commandLow: 3)
-        let request = try XCTUnwrap(modelRequest(in: fixture.facade.nextHostRequests(
+        let request = try XCTUnwrap(modelRequest(in: fixture.facade.nextLeasedHostRequests(
             maximumCount: 64
         )))
         let outbox = try NativeHostObservationOutbox(fileURL: fixture.outboxURL)
@@ -67,7 +67,7 @@ final class Pod0NativeModelWorkflowIntegrationTests: XCTestCase {
         let recoveryPendingCount = await relaunchedOutbox.pendingCount()
         XCTAssertEqual(recoveryCallCount, 0)
         XCTAssertEqual(recoveryPendingCount, 0)
-        XCTAssertTrue(reopened.nextHostRequests(maximumCount: 64).isEmpty)
+        XCTAssertTrue(reopened.nextLeasedHostRequests(maximumCount: 64).isEmpty)
         dispatcher.shutdown()
     }
 
@@ -160,20 +160,27 @@ final class Pod0NativeModelWorkflowIntegrationTests: XCTestCase {
         ))
     }
 
-    private func modelRequest(in requests: [HostRequestEnvelope]) -> HostRequestEnvelope? {
+    private func modelRequest(
+        in requests: [LeasedHostRequestEnvelope]
+    ) -> LeasedHostRequestEnvelope? {
         requests.first {
-            if case .executeChapterModel = $0.request { true } else { false }
+            if case .executeChapterModel = $0.request.request { true } else { false }
         }
     }
 
-    private func completionEnvelope(_ request: HostRequestEnvelope) -> HostObservationEnvelope {
-        HostObservationEnvelope(
-            requestId: request.requestId,
-            cancellationId: request.cancellationId,
-            observedRequestRevision: request.issuedRevision,
-            sequenceNumber: 1,
-            observedAt: UnixTimestampMilliseconds(date: Date()),
-            observation: SuccessfulNativeModelHost.completion(for: request.request)
+    private func completionEnvelope(
+        _ leased: LeasedHostRequestEnvelope
+    ) -> LeasedHostObservationEnvelope {
+        LeasedHostObservationEnvelope(
+            lease: leased.lease,
+            observation: HostObservationEnvelope(
+                requestId: leased.request.requestId,
+                cancellationId: leased.request.cancellationId,
+                observedRequestRevision: leased.request.issuedRevision,
+                sequenceNumber: 1,
+                observedAt: UnixTimestampMilliseconds(date: Date()),
+                observation: SuccessfulNativeModelHost.completion(for: leased.request.request)
+            )
         )
     }
 

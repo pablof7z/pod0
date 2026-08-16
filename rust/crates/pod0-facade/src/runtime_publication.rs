@@ -59,9 +59,7 @@ impl FacadeState {
             });
         match result {
             Ok((record, draft)) => {
-                if record.receipt_id.is_none() && record.stage == PublicationStage::Prepared {
-                    self.pending_publications.push_back(draft);
-                }
+                let _ = draft;
                 self.revision =
                     pod0_domain::StateRevision::new(self.revision.value.max(record.revision.value));
                 self.succeed(
@@ -100,9 +98,21 @@ impl FacadeState {
     pub(super) fn take_pending_publications(
         &mut self,
         maximum: usize,
-    ) -> Vec<pod0_application::Pod0PublicationDraft> {
-        let count = maximum.min(self.pending_publications.len());
-        self.pending_publications.drain(..count).collect()
+    ) -> Vec<pod0_application::LeasedNMPPublicationDraft> {
+        let Some(store) = self.store.as_ref() else {
+            return Vec::new();
+        };
+        let mut drafts = Vec::with_capacity(maximum);
+        while drafts.len() < maximum {
+            let Ok(Some(effect)) = store.claim_next_publication_effect(self.now(), 120_000) else {
+                break;
+            };
+            drafts.push(pod0_application::LeasedNMPPublicationDraft {
+                lease: effect.lease,
+                draft: effect.draft,
+            });
+        }
+        drafts
     }
 
     pub(super) fn rehydrate_publications(&mut self) -> Result<(), pod0_storage::StorageError> {
@@ -131,9 +141,8 @@ impl FacadeState {
             else {
                 continue;
             };
-            let draft = compose_generated_episode_publication(&record, episode, podcast)
+            compose_generated_episode_publication(&record, episode, podcast)
                 .map_err(|_| pod0_storage::StorageError::InvalidPublication)?;
-            self.pending_publications.push_back(draft);
         }
         Ok(())
     }
@@ -147,25 +156,30 @@ impl FacadeState {
             .unwrap_or_default()
             .into_iter()
             .filter_map(|record| {
-                record
-                    .receipt_id
-                    .map(|receipt_id| pod0_application::NMPPublicationReceiptLink {
+                record.receipt_id.and_then(|receipt_id| {
+                    let lease = self
+                        .store
+                        .as_ref()?
+                        .active_publication_lease(record.publication_id)
+                        .ok()??;
+                    Some(pod0_application::NMPPublicationReceiptLink {
                         publication_id: record.publication_id,
                         receipt_id,
+                        lease,
                     })
+                })
             })
             .collect()
     }
 
     pub(super) fn record_publication_receipt(
         &mut self,
-        publication_id: PublicationId,
-        receipt_id: u64,
+        input: pod0_application::LeasedNMPPublicationReceipt,
     ) -> bool {
         let Some(store) = self.publication_store.as_ref() else {
             return false;
         };
-        let Ok(record) = store.record_receipt(publication_id, receipt_id, self.now()) else {
+        let Ok(record) = store.record_leased_receipt(input, self.now()) else {
             return false;
         };
         self.revision =
@@ -175,13 +189,12 @@ impl FacadeState {
 
     pub(super) fn record_publication_observation(
         &mut self,
-        publication_id: PublicationId,
-        observation: &pod0_application::PublicationStatusObservation,
+        input: pod0_application::LeasedNMPPublicationObservation,
     ) -> bool {
         let Some(store) = self.publication_store.as_ref() else {
             return false;
         };
-        let Ok(record) = store.observe(publication_id, observation, self.now()) else {
+        let Ok(record) = store.observe_leased(input, self.now()) else {
             return false;
         };
         self.revision =

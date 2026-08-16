@@ -80,10 +80,41 @@ pub(super) fn dispatch_ensure(facade: &Pod0Facade, episode_id: EpisodeId, id: u6
     });
 }
 
-pub(super) fn one_request(facade: &Pod0Facade) -> HostRequestEnvelope {
-    let requests = facade.next_host_requests(64);
+pub(super) fn one_request(facade: &Pod0Facade) -> LeasedHostRequestEnvelope {
+    let requests = facade.next_leased_host_requests(64);
     assert_eq!(requests.len(), 1);
     requests.into_iter().next().unwrap()
+}
+
+pub(super) fn publisher_observation(
+    request: &LeasedHostRequestEnvelope,
+    sequence_number: u64,
+    observation: HostObservation,
+) -> LeasedHostObservationEnvelope {
+    LeasedHostObservationEnvelope {
+        lease: request.lease,
+        observation: HostObservationEnvelope {
+            request_id: request.request.request_id,
+            cancellation_id: request.request.cancellation_id,
+            observed_request_revision: request.request.issued_revision,
+            sequence_number,
+            observed_at: request.lease.expires_at,
+            observation,
+        },
+    }
+}
+
+pub(super) fn leased_response(
+    request: &LeasedHostRequestEnvelope,
+    sequence_number: u64,
+    http_status: u16,
+    bytes: Vec<u8>,
+) -> LeasedHostObservationEnvelope {
+    publisher_observation(
+        request,
+        sequence_number,
+        response(&request.request, sequence_number, http_status, bytes).observation,
+    )
 }
 
 pub(super) fn response(

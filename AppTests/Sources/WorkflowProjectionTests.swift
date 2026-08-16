@@ -27,115 +27,34 @@ final class WorkflowProjectionTests: XCTestCase {
         try await super.tearDown()
     }
 
-    func testLateSubscriberReceivesEveryVisibleLifecycleAndRestartHydrates() async throws {
-        let blocked = UUID()
-        let failed = UUID()
-        let succeeded = UUID()
-        try insert(subject: blocked, key: "blocked")
-        try insert(subject: failed, key: "failed")
-        try insert(subject: succeeded, key: "succeeded")
-
-        let client = WorkflowClient(coalescingDelayNanoseconds: 0)
-        client.attach(jobStore: store)
-        let token = client.register(WorkflowProjectionRequest(
-            subjectIDs: [blocked, failed, succeeded],
-            kinds: [.metadataIndex]
-        ))
-        await assertEventually {
-            client.latest(kind: .metadataIndex, subjectID: blocked)?.state == .pending
-        }
-
-        let blockedAttempt = try claim(subject: blocked)
-        try store.markRunning(id: blockedAttempt.id, leaseToken: XCTUnwrap(blockedAttempt.leaseToken))
-        await assertEventually {
-            client.latest(kind: .metadataIndex, subjectID: blocked)?.state == .running
-        }
-        try store.markBlocked(
-            id: blockedAttempt.id,
-            leaseToken: XCTUnwrap(blockedAttempt.leaseToken),
-            reason: JobFailure(classification: .missingCredential, message: "Add a key")
-        )
-        await assertEventually {
-            client.latest(kind: .metadataIndex, subjectID: blocked)?.state == .blocked
-        }
-
-        let failedAttempt = try claim(subject: failed)
-        try store.markRunning(id: failedAttempt.id, leaseToken: XCTUnwrap(failedAttempt.leaseToken))
-        try store.markFailedPermanent(
-            id: failedAttempt.id,
-            leaseToken: XCTUnwrap(failedAttempt.leaseToken),
-            error: JobFailure(classification: .invalidInput, message: "Bad input")
-        )
-        await assertEventually {
-            client.latest(kind: .metadataIndex, subjectID: failed)?.state == .failedPermanent
-        }
-
-        let succeededAttempt = try claim(subject: succeeded)
-        try store.markRunning(
-            id: succeededAttempt.id,
-            leaseToken: XCTUnwrap(succeededAttempt.leaseToken)
-        )
-        try store.complete(
-            id: succeededAttempt.id,
-            leaseToken: XCTUnwrap(succeededAttempt.leaseToken),
-            outputVersion: "v1"
-        )
-        await assertEventually {
-            client.latest(kind: .metadataIndex, subjectID: succeeded)?.state == .succeeded
-        }
-
-        try store.manuallyRetry(kind: .metadataIndex, subjectID: blocked)
-        let cancelledAttempt = try claim(subject: blocked)
-        try store.markCancelled(
-            id: cancelledAttempt.id,
-            leaseToken: XCTUnwrap(cancelledAttempt.leaseToken)
-        )
-        await assertEventually {
-            client.latest(kind: .metadataIndex, subjectID: blocked)?.state == .cancelled
-        }
-        client.unregister(token)
-        await assertEventually {
-            client.latest(kind: .metadataIndex, subjectID: blocked) == nil
-        }
-
-        let relaunched = WorkflowClient(coalescingDelayNanoseconds: 0)
-        relaunched.attach(jobStore: JobStore(fileURL: fileURL))
-        _ = relaunched.register(WorkflowProjectionRequest(
-            subjectIDs: [blocked],
-            kinds: [.metadataIndex]
-        ))
-        await assertEventually {
-            relaunched.latest(kind: .metadataIndex, subjectID: blocked)?.state == .cancelled
-        }
-    }
-
     func testNewerRegistrationFencesLateLoadAndDuplicateRefresh() async {
         let slowID = UUID()
         let fastID = UUID()
-        let slow = projection(subject: slowID, state: .running, updatedAt: Date(timeIntervalSince1970: 1))
-        let fast = projection(subject: fastID, state: .succeeded, updatedAt: Date(timeIntervalSince1970: 2))
-        let client = WorkflowClient(loader: { query in
+        let slow = publisherWorkflow(episodeID: slowID, stage: .requested, revision: 1)
+        let fast = publisherWorkflow(episodeID: fastID, stage: .succeeded, revision: 2)
+        let client = WorkflowClient(coalescingDelayNanoseconds: 0)
+        client.attachPublisherChapterCore { query in
             if query.subjectIDs.contains(slowID) {
                 try? await Task.sleep(nanoseconds: 150_000_000)
                 return [slow]
             }
             return [fast]
-        }, coalescingDelayNanoseconds: 0)
+        }
 
         let token = client.register(WorkflowProjectionRequest(
             subjectIDs: [slowID],
-            kinds: [.download]
+            kinds: [.publisherChapters]
         ))
         try? await Task.sleep(nanoseconds: 20_000_000)
         client.updateRegistration(token, request: WorkflowProjectionRequest(
             subjectIDs: [fastID],
-            kinds: [.download]
+            kinds: [.publisherChapters]
         ))
         await assertEventually {
-            client.latest(kind: .download, subjectID: fastID)?.state == .succeeded
+            client.latest(kind: .publisherChapters, subjectID: fastID)?.state == .succeeded
         }
         try? await Task.sleep(nanoseconds: 180_000_000)
-        XCTAssertNil(client.latest(kind: .download, subjectID: slowID))
+        XCTAssertNil(client.latest(kind: .publisherChapters, subjectID: slowID))
 
         let revision = client.revision
         client.refresh(immediately: true)
@@ -201,10 +120,11 @@ final class WorkflowProjectionTests: XCTestCase {
             createdAt: UnixTimestampMilliseconds(value: 900),
             updatedAt: UnixTimestampMilliseconds(value: 1_000),
             canRetry: false,
-            canCancel: true
+            canCancel: true,
+            retryAction: nil,
+            cancelAction: nil
         )
         let client = WorkflowClient(coalescingDelayNanoseconds: 0)
-        client.attach(jobStore: store)
         client.attachPublisherChapterCore { _ in [core] }
         _ = client.register(WorkflowProjectionRequest(
             subjectIDs: [episodeID],
@@ -269,20 +189,29 @@ final class WorkflowProjectionTests: XCTestCase {
         XCTAssertTrue(result, file: file, line: line)
     }
 
-    private func projection(
-        subject: UUID,
-        state: WorkJobState,
-        updatedAt: Date
-    ) -> WorkflowJobProjection {
-        WorkflowJobProjection(job: WorkJob(
-            id: UUID(), idempotencyKey: subject.uuidString, kind: .download,
-            subjectID: subject, inputVersion: "v1", occurrenceID: nil,
-            payloadVersion: 1, payload: nil, state: state, priority: 0,
-            resourceClass: .download, attempt: 1, maxAttempts: 8,
-            notBefore: updatedAt, leaseToken: nil, leaseOwner: nil,
-            leaseExpiresAt: nil, externalProvider: nil, externalOperationID: nil,
-            externalOperationState: nil, outputVersion: nil, lastErrorClass: nil,
-            lastErrorMessage: nil, createdAt: updatedAt, updatedAt: updatedAt
-        ))
+    private func publisherWorkflow(
+        episodeID: UUID,
+        stage: PublisherChapterWorkflowStage,
+        revision: UInt64
+    ) -> PublisherChapterWorkflowProjection {
+        PublisherChapterWorkflowProjection(
+            episodeId: EpisodeId(uuid: episodeID),
+            sourceVersion: "source-\(revision)",
+            stage: stage,
+            workflowRevision: StateRevision(value: revision),
+            attempt: 1,
+            maxAttempts: 5,
+            requestId: HostRequestId(high: revision, low: 1),
+            cancellationId: CancellationId(high: revision, low: 2),
+            notBefore: nil,
+            selectedArtifactId: nil,
+            failure: nil,
+            createdAt: UnixTimestampMilliseconds(value: Int64(revision)),
+            updatedAt: UnixTimestampMilliseconds(value: Int64(revision)),
+            canRetry: false,
+            canCancel: stage != .succeeded,
+            retryAction: nil,
+            cancelAction: nil
+        )
     }
 }

@@ -13,7 +13,7 @@ pub const MAX_RECALL_CANDIDATES: usize = 512;
 pub const MAX_RECALL_EVIDENCE: usize = 20;
 pub const MAX_RECALL_EXCERPT_BYTES: usize = 4_096;
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct RecallQuery {
     pub query_id: RecallQueryId,
     pub text: String,
@@ -29,7 +29,7 @@ pub enum RecallScope {
     Unsupported { wire_code: u32 },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum RecallStage {
     Queued,
     Running { phase: RecallPhase },
@@ -68,7 +68,7 @@ impl RecallStage {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum RecallPhase {
     Retrieving,
     Reranking,
@@ -140,7 +140,7 @@ pub struct RecallCandidateObservation {
     pub lexical_rank: Option<u16>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct RecallEmbeddingInput {
     pub span_id: EvidenceSpanId,
     pub text: String,
@@ -152,13 +152,15 @@ pub struct RecallSpanEmbeddingObservation {
     pub embedding: RecallEmbeddingVector,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct RecallRerankDocument {
     pub span_id: EvidenceSpanId,
     pub excerpt: String,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record,
+)]
 pub struct RecallRerankObservation {
     pub span_id: EvidenceSpanId,
     pub rank: u16,

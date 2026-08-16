@@ -1,9 +1,16 @@
-use super::recall_test_support::{
-    approve_next, observe, propose_query, start_command, turn, uuid_string,
-};
+use super::recall_test_support::{approve_next, propose_query, start_command, turn, uuid_string};
 use super::tests::{next_leased_agent_request, record_leased_agent_observation};
-use crate::runtime_recall_test_support::{RecallFixture, recall_test_embedding, record};
+use crate::runtime_recall_test_support::{RecallFixture, recall_test_embedding};
 use crate::*;
+use pod0_application::Clock;
+
+struct RecallClock(i64);
+
+impl Clock for RecallClock {
+    fn now(&self) -> UnixTimestampMilliseconds {
+        UnixTimestampMilliseconds::new(self.0)
+    }
+}
 
 #[test]
 fn transcript_query_returns_exact_evidence_then_finishes_conversationally() {
@@ -33,12 +40,12 @@ fn transcript_query_returns_exact_evidence_then_finishes_conversationally() {
         },
     );
     approve_next(&fixture);
-    let embed = fixture.base.facade.next_host_requests(1).remove(0);
-    let HostRequest::EmbedRecallQuery { query_id, text, .. } = &embed.request else {
+    let embed = next_leased_agent_request(&fixture.base.facade);
+    let HostRequest::EmbedRecallQuery { query_id, text, .. } = &embed.request.request else {
         panic!("expected shared recall embedding request");
     };
     assert_eq!(text, "habit cues");
-    record(
+    record_leased_agent_observation(
         &fixture.base.facade,
         &embed,
         HostObservation::RecallQueryEmbedded {
@@ -48,12 +55,12 @@ fn transcript_query_returns_exact_evidence_then_finishes_conversationally() {
             },
         },
     );
-    let rerank = fixture.base.facade.next_host_requests(1).remove(0);
+    let rerank = next_leased_agent_request(&fixture.base.facade);
     assert!(matches!(
-        rerank.request,
+        rerank.request.request,
         HostRequest::RerankRecallCandidates { .. }
     ));
-    record(
+    record_leased_agent_observation(
         &fixture.base.facade,
         &rerank,
         HostObservation::Failed {
@@ -61,8 +68,20 @@ fn transcript_query_returns_exact_evidence_then_finishes_conversationally() {
             safe_detail: None,
         },
     );
-    let continuation = fixture.base.facade.next_host_requests(1).remove(0);
-    let HostRequest::ExecuteAgentModelTurn { execution } = &continuation.request else {
+    let activity_count: i64 = rusqlite::Connection::open(&fixture.base.target)
+        .unwrap()
+        .query_row(
+            "SELECT COUNT(*) FROM pod0_activity_facts WHERE subject_code=4 AND fact_code IN (4,5)",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert!(
+        activity_count >= 4,
+        "recall authorization and both observations must be durable"
+    );
+    let continuation = next_leased_agent_request(&fixture.base.facade);
+    let HostRequest::ExecuteAgentModelTurn { execution } = &continuation.request.request else {
         panic!("expected final model continuation");
     };
     assert!(execution.tool_definitions.is_empty());
@@ -76,7 +95,8 @@ fn transcript_query_returns_exact_evidence_then_finishes_conversationally() {
     assert!(evidence.content.contains("daily cues"));
     assert!(evidence.content.contains(r#""playable_reference""#));
 
-    fixture.base.facade.record_host_observation(observe(
+    record_leased_agent_observation(
+        &fixture.base.facade,
         &continuation,
         HostObservation::AgentModelCompleted {
             turn_id: execution.turn_id,
@@ -86,7 +106,7 @@ fn transcript_query_returns_exact_evidence_then_finishes_conversationally() {
             proposed_tool_call: None,
             usage: None,
         },
-    ));
+    );
     let completed = turn(&fixture.base.facade, start.command_id);
     assert_eq!(completed.stage, AgentTurnStage::Completed);
     assert_eq!(completed.recall_evidence.len(), 2);
@@ -100,16 +120,19 @@ fn transcript_query_reissues_safe_read_only_work_after_restart() {
     fixture.base.facade.dispatch(start.clone());
     propose_query(&fixture);
     approve_next(&fixture);
-    let first = fixture.base.facade.next_host_requests(1).remove(0);
+    let first = next_leased_agent_request(&fixture.base.facade);
     assert!(matches!(
-        first.request,
+        first.request.request,
         HostRequest::EmbedRecallQuery { .. }
     ));
 
     let reopened = Pod0Facade::open(fixture.base.target.to_string_lossy().into_owned()).unwrap();
-    let recovered = reopened.next_host_requests(1).remove(0);
+    reopened.state().set_clock(std::sync::Arc::new(RecallClock(
+        first.lease.expires_at.value + 1,
+    )));
+    let recovered = next_leased_agent_request(&reopened);
     assert!(matches!(
-        recovered.request,
+        recovered.request.request,
         HostRequest::EmbedRecallQuery { .. }
     ));
     assert_eq!(
@@ -125,8 +148,8 @@ fn transcript_query_reports_provider_failure_for_conversational_recovery() {
     fixture.base.facade.dispatch(start.clone());
     propose_query(&fixture);
     approve_next(&fixture);
-    let embed = fixture.base.facade.next_host_requests(1).remove(0);
-    record(
+    let embed = next_leased_agent_request(&fixture.base.facade);
+    record_leased_agent_observation(
         &fixture.base.facade,
         &embed,
         HostObservation::Failed {
@@ -135,8 +158,8 @@ fn transcript_query_reports_provider_failure_for_conversational_recovery() {
         },
     );
 
-    let continuation = fixture.base.facade.next_host_requests(1).remove(0);
-    let HostRequest::ExecuteAgentModelTurn { execution } = &continuation.request else {
+    let continuation = next_leased_agent_request(&fixture.base.facade);
+    let HostRequest::ExecuteAgentModelTurn { execution } = &continuation.request.request else {
         panic!("expected recovery model continuation");
     };
     let result = execution
@@ -159,8 +182,8 @@ fn cancelling_agent_turn_withdraws_recall_and_rejects_late_completion() {
     fixture.base.facade.dispatch(start.clone());
     propose_query(&fixture);
     approve_next(&fixture);
-    let embed = fixture.base.facade.next_host_requests(1).remove(0);
-    let HostRequest::EmbedRecallQuery { query_id, .. } = &embed.request else {
+    let embed = next_leased_agent_request(&fixture.base.facade);
+    let HostRequest::EmbedRecallQuery { query_id, .. } = &embed.request.request else {
         panic!("expected recall embedding request");
     };
     let query_id = *query_id;
@@ -187,7 +210,7 @@ fn cancelling_agent_turn_withdraws_recall_and_rejects_late_completion() {
         offset: 0,
         max_items: 10,
     });
-    record(
+    record_leased_agent_observation(
         &fixture.base.facade,
         &embed,
         HostObservation::RecallQueryEmbedded {
@@ -205,5 +228,5 @@ fn cancelling_agent_turn_withdraws_recall_and_rejects_late_completion() {
         max_items: 10,
     });
     assert_eq!(after.state_revision, before.state_revision);
-    assert!(fixture.base.facade.next_host_requests(1).is_empty());
+    assert!(fixture.base.facade.next_leased_host_requests(1).is_empty());
 }

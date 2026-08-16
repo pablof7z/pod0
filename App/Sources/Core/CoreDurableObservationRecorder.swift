@@ -11,32 +11,6 @@ actor CoreDurableObservationRecorder {
     }
 
     func recordRetaining(
-        _ observation: HostObservationEnvelope,
-        in facade: Pod0Facade,
-        persistForRelaunch: Bool
-    ) async -> HostObservationReceipt {
-        if persistForRelaunch {
-            guard let outbox else {
-                return .retainAndRetry(requestId: observation.requestId)
-            }
-            do { _ = try await outbox.persistBeforeDelivery(observation) }
-            catch { return .retainAndRetry(requestId: observation.requestId) }
-            guard await outbox.beginDelivery(of: observation) else {
-                return .retainAndRetry(requestId: observation.requestId)
-            }
-        }
-        guard !Task.isCancelled else {
-            return .retainAndRetry(requestId: observation.requestId)
-        }
-        let receipt = facade.recordHostObservation(observation: observation)
-        if persistForRelaunch, let outbox {
-            await outbox.finishDelivery(of: observation)
-            _ = try? await outbox.acknowledge(receipt)
-        }
-        return receipt
-    }
-
-    func recordRetaining(
         _ observation: LeasedHostObservationEnvelope,
         in facade: Pod0Facade
     ) async -> HostObservationReceipt {
@@ -52,23 +26,6 @@ actor CoreDurableObservationRecorder {
         await outbox.finishDelivery(of: observation)
         _ = try? await outbox.acknowledgeLeased(receipt)
         return receipt
-    }
-
-    func replayPending(
-        in facade: Pod0Facade
-    ) async -> [(HostObservationEnvelope, HostObservationReceipt)] {
-        guard let outbox else { return [] }
-        var replayed: [(HostObservationEnvelope, HostObservationReceipt)] = []
-        for observation in await outbox.pendingObservations() {
-            guard !Task.isCancelled else { return replayed }
-            guard await outbox.beginDelivery(of: observation) else { continue }
-            let receipt = facade.recordHostObservation(observation: observation)
-            await outbox.finishDelivery(of: observation)
-            guard !Task.isCancelled else { return replayed }
-            _ = try? await outbox.acknowledge(receipt)
-            replayed.append((observation, receipt))
-        }
-        return replayed
     }
 
     func replayPendingLeased(

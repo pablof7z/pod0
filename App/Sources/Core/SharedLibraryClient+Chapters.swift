@@ -80,7 +80,7 @@ extension SharedLibraryClient {
               let snapshot = try authoritativeChapterReader.load(episodeID: episodeID)
         else { throw SharedLibraryError.unavailable }
         Task { @MainActor [weak self] in
-            self?.announcedModelChapterVersions.removeValue(forKey: episodeID)
+            guard self != nil else { return }
             WorkflowRuntime.shared.wake()
         }
         return SharedChapterCommitResult(receipt: receipt, snapshot: snapshot)

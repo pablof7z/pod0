@@ -1,5 +1,6 @@
 use crate::runtime_playback_test_support::{
-    PlaybackFixture, add_external_episode, library_request, record_playback,
+    PlaybackFixture, add_external_episode, library_request, next_playback_requests,
+    record_playback,
 };
 use crate::*;
 
@@ -7,7 +8,7 @@ use crate::*;
 fn restore_observes_once_and_checkpoints_on_first_sample_and_thirty_second_cap() {
     let fixture = PlaybackFixture::new();
     fixture.dispatch(1, PlaybackCommand::Restore);
-    let requests = fixture.facade.next_host_requests(u16::MAX);
+    let requests = next_playback_requests(&fixture.facade);
     assert_eq!(
         requests
             .iter()
@@ -29,7 +30,7 @@ fn restore_observes_once_and_checkpoints_on_first_sample_and_thirty_second_cap()
             transcript_configuration: None,
         },
     );
-    assert!(fixture.facade.next_host_requests(u16::MAX).iter().any(|request| {
+    assert!(next_playback_requests(&fixture.facade).iter().any(|request| {
         matches!(request.request, HostRequest::Play { episode_id, .. } if episode_id == fixture.episode_id)
     }));
 
@@ -94,7 +95,7 @@ fn restore_observes_once_and_checkpoints_on_first_sample_and_thirty_second_cap()
         false,
         PlaybackInterruption::Began,
     );
-    assert!(fixture.facade.next_host_requests(u16::MAX).iter().any(|request| {
+    assert!(next_playback_requests(&fixture.facade).iter().any(|request| {
         matches!(request.request, HostRequest::Pause { episode_id } if episode_id == fixture.episode_id)
     }));
     record_playback(
@@ -106,7 +107,7 @@ fn restore_observes_once_and_checkpoints_on_first_sample_and_thirty_second_cap()
         false,
         PlaybackInterruption::EndedShouldResume,
     );
-    assert!(fixture.facade.next_host_requests(u16::MAX).iter().any(|request| {
+    assert!(next_playback_requests(&fixture.facade).iter().any(|request| {
         matches!(request.request, HostRequest::Play { episode_id, .. } if episode_id == fixture.episode_id)
     }));
 }
@@ -143,9 +144,7 @@ fn natural_end_completes_and_advances_the_queue_through_one_rust_transaction() {
             placement: QueuePlacement::Back,
         },
     );
-    let stream = fixture
-        .facade
-        .next_host_requests(u16::MAX)
+    let stream = next_playback_requests(&fixture.facade)
         .into_iter()
         .find(|request| matches!(request.request, HostRequest::ObservePlayback { .. }))
         .unwrap();
@@ -179,13 +178,32 @@ fn natural_end_completes_and_advances_the_queue_through_one_rust_transaction() {
             cause: CompletionCause::NaturalEnd
         }
     ));
-    let effects = fixture.facade.next_host_requests(u16::MAX);
+    let effects = next_playback_requests(&fixture.facade);
     assert!(effects.iter().any(|request| {
         matches!(request.request, HostRequest::LoadMedia { episode_id, .. } if episode_id == second)
     }));
     assert!(effects.iter().any(|request| {
         matches!(request.request, HostRequest::Play { episode_id, .. } if episode_id == second)
     }));
+
+    let connection = rusqlite::Connection::open(&fixture.target).unwrap();
+    let reaction_transaction: Vec<u8> = connection
+        .query_row(
+            "SELECT transaction_id FROM pod0_activity_facts WHERE host_request_id=?1 \
+             AND fact_code=5 ORDER BY sequence DESC LIMIT 1",
+            [stream.request_id.into_bytes().as_slice()],
+            |row| row.get(0),
+        )
+        .unwrap();
+    let facts: i64 = connection
+        .query_row(
+            "SELECT COUNT(*) FROM pod0_activity_facts WHERE transaction_id=?1 \
+             AND (fact_code=2 OR fact_code=3 OR fact_code=4 OR fact_code=5)",
+            [reaction_transaction],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert!(facts >= 4, "one observation, transition, and follow-up effects expected");
 }
 
 #[test]
@@ -226,14 +244,12 @@ fn fired_sleep_timer_suppresses_autoplay_even_when_preferences_allow_it() {
             mode: PlaybackSleepMode::EndOfEpisode,
         },
     );
-    let stream = fixture
-        .facade
-        .next_host_requests(u16::MAX)
+    let stream = next_playback_requests(&fixture.facade)
         .into_iter()
         .find(|request| matches!(request.request, HostRequest::ObservePlayback { .. }))
         .unwrap();
     fixture.dispatch(35, PlaybackCommand::NativeTimerFired);
-    let _ = fixture.facade.next_host_requests(u16::MAX);
+    let _ = next_playback_requests(&fixture.facade);
 
     record_playback(
         &fixture.facade,

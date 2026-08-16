@@ -31,6 +31,7 @@ pub(crate) use failure::apply_transcript_workflow_cancellation;
 pub use model::*;
 pub use observation_model::*;
 pub(crate) use read::read_workflow;
+pub(crate) use recovery::apply_ambiguous_recovery;
 pub(crate) use store::{apply_transcript_workflow_ensure, replays, validate_ensure};
 pub(crate) use submission::apply_transcript_provider_accepted;
 pub(crate) use submission::{authorize_submission, exact_attempt, validate_claim};

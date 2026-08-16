@@ -5,14 +5,69 @@ use rusqlite::Connection;
 
 use crate::*;
 
+#[derive(Clone, Debug)]
+pub(super) struct PlaybackTestRequest {
+    pub(super) lease: PersistedEffectLeaseIdentity,
+    envelope: HostRequestEnvelope,
+}
+
+impl std::ops::Deref for PlaybackTestRequest {
+    type Target = HostRequestEnvelope;
+
+    fn deref(&self) -> &Self::Target {
+        &self.envelope
+    }
+}
+
+pub(super) fn next_playback_requests(facade: &Pod0Facade) -> Vec<PlaybackTestRequest> {
+    let mut requests = Vec::new();
+    let mut empty_drains = 0;
+    while empty_drains < 2 {
+        let leased = facade.next_leased_host_requests(u16::MAX);
+        if leased.is_empty() {
+            empty_drains += 1;
+        } else {
+            empty_drains = 0;
+        }
+        requests.extend(
+            leased
+                .into_iter()
+                .filter(|leased| is_playback_request(&leased.request.request))
+                .map(|leased| PlaybackTestRequest {
+                    lease: leased.lease,
+                    envelope: leased.request,
+                }),
+        );
+    }
+    requests
+}
+
+fn is_playback_request(request: &HostRequest) -> bool {
+    matches!(
+        request,
+        HostRequest::LoadMedia { .. }
+            | HostRequest::Play { .. }
+            | HostRequest::Pause { .. }
+            | HostRequest::Seek { .. }
+            | HostRequest::SetRate { .. }
+            | HostRequest::ArmNativeTimer { .. }
+            | HostRequest::CancelNativeTimer { .. }
+            | HostRequest::ObservePlayback { .. }
+            | HostRequest::StopPlayback { .. }
+    )
+}
+
 #[path = "runtime_playback_observation_test_support.rs"]
 mod observations;
 pub(super) use observations::*;
 #[path = "runtime_chapter_playback_test_support.rs"]
 mod chapters;
+#[path = "runtime_playback_test_support_projection.rs"]
+mod projection;
 use crate::runtime_transcript_workflow_test_support::install_empty_transcript_workflow_cutover;
 pub(super) use crate::runtime_transcript_workflow_test_support::transcript_input;
 use chapters::{install_chapter_fixture, install_empty_chapter_fixture};
+pub(super) use projection::{add_external_episode, dispatch, playback};
 
 pub(super) struct PlaybackFixture {
     pub(super) _directory: tempfile::TempDir,
@@ -230,53 +285,4 @@ impl PlaybackFixture {
     pub(super) fn playback(&self) -> PlaybackProjection {
         playback(&self.facade)
     }
-}
-
-pub(super) fn dispatch(facade: &Pod0Facade, id: u64, command: PlaybackCommand) {
-    facade.dispatch(CommandEnvelope {
-        command_id: CommandId::from_parts(10, id),
-        cancellation_id: CancellationId::from_parts(11, id),
-        expected_revision: None,
-        command: ApplicationCommand::Playback { command },
-    });
-}
-
-pub(super) fn playback(facade: &Pod0Facade) -> PlaybackProjection {
-    let Projection::Playback { value } = facade.snapshot(playback_request()).projection else {
-        panic!("expected playback projection");
-    };
-    value
-}
-
-pub(super) fn add_external_episode(fixture: &PlaybackFixture, id: u64) -> EpisodeId {
-    fixture.facade.dispatch(CommandEnvelope {
-        command_id: CommandId::from_parts(10, id),
-        cancellation_id: CancellationId::from_parts(11, id),
-        expected_revision: None,
-        command: ApplicationCommand::UpsertExternalEpisode {
-            episode: pod0_application::ExternalEpisodeInput {
-                podcast_id: fixture.podcast_id,
-                feed_url: None,
-                podcast_title: "Legacy Kotlin fixture".to_owned(),
-                audio_url: format!("https://legacy.example/{id}.mp3"),
-                guid: None,
-                title: format!("Episode {id}"),
-                description: String::new(),
-                published_at: UnixTimestampMilliseconds::new(1_800_000_000_000),
-                enclosure_mime_type: Some("audio/mpeg".to_owned()),
-                image_url: None,
-                duration_milliseconds: Some(180_000),
-            },
-        },
-    });
-    let Projection::Library { value } = fixture.facade.snapshot(library_request()).projection
-    else {
-        panic!("expected library projection");
-    };
-    value
-        .episodes
-        .iter()
-        .find(|episode| episode.episode_id != fixture.episode_id)
-        .unwrap()
-        .episode_id
 }

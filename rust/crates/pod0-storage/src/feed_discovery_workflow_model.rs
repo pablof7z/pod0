@@ -55,3 +55,17 @@ pub enum FeedDiscoveryNotificationOutcome {
     Cancelled,
     PermanentFailure,
 }
+
+#[derive(Clone, Debug)]
+pub struct FeedNotificationObservationCommitInput {
+    pub lease: pod0_application::PersistedEffectLeaseIdentity,
+    pub observation: pod0_application::DurableFeedHostObservation,
+    pub outcome: FeedDiscoveryNotificationOutcome,
+    pub committed_at: pod0_domain::UnixTimestampMilliseconds,
+}
+
+#[derive(Clone, Debug)]
+pub struct FeedNotificationObservationCommitOutcome {
+    pub replayed: bool,
+    pub effect: Option<FeedDiscoveryEffectRecord>,
+}

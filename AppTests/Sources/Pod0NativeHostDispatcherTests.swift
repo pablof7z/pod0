@@ -13,20 +13,20 @@ final class Pod0NativeHostDispatcherTests: XCTestCase {
             playbackHost: playback,
             now: { clock }
         )
-        let expired = envelope(
+        let expired = leasedHostRequest(envelope(
             requestID: 1,
             deadline: Date(timeIntervalSince1970: 9),
             request: feedRequest
-        )
-        var observations: [HostObservationEnvelope] = []
+        ))
+        var observations: [LeasedHostObservationEnvelope] = []
 
         dispatcher.execute(expired) { observations.append($0) }
         dispatcher.execute(expired) { observations.append($0) }
 
         XCTAssertEqual(observations.count, 1)
-        XCTAssertEqual(observations[0].requestId, expired.requestId)
-        XCTAssertEqual(observations[0].cancellationId, expired.cancellationId)
-        guard case .failed(code: .timedOut, safeDetail: _) = observations[0].observation else {
+        XCTAssertEqual(observations[0].observation.requestId, expired.request.requestId)
+        XCTAssertEqual(observations[0].observation.cancellationId, expired.request.cancellationId)
+        guard case .failed(code: .timedOut, safeDetail: _) = observations[0].observation.observation else {
             return XCTFail("Expected typed deadline failure")
         }
         let feedCallCount = await feed.callCount
@@ -37,17 +37,17 @@ final class Pod0NativeHostDispatcherTests: XCTestCase {
         let feed = SuspendingCoreFeedHost()
         let playback = FakeCorePlaybackHost()
         let dispatcher = Pod0NativeHostDispatcher(feedHost: feed, playbackHost: playback)
-        let request = envelope(requestID: 2, deadline: nil, request: feedRequest)
-        var observations: [HostObservationEnvelope] = []
+        let request = leasedHostRequest(envelope(requestID: 2, deadline: nil, request: feedRequest))
+        var observations: [LeasedHostObservationEnvelope] = []
 
         dispatcher.execute(request) { observations.append($0) }
-        dispatcher.cancel(cancellationID: request.cancellationId)
+        dispatcher.cancel(cancellationID: request.request.cancellationId)
         await Task.yield()
         await Task.yield()
 
         XCTAssertEqual(observations.count, 1)
-        XCTAssertEqual(observations[0].sequenceNumber, 0)
-        XCTAssertEqual(observations[0].observation, .cancelled)
+        XCTAssertEqual(observations[0].observation.sequenceNumber, 0)
+        XCTAssertEqual(observations[0].observation.observation, .cancelled)
     }
 
     func testRecallRequestFailsTypedWhenCapabilityIsNotAttached() async {
@@ -55,7 +55,7 @@ final class Pod0NativeHostDispatcherTests: XCTestCase {
             feedHost: RecordingCoreFeedHost(),
             playbackHost: FakeCorePlaybackHost()
         )
-        let request = envelope(
+        let request = leasedHostRequest(envelope(
             requestID: 4,
             deadline: nil,
             request: .embedRecallQuery(
@@ -65,8 +65,8 @@ final class Pod0NativeHostDispatcherTests: XCTestCase {
                 text: "Where was the memory model discussed?",
                 maximumDimensions: 1_536
             )
-        )
-        var observations: [HostObservationEnvelope] = []
+        ))
+        var observations: [LeasedHostObservationEnvelope] = []
         let delivered = expectation(description: "typed recall failure delivered")
 
         dispatcher.execute(request) {
@@ -75,7 +75,7 @@ final class Pod0NativeHostDispatcherTests: XCTestCase {
         }
 
         await fulfillment(of: [delivered], timeout: 1)
-        guard let observation = observations.first?.observation,
+        guard let observation = observations.first?.observation.observation,
               case .failed(code: .indexUnavailable, safeDetail: _) = observation else {
             return XCTFail("Expected typed recall capability failure")
         }
@@ -91,7 +91,7 @@ final class Pod0NativeHostDispatcherTests: XCTestCase {
             playbackHost: FakeCorePlaybackHost(),
             now: { clock }
         )
-        let request = envelope(
+        let request = leasedHostRequest(envelope(
             requestID: 5,
             deadline: clock.addingTimeInterval(30),
             request: .fetchPublisherChapters(
@@ -100,8 +100,8 @@ final class Pod0NativeHostDispatcherTests: XCTestCase {
                 notBefore: UnixTimestampMilliseconds(date: clock.addingTimeInterval(-1)),
                 maximumResponseBytes: 4_096
             )
-        )
-        var observations: [HostObservationEnvelope] = []
+        ))
+        var observations: [LeasedHostObservationEnvelope] = []
         let delivered = expectation(description: "publisher observation delivered")
 
         dispatcher.execute(request) {
@@ -113,7 +113,7 @@ final class Pod0NativeHostDispatcherTests: XCTestCase {
         let publisherCallCount = await publisher.callCount
         XCTAssertEqual(publisherCallCount, 1)
         guard case .publisherChaptersFetched(_, let bytes, _, _, _, _, let status)
-            = observations.first?.observation else {
+            = observations.first?.observation.observation else {
             return XCTFail("Expected raw publisher observation")
         }
         XCTAssertEqual(bytes, Data("raw".utf8))
@@ -131,15 +131,15 @@ final class Pod0NativeHostDispatcherTests: XCTestCase {
         )
         let episodeID = EpisodeId(uuid: UUID())
         playback.observation = observation(episodeID: episodeID, state: .prepared, position: 0)
-        let request = envelope(
+        let request = leasedHostRequest(envelope(
             requestID: 3,
             deadline: nil,
             request: .observePlayback(
                 episodeId: episodeID,
                 minimumIntervalMilliseconds: 1_000
             )
-        )
-        var delivered: [HostObservationEnvelope] = []
+        ))
+        var delivered: [LeasedHostObservationEnvelope] = []
 
         dispatcher.execute(request) { delivered.append($0) }
         clock = clock.addingTimeInterval(0.1)
@@ -148,16 +148,16 @@ final class Pod0NativeHostDispatcherTests: XCTestCase {
         clock = clock.addingTimeInterval(1.1)
         playback.emit(observation(episodeID: episodeID, state: .playing, position: 1_200))
 
-        XCTAssertEqual(delivered.map(\.sequenceNumber), [1, 2, 3])
-        XCTAssertEqual(delivered.map(\.observedRequestRevision), [request.issuedRevision, request.issuedRevision, request.issuedRevision])
-        guard case .playbackObserved(let last) = delivered.last?.observation else {
+        XCTAssertEqual(delivered.map(\.observation.sequenceNumber), [1, 2, 3])
+        XCTAssertEqual(delivered.map(\.observation.observedRequestRevision), [request.request.issuedRevision, request.request.issuedRevision, request.request.issuedRevision])
+        guard case .playbackObserved(let last) = delivered.last?.observation.observation else {
             return XCTFail("Expected typed playback stream")
         }
         XCTAssertEqual(last.positionMilliseconds, 1_200)
 
-        dispatcher.cancel(cancellationID: request.cancellationId)
-        XCTAssertEqual(delivered.map(\.sequenceNumber), [1, 2, 3, 4])
-        XCTAssertEqual(delivered.last?.observation, .cancelled)
+        dispatcher.cancel(cancellationID: request.request.cancellationId)
+        XCTAssertEqual(delivered.map(\.observation.sequenceNumber), [1, 2, 3, 4])
+        XCTAssertEqual(delivered.last?.observation.observation, .cancelled)
     }
 
     private var feedRequest: HostRequest {

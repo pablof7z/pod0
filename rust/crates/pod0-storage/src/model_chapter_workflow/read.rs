@@ -132,16 +132,26 @@ fn read_dispatchable_workflows(
 pub(crate) fn read_recoverable_workflows(
     connection: &Connection,
     max_items: u16,
+    observed_at_ms: i64,
 ) -> Result<Vec<ModelChapterWorkflowRecord>, StorageError> {
     let mut statement = connection
         .prepare(&format!(
             "SELECT {WORKFLOW_COLUMNS} FROM pod0_model_chapter_workflows \
              WHERE state IN('submission_authorized','provider_accepted','completion_observed') \
-             ORDER BY updated_at_ms,episode_id LIMIT ?1"
+             AND (state!='submission_authorized' OR NOT EXISTS(\
+                 SELECT 1 FROM pod0_effect_intents i \
+                 JOIN pod0_effect_attempts a ON a.intent_id=i.intent_id \
+                 WHERE i.episode_id=pod0_model_chapter_workflows.episode_id \
+                 AND json_extract(i.request_json,'$.kind')='ModelChapterProvider' \
+                 AND i.state_code=2 AND a.state_code=1 AND a.lease_expires_at_ms>=?1)) \
+             ORDER BY updated_at_ms,episode_id LIMIT ?2"
         ))
         .map_err(|error| StorageError::sqlite("prepare recoverable model workflows", error))?;
     let rows = statement
-        .query_map([i64::from(max_items.max(1))], workflow_row)
+        .query_map(
+            params![observed_at_ms, i64::from(max_items.max(1))],
+            workflow_row,
+        )
         .map_err(|error| StorageError::sqlite("query recoverable model workflows", error))?;
     rows.collect::<Result<Vec<_>, _>>()
         .map_err(|error| StorageError::sqlite("decode recoverable model workflows", error))

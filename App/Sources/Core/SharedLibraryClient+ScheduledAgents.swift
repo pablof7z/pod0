@@ -37,7 +37,6 @@ extension SharedLibraryClient {
                 nextRunAt: task.nextRunAt.date
             )
         })
-        workflowClient?.attachScheduledAgentCore(projection.workflows)
     }
 
     @discardableResult
@@ -103,19 +102,19 @@ extension SharedLibraryClient {
         dispatchCoreCommand(.reconcileScheduledRuns)
     }
 
+    func scheduledAgentWorkflow(taskID: UUID) -> ScheduledAgentWorkflowProjection? {
+        cachedScheduledAgent?.workflows
+            .filter { $0.taskId.uuid == taskID }
+            .max { $0.updatedAt.value < $1.updatedAt.value }
+    }
+
     func performScheduledAgentAction(
         _ action: WorkflowJobAction,
-        on projection: WorkflowJobProjection
+        taskID: UUID
     ) async -> WorkflowJobActionResult {
-        guard projection.authority == .sharedRustScheduledAgents,
-              projection.allowedActions.contains(action),
-              let workflow = cachedScheduledAgent?.workflows.first(where: {
-                  WorkflowJobProjection(scheduledAgentWorkflow: $0).id == projection.id
-              }),
-              workflow.workflowRevision.value == projection.coreWorkflowRevision
-        else { return .stale }
+        guard let workflow = scheduledAgentWorkflow(taskID: taskID) else { return .notFound }
         switch action {
-        case .retry:
+        case .retry where workflow.allowedActions.canRetry:
             let result = await executeWorkflowAction(.retryScheduledRun(
                 occurrenceId: workflow.occurrenceId,
                 expectedWorkflowRevision: workflow.workflowRevision
@@ -124,11 +123,13 @@ extension SharedLibraryClient {
                 dispatchCoreCommand(.reconcileScheduledRuns)
             }
             return result
-        case .cancel:
+        case .cancel where workflow.allowedActions.canCancel:
             return await executeWorkflowAction(.cancelScheduledRun(
                 occurrenceId: workflow.occurrenceId,
                 expectedWorkflowRevision: workflow.workflowRevision
             ), action: action)
+        default:
+            return .notAllowed
         }
     }
 }

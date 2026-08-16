@@ -1,12 +1,11 @@
 use rusqlite::{Transaction, params};
 
-use crate::agent_history_cutover_read::{matching_report, read_evidence, read_report};
-use crate::agent_history_cutover_validation::{validate_input, verify_staged};
+use crate::agent_history_cutover_read::read_report;
+use crate::agent_history_cutover_validation::validate_input;
 use crate::agent_store_codec::{AGENT_STATE_SCHEMA_VERSION, encode_state, stage_code};
 use crate::{
-    AgentHistoryCutoverState, LegacyAgentHistoryCutoverInput, LegacyAgentHistoryCutoverReport,
-    LibraryStore, StorageError, agent_history_counts, agent_history_source_fingerprint,
-    agent_history_source_generation,
+    LegacyAgentHistoryCutoverInput, LegacyAgentHistoryCutoverReport, LibraryStore, StorageError,
+    agent_history_source_fingerprint, agent_history_source_generation,
 };
 
 pub fn inspect_legacy_agent_history_cutover(
@@ -28,49 +27,7 @@ impl LibraryStore {
         &self,
         input: LegacyAgentHistoryCutoverInput,
     ) -> Result<LegacyAgentHistoryCutoverReport, StorageError> {
-        validate_input(&input)?;
-        let fingerprint = agent_history_source_fingerprint(&input);
-        let generation = agent_history_source_generation(fingerprint);
-        let (conversation_count, turn_count, message_count) =
-            agent_history_counts(&input.conversations);
-        self.write(|transaction| {
-            if let Some(report) = read_evidence(transaction)? {
-                if report.state.source_generation() == Some(generation)
-                    && report.source_fingerprint == Some(fingerprint)
-                    && report.backup_digest == Some(input.backup_digest)
-                    && report.backup_byte_count == Some(input.backup_byte_count)
-                    && report.conversation_count == conversation_count as u32
-                    && report.turn_count == turn_count as u32
-                    && report.message_count == message_count as u32
-                {
-                    return Ok(report);
-                }
-                return Err(StorageError::AgentTurnConflict);
-            }
-            ensure_empty_staging(transaction)?;
-            stage_rows(transaction, &input)?;
-            transaction
-                .execute(
-                    "INSERT INTO pod0_agent_history_cutover_evidence(singleton,state,\
-                     source_generation,source_fingerprint,backup_digest,backup_byte_count,\
-                     conversation_count,turn_count,message_count,staged_at_ms,verified_at_ms,\
-                     committed_at_ms) VALUES(1,'staged',?1,?2,?3,?4,?5,?6,?7,?8,NULL,NULL)",
-                    params![
-                        to_i64(generation)?,
-                        fingerprint.into_bytes().as_slice(),
-                        input.backup_digest.into_bytes().as_slice(),
-                        to_i64(input.backup_byte_count)?,
-                        to_i64(conversation_count as u64)?,
-                        to_i64(turn_count as u64)?,
-                        to_i64(message_count as u64)?,
-                        input.observed_at.value(),
-                    ],
-                )
-                .map_err(|error| {
-                    StorageError::sqlite("stage agent history cutover evidence", error)
-                })?;
-            read_evidence(transaction)?.ok_or(StorageError::AgentTurnConflict)
-        })
+        crate::transition_commit::commit_agent_history_cutover_stage(self.path(), input)
     }
 
     pub fn verify_legacy_agent_history_cutover(
@@ -78,23 +35,11 @@ impl LibraryStore {
         source_generation: u64,
         observed_at: pod0_domain::UnixTimestampMilliseconds,
     ) -> Result<LegacyAgentHistoryCutoverReport, StorageError> {
-        self.write(|transaction| {
-            let report = matching_report(transaction, source_generation)?;
-            if matches!(report.state, AgentHistoryCutoverState::Authoritative { .. }) {
-                return Ok(report);
-            }
-            verify_staged(transaction, &report)?;
-            if matches!(report.state, AgentHistoryCutoverState::Staged { .. }) {
-                transaction
-                    .execute(
-                        "UPDATE pod0_agent_history_cutover_evidence SET state='verified',\
-                         verified_at_ms=?1 WHERE singleton=1 AND state='staged'",
-                        [observed_at.value()],
-                    )
-                    .map_err(|error| StorageError::sqlite("verify agent history cutover", error))?;
-            }
-            read_evidence(transaction)?.ok_or(StorageError::AgentTurnConflict)
-        })
+        crate::transition_commit::commit_agent_history_cutover_verify(
+            self.path(),
+            source_generation,
+            observed_at,
+        )
     }
 
     pub fn commit_legacy_agent_history_cutover(
@@ -102,59 +47,25 @@ impl LibraryStore {
         source_generation: u64,
         observed_at: pod0_domain::UnixTimestampMilliseconds,
     ) -> Result<LegacyAgentHistoryCutoverReport, StorageError> {
-        self.write(|transaction| {
-            let report = matching_report(transaction, source_generation)?;
-            if matches!(report.state, AgentHistoryCutoverState::Authoritative { .. }) {
-                return Ok(report);
-            }
-            if !matches!(report.state, AgentHistoryCutoverState::Verified { .. }) {
-                return Err(StorageError::AgentTurnConflict);
-            }
-            verify_staged(transaction, &report)?;
-            commit_rows(transaction, observed_at.value())?;
-            clear_staged(transaction)?;
-            transaction
-                .execute(
-                    "UPDATE pod0_agent_history_cutover_evidence SET state='authoritative',\
-                     committed_at_ms=?1 WHERE singleton=1 AND state='verified'",
-                    [observed_at.value()],
-                )
-                .map_err(|error| StorageError::sqlite("commit agent history cutover", error))?;
-            if transaction.changes() != 1 {
-                return Err(StorageError::AgentTurnConflict);
-            }
-            read_evidence(transaction)?.ok_or(StorageError::AgentTurnConflict)
-        })
+        crate::transition_commit::commit_agent_history_cutover_authority(
+            self.path(),
+            source_generation,
+            observed_at,
+        )
     }
 
     pub fn discard_staged_legacy_agent_history_cutover(
         &self,
         source_generation: u64,
     ) -> Result<bool, StorageError> {
-        self.write(|transaction| {
-            let Some(report) = read_evidence(transaction)? else {
-                return Ok(false);
-            };
-            if report.state.source_generation() != Some(source_generation)
-                || matches!(report.state, AgentHistoryCutoverState::Authoritative { .. })
-            {
-                return Err(StorageError::AgentTurnConflict);
-            }
-            clear_staged(transaction)?;
-            transaction
-                .execute(
-                    "DELETE FROM pod0_agent_history_cutover_evidence WHERE singleton=1",
-                    [],
-                )
-                .map_err(|error| {
-                    StorageError::sqlite("discard staged agent history cutover", error)
-                })?;
-            Ok(true)
-        })
+        crate::transition_commit::commit_agent_history_cutover_discard(
+            self.path(),
+            source_generation,
+        )
     }
 }
 
-fn stage_rows(
+pub(crate) fn stage_rows(
     transaction: &Transaction<'_>,
     input: &LegacyAgentHistoryCutoverInput,
 ) -> Result<(), StorageError> {
@@ -195,7 +106,10 @@ fn stage_rows(
     Ok(())
 }
 
-fn commit_rows(transaction: &Transaction<'_>, observed_at: i64) -> Result<(), StorageError> {
+pub(crate) fn commit_rows(
+    transaction: &Transaction<'_>,
+    observed_at: i64,
+) -> Result<(), StorageError> {
     transaction.execute(
         "INSERT INTO pod0_agent_conversation_metadata(conversation_id,title,source,created_at_ms,\
          updated_at_ms) SELECT conversation_id,title,'legacy_swift',created_at_ms,updated_at_ms \
@@ -259,7 +173,7 @@ fn commit_rows(transaction: &Transaction<'_>, observed_at: i64) -> Result<(), St
     Ok(())
 }
 
-fn ensure_empty_staging(transaction: &Transaction<'_>) -> Result<(), StorageError> {
+pub(crate) fn ensure_empty_staging(transaction: &Transaction<'_>) -> Result<(), StorageError> {
     for table in [
         "pod0_agent_history_staged_conversations",
         "pod0_agent_history_staged_turns",
@@ -276,7 +190,7 @@ fn ensure_empty_staging(transaction: &Transaction<'_>) -> Result<(), StorageErro
     Ok(())
 }
 
-fn clear_staged(transaction: &Transaction<'_>) -> Result<(), StorageError> {
+pub(crate) fn clear_staged(transaction: &Transaction<'_>) -> Result<(), StorageError> {
     transaction
         .execute("DELETE FROM pod0_agent_history_staged_turns", [])
         .map_err(|error| StorageError::sqlite("clear staged agent turns", error))?;
@@ -286,6 +200,6 @@ fn clear_staged(transaction: &Transaction<'_>) -> Result<(), StorageError> {
     Ok(())
 }
 
-fn to_i64(value: u64) -> Result<i64, StorageError> {
+pub(crate) fn to_i64(value: u64) -> Result<i64, StorageError> {
     i64::try_from(value).map_err(|_| StorageError::AgentTurnConflict)
 }

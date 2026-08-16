@@ -1,4 +1,10 @@
 import SwiftUI
+import Pod0Core
+
+extension PodcastDirectoryEntry {
+    var feedURL: URL? { URL(string: feedUrl) }
+    var artworkURL: URL? { artworkUrl.flatMap(URL.init(string:)) }
+}
 
 // MARK: - DiscoverResultRow
 
@@ -16,7 +22,7 @@ import SwiftUI
 ///     checkmark.
 struct DiscoverResultRow: View {
 
-    let result: ITunesSearchClient.Result
+    let result: PodcastDirectoryEntry
     let isSubscribing: Bool
     let isAlreadySubscribed: Bool
     /// Last per-row subscribe failure for this result, or `nil` when the

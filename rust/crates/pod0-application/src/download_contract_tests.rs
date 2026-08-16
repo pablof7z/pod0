@@ -246,6 +246,8 @@ fn workflow_projection_is_bounded_by_the_open_view() {
                         can_cancel: true,
                         can_remove: false,
                     },
+                    retry_action: None,
+                    cancel_action: None,
                 }
             })
             .collect(),

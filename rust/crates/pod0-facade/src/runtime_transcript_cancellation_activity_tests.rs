@@ -1,9 +1,10 @@
 use pod0_application::{
-    ApplicationCommand, CommandEnvelope, Projection, ProjectionRequest, ProjectionScope,
-    TranscriptProvider, TranscriptWorkflowConfiguration, TranscriptWorkflowOrigin,
-    TranscriptWorkflowStage,
+    ApplicationCommand, CommandEnvelope, HostObservation, HostObservationEnvelope,
+    HostObservationReceipt, HostObservationRejection, HostRequest, LeasedHostObservationEnvelope,
+    Projection, ProjectionRequest, ProjectionScope, TranscriptProvider,
+    TranscriptWorkflowConfiguration, TranscriptWorkflowOrigin, TranscriptWorkflowStage,
 };
-use pod0_domain::{CancellationId, CommandId};
+use pod0_domain::{CancellationId, CommandId, UnixTimestampMilliseconds};
 use pod0_storage::ActivityStore;
 
 use crate::Pod0Facade;
@@ -69,9 +70,46 @@ fn cancellation_atomically_records_the_transition_and_retires_a_claimed_effect()
         .unwrap();
     assert_eq!(states, (4, 4));
 
-    Pod0Facade::open(fixture.target.to_string_lossy().into_owned())
-        .unwrap()
-        .dispatch(cancel);
+    let late = fixture
+        .facade
+        .record_leased_host_observation(LeasedHostObservationEnvelope {
+            lease: leased.lease,
+            observation: HostObservationEnvelope {
+                request_id: leased.request.request_id,
+                cancellation_id: leased.request.cancellation_id,
+                observed_request_revision: leased.request.issued_revision,
+                sequence_number: 1,
+                observed_at: UnixTimestampMilliseconds::new(leased.lease.expires_at.value - 1),
+                observation: HostObservation::Cancelled,
+            },
+        });
+    assert!(
+        matches!(
+            late,
+            HostObservationReceipt::Rejected {
+                reason: HostObservationRejection::StaleWorkflow
+                    | HostObservationRejection::UnknownRequest
+                    | HostObservationRejection::Cancelled
+                    | HostObservationRejection::MismatchedPayload,
+                ..
+            }
+        ),
+        "late original observation must fail closed: {late:?}"
+    );
+
+    let reopened = Pod0Facade::open(fixture.target.to_string_lossy().into_owned()).unwrap();
+    assert!(
+        reopened
+            .next_leased_host_requests(8)
+            .into_iter()
+            .any(|request| matches!(
+                request.request.request,
+                HostRequest::CancelAuthorizedEffect { target_request_id }
+                    if target_request_id == leased.request.request_id
+            ))
+    );
+
+    reopened.dispatch(cancel);
     assert_eq!(
         ActivityStore::open(&fixture.target)
             .unwrap()

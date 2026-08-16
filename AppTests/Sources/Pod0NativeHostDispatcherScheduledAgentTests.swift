@@ -13,20 +13,20 @@ final class Pod0NativeHostDispatcherScheduledAgentTests: XCTestCase {
         )!)
         let made = try makeDispatcher(host: host)
         defer { made.cleanup() }
-        let request = envelope()
-        var observations: [HostObservationEnvelope] = []
+        let request = leasedHostRequest(envelope())
+        var observations: [LeasedHostObservationEnvelope] = []
 
         made.dispatcher.execute(request) { observations.append($0) }
         made.dispatcher.execute(request) { observations.append($0) }
         XCTAssertEqual(host.executionCount, 0, "Provider must wait for Rust persistence")
-        made.dispatcher.beginPersistedScheduledAgentExecution(for: request.requestId)
-        let task = try XCTUnwrap(made.dispatcher.activeTasks[request.requestId]?.task)
+        made.dispatcher.beginPersistedScheduledAgentExecution(for: request.request.requestId)
+        let task = try XCTUnwrap(made.dispatcher.activeTasks[request.request.requestId]?.task)
         await task.value
 
         XCTAssertEqual(host.executionCount, 1)
-        XCTAssertEqual(observations.map(\.sequenceNumber), [0, 1])
-        guard case .scheduledAgentExecutionObserved(.accepted) = observations.first?.observation,
-              case .scheduledAgentExecutionObserved(.completed) = observations.last?.observation
+        XCTAssertEqual(observations.map(\.observation.sequenceNumber), [0, 1])
+        guard case .scheduledAgentExecutionObserved(.accepted) = observations.first?.observation.observation,
+              case .scheduledAgentExecutionObserved(.completed) = observations.last?.observation.observation
         else { return XCTFail("Expected accepted then completed") }
     }
 
@@ -34,19 +34,19 @@ final class Pod0NativeHostDispatcherScheduledAgentTests: XCTestCase {
         let host = SuspendedScheduledAgentHost()
         let made = try makeDispatcher(host: host)
         defer { made.cleanup() }
-        let request = envelope()
-        var observations: [HostObservationEnvelope] = []
+        let request = leasedHostRequest(envelope())
+        var observations: [LeasedHostObservationEnvelope] = []
 
         made.dispatcher.execute(request) { observations.append($0) }
-        made.dispatcher.beginPersistedScheduledAgentExecution(for: request.requestId)
+        made.dispatcher.beginPersistedScheduledAgentExecution(for: request.request.requestId)
         await Task.yield()
         made.dispatcher.cancel(
-            requestID: request.requestId,
-            cancellationID: request.cancellationId
+            requestID: request.request.requestId,
+            cancellationID: request.request.cancellationId
         )
         made.dispatcher.cancel(
-            requestID: request.requestId,
-            cancellationID: request.cancellationId
+            requestID: request.request.requestId,
+            cancellationID: request.request.cancellationId
         )
         host.complete(with: qualifyScheduledAgentCompletion(
             execution: execution(),
@@ -55,8 +55,8 @@ final class Pod0NativeHostDispatcherScheduledAgentTests: XCTestCase {
         await Task.yield()
         await Task.yield()
 
-        XCTAssertEqual(observations.map(\.sequenceNumber), [0, 1])
-        guard case .scheduledAgentExecutionObserved(.cancelled) = observations.last?.observation
+        XCTAssertEqual(observations.map(\.observation.sequenceNumber), [0, 1])
+        guard case .scheduledAgentExecutionObserved(.cancelled) = observations.last?.observation.observation
         else { return XCTFail("Expected cancellation") }
         XCTAssertTrue(made.dispatcher.activeTasks.isEmpty)
     }
@@ -77,14 +77,15 @@ final class Pod0NativeHostDispatcherScheduledAgentTests: XCTestCase {
             deadlineAt: UnixTimestampMilliseconds(value: 9_000),
             request: request.request
         )
-        var observations: [HostObservationEnvelope] = []
+        let leased = leasedHostRequest(request)
+        var observations: [LeasedHostObservationEnvelope] = []
 
-        made.dispatcher.execute(request) { observations.append($0) }
+        made.dispatcher.execute(leased) { observations.append($0) }
 
         XCTAssertEqual(host.executionCount, 0)
         guard case let .scheduledAgentExecutionObserved(.failed(
             occurrenceID, attemptID, code, _, _
-        )) = observations.first?.observation else {
+        )) = observations.first?.observation.observation else {
             return XCTFail("Expected correlated expiry")
         }
         XCTAssertEqual(occurrenceID, execution().occurrenceId)

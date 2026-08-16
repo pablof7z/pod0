@@ -1,7 +1,9 @@
+use pod0_application::default_agent_generated_podcast_id;
+#[cfg(test)]
 use pod0_application::{
     AgentToolAction, AgentTurnStage, AgentTurnState, MAX_AGENT_GENERATED_AUDIO_BYTES,
     agent_generated_artifact_id, agent_generated_episode_id, agent_generated_script_digest,
-    default_agent_generated_podcast_id, normalize_media_url,
+    normalize_media_url,
 };
 use pod0_domain::{
     DownloadArtifactStatus, EpisodeFeedMetadata, EpisodeId, EpisodeListeningState, EpisodeRecord,
@@ -10,10 +12,14 @@ use pod0_domain::{
 };
 use rusqlite::{OptionalExtension, params};
 
+use crate::StorageError;
+#[cfg(test)]
 use crate::agent_store::{command_receipt, persist};
+#[cfg(test)]
 use crate::library_store::{command_was_applied, finish_command};
 use crate::library_store_feed::{upsert_episode, upsert_podcast};
-use crate::{AgentAuditKind, AgentCommandContext, AgentMutationOutcome, AgentStore, StorageError};
+#[cfg(test)]
+use crate::{AgentAuditKind, AgentCommandContext, AgentMutationOutcome, AgentStore};
 
 #[path = "schema_agent_generated_audio.rs"]
 pub(crate) mod schema;
@@ -32,6 +38,7 @@ pub struct AgentGeneratedAudioCommitInput {
     pub provenance: GeneratedAudioArtifactProvenance,
 }
 
+#[cfg(test)]
 impl AgentStore {
     pub fn commit_generated_audio(
         &self,
@@ -84,6 +91,7 @@ pub(crate) fn commit_generated_audio_artifact_in_transaction(
     insert_artifact(transaction, input)
 }
 
+#[cfg(test)]
 fn validate_input(
     state: &AgentTurnState,
     expected_revision: pod0_domain::StateRevision,
@@ -234,6 +242,7 @@ fn insert_artifact(
     Ok(())
 }
 
+#[cfg(test)]
 fn verify_committed_artifact(
     transaction: &rusqlite::Transaction<'_>,
     state: &AgentTurnState,
@@ -267,6 +276,7 @@ fn verify_committed_artifact(
     Ok(())
 }
 
+#[cfg(test)]
 fn library_fingerprint(fingerprint: [u8; 32]) -> String {
     fingerprint
         .iter()

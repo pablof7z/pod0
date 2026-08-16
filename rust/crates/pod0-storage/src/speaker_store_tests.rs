@@ -2,14 +2,25 @@
 //! carry-forward, exercised through the same `selected_speakers` read the
 //! transcript projection and agent recall share.
 
+use pod0_application::{
+    ActivityFact, CommandActivityIdentity, DomainTransitionKind, RequestDisposition,
+    RequestRejectionReason, UserArtifactTransition,
+};
 use pod0_domain::{SpeakerEntityId, StateRevision};
 
-use crate::StorageError;
+use crate::{ActivityStore, StorageError};
 use crate::speaker_store_model::SpeakerAssignmentOrigin;
 use crate::speaker_store_test_support::{
     BASE_MS, assembly_input, display_names, provider_input, speaker_id,
 };
 use crate::transcript_store_test_support::{TranscriptFixture, command};
+
+#[path = "speaker_store_authority_tests.rs"]
+mod authority;
+
+fn fp(digit: char) -> String {
+    digit.to_string().repeat(64)
+}
 
 #[test]
 fn rename_reaches_the_shared_selected_speakers_read_and_keeps_unassigned_names() {
@@ -21,11 +32,13 @@ fn rename_reaches_the_shared_selected_speakers_read_and_keeps_unassigned_names()
     let entity = SpeakerEntityId::from_parts(9, 1);
     fixture
         .store
-        .create_speaker_entity(entity, "Ada Lovelace", None, BASE_MS)
+        .create_speaker_entity(command(1_001), &fp('1'), entity, "Ada Lovelace", BASE_MS)
         .unwrap();
     fixture
         .store
         .assign_speaker(
+            command(1_002),
+            &fp('2'),
             receipt.artifact_id,
             speaker_id("speaker_0"),
             entity,
@@ -34,6 +47,33 @@ fn rename_reaches_the_shared_selected_speakers_read_and_keeps_unassigned_names()
             BASE_MS,
         )
         .unwrap();
+    let activity = ActivityStore::open(&fixture.import.target)
+        .unwrap()
+        .page_for_episode(crate::speaker_store_test_support::episode(), None, 200)
+        .unwrap();
+    assert!(activity.items.iter().any(|item| {
+        matches!(
+            item.draft.fact,
+            ActivityFact::DomainTransition {
+                kind: DomainTransitionKind::UserArtifact(
+                    UserArtifactTransition::SpeakerAssignmentChanged
+                ),
+                ..
+            }
+        )
+    }));
+    let journal_payload: String = crate::migration_db::open_connection(&fixture.import.target, true)
+        .unwrap()
+        .query_row(
+            "SELECT GROUP_CONCAT(payload_json,'') FROM pod0_activity_facts",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert!(
+        !journal_payload.contains("Ada Lovelace"),
+        "activity facts must retain stable identities and bounded action codes, not private names"
+    );
     assert_eq!(
         display_names(&fixture),
         [Some("Ada Lovelace".to_owned()), None],
@@ -42,7 +82,14 @@ fn rename_reaches_the_shared_selected_speakers_read_and_keeps_unassigned_names()
     );
     fixture
         .store
-        .rename_speaker_entity(entity, "Countess Lovelace", BASE_MS + 5)
+        .rename_speaker_entity(
+            command(1_003),
+            &fp('3'),
+            entity,
+            1,
+            "Countess Lovelace",
+            BASE_MS + 5,
+        )
         .unwrap();
     assert_eq!(
         display_names(&fixture),
@@ -65,11 +112,13 @@ fn same_provider_recommit_carries_assignments_forward_as_inferred() {
     let entity = SpeakerEntityId::from_parts(9, 2);
     fixture
         .store
-        .create_speaker_entity(entity, "Grace Hopper", None, BASE_MS)
+        .create_speaker_entity(command(1_010), &fp('1'), entity, "Grace Hopper", BASE_MS)
         .unwrap();
     fixture
         .store
         .assign_speaker(
+            command(1_011),
+            &fp('2'),
             first.artifact_id,
             speaker_id("speaker_1"),
             entity,
@@ -114,11 +163,13 @@ fn different_provider_labels_surface_unassigned_while_the_entity_survives() {
     let entity = SpeakerEntityId::from_parts(9, 3);
     fixture
         .store
-        .create_speaker_entity(entity, "Ada Lovelace", None, BASE_MS)
+        .create_speaker_entity(command(1_020), &fp('1'), entity, "Ada Lovelace", BASE_MS)
         .unwrap();
     fixture
         .store
         .assign_speaker(
+            command(1_021),
+            &fp('2'),
             first.artifact_id,
             speaker_id("speaker_0"),
             entity,
@@ -148,85 +199,4 @@ fn different_provider_labels_surface_unassigned_while_the_entity_survives() {
     let survivor = fixture.store.speaker_entity(entity).unwrap().unwrap();
     assert_eq!(survivor.display_name, "Ada Lovelace");
     assert!(!survivor.deleted);
-}
-
-#[test]
-fn user_assignments_outrank_inferred_writes_and_bad_input_fails_closed() {
-    let fixture = TranscriptFixture::new();
-    let receipt = fixture
-        .store
-        .commit_and_select(command(925), StateRevision::INITIAL, provider_input(1), BASE_MS)
-        .unwrap();
-    let named_by_user = SpeakerEntityId::from_parts(9, 4);
-    let guessed = SpeakerEntityId::from_parts(9, 5);
-    for (entity, name) in [(named_by_user, "Ada Lovelace"), (guessed, "Grace Hopper")] {
-        fixture
-            .store
-            .create_speaker_entity(entity, name, None, BASE_MS)
-            .unwrap();
-    }
-    let speaker = speaker_id("speaker_0");
-    fixture
-        .store
-        .assign_speaker(
-            receipt.artifact_id,
-            speaker,
-            named_by_user,
-            SpeakerAssignmentOrigin::User,
-            None,
-            BASE_MS,
-        )
-        .unwrap();
-    fixture
-        .store
-        .assign_speaker(
-            receipt.artifact_id,
-            speaker,
-            guessed,
-            SpeakerAssignmentOrigin::Inferred,
-            Some(0.9),
-            BASE_MS + 1,
-        )
-        .unwrap();
-    let assignments = fixture.store.speaker_assignments(receipt.artifact_id).unwrap();
-    assert_eq!(assignments[0].speaker_entity_id, named_by_user);
-    assert_eq!(assignments[0].origin, SpeakerAssignmentOrigin::User);
-
-    assert_eq!(
-        fixture.store.create_speaker_entity(
-            SpeakerEntityId::from_parts(9, 6),
-            "   ",
-            None,
-            BASE_MS,
-        ),
-        Err(StorageError::InvalidSpeakerEntity)
-    );
-    assert_eq!(
-        fixture
-            .store
-            .rename_speaker_entity(SpeakerEntityId::from_parts(9, 7), "Nobody", BASE_MS),
-        Err(StorageError::EntityNotFound)
-    );
-    assert_eq!(
-        fixture.store.assign_speaker(
-            receipt.artifact_id,
-            speaker_id("missing"),
-            named_by_user,
-            SpeakerAssignmentOrigin::User,
-            None,
-            BASE_MS,
-        ),
-        Err(StorageError::TranscriptNotFound)
-    );
-    assert_eq!(
-        fixture.store.assign_speaker(
-            receipt.artifact_id,
-            speaker,
-            named_by_user,
-            SpeakerAssignmentOrigin::User,
-            Some(1.5),
-            BASE_MS,
-        ),
-        Err(StorageError::InvalidSpeakerEntity)
-    );
 }

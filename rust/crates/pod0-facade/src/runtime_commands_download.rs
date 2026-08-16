@@ -1,5 +1,8 @@
+use crate::runtime_state::FacadeState;
+use pod0_application::{ApplicationCommand, CommandEnvelope};
+
 impl FacadeState {
-    fn accept_download_command(
+    pub(super) fn accept_download_command(
         &mut self,
         envelope: &CommandEnvelope,
         fingerprint: &str,

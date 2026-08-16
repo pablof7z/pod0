@@ -1,7 +1,8 @@
 use pod0_application::{
-    ActivityDomain, AgentExecutionActivityInput, AgentExecutionContinuation, AgentExecutionKind,
-    AgentToolAction, AgentWorkflowAcceptance, InternalCommandKind, agent_execution_fence_id,
-    agent_tool_policy, plan_agent_execution,
+    ActivityDomain, AgentExecutionActivityInput, AgentExecutionActivityRequest,
+    AgentExecutionContinuation, AgentExecutionKind, AgentRecallEffectPhase, AgentToolAction,
+    AgentWorkflowAcceptance, DurableAgentRecallEffectRequest, InternalCommandKind, RecallQuery,
+    agent_execution_fence_id, agent_tool_policy, plan_agent_execution_with_request,
 };
 use pod0_domain::{CommandId, ContentDigest};
 use sha2::{Digest as _, Sha256};
@@ -58,7 +59,7 @@ pub(crate) fn commit_agent_execution(
         AgentExecutionKind::RustProjection
             if matches!(proposal.action, AgentToolAction::QueryTranscripts { .. }) =>
         {
-            AgentExecutionContinuation::None
+            AgentExecutionContinuation::AgentRecall
         }
         AgentExecutionKind::RustProjection => AgentExecutionContinuation::RustProjection,
         AgentExecutionKind::RustCommit
@@ -77,7 +78,53 @@ pub(crate) fn commit_agent_execution(
         }
         AgentExecutionKind::RustCommit => AgentExecutionContinuation::None,
             };
-            plan_agent_execution(AgentExecutionActivityInput {
+            let recall = match &proposal.action {
+                AgentToolAction::QueryTranscripts { query, scope, limit } => {
+                    let configuration = crate::recall_configuration_store::read_configuration(
+                        transaction,
+                    )?
+                    .unwrap_or_default();
+                    let phase = AgentRecallEffectPhase::EmbedQuery;
+                    let query_id = pod0_domain::RecallQueryId::from_bytes(
+                        proposal.proposal_id.into_bytes(),
+                    );
+                    let deadline_at = pod0_domain::UnixTimestampMilliseconds::new(
+                        observed_at.value.saturating_add(30_000),
+                    );
+                    Some(DurableAgentRecallEffectRequest {
+                        turn_id,
+                        request_id: pod0_application::agent_recall_request_id(
+                            turn_id, query_id, &phase,
+                        ),
+                        cancellation_id: after.cancellation_id(),
+                        issued_revision: after.projection().revision,
+                        deadline_at,
+                        query: RecallQuery {
+                            query_id,
+                            text: query.clone(),
+                            scope: *scope,
+                            limit: *limit,
+                        },
+                        embedding_provider: configuration.embedding_provider,
+                        embedding_model: configuration.embedding_model,
+                        reranker: configuration
+                            .reranker_provider
+                            .zip(configuration.reranker_model),
+                        phase,
+                    })
+                }
+                _ => None,
+            };
+            let capability = if continuation == AgentExecutionContinuation::NativeCapability {
+                Some(super::effect_requests::capability_effect_request(
+                    &after,
+                    CommandId::from_bytes(command.internal_command_id.into_bytes()),
+                    None,
+                )?)
+            } else {
+                None
+            };
+            plan_agent_execution_with_request(AgentExecutionActivityInput {
                 internal_command_id: command.internal_command_id,
                 authorizing_activity_id: command.authorizing_activity_id,
                 correlation_id: command.correlation_id,
@@ -85,7 +132,7 @@ pub(crate) fn commit_agent_execution(
                 current_revision: before_projection.revision,
                 committed_revision: after.projection().revision,
                 continuation,
-            })
+            }, AgentExecutionActivityRequest { continuation, recall, capability })
             .map(|plan| plan.map_mutation(|mutation| (mutation, after)))
             .map_err(|_| StorageError::InvalidActivity)
         },

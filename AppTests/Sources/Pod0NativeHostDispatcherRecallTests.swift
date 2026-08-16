@@ -7,27 +7,27 @@ final class Pod0NativeHostDispatcherRecallTests: XCTestCase {
     func testRecallCancellationEmitsOnceAndRejectsLateResult() async {
         let recall = ControlledRecallHost()
         let dispatcher = makeDispatcher(recall: recall)
-        let request = envelope(id: 1)
-        var observations: [HostObservationEnvelope] = []
+        let request = leasedHostRequest(envelope(id: 1))
+        var observations: [LeasedHostObservationEnvelope] = []
 
         dispatcher.execute(request) { observations.append($0) }
         await recall.waitUntilStarted()
-        dispatcher.cancel(cancellationID: request.cancellationId)
+        dispatcher.cancel(cancellationID: request.request.cancellationId)
         await recall.finish(.recallQueryEmbedded(
             queryId: RecallQueryId(high: 2, low: 3),
             embedding: RecallEmbeddingVector(values: [1])
         ))
         await Task.yield()
 
-        XCTAssertEqual(observations.map(\.observation), [.cancelled])
+        XCTAssertEqual(observations.map(\.observation.observation), [.cancelled])
     }
 
     func testDispatcherTeardownCancelsWorkAndSuppressesLateDelivery() async {
         let recall = ControlledRecallHost()
         let dispatcher = makeDispatcher(recall: recall)
-        var observations: [HostObservationEnvelope] = []
+        var observations: [LeasedHostObservationEnvelope] = []
 
-        dispatcher.execute(envelope(id: 2)) { observations.append($0) }
+        dispatcher.execute(leasedHostRequest(envelope(id: 2))) { observations.append($0) }
         await recall.waitUntilStarted()
         dispatcher.shutdown()
         await recall.finish(.failed(code: .platformFailure, safeDetail: nil))

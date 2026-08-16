@@ -1,18 +1,13 @@
 use pod0_domain::{
-    CommandId, FeedIdentityV1, HostRequestId, PodcastId, PodcastKind, PodcastRecord, StateRevision,
+    CommandId, FeedIdentityV1, HostRequestId, PodcastId, PodcastKind, PodcastRecord,
     UnixTimestampMilliseconds,
 };
-use rusqlite::{OptionalExtension, Transaction, params};
+use rusqlite::{OptionalExtension, Transaction};
 
 use crate::StorageError;
 use crate::download_store_request::derived_request_id;
-use crate::feed_fetch_store_model::{
-    FeedFetchEnsureInput, FeedFetchEnsureOutcome, FeedFetchFailureInput, FeedFetchWorkflowRecord,
-    StoredFeedFetchIntent, StoredFeedFetchStage,
-};
-use crate::feed_fetch_store_read::{workflow_for_feed, workflow_for_request};
+use crate::feed_fetch_store_model::{FeedFetchEnsureInput, FeedFetchEnsureOutcome};
 use crate::library_store::LibraryStore;
-use crate::library_store_feed::{insert_subscription, upsert_podcast};
 
 impl LibraryStore {
     /// Commits the feed intent durably in one transaction: the placeholder
@@ -23,144 +18,7 @@ impl LibraryStore {
         &self,
         input: FeedFetchEnsureInput,
     ) -> Result<FeedFetchEnsureOutcome, StorageError> {
-        self.write(|transaction| {
-            let existing = podcast_id_for_feed_key(transaction, &input.feed_key)?;
-            let podcast_id = existing.unwrap_or(input.podcast_id);
-            if existing.is_none() {
-                upsert_podcast(transaction, &placeholder_podcast(&input, podcast_id))?;
-            }
-            if input.intent == StoredFeedFetchIntent::Subscribe {
-                insert_subscription(transaction, podcast_id, input.now_ms)?;
-            }
-            if let Some(active) = workflow_for_feed(transaction, &input.feed_key)?
-                && active.stage != StoredFeedFetchStage::Failed
-            {
-                if input.intent > active.intent {
-                    transaction
-                        .execute(
-                            "UPDATE pod0_feed_fetch_workflows SET intent=?1,updated_at_ms=?2 \
-                             WHERE feed_key_v1=?3",
-                            params![input.intent.wire(), input.now_ms, input.feed_key],
-                        )
-                        .map_err(|error| {
-                            StorageError::sqlite("coalesce feed fetch intent", error)
-                        })?;
-                }
-                let record = workflow_for_feed(transaction, &input.feed_key)?;
-                return Ok(FeedFetchEnsureOutcome { podcast_id, record });
-            }
-            let request_id = feed_fetch_request_id(&input.feed_key, input.command_id, 1);
-            transaction
-                .execute(
-                    "INSERT INTO pod0_feed_fetch_workflows(feed_key_v1,source_url,podcast_id,\
-                     intent,stage,attempt,request_id,command_id,command_fingerprint,\
-                     cancellation_id,issued_revision,deadline_at_ms,not_before_ms,entity_tag,\
-                     last_modified,failure_code,created_at_ms,updated_at_ms) \
-                     VALUES(?1,?2,?3,?4,'requested',1,?5,?6,?7,?8,?9,?10,NULL,?11,?12,NULL,\
-                     ?13,?13) ON CONFLICT(feed_key_v1) DO UPDATE SET \
-                     source_url=excluded.source_url,podcast_id=excluded.podcast_id,\
-                     intent=excluded.intent,stage='requested',attempt=1,\
-                     request_id=excluded.request_id,command_id=excluded.command_id,\
-                     command_fingerprint=excluded.command_fingerprint,\
-                     cancellation_id=excluded.cancellation_id,\
-                     issued_revision=excluded.issued_revision,\
-                     deadline_at_ms=excluded.deadline_at_ms,not_before_ms=NULL,\
-                     entity_tag=excluded.entity_tag,last_modified=excluded.last_modified,\
-                     failure_code=NULL,updated_at_ms=excluded.updated_at_ms",
-                    params![
-                        input.feed_key,
-                        input.source_url,
-                        podcast_id.into_bytes().as_slice(),
-                        input.intent.wire(),
-                        request_id.into_bytes().as_slice(),
-                        input.command_id.into_bytes().as_slice(),
-                        input.command_fingerprint,
-                        input.cancellation_id.into_bytes().as_slice(),
-                        revision_value(input.issued_revision)?,
-                        input.deadline_at_ms,
-                        input.entity_tag,
-                        input.last_modified,
-                        input.now_ms
-                    ],
-                )
-                .map_err(|error| StorageError::sqlite("insert feed fetch workflow", error))?;
-            let record = workflow_for_feed(transaction, &input.feed_key)?;
-            Ok(FeedFetchEnsureOutcome { podcast_id, record })
-        })
-    }
-
-    /// Transitions the workflow after a failed fetch attempt. When
-    /// `retry_at_ms` is provided the next attempt is scheduled durably;
-    /// otherwise the row parks in stage `failed` until a new command
-    /// replaces it.
-    pub fn fail_feed_fetch_workflow(
-        &self,
-        input: FeedFetchFailureInput,
-    ) -> Result<Option<FeedFetchWorkflowRecord>, StorageError> {
-        self.write(|transaction| {
-            let Some(row) = workflow_for_request(transaction, input.request_id)? else {
-                return Ok(None);
-            };
-            if row.stage == StoredFeedFetchStage::Failed {
-                return Ok(None);
-            }
-            if input.retryable
-                && let Some(retry_at) = input.retry_at_ms
-            {
-                let attempt = row
-                    .attempt
-                    .checked_add(1)
-                    .ok_or(StorageError::CommandConflict)?;
-                let request_id = feed_fetch_request_id(&row.feed_key, row.command_id, attempt);
-                transaction
-                    .execute(
-                        "UPDATE pod0_feed_fetch_workflows SET stage='retry_scheduled',\
-                         attempt=?1,request_id=?2,issued_revision=?3,deadline_at_ms=?4,\
-                         not_before_ms=?5,failure_code=?6,updated_at_ms=?7 WHERE request_id=?8",
-                        params![
-                            i64::from(attempt),
-                            request_id.into_bytes().as_slice(),
-                            revision_value(input.issued_revision)?,
-                            input.retry_deadline_at_ms,
-                            retry_at,
-                            input.failure_code,
-                            input.observed_at_ms,
-                            input.request_id.into_bytes().as_slice()
-                        ],
-                    )
-                    .map_err(|error| StorageError::sqlite("schedule feed fetch retry", error))?;
-                return workflow_for_request(transaction, request_id);
-            }
-            transaction
-                .execute(
-                    "UPDATE pod0_feed_fetch_workflows SET stage='failed',not_before_ms=NULL,\
-                     failure_code=?1,updated_at_ms=?2 WHERE request_id=?3",
-                    params![
-                        input.failure_code,
-                        input.observed_at_ms,
-                        input.request_id.into_bytes().as_slice()
-                    ],
-                )
-                .map_err(|error| StorageError::sqlite("fail feed fetch workflow", error))?;
-            workflow_for_request(transaction, input.request_id)
-        })
-    }
-
-    /// Removes the workflow row once its fetch has been applied (or the
-    /// intent was cancelled). Idempotent.
-    pub fn complete_feed_fetch_workflow(
-        &self,
-        request_id: HostRequestId,
-    ) -> Result<bool, StorageError> {
-        self.write(|transaction| {
-            transaction
-                .execute(
-                    "DELETE FROM pod0_feed_fetch_workflows WHERE request_id=?1",
-                    [request_id.into_bytes().as_slice()],
-                )
-                .map_err(|error| StorageError::sqlite("complete feed fetch workflow", error))?;
-            Ok(transaction.changes() == 1)
-        })
+        self.commit_feed_fetch_admission(input)
     }
 }
 
@@ -175,7 +33,10 @@ pub(crate) fn feed_fetch_request_id(
     derived_request_id(b"pod0-feed-fetch-request-v1", &identity, u64::from(attempt))
 }
 
-fn placeholder_podcast(input: &FeedFetchEnsureInput, podcast_id: PodcastId) -> PodcastRecord {
+pub(crate) fn placeholder_podcast(
+    input: &FeedFetchEnsureInput,
+    podcast_id: PodcastId,
+) -> PodcastRecord {
     PodcastRecord {
         podcast_id,
         kind: PodcastKind::Rss,
@@ -197,11 +58,7 @@ fn placeholder_podcast(input: &FeedFetchEnsureInput, podcast_id: PodcastId) -> P
     }
 }
 
-fn revision_value(revision: StateRevision) -> Result<i64, StorageError> {
-    i64::try_from(revision.value).map_err(|_| StorageError::CommandConflict)
-}
-
-fn podcast_id_for_feed_key(
+pub(crate) fn podcast_id_for_feed_key(
     transaction: &Transaction<'_>,
     feed_key: &str,
 ) -> Result<Option<PodcastId>, StorageError> {

@@ -10,7 +10,7 @@ enum OpenRouterCredentialStore {
         let trimmed = apiKey.trimmed
         guard !trimmed.isEmpty else { return }
         try KeychainStore.saveString(trimmed, service: service, account: account)
-        TranscriptCredentialWorkflowSignal.send()
+        Task { @MainActor in WorkflowRuntime.shared.announceCredentialAvailabilityChanged() }
     }
 
     static func apiKey() throws -> String? {
@@ -32,6 +32,6 @@ enum OpenRouterCredentialStore {
 
     static func deleteAPIKey() throws {
         try KeychainStore.deleteString(service: service, account: account)
-        TranscriptCredentialWorkflowSignal.send()
+        Task { @MainActor in WorkflowRuntime.shared.announceCredentialAvailabilityChanged() }
     }
 }

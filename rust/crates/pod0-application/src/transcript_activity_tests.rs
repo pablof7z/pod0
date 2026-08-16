@@ -21,6 +21,23 @@ fn transcript_submission_plan_couples_transition_fact_and_effect() {
         workflow_revision: StateRevision::new(9),
         origin: TranscriptWorkflowOrigin::Playback,
         deadline_at: Some(UnixTimestampMilliseconds::new(20_000)),
+        execution: crate::DurableTranscriptEffectRequest {
+            request_id,
+            command_id: CommandId::from_parts(7, 8),
+            cancellation_id: pod0_domain::CancellationId::from_parts(9, 1),
+            issued_revision: StateRevision::new(9),
+            deadline_at: Some(UnixTimestampMilliseconds::new(20_000)),
+            capability: crate::TranscriptCapabilityRequest::FetchPublisher {
+                context: crate::TranscriptCapabilityContext {
+                    episode_id,
+                    podcast_id: pod0_domain::PodcastId::from_parts(2, 3),
+                    source_revision: "source-v1".to_owned(),
+                },
+                source_url: "https://example.com/transcript.vtt".to_owned(),
+                mime_hint: None,
+                maximum_response_bytes: crate::MAX_TRANSCRIPT_CAPABILITY_RESPONSE_BYTES,
+            },
+        },
     })
     .unwrap();
     assert_eq!(plan.disposition(), RequestDisposition::Accepted);

@@ -49,14 +49,14 @@ fn publisher_workflow_admission_is_bounded_and_replenishes_after_completion() {
         dispatch_ensure(&facade, episode.episode_id, 120 + index as u64);
     }
 
-    let admitted = facade.next_host_requests(64);
+    let admitted = facade.next_leased_host_requests(64);
     assert_eq!(
         admitted.len(),
         usize::from(pod0_application::MAX_ACTIVE_PUBLISHER_CHAPTER_REQUESTS)
     );
-    assert!(facade.next_host_requests(64).is_empty());
+    assert!(facade.next_leased_host_requests(64).is_empty());
     assert_eq!(workflows(&facade, None).publisher.len(), 12);
 
-    facade.record_host_observation(response(&admitted[0], 1, 404, Vec::new()));
-    assert_eq!(facade.next_host_requests(64).len(), 1);
+    facade.record_leased_host_observation(leased_response(&admitted[0], 1, 404, Vec::new()));
+    assert_eq!(facade.next_leased_host_requests(64).len(), 1);
 }

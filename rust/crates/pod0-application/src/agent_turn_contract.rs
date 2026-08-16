@@ -66,7 +66,7 @@ pub struct AgentConversationProjection {
     pub failure: Option<crate::CoreFailure>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct AgentModelExecutionRequest {
     pub conversation_id: ConversationId,
     pub turn_id: AgentTurnId,
@@ -77,13 +77,13 @@ pub struct AgentModelExecutionRequest {
     pub maximum_output_bytes: u64,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct AgentApprovalRequest {
     pub turn_id: AgentTurnId,
     pub proposal: AgentProposalProjection,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct AgentCapabilityRequest {
     pub turn_id: AgentTurnId,
     pub proposal_id: AgentProposalId,

@@ -16,6 +16,10 @@ pub const fn application_command_owner(command: &ApplicationCommand) -> Activity
         | Command::EnsurePodcast { .. }
         | Command::RefreshPodcast { .. }
         | Command::HydratePodcastMetadata { .. }
+        | Command::SearchPodcastDirectory { .. }
+        | Command::LoadTopPodcasts { .. }
+        | Command::ImportSharedEpisode { .. }
+        | Command::SearchPodcastCatalog { .. }
         | Command::UpsertSyntheticPodcast { .. }
         | Command::UpsertExternalEpisode { .. }
         | Command::Unsubscribe { .. }
@@ -38,6 +42,10 @@ pub const fn application_command_owner(command: &ApplicationCommand) -> Activity
         | Command::SetRecallConfiguration { .. }
         | Command::RebuildTranscriptEvidence { .. }
         | Command::CommitRecallIndexCutover => ActivityOwner::Domain(Domain::RecallKnowledge),
+        Command::ImportLegacyWorkflowConfiguration { .. }
+        | Command::SetWorkflowConfiguration { .. }
+        | Command::ObserveWorkflowCapabilities { .. }
+        | Command::ReconcileWorkflowOpportunity { .. } => ActivityOwner::Domain(Domain::Lifecycle),
         Command::CommitTranscript { .. }
         | Command::EnsureTranscriptWorkflow { .. }
         | Command::RetryTranscriptWorkflow { .. }

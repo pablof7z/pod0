@@ -1,10 +1,9 @@
 #![forbid(unsafe_code)]
 
-use pod0_domain::{CommandId, UnixTimestampMilliseconds};
-
 uniffi::setup_scaffolding!();
 
 mod activity_contract;
+mod activity_execution_contract;
 mod activity_identity;
 mod activity_routing_command;
 mod activity_routing_effect;
@@ -23,6 +22,8 @@ mod agent_history_import;
 mod agent_policy;
 mod agent_policy_shape;
 mod agent_provider_output;
+mod agent_recall_activity;
+mod agent_recall_contract;
 mod agent_run_contract;
 mod agent_tool_catalog;
 mod agent_tool_catalog_builders;
@@ -39,8 +40,11 @@ mod agent_workflow_recovery;
 #[cfg(test)]
 mod agent_workflow_tests;
 mod agent_workflow_values;
+mod cancellation_activity;
 mod chapter_artifact_activity;
 mod chapter_contract;
+mod chapter_cutover_activity;
+mod chapter_finalization_activity;
 mod chapter_model_host;
 mod chapter_model_policy;
 #[cfg(test)]
@@ -58,6 +62,7 @@ mod chapter_model_workflow;
 #[cfg(test)]
 mod chapter_model_workflow_tests;
 mod chapter_observation;
+mod chapter_observation_activity;
 mod chapter_observation_agent;
 #[cfg(test)]
 mod chapter_observation_agent_tests;
@@ -75,6 +80,7 @@ mod chapter_workflow;
 mod clip_contract;
 mod contract;
 mod contract_failure;
+mod contract_library_input;
 mod contract_operation;
 mod contract_playback_command;
 mod contract_playback_projection;
@@ -96,23 +102,44 @@ mod download_contract;
 #[cfg(test)]
 mod download_contract_tests;
 mod download_control_activity;
+mod download_cutover_activity;
+mod download_disposition_activity;
+mod download_effect_contract;
 mod download_environment_activity;
+mod download_finalization_activity;
+mod download_observation_activity;
+mod download_recovery_activity;
 mod effect_lease_contract;
 mod effects;
+mod episode_web_metadata;
+mod episode_web_metadata_entities;
+mod episode_web_metadata_html;
+#[cfg(test)]
+mod episode_web_metadata_tests;
 mod evidence_activity;
 mod evidence_contract;
 mod evidence_observation_activity;
-mod feed;
-mod feed_discovery;
-mod feed_fetch_contract;
+mod evidence_rebuild_activity;
+mod internal_command_owner_activity;
+mod legacy_business_cutover_activity;
+mod library_catalog;
 #[cfg(test)]
-mod feed_fetch_contract_fixture_tests;
+mod library_catalog_tests;
+mod library_directory;
+#[cfg(test)]
+mod library_directory_tests;
+mod library_network_activity;
+mod library_network_contract;
+mod lifecycle_activity;
+mod lifecycle_effect_contract;
+include!("feed_activity_modules.rs");
 mod feed_parser;
 mod feed_parser_reader;
 mod feed_parser_values;
 #[cfg(test)]
 mod feed_tests;
 mod host_cancellation;
+mod kernel_probe;
 mod knowledge;
 mod knowledge_chunking;
 mod knowledge_chunking_policy;
@@ -124,11 +151,20 @@ mod knowledge_ranking_tests;
 #[cfg(test)]
 mod knowledge_test_fixture;
 mod library_activity;
+mod library_command_activity;
+mod library_feed_migration_activity;
+mod listening_reset_activity;
 mod memory_contract;
+mod migration_activity;
 include!("note_activity_modules.rs");
 mod playback_activity;
+mod playback_effect_contract;
+mod playback_observation_activity;
 mod publication;
+mod recall_configuration_activity;
 mod recall_contract;
+mod recall_workflow_activity;
+mod recall_workflow_contract;
 mod request_disposition_activity;
 mod scheduled_agent;
 mod scheduled_agent_completion;
@@ -139,6 +175,8 @@ mod scheduled_agent_observation_validation;
 mod scheduled_agent_policy;
 #[cfg(test)]
 mod scheduled_agent_tests;
+mod shared_episode_resolution;
+mod speaker_activity;
 mod transcript_activity;
 #[cfg(test)]
 mod transcript_activity_tests;
@@ -154,6 +192,7 @@ mod transcript_contract;
 mod transcript_contract_fixture_tests;
 #[cfg(test)]
 mod transcript_contract_tests;
+mod transcript_cutover_activity;
 mod transcript_finalization_activity;
 mod transcript_observation_activity;
 #[cfg(test)]
@@ -162,6 +201,7 @@ mod transcript_observation_policy;
 #[cfg(test)]
 mod transcript_observation_policy_tests;
 mod transcript_projection;
+mod transcript_recovery_activity;
 mod transcript_workflow;
 mod transcript_workflow_capability;
 mod transcript_workflow_failure;
@@ -174,125 +214,18 @@ mod transcript_workflow_projection_tests;
 #[cfg(test)]
 mod transcript_workflow_tests;
 mod transition_plan;
+mod workflow_action;
+mod workflow_cancellation_activity;
+mod workflow_configuration;
+mod workflow_configuration_activity;
+mod workflow_reconcile;
+mod workflow_reconcile_activity;
+#[cfg(test)]
+mod workflow_reconcile_activity_tests;
+#[cfg(test)]
+mod workflow_reconcile_tests;
 
 #[cfg(test)]
 include!("activity_test_modules.rs");
 
-pub use activity_contract::*;
-pub use activity_identity::*;
-pub use activity_routing_command::*;
-pub use activity_routing_effect::*;
-pub use activity_routing_observation::*;
-pub use activity_transition_kind::*;
-pub use agent_action_hash::*;
-pub use agent_activity::*;
-pub use agent_activity_identity::*;
-pub use agent_contract::*;
-pub use agent_execution_activity::*;
-pub use agent_generated_audio::*;
-pub use agent_history_contract::*;
-pub use agent_history_import::*;
-pub use agent_policy::*;
-pub use agent_provider_output::*;
-pub use agent_run_contract::*;
-pub use agent_tool_catalog::*;
-pub use agent_tool_names::*;
-pub use agent_workflow_values::*;
-pub use chapter_artifact_activity::*;
-pub use chapter_contract::*;
-pub use chapter_model_host::*;
-pub use chapter_model_policy::*;
-pub use chapter_model_workflow::*;
-pub use chapter_observation::*;
-pub use chapter_projection::*;
-pub use chapter_workflow::*;
-pub use clip_contract::*;
-pub use contract::*;
-pub use contract_failure::*;
-pub use contract_operation::*;
-pub use contract_playback_command::*;
-pub use contract_playback_projection::*;
-pub use contract_projection::*;
-pub use contract_state::*;
-pub use contract_state_subscription::*;
-pub use core_wake::*;
-pub use download_activity::*;
-pub use download_contract::*;
-pub use download_control_activity::*;
-pub use download_environment_activity::*;
-pub use effect_lease_contract::*;
-pub use effects::*;
-pub use evidence_activity::*;
-pub use evidence_contract::*;
-pub use evidence_observation_activity::*;
-pub use feed::*;
-pub use feed_discovery::*;
-pub use feed_fetch_contract::*;
-pub use host_cancellation::*;
-pub use knowledge::*;
-pub use knowledge_chunking::*;
-pub use knowledge_ranking::*;
-pub use library_activity::*;
-pub use memory_contract::*;
-pub use playback_activity::*;
-pub use publication::*;
-pub use recall_contract::*;
-pub use request_disposition_activity::*;
-pub use scheduled_agent::*;
-pub use scheduled_agent_completion::*;
-pub use scheduled_agent_observation::*;
-pub use scheduled_agent_policy::*;
-pub use transcript_activity::*;
-pub use transcript_admission_activity::*;
-pub use transcript_artifact_activity::*;
-pub use transcript_cancellation_activity::*;
-pub use transcript_contract::*;
-pub use transcript_finalization_activity::*;
-pub use transcript_observation_activity::*;
-pub use transcript_observation_policy::*;
-pub use transcript_projection::*;
-pub use transcript_workflow::*;
-pub use transcript_workflow_capability::*;
-pub use transcript_workflow_failure::*;
-pub use transcript_workflow_identity::*;
-pub use transcript_workflow_policy::*;
-pub use transition_plan::*;
-
-pub const CORE_SCHEMA_VERSION: u32 = 1;
-/// The kernel owns time. Hosts provide an observation through this capability;
-/// reducers never sample a native or process-global clock directly.
-pub trait Clock: Send + Sync {
-    fn now(&self) -> UnixTimestampMilliseconds;
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct KernelProbeCommand {
-    pub command_id: CommandId,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct KernelProbeProjection {
-    pub command_id: CommandId,
-    pub observed_at: UnixTimestampMilliseconds,
-    pub core_schema_version: u32,
-}
-
-pub struct KernelApplication<C> {
-    clock: C,
-}
-
-impl<C: Clock> KernelApplication<C> {
-    #[must_use]
-    pub const fn new(clock: C) -> Self {
-        Self { clock }
-    }
-
-    #[must_use]
-    pub fn dispatch_probe(&self, command: KernelProbeCommand) -> KernelProbeProjection {
-        KernelProbeProjection {
-            command_id: command.command_id,
-            observed_at: self.clock.now(),
-            core_schema_version: CORE_SCHEMA_VERSION,
-        }
-    }
-}
+include!("application_exports.rs");

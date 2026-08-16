@@ -46,18 +46,23 @@ fn accepted_provider_operation_recovers_once_after_a_durable_wake() {
 
     let wake = fixture
         .facade
-        .next_host_requests(u16::MAX)
+        .next_leased_host_requests(u16::MAX)
         .into_iter()
-        .find(|request| matches!(request.request, HostRequest::ScheduleCoreWake { .. }))
+        .find(|request| {
+            matches!(
+                request.request.request,
+                HostRequest::ScheduleCoreWake { .. }
+            )
+        })
         .expect("durable provider recovery wake");
     fixture
         .facade
         .state()
         .set_clock(Arc::new(FixedClock(1_900_000_006_000)));
-    let HostRequest::ScheduleCoreWake { reason, .. } = wake.request else {
+    let HostRequest::ScheduleCoreWake { reason, .. } = wake.request.request else {
         unreachable!()
     };
-    record(
+    record_wake(
         &fixture.facade,
         &wake,
         HostObservation::CoreWakeReached { reason },
@@ -117,10 +122,10 @@ fn cancellation_withdraws_an_unsubmitted_transcript_request_durably() {
     assert!(
         fixture
             .facade
-            .next_host_requests(u16::MAX)
+            .next_leased_host_requests(u16::MAX)
             .into_iter()
             .all(|request| !matches!(
-                request.request,
+                request.request.request,
                 HostRequest::ExecuteTranscriptCapability { .. }
             ))
     );
@@ -186,17 +191,24 @@ fn record_leased(
     );
 }
 
-fn record(facade: &Pod0Facade, request: &HostRequestEnvelope, observation: HostObservation) {
+fn record_wake(
+    facade: &Pod0Facade,
+    request: &LeasedHostRequestEnvelope,
+    observation: HostObservation,
+) {
     assert!(matches!(
-        facade.record_host_observation(HostObservationEnvelope {
-            request_id: request.request_id,
-            cancellation_id: request.cancellation_id,
-            observed_request_revision: request.issued_revision,
-            sequence_number: 0,
-            observed_at: UnixTimestampMilliseconds::new(1_900_000_003_000),
-            observation,
+        facade.record_leased_host_observation(LeasedHostObservationEnvelope {
+            lease: request.lease,
+            observation: HostObservationEnvelope {
+                request_id: request.request.request_id,
+                cancellation_id: request.request.cancellation_id,
+                observed_request_revision: request.request.issued_revision,
+                sequence_number: 0,
+                observed_at: UnixTimestampMilliseconds::new(1_900_000_006_000),
+                observation,
+            },
         }),
-        HostObservationReceipt::Persisted { .. } | HostObservationReceipt::AcceptedTransient { .. }
+        HostObservationReceipt::Persisted { .. }
     ));
 }
 

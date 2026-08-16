@@ -1,11 +1,29 @@
-use pod0_application::{EpisodeStarredMutation, EpisodeStarredState, plan_episode_starred};
-use pod0_domain::{CommandId, ContentDigest, EpisodeId, StateRevision, UnixTimestampMilliseconds};
+use pod0_application::{
+    ActivitySubject, EpisodeStarredMutation, EpisodeStarredState,
+    FEED_DISCOVERY_NOTIFICATION_MAX_ATTEMPTS, LibraryCommandActivityInput, LibraryCommandMutation,
+    LibraryFeedTransition, plan_episode_starred, plan_library_command,
+};
+use pod0_domain::{
+    CommandId, ContentDigest, EpisodeId, FeedDiscoveryOccurrenceId, HostRequestId, PodcastId,
+    StateRevision, UnixTimestampMilliseconds,
+};
 use rusqlite::{OptionalExtension, Transaction, params};
 
 use super::TransitionCommit;
+use crate::feed_discovery_workflow_model::{
+    FeedDiscoveryEffectKind, FeedDiscoveryEffectRecord, FeedDiscoveryEffectStage,
+    FeedDiscoveryNotificationOutcome,
+};
+use crate::feed_fetch_store::{
+    feed_fetch_request_id, placeholder_podcast, podcast_id_for_feed_key,
+};
+use crate::feed_fetch_store_model::{
+    FeedFetchEnsureInput, FeedFetchEnsureOutcome, StoredFeedFetchIntent, StoredFeedFetchStage,
+};
+use crate::feed_fetch_store_read::{workflow_for_feed, workflow_for_request};
 use crate::library_store::finish_command;
-use crate::migration_db::{open_connection, user_version, validate_current_database_identity};
-use crate::{StorageError, TransitionIngress, TransitionIngressKind};
+use crate::library_store_feed::{insert_subscription, upsert_podcast};
+use crate::{LibraryStore, StorageError, TransitionIngress, TransitionIngressKind};
 
 pub(crate) fn commit_episode_starred(
     path: &std::path::Path,
@@ -15,54 +33,55 @@ pub(crate) fn commit_episode_starred(
     starred: bool,
     observed_at_ms: i64,
 ) -> Result<StateRevision, StorageError> {
-    let connection = open_connection(path, true)?;
-    validate_current_database_identity(&connection, user_version(&connection)?)?;
-    let (stored_starred, revision): (bool, i64) = connection
-        .query_row(
-            "SELECT e.is_starred,p.state_revision FROM pod0_episodes e \
-             CROSS JOIN pod0_playback_state p WHERE e.episode_id=?1 AND p.singleton=1",
-            [episode_id.into_bytes().as_slice()],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )
-        .optional()
-        .map_err(|error| StorageError::sqlite("read episode starred transition state", error))?
-        .ok_or(StorageError::EntityNotFound)?;
-    let legacy = connection
-        .query_row(
-            "SELECT command_fingerprint,applied_revision FROM pod0_library_commands \
-             WHERE command_id=?1",
-            [command_id.into_bytes().as_slice()],
-            |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
-        )
-        .optional()
-        .map_err(|error| StorageError::sqlite("read legacy library receipt", error))?;
-    let legacy_revision = match legacy {
-        Some((stored, revision)) if stored == fingerprint => Some(revision_value(revision)?),
-        Some(_) => return Err(StorageError::CommandConflict),
-        None => None,
-    };
-    drop(connection);
-    let revision = revision_value(revision)?;
-    let plan = plan_episode_starred(
-        command_id,
-        EpisodeStarredState {
-            episode_id,
-            starred: stored_starred,
-            revision,
-            legacy_command_revision: legacy_revision,
-        },
-        starred,
-    )
-    .map_err(|_| StorageError::InvalidActivity)?;
     let fingerprint_digest = fingerprint_digest(fingerprint)?;
-    let receipt = TransitionCommit::open(path)?.commit_with(
+    let receipt = TransitionCommit::open(path)?.commit_planned_with(
         TransitionIngress {
             kind: TransitionIngressKind::ApplicationCommand,
             id: command_id.into_bytes(),
             fingerprint: fingerprint_digest,
         },
-        plan,
         UnixTimestampMilliseconds::new(observed_at_ms),
+        |transaction| {
+            let (stored_starred, revision): (bool, i64) = transaction
+                .query_row(
+                    "SELECT e.is_starred,p.state_revision FROM pod0_episodes e \
+                     CROSS JOIN pod0_playback_state p WHERE e.episode_id=?1 AND p.singleton=1",
+                    [episode_id.into_bytes().as_slice()],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .optional()
+                .map_err(|error| {
+                    StorageError::sqlite("read episode starred transition state", error)
+                })?
+                .ok_or(StorageError::EntityNotFound)?;
+            let legacy = transaction
+                .query_row(
+                    "SELECT command_fingerprint,applied_revision FROM pod0_library_commands \
+                     WHERE command_id=?1",
+                    [command_id.into_bytes().as_slice()],
+                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+                )
+                .optional()
+                .map_err(|error| StorageError::sqlite("read legacy library receipt", error))?;
+            let legacy_revision = match legacy {
+                Some((stored, revision)) if stored == fingerprint => {
+                    Some(revision_value(revision)?)
+                }
+                Some(_) => return Err(StorageError::CommandConflict),
+                None => None,
+            };
+            plan_episode_starred(
+                command_id,
+                EpisodeStarredState {
+                    episode_id,
+                    starred: stored_starred,
+                    revision: revision_value(revision)?,
+                    legacy_command_revision: legacy_revision,
+                },
+                starred,
+            )
+            .map_err(|_| StorageError::InvalidActivity)
+        },
         |transaction, expected, mutation| match mutation {
             EpisodeStarredMutation::Set {
                 episode_id,
@@ -87,11 +106,21 @@ pub(crate) fn commit_episode_starred(
                 )?;
                 Ok(expected)
             }
-            EpisodeStarredMutation::LegacyDuplicate => Ok(legacy_revision.expect("planned legacy")),
+            EpisodeStarredMutation::LegacyDuplicate { committed_revision } => {
+                Ok(committed_revision)
+            }
         },
     )?;
     Ok(receipt.committed_revision)
 }
+
+include!("transition_commit_library_command.rs");
+include!("transition_commit_feed_fetch.rs");
+include!("transition_commit_feed_observation.rs");
+include!("transition_commit_feed_observation_support.rs");
+include!("transition_commit_feed_notification.rs");
+include!("transition_commit_feed_notification_observation.rs");
+include!("transition_commit_feed_notification_observation_identity.rs");
 
 #[allow(clippy::too_many_arguments)]
 fn apply_starred(

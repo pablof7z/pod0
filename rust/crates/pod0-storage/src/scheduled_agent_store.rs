@@ -1,10 +1,9 @@
 use std::path::{Path, PathBuf};
 
-use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior};
+use rusqlite::{Connection, OptionalExtension};
 
 use crate::migration_db::{
-    configure, open_connection, user_version, validate_current_database_identity,
-    validate_open_database,
+    open_connection, user_version, validate_current_database_identity, validate_open_database,
 };
 use crate::{CURRENT_SCHEMA_VERSION, ScheduledAgentAuthorityState, StorageError};
 
@@ -86,21 +85,8 @@ impl ScheduledAgentStore {
         operation(&connection)
     }
 
-    pub(crate) fn write<T>(
-        &self,
-        operation: impl FnOnce(&Transaction<'_>) -> Result<T, StorageError>,
-    ) -> Result<T, StorageError> {
-        let mut connection = open_current(&self.path, false)?;
-        configure(&connection)?;
-        require_authoritative(&connection)?;
-        let transaction = connection
-            .transaction_with_behavior(TransactionBehavior::Immediate)
-            .map_err(|error| StorageError::sqlite("begin scheduled-agent command", error))?;
-        let output = operation(&transaction)?;
-        transaction
-            .commit()
-            .map_err(|error| StorageError::sqlite("commit scheduled-agent command", error))?;
-        Ok(output)
+    pub(crate) fn path(&self) -> &Path {
+        &self.path
     }
 }
 

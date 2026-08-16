@@ -152,7 +152,7 @@ fn read_requested_notification_effects(
     .collect()
 }
 
-fn read_effect(
+pub(crate) fn read_effect(
     connection: &Connection,
     occurrence_id: FeedDiscoveryOccurrenceId,
     episode_id: EpisodeId,
@@ -186,7 +186,7 @@ fn read_effect(
         .transpose()
 }
 
-fn effect_for_request(
+pub(crate) fn effect_for_request(
     connection: &Connection,
     request_id: HostRequestId,
 ) -> Result<Option<FeedDiscoveryEffectRecord>, StorageError> {
@@ -208,63 +208,4 @@ fn effect_for_request(
         decode_workflow_id(episode, EpisodeId::from_bytes)?,
         FeedDiscoveryEffectKind::Notification,
     )
-}
-
-fn requested_notification_ids(
-    connection: &Connection,
-    now_ms: i64,
-) -> Result<Vec<HostRequestId>, StorageError> {
-    let mut statement = connection
-        .prepare(
-            "SELECT request_id FROM pod0_feed_discovery_effects
-             WHERE kind='notification' AND stage='requested'
-               AND deadline_at_ms<=?1 AND request_id IS NOT NULL
-             ORDER BY deadline_at_ms,request_id LIMIT 64",
-        )
-        .map_err(|error| StorageError::sqlite("prepare expired notifications", error))?;
-    let rows = statement
-        .query_map([now_ms], |row| row.get::<_, Vec<u8>>(0))
-        .map_err(|error| StorageError::sqlite("query expired notifications", error))?;
-    rows.map(|row| {
-        decode_workflow_id(
-            row.map_err(|error| StorageError::sqlite("read expired notification", error))?,
-            HostRequestId::from_bytes,
-        )
-    })
-    .collect()
-}
-
-fn finish_notification_timeout(
-    transaction: &Transaction<'_>,
-    request_id: HostRequestId,
-    now_ms: i64,
-) -> Result<bool, StorageError> {
-    let Some(record) = effect_for_request(transaction, request_id)? else {
-        return Ok(false);
-    };
-    let retry = record.attempt < FEED_DISCOVERY_NOTIFICATION_MAX_ATTEMPTS
-        && now_ms < record.expires_at_ms;
-    let (stage, not_before) = if retry {
-        (
-            "retry_scheduled",
-            Some(now_ms.saturating_add(FEED_DISCOVERY_NOTIFICATION_RETRY_MILLISECONDS)),
-        )
-    } else {
-        ("failed", None)
-    };
-    transaction
-        .execute(
-            "UPDATE pod0_feed_discovery_effects
-             SET stage=?1,request_id=NULL,deadline_at_ms=NULL,not_before_ms=?2,
-                 failure_code='timed_out',updated_at_ms=?3
-             WHERE request_id=?4 AND stage='requested'",
-            params![
-                stage,
-                not_before,
-                now_ms,
-                request_id.into_bytes().as_slice()
-            ],
-        )
-        .map(|changed| changed == 1)
-        .map_err(|error| StorageError::sqlite("expire notification request", error))
 }

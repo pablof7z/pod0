@@ -1,12 +1,11 @@
 use pod0_application::{
-    ChapterModelExecutionRequest, ChapterModelFailureEvidence, ChapterModelHostFailureCode,
-    ChapterModelObservationMode, ChapterModelResponseFormat, ModelChapterWorkflowFailureCode,
-    ModelChapterWorkflowStage, PlannedChapterModelRequest, chapter_model_request_fingerprint,
+    ChapterModelFailureEvidence, ChapterModelHostFailureCode, ChapterModelObservationMode,
+    ChapterModelResponseFormat, ModelChapterWorkflowFailureCode, ModelChapterWorkflowStage,
+    PlannedChapterModelRequest, chapter_model_request_fingerprint,
 };
 use pod0_domain::ChapterArtifact;
 use pod0_storage::{
-    ModelChapterWorkflowMode, ModelChapterWorkflowRecord, ModelChapterWorkflowState,
-    StoredModelChapterRequest,
+    ModelChapterWorkflowMode, ModelChapterWorkflowState, StoredModelChapterRequest,
 };
 
 pub(super) fn stored_model_request(
@@ -51,22 +50,6 @@ pub(super) fn stored_model_request(
         expected_artifact_source: planned.expected_artifact_source,
         system_prompt: planned.system_prompt,
         user_prompt: planned.user_prompt,
-    })
-}
-
-pub(super) fn execution_request(
-    request: &StoredModelChapterRequest,
-) -> Option<ChapterModelExecutionRequest> {
-    Some(ChapterModelExecutionRequest {
-        provider: request.provider.clone(),
-        model: request.model.clone(),
-        system_prompt: request.system_prompt.clone(),
-        user_prompt: request.user_prompt.clone(),
-        response_format: match request.response_format_code {
-            1 => ChapterModelResponseFormat::JsonObject,
-            _ => return None,
-        },
-        maximum_completion_bytes: request.maximum_completion_bytes,
     })
 }
 
@@ -176,11 +159,4 @@ pub(super) fn host_failure_evidence(
         },
         H::Unsupported { wire_code } => ChapterModelFailureEvidence::Unsupported { wire_code },
     }
-}
-
-pub(super) fn request_is_current(
-    record: &ModelChapterWorkflowRecord,
-    request_id: pod0_domain::HostRequestId,
-) -> bool {
-    record.request_id == Some(request_id)
 }

@@ -149,11 +149,15 @@ impl FacadeState {
                 if let Some(request_id) = existing.and_then(|item| item.request_id) {
                     self.withdraw_download_request(request_id);
                 }
-                let _ = self.admit_download_requests();
-                if self.pending_downloads.values().any(|request| {
-                    request.command_id == envelope.command_id
-                        && request.kind == pod0_storage::DownloadHostRequestKind::Cancel
-                }) {
+                let cancel_is_pending = store
+                    .pending_download_host_requests(pod0_application::MAX_ACTIVE_DOWNLOAD_WORKFLOWS)
+                    .is_ok_and(|requests| {
+                        requests.into_iter().any(|request| {
+                            request.command_id == envelope.command_id
+                                && request.kind == pod0_storage::DownloadHostRequestKind::Cancel
+                        })
+                    });
+                if cancel_is_pending {
                     self.finish(envelope.command_id, OperationStage::Running, None, None);
                 } else {
                     self.succeed(envelope.command_id, None);
@@ -203,11 +207,7 @@ impl FacadeState {
                         .value
                         .max(transition.record.workflow_revision.value),
                 );
-                if self.admit_download_requests().is_ok() {
-                    self.finish(envelope.command_id, OperationStage::Running, None, None);
-                } else {
-                    self.fail(envelope.command_id, CoreFailureCode::StorageUnavailable);
-                }
+                self.finish(envelope.command_id, OperationStage::Running, None, None);
             }
             Err(error) => self.fail(envelope.command_id, storage_failure(error)),
         }

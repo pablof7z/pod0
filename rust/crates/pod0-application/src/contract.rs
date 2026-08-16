@@ -2,15 +2,15 @@ use pod0_domain::{
     AutoDownloadPolicy, CancellationId, ChapterArtifactInput, ClipId, ClipRevision, ClipSource,
     CommandId, ContentDigest, EpisodeId, NoteAuthor, NoteId, NoteKind, NoteRevision, NoteTarget,
     PodcastId, RecallConfigurationInput, SpeakerId, StateRevision, TranscriptArtifactInput,
-    TranscriptStartPolicy, UnixTimestampMilliseconds,
+    TranscriptStartPolicy,
 };
 
 use crate::{
-    EvidenceChunkPolicy, PlaybackCommand, RecallQuery, TranscriptEvidenceInput,
-    TranscriptWorkflowConfiguration, TranscriptWorkflowOrigin,
+    EvidenceChunkPolicy, ExternalEpisodeInput, PlaybackCommand, RecallQuery, SyntheticPodcastInput,
+    TranscriptEvidenceInput, TranscriptWorkflowConfiguration, TranscriptWorkflowOrigin,
 };
 
-pub const FACADE_CONTRACT_VERSION: u32 = 54;
+pub const FACADE_CONTRACT_VERSION: u32 = 55;
 pub const MAX_PROJECTION_ITEMS: u16 = 200;
 pub const MAX_OPERATION_ITEMS: usize = 32;
 pub const MAX_HOST_REQUEST_BATCH: u16 = 64;
@@ -21,38 +21,6 @@ pub struct CommandEnvelope {
     pub cancellation_id: CancellationId,
     pub expected_revision: Option<StateRevision>,
     pub command: ApplicationCommand,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
-pub struct SyntheticPodcastInput {
-    /// `None` creates a new stable ID derived from the command identity.
-    /// Updates and named built-ins provide their existing stable ID.
-    pub podcast_id: Option<PodcastId>,
-    pub title: String,
-    pub author: String,
-    pub image_url: Option<String>,
-    pub description: String,
-    pub language: Option<String>,
-    pub categories: Vec<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
-pub struct ExternalEpisodeInput {
-    pub podcast_id: PodcastId,
-    pub feed_url: Option<String>,
-    pub podcast_title: String,
-    pub audio_url: String,
-    /// Publisher's `<guid>` (or equivalent stable id from the source page),
-    /// when known. Falls back to `audio_url` for identity when absent.
-    /// Without this, importing an episode of an already-subscribed show
-    /// produces a second row instead of matching the feed-ingested one.
-    pub guid: Option<String>,
-    pub title: String,
-    pub description: String,
-    pub published_at: UnixTimestampMilliseconds,
-    pub enclosure_mime_type: Option<String>,
-    pub image_url: Option<String>,
-    pub duration_milliseconds: Option<u64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
@@ -68,6 +36,22 @@ pub enum ApplicationCommand {
     },
     HydratePodcastMetadata {
         podcast_id: PodcastId,
+    },
+    SearchPodcastDirectory {
+        query: String,
+        limit: u16,
+    },
+    LoadTopPodcasts {
+        storefront: String,
+        limit: u16,
+    },
+    ImportSharedEpisode {
+        source_url: String,
+    },
+    SearchPodcastCatalog {
+        episode_query: String,
+        podcast_hint: Option<String>,
+        limit: u16,
     },
     UpsertSyntheticPodcast {
         podcast: SyntheticPodcastInput,
@@ -133,6 +117,20 @@ pub enum ApplicationCommand {
     SetRecallConfiguration {
         expected_configuration_revision: StateRevision,
         configuration: RecallConfigurationInput,
+    },
+    ImportLegacyWorkflowConfiguration {
+        configuration: crate::WorkflowConfigurationInput,
+        source_generation: ContentDigest,
+    },
+    SetWorkflowConfiguration {
+        expected_configuration_revision: StateRevision,
+        configuration: crate::WorkflowConfigurationInput,
+    },
+    ObserveWorkflowCapabilities {
+        capabilities: crate::WorkflowCapabilitySnapshotInput,
+    },
+    ReconcileWorkflowOpportunity {
+        opportunity: crate::WorkflowOpportunity,
     },
     RebuildTranscriptEvidence {
         input: TranscriptEvidenceInput,

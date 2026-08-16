@@ -43,8 +43,6 @@ final class SharedLibraryClient {
     )
     var chapterSnapshots: [UUID: SharedChapterSnapshot] = [:]
     var chapterProjectionTasks: [UUID: Task<Void, Never>] = [:]
-    var announcedPublisherChapterEpisodeIDs: Set<UUID> = []
-    var announcedModelChapterVersions: [UUID: String] = [:]
     var cachedPublisherChapterWorkflows: [PublisherChapterWorkflowProjection] = []
     var playbackChapterEpisodeID: UUID?
     var cachedPlayback: PlaybackProjection?
@@ -59,7 +57,6 @@ final class SharedLibraryClient {
     var lastScheduledAgentRevision: UInt64 = 0
     var cachedScheduledAgent: ScheduledAgentProjection?
     var cachedNewEpisodeNotificationSettings: NewEpisodeNotificationSettingsProjection?
-    var announcedTranscriptWorkflowVersions: [UUID: String] = [:]
     var playbackHostAttached = false
     var coreCommandTail: Task<Void, Never>?
     var coreCommandGeneration: UInt64 = 0
@@ -108,7 +105,6 @@ final class SharedLibraryClient {
             recallHost: recallHost,
             observationOutbox: observationOutbox
         )
-        self.dispatcher.bindDownloadOrphanObservations(to: facade)
     }
 
     func start() {
@@ -242,15 +238,11 @@ final class SharedLibraryClient {
         cachedScheduledAgent = nil
         chapterScopes.removeAll()
         chapterSnapshots.removeAll()
-        announcedPublisherChapterEpisodeIDs.removeAll()
-        announcedModelChapterVersions.removeAll()
         cachedPublisherChapterWorkflows.removeAll()
-        announcedTranscriptWorkflowVersions.removeAll()
         workflowClient?.detachPublisherChapterCore()
         workflowClient?.detachModelChapterCore()
         workflowClient?.detachDownloadCore()
         workflowClient?.detachTranscriptCore()
-        workflowClient?.detachScheduledAgentCore()
         playbackChapterEpisodeID = nil
         subscriber = nil
         for waiter in waiters.values {

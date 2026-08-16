@@ -1,81 +1,10 @@
-use pod0_application::{
-    AgentActionObservation, AgentActionOutcome, AgentToolAction, AgentToolName, AgentTurnState,
-    AgentWorkflowAcceptance,
-};
+use pod0_application::{AgentToolAction, AgentToolName};
 use pod0_domain::CompletionStatus;
-use pod0_storage::{AgentAuditKind, AgentStore, StorageError};
 use serde_json::json;
 
-use crate::runtime_agent_modules::identity::{agent_command_id, continuation_model_fence_id};
-use crate::runtime_agent_modules::persistence::persist_agent_update;
 use crate::runtime_state::FacadeState;
 
 impl FacadeState {
-    pub(super) fn execute_internal_agent_action(
-        &mut self,
-        agent_store: &AgentStore,
-        state: AgentTurnState,
-        observed_at: pod0_domain::UnixTimestampMilliseconds,
-    ) -> Result<(), StorageError> {
-        if matches!(
-            state
-                .projection()
-                .proposal
-                .as_ref()
-                .map(|value| &value.action),
-            Some(AgentToolAction::QueryTranscripts { .. })
-        ) {
-            return self.execute_agent_recall_action(agent_store, state, observed_at);
-        }
-        let mut state = state;
-        let before = state.projection();
-        let proposal = before
-            .proposal
-            .clone()
-            .ok_or(StorageError::InvalidAgentState)?;
-        let fence = before
-            .execution_fence_id
-            .ok_or(StorageError::InvalidAgentState)?;
-        let outcome = match self.perform_internal_agent_action(&proposal.action) {
-            Ok(result) => AgentActionOutcome::Succeeded {
-                bounded_result: result,
-                artifact_id: None,
-                recall_evidence: Vec::new(),
-            },
-            Err(error) => AgentActionOutcome::Failed {
-                safe_detail: Some(error.to_owned()),
-            },
-        };
-        if state.observe_action(AgentActionObservation {
-            proposal_id: proposal.proposal_id,
-            execution_fence_id: fence,
-            outcome,
-            observed_at,
-        }) != AgentWorkflowAcceptance::Updated
-        {
-            return Err(StorageError::AgentTurnConflict);
-        }
-        let continuation_fence =
-            continuation_model_fence_id(before.turn_id, state.projection().revision);
-        if state.continue_after_commit(continuation_fence, observed_at)
-            != AgentWorkflowAcceptance::Updated
-        {
-            return Err(StorageError::AgentTurnConflict);
-        }
-        let command_id = agent_command_id(b"internal-action-result", before.turn_id);
-        let state = persist_agent_update(
-            agent_store,
-            command_id,
-            b"pod0:agent-internal-action-result:v1",
-            AgentAuditKind::ActionObserved,
-            before.revision,
-            state,
-            observed_at,
-        )?;
-        let _ = self.queue_agent_model_request(command_id, &state);
-        Ok(())
-    }
-
     pub(super) fn perform_internal_agent_action(
         &mut self,
         action: &AgentToolAction,

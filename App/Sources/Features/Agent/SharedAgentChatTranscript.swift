@@ -1,10 +1,11 @@
 import SwiftUI
+import Pod0Core
 
 struct SharedAgentChatTranscript: View {
     let messages: [ChatMessage]
     let streamingContent: String?
     let isRunning: Bool
-    var onOpenRecallEvidence: (RecallEvidence, UUID) -> Void = { _, _ in }
+    var onOpenRecallEvidence: (RecallEvidenceProjection, UUID) -> Void = { _, _ in }
     @State private var scrolledMessageID: AnyHashable?
 
     var body: some View {

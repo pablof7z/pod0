@@ -6,7 +6,7 @@ import SwiftUI
 /// "Diagnostics" sheet for a single episode. Answers the user's question:
 /// *why doesn't this episode have a transcript / why didn't the download work?*
 ///
-/// Renders the full audit log in reverse-chronological order. Each row
+/// Renders a bounded audit snapshot in reverse-chronological order. Each row
 /// summarises the event; tapping reveals its captured details.
 ///
 /// Two retry affordances at the top:
@@ -20,13 +20,11 @@ struct EpisodeAuditLogView: View {
     @Environment(WorkflowClient.self) private var workflows
     @Environment(\.dismiss) private var dismiss
 
-    @State private var activityPage: EpisodeActivityPage?
+    @State private var activityPage: LatestEpisodeActivityPage?
     @State private var expandedSequences: Set<UInt64> = []
     @State private var isLoadingActivity = false
     @State private var actionNotice: WorkflowActionNotice?
-    private var events: [EpisodeActivityEntry] {
-        activityPage.map { Array($0.items.reversed()) } ?? []
-    }
+    private var events: [EpisodeActivityEntry] { activityPage?.items ?? [] }
 
     var body: some View {
         NavigationStack {
@@ -164,6 +162,12 @@ struct EpisodeAuditLogView: View {
                         }
                     )
                 }
+                if activityPage?.nextBeforeSequence != nil {
+                    Button("Load more", systemImage: "arrow.down") {
+                        Task { await loadMoreActivity() }
+                    }
+                    .disabled(isLoadingActivity)
+                }
             }
         } header: {
             HStack {
@@ -248,13 +252,21 @@ struct EpisodeAuditLogView: View {
     }
 
     private func loadActivity() async {
-        guard let facade = store.sharedLibrary?.facade else {
-            activityPage = nil
-            return
-        }
         isLoadingActivity = true
-        activityPage = await CoreEpisodeActivityReader.shared.page(
+        activityPage = await CoreEpisodeActivityReader.shared.firstPage(
             for: EpisodeId(uuid: episode.id),
+            from: store.sharedLibrary?.facade
+        )
+        isLoadingActivity = false
+    }
+
+    private func loadMoreActivity() async {
+        guard let facade = store.sharedLibrary?.facade,
+              let activityPage else { return }
+        isLoadingActivity = true
+        self.activityPage = await CoreEpisodeActivityReader.shared.loadMore(
+            for: EpisodeId(uuid: episode.id),
+            current: activityPage,
             from: facade
         )
         isLoadingActivity = false

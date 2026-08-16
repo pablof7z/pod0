@@ -12,12 +12,14 @@ private final class PersistenceBackgroundInbox: @unchecked Sendable {
         var latestSnapshot: PersistencePendingSnapshot?
         var latestAcceptedRevision: UInt64 = 0
         var jobs: [String: DesiredJob] = [:]
+        var fenced = false
     }
 
     private let state = OSAllocatedUnfairLock<State>(initialState: State())
 
     func accept(revision: UInt64, state snapshot: AppState, jobs: [DesiredJob]) {
         state.withLock { state in
+            guard !state.fenced else { return }
             for job in jobs { state.jobs[job.idempotencyKey] = job }
             state.latestAcceptedRevision = max(state.latestAcceptedRevision, revision)
             if revision > (state.latestSnapshot?.revision ?? 0) {
@@ -48,6 +50,20 @@ private final class PersistenceBackgroundInbox: @unchecked Sendable {
 
     var latestAcceptedRevision: UInt64 {
         state.withLock { $0.latestAcceptedRevision }
+    }
+
+    func fence() {
+        state.withLock { state in
+            state.fenced = true
+            state.latestSnapshot = nil
+            state.jobs.removeAll()
+        }
+    }
+
+    func resume() {
+        state.withLock { state in
+            state = State()
+        }
     }
 }
 
@@ -88,6 +104,27 @@ actor PersistenceBackgroundWriter {
         return await withCheckedContinuation { continuation in
             waiters.append((revision, continuation))
         }
+    }
+
+    func fenceAndDrain() async {
+        inbox.fence()
+        pending = nil
+        latestAcceptedSnapshot = nil
+        uncommittedJobs.removeAll()
+        while isDraining { await Task.yield() }
+        for waiter in waiters { waiter.continuation.resume(returning: false) }
+        waiters.removeAll()
+    }
+
+    func resumeAfterErasure() {
+        precondition(!isDraining)
+        inbox.resume()
+        pending = nil
+        latestAcceptedSnapshot = nil
+        lastAcceptedRevision = 0
+        lastWrittenRevision = 0
+        failedRevisions.removeAll()
+        uncommittedJobs.removeAll()
     }
 
     private func drain(persistence: Persistence) async {
@@ -156,5 +193,18 @@ extension Persistence {
     /// returns, even if the asynchronous drain signal has not run yet.
     var latestSynchronouslyAcceptedRevision: UInt64 {
         backgroundWriter.latestSynchronouslyAcceptedRevision
+    }
+
+    func fenceForUserDataErasure() async {
+        await backgroundWriter.fenceAndDrain()
+    }
+
+    func resumeAfterUserDataErasure() async {
+        await backgroundWriter.resumeAfterErasure()
+        revision.withLock { $0 = 0 }
+        lastWrittenRevision.withLock { $0 = 0 }
+        episodeSnapshot.withLock { $0 = nil }
+        sharedArtifactAuthority.withLock { $0 = .init() }
+        resetEpisodeWriteSummary()
     }
 }

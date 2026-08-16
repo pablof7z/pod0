@@ -95,17 +95,40 @@ impl FacadeState {
         }) else {
             return false;
         };
+        let pending = PendingEvidenceIndex {
+            command_id: record.command_id,
+            cancellation_id: record.cancellation_id,
+            episode_id: record.episode_id,
+            generation_id: evidence_artifact.generation_id,
+            expected_span_count: u32::try_from(evidence_artifact.spans.len()).unwrap_or(u32::MAX),
+            requested_span_ids: Vec::new(),
+            completion: EvidenceIndexCompletion::TranscriptWorkflow {
+                workflow_id: record.request.workflow_id,
+                input_version,
+            },
+        };
+        let effect = match self
+            .prepare_evidence_effect_for_artifact(pending.clone(), evidence_artifact.clone())
+        {
+            Ok(value) => value,
+            Err(_) => return false,
+        };
         let now = self.now();
-        store
+        if store
             .commit_evidence_admission(EvidenceAdmissionCommitInput {
                 command,
                 artifact: evidence_artifact,
+                effect: effect.clone(),
                 committed_at: now,
-                deadline_at: pod0_domain::UnixTimestampMilliseconds::new(
-                    now.value.saturating_add(600_000),
-                ),
             })
-            .is_ok()
+            .is_err()
+        {
+            return false;
+        }
+        if effect.is_none() {
+            self.finish_evidence_index(pending.clone(), pending.expected_span_count);
+        }
+        true
     }
 
     fn recover_committed_evidence(

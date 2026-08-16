@@ -116,12 +116,8 @@ impl Pod0Facade {
                 Ok(report) => match store.scheduled_agent_store() {
                     Ok(scheduled_store) => {
                         state.scheduled_agent_store = Some(scheduled_store);
-                        if let Err(error) = state.rehydrate_scheduled_agent_workflows() {
-                            Err(error)
-                        } else {
-                            state.advance_revision();
-                            Ok(report)
-                        }
+                        state.advance_revision();
+                        Ok(report)
                     }
                     Err(error) => Err(error),
                 },

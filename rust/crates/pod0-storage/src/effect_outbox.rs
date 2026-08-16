@@ -20,7 +20,7 @@ const MAX_LEASE_MILLISECONDS: i64 = 300_000;
 
 #[derive(Clone, Debug)]
 pub struct EffectOutbox {
-    path: PathBuf,
+    pub(super) path: PathBuf,
 }
 
 impl EffectOutbox {
@@ -41,6 +41,7 @@ impl EffectOutbox {
             Some((attempt_id, lease_id)),
             now,
             lease_duration_milliseconds,
+            u16::MAX,
         )
     }
 
@@ -49,23 +50,50 @@ impl EffectOutbox {
         now: UnixTimestampMilliseconds,
         lease_duration_milliseconds: u32,
     ) -> Result<Option<EffectLease>, EffectOutboxError> {
-        self.claim_next_with_identity(None, now, lease_duration_milliseconds)
+        self.claim_next_with_identity(None, now, lease_duration_milliseconds, u16::MAX)
+    }
+
+    pub fn claim_next_generated_with_publisher_limit(
+        &self,
+        now: UnixTimestampMilliseconds,
+        lease_duration_milliseconds: u32,
+        maximum_active_publisher_chapters: u16,
+    ) -> Result<Option<EffectLease>, EffectOutboxError> {
+        self.claim_next_with_identity(
+            None,
+            now,
+            lease_duration_milliseconds,
+            maximum_active_publisher_chapters,
+        )
     }
 
     pub fn effect_kind(
         &self,
         intent_id: EffectIntentId,
     ) -> Result<Option<ExternalEffectKind>, EffectOutboxError> {
+        self.effect_request(intent_id)
+            .map(|request| request.map(|value| value.kind))
+    }
+
+    pub fn effect_request(
+        &self,
+        intent_id: EffectIntentId,
+    ) -> Result<Option<DurableExternalEffectRequest>, EffectOutboxError> {
         let connection = current_connection(&self.path, true)?;
-        let code = connection
+        let request = connection
             .query_row(
-                "SELECT effect_kind_code FROM pod0_effect_intents WHERE intent_id=?1",
+                "SELECT request_json FROM pod0_effect_intents WHERE intent_id=?1",
                 [intent_id.into_bytes().as_slice()],
-                |row| row.get::<_, u8>(0),
+                |row| row.get::<_, String>(0),
             )
             .optional()
             .map_err(|_| EffectOutboxError::Storage)?;
-        code.map(decode_effect_kind).transpose()
+        request
+            .map(|value| {
+                serde_json::from_str::<DurableExternalEffectRequest>(&value)
+                    .map_err(|_| EffectOutboxError::InvalidRecord)
+            })
+            .transpose()
     }
 
     fn claim_next_with_identity(
@@ -73,6 +101,7 @@ impl EffectOutbox {
         identity: Option<(EffectAttemptId, EffectLeaseId)>,
         now: UnixTimestampMilliseconds,
         lease_duration_milliseconds: u32,
+        maximum_active_publisher_chapters: u16,
     ) -> Result<Option<EffectLease>, EffectOutboxError> {
         let duration = i64::from(lease_duration_milliseconds);
         if !(MIN_LEASE_MILLISECONDS..=MAX_LEASE_MILLISECONDS).contains(&duration) {
@@ -90,11 +119,25 @@ impl EffectOutbox {
         let row = transaction
             .query_row(
                 "SELECT i.intent_id,i.authorizing_activity_id,i.correlation_id,i.fence,i.request_json \
-                 FROM pod0_effect_intents i WHERE i.available_at_ms<=?1 AND (i.state_code=1 OR \
+                 FROM pod0_effect_intents i WHERE i.effect_kind_code!=14 \
+                 AND (i.state_code=1 OR i.effect_kind_code!=10 OR json_extract(i.request_json,\
+                 '$.execution.AgentCapability.request.capability.execution_mode')='RecoverExisting') \
+                 AND i.available_at_ms<=?1 AND (i.state_code=1 OR \
                  (i.state_code=2 AND NOT EXISTS(SELECT 1 FROM pod0_effect_attempts a \
-                 WHERE a.intent_id=i.intent_id AND a.state_code=1 AND a.lease_expires_at_ms>?1))) \
-                 ORDER BY i.available_at_ms,i.intent_id LIMIT 1",
-                [now.value],
+                 WHERE a.intent_id=i.intent_id AND a.state_code=1 AND \
+                 (a.lease_expires_at_ms>?1 OR (a.observed_at_ms IS NOT NULL AND \
+                 json_type(i.request_json,'$.execution.Playback.request.action.ObservePlayback') \
+                 IS NOT NULL) OR (a.observed_at_ms IS NOT NULL AND i.effect_kind_code=11 AND \
+                 EXISTS(SELECT 1 FROM pod0_scheduled_occurrences occurrence \
+                 WHERE occurrence.occurrence_id=i.subject_id \
+                 AND occurrence.stage='host_accepted')))))) \
+                 AND (json_extract(i.request_json,'$.kind')!='PublisherChapterProvider' OR \
+                 (SELECT COUNT(*) FROM pod0_effect_attempts active \
+                  JOIN pod0_effect_intents owned ON owned.intent_id=active.intent_id \
+                  WHERE active.state_code=1 AND active.lease_expires_at_ms>?1 \
+                  AND json_extract(owned.request_json,'$.kind')='PublisherChapterProvider')<?2) \
+                 ORDER BY i.available_at_ms,i.committed_at_ms,i.rowid LIMIT 1",
+                params![now.value, i64::from(maximum_active_publisher_chapters)],
                 |row| {
                     Ok((
                         row.get::<_, Vec<u8>>(0)?,
@@ -159,27 +202,13 @@ impl EffectOutbox {
     }
 }
 
-fn decode_effect_kind(code: u8) -> Result<ExternalEffectKind, EffectOutboxError> {
-    match code {
-        1 => Ok(ExternalEffectKind::FeedNetwork),
-        2 => Ok(ExternalEffectKind::Playback),
-        3 => Ok(ExternalEffectKind::RecallProvider),
-        4 => Ok(ExternalEffectKind::ChapterProvider),
-        5 => Ok(ExternalEffectKind::Download),
-        6 => Ok(ExternalEffectKind::Notification),
-        7 => Ok(ExternalEffectKind::TranscriptProvider),
-        8 => Ok(ExternalEffectKind::AgentProvider),
-        9 => Ok(ExternalEffectKind::AgentApproval),
-        10 => Ok(ExternalEffectKind::AgentCapability),
-        11 => Ok(ExternalEffectKind::ScheduledAgentProvider),
-        12 => Ok(ExternalEffectKind::CoreWake),
-        13 => Ok(ExternalEffectKind::Filesystem),
-        14 => Ok(ExternalEffectKind::Publication),
-        _ => Err(EffectOutboxError::InvalidRecord),
-    }
-}
-
 include!("effect_outbox_observation.rs");
+include!("effect_outbox_chapter_observation.rs");
+include!("effect_outbox_download_observation.rs");
+include!("effect_outbox_playback_observation.rs");
+
+#[path = "effect_outbox_publication.rs"]
+mod publication;
 
 #[path = "effect_outbox_agent_observation.rs"]
 mod agent_observation;
@@ -187,6 +216,13 @@ pub(crate) use agent_observation::{
     stage_agent_approval_observation_in_transaction,
     stage_agent_capability_observation_in_transaction,
     stage_agent_model_observation_in_transaction,
+};
+
+#[path = "effect_outbox_scheduled_agent_observation.rs"]
+mod scheduled_agent_observation;
+pub(crate) use scheduled_agent_observation::{
+    scheduled_observation_is_terminal, stage_scheduled_agent_observation_in_transaction,
+    validate_scheduled_agent_lease_in_transaction,
 };
 
 fn generated_ids(intent: &[u8], fence: i64) -> (EffectAttemptId, EffectLeaseId) {
@@ -207,7 +243,10 @@ fn generated_ids(intent: &[u8], fence: i64) -> (EffectAttemptId, EffectLeaseId) 
     )
 }
 
-fn current_connection(path: &Path, read_only: bool) -> Result<Connection, EffectOutboxError> {
+pub(super) fn current_connection(
+    path: &Path,
+    read_only: bool,
+) -> Result<Connection, EffectOutboxError> {
     let connection = open_connection(path, read_only).map_err(|_| EffectOutboxError::Storage)?;
     let version = user_version(&connection).map_err(|_| EffectOutboxError::Storage)?;
     validate_current_database_identity(&connection, version)

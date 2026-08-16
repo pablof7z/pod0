@@ -25,6 +25,10 @@ FORBIDDEN = (
         "deleted recall shadow path",
     ),
     (re.compile(r"\bqueryTranscripts\s*\("), "legacy Swift transcript-query API"),
+    (
+        re.compile(r"\b(?:RecallAnswerService|RecallEvidenceProjectionMapper)\b"),
+        "deleted Swift recall answer policy",
+    ),
 )
 
 DELETED_PATHS = (
@@ -39,6 +43,8 @@ DELETED_PATHS = (
     "App/Sources/Services/RecallCapabilityService.swift",
     "App/Sources/Knowledge/ProviderEmbeddingsClient.swift",
     "App/Sources/Domain/Settings+Embeddings.swift",
+    "App/Sources/Features/Recall/RecallAnswerModels.swift",
+    "App/Sources/Features/Recall/RecallAnswerService.swift",
 )
 
 LEGACY_CONFIGURATION_ALLOWLIST = {
@@ -61,9 +67,9 @@ REQUIRED_TOKENS = {
         "facade.dispatch(command: envelope)",
         "facade.subscribe(",
     ),
-    "App/Sources/Features/Recall/RecallAnswerService.swift": (
-        "RecallResultProjection",
-        "RecallEvidenceProjection",
+    "App/Sources/Features/Agent/SharedAgentChatMessageMapper.swift": (
+        "turn.recallEvidence",
+        "recallEvidence:",
     ),
     "App/Sources/Core/CoreRecallHost.swift": (
         ".embedRecallSpans(",
@@ -76,6 +82,15 @@ REQUIRED_TOKENS = {
         "provider: RecallEmbeddingProvider",
         "owns no durable index",
     ),
+    "rust/crates/pod0-facade/src/runtime_recall_leased_observations.rs": (
+        "LeasedHostObservationEnvelope",
+        "DurableEffectExecution::RecallQuery",
+        "commit_recall_query_observation",
+    ),
+    "rust/crates/pod0-storage/src/transition_commit_recall_query_observation.rs": (
+        "commit_recall_query_observation",
+        "DurableEffectExecution::RecallQuery",
+    ),
 }
 
 
@@ -85,14 +100,6 @@ def evaluate(sources: dict[str, str]) -> list[str]:
         for pattern, description in FORBIDDEN:
             if pattern.search(source):
                 errors.append(f"{path}: {description}")
-
-    answer = sources.get("App/Sources/Features/Recall/RecallAnswerService.swift", "")
-    for token in (".sorted(", ".sort(", ".prefix("):
-        if token in answer:
-            errors.append(
-                "App/Sources/Features/Recall/RecallAnswerService.swift: "
-                f"native evidence reorder/truncation token {token!r}"
-            )
 
     recall_client = sources.get("App/Sources/Core/SharedLibraryClient+Recall.swift", "")
     if "Task.sleep" in recall_client:
@@ -105,7 +112,7 @@ def evaluate(sources: dict[str, str]) -> list[str]:
 def self_test() -> None:
     safe = {
         "App/Sources/Core/SharedLibraryClient+Recall.swift": "facade.subscribe(",
-        "App/Sources/Features/Recall/RecallAnswerService.swift": "RecallResultProjection",
+        "App/Sources/Features/Agent/SharedAgentChatMessageMapper.swift": "turn.recallEvidence",
     }
     assert not evaluate(safe)
     for pattern, _ in FORBIDDEN:
@@ -119,9 +126,7 @@ def self_test() -> None:
         sample = sample or "struct RAGSearch"
         errors = evaluate({"App/Sources/Bad.swift": sample})
         assert errors, pattern.pattern
-    assert evaluate({
-        "App/Sources/Features/Recall/RecallAnswerService.swift": ".sorted("
-    })
+    assert evaluate({"App/Sources/Bad.swift": "struct RecallAnswerService"})
     assert evaluate({
         "App/Sources/Core/SharedLibraryClient+Recall.swift": "Task.sleep"
     })
@@ -156,10 +161,11 @@ def main() -> int:
         if (root / relative).exists():
             errors.append(f"{relative}: deleted authority path exists")
     for relative, tokens in REQUIRED_TOKENS.items():
-        source = sources.get(relative)
-        if source is None:
+        path = root / relative
+        if not path.is_file():
             errors.append(f"{relative}: required typed boundary is missing")
             continue
+        source = path.read_text(encoding="utf-8")
         for token in tokens:
             if token not in source:
                 errors.append(f"{relative}: required boundary token {token!r} is missing")

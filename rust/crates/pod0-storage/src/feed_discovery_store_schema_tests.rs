@@ -22,7 +22,10 @@ fn schema_upgrade_foreign_keys_corruption_and_future_versions_fail_closed() {
             CommandId::from_parts(4, 2),
         )
         .unwrap();
-    assert_eq!(report.applied_versions, [29, 30, 31, 32, 33, 34, 35, 36, 37]);
+    assert_eq!(
+        report.applied_versions,
+        (29..=CURRENT_SCHEMA_VERSION).collect::<Vec<_>>()
+    );
     assert_eq!(report.backup.unwrap().schema_version, 28);
 
     let (fixture, store) = empty_authoritative_store();

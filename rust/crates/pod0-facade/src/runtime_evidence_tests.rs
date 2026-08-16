@@ -11,9 +11,14 @@ fn rebuild_selects_exact_generation_and_exposes_bounded_pages() {
 
     fixture.base.facade.dispatch(envelope.clone());
 
-    let request = fixture.base.facade.next_host_requests(1).pop().unwrap();
+    let request = fixture
+        .base
+        .facade
+        .next_leased_host_requests(1)
+        .pop()
+        .unwrap();
     assert!(matches!(
-        &request.request,
+        &request.request.request,
         HostRequest::EmbedRecallSpans {
             episode_id,
             generation_id,
@@ -31,7 +36,7 @@ fn rebuild_selects_exact_generation_and_exposes_bounded_pages() {
     assert_eq!(first.spans[0].span_id, fixture.artifact.spans[0].span_id);
     assert_eq!(first.spans[0].text, fixture.artifact.spans[0].text);
 
-    record_rebuild_success(&fixture.base.facade, &request);
+    record_rebuild_success(&fixture.base.facade, request);
     let operation = operation(&fixture.base.facade, envelope.command_id);
     assert_eq!(operation.stage, OperationStage::Succeeded);
     assert!(matches!(
@@ -54,18 +59,23 @@ fn interrupted_rebuild_restarts_idempotently_after_facade_reopen() {
         .base
         .facade
         .dispatch(rebuild_command(2, &fixture, input.clone()));
-    let abandoned = fixture.base.facade.next_host_requests(1).pop().unwrap();
+    let abandoned = fixture
+        .base
+        .facade
+        .next_leased_host_requests(1)
+        .pop()
+        .unwrap();
 
     let reopened = Pod0Facade::open(fixture.base.target.to_string_lossy().into_owned()).unwrap();
     let restarted = rebuild_command(3, &fixture, input);
     reopened.dispatch(restarted.clone());
-    let request = reopened.next_host_requests(1).pop().unwrap();
-    assert_ne!(request.request_id, abandoned.request_id);
-    assert_eq!(request.request, abandoned.request);
+    let request = reopened.next_leased_host_requests(1).pop().unwrap();
+    assert_ne!(request.request.request_id, abandoned.request.request_id);
+    assert_eq!(request.request.request, abandoned.request.request);
     let page = evidence_page(&reopened, fixture.base.episode_id, 0, u16::MAX);
     assert_eq!(page.generation_id, Some(fixture.artifact.generation_id));
 
-    record_rebuild_success(&reopened, &request);
+    record_rebuild_success(&reopened, request);
     assert_eq!(
         operation(&reopened, restarted.command_id).stage,
         OperationStage::Succeeded
@@ -77,7 +87,12 @@ fn cancellation_and_malformed_rebuild_observations_fail_closed() {
     let cancelled = RecallFixture::new(false);
     let command = rebuild_command(4, &cancelled, input_from_fixture(&cancelled));
     cancelled.base.facade.dispatch(command.clone());
-    let request = cancelled.base.facade.next_host_requests(1).pop().unwrap();
+    let request = cancelled
+        .base
+        .facade
+        .next_leased_host_requests(1)
+        .pop()
+        .unwrap();
     cancelled.base.facade.dispatch(CommandEnvelope {
         command_id: CommandId::from_parts(40, 5),
         cancellation_id: CancellationId::from_parts(41, 5),
@@ -91,7 +106,7 @@ fn cancellation_and_malformed_rebuild_observations_fail_closed() {
         .facade
         .snapshot(library_request())
         .state_revision;
-    record_rebuild_success(&cancelled.base.facade, &request);
+    record_rebuild_success(&cancelled.base.facade, request);
     assert_eq!(
         cancelled
             .base
@@ -108,8 +123,13 @@ fn cancellation_and_malformed_rebuild_observations_fail_closed() {
     let malformed = RecallFixture::new(false);
     let command = rebuild_command(6, &malformed, input_from_fixture(&malformed));
     malformed.base.facade.dispatch(command.clone());
-    let request = malformed.base.facade.next_host_requests(1).pop().unwrap();
-    record_rebuild_malformed(&malformed.base.facade, &request);
+    let request = malformed
+        .base
+        .facade
+        .next_leased_host_requests(1)
+        .pop()
+        .unwrap();
+    record_rebuild_malformed(&malformed.base.facade, request);
     let failed = operation(&malformed.base.facade, command.command_id);
     assert_eq!(failed.stage, OperationStage::Failed);
     assert_eq!(
@@ -175,7 +195,8 @@ fn evidence_page(
     value
 }
 
-fn record_rebuild_success(facade: &Pod0Facade, request: &HostRequestEnvelope) {
+fn record_rebuild_success(facade: &Pod0Facade, leased: LeasedHostRequestEnvelope) {
+    let request = &leased.request;
     let HostRequest::EmbedRecallSpans {
         episode_id,
         generation_id,
@@ -185,29 +206,33 @@ fn record_rebuild_success(facade: &Pod0Facade, request: &HostRequestEnvelope) {
     else {
         panic!("expected embedding request");
     };
-    facade.record_host_observation(HostObservationEnvelope {
-        request_id: request.request_id,
-        cancellation_id: request.cancellation_id,
-        observed_request_revision: request.issued_revision,
-        sequence_number: 0,
-        observed_at: UnixTimestampMilliseconds::new(1_800_000_000_300),
-        observation: HostObservation::RecallSpansEmbedded {
-            episode_id: *episode_id,
-            generation_id: *generation_id,
-            embeddings: spans
-                .iter()
-                .map(|span| RecallSpanEmbeddingObservation {
-                    span_id: span.span_id,
-                    embedding: RecallEmbeddingVector {
-                        values: crate::runtime_recall_test_support::recall_test_embedding(),
-                    },
-                })
-                .collect(),
+    facade.record_leased_host_observation(LeasedHostObservationEnvelope {
+        lease: leased.lease,
+        observation: HostObservationEnvelope {
+            request_id: request.request_id,
+            cancellation_id: request.cancellation_id,
+            observed_request_revision: request.issued_revision,
+            sequence_number: 0,
+            observed_at: UnixTimestampMilliseconds::new(leased.lease.expires_at.value - 1),
+            observation: HostObservation::RecallSpansEmbedded {
+                episode_id: *episode_id,
+                generation_id: *generation_id,
+                embeddings: spans
+                    .iter()
+                    .map(|span| RecallSpanEmbeddingObservation {
+                        span_id: span.span_id,
+                        embedding: RecallEmbeddingVector {
+                            values: crate::runtime_recall_test_support::recall_test_embedding(),
+                        },
+                    })
+                    .collect(),
+            },
         },
     });
 }
 
-fn record_rebuild_malformed(facade: &Pod0Facade, request: &HostRequestEnvelope) {
+fn record_rebuild_malformed(facade: &Pod0Facade, leased: LeasedHostRequestEnvelope) {
+    let request = &leased.request;
     let HostRequest::EmbedRecallSpans {
         episode_id,
         generation_id,
@@ -217,24 +242,31 @@ fn record_rebuild_malformed(facade: &Pod0Facade, request: &HostRequestEnvelope) 
     else {
         panic!("expected embedding request");
     };
-    facade.record_host_observation(HostObservationEnvelope {
-        request_id: request.request_id,
-        cancellation_id: request.cancellation_id,
-        observed_request_revision: request.issued_revision,
-        sequence_number: 0,
-        observed_at: UnixTimestampMilliseconds::new(1_800_000_000_300),
-        observation: HostObservation::RecallSpansEmbedded {
-            episode_id: *episode_id,
-            generation_id: *generation_id,
-            embeddings: spans
-                .iter()
-                .map(|span| RecallSpanEmbeddingObservation {
-                    span_id: span.span_id,
-                    embedding: RecallEmbeddingVector { values: vec![1] },
-                })
-                .collect(),
+    let receipt = facade.record_leased_host_observation(LeasedHostObservationEnvelope {
+        lease: leased.lease,
+        observation: HostObservationEnvelope {
+            request_id: request.request_id,
+            cancellation_id: request.cancellation_id,
+            observed_request_revision: request.issued_revision,
+            sequence_number: 0,
+            observed_at: UnixTimestampMilliseconds::new(leased.lease.expires_at.value - 1),
+            observation: HostObservation::RecallSpansEmbedded {
+                episode_id: *episode_id,
+                generation_id: *generation_id,
+                embeddings: spans
+                    .iter()
+                    .map(|span| RecallSpanEmbeddingObservation {
+                        span_id: span.span_id,
+                        embedding: RecallEmbeddingVector { values: vec![1] },
+                    })
+                    .collect(),
+            },
         },
     });
+    assert!(
+        matches!(receipt, HostObservationReceipt::Persisted { .. }),
+        "{receipt:?}"
+    );
 }
 
 fn library_request() -> ProjectionRequest {

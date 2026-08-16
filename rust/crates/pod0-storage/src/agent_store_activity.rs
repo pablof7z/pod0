@@ -38,6 +38,13 @@ impl AgentStore {
         crate::transition_commit::commit_agent_capability_observation(self.path(), input)
     }
 
+    pub fn commit_recall_observation(
+        &self,
+        input: crate::AgentRecallObservationCommitInput,
+    ) -> Result<crate::AgentRecallObservationCommitOutcome, StorageError> {
+        crate::transition_commit::commit_agent_recall_observation(self.path(), input)
+    }
+
     pub fn cancel_turn_activity(
         &self,
         context: AgentCommandContext,

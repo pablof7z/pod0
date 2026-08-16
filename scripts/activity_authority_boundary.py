@@ -6,6 +6,7 @@ from pathlib import Path
 PRIVILEGED_TOKENS = {
     "append_activity_facts(": {
         "rust/crates/pod0-storage/src/activity_store.rs",
+        "rust/crates/pod0-storage/src/transition_commit.rs",
         "rust/crates/pod0-storage/src/transition_commit_planned.rs",
     },
     "JournalAppendAuthority(": {
@@ -26,13 +27,17 @@ PRIVILEGED_TOKENS = {
     },
 }
 NATIVE_DRAIN_TOKENS = {
-    "nextHostRequests(": {"App/Sources/Core/CoreHostRequestReader.swift"},
+    "nextHostRequests(": set(),
     "nextLeasedHostRequests(": {"App/Sources/Core/CoreHostRequestReader.swift"},
-    "recordHostObservation(": {"App/Sources/Core/CoreDurableObservationRecorder.swift"},
+    "recordHostObservation(": set(),
     "recordLeasedHostObservation(": {
         "App/Sources/Core/CoreDurableObservationRecorder.swift"
     },
     "Pod0NativeHostDispatcher(": {"App/Sources/Core/SharedLibraryClient.swift"},
+    "executePersistedLeaseRequest(": {
+        "App/Sources/Core/Pod0NativeHostDispatcher.swift",
+        "App/Sources/Core/Pod0NativeHostDispatcher+LeasedExecution.swift",
+    },
 }
 CAPABILITY_CONSTRUCTORS = (
     "CoreAgentHost(", "CoreChapterModelHost(", "CoreDownloadHost(",
@@ -43,6 +48,16 @@ CAPABILITY_CONSTRUCTORS = (
 FORBIDDEN_NATIVE_AUDIT_TOKENS = (
     "EpisodeAuditLogStore",
     "EpisodeAuditEvent(",
+)
+FORBIDDEN_PUBLIC_AUTHORITY_TOKENS = (
+    "pub struct TransitionCommit",
+    "pub use crate::transition_commit::TransitionCommit",
+    "pub enum TransitionIngressKind",
+    "pub struct TransitionIngress",
+)
+LEGACY_PREBUILT_COMMIT_TOKENS = (
+    ".commit_with(",
+    ".commit_no_state_change(",
 )
 
 
@@ -61,6 +76,23 @@ def validate_privileged_writers(root: Path) -> list[str]:
                 errors.append(
                     f"privileged activity writer token {token!r} in {relative}"
                 )
+        if "test" not in path.name and relative != (
+            "rust/crates/pod0-storage/src/transition_commit.rs"
+        ):
+            for token in LEGACY_PREBUILT_COMMIT_TOKENS:
+                if token in source:
+                    errors.append(
+                        f"prebuilt transition plan bypass {token!r} in {relative}"
+                    )
+        for token in FORBIDDEN_PUBLIC_AUTHORITY_TOKENS:
+            if token in source:
+                errors.append(
+                    f"public raw activity authority {token!r} in {relative}"
+                )
+        if "TransitionCommit::open(" in source and not (
+            path.name.startswith("transition_commit") or "test" in path.name
+        ):
+            errors.append(f"unregistered transition authority owner in {relative}")
     app_root = root / "App/Sources"
     if not app_root.exists():
         return errors

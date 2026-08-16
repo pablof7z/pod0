@@ -32,11 +32,15 @@ struct LiveChapterModelTransport: CoreChapterModelTransporting, Sendable {
     private let ollamaEndpoint: URL
     private let credentialResolver: CredentialResolver
     private let now: @Sendable () -> Date
+    private static let defaultOpenRouterEndpoint = URL(
+        string: "https://openrouter.ai/api/v1/chat/completions"
+    )!
+    private static let defaultOllamaEndpoint = URL(string: "https://ollama.com/api/chat")!
 
     init(
         session: URLSession = .shared,
-        openRouterEndpoint: URL = UtilityLLMClient.defaultEndpoint,
-        ollamaEndpoint: URL = UtilityLLMClient.defaultOllamaEndpoint,
+        openRouterEndpoint: URL = Self.defaultOpenRouterEndpoint,
+        ollamaEndpoint: URL = Self.defaultOllamaEndpoint,
         credentialResolver: @escaping CredentialResolver = {
             try LLMProviderCredentialResolver.apiKey(for: $0)
         },

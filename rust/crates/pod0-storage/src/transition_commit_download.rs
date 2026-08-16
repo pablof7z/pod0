@@ -48,6 +48,15 @@ pub(crate) fn commit_download_admission(
                 let current = prior
                     .as_ref()
                     .map_or(StateRevision::INITIAL, |record| record.workflow_revision);
+                let effect = (changes && planning_input.admitted)
+                    .then(|| {
+                        crate::download_effect_request::start_for_ensure(
+                            prior.as_ref(),
+                            &planning_input,
+                        )
+                    })
+                    .transpose()?
+                    .map(|request| pod0_application::DownloadEffectAuthorization { request });
                 *existing.borrow_mut() = prior;
                 state_changes.set(changes);
                 plan_download_admission(DownloadAdmissionActivityInput {
@@ -57,6 +66,7 @@ pub(crate) fn commit_download_admission(
                     legacy_replay,
                     state_changes: changes,
                     admitted: planning_input.admitted,
+                    effect,
                     origin: origin(planning_input.origin),
                 })
                 .map_err(|_| StorageError::InvalidActivity)
@@ -70,8 +80,11 @@ pub(crate) fn commit_download_admission(
                     return Err(StorageError::RevisionConflict);
                 }
                 match apply_download_ensure(transaction, input)? {
-                    DownloadEnsureOutcome::Changed { record, .. }
-                    | DownloadEnsureOutcome::Existing(record) => Ok(record.workflow_revision),
+                    DownloadEnsureOutcome::Changed { record, .. } => {
+                        retire_download_effects(transaction, episode_id)?;
+                        Ok(record.workflow_revision)
+                    }
+                    DownloadEnsureOutcome::Existing(record) => Ok(record.workflow_revision),
                 }
             },
         )
@@ -127,6 +140,15 @@ pub(crate) fn commit_download_internal_admission(
             let current = prior
                 .as_ref()
                 .map_or(StateRevision::INITIAL, |record| record.workflow_revision);
+            let effect = (changes && planning_input.admitted)
+                .then(|| {
+                    crate::download_effect_request::start_for_ensure(
+                        prior.as_ref(),
+                        &planning_input,
+                    )
+                })
+                .transpose()?
+                .map(|request| pod0_application::DownloadEffectAuthorization { request });
             *existing.borrow_mut() = prior;
             state_changes.set(changes);
             plan_download_internal_admission(DownloadInternalAdmissionActivityInput {
@@ -137,6 +159,7 @@ pub(crate) fn commit_download_internal_admission(
                 current_revision: current,
                 state_changes: changes,
                 admitted: planning_input.admitted,
+                effect,
                 disposition: if changes {
                     pod0_application::RequestDisposition::Accepted
                 } else {
@@ -153,8 +176,11 @@ pub(crate) fn commit_download_internal_admission(
                 return Err(StorageError::RevisionConflict);
             }
             match apply_download_ensure(transaction, input)? {
-                DownloadEnsureOutcome::Changed { record, .. }
-                | DownloadEnsureOutcome::Existing(record) => Ok(record.workflow_revision),
+                DownloadEnsureOutcome::Changed { record, .. } => {
+                    retire_download_effects(transaction, episode_id)?;
+                    Ok(record.workflow_revision)
+                }
+                DownloadEnsureOutcome::Existing(record) => Ok(record.workflow_revision),
             }
         },
     )?;
@@ -182,6 +208,28 @@ fn is_semantic_noop(
                 || record.stage == StoredDownloadStage::Succeeded
                 || (!input.admitted && record.stage == StoredDownloadStage::Waiting))
     })
+}
+
+pub(super) fn retire_download_effects(
+    transaction: &rusqlite::Transaction<'_>,
+    episode_id: pod0_domain::EpisodeId,
+) -> Result<(), StorageError> {
+    transaction
+        .execute(
+            "UPDATE pod0_effect_attempts SET state_code=3 WHERE state_code=1 AND intent_id IN(\
+             SELECT intent_id FROM pod0_effect_intents WHERE episode_id=?1 \
+             AND json_extract(request_json,'$.kind')='Download' AND state_code IN(1,2))",
+            [episode_id.into_bytes().as_slice()],
+        )
+        .map_err(|error| StorageError::sqlite("retire download effect attempts", error))?;
+    transaction
+        .execute(
+            "UPDATE pod0_effect_intents SET state_code=3 WHERE episode_id=?1 \
+             AND json_extract(request_json,'$.kind')='Download' AND state_code IN(1,2)",
+            [episode_id.into_bytes().as_slice()],
+        )
+        .map_err(|error| StorageError::sqlite("retire download effects", error))?;
+    Ok(())
 }
 
 const fn origin(value: StoredDownloadOrigin) -> DownloadIntentOrigin {

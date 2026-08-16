@@ -2,6 +2,9 @@ use crate::runtime_playback_test_support::PlaybackFixture;
 use crate::runtime_recall_test_support::*;
 use crate::*;
 
+#[path = "runtime_recall_failure_tests.rs"]
+mod failure_tests;
+
 #[test]
 fn recall_is_deterministic_bounded_and_preserves_exact_playable_evidence() {
     let first = run_ready_recall(false);
@@ -35,8 +38,18 @@ fn recall_is_deterministic_bounded_and_preserves_exact_playable_evidence() {
 fn cancellation_rejects_late_and_duplicate_observations() {
     let fixture = RecallFixture::new(true);
     let envelope = fixture.dispatch(10, 10, "durable habits");
-    let embedding = fixture.base.facade.next_host_requests(1).pop().unwrap();
-    assert_eq!(fixture.projection(10).stage, RecallStage::Queued);
+    let embedding = fixture
+        .base
+        .facade
+        .next_leased_host_requests(1)
+        .pop()
+        .unwrap();
+    assert_eq!(
+        fixture.projection(10).stage,
+        RecallStage::Running {
+            phase: RecallPhase::Retrieving
+        }
+    );
 
     fixture.base.facade.dispatch(CommandEnvelope {
         command_id: CommandId::from_parts(30, 11),
@@ -53,7 +66,7 @@ fn cancellation_rejects_late_and_duplicate_observations() {
         .facade
         .snapshot(recall_request(10))
         .state_revision;
-    record(
+    let late = record(
         &fixture.base.facade,
         &embedding,
         HostObservation::RecallQueryEmbedded {
@@ -61,6 +74,29 @@ fn cancellation_rejects_late_and_duplicate_observations() {
             embedding: RecallEmbeddingVector { values: vec![1] },
         },
     );
+    assert!(matches!(
+        late,
+        HostObservationReceipt::Rejected {
+            reason: HostObservationRejection::StaleWorkflow,
+            ..
+        }
+    ));
+    let reopened = Pod0Facade::open(fixture.base.target.to_string_lossy().into_owned()).unwrap();
+    assert_eq!(
+        recall_projection(&reopened, 10).stage,
+        RecallStage::Cancelled
+    );
+    assert!(matches!(
+        record(
+            &reopened,
+            &embedding,
+            HostObservation::RecallQueryEmbedded {
+                query_id: RecallQueryId::from_parts(32, 10),
+                embedding: RecallEmbeddingVector { values: vec![1] },
+            },
+        ),
+        HostObservationReceipt::Rejected { .. }
+    ));
     assert_eq!(
         fixture
             .base
@@ -105,7 +141,13 @@ fn invalid_missing_and_unsupported_queries_have_explicit_terminal_state() {
 
     fixture.dispatch(23, 23, "question without a prepared transcript");
     assert_eq!(fixture.projection(23).stage, RecallStage::TranscriptMissing);
-    assert!(fixture.base.facade.next_host_requests(u16::MAX).is_empty());
+    assert!(
+        fixture
+            .base
+            .facade
+            .next_leased_host_requests(u16::MAX)
+            .is_empty()
+    );
 
     let transcript_without_index = PlaybackFixture::new_with_transcript(true);
     transcript_without_index.facade.dispatch(recall_command(
@@ -126,7 +168,7 @@ fn invalid_missing_and_unsupported_queries_have_explicit_terminal_state() {
     unavailable.dispatch(recall_command(24, 24, "question", RecallScope::Library, 2));
     assert_eq!(
         recall_projection(&unavailable, 24).stage,
-        RecallStage::IndexUnavailable
+        RecallStage::Interrupted
     );
 
     let provider_failure = RecallFixture::new(true);
@@ -134,7 +176,7 @@ fn invalid_missing_and_unsupported_queries_have_explicit_terminal_state() {
     let embed = provider_failure
         .base
         .facade
-        .next_host_requests(1)
+        .next_leased_host_requests(1)
         .pop()
         .unwrap();
     record(
@@ -155,7 +197,7 @@ fn invalid_missing_and_unsupported_queries_have_explicit_terminal_state() {
     let embed = unauthorized
         .base
         .facade
-        .next_host_requests(1)
+        .next_leased_host_requests(1)
         .pop()
         .unwrap();
     record(
@@ -198,7 +240,9 @@ fn indexing_and_process_restart_are_explicit() {
         Pod0Facade::open(interrupted.base.target.to_string_lossy().into_owned()).unwrap();
     assert_eq!(
         recall_projection(&reopened, 43).stage,
-        RecallStage::Interrupted
+        RecallStage::Running {
+            phase: RecallPhase::Retrieving
+        }
     );
     reopened.dispatch(recall_command(
         44,
@@ -211,49 +255,6 @@ fn indexing_and_process_restart_are_explicit() {
     ));
     assert!(matches!(
         recall_projection(&reopened, 43).stage,
-        RecallStage::Queued | RecallStage::Running { .. }
+        RecallStage::Running { .. }
     ));
-}
-
-#[test]
-fn malformed_query_embedding_fails_closed_and_optional_rerank_falls_back() {
-    let malformed = RecallFixture::new(true);
-    malformed.dispatch(30, 30, "habit cues");
-    let embed = malformed.base.facade.next_host_requests(1).pop().unwrap();
-    record(
-        &malformed.base.facade,
-        &embed,
-        HostObservation::RecallQueryEmbedded {
-            query_id: RecallQueryId::from_parts(32, 30),
-            embedding: RecallEmbeddingVector {
-                values: vec![10, -10],
-            },
-        },
-    );
-    assert_eq!(
-        malformed.projection(30).stage,
-        RecallStage::IndexUnavailable
-    );
-    assert!(malformed.base.facade.next_host_requests(1).is_empty());
-
-    let fallback = RecallFixture::new(true);
-    fallback.dispatch(31, 31, "habit cues");
-    advance_to_rerank(&fallback, 31);
-    let rerank = fallback.base.facade.next_host_requests(1).pop().unwrap();
-    record(
-        &fallback.base.facade,
-        &rerank,
-        HostObservation::Failed {
-            code: HostFailureCode::ProviderUnavailable,
-            safe_detail: None,
-        },
-    );
-    let projection = fallback.projection(31);
-    assert_eq!(projection.stage, RecallStage::Ready);
-    assert!(
-        projection
-            .evidence
-            .iter()
-            .all(|item| item.score.rerank_rank.is_none())
-    );
 }

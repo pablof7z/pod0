@@ -1,7 +1,8 @@
 use pod0_application::{
     CoreFailureCode, TranscriptProvider, TranscriptWorkflowFailure, TranscriptWorkflowFailureCode,
     TranscriptWorkflowOrigin, TranscriptWorkflowProjection, TranscriptWorkflowStage,
-    TranscriptWorkflowsProjection, transcript_allowed_actions,
+    TranscriptWorkflowsProjection, WorkflowActionKind, WorkflowActionTarget,
+    WorkflowActionToken, transcript_allowed_actions,
 };
 use pod0_domain::{EpisodeId, UnixTimestampMilliseconds};
 use pod0_storage::{StoredTranscriptWorkflowStage, TranscriptWorkflowRecord};
@@ -50,6 +51,7 @@ fn unavailable() -> TranscriptWorkflowsProjection {
 
 fn workflow_projection(record: TranscriptWorkflowRecord) -> TranscriptWorkflowProjection {
     let stage = stage(record.stage);
+    let allowed_actions = transcript_allowed_actions(stage);
     TranscriptWorkflowProjection {
         episode_id: record.episode_id,
         workflow_id: record.request.workflow_id,
@@ -74,7 +76,17 @@ fn workflow_projection(record: TranscriptWorkflowRecord) -> TranscriptWorkflowPr
                 retryable: record.failure_retryable,
             }),
         updated_at: UnixTimestampMilliseconds::new(record.updated_at_ms),
-        allowed_actions: transcript_allowed_actions(stage),
+        retry_action: allowed_actions.can_retry.then(|| WorkflowActionToken::issue(
+            WorkflowActionKind::Retry,
+            WorkflowActionTarget::Transcript { episode_id: record.episode_id },
+            record.workflow_revision,
+        )),
+        cancel_action: allowed_actions.can_cancel.then(|| WorkflowActionToken::issue(
+            WorkflowActionKind::Cancel,
+            WorkflowActionTarget::Transcript { episode_id: record.episode_id },
+            record.workflow_revision,
+        )),
+        allowed_actions,
     }
 }
 

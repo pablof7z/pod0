@@ -94,12 +94,35 @@ pub struct FeedFetchEnsureOutcome {
     pub record: Option<FeedFetchWorkflowRecord>,
 }
 
-pub struct FeedFetchFailureInput {
-    pub request_id: HostRequestId,
-    pub failure_code: String,
-    pub retryable: bool,
-    pub retry_at_ms: Option<i64>,
-    pub retry_deadline_at_ms: Option<i64>,
-    pub issued_revision: StateRevision,
-    pub observed_at_ms: i64,
+#[derive(Clone, Debug)]
+pub enum FeedFetchLeasedObservationAction {
+    Apply {
+        parsed: pod0_application::ParsedPodcastFeed,
+        entity_tag: Option<String>,
+        last_modified: Option<String>,
+    },
+    NotModified {
+        entity_tag: Option<String>,
+        last_modified: Option<String>,
+    },
+    Fail {
+        failure_code: String,
+        retry_at_ms: Option<i64>,
+        retry_deadline_at_ms: Option<i64>,
+    },
+    Cancel,
+}
+
+#[derive(Clone, Debug)]
+pub struct FeedFetchObservationCommitInput {
+    pub lease: pod0_application::PersistedEffectLeaseIdentity,
+    pub observation: pod0_application::DurableFeedHostObservation,
+    pub action: FeedFetchLeasedObservationAction,
+    pub committed_at: pod0_domain::UnixTimestampMilliseconds,
+}
+
+#[derive(Clone, Debug)]
+pub struct FeedFetchObservationCommitOutcome {
+    pub replayed: bool,
+    pub workflow: Option<FeedFetchWorkflowRecord>,
 }

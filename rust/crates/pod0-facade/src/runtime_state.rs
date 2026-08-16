@@ -1,11 +1,11 @@
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::BTreeMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use pod0_application::{
     Clock, CommandEnvelope, CommandLedger, CommandRegistration, CoreFailure, CoreFailureCode,
-    CoreWakeReason, HostCancellationRequest, HostObservation, HostRequestEnvelope,
-    HostRequestLedger, OperationProjection, OperationResult, OperationStage, Projection,
-    SubscriptionRegistry,
+    HostRequestLedger, OperationProjection, OperationResult,
+    OperationStage, Projection, SubscriptionRegistry,
 };
 use pod0_domain::{
     CommandId, EpisodeId, HostRequestId, ListeningDomainSnapshot, RecallQueryId, StateRevision,
@@ -17,16 +17,17 @@ use pod0_storage::{
 };
 
 use crate::ProjectionSubscriber;
-use crate::runtime_agent_modules::state::{PendingAgentRecallObservation, PendingAgentRequest};
 use crate::runtime_delivery_content::ProjectionDeliveryContent;
-use crate::runtime_evidence_state::PendingEvidenceIndex;
 pub(super) use crate::runtime_failure::failure;
 use crate::runtime_playback_state::PlaybackRuntime;
-use crate::runtime_recall_cutover::PendingRecallCutover;
 use crate::runtime_recall_interrupts::{RecallInterruptLease, RecallInterruptRegistry};
-use crate::runtime_recall_state::{PendingRecall, RecallWorkflow};
+use crate::runtime_recall_state::RecallWorkflow;
+use crate::user_data_erasure_facade::{ErasureLifecycle, PreparedFacadeErasure};
 
 pub(super) struct FacadeState {
+    pub(super) core_store_path: Option<PathBuf>,
+    pub(super) erasure_lifecycle: ErasureLifecycle,
+    pub(super) prepared_erasure: Option<PreparedFacadeErasure>,
     pub(super) clock: Arc<dyn Clock>,
     pub(super) revision: StateRevision,
     pub(super) listening: ListeningDomainSnapshot,
@@ -41,45 +42,13 @@ pub(super) struct FacadeState {
     pub(super) scheduled_agent_store: Option<ScheduledAgentStore>,
     pub(super) agent_store: Option<AgentStore>,
     pub(super) publication_store: Option<PublicationStore>,
-    pub(super) pending_publications: VecDeque<pod0_application::Pod0PublicationDraft>,
     pub(super) recall_index: RecallIndex,
     pub(super) recall_configuration: pod0_domain::RecallConfiguration,
     pub(super) recall_interrupts: Arc<RecallInterruptRegistry>,
     pub(super) commands: CommandLedger,
     pub(super) host_requests: HostRequestLedger,
-    pub(super) host_queue: VecDeque<HostRequestEnvelope>,
-    pub(super) host_cancellations: VecDeque<HostCancellationRequest>,
-    pub(super) pending_feeds:
-        BTreeMap<pod0_domain::HostRequestId, pod0_storage::FeedFetchWorkflowRecord>,
     pub(super) feed_fetches: Vec<pod0_storage::FeedFetchWorkflowRecord>,
-    pub(super) pending_publisher_chapters:
-        BTreeMap<HostRequestId, pod0_storage::PublisherChapterWorkflowRecord>,
-    pub(super) pending_publisher_observations: BTreeMap<HostRequestId, HostObservation>,
-    pub(super) pending_downloads: BTreeMap<HostRequestId, pod0_storage::DownloadHostRequestRecord>,
-    pub(super) pending_download_observations:
-        BTreeMap<HostRequestId, pod0_application::HostObservationEnvelope>,
-    pub(super) pending_feed_discovery_notifications:
-        BTreeMap<HostRequestId, pod0_storage::FeedDiscoveryEffectRecord>,
-    pub(super) pending_feed_discovery_notification_observations:
-        BTreeMap<HostRequestId, pod0_application::HostObservationEnvelope>,
-    pub(super) pending_model_chapters: BTreeMap<HostRequestId, pod0_domain::EpisodeId>,
-    pub(super) pending_model_observations:
-        BTreeMap<HostRequestId, pod0_application::HostObservationEnvelope>,
     pub(super) pending_transcripts: BTreeMap<HostRequestId, EpisodeId>,
-    pub(super) pending_scheduled_agents:
-        BTreeMap<HostRequestId, pod0_storage::ScheduledAgentHostRequestRecord>,
-    pub(super) pending_scheduled_agent_observations:
-        BTreeMap<HostRequestId, pod0_application::HostObservationEnvelope>,
-    pub(super) pending_agents: BTreeMap<HostRequestId, PendingAgentRequest>,
-    pub(super) pending_agent_observations:
-        BTreeMap<HostRequestId, pod0_application::HostObservationEnvelope>,
-    pub(super) pending_agent_recalls: BTreeMap<RecallQueryId, pod0_domain::AgentTurnId>,
-    pub(super) pending_agent_recall_observations:
-        BTreeMap<HostRequestId, PendingAgentRecallObservation>,
-    pub(super) pending_core_wakes: BTreeMap<HostRequestId, CoreWakeReason>,
-    pub(super) pending_evidence_indexes: BTreeMap<HostRequestId, PendingEvidenceIndex>,
-    pub(super) pending_recall_cutovers: BTreeMap<HostRequestId, PendingRecallCutover>,
-    pub(super) pending_recalls: BTreeMap<HostRequestId, PendingRecall>,
     pub(super) recalls: BTreeMap<RecallQueryId, RecallWorkflow>,
     pub(super) playback: PlaybackRuntime,
     pub(super) operations: Vec<OperationProjection>,
@@ -108,6 +77,9 @@ impl FacadeState {
     }
 
     pub(super) fn dispatch(&mut self, envelope: CommandEnvelope) -> bool {
+        if self.erasure_lifecycle != ErasureLifecycle::Active {
+            return false;
+        }
         match self.commands.register(envelope.clone(), self.revision) {
             CommandRegistration::Accepted => self.accept_command(envelope),
             CommandRegistration::StaleRevision => {

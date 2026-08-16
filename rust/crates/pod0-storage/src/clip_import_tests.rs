@@ -1,5 +1,9 @@
 use std::fs;
 
+use pod0_application::{
+    ActivityActor, ActivityFact, ActivityOrigin, CommandActivityIdentity,
+    user_artifact_migration_command_id,
+};
 use rusqlite::Connection;
 
 use crate::listening_import_test_support::*;
@@ -8,6 +12,9 @@ use crate::{
     commit_listening_cutover, commit_note_cutover, inspect_legacy_clip_source,
     inspect_legacy_note_source, read_clip_import,
 };
+
+#[path = "clip_import_compatibility_tests.rs"]
+mod compatibility;
 
 impl ClipImportClock for FixedClock {
     fn now_milliseconds(&self) -> i64 {
@@ -85,6 +92,18 @@ pub(crate) fn metadata_with_clips() -> serde_json::Value {
     metadata
 }
 
+fn clip_cutover_activity(
+    fixture: &ImportFixture,
+) -> Vec<pod0_application::CommittedActivityFact> {
+    let command_id = user_artifact_migration_command_id("clips", "commit", id(5));
+    let correlation = CommandActivityIdentity::new(command_id).correlation_id();
+    crate::ActivityStore::open(&fixture.target)
+        .unwrap()
+        .page_for_correlation(correlation, None, 20)
+        .unwrap()
+        .items
+}
+
 #[test]
 fn swift_clips_are_backed_up_staged_verified_and_reopened_losslessly() {
     let fixture = ImportFixture::new();
@@ -146,8 +165,27 @@ fn swift_clips_are_backed_up_staged_verified_and_reopened_losslessly() {
     assert_eq!(first.speaker_id.unwrap().into_bytes(), [0xbb; 16]);
     assert!(verification.snapshot.clips[0].deleted);
 
+    assert_eq!(
+        LibraryStore::open_authoritative(&fixture.target)
+            .unwrap()
+            .clip_snapshot()
+            .unwrap_err(),
+        StorageError::CutoverNotAuthoritative
+    );
+    assert!(clip_cutover_activity(&fixture).is_empty());
     assert!(!commit_clip_cutover(&fixture.source, &fixture.target, 1_721_323_000_101).unwrap());
+    let activity = clip_cutover_activity(&fixture);
+    assert_eq!(activity.len(), 3);
+    assert!(activity.iter().all(|fact| {
+        fact.draft.actor == ActivityActor::Migration
+            && fact.draft.origin == ActivityOrigin::Migration
+    }));
+    assert!(matches!(
+        activity[2].draft.fact,
+        ActivityFact::AuthorityCutover { .. }
+    ));
     assert!(commit_clip_cutover(&fixture.source, &fixture.target, 1_721_323_000_102).unwrap());
+    assert_eq!(clip_cutover_activity(&fixture), activity);
     let reopened = LibraryStore::open_authoritative(&fixture.target).unwrap();
     assert_eq!(reopened.clip_snapshot().unwrap(), verification.snapshot);
 }
@@ -196,83 +234,4 @@ fn interrupted_clip_import_rolls_back_and_retry_recovers() {
             .unwrap()
             .staged
     );
-}
-
-#[test]
-fn older_defaults_and_changed_or_ambiguous_clip_sources_are_deterministic() {
-    let fixture = ImportFixture::new();
-    let mut metadata = current_metadata(5);
-    metadata["episodes"] = serde_json::json!([episode(EPISODE_ID, "guid-1")]);
-    metadata["notes"] = serde_json::json!([]);
-    metadata["clips"] = serde_json::json!([{
-        "id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
-        "episodeID": EPISODE_ID,
-        "subscriptionID": PODCAST_ID,
-        "startMs": 10, "endMs": 20
-    }]);
-    prepare_json_prerequisites(&fixture, &metadata);
-    let plan = inspect_legacy_clip_source(&fixture.source).unwrap();
-    ClipImporter::new(FixedClock)
-        .stage(
-            &fixture.source,
-            &fixture._directory.path().join("old-clips.backup.json"),
-            &fixture.target,
-            &fixture.target_backup,
-            &plan,
-            id(5),
-            id(4),
-        )
-        .unwrap();
-    let clip = read_clip_import(&fixture.target, id(5))
-        .unwrap()
-        .snapshot
-        .clips
-        .remove(0);
-    assert_eq!(clip.clip_id.into_bytes(), [0xdd; 16]);
-    assert_eq!(clip.created_at.value, 0);
-    assert_eq!(clip.source, pod0_domain::ClipSource::Touch);
-    assert!(clip.frozen_transcript_text.is_empty());
-
-    let changed = ImportFixture::new();
-    prepare_json_prerequisites(&changed, &metadata);
-    let inspected = inspect_legacy_clip_source(&changed.source).unwrap();
-    let mut edited = metadata.clone();
-    edited["clips"][0]["endMs"] = serde_json::json!(21);
-    fs::write(&changed.source, serde_json::to_vec(&edited).unwrap()).unwrap();
-    assert_eq!(
-        ClipImporter::new(FixedClock)
-            .stage(
-                &changed.source,
-                &changed._directory.path().join("changed.backup.json"),
-                &changed.target,
-                &changed.target_backup,
-                &inspected,
-                id(5),
-                id(4),
-            )
-            .unwrap_err(),
-        StorageError::SourceChanged
-    );
-
-    for clips in [
-        serde_json::json!([
-            {"id":"eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee","episodeID":EPISODE_ID,"subscriptionID":PODCAST_ID,"startMs":1,"endMs":2},
-            {"id":"eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee","episodeID":EPISODE_ID,"subscriptionID":PODCAST_ID,"startMs":2,"endMs":3}
-        ]),
-        serde_json::json!([
-            {"id":"ffffffff-ffff-ffff-ffff-ffffffffffff","episodeID":EPISODE_ID,"subscriptionID":PODCAST_ID,"startMs":5,"endMs":5}
-        ]),
-        serde_json::json!([
-            {"id":"11111111-aaaa-aaaa-aaaa-aaaaaaaaaaaa","episodeID":EPISODE_ID,"subscriptionID":PODCAST_ID,"startMs":1,"endMs":2,"source":"future"}
-        ]),
-    ] {
-        let invalid = ImportFixture::new();
-        let mut value = metadata.clone();
-        value["clips"] = clips;
-        fs::write(&invalid.source, serde_json::to_vec(&value).unwrap()).unwrap();
-        assert!(matches!(
-            inspect_legacy_clip_source(&invalid.source),
-            Err(StorageError::InvalidLegacyRecord { .. })
-        ));
-    }
 }

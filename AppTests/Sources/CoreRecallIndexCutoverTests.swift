@@ -26,7 +26,8 @@ final class CoreRecallIndexCutoverTests: XCTestCase {
             expectedRevision: nil,
             command: .commitRecallIndexCutover
         ))
-        let request = try XCTUnwrap(facade.nextHostRequests(maximumCount: 1).first)
+        let leased = try XCTUnwrap(facade.nextLeasedHostRequests(maximumCount: 1).first)
+        let request = leased.request
         XCTAssertEqual(request.request, .removeLegacyRecallIndexArtifacts)
 
         let host = makeHost(legacyIndexURL: legacy)
@@ -35,13 +36,16 @@ final class CoreRecallIndexCutoverTests: XCTestCase {
             observation,
             .legacyRecallIndexArtifactsRemoved(removedFileCount: 3)
         )
-        _ = facade.recordHostObservation(observation: HostObservationEnvelope(
-            requestId: request.requestId,
-            cancellationId: request.cancellationId,
-            observedRequestRevision: request.issuedRevision,
-            sequenceNumber: 0,
-            observedAt: UnixTimestampMilliseconds(value: 1_800_000_000_000),
-            observation: observation
+        _ = facade.recordLeasedHostObservation(observation: LeasedHostObservationEnvelope(
+            lease: leased.lease,
+            observation: HostObservationEnvelope(
+                requestId: request.requestId,
+                cancellationId: request.cancellationId,
+                observedRequestRevision: request.issuedRevision,
+                sequenceNumber: 0,
+                observedAt: leased.lease.expiresAt,
+                observation: observation
+            )
         ))
 
         let operation = try XCTUnwrap(operation(facade, commandID: commandID))

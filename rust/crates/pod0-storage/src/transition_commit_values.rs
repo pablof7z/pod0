@@ -44,6 +44,12 @@ fn subject(value: ActivitySubject) -> (u8, Option<[u8; 16]>) {
         ActivitySubject::Memory { memory_id } => (9, Some(memory_id.into_bytes())),
         ActivitySubject::Clip { clip_id } => (10, Some(clip_id.into_bytes())),
         ActivitySubject::Operation { command_id } => (11, Some(command_id.into_bytes())),
+        ActivitySubject::SpeakerEntity { speaker_entity_id } => {
+            (12, Some(speaker_entity_id.into_bytes()))
+        }
+        ActivitySubject::TranscriptArtifact { artifact_id } => {
+            (13, Some(artifact_id.into_bytes()))
+        }
     }
 }
 
@@ -63,6 +69,10 @@ const fn effect_kind_code(value: ExternalEffectKind) -> u8 {
         ExternalEffectKind::CoreWake => 12,
         ExternalEffectKind::Filesystem => 13,
         ExternalEffectKind::Publication => 14,
+        ExternalEffectKind::PublisherChapterProvider
+        | ExternalEffectKind::ModelChapterProvider => 4,
+        ExternalEffectKind::Cancellation => 16,
+        ExternalEffectKind::LibraryNetwork => 17,
     }
 }
 

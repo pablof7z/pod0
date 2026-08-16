@@ -1,6 +1,9 @@
 use pod0_domain::ContentDigest;
 use rusqlite::{Connection, OptionalExtension, Transaction, params};
 
+// Stage/verify/discard operate only on inactive migration rows. The read model projects them as
+// empty; the sole authority flip is the typed `TransitionCommit` reached by `commit_*` below.
+
 use crate::{
     LegacyMemoryCutoverInput, LegacyMemoryCutoverReport, LibraryStore, MemoryCutoverState,
     StorageError, memory_source_fingerprint, memory_source_generation,
@@ -94,48 +97,11 @@ impl LibraryStore {
         source_generation: u64,
         observed_at_ms: i64,
     ) -> Result<LegacyMemoryCutoverReport, StorageError> {
-        self.write(|transaction| {
-            let report = matching_report(transaction, source_generation)?;
-            if matches!(report.state, MemoryCutoverState::Authoritative { .. }) {
-                return Ok(report);
-            }
-            if !matches!(report.state, MemoryCutoverState::Verified { .. }) {
-                return Err(StorageError::RevisionConflict);
-            }
-            verify_rows(transaction, &report)?;
-            let core_revision: i64 = transaction
-                .query_row(
-                    "SELECT COALESCE(MAX(applied_revision),0) FROM pod0_library_commands",
-                    [],
-                    |row| row.get(0),
-                )
-                .map_err(|error| StorageError::sqlite("read memory cutover revision", error))?;
-            transaction
-                .execute(
-                    "UPDATE pod0_memory_state SET authority_active=1,collection_revision=?1 \
-                     WHERE singleton=1 AND authority_active=0",
-                    [core_revision],
-                )
-                .map_err(|error| StorageError::sqlite("commit memory authority", error))?;
-            if transaction.changes() != 1 {
-                return Err(StorageError::RevisionConflict);
-            }
-            transaction
-                .execute(
-                    "INSERT INTO pod0_domain_cutovers(domain,state,source_generation,core_revision,\
-                     committed_at_ms) VALUES('memories','authoritative',?1,?2,?3)",
-                    params![to_i64(source_generation)?, core_revision, observed_at_ms],
-                )
-                .map_err(|error| StorageError::sqlite("commit memory cutover marker", error))?;
-            transaction
-                .execute(
-                    "UPDATE pod0_memory_cutover_evidence SET state='authoritative',\
-                     committed_at_ms=?1 WHERE singleton=1 AND state='verified'",
-                    [observed_at_ms],
-                )
-                .map_err(|error| StorageError::sqlite("commit memory evidence", error))?;
-            read_evidence(transaction)?.ok_or(StorageError::RevisionConflict)
-        })
+        crate::transition_commit::commit_memory_cutover(
+            self.path(),
+            source_generation,
+            observed_at_ms,
+        )
     }
 
     pub fn discard_staged_legacy_memory_cutover(

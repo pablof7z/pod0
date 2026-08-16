@@ -36,6 +36,12 @@ struct EpisodeActivityEntryRow: View {
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text(entry.title))
+            .accessibilityValue(Text("\(entry.summary), \(timestamp.formatted())"))
+            .accessibilityHint(
+                isExpanded ? "Hides diagnostic details" : "Shows diagnostic details"
+            )
             if isExpanded { detailGrid.padding(.leading, 34) }
         }
         .padding(.vertical, 2)

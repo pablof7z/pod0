@@ -1,9 +1,16 @@
+pub(crate) use super::test_support::{
+    next_leased_agent_request, observe, record_leased_agent_observation, start_command, uuid_string,
+};
 use crate::runtime_playback_test_support::PlaybackFixture;
 use crate::*;
-pub(crate) use super::test_support::{
-    next_leased_agent_request, observe, record_leased_agent_observation, start_command,
-    uuid_string,
-};
+
+struct AgentRecoveryClock(i64);
+
+impl pod0_application::Clock for AgentRecoveryClock {
+    fn now(&self) -> UnixTimestampMilliseconds {
+        UnixTimestampMilliseconds::new(self.0)
+    }
+}
 
 fn turn(facade: &Pod0Facade, command_id: CommandId) -> AgentTurnProjection {
     let conversation_id = ConversationId::from_bytes(command_id.into_bytes());
@@ -225,12 +232,15 @@ fn native_action_is_fenced_and_restart_never_blindly_replays_it() {
         HostRequest::ExecuteAgentCapability { .. }
     ));
 
-    let reopened = Pod0Facade::open(fixture.target.to_string_lossy().into_owned()).unwrap();
+    let reopened = Pod0Facade::open_with_clock(
+        fixture.target.to_string_lossy().into_owned(),
+        std::sync::Arc::new(AgentRecoveryClock(capability.lease.expires_at.value + 1)),
+    );
+    assert!(reopened.next_leased_host_requests(1).is_empty());
     assert_eq!(
         turn(&reopened, start.command_id).stage,
-        AgentTurnStage::Executing
+        AgentTurnStage::OutcomeAmbiguous
     );
-    assert!(reopened.next_host_requests(8).is_empty());
     assert!(reopened.next_leased_host_requests(1).is_empty());
 }
 

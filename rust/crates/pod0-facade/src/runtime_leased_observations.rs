@@ -1,7 +1,7 @@
 use pod0_application::{
-    DurableAgentApprovalHostObservation, DurableAgentModelHostObservation,
-    DurableRecallHostObservation, HostObservationReceipt, HostObservationRejection,
-    LeasedHostObservationEnvelope, ObservationAcceptance,
+    DurableAgentApprovalHostObservation, DurableAgentModelHostObservation, DurableEffectExecution,
+    DurableEvidenceEmbeddingEffectRequest, DurableRecallHostObservation, HostObservationReceipt,
+    HostObservationRejection, LeasedHostObservationEnvelope,
 };
 use pod0_storage::{
     AgentApprovalObservationCommitInput, AgentModelObservationCommitInput,
@@ -9,8 +9,7 @@ use pod0_storage::{
 };
 
 use crate::runtime_chapter_model_receipts::{persisted, retain};
-use crate::runtime_evidence_state::{EvidenceIndexCompletion, PendingEvidenceIndex};
-use crate::runtime_observation_mapping::rejected;
+use crate::runtime_evidence_commands::pending_from_effect;
 use crate::runtime_state::FacadeState;
 
 impl FacadeState {
@@ -91,20 +90,24 @@ impl FacadeState {
         durable: DurableRecallHostObservation,
     ) -> (bool, HostObservationReceipt) {
         let request_id = leased.observation.request_id;
-        let acceptance = self.host_requests.validate_observation(&leased.observation);
-        if acceptance != ObservationAcceptance::Accepted {
-            return (false, rejected(request_id, acceptance));
-        }
         let Some(store) = self.store.clone() else {
             return (false, retain(request_id));
         };
-        let pending = self
-            .pending_evidence_indexes
-            .remove(&request_id)
-            .or_else(|| self.reconstruct_pending_evidence(&durable));
-        let Some(pending) = pending else {
-            return (false, retain(request_id));
+        let request = store
+            .effect_request(leased.lease.intent_id)
+            .ok()
+            .flatten()
+            .and_then(|effect| match effect.execution {
+                DurableEffectExecution::EvidenceEmbedding { request } => Some(request),
+                _ => None,
+            });
+        let Some(request) = request else {
+            return (false, stale(request_id));
         };
+        if !matches_evidence_observation(&request, &durable) {
+            return (false, mismatched(request_id));
+        };
+        let pending = pending_from_effect(request);
         let committed = match store.commit_evidence_observation(EvidenceObservationCommitInput {
             lease: leased.lease,
             observation: durable.clone(),
@@ -119,46 +122,10 @@ impl FacadeState {
                 rejected_payload(request_id, HostObservationRejection::Duplicate),
             );
         }
-        if self.host_requests.accept_observation(&leased.observation)
-            != ObservationAcceptance::Accepted
-        {
-            return (false, retain(request_id));
-        }
+        self.host_requests.retire(request_id);
         self.finish_evidence_index_observation(pending, leased.observation.observation);
         self.advance_revision();
         (true, persisted(request_id, true))
-    }
-
-    fn reconstruct_pending_evidence(
-        &self,
-        observation: &DurableRecallHostObservation,
-    ) -> Option<PendingEvidenceIndex> {
-        let workflow = self
-            .store
-            .as_ref()?
-            .transcript_workflow(observation.episode_id)
-            .ok()??;
-        let artifact = self
-            .evidence_store
-            .as_ref()?
-            .selected_artifact(observation.episode_id)
-            .ok()??;
-        (artifact.generation_id == observation.generation_id).then_some(PendingEvidenceIndex {
-            command_id: workflow.command_id,
-            cancellation_id: workflow.cancellation_id,
-            episode_id: observation.episode_id,
-            generation_id: observation.generation_id,
-            expected_span_count: u32::try_from(artifact.spans.len()).ok()?,
-            requested_span_ids: observation
-                .embeddings
-                .iter()
-                .map(|embedding| embedding.span_id)
-                .collect(),
-            completion: EvidenceIndexCompletion::TranscriptWorkflow {
-                workflow_id: workflow.request.workflow_id,
-                input_version: workflow.evidence_input_version?,
-            },
-        })
     }
 
     pub(super) fn apply_committed_transcript_observation(
@@ -179,6 +146,32 @@ impl FacadeState {
             _ => {}
         }
     }
+}
+
+fn matches_evidence_observation(
+    request: &DurableEvidenceEmbeddingEffectRequest,
+    observation: &DurableRecallHostObservation,
+) -> bool {
+    request.request_id == observation.request_id
+        && request.cancellation_id == observation.cancellation_id
+        && request.issued_revision == observation.observed_request_revision
+        && request.episode_id == observation.episode_id
+        && request.generation_id == observation.generation_id
+        && request.spans.len() == observation.embeddings.len()
+        && request.spans.iter().all(|span| {
+            observation
+                .embeddings
+                .iter()
+                .any(|embedding| embedding.span_id == span.span_id)
+        })
+}
+
+fn stale(request_id: pod0_domain::HostRequestId) -> HostObservationReceipt {
+    rejected_payload(request_id, HostObservationRejection::StaleWorkflow)
+}
+
+fn mismatched(request_id: pod0_domain::HostRequestId) -> HostObservationReceipt {
+    rejected_payload(request_id, HostObservationRejection::MismatchedPayload)
 }
 
 pub(crate) fn rejected_payload(

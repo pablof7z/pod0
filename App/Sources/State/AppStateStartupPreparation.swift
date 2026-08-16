@@ -17,6 +17,16 @@ enum AppStateStartupPreparer {
         persistence: Persistence,
         sharedFeedHost: (any CoreFeedHosting)?
     ) -> AppStateStartupPreparation {
+        do {
+            let locations = try persistence.userDataErasureLocations()
+            if try recoverPendingErasure(locations: locations) != nil {
+                logger.error("User-data erasure recovery is pending; startup remains fenced")
+                return blockedPreparation()
+            }
+        } catch {
+            logger.error("User-data erasure recovery validation failed; startup remains fenced")
+            return blockedPreparation()
+        }
         var loadedState: AppState
         do {
             let chapterAuthorityActive = FileManager.default.fileExists(
@@ -31,13 +41,7 @@ enum AppStateStartupPreparer {
             logger.error(
                 "Persistence.load failed; startup is blocked and persisted data is untouched"
             )
-            return AppStateStartupPreparation(
-                state: AppState(),
-                loadFailed: true,
-                bootstrap: nil,
-                needsNativeProjectionRetirement: false,
-                needsRecallConfigurationRetirement: false
-            )
+            return blockedPreparation()
         }
 
         AppStateStore.migrateLegacyOpenRouterSecretIfNeeded(
@@ -73,6 +77,16 @@ enum AppStateStartupPreparer {
             bootstrap: bootstrap,
             needsNativeProjectionRetirement: needsNativeRetirement,
             needsRecallConfigurationRetirement: needsRecallRetirement
+        )
+    }
+
+    private static func blockedPreparation() -> AppStateStartupPreparation {
+        AppStateStartupPreparation(
+            state: AppState(),
+            loadFailed: true,
+            bootstrap: nil,
+            needsNativeProjectionRetirement: false,
+            needsRecallConfigurationRetirement: false
         )
     }
 

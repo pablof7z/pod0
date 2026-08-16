@@ -3,7 +3,8 @@ use pod0_application::{
     CoreFailureCode, ModelChapterWorkflowFailure, ModelChapterWorkflowMode,
     ModelChapterWorkflowProjection, PublisherChapterWorkflowFailure,
     PublisherChapterWorkflowFailureCode, PublisherChapterWorkflowProjection,
-    PublisherChapterWorkflowStage, model_chapter_allowed_actions,
+    PublisherChapterWorkflowStage, WorkflowActionKind, WorkflowActionTarget,
+    WorkflowActionToken, model_chapter_allowed_actions,
 };
 use pod0_domain::{EpisodeId, UnixTimestampMilliseconds};
 use pod0_storage::{
@@ -75,6 +76,7 @@ fn model_projection(record: ModelChapterWorkflowRecord) -> ModelChapterWorkflowP
         retry: value.retry,
         may_have_submitted: value.may_have_submitted,
     });
+    let allowed_actions = model_chapter_allowed_actions(stage, classification);
     ModelChapterWorkflowProjection {
         episode_id: record.episode_id,
         configured_model: record.desired_configured_model,
@@ -102,7 +104,17 @@ fn model_projection(record: ModelChapterWorkflowRecord) -> ModelChapterWorkflowP
         may_have_submitted: record.may_have_submitted,
         created_at: UnixTimestampMilliseconds::new(record.created_at_ms),
         updated_at: UnixTimestampMilliseconds::new(record.updated_at_ms),
-        allowed_actions: model_chapter_allowed_actions(stage, classification),
+        retry_action: allowed_actions.can_retry.then(|| WorkflowActionToken::issue(
+            WorkflowActionKind::Retry,
+            WorkflowActionTarget::ModelChapters { episode_id: record.episode_id },
+            record.workflow_revision,
+        )),
+        cancel_action: allowed_actions.can_cancel.then(|| WorkflowActionToken::issue(
+            WorkflowActionKind::Cancel,
+            WorkflowActionTarget::ModelChapters { episode_id: record.episode_id },
+            record.workflow_revision,
+        )),
+        allowed_actions,
     }
 }
 
@@ -160,6 +172,15 @@ fn publisher_projection(
                 safe_detail: record.failure_detail.clone(),
                 retryable: record.state == PublisherChapterWorkflowState::RetryScheduled,
             });
+    let can_retry = matches!(
+        record.state,
+        PublisherChapterWorkflowState::Failed | PublisherChapterWorkflowState::Cancelled
+    );
+    let can_cancel = matches!(
+        record.state,
+        PublisherChapterWorkflowState::Requested
+            | PublisherChapterWorkflowState::RetryScheduled
+    );
     PublisherChapterWorkflowProjection {
         episode_id: record.episode_id,
         source_version: record.source_version,
@@ -174,15 +195,18 @@ fn publisher_projection(
         failure: failure_value,
         created_at: UnixTimestampMilliseconds::new(record.created_at_ms),
         updated_at: UnixTimestampMilliseconds::new(record.updated_at_ms),
-        can_retry: matches!(
-            record.state,
-            PublisherChapterWorkflowState::Failed | PublisherChapterWorkflowState::Cancelled
-        ),
-        can_cancel: matches!(
-            record.state,
-            PublisherChapterWorkflowState::Requested
-                | PublisherChapterWorkflowState::RetryScheduled
-        ),
+        can_retry,
+        can_cancel,
+        retry_action: can_retry.then(|| WorkflowActionToken::issue(
+            WorkflowActionKind::Retry,
+            WorkflowActionTarget::PublisherChapters { episode_id: record.episode_id },
+            record.workflow_revision,
+        )),
+        cancel_action: can_cancel.then(|| WorkflowActionToken::issue(
+            WorkflowActionKind::Cancel,
+            WorkflowActionTarget::PublisherChapters { episode_id: record.episode_id },
+            record.workflow_revision,
+        )),
     }
 }
 

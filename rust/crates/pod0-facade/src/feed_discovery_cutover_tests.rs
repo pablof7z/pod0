@@ -49,7 +49,7 @@ fn typed_feed_discovery_cutover_preserves_ambiguous_delivery_without_redelivery(
     );
     assert_eq!(staged.stage, LegacyFeedDiscoveryCutoverStage::Staged);
     assert_eq!(staged.source_generation, Some(generation));
-    assert!(fixture.facade.next_host_requests(10).is_empty());
+    assert!(fixture.facade.next_leased_host_requests(10).is_empty());
 
     let committed = fixture
         .facade
@@ -59,6 +59,6 @@ fn typed_feed_discovery_cutover_preserves_ambiguous_delivery_without_redelivery(
         LegacyFeedDiscoveryCutoverStage::Authoritative
     );
     assert_eq!(committed.ambiguous_count, 1);
-    assert!(fixture.facade.next_host_requests(10).is_empty());
+    assert!(fixture.facade.next_leased_host_requests(10).is_empty());
     assert_eq!(fixture.facade.feed_discovery_cutover(), committed);
 }

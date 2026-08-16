@@ -36,6 +36,15 @@ final class CostLedger: ObservableObject {
             .appendingPathComponent("ledger.json"), now: Date.init, writeMode: writeMode)
     }
 
+    nonisolated static var erasureFileURL: URL {
+        let base = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first ?? FileManager.default.temporaryDirectory
+        return base.appendingPathComponent("UsageLedger", isDirectory: true)
+            .appendingPathComponent("ledger.json")
+    }
+
     convenience init(fileURL: URL, now: @escaping () -> Date = Date.init) {
         self.init(fileURL: fileURL, now: now, writeMode: .immediate)
     }
@@ -139,6 +148,13 @@ final class CostLedger: ObservableObject {
         records = []
         persistenceStatus = .ready
         save()
+    }
+
+    func fenceForUserDataErasure() async {
+        await backgroundWriteTail?.value
+        backgroundWriteTail = nil
+        records = []
+        persistenceStatus = .ready
     }
 
     private func append(_ record: UsageRecord) {

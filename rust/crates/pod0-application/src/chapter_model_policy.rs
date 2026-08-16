@@ -63,7 +63,7 @@ pub struct ChapterModelPlanInput {
     pub configured_model: String,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum ChapterModelResponseFormat {
     JsonObject,
     Unsupported { wire_code: u32 },

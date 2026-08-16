@@ -2,7 +2,7 @@ use pod0_application::{
     CommandEnvelope, CoreFailureCode, OperationStage, PUBLISHER_CHAPTER_MAX_ATTEMPTS,
     PUBLISHER_CHAPTER_REQUEST_DEADLINE_MILLISECONDS, publisher_chapter_source_version,
 };
-use pod0_domain::{CancellationId, CommandId, EpisodeId, StateRevision};
+use pod0_domain::{CancellationId, CommandId, ContentDigest, EpisodeId, StateRevision};
 use pod0_storage::{PublisherChapterEnsureOutcome, PublisherChapterWorkflowState};
 
 use crate::runtime_state::FacadeState;
@@ -18,6 +18,7 @@ impl FacadeState {
             episode_id,
             envelope.cancellation_id,
             envelope.command_id,
+            false,
             false,
         );
     }
@@ -53,12 +54,14 @@ impl FacadeState {
             envelope.cancellation_id,
             envelope.command_id,
             true,
+            false,
         );
     }
 
     pub(super) fn cancel_publisher_chapters(
         &mut self,
         envelope: &CommandEnvelope,
+        fingerprint: ContentDigest,
         episode_id: EpisodeId,
         expected_revision: StateRevision,
     ) {
@@ -77,7 +80,9 @@ impl FacadeState {
                 return;
             }
         };
-        match store.cancel_publisher_chapter_workflow(
+        match store.cancel_publisher_chapter_command(
+            envelope.command_id,
+            fingerprint,
             episode_id,
             expected_revision,
             self.now().value,
@@ -97,6 +102,7 @@ impl FacadeState {
         cancellation_id: CancellationId,
         command_id: CommandId,
         force_retry: bool,
+        recovery: bool,
     ) -> bool {
         if let Err(error) = self.reload_listening() {
             self.fail(command_id, storage_failure(error));
@@ -117,7 +123,12 @@ impl FacadeState {
             return false;
         };
         let Some(source_url) = episode.feed_metadata.chapters_url else {
-            match store.mark_publisher_chapter_source_absent(episode_id, self.now().value) {
+            match store.mark_publisher_chapter_source_absent(
+                episode_id,
+                command_id,
+                self.now().value,
+                recovery,
+            ) {
                 Ok(Some(record)) => self.withdraw_publisher_chapter_request(&record),
                 Ok(None) => {}
                 Err(error) => {
@@ -138,38 +149,41 @@ impl FacadeState {
             self.fail(command_id, CoreFailureCode::InvalidCommand);
             return true;
         };
-        let result = store.ensure_publisher_chapter_workflow(
-            episode_id,
-            &source_url,
-            &source_version,
-            command_id,
-            cancellation_id,
-            self.revision,
-            now,
-            deadline_at,
-            PUBLISHER_CHAPTER_MAX_ATTEMPTS,
-            force_retry,
-        );
+        let result = if recovery {
+            store.recover_publisher_chapter_workflow(
+                episode_id,
+                &source_url,
+                &source_version,
+                command_id,
+                cancellation_id,
+                self.revision,
+                now,
+                deadline_at,
+                PUBLISHER_CHAPTER_MAX_ATTEMPTS,
+            )
+        } else {
+            store.ensure_publisher_chapter_workflow(
+                episode_id,
+                &source_url,
+                &source_version,
+                command_id,
+                cancellation_id,
+                self.revision,
+                now,
+                deadline_at,
+                PUBLISHER_CHAPTER_MAX_ATTEMPTS,
+                force_retry,
+            )
+        };
         match result {
-            Ok(PublisherChapterEnsureOutcome::Requested { record, replaced }) => {
+            Ok(PublisherChapterEnsureOutcome::Requested { record: _, replaced }) => {
                 if let Some(replaced) = replaced.as_deref() {
                     self.withdraw_publisher_chapter_request(replaced);
                 }
-                if self.queue_publisher_chapter_request(record) {
-                    self.finish(command_id, OperationStage::Running, None, None);
-                } else {
-                    self.fail(command_id, CoreFailureCode::StorageUnavailable);
-                }
+                self.finish(command_id, OperationStage::Running, None, None);
                 true
             }
-            Ok(PublisherChapterEnsureOutcome::Existing(record)) => {
-                if matches!(
-                    record.state,
-                    PublisherChapterWorkflowState::Requested
-                        | PublisherChapterWorkflowState::RetryScheduled
-                ) {
-                    self.queue_publisher_chapter_request(record);
-                }
+            Ok(PublisherChapterEnsureOutcome::Existing(_)) => {
                 self.succeed(command_id, None);
                 true
             }

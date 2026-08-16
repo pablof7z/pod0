@@ -2,17 +2,22 @@ use std::path::{Path, PathBuf};
 
 use pod0_application::{AgentTurnProjection, AgentTurnState, MAX_AGENT_PROJECTION_MESSAGES};
 use pod0_domain::{AgentTurnId, ConversationId};
-use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, params};
+#[cfg(test)]
+use rusqlite::TransactionBehavior;
+use rusqlite::{Connection, OptionalExtension, Transaction, params};
 
+#[cfg(test)]
+use crate::AgentTurnMutation;
 use crate::agent_store_codec::{
     AGENT_STATE_SCHEMA_VERSION, decode_state, encode_state, stage_code,
 };
+#[cfg(test)]
+use crate::migration_db::configure;
 use crate::migration_db::{
-    configure, open_connection, user_version, validate_current_database_identity,
-    validate_open_database,
+    open_connection, user_version, validate_current_database_identity, validate_open_database,
 };
 use crate::{
-    AgentAuditKind, AgentCommandContext, AgentMutationOutcome, AgentTurnMutation, AgentTurnPage,
+    AgentAuditKind, AgentCommandContext, AgentMutationOutcome, AgentTurnPage,
     CURRENT_SCHEMA_VERSION, StorageError,
 };
 
@@ -46,6 +51,7 @@ impl AgentStore {
         self.read(|connection| read_page(connection, conversation_id, offset, max_items))
     }
 
+    #[cfg(test)]
     pub fn start_turn(
         &self,
         context: AgentCommandContext,
@@ -56,6 +62,7 @@ impl AgentStore {
         })
     }
 
+    #[cfg(test)]
     pub fn update_turn(
         &self,
         context: AgentCommandContext,
@@ -85,6 +92,7 @@ impl AgentStore {
         &self.path
     }
 
+    #[cfg(test)]
     pub(crate) fn write<T>(
         &self,
         operation: impl FnOnce(&Transaction<'_>) -> Result<T, StorageError>,

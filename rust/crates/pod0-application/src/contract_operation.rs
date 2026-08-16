@@ -15,7 +15,7 @@ pub struct OperationProjection {
     pub result: Option<OperationResult>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum OperationResult {
     Podcast {
         podcast_id: PodcastId,
@@ -23,6 +23,16 @@ pub enum OperationResult {
     ExternalEpisode {
         podcast_id: PodcastId,
         episode_id: EpisodeId,
+    },
+    PodcastDirectoryResults {
+        results: Vec<crate::PodcastDirectoryEntry>,
+    },
+    SharedEpisodeImported {
+        episode_id: EpisodeId,
+    },
+    PodcastCatalogResults {
+        episode_ids: Vec<EpisodeId>,
+        bounded_result: String,
     },
     RemovedPodcast {
         podcast_id: PodcastId,

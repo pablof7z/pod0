@@ -72,15 +72,15 @@ pub(super) fn subscribed_podcast_id(facade: &Pod0Facade, feed_url: &str) -> Opti
 }
 
 pub(super) fn fetch_requests_for(
-    requests: &[HostRequestEnvelope],
+    requests: &[LeasedHostRequestEnvelope],
     feed_url: &str,
-) -> Vec<HostRequestEnvelope> {
+) -> Vec<LeasedHostRequestEnvelope> {
     let identity = pod0_application::normalize_feed_url(feed_url).unwrap();
     requests
         .iter()
         .filter(|request| {
             matches!(
-                &request.request,
+                &request.request.request,
                 HostRequest::FetchFeed { feed_url, .. } if *feed_url == identity.source_url
             )
         })
@@ -88,22 +88,29 @@ pub(super) fn fetch_requests_for(
         .collect()
 }
 
-pub(super) fn feed_bytes_observation(request: &HostRequestEnvelope) -> HostObservationEnvelope {
-    let HostRequest::FetchFeed { feed_url, .. } = &request.request else {
+pub(super) fn feed_bytes_observation(
+    request: &LeasedHostRequestEnvelope,
+) -> LeasedHostObservationEnvelope {
+    let HostRequest::FetchFeed { feed_url, .. } = &request.request.request else {
         panic!("expected feed fetch request");
     };
-    HostObservationEnvelope {
-        request_id: request.request_id,
-        cancellation_id: request.cancellation_id,
-        observed_request_revision: request.issued_revision,
-        sequence_number: 0,
-        observed_at: UnixTimestampMilliseconds::new(1_800_000_100_000),
-        observation: HostObservation::FeedBytesFetched {
-            bytes: DURABLE_FEED.as_bytes().to_vec(),
-            entity_tag: Some("\"durable-v1\"".to_owned()),
-            last_modified: None,
-            response_url: feed_url.clone(),
-            http_status: 200,
+    LeasedHostObservationEnvelope {
+        lease: request.lease,
+        observation: HostObservationEnvelope {
+            request_id: request.request.request_id,
+            cancellation_id: request.request.cancellation_id,
+            observed_request_revision: request.request.issued_revision,
+            sequence_number: 0,
+            observed_at: UnixTimestampMilliseconds::new(
+                request.lease.expires_at.value.saturating_sub(1),
+            ),
+            observation: HostObservation::FeedBytesFetched {
+                bytes: DURABLE_FEED.as_bytes().to_vec(),
+                entity_tag: Some("\"durable-v1\"".to_owned()),
+                last_modified: None,
+                response_url: feed_url.clone(),
+                http_status: 200,
+            },
         },
     }
 }

@@ -96,6 +96,36 @@ pub struct AgentCapabilityObservationCommitOutcome {
     pub replayed: bool,
 }
 
+#[derive(Clone, Debug)]
+pub struct AgentRecallObservationCommitInput {
+    pub lease: pod0_application::PersistedEffectLeaseIdentity,
+    pub observation: pod0_application::DurableAgentRecallHostObservation,
+    pub resolution: AgentRecallResolution,
+    pub committed_at: UnixTimestampMilliseconds,
+}
+
+#[derive(Clone, Debug, serde::Serialize)]
+pub enum AgentRecallResolution {
+    Rerank {
+        request: pod0_application::DurableAgentRecallEffectRequest,
+    },
+    Finish {
+        bounded_result: String,
+        evidence: Vec<pod0_application::RecallEvidenceProjection>,
+    },
+    Fail {
+        safe_detail: Option<String>,
+    },
+    Cancelled,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AgentRecallObservationCommitOutcome {
+    pub state: AgentTurnState,
+    pub replayed: bool,
+    pub continued: bool,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AgentCancellationCommitOutcome {
     pub disposition: pod0_application::RequestDisposition,

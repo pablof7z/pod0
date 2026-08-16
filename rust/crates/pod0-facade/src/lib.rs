@@ -17,6 +17,7 @@ mod clip_migration;
 mod contract_facade;
 mod download_cutover;
 mod download_cutover_types;
+mod episode_activity_latest_projection;
 mod episode_activity_projection;
 #[cfg(test)]
 mod facade_contract_tests;
@@ -31,6 +32,9 @@ mod memory_cutover_types;
 mod note_migration;
 mod runtime;
 mod runtime_open_error;
+mod workflow_action_facade;
+#[cfg(test)]
+mod workflow_action_facade_tests;
 include!("runtime_split_modules.rs");
 #[cfg(test)]
 mod runtime_cancellation_tests;
@@ -38,6 +42,8 @@ mod runtime_cancellation_tests;
 mod runtime_chapter_activity_tests;
 #[cfg(test)]
 mod runtime_chapter_ad_skip_tests;
+#[cfg(test)]
+mod runtime_chapter_command_activity_tests;
 #[cfg(test)]
 mod runtime_chapter_lifecycle_tests;
 #[cfg(test)]
@@ -118,6 +124,7 @@ mod scheduled_agent_cutover_mapping;
 mod scheduled_agent_cutover_tests;
 mod scheduled_agent_cutover_types;
 mod scheduled_agent_facade;
+mod support_activity_projection;
 mod transcript_migration;
 mod transcript_migration_mapping;
 mod transcript_workflow_cutover;
@@ -126,6 +133,9 @@ mod transcript_workflow_cutover_rows;
 #[cfg(test)]
 mod transcript_workflow_cutover_tests;
 mod transcript_workflow_cutover_types;
+mod user_data_erasure_facade;
+mod user_data_erasure_facade_types;
+mod user_data_erasure_target_mapping;
 #[cfg(test)]
 include!("runtime_split_test_modules.rs");
 pub use agent_history_cutover_types::*;
@@ -153,6 +163,7 @@ pub use download_cutover_types::{
     LegacyDownloadCutoverCandidate, LegacyDownloadCutoverDisposition, LegacyDownloadCutoverFailure,
     LegacyDownloadCutoverFailureCode, LegacyDownloadCutoverProjection, LegacyDownloadCutoverStage,
 };
+pub use episode_activity_latest_projection::LatestEpisodeActivityPage;
 pub use episode_activity_projection::{
     EpisodeActivityDetail, EpisodeActivityEntry, EpisodeActivityEntryKind, EpisodeActivityPage,
     EpisodeActivitySeverity,
@@ -187,6 +198,11 @@ pub use transcript_migration::{
     verify_staged_legacy_transcript_import,
 };
 pub use transcript_workflow_cutover_types::*;
+pub use user_data_erasure_facade::{
+    NativeErasureAction, UserDataErasureError, UserDataErasureLocations, UserDataErasureResult,
+    UserDataErasureTargetKind, UserDataErasureTargetLocation, UserDataErasureToken,
+    record_native_erasure_observation, recover_pending_erasure,
+};
 
 /// Event-driven projection delivery. The generated Swift and Kotlin callback
 /// interfaces derive from this single app-owned surface.
@@ -206,16 +222,10 @@ pub trait Pod0ApplicationApi: Send + Sync {
         subscriber: std::sync::Arc<dyn ProjectionSubscriber>,
     ) -> SubscriptionId;
     fn unsubscribe(&self, subscription_id: SubscriptionId);
-    fn next_host_requests(&self, maximum_count: u16) -> Vec<HostRequestEnvelope>;
     fn next_leased_host_requests(
         &self,
         maximum_count: u16,
     ) -> Vec<pod0_application::LeasedHostRequestEnvelope>;
-    fn next_host_cancellations(&self, maximum_count: u16) -> Vec<HostCancellationRequest>;
-    fn record_host_observation(
-        &self,
-        observation: HostObservationEnvelope,
-    ) -> HostObservationReceipt;
     fn record_leased_host_observation(
         &self,
         observation: pod0_application::LeasedHostObservationEnvelope,

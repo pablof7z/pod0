@@ -27,8 +27,16 @@ pub struct ModelChapterSuccessReceipt {
 }
 
 impl LibraryStore {
+    #[cfg(test)]
     pub fn complete_model_chapter_workflow(
         &self,
+        input: ModelChapterSuccessInput,
+    ) -> Result<ModelChapterSuccessReceipt, StorageError> {
+        self.write(|transaction| Self::apply_model_chapter_success(transaction, input))
+    }
+
+    pub(crate) fn apply_model_chapter_success(
+        transaction: &rusqlite::Transaction<'_>,
         input: ModelChapterSuccessInput,
     ) -> Result<ModelChapterSuccessReceipt, StorageError> {
         if input.completed_at_ms < 0 {
@@ -36,52 +44,50 @@ impl LibraryStore {
         }
         let artifact = ChapterArtifact::seal(input.artifact)
             .map_err(|_| StorageError::InvalidChapterArtifact)?;
-        self.write(|transaction| {
-            let mut workflow = read_workflow(transaction, input.episode_id)?
-                .ok_or(StorageError::ChapterWorkflowNotFound)?;
-            if workflow.request_id != Some(input.request_id)
-                || workflow.generation != input.generation
-                || workflow.submission_fence_id != Some(input.submission_fence_id)
-                || !matches!(
-                    workflow.state,
-                    ModelChapterWorkflowState::CompletionObserved
-                        | ModelChapterWorkflowState::Succeeded
-                )
-            {
-                return Err(StorageError::ChapterWorkflowConflict);
-            }
-            let request = workflow
-                .active_request
-                .as_ref()
-                .ok_or(StorageError::ChapterWorkflowConflict)?;
-            let completion = read_completion(transaction, input.request_id)?
-                .ok_or(StorageError::ChapterWorkflowConflict)?;
-            validate_artifact(transaction, &artifact, request, &completion)?;
-            let chapter = commit_and_select_chapter_in_transaction(
-                transaction,
-                workflow.command_id,
-                request.expected_selection_revision,
-                &artifact,
-                input.completed_at_ms,
-                || Ok(()),
-            )?;
-            if workflow.state != ModelChapterWorkflowState::Succeeded {
-                workflow.state = ModelChapterWorkflowState::Succeeded;
-                workflow.workflow_revision = next_revision(workflow.workflow_revision)?;
-                workflow.selected_artifact_id = Some(chapter.artifact_id);
-                workflow.deadline_at_ms = None;
-                workflow.not_before_ms = None;
-                workflow.failure_code = None;
-                workflow.failure_detail = None;
-                workflow.updated_at_ms = input.completed_at_ms;
-                persist_workflow(transaction, &workflow)?;
-            } else if workflow.selected_artifact_id != Some(chapter.artifact_id) {
-                return Err(StorageError::ChapterWorkflowConflict);
-            }
-            let workflow = read_workflow(transaction, input.episode_id)?
-                .ok_or(StorageError::ChapterWorkflowNotFound)?;
-            Ok(ModelChapterSuccessReceipt { workflow, chapter })
-        })
+        let mut workflow = read_workflow(transaction, input.episode_id)?
+            .ok_or(StorageError::ChapterWorkflowNotFound)?;
+        if workflow.request_id != Some(input.request_id)
+            || workflow.generation != input.generation
+            || workflow.submission_fence_id != Some(input.submission_fence_id)
+            || !matches!(
+                workflow.state,
+                ModelChapterWorkflowState::CompletionObserved
+                    | ModelChapterWorkflowState::Succeeded
+            )
+        {
+            return Err(StorageError::ChapterWorkflowConflict);
+        }
+        let request = workflow
+            .active_request
+            .as_ref()
+            .ok_or(StorageError::ChapterWorkflowConflict)?;
+        let completion = read_completion(transaction, input.request_id)?
+            .ok_or(StorageError::ChapterWorkflowConflict)?;
+        validate_artifact(transaction, &artifact, request, &completion)?;
+        let chapter = commit_and_select_chapter_in_transaction(
+            transaction,
+            workflow.command_id,
+            request.expected_selection_revision,
+            &artifact,
+            input.completed_at_ms,
+            || Ok(()),
+        )?;
+        if workflow.state != ModelChapterWorkflowState::Succeeded {
+            workflow.state = ModelChapterWorkflowState::Succeeded;
+            workflow.workflow_revision = next_revision(workflow.workflow_revision)?;
+            workflow.selected_artifact_id = Some(chapter.artifact_id);
+            workflow.deadline_at_ms = None;
+            workflow.not_before_ms = None;
+            workflow.failure_code = None;
+            workflow.failure_detail = None;
+            workflow.updated_at_ms = input.completed_at_ms;
+            persist_workflow(transaction, &workflow)?;
+        } else if workflow.selected_artifact_id != Some(chapter.artifact_id) {
+            return Err(StorageError::ChapterWorkflowConflict);
+        }
+        let workflow = read_workflow(transaction, input.episode_id)?
+            .ok_or(StorageError::ChapterWorkflowNotFound)?;
+        Ok(ModelChapterSuccessReceipt { workflow, chapter })
     }
 }
 

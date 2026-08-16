@@ -12,9 +12,19 @@ impl LibraryStore {
         enabled: bool,
         now_ms: i64,
     ) -> Result<NewEpisodeNotificationSettingsProjection, StorageError> {
-        self.write(|transaction| {
-            if command_was_applied(transaction, command_id, fingerprint)?.is_none() {
-                let revision = finish_command(transaction, command_id, fingerprint, now_ms)?;
+        self.commit_library_activity(
+            command_id,
+            fingerprint,
+            ActivitySubject::Global,
+            None,
+            LibraryFeedTransition::NotificationPreferenceChanged,
+            now_ms,
+            |transaction| {
+                let current = read_notification_settings(transaction)?;
+                Ok((current.enabled != enabled, enabled))
+            },
+            |_, _| Ok(()),
+            |transaction, revision| {
                 let revision =
                     i64::try_from(revision.value).map_err(|_| StorageError::CorruptSchema {
                         detail: "new-episode notification revision overflows",
@@ -28,108 +38,106 @@ impl LibraryStore {
                     .map_err(|error| {
                         StorageError::sqlite("update new-episode notification setting", error)
                     })?;
-            }
-            read_notification_settings(transaction)
-        })
+                Ok(())
+            },
+        )?;
+        self.read(read_notification_settings)
     }
 }
 
-fn plan_pending(
+fn plan_occurrence(
     transaction: &Transaction<'_>,
+    occurrence_id: FeedDiscoveryOccurrenceId,
+    podcast_id: PodcastId,
+    is_initial: bool,
+    observed_at_ms: i64,
     now_ms: i64,
-    limit: i64,
-) -> Result<usize, StorageError> {
+) -> Result<(), StorageError> {
     let settings = read_notification_settings(transaction)?;
-    let occurrences = pending_occurrences(transaction, limit)?;
-    let mut planned = 0;
-    for (occurrence_id, podcast_id, is_initial, observed_at_ms) in occurrences {
-        let expires_at_ms =
-            observed_at_ms.saturating_add(FEED_DISCOVERY_NOTIFICATION_TTL_MILLISECONDS);
-        let subscription = subscription_policy(transaction, podcast_id)?;
-        let items = occurrence_items(transaction, occurrence_id)?;
-        let mut effects = Vec::new();
-        if let Some((mode, notifications_enabled)) = subscription {
-            let download_count = match mode {
-                AutoDownloadMode::Off | AutoDownloadMode::Unsupported { .. } => 0,
-                AutoDownloadMode::Latest { count } => usize::from(count).min(items.len()),
-                AutoDownloadMode::AllNew => items.len(),
-            };
+    let expires_at_ms = observed_at_ms.saturating_add(FEED_DISCOVERY_NOTIFICATION_TTL_MILLISECONDS);
+    let subscription = subscription_policy(transaction, podcast_id)?;
+    let items = occurrence_items(transaction, occurrence_id)?;
+    let mut effects = Vec::new();
+    if let Some((mode, notifications_enabled)) = subscription {
+        let download_count = match mode {
+            AutoDownloadMode::Off | AutoDownloadMode::Unsupported { .. } => 0,
+            AutoDownloadMode::Latest { count } => usize::from(count).min(items.len()),
+            AutoDownloadMode::AllNew => items.len(),
+        };
+        effects.extend(
+            items
+                .iter()
+                .take(download_count)
+                .map(|episode_id| (*episode_id, FeedDiscoveryEffectKind::Download)),
+        );
+        if !is_initial && settings.enabled && notifications_enabled && now_ms < expires_at_ms {
             effects.extend(
                 items
                     .iter()
-                    .take(download_count)
-                    .map(|episode_id| (*episode_id, FeedDiscoveryEffectKind::Download)),
+                    .take(MAX_NEW_EPISODE_NOTIFICATIONS_PER_OCCURRENCE)
+                    .map(|episode_id| (*episode_id, FeedDiscoveryEffectKind::Notification)),
             );
-            if !is_initial && settings.enabled && notifications_enabled && now_ms < expires_at_ms {
-                effects.extend(
-                    items
-                        .iter()
-                        .take(MAX_NEW_EPISODE_NOTIFICATIONS_PER_OCCURRENCE)
-                        .map(|episode_id| (*episode_id, FeedDiscoveryEffectKind::Notification)),
-                );
-            }
         }
-        let stage = if effects.is_empty() {
-            "succeeded"
-        } else {
-            "active"
-        };
-        transaction
-            .execute(
-                "INSERT INTO pod0_feed_discovery_workflows(
+    }
+    let stage = if effects.is_empty() {
+        "succeeded"
+    } else {
+        "active"
+    };
+    transaction
+        .execute(
+            "INSERT INTO pod0_feed_discovery_workflows(
                     occurrence_id,stage,workflow_revision,expires_at_ms,planned_at_ms,
                     completed_at_ms,updated_at_ms
                  ) VALUES(?1,?2,1,?3,?4,?5,?4)",
-                params![
-                    occurrence_id.into_bytes().as_slice(),
-                    stage,
-                    expires_at_ms,
-                    now_ms,
-                    (stage == "succeeded").then_some(now_ms)
-                ],
-            )
-            .map_err(|error| StorageError::sqlite("plan feed-discovery workflow", error))?;
-        for (episode_id, kind) in effects {
-            let (command_id, cancellation_id) = match kind {
-                FeedDiscoveryEffectKind::Download => (
-                    Some(pod0_application::feed_discovery_download_command_id(
-                        occurrence_id,
-                        episode_id,
-                    )),
-                    pod0_application::feed_discovery_download_cancellation_id(
-                        occurrence_id,
-                        episode_id,
-                    ),
+            params![
+                occurrence_id.into_bytes().as_slice(),
+                stage,
+                expires_at_ms,
+                now_ms,
+                (stage == "succeeded").then_some(now_ms)
+            ],
+        )
+        .map_err(|error| StorageError::sqlite("plan feed-discovery workflow", error))?;
+    for (episode_id, kind) in effects {
+        let (command_id, cancellation_id) = match kind {
+            FeedDiscoveryEffectKind::Download => (
+                Some(pod0_application::feed_discovery_download_command_id(
+                    occurrence_id,
+                    episode_id,
+                )),
+                pod0_application::feed_discovery_download_cancellation_id(
+                    occurrence_id,
+                    episode_id,
                 ),
-                FeedDiscoveryEffectKind::Notification => (
-                    None,
-                    pod0_application::feed_discovery_notification_cancellation_id(
-                        occurrence_id,
-                        episode_id,
-                    ),
+            ),
+            FeedDiscoveryEffectKind::Notification => (
+                None,
+                pod0_application::feed_discovery_notification_cancellation_id(
+                    occurrence_id,
+                    episode_id,
                 ),
-            };
-            transaction
-                .execute(
-                    "INSERT INTO pod0_feed_discovery_effects(
+            ),
+        };
+        transaction
+            .execute(
+                "INSERT INTO pod0_feed_discovery_effects(
                         occurrence_id,episode_id,kind,stage,command_id,cancellation_id,
                         request_id,attempt,not_before_ms,deadline_at_ms,failure_code,
                         created_at_ms,updated_at_ms
                      ) VALUES(?1,?2,?3,'pending',?4,?5,NULL,0,NULL,NULL,NULL,?6,?6)",
-                    params![
-                        occurrence_id.into_bytes().as_slice(),
-                        episode_id.into_bytes().as_slice(),
-                        kind.wire(),
-                        command_id.map(|value| value.into_bytes().to_vec()),
-                        cancellation_id.into_bytes().as_slice(),
-                        now_ms
-                    ],
-                )
-                .map_err(|error| StorageError::sqlite("plan feed-discovery effect", error))?;
-        }
-        planned += 1;
+                params![
+                    occurrence_id.into_bytes().as_slice(),
+                    episode_id.into_bytes().as_slice(),
+                    kind.wire(),
+                    command_id.map(|value| value.into_bytes().to_vec()),
+                    cancellation_id.into_bytes().as_slice(),
+                    now_ms
+                ],
+            )
+            .map_err(|error| StorageError::sqlite("plan feed-discovery effect", error))?;
     }
-    Ok(planned)
+    Ok(())
 }
 
 fn read_notification_settings(

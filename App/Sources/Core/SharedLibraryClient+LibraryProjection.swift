@@ -32,7 +32,6 @@ extension SharedLibraryClient {
             cachedSnapshot = snapshot
             if changed {
                 store?.applySharedLibrary(snapshot)
-                announcePublisherSourceChanges(previous: previous, current: snapshot)
                 WorkflowRuntime.shared.wake()
             }
             resolveWaiters(projection.operations)

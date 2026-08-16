@@ -14,7 +14,10 @@ fn playback_command_has_one_disposition_and_typed_transition() {
         current_revision: StateRevision::new(9),
         legacy_command_revision: None,
         transition: PlaybackTransition::RateChanged,
+        checkpoint_position_milliseconds: None,
         internal_command: None,
+        effects: Vec::new(),
+        superseded_effects: Vec::new(),
     })
     .unwrap();
     let (_, _, _, facts, _, _, _) = plan.into_parts();
