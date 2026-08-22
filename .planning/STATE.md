@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 current_phase: 1
 current_phase_name: Headless Host Crates
 status: verifying
-stopped_at: "Completed 01-05-PLAN.md (gap-closure: HOST-04 partially closed, NostrPublisher Handle-ready) — Phase 1 all 5 plans complete, ready for verification"
-last_updated: "2026-08-22T19:54:31.034Z"
+stopped_at: "Completed 01-06-PLAN.md (gap-closure: HOST-05/SC5 restored, headless_turn_completes_after_approved_capability_execution un-ignored and passing) — Phase 1 all 6 plans complete"
+last_updated: "2026-08-22T21:48:25.094Z"
 last_activity: 2026-08-22
 last_activity_desc: Phase 1 execution started
-state_head: 1a36e821fae240c0f062bb8c65019967db753466
+state_head: 759bfb690ff9e87534a963cdfa133ead1adb9145
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 6
+  completed_plans: 6
   percent: 0
 ---
 
@@ -63,6 +63,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P03 | 45min | 3 tasks | 4 files |
 | Phase 01 P04 | 40min | 3 tasks | 13 files |
 | Phase 01 P05 | 20min | 1 tasks | 3 files |
+| Phase 01 P06 | 70min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,8 @@ Recent decisions affecting current work:
 - [Phase 1]: [Phase 1, Plan 04]: pod0-cli reworked to drop dependency on uncommitted pod0-facade/pod0-storage APIs (5 methods/5 types) — closed HOST-01/HOST-02 gap; create_store now returns an explicit error pending a real store-bootstrap primitive, and 11 tests across 6 files are #[ignore]d until that lands
 - [Phase 1]: [Phase 1, Plan 05]: NostrPublisher::new_with_handle added as an additive Handle-based constructor mirroring pod0-portable-media's owned_runtime/handle dual-field pattern; closes the concretely-fixable half of SC4/HOST-04 (no process yet links all six host crates, which remains open per ROADMAP.md's 2026-08-22 reword)
 - [Phase 1]: [Phase 1, Plan 05]: pod0-nostr-host's tokio dependency was missing the 'macros' feature needed by relay.rs's pre-existing tokio::select! for a truly standalone -p pod0-nostr-host build — fixed as a Rule 3 blocking-issue auto-fix, previously masked because every prior verification command built it alongside sibling crates
+- [Phase 1]: [Phase 1, Plan 06]: Pod0Facade::open requires a fourth authoritative domain (clips) beyond listening/notes/transcripts — clip_snapshot() is called unconditionally inside FacadeState::open
+- [Phase 1]: [Phase 1, Plan 06]: host_drain.rs's and settings.rs's re-ignored tests name genuinely new pod0-facade/pod0-storage bugs (non-idempotent next_leased_host_requests; uncommitted workflow-configuration revision-conflict fix), both confirmed against committed HEAD and out of this plan's pod0-cli-only scope
 
 ### Pending Todos
 
@@ -107,6 +110,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-08-22T19:54:31.026Z
-Stopped at: Completed 01-05-PLAN.md (gap-closure: HOST-04 partially closed, NostrPublisher Handle-ready) — Phase 1 all 5 plans complete, ready for verification
+Last session: 2026-08-22T21:48:25.085Z
+Stopped at: Completed 01-06-PLAN.md (gap-closure: HOST-05/SC5 restored, headless_turn_completes_after_approved_capability_execution un-ignored and passing) — Phase 1 all 6 plans complete
 Resume file: None
