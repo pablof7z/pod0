@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 current_phase: 1
 current_phase_name: Headless Host Crates
 status: verifying
-stopped_at: Completed 01-03-PLAN.md (phase 1 complete, ready for verification)
-last_updated: "2026-08-22T16:57:10.829Z"
+stopped_at: "Completed 01-04-PLAN.md (gap-closure: HOST-01/HOST-02 closed against clean committed HEAD)"
+last_updated: "2026-08-22T19:48:09.984Z"
 last_activity: 2026-08-22
 last_activity_desc: Phase 1 execution started
-state_head: 8edb3c1aba82cfc89a06f959152ac4ce6317f926
+state_head: fdb41b9ecf3dc63f209fdd11786af8705d5aa6b3
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 5
+  completed_plans: 4
   percent: 0
 ---
 
@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P01 | 55min | 2 tasks | 148 files |
 | Phase 01 P02 | 45min | 3 tasks | 22 files |
 | Phase 01 P03 | 45min | 3 tasks | 4 files |
+| Phase 01 P04 | 40min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,7 @@ Recent decisions affecting current work:
 - [Phase 1]: pod0-tts-host keeps concrete tracing version literal (not .workspace = true) to preserve its Plan 01-01 standalone-buildability property
 - [Phase 1]: Moved pod0-application from pod0-cli's dev-dependencies to dependencies to reach MAX_AGENT_MESSAGE_BYTES from production code (capability.rs)
 - [Phase 1]: Task 3's fixture needed a second local HTTP endpoint (POD0_PODCAST_SEARCH_URL redirect) for the iTunes search capability call, beyond the plan's literal two-response chat fixture
+- [Phase 1]: [Phase 1, Plan 04]: pod0-cli reworked to drop dependency on uncommitted pod0-facade/pod0-storage APIs (5 methods/5 types) — closed HOST-01/HOST-02 gap; create_store now returns an explicit error pending a real store-bootstrap primitive, and 11 tests across 6 files are #[ignore]d until that lands
 
 ### Pending Todos
 
@@ -102,6 +104,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-08-22T16:57:10.822Z
-Stopped at: Completed 01-03-PLAN.md (phase 1 complete, ready for verification)
+Last session: 2026-08-22T19:48:09.975Z
+Stopped at: Completed 01-04-PLAN.md (gap-closure: HOST-01/HOST-02 closed against clean committed HEAD)
 Resume file: None
