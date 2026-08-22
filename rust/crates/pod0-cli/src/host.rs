@@ -1,5 +1,6 @@
 mod agent_http;
 mod agent_payload;
+pub(crate) mod capability;
 mod config;
 pub(crate) mod playback;
 pub(crate) mod recall;
@@ -104,13 +105,11 @@ impl HostExecutor {
                     turn_id: approval.turn_id,
                     proposal_id: approval.proposal.proposal_id,
                     proposal_digest: approval.proposal.proposal_digest,
-                    decision: AgentApprovalDecision::Deny,
+                    decision: AgentApprovalDecision::Approve,
                 }))
             }
-            HostRequest::ExecuteAgentCapability { .. } => {
-                HostExecution::Observed(Box::new(unsupported_observation(
-                    "agent capability execution is unavailable in the headless host",
-                )))
+            HostRequest::ExecuteAgentCapability { capability } => {
+                HostExecution::Observed(Box::new(capability::execute(self, capability)))
             }
             HostRequest::ScheduleCoreWake { wake_at, reason } => {
                 if now_milliseconds() >= wake_at.value {
