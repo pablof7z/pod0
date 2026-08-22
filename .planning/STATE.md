@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 current_phase: 1
 current_phase_name: Headless Host Crates
 status: verifying
-stopped_at: "Completed 01-04-PLAN.md (gap-closure: HOST-01/HOST-02 closed against clean committed HEAD)"
-last_updated: "2026-08-22T19:48:09.984Z"
+stopped_at: "Completed 01-05-PLAN.md (gap-closure: HOST-04 partially closed, NostrPublisher Handle-ready) — Phase 1 all 5 plans complete, ready for verification"
+last_updated: "2026-08-22T19:54:31.034Z"
 last_activity: 2026-08-22
 last_activity_desc: Phase 1 execution started
-state_head: fdb41b9ecf3dc63f209fdd11786af8705d5aa6b3
+state_head: 1a36e821fae240c0f062bb8c65019967db753466
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -62,6 +62,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P02 | 45min | 3 tasks | 22 files |
 | Phase 01 P03 | 45min | 3 tasks | 4 files |
 | Phase 01 P04 | 40min | 3 tasks | 13 files |
+| Phase 01 P05 | 20min | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,8 @@ Recent decisions affecting current work:
 - [Phase 1]: Moved pod0-application from pod0-cli's dev-dependencies to dependencies to reach MAX_AGENT_MESSAGE_BYTES from production code (capability.rs)
 - [Phase 1]: Task 3's fixture needed a second local HTTP endpoint (POD0_PODCAST_SEARCH_URL redirect) for the iTunes search capability call, beyond the plan's literal two-response chat fixture
 - [Phase 1]: [Phase 1, Plan 04]: pod0-cli reworked to drop dependency on uncommitted pod0-facade/pod0-storage APIs (5 methods/5 types) — closed HOST-01/HOST-02 gap; create_store now returns an explicit error pending a real store-bootstrap primitive, and 11 tests across 6 files are #[ignore]d until that lands
+- [Phase 1]: [Phase 1, Plan 05]: NostrPublisher::new_with_handle added as an additive Handle-based constructor mirroring pod0-portable-media's owned_runtime/handle dual-field pattern; closes the concretely-fixable half of SC4/HOST-04 (no process yet links all six host crates, which remains open per ROADMAP.md's 2026-08-22 reword)
+- [Phase 1]: [Phase 1, Plan 05]: pod0-nostr-host's tokio dependency was missing the 'macros' feature needed by relay.rs's pre-existing tokio::select! for a truly standalone -p pod0-nostr-host build — fixed as a Rule 3 blocking-issue auto-fix, previously masked because every prior verification command built it alongside sibling crates
 
 ### Pending Todos
 
@@ -104,6 +107,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-08-22T19:48:09.975Z
-Stopped at: Completed 01-04-PLAN.md (gap-closure: HOST-01/HOST-02 closed against clean committed HEAD)
+Last session: 2026-08-22T19:54:31.026Z
+Stopped at: Completed 01-05-PLAN.md (gap-closure: HOST-04 partially closed, NostrPublisher Handle-ready) — Phase 1 all 5 plans complete, ready for verification
 Resume file: None
