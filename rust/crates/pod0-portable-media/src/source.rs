@@ -7,7 +7,7 @@ use std::{
 };
 
 use reqwest::Client;
-use tokio::runtime::Runtime;
+use tokio::runtime::{Handle, Runtime};
 use url::Url;
 
 use crate::{CancellationToken, MediaError, PreparedMedia, Result};
@@ -76,29 +76,55 @@ pub struct MediaLoader {
     maximum_response_bytes: u64,
 }
 
+enum RuntimeSource {
+    Owned,
+    Shared(Handle),
+}
+
 impl MediaLoader {
     pub fn new(options: HttpLoadOptions) -> Result<Self> {
+        Self::from_options(options, RuntimeSource::Owned)
+    }
+
+    /// Like [`MediaLoader::new`], but drives its HTTP calls on the caller's
+    /// existing `Handle` instead of building a second `Runtime` — used when a
+    /// process (e.g. `pod0-cli`) already owns the one `Runtime` for the whole
+    /// process and must avoid a colliding second one.
+    pub fn new_with_handle(options: HttpLoadOptions, runtime_handle: Handle) -> Result<Self> {
+        Self::from_options(options, RuntimeSource::Shared(runtime_handle))
+    }
+
+    fn from_options(options: HttpLoadOptions, runtime_source: RuntimeSource) -> Result<Self> {
         let maximum_response_bytes = options.maximum_response_bytes;
         let client_builder = Client::builder()
             .connect_timeout(options.connect_timeout)
             .timeout(options.request_timeout)
             .redirect(reqwest::redirect::Policy::limited(10))
             .user_agent(options.user_agent);
-        Self::from_client_builder(client_builder, maximum_response_bytes)
+        Self::from_client_builder(client_builder, maximum_response_bytes, runtime_source)
     }
 
     fn from_client_builder(
         client_builder: reqwest::ClientBuilder,
         maximum_response_bytes: u64,
+        runtime_source: RuntimeSource,
     ) -> Result<Self> {
         let client = client_builder.build()?;
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()?;
+        let (owned_runtime, handle) = match runtime_source {
+            RuntimeSource::Owned => {
+                let runtime = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()?;
+                let handle = runtime.handle().clone();
+                (Some(runtime), handle)
+            }
+            RuntimeSource::Shared(handle) => (None, handle),
+        };
         Ok(Self {
             http: Arc::new(HttpTransport {
                 client,
-                runtime: Some(runtime),
+                owned_runtime,
+                handle,
             }),
             maximum_response_bytes,
         })
@@ -117,9 +143,22 @@ impl MediaLoader {
     }
 
     fn load_http(&self, url: Url, cancellation: &CancellationToken) -> Result<PreparedMedia> {
-        self.http
-            .runtime()
-            .block_on(self.load_http_async(url, cancellation))
+        // When this transport owns its `Runtime` (the `MediaLoader::new` path),
+        // drive it via `Runtime::block_on` directly rather than through a
+        // cloned `Handle` — a current-thread runtime's I/O/timer driver only
+        // makes progress on the thread driving it, and `Runtime::block_on`
+        // (unlike `Handle::block_on`) works correctly regardless of which
+        // thread calls it. Only the caller-owned-runtime path (`new_with_handle`)
+        // uses the `Handle`, and it is that caller's responsibility to ensure
+        // its runtime supports being driven by `Handle::block_on` from other
+        // threads (e.g. by using a multi-thread runtime).
+        match &self.http.owned_runtime {
+            Some(runtime) => runtime.block_on(self.load_http_async(url, cancellation)),
+            None => self
+                .http
+                .handle
+                .block_on(self.load_http_async(url, cancellation)),
+        }
     }
 
     async fn load_http_async(
@@ -160,20 +199,16 @@ impl MediaLoader {
 #[derive(Debug)]
 struct HttpTransport {
     client: Client,
-    runtime: Option<Runtime>,
-}
-
-impl HttpTransport {
-    fn runtime(&self) -> &Runtime {
-        self.runtime
-            .as_ref()
-            .expect("HTTP runtime is available until transport drop")
-    }
+    // `Some` only when this transport built its own `Runtime` (`MediaLoader::new`);
+    // `None` when driven by a caller-owned `Handle` (`MediaLoader::new_with_handle`),
+    // in which case the caller is responsible for that runtime's lifecycle.
+    owned_runtime: Option<Runtime>,
+    handle: Handle,
 }
 
 impl Drop for HttpTransport {
     fn drop(&mut self) {
-        if let Some(runtime) = self.runtime.take() {
+        if let Some(runtime) = self.owned_runtime.take() {
             // System DNS may still be inside Tokio's unabortable spawn_blocking.
             runtime.shutdown_timeout(RUNTIME_SHUTDOWN_TIMEOUT);
         }

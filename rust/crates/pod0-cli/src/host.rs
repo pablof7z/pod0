@@ -42,7 +42,16 @@ impl HostExecutor {
             .map_err(|_| CliError::new("http_client", "HTTP client initialization failed", true))?;
         let live = LiveHosts::new(ClientConfig::default())
             .map_err(|_| CliError::new("live_hosts", "live host client initialization failed", true))?;
-        let runtime = tokio::runtime::Builder::new_current_thread()
+        // Multi-thread (not current-thread): `HostExecutor` is constructed on
+        // one thread but its `runtime.handle()` is driven via `block_on` from
+        // the separate `pod0-host-pump` worker thread (see `app/host_loop.rs`).
+        // A current-thread runtime's I/O/timer driver only makes progress when
+        // driven from the thread that owns it, so `Handle::block_on` from any
+        // other thread hangs forever; `self.runtime.block_on(...)` (called
+        // directly on the owned `Runtime`, not a `Handle`) is unaffected and
+        // keeps working either way.
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(1)
             .enable_all()
             .build()
             .map_err(|_| CliError::new("runtime", "async runtime initialization failed", true))?;
@@ -90,9 +99,9 @@ impl HostExecutor {
             | HostRequest::ObservePlayback { .. }
             | HostRequest::StopPlayback { .. }
             | HostRequest::ArmNativeTimer { .. }
-            | HostRequest::CancelNativeTimer { .. } => {
-                HostExecution::Observed(Box::new(playback::execute(&envelope.request)))
-            }
+            | HostRequest::CancelNativeTimer { .. } => HostExecution::Observed(Box::new(
+                playback::execute(&envelope.request, self.runtime.handle()),
+            )),
             HostRequest::PresentAgentApproval { approval } => {
                 HostExecution::Observed(Box::new(HostObservation::AgentApprovalObserved {
                     turn_id: approval.turn_id,

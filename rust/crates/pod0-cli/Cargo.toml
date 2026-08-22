@@ -15,7 +15,7 @@ rustyline = "=18.0.1"
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
-tokio = { version = "=1.53.1", features = ["rt", "time"] }
+tokio = { version = "=1.53.1", features = ["rt", "rt-multi-thread", "time"] }
 
 [dev-dependencies]
 pod0-application.workspace = true

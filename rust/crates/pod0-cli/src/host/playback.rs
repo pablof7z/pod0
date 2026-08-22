@@ -25,8 +25,9 @@ struct HostPlayer {
 }
 
 impl HostPlayer {
-    fn new() -> Result<Self, MediaError> {
-        let loader = MediaLoader::new(pod0_portable_media::HttpLoadOptions::default())?;
+    fn new(runtime: tokio::runtime::Handle) -> Result<Self, MediaError> {
+        let loader =
+            MediaLoader::new_with_handle(pod0_portable_media::HttpLoadOptions::default(), runtime)?;
         Ok(Self {
             player: MediaPlayer::new(loader),
             loaded_episode: None,
@@ -59,7 +60,10 @@ thread_local! {
     static PLAYER: std::cell::RefCell<Option<HostPlayer>> = const { std::cell::RefCell::new(None) };
 }
 
-pub(crate) fn execute(request: &HostRequest) -> HostObservation {
+pub(crate) fn execute(
+    request: &HostRequest,
+    runtime: &tokio::runtime::Handle,
+) -> HostObservation {
     let Some(episode_id) = episode_id_of(request) else {
         return HostObservation::PlaybackObserved {
             value: idle_observation(None),
@@ -68,7 +72,7 @@ pub(crate) fn execute(request: &HostRequest) -> HostObservation {
     PLAYER.with(|cell| {
         let mut slot = cell.borrow_mut();
         if slot.is_none() {
-            match HostPlayer::new() {
+            match HostPlayer::new(runtime.clone()) {
                 Ok(player) => *slot = Some(player),
                 Err(_) => {
                     return HostObservation::PlaybackObserved {
@@ -420,6 +424,10 @@ mod tests {
 
     #[test]
     fn player_can_be_constructed() {
-        assert!(HostPlayer::new().is_ok());
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        assert!(HostPlayer::new(runtime.handle().clone()).is_ok());
     }
 }

@@ -7,7 +7,7 @@ use std::{
 
 use reqwest::dns::{Addrs, Name, Resolve, Resolving};
 
-use super::{HttpLoadOptions, MediaLoader, MediaSource};
+use super::{HttpLoadOptions, MediaLoader, MediaSource, RuntimeSource};
 use crate::{CancellationToken, MediaError};
 
 #[test]
@@ -27,8 +27,9 @@ fn cancellation_does_not_wait_for_a_stalled_blocking_dns_task() {
         .timeout(options.request_timeout)
         .user_agent(options.user_agent)
         .dns_resolver(resolver);
-    let loader = MediaLoader::from_client_builder(client_builder, maximum_response_bytes)
-        .expect("build HTTP loader");
+    let loader =
+        MediaLoader::from_client_builder(client_builder, maximum_response_bytes, RuntimeSource::Owned)
+            .expect("build HTTP loader");
     let cancellation = CancellationToken::new();
     let load_cancellation = cancellation.clone();
     let (completed_sender, completed_receiver) = std::sync::mpsc::channel();
