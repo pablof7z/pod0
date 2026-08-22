@@ -34,7 +34,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Every host crate actually colocated in the same process (currently `pod0-cli` + its direct deps `pod0-live-hosts`/`pod0-portable-media`) shares exactly one `tokio` runtime instance; crates not yet wired into any shared process (`pod0-nostr-host`, `pod0-system-hosts`, `pod0-tts-host`) are Handle-ready (accept an externally-threaded `tokio::runtime::Handle` rather than constructing their own) but their actual colocation is deferred to a follow-up phase that adds the facade/application contract needed to wire them in (reworded 2026-08-22 after 01-VERIFICATION.md found the original wording unprovable — no process currently links all six crates)
   5. `pod0-cli::HostExecutor` reaches approval and capability-execution parity with `CoreAgentHost` — headless tests exercise real approvals instead of auto-denying
 
-**Plans**: 5/5 plans executed
+**Plans**: 5/6 plans executed
 
 Plans:
 **Wave 1**
@@ -53,6 +53,7 @@ Plans:
 
 - [x] 01-04-PLAN.md — Rework pod0-cli to drop its dependency on uncommitted pod0-facade/pod0-storage APIs so `cargo build --workspace --all-targets` passes against committed HEAD (HOST-01, HOST-02)
 - [x] 01-05-PLAN.md — Add an additive Handle-based constructor to pod0-nostr-host's NostrPublisher, partially closing the SC4 shared-runtime gap (HOST-04)
+- [ ] 01-06-PLAN.md — Restore a store-bootstrap test fixture (bypassing the disabled `Pod0Facade::create`) so `headless_turn_completes_after_approved_capability_execution` runs un-ignored again, closing the SC5/HOST-05 regression 01-04 introduced (HOST-05)
 
 ### Phase 2: Voice Conversation Authority
 
