@@ -1,3 +1,8 @@
+use std::{
+    thread,
+    time::{Duration, Instant},
+};
+
 use pod0_application::{LeasedNMPPublicationDraft, Pod0PublicationDraft};
 use pod0_domain::{
     ActivityCorrelationId, ActivityId, EffectAttemptId, EffectIntentId, EffectLeaseId,
@@ -26,6 +31,52 @@ fn cancellation_before_signing_has_no_handoff_or_receipt() {
     assert!(failure.event_id_hex.is_none());
     assert!(!failure.handoff_possible());
     assert!(failure.relay_outcomes.is_empty());
+}
+
+#[test]
+fn new_with_handle_publish_completes_when_driven_from_a_second_thread() {
+    // A multi-thread runtime built on this (the test) thread; its `Handle` is
+    // then used to drive `publish` from a *different*, spawned OS thread. A
+    // current-thread runtime's `Handle::block_on` would hang forever here —
+    // this is the exact pitfall 01-02-SUMMARY.md documented and fixed for
+    // pod0-cli/pod0-portable-media.
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(1)
+        .enable_all()
+        .build()
+        .unwrap();
+    let handle = runtime.handle().clone();
+
+    let started = Instant::now();
+    let result = thread::spawn(move || {
+        let config = PublisherConfig {
+            operation_timeout: Duration::from_secs(5),
+            ..PublisherConfig::default()
+        };
+        let publisher = NostrPublisher::new_with_handle(
+            ["ws://127.0.0.1:9"],
+            SigningSecret::parse(SECRET).unwrap(),
+            config,
+            handle,
+        )
+        .unwrap();
+        let cancellation = CancellationToken::new();
+        // Not pre-cancelled: this must genuinely reach the `block_on` call
+        // site inside `publish` (via `publish_to_relay`'s connection attempt
+        // to an unreachable local port) rather than short-circuit before it.
+        publisher.publish(fixture(), &cancellation)
+    })
+    .join()
+    .expect("publish thread must not panic");
+
+    assert!(
+        started.elapsed() < Duration::from_secs(10),
+        "publish did not return within the bounded wall-clock deadline — Handle::block_on likely hung"
+    );
+    // The assertion under test is "this returns at all" — port 9 has no relay
+    // listening, so the specific error variant (connection failure surfaced
+    // as a relay outcome, then AcknowledgementThresholdNotMet) is incidental.
+    assert!(result.is_err());
 }
 
 #[test]

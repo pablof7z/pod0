@@ -17,7 +17,12 @@ pub struct NostrPublisher {
     required_acknowledgements: usize,
     config: PublisherConfig,
     signing_secret: SigningSecret,
-    runtime: tokio::runtime::Runtime,
+    // `Some` only when this publisher built its own `Runtime` (`NostrPublisher::new`);
+    // `None` when driven by a caller-owned `Handle` (`NostrPublisher::new_with_handle`),
+    // in which case the caller is responsible for that runtime's lifecycle. Mirrors
+    // `pod0-portable-media`'s `HttpTransport` dual-field shape.
+    owned_runtime: Option<tokio::runtime::Runtime>,
+    handle: tokio::runtime::Handle,
 }
 
 impl NostrPublisher {
@@ -39,12 +44,45 @@ impl NostrPublisher {
             .enable_all()
             .build()
             .map_err(|_| ConfigurationError::RuntimeInitializationFailed)?;
+        let handle = runtime.handle().clone();
         Ok(Self {
             targets,
             required_acknowledgements,
             config,
             signing_secret,
-            runtime,
+            owned_runtime: Some(runtime),
+            handle,
+        })
+    }
+
+    /// Like [`NostrPublisher::new`], but drives its relay I/O on the caller's
+    /// existing `Handle` instead of building a second `Runtime` — used when a
+    /// process already owns the one `Runtime` for the whole process and must
+    /// avoid a colliding second one. The caller's runtime must support being
+    /// driven by `Handle::block_on` from other threads (i.e. a multi-thread
+    /// runtime), since this publisher does not own the runtime's I/O driver.
+    pub fn new_with_handle<I, S>(
+        relay_urls: I,
+        signing_secret: SigningSecret,
+        config: PublisherConfig,
+        handle: tokio::runtime::Handle,
+    ) -> Result<Self, ConfigurationError>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        let (targets, required_acknowledgements) = validated_targets(
+            relay_urls,
+            &config,
+            RelaySecurity::AllowInsecureNumericLoopback,
+        )?;
+        Ok(Self {
+            targets,
+            required_acknowledgements,
+            config,
+            signing_secret,
+            owned_runtime: None,
+            handle,
         })
     }
 
@@ -102,7 +140,7 @@ impl NostrPublisher {
                     outcomes,
                 ));
             }
-            let AttemptResult { outcome, stop } = self.runtime.block_on(publish_to_relay(
+            let attempt = publish_to_relay(
                 target,
                 &signed,
                 &self.signing_secret,
@@ -110,7 +148,19 @@ impl NostrPublisher {
                 cancellation,
                 lease,
                 operation,
-            ));
+            );
+            // When this publisher owns its `Runtime` (the `NostrPublisher::new` path),
+            // drive it via `Runtime::block_on` directly rather than through a cloned
+            // `Handle` — a current-thread runtime's I/O/timer driver only makes
+            // progress on the thread driving it, and `Runtime::block_on` (unlike
+            // `Handle::block_on`) works correctly regardless of which thread calls
+            // it. Only the caller-owned-runtime path (`new_with_handle`) uses the
+            // `Handle`, and it is that caller's responsibility to ensure its runtime
+            // supports being driven by `Handle::block_on` from other threads.
+            let AttemptResult { outcome, stop } = match &self.owned_runtime {
+                Some(runtime) => runtime.block_on(attempt),
+                None => self.handle.block_on(attempt),
+            };
             if let Some(outcome) = outcome {
                 outcomes.push(outcome);
             }
