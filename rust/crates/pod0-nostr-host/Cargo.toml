@@ -10,7 +10,7 @@ publish = false
 futures-util = { version = "=0.3.34", features = ["sink"] }
 k256 = { version = "=0.13.4", default-features = false, features = ["arithmetic", "schnorr", "std"] }
 log = { version = "=0.4.33", features = ["max_level_info"] }
-nostr = { version = "=0.44.6", default-features = false, features = ["std"] }
+nostr = { version = "=0.44.7", default-features = false, features = ["std"] }
 pod0-application = { path = "../pod0-application", version = "=0.1.0" }
 pod0-domain = { path = "../pod0-domain", version = "=0.1.0" }
 rand_core = { version = "=0.6.4", features = ["getrandom"] }
