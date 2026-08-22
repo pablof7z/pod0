@@ -34,7 +34,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. All six host crates share exactly one `tokio` runtime instance when linked into the same process
   5. `pod0-cli::HostExecutor` reaches approval and capability-execution parity with `CoreAgentHost` — headless tests exercise real approvals instead of auto-denying
 
-**Plans**: 3/3 plans executed
+**Plans**: 5/5 plans executed
 
 Plans:
 **Wave 1**
@@ -48,6 +48,11 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 01-03-PLAN.md — Flip approval to Approve, wire searchPodcastDirectory capability execution, and prove the state machine headlessly (HOST-05)
+
+**Gap Closure (Wave 1, parallel)**
+
+- [ ] 01-04-PLAN.md — Rework pod0-cli to drop its dependency on uncommitted pod0-facade/pod0-storage APIs so `cargo build --workspace --all-targets` passes against committed HEAD (HOST-01, HOST-02)
+- [ ] 01-05-PLAN.md — Add an additive Handle-based constructor to pod0-nostr-host's NostrPublisher, partially closing the SC4 shared-runtime gap (HOST-04)
 
 ### Phase 2: Voice Conversation Authority
 
