@@ -1,8 +1,9 @@
+use pod0_application::TranscriptProvider;
+use pod0_domain::TranscriptStartPolicy;
 use pod0_facade::{
     ApplicationCommand, AutoDownloadMode, AutoDownloadPolicy, PlaybackCommand,
     PlaybackRatePermille, Pod0Facade, Projection, ProjectionRequest, ProjectionScope,
-    RecallConfigurationInput, TranscriptProvider, TranscriptStartPolicy,
-    WorkflowConfigurationInput,
+    RecallConfigurationInput, WorkflowConfigurationInput,
 };
 
 use crate::ids::{encode_id, parse_podcast_id};
