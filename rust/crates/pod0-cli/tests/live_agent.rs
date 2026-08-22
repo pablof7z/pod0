@@ -1,10 +1,11 @@
+mod support;
+
 use std::io::{Read as _, Write as _};
 use std::net::TcpListener;
 
 use pod0_cli::{CliRequest, HostConfig, Shell};
 
 #[test]
-#[ignore = "requires Pod0Facade store-bootstrap support not yet committed to pod0-storage/pod0-facade — see .planning/phases/01-headless-host-crates/01-VERIFICATION.md; un-ignore once that lands (as of 2026-08-22)"]
 fn openai_compatible_turn_uses_live_http_and_returns_the_core_projection() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let address = listener.local_addr().unwrap();
@@ -25,7 +26,8 @@ fn openai_compatible_turn_uses_live_http_and_returns_the_core_projection() {
         Some("integration-secret".to_owned()),
     );
     let mut shell = Shell::new(config).unwrap();
-    assert!(shell.handle(create_request(&store)).ok);
+    support::bootstrap_authoritative_store(&store);
+    assert!(shell.handle(open_request(&store)).ok);
 
     let response = shell.handle(ask_request("Answer over the network"));
     assert!(response.ok, "{:?}", response.error);
@@ -42,7 +44,6 @@ fn openai_compatible_turn_uses_live_http_and_returns_the_core_projection() {
 }
 
 #[test]
-#[ignore = "requires Pod0Facade store-bootstrap support not yet committed to pod0-storage/pod0-facade — see .planning/phases/01-headless-host-crates/01-VERIFICATION.md; un-ignore once that lands (as of 2026-08-22)"]
 fn unexpected_provider_tool_call_fails_without_capability_execution() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let address = listener.local_addr().unwrap();
@@ -58,7 +59,8 @@ fn unexpected_provider_tool_call_fails_without_capability_execution() {
     let store = directory.path().join("pod0.sqlite");
     let config = HostConfig::openai_compatible(format!("http://{address}/v1"), None);
     let mut shell = Shell::new(config).unwrap();
-    assert!(shell.handle(create_request(&store)).ok);
+    support::bootstrap_authoritative_store(&store);
+    assert!(shell.handle(open_request(&store)).ok);
 
     let response = shell.handle(ask_request("Try an unavailable tool"));
     assert!(response.ok, "{:?}", response.error);
@@ -83,7 +85,6 @@ fn unexpected_provider_tool_call_fails_without_capability_execution() {
 }
 
 #[test]
-#[ignore = "requires Pod0Facade store-bootstrap support not yet committed to pod0-storage/pod0-facade — see .planning/phases/01-headless-host-crates/01-VERIFICATION.md; un-ignore once that lands (as of 2026-08-22)"]
 fn ollama_turn_uses_native_live_http_endpoint() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let address = listener.local_addr().unwrap();
@@ -99,7 +100,8 @@ fn ollama_turn_uses_native_live_http_endpoint() {
     let directory = tempfile::tempdir_in(".").unwrap();
     let store = directory.path().join("pod0.sqlite");
     let mut shell = Shell::new(HostConfig::ollama(address.to_string())).unwrap();
-    assert!(shell.handle(create_request(&store)).ok);
+    support::bootstrap_authoritative_store(&store);
+    assert!(shell.handle(open_request(&store)).ok);
 
     let ask: CliRequest = serde_json::from_value(serde_json::json!({
         "v": 1,
@@ -120,7 +122,6 @@ fn ollama_turn_uses_native_live_http_endpoint() {
 }
 
 #[test]
-#[ignore = "requires Pod0Facade store-bootstrap support not yet committed to pod0-storage/pod0-facade — see .planning/phases/01-headless-host-crates/01-VERIFICATION.md; un-ignore once that lands (as of 2026-08-22)"]
 fn headless_turn_completes_after_approved_capability_execution() {
     let chat_listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let chat_address = chat_listener.local_addr().unwrap();
@@ -176,7 +177,8 @@ fn headless_turn_completes_after_approved_capability_execution() {
         Some("integration-secret".to_owned()),
     );
     let mut shell = Shell::new(config).unwrap();
-    assert!(shell.handle(create_request(&store)).ok);
+    support::bootstrap_authoritative_store(&store);
+    assert!(shell.handle(open_request(&store)).ok);
 
     let response = shell.handle(ask_request("Find me a daily tech news podcast"));
     assert!(response.ok, "{:?}", response.error);
@@ -191,10 +193,10 @@ fn headless_turn_completes_after_approved_capability_execution() {
     search_server.join().unwrap();
 }
 
-fn create_request(path: &std::path::Path) -> CliRequest {
+fn open_request(path: &std::path::Path) -> CliRequest {
     serde_json::from_value(serde_json::json!({
         "v": 1,
-        "command": "create_store",
+        "command": "open_store",
         "path": path.to_string_lossy()
     }))
     .unwrap()
