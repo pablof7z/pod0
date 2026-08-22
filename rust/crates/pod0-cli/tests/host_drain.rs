@@ -1,10 +1,13 @@
+mod support;
+
 use pod0_facade::{ApplicationCommand, CancellationId, CommandEnvelope, CommandId, Pod0Facade};
 
 #[test]
-#[ignore = "requires Pod0Facade store-bootstrap support not yet committed to pod0-storage/pod0-facade — see .planning/phases/01-headless-host-crates/01-VERIFICATION.md; un-ignore once that lands (as of 2026-08-22)"]
+#[ignore = "the store-bootstrap gap is closed, but next_leased_host_requests (pod0-facade, out of this plan's pod0-cli-only scope) is not idempotent when re-run against the same pending work: two immediate calls return one lease then an empty list instead of matching results, reproduced identically against committed HEAD with the concurrent pod0-facade/pod0-storage WIP stashed out — see .planning/phases/01-headless-host-crates/01-06-SUMMARY.md (as of 2026-08-23)"]
 fn pending_host_diagnostics_do_not_claim_or_mutate_work() {
     let directory = tempfile::tempdir_in(".").unwrap();
     let store = directory.path().join("pod0.sqlite");
+    support::bootstrap_authoritative_store(&store);
     let facade = Pod0Facade::open(store.to_string_lossy().into_owned()).unwrap();
     facade.dispatch(CommandEnvelope {
         command_id: CommandId::from_parts(1, 1),

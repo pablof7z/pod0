@@ -1,10 +1,11 @@
+mod support;
+
 use std::io::{Read as _, Write as _};
 use std::net::TcpListener;
 
 use pod0_cli::{HostConfig, Shell};
 
 #[test]
-#[ignore = "requires Pod0Facade store-bootstrap support not yet committed to pod0-storage/pod0-facade — see .planning/phases/01-headless-host-crates/01-VERIFICATION.md; un-ignore once that lands (as of 2026-08-22)"]
 fn search_podcasts_hits_a_real_http_endpoint_and_returns_feed_urls() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let address = listener.local_addr().unwrap();
@@ -34,8 +35,9 @@ fn search_podcasts_hits_a_real_http_endpoint_and_returns_feed_urls() {
 
     let directory = tempfile::tempdir_in(".").unwrap();
     let store = directory.path().join("pod0.sqlite");
+    support::bootstrap_authoritative_store(&store);
     let mut shell = Shell::new(HostConfig::empty()).unwrap();
-    assert!(shell.handle(create_request(&store)).ok);
+    assert!(shell.handle(open_request(&store)).ok);
 
     let search: pod0_cli::CliRequest = serde_json::from_value(serde_json::json!({
         "v": 1,
@@ -60,10 +62,10 @@ fn search_podcasts_hits_a_real_http_endpoint_and_returns_feed_urls() {
     server.join().unwrap();
 }
 
-fn create_request(path: &std::path::Path) -> pod0_cli::CliRequest {
+fn open_request(path: &std::path::Path) -> pod0_cli::CliRequest {
     serde_json::from_value(serde_json::json!({
         "v": 1,
-        "command": "create_store",
+        "command": "open_store",
         "path": path.to_string_lossy()
     }))
     .unwrap()
