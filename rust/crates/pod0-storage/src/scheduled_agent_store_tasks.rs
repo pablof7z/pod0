@@ -56,7 +56,7 @@ pub(crate) fn update_task_in_transaction(
     expected_revision: StateRevision,
     definition: ScheduledTaskDefinition,
 ) -> Result<ScheduledTaskMutationOutcome, StorageError> {
-    if let Some(receipt) = command_receipt(transaction, &context)? {
+    if let Some(receipt) = command_receipt(transaction, context)? {
         let task_id = receipt
             .task_id
             .ok_or(StorageError::ScheduledAgentCommandConflict)?;
@@ -94,7 +94,7 @@ pub(crate) fn update_task_in_transaction(
     if transaction.changes() != 1 {
         return Err(StorageError::ScheduledAgentWorkflowConflict);
     }
-    finish_command(transaction, &context, Some(definition.task_id), None)?;
+    finish_command(transaction, context, Some(definition.task_id), None)?;
     Ok(ScheduledTaskMutationOutcome::Applied(definition))
 }
 
@@ -129,7 +129,7 @@ pub(crate) fn remove_task_in_transaction(
     task_id: ScheduledTaskId,
     expected_revision: StateRevision,
 ) -> Result<ScheduledTaskRemovalOutcome, StorageError> {
-    if let Some(receipt) = command_receipt(transaction, &context)? {
+    if let Some(receipt) = command_receipt(transaction, context)? {
         let stored = receipt
             .task_id
             .ok_or(StorageError::ScheduledAgentCommandConflict)?;
@@ -177,7 +177,7 @@ pub(crate) fn remove_task_in_transaction(
             params![context.observed_at.value(), task_id.into_bytes().as_slice()],
         )
         .map_err(|error| StorageError::sqlite("retire removed scheduled attempts", error))?;
-    finish_command(transaction, &context, Some(task_id), None)?;
+    finish_command(transaction, context, Some(task_id), None)?;
     Ok(ScheduledTaskRemovalOutcome::Applied { task_id, revision })
 }
 

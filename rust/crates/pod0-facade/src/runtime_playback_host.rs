@@ -29,10 +29,7 @@ impl FacadeState {
             .collect()
     }
 
-    pub(super) fn append_playback_stream_request<'a>(
-        &self,
-        requests: &mut Vec<(&'a str, HostRequest)>,
-    ) {
+    pub(super) fn append_playback_stream_request(&self, requests: &mut Vec<(&str, HostRequest)>) {
         if self.playback.observation_request_id.is_none() {
             requests.push((
                 "observe",

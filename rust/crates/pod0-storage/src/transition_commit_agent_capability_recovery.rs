@@ -89,6 +89,7 @@ fn candidate(
     connection: &rusqlite::Connection,
     now: UnixTimestampMilliseconds,
 ) -> Result<Option<Candidate>, StorageError> {
+    #[allow(clippy::type_complexity)]
     let row: Option<(Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>, String)> = connection
         .query_row(
             "SELECT i.intent_id,a.attempt_id,i.authorizing_activity_id,i.correlation_id,i.request_json \

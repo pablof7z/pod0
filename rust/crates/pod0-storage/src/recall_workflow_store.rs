@@ -25,6 +25,7 @@ impl LibraryStore {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn start_recall_query(
         &self,
         command_id: CommandId,

@@ -6,8 +6,14 @@ members = [
     "crates/pod0-storage",
     "crates/pod0-recall-index",
     "crates/pod0-facade",
+    "crates/pod0-live-hosts",
+    "crates/pod0-portable-media",
+    "crates/pod0-cli",
     "crates/pod0-bdd",
     "crates/uniffi-bindgen",
+    "crates/pod0-nostr-host",
+    "crates/pod0-system-hosts",
+    "crates/pod0-tts-host",
 ]
 
 [workspace.package]
@@ -22,11 +28,15 @@ pod0-domain = { path = "crates/pod0-domain", version = "=0.1.0" }
 pod0-application = { path = "crates/pod0-application", version = "=0.1.0" }
 pod0-storage = { path = "crates/pod0-storage", version = "=0.1.0" }
 pod0-recall-index = { path = "crates/pod0-recall-index", version = "=0.1.0" }
+pod0-facade = { path = "crates/pod0-facade", version = "=0.1.0" }
+pod0-live-hosts = { path = "crates/pod0-live-hosts", version = "=0.1.0" }
+pod0-portable-media = { path = "crates/pod0-portable-media", version = "=0.1.0" }
 nostr = { version = "=0.44.6" }
 libc = { version = "=0.2.186" }
 rusqlite = { version = "=0.39.0", default-features = false, features = ["backup", "bundled"] }
 quick-xml = { version = "=0.41.0" }
 regex = { version = "=1.13.1" }
+reqwest = { version = "=0.12.28", default-features = false, features = ["blocking", "json", "rustls-tls"] }
 serde = { version = "=1.0.228", features = ["derive"] }
 serde_json = { version = "=1.0.150" }
 sha2 = { version = "=0.10.9" }
@@ -37,3 +47,4 @@ tungstenite = { version = "=0.29.0" }
 uniffi = { version = "=0.32.0" }
 unicode-segmentation = { version = "=1.12.0" }
 url = { version = "=2.5.7" }
+tokio = { version = "=1.53.1", features = ["rt", "time"] }

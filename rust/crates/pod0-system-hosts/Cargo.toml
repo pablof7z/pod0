@@ -1,0 +1,36 @@
+[package]
+name = "pod0-system-hosts"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.93"
+license = "MIT"
+publish = false
+description = "Real operating-system capability primitives for Pod0 hosts"
+
+[dependencies]
+# All direct dependencies use licenses allowed by rust/deny.toml.
+thiserror = "=2.0.20"
+zeroize = { version = "=1.9.0", default-features = false, features = ["alloc"] }
+
+[target.'cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))'.dependencies]
+keyring-core = { version = "=1.0.0", default-features = false }
+
+[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
+cap-primitives = { version = "=4.0.2", default-features = false }
+cap-std = { version = "=4.0.2", default-features = false }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+notify-rust = { version = "=4.18.0", default-features = false, features = ["z"] }
+zbus-secret-service-keyring-store = { version = "=1.0.1", default-features = false, features = ["crypto-rust"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+notify-rust = { version = "=4.18.0", default-features = false }
+windows-native-keyring-store = { version = "=1.1.0", default-features = false }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+apple-native-keyring-store = { version = "=1.0.2", default-features = false, features = ["keychain"] }
+mac-usernotifications = { version = "=0.3.1", default-features = false, features = ["blocking-wrappers"] }
+objc2-foundation = { version = "=0.3.2", default-features = false, features = ["NSBundle", "NSString"] }
+
+[lib]
+path = "src/lib.rs"

@@ -27,7 +27,7 @@ pub(crate) fn apply_model_chapter_submission_claim(
     transaction: &rusqlite::Transaction<'_>,
     input: &ModelChapterSubmissionClaimInput,
 ) -> Result<ModelChapterSubmissionClaim, StorageError> {
-    let mut record = exact_claim_record(transaction, &input)?;
+    let mut record = exact_claim_record(transaction, input)?;
     if record.state.may_have_submitted() {
         return Ok(ModelChapterSubmissionClaim::AlreadyClaimed(record));
     }

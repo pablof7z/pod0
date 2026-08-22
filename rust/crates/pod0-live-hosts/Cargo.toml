@@ -1,0 +1,24 @@
+[package]
+name = "pod0-live-hosts"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.93"
+license = "MIT"
+publish = false
+description = "Portable live capability adapters for Pod0 hosts"
+
+[dependencies]
+# futures-util: MIT OR Apache-2.0
+futures-util = { version = "=0.3.34", default-features = false, features = ["std"] }
+# reqwest: MIT OR Apache-2.0
+reqwest = { version = "=0.12.28", default-features = false, features = ["json", "multipart", "stream", "rustls-tls"] }
+# serde and serde_json: MIT OR Apache-2.0
+serde = { version = "=1.0.228", features = ["derive"] }
+serde_json = { version = "=1.0.150" }
+# tokio: MIT
+tokio = { version = "=1.53.1", features = ["fs", "io-util", "macros", "rt-multi-thread", "sync", "time"] }
+# zeroize: MIT OR Apache-2.0
+zeroize = { version = "=1.9.0" }
+
+[dev-dependencies]
+tokio = { version = "=1.53.1", features = ["fs", "io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }

@@ -44,8 +44,8 @@ pub(crate) fn model_chapter_admission_state(
         .as_ref()
         .map_or(StateRevision::INITIAL, |record| record.workflow_revision);
     let changes = existing.as_ref().is_none_or(|record| {
-        !should_keep(record, input)
-            && !(protects_attempt(record)
+        !(should_keep(record, input)
+            || protects_attempt(record)
                 && !explicit_retry_allowed(record, input)
                 && record.replan_pending
                 && record.desired_configured_model == input.configured_model)

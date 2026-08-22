@@ -195,10 +195,10 @@ fn run_fault_and_recover(
             let bytes = std::fs::read(target.path().unwrap()).unwrap();
             crate::user_data_erasure_projection::validate_sanitized_application_state(&bytes)
                 .unwrap();
-        } else if target.kind != UserDataTargetKind::CoreSqlite {
-            if let Some(path) = target.path() {
-                assert!(!path.exists(), "old target survived: {:?}", target.kind);
-            }
+        } else if target.kind != UserDataTargetKind::CoreSqlite
+            && let Some(path) = target.path()
+        {
+            assert!(!path.exists(), "old target survived: {:?}", target.kind);
         }
     }
 }

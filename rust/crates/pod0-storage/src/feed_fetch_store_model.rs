@@ -95,6 +95,7 @@ pub struct FeedFetchEnsureOutcome {
 }
 
 #[derive(Clone, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum FeedFetchLeasedObservationAction {
     Apply {
         parsed: pod0_application::ParsedPodcastFeed,

@@ -104,6 +104,7 @@ impl LibraryStore {
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn decode_command_row(
     row: &rusqlite::Row<'_>,
 ) -> rusqlite::Result<(Vec<u8>, Vec<u8>, Vec<u8>, String, i64)> {

@@ -31,6 +31,7 @@ pub struct ModelChapterObservationCommitOutcome {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[allow(clippy::large_enum_variant)]
 pub enum ModelChapterFinalizationAction {
     Success(super::complete::ModelChapterSuccessInput),
     Failure(ModelChapterFailureInput),

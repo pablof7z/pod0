@@ -174,6 +174,7 @@ fn authorize_intent(
     );
 }
 
+#[allow(clippy::too_many_arguments)]
 fn authorize(
     identity: &crate::CommandActivityIdentity,
     index: usize,

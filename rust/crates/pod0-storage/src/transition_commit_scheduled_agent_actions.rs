@@ -22,6 +22,7 @@ enum ActionKind {
 }
 
 #[derive(Clone)]
+#[allow(clippy::large_enum_variant)]
 enum ActionDecision {
     Apply {
         previous: ScheduledAgentOccurrenceState,

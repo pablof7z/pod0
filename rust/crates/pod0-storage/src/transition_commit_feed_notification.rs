@@ -72,10 +72,7 @@ impl LibraryStore {
                     effect,
                 })
                 .map(|plan| {
-                    plan.map_mutation(|mutation: ()| {
-                        let _ = mutation;
-                        (attempt, request_id)
-                    })
+                    plan.map_mutation(|(): ()| (attempt, request_id))
                 })
                 .map_err(|_| StorageError::InvalidActivity)
             },

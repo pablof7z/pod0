@@ -52,6 +52,7 @@ impl TranscriptStore {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn assign_speaker(
         &self,
         command_id: CommandId,

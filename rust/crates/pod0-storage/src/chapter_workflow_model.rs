@@ -97,6 +97,7 @@ pub struct PublisherChapterWorkflowFailureInput {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[allow(clippy::large_enum_variant)]
 pub enum PublisherChapterObservationAction {
     Complete {
         artifact: ChapterArtifactInput,
