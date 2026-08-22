@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. `cargo build/test/clippy --workspace --all-targets` passes in one CI job covering all six crates (`pod0-cli`, `pod0-live-hosts`, `pod0-nostr-host`, `pod0-portable-media`, `pod0-system-hosts`, `pod0-tts-host`)
   2. Each of the six crates also compiles standalone outside the workspace
   3. HTTP provider clients in `pod0-live-hosts`/`pod0-cli` share one pooled `reqwest::Client` per process with explicit timeouts, not duplicate/unpooled clients
-  4. All six host crates share exactly one `tokio` runtime instance when linked into the same process
+  4. Every host crate actually colocated in the same process (currently `pod0-cli` + its direct deps `pod0-live-hosts`/`pod0-portable-media`) shares exactly one `tokio` runtime instance; crates not yet wired into any shared process (`pod0-nostr-host`, `pod0-system-hosts`, `pod0-tts-host`) are Handle-ready (accept an externally-threaded `tokio::runtime::Handle` rather than constructing their own) but their actual colocation is deferred to a follow-up phase that adds the facade/application contract needed to wire them in (reworded 2026-08-22 after 01-VERIFICATION.md found the original wording unprovable — no process currently links all six crates)
   5. `pod0-cli::HostExecutor` reaches approval and capability-execution parity with `CoreAgentHost` — headless tests exercise real approvals instead of auto-denying
 
 **Plans**: 5/5 plans executed
