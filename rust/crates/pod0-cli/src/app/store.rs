@@ -17,12 +17,11 @@ impl Shell {
                 false,
             ));
         }
-        let facade = Pod0Facade::create(path.clone()).map_err(open_error)?;
-        self.install_store(facade, path.clone())?;
-        Ok(ResponseData::Store {
-            path,
-            created: true,
-        })
+        Err(CliError::new(
+            "store_creation_unavailable",
+            "creating a new authoritative store requires pod0-facade/pod0-storage bootstrap support that is not yet committed to this workspace",
+            false,
+        ))
     }
 
     pub(super) fn open_store(&mut self, path: String) -> Result<ResponseData, CliError> {

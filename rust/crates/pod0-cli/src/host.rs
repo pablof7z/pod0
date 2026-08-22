@@ -10,9 +10,9 @@ pub use config::HostConfig;
 
 use std::time::Duration;
 
+use pod0_application::LibraryNetworkStep;
 use pod0_facade::{
     AgentApprovalDecision, HostFailureCode, HostObservation, HostRequest, HostRequestEnvelope,
-    LibraryNetworkStep,
 };
 use pod0_live_hosts::{
     AdapterError, CancellationToken, ClientConfig, HttpGetRequest, HttpLimits, LiveHosts,
