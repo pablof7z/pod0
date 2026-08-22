@@ -12,6 +12,7 @@ use crate::host::{HostExecution, HostExecutor};
 use crate::protocol::CliError;
 
 const MAX_SYNCHRONOUS_HOST_STEPS: usize = 64;
+const POLL_INTERVAL: Duration = Duration::from_millis(250);
 
 pub(super) struct HostPump {
     shared: Arc<PumpShared>,
@@ -103,8 +104,7 @@ impl PumpShared {
                 }
                 signal.generation
             };
-            let processed = self.drain_available().unwrap_or_default();
-            let next_at = self.facade.next_host_effect_at().ok().flatten();
+            self.drain_available().unwrap_or_default();
             let mut signal = self
                 .signal
                 .lock()
@@ -115,22 +115,11 @@ impl PumpShared {
             if signal.generation != observed_generation {
                 continue;
             }
-            let timeout = next_at.and_then(wait_duration);
-            if timeout == Some(Duration::ZERO) && processed > 0 {
-                continue;
-            }
-            signal = match timeout {
-                Some(duration) if duration > Duration::ZERO => {
-                    self.wake
-                        .wait_timeout(signal, duration)
-                        .unwrap_or_else(std::sync::PoisonError::into_inner)
-                        .0
-                }
-                _ => self
-                    .wake
-                    .wait(signal)
-                    .unwrap_or_else(std::sync::PoisonError::into_inner),
-            };
+            signal = self
+                .wake
+                .wait_timeout(signal, POLL_INTERVAL)
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .0;
             if signal.shutdown {
                 return;
             }
@@ -145,7 +134,7 @@ impl PumpShared {
         for processed in 0..MAX_SYNCHRONOUS_HOST_STEPS {
             let Some(request) = self
                 .facade
-                .next_leased_headless_host_requests(1)
+                .next_leased_host_requests(1)
                 .into_iter()
                 .next()
             else {
@@ -210,13 +199,6 @@ impl Shell {
             )
         })
     }
-}
-
-fn wait_duration(value: UnixTimestampMilliseconds) -> Option<Duration> {
-    let milliseconds = value.value.saturating_sub(now_milliseconds());
-    Some(Duration::from_millis(
-        u64::try_from(milliseconds).unwrap_or_default(),
-    ))
 }
 
 fn now_milliseconds() -> i64 {

@@ -1,9 +1,9 @@
 use pod0_facade::{
-    AgentTurnStage, CoreFailureCode, DurableExternalEffectRequest, ExternalEffectKind,
-    OperationProjection, OperationStage, Pod0Facade, Projection,
+    AgentTurnStage, CoreFailureCode, OperationProjection, OperationStage, Pod0Facade, Projection,
+    ProjectionRequest, ProjectionScope,
 };
 
-use crate::protocol::{CliError, OperationDto, PendingHostWorkDto};
+use crate::protocol::{CliError, OperationDto};
 
 #[allow(clippy::type_complexity)]
 pub(crate) fn library(
@@ -18,10 +18,25 @@ pub(crate) fn library(
     ),
     CliError,
 > {
-    let (snapshot, totals, subscribed_podcast_ids) =
-        facade.library_page_with_totals(offset, max_items);
+    let snapshot = facade.snapshot(ProjectionRequest {
+        scope: ProjectionScope::Library,
+        offset,
+        max_items,
+    });
     match snapshot.projection {
-        Projection::Library { value } => Ok((value, totals, subscribed_podcast_ids)),
+        Projection::Library { value } => {
+            let totals = (
+                value.podcasts.len(),
+                value.subscriptions.len(),
+                value.episodes.len(),
+            );
+            let subscribed_podcast_ids = value
+                .subscriptions
+                .iter()
+                .map(|subscription| subscription.podcast_id)
+                .collect();
+            Ok((value, totals, subscribed_podcast_ids))
+        }
         _ => Err(projection_error()),
     }
 }
@@ -92,14 +107,6 @@ pub(crate) fn agent_stage(stage: AgentTurnStage) -> &'static str {
     }
 }
 
-pub(crate) fn pending_work(effect: DurableExternalEffectRequest) -> PendingHostWorkDto {
-    PendingHostWorkDto {
-        kind: effect_kind(effect.kind).to_owned(),
-        not_before_milliseconds: effect.not_before.map(|value| value.value),
-        deadline_milliseconds: effect.deadline_at.map(|value| value.value),
-    }
-}
-
 pub(crate) fn open_error(error: pod0_facade::FacadeOpenError) -> CliError {
     CliError::new("store_open_failed", error.to_string(), false)
 }
@@ -145,27 +152,4 @@ fn failure_code(code: CoreFailureCode) -> String {
         CoreFailureCode::Unsupported { .. } => "unsupported",
     }
     .to_owned()
-}
-
-fn effect_kind(kind: ExternalEffectKind) -> &'static str {
-    match kind {
-        ExternalEffectKind::FeedNetwork => "feed_network",
-        ExternalEffectKind::Playback => "playback",
-        ExternalEffectKind::RecallProvider => "recall_provider",
-        ExternalEffectKind::ChapterProvider => "chapter_provider",
-        ExternalEffectKind::Download => "download",
-        ExternalEffectKind::Notification => "notification",
-        ExternalEffectKind::TranscriptProvider => "transcript_provider",
-        ExternalEffectKind::AgentProvider => "agent_provider",
-        ExternalEffectKind::AgentApproval => "agent_approval",
-        ExternalEffectKind::AgentCapability => "agent_capability",
-        ExternalEffectKind::ScheduledAgentProvider => "scheduled_agent_provider",
-        ExternalEffectKind::CoreWake => "core_wake",
-        ExternalEffectKind::Filesystem => "filesystem",
-        ExternalEffectKind::Publication => "publication",
-        ExternalEffectKind::PublisherChapterProvider => "publisher_chapter_provider",
-        ExternalEffectKind::ModelChapterProvider => "model_chapter_provider",
-        ExternalEffectKind::Cancellation => "cancellation",
-        ExternalEffectKind::LibraryNetwork => "library_network",
-    }
 }

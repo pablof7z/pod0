@@ -13,8 +13,7 @@ use crate::app::host_loop::HostPump;
 use crate::host::{HostConfig, HostExecutor};
 use crate::ids::{IdFactory, encode_id, parse_conversation_id, parse_episode_id};
 use crate::mapping::{
-    agent_stage, find_operation, library, open_error, operation_dto, operation_error, pending_work,
-    projection_error,
+    agent_stage, find_operation, library, operation_dto, operation_error, projection_error,
 };
 use crate::protocol::{
     CliCommand, CliError, CliRequest, CliResponse, FeedEpisodeDto, FeedPodcastDto, MessageDto,
@@ -287,15 +286,11 @@ impl Shell {
         })
     }
 
-    fn host_drain(&self, limit: u16) -> Result<ResponseData, CliError> {
-        let pending = self
-            .facade()?
-            .pending_host_effects(limit)
-            .map_err(open_error)?
-            .into_iter()
-            .map(pending_work)
-            .collect();
-        Ok(ResponseData::HostDrain { pending })
+    fn host_drain(&self, _limit: u16) -> Result<ResponseData, CliError> {
+        self.run_host_loop()?;
+        Ok(ResponseData::HostDrain {
+            pending: Vec::new(),
+        })
     }
 
     fn search_podcasts(&self, term: String, limit: u16) -> Result<ResponseData, CliError> {
