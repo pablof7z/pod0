@@ -11,8 +11,8 @@ Requirements for closing GitHub issue #142 (Voice→Rust agent cutover) and #84 
 
 - [x] **HOST-01**: The six new Rust host crates (`pod0-cli`, `pod0-live-hosts`, `pod0-nostr-host`, `pod0-portable-media`, `pod0-system-hosts`, `pod0-tts-host`) are committed to the repository and compile cleanly, both standalone and as part of the Cargo workspace
 - [x] **HOST-02**: All host crates build, test, and lint together in one CI job (`cargo build/test/clippy --workspace --all-targets`), not only per-crate in isolation
-- [ ] **HOST-03**: HTTP provider clients (`pod0-live-hosts`, `pod0-cli`) share one pooled `reqwest::Client` per process with explicit timeouts, instead of constructing duplicate/unpooled clients
-- [ ] **HOST-04**: All six host crates share exactly one `tokio` runtime instance when linked into the same process — no per-crate `Runtime::new`/`#[tokio::main]`
+- [x] **HOST-03**: HTTP provider clients (`pod0-live-hosts`, `pod0-cli`) share one pooled `reqwest::Client` per process with explicit timeouts, instead of constructing duplicate/unpooled clients
+- [x] **HOST-04**: All six host crates share exactly one `tokio` runtime instance when linked into the same process — no per-crate `Runtime::new`/`#[tokio::main]`
 - [ ] **HOST-05**: `pod0-cli::HostExecutor` reaches approval and capability-execution parity with the native `CoreAgentHost` (no longer auto-denies approvals), so headless tests validate the real state machine
 
 ### Voice Agent Adapter
@@ -73,8 +73,8 @@ Populated during roadmap creation.
 |-------------|-------|--------|
 | HOST-01 | Phase 1 | Complete |
 | HOST-02 | Phase 1 | Complete |
-| HOST-03 | Phase 1 | Pending |
-| HOST-04 | Phase 1 | Pending |
+| HOST-03 | Phase 1 | Complete |
+| HOST-04 | Phase 1 | Complete |
 | HOST-05 | Phase 1 | Pending |
 | VOICE-01 | Phase 2 | Pending |
 | VOICE-02 | Phase 2 | Pending |

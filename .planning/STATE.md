@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 current_phase: 1
 current_phase_name: Headless Host Crates
 status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-08-22T15:58:05.503Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-08-22T16:39:00.714Z"
 last_activity: 2026-08-22
 last_activity_desc: Phase 1 execution started
-state_head: 65fc096e953b5d7054689cde821dfeb016f64989
+state_head: cbd30320a7db0afdfcd9fb1f3a7f4c6dc0cc387f
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-08-22)
 ## Current Position
 
 Phase: 1 (Headless Host Crates) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-08-22 — Phase 1 execution started
 
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 01 P01 | 55min | 2 tasks | 148 files |
+| Phase 01 P02 | 45min | 3 tasks | 22 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,8 @@ Recent decisions affecting current work:
 - [Phase 1]: RelaySecurity::AllowInsecureNumericLoopback chosen as NostrPublisher's production default to match its existing ws://127.0.0.1:9 unit test
 - [Phase 1]: nostr pinned to =0.44.7 (exact RUSTSEC-patched version) rather than latest =0.45.3, avoiding an unnecessary minor-version API change
 - [Phase 1]: pod0-cli's pre-existing rustyline BSL-1.0 license rejection and pod0-application's cross-language fixture-version drift left unfixed as out of scope for this workspace-membership plan; logged to windows ledger
+- [Phase 1]: Switched HostExecutor's shared runtime from current-thread to multi-thread (worker_threads(1)) — current-thread's Handle::block_on hangs when called cross-thread, which is the real pod0-host-pump shape
+- [Phase 1]: pod0-tts-host keeps concrete tracing version literal (not .workspace = true) to preserve its Plan 01-01 standalone-buildability property
 
 ### Pending Todos
 
@@ -95,6 +98,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-08-22T15:58:05.495Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-08-22T16:39:00.706Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None
