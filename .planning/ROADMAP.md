@@ -34,7 +34,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. All six host crates share exactly one `tokio` runtime instance when linked into the same process
   5. `pod0-cli::HostExecutor` reaches approval and capability-execution parity with `CoreAgentHost` — headless tests exercise real approvals instead of auto-denying
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans executed
 
 Plans:
 **Wave 1**
@@ -47,7 +47,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 01-03-PLAN.md — Flip approval to Approve, wire searchPodcastDirectory capability execution, and prove the state machine headlessly (HOST-05)
+- [x] 01-03-PLAN.md — Flip approval to Approve, wire searchPodcastDirectory capability execution, and prove the state machine headlessly (HOST-05)
 
 ### Phase 2: Voice Conversation Authority
 
@@ -114,7 +114,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (Phase 3 may run in paralle
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Headless Host Crates | 2/3 | In Progress|  |
+| 1. Headless Host Crates | 3/3 | In Progress|  |
 | 2. Voice Conversation Authority | 0/TBD | Not started | - |
 | 3. Audio Session Interruption & Physical Hardware Validation | 0/TBD | Not started | - |
 | 4. Siri/Shortcuts Re-enablement | 0/TBD | Not started | - |
