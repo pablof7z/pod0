@@ -10,7 +10,6 @@ publish.workspace = true
 pod0-facade.workspace = true
 pod0-live-hosts.workspace = true
 pod0-portable-media.workspace = true
-reqwest.workspace = true
 rustyline = "=18.0.1"
 serde.workspace = true
 serde_json.workspace = true

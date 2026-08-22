@@ -1,13 +1,16 @@
-use pod0_facade::HostObservation;
-use reqwest::header::{ACCEPT, USER_AGENT};
+use std::time::Duration;
 
-use super::{HostExecutor, read_bounded};
+use pod0_live_hosts::{CancellationToken, HttpGetRequest, HttpLimits, RequestOptions};
+
+use super::{HostExecutor, map_adapter_error};
 use crate::protocol::{CliError, PodcastSearchResultDto};
 
 const ITUNES_SEARCH_URL: &str = "https://itunes.apple.com/search";
 const MAX_SEARCH_RESULTS: u16 = 200;
 const MAX_SEARCH_RESPONSE_BYTES: u64 = 2 * 1024 * 1024;
-const USER_AGENT_VALUE: &str = concat!("pod0-cli/", env!("CARGO_PKG_VERSION"));
+const MAX_SEARCH_METADATA_BYTES: u64 = 64 * 1024;
+const SEARCH_TIMEOUT: Duration = Duration::from_secs(90);
+const SEARCH_MAXIMUM_REDIRECTS: u8 = 10;
 
 /// Search the iTunes podcast directory over real HTTP. Read-only: returns
 /// directory metadata only. The caller subscribes to a chosen `feed_url`
@@ -31,24 +34,35 @@ pub(crate) fn search(
         "{base}?media=podcast&limit={limit}&term={encoded}"
     );
 
+    let request = HttpGetRequest {
+        url,
+        accept: Some("application/json".to_owned()),
+        entity_tag: None,
+        last_modified: None,
+        options: RequestOptions {
+            timeout: SEARCH_TIMEOUT,
+            maximum_redirects: SEARCH_MAXIMUM_REDIRECTS,
+            limits: HttpLimits {
+                maximum_body_bytes: MAX_SEARCH_RESPONSE_BYTES,
+                maximum_metadata_bytes: MAX_SEARCH_METADATA_BYTES,
+            },
+        },
+    };
     let response = host
-        .client
-        .get(&url)
-        .header(USER_AGENT, USER_AGENT_VALUE)
-        .header(ACCEPT, "application/json")
-        .send()
-        .map_err(|error| search_error(&error))?;
-    let status = response.status();
-    if !status.is_success() {
+        .runtime
+        .block_on(host.live.http_get(request, &CancellationToken::new()))
+        .map_err(|error| observation_to_error(map_adapter_error(&error)))?;
+    if !(200..300).contains(&response.evidence.status) {
+        let status = response.evidence.status;
         return Err(CliError::new(
             "search_http_error",
             format!("iTunes search returned HTTP {status}"),
-            status.is_server_error(),
+            (500..600).contains(&status),
         ));
     }
-    let bytes = read_bounded(response, MAX_SEARCH_RESPONSE_BYTES)
-        .map_err(|observation| observation_to_error(*observation))?;
-    parse_results(&bytes)
+    // `response.body` is already bounded to MAX_SEARCH_RESPONSE_BYTES by
+    // LiveHosts::http_get's own HttpLimits enforcement during download.
+    parse_results(&response.body)
 }
 
 fn parse_results(bytes: &[u8]) -> Result<Vec<PodcastSearchResultDto>, CliError> {
@@ -104,17 +118,9 @@ fn parse_results(bytes: &[u8]) -> Result<Vec<PodcastSearchResultDto>, CliError> 
     Ok(out)
 }
 
-fn search_error(error: &reqwest::Error) -> CliError {
-    if error.is_timeout() {
-        CliError::new("search_timeout", "iTunes search request timed out", true)
-    } else {
-        CliError::new("search_offline", "iTunes search request failed", true)
-    }
-}
-
-fn observation_to_error(observation: HostObservation) -> CliError {
+fn observation_to_error(observation: pod0_facade::HostObservation) -> CliError {
     let detail = match observation {
-        HostObservation::Failed { code, .. } => format!("iTunes search failed: {code:?}"),
+        pod0_facade::HostObservation::Failed { code, .. } => format!("iTunes search failed: {code:?}"),
         other => format!("iTunes search failed: {other:?}"),
     };
     CliError::new("search_http_error", detail, true)

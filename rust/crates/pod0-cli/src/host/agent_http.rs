@@ -1,12 +1,22 @@
+use std::time::Duration;
+
 use pod0_facade::{
-    AgentModelExecutionRequest, AgentModelUsageObservation, HostFailureCode, HostObservation,
+    AgentModelExecutionRequest, AgentModelToolCallObservation, AgentModelUsageObservation,
+    HostFailureCode, HostObservation,
 };
-use serde_json::{Value, json};
+use pod0_live_hosts::{
+    CancellationToken, ChatRequest, ChatResponse, HttpLimits, OllamaChatRequest,
+    OpenAiChatRequest, ProviderEndpoint, SecretString, ToolChoice,
+};
 
 use crate::protocol::AgentProvider;
 
-use super::agent_payload::messages;
-use super::{HostExecutor, failed, network_failure, read_bounded, status_failure};
+use super::agent_payload::to_chat_messages;
+use super::{HostExecutor, failed, map_adapter_error};
+
+const CHAT_TIMEOUT: Duration = Duration::from_secs(90);
+const CHAT_MAXIMUM_METADATA_BYTES: u64 = 64 * 1024;
+const MINIMUM_CHAT_BODY_BYTES: u64 = 64 * 1024;
 
 pub(super) fn execute(
     host: &HostExecutor,
@@ -34,6 +44,26 @@ pub(super) fn execute(
     }
 }
 
+fn chat_request(execution: &AgentModelExecutionRequest, model: &str) -> ChatRequest {
+    ChatRequest {
+        model: model.to_owned(),
+        messages: to_chat_messages(execution),
+        // Advertising tools is out of this task's scope; `chat_request::request_body`
+        // already omits the "tools" key entirely when `tools` is empty, so the
+        // outbound wire request is unchanged from before this migration.
+        tools: Vec::new(),
+        tool_choice: ToolChoice::Auto,
+        temperature: None,
+        maximum_completion_tokens: None,
+        timeout: CHAT_TIMEOUT,
+        limits: HttpLimits {
+            maximum_body_bytes: execution.maximum_output_bytes.max(MINIMUM_CHAT_BODY_BYTES),
+            maximum_metadata_bytes: CHAT_MAXIMUM_METADATA_BYTES,
+        },
+        maximum_output_bytes: execution.maximum_output_bytes,
+    }
+}
+
 fn execute_openai(
     host: &HostExecutor,
     execution: &AgentModelExecutionRequest,
@@ -46,56 +76,19 @@ fn execute_openai(
         );
     };
     let url = format!("{}/chat/completions", base.trim_end_matches('/'));
-    let body = json!({"model": model, "messages": messages(execution)});
-    let mut request = host.client.post(url).json(&body);
-    if let Some(key) = host.config.openai_api_key.as_deref() {
-        request = request.bearer_auth(key);
-    }
-    let response = match request.send() {
-        Ok(response) => response,
-        Err(error) => return network_failure(&error, true),
+    let endpoint = match host.config.openai_api_key.as_deref() {
+        Some(key) => ProviderEndpoint::bearer(url, SecretString::new(key)),
+        None => ProviderEndpoint::unauthenticated(url),
     };
-    if !response.status().is_success() {
-        return status_failure(response.status().as_u16(), true);
+    let chat = chat_request(execution, model);
+    let result = host.runtime.block_on(
+        host.live
+            .openai_chat(OpenAiChatRequest { endpoint, chat }, &CancellationToken::new()),
+    );
+    match result {
+        Ok(response) => completed(execution, response),
+        Err(error) => map_adapter_error(&error),
     }
-    let bytes = match read_bounded(response, execution.maximum_output_bytes) {
-        Ok(bytes) => bytes,
-        Err(observation) => return *observation,
-    };
-    let value: Value = match serde_json::from_slice(&bytes) {
-        Ok(value) => value,
-        Err(_) => {
-            return failed(
-                HostFailureCode::InvalidResponse,
-                "provider returned invalid JSON",
-            );
-        }
-    };
-    let Some(message) = value.pointer("/choices/0/message") else {
-        return failed(
-            HostFailureCode::InvalidResponse,
-            "provider response contained no message",
-        );
-    };
-    let assistant_text = message
-        .get("content")
-        .and_then(Value::as_str)
-        .unwrap_or_default()
-        .to_owned();
-    if contains_tool_call(message) {
-        return failed(
-            HostFailureCode::Unsupported { wire_code: 1 },
-            "provider returned a tool call although this host advertises no tools",
-        );
-    }
-    if assistant_text.is_empty() {
-        return failed(
-            HostFailureCode::InvalidResponse,
-            "provider returned an empty completion",
-        );
-    }
-    let usage = value.get("usage").and_then(openai_usage);
-    completed(execution, assistant_text, usage)
 }
 
 fn execute_ollama(
@@ -109,97 +102,48 @@ fn execute_ollama(
             "Ollama endpoint is not configured",
         );
     };
-    let body = json!({"model": model, "stream": false, "messages": messages(execution)});
-    let response = match host
-        .client
-        .post(format!("{}/api/chat", base.trim_end_matches('/')))
-        .json(&body)
-        .send()
-    {
-        Ok(response) => response,
-        Err(error) => return network_failure(&error, true),
-    };
-    if !response.status().is_success() {
-        return status_failure(response.status().as_u16(), true);
+    let url = format!("{}/api/chat", base.trim_end_matches('/'));
+    let endpoint = ProviderEndpoint::unauthenticated(url);
+    let chat = chat_request(execution, model);
+    let result = host.runtime.block_on(
+        host.live
+            .ollama_chat(OllamaChatRequest { endpoint, chat }, &CancellationToken::new()),
+    );
+    match result {
+        Ok(response) => completed(execution, response),
+        Err(error) => map_adapter_error(&error),
     }
-    let bytes = match read_bounded(response, execution.maximum_output_bytes) {
-        Ok(bytes) => bytes,
-        Err(observation) => return *observation,
-    };
-    let value: Value = match serde_json::from_slice(&bytes) {
-        Ok(value) => value,
-        Err(_) => {
-            return failed(
-                HostFailureCode::InvalidResponse,
-                "provider returned invalid JSON",
-            );
+}
+
+fn completed(execution: &AgentModelExecutionRequest, response: ChatResponse) -> HostObservation {
+    let usage = usage(&response);
+    let assistant_text = response.content.unwrap_or_default();
+    let proposed_tool_call = response.tool_calls.first().map(|call| {
+        AgentModelToolCallObservation {
+            provider_call_id: call.id.clone().unwrap_or_default(),
+            tool_name: call.name.clone(),
+            arguments_json: call.arguments_json.clone(),
         }
-    };
-    let Some(message) = value.get("message") else {
-        return failed(
-            HostFailureCode::InvalidResponse,
-            "provider response contained no message",
-        );
-    };
-    let assistant_text = message
-        .get("content")
-        .and_then(Value::as_str)
-        .unwrap_or_default()
-        .to_owned();
-    if contains_tool_call(message) {
-        return failed(
-            HostFailureCode::Unsupported { wire_code: 1 },
-            "provider returned a tool call although this host advertises no tools",
-        );
-    }
-    if assistant_text.is_empty() {
+    });
+    if assistant_text.is_empty() && proposed_tool_call.is_none() {
         return failed(
             HostFailureCode::InvalidResponse,
             "provider returned an empty completion",
         );
     }
-    let usage = ollama_usage(&value);
-    completed(execution, assistant_text, usage)
-}
-
-fn completed(
-    execution: &AgentModelExecutionRequest,
-    assistant_text: String,
-    usage: Option<AgentModelUsageObservation>,
-) -> HostObservation {
     HostObservation::AgentModelCompleted {
         turn_id: execution.turn_id,
         model_fence_id: execution.model_fence_id,
         assistant_text,
-        proposed_tool_call: None,
+        proposed_tool_call,
         usage,
     }
 }
 
-fn contains_tool_call(message: &Value) -> bool {
-    message
-        .get("tool_calls")
-        .and_then(Value::as_array)
-        .is_some_and(|calls| !calls.is_empty())
-        || message
-            .get("function_call")
-            .is_some_and(|call| !call.is_null())
-}
-
-fn openai_usage(value: &Value) -> Option<AgentModelUsageObservation> {
+fn usage(response: &ChatResponse) -> Option<AgentModelUsageObservation> {
     Some(AgentModelUsageObservation {
-        prompt_tokens: value.get("prompt_tokens")?.as_u64()?,
-        completion_tokens: value.get("completion_tokens")?.as_u64()?,
-        cached_prompt_tokens: value
-            .pointer("/prompt_tokens_details/cached_tokens")
-            .and_then(Value::as_u64),
-    })
-}
-
-fn ollama_usage(value: &Value) -> Option<AgentModelUsageObservation> {
-    Some(AgentModelUsageObservation {
-        prompt_tokens: value.get("prompt_eval_count")?.as_u64()?,
-        completion_tokens: value.get("eval_count")?.as_u64()?,
-        cached_prompt_tokens: None,
+        prompt_tokens: response.usage.prompt_tokens?,
+        completion_tokens: response.usage.completion_tokens?,
+        cached_prompt_tokens: response.usage.cached_prompt_tokens,
     })
 }

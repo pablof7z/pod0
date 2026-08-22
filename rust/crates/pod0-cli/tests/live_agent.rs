@@ -61,15 +61,21 @@ fn unexpected_provider_tool_call_fails_without_capability_execution() {
     let response = shell.handle(ask_request("Try an unavailable tool"));
     assert!(response.ok, "{:?}", response.error);
     let response = serde_json::to_value(response).unwrap();
+    // Reflects real post-migration behavior: the CLI-level `contains_tool_call`
+    // guard is gone (agent_http.rs now surfaces every provider tool call as
+    // `proposed_tool_call` instead of rejecting it at the transport layer),
+    // but the durable core still never silently executes an unrecognized tool
+    // — it rejects the proposal itself once the turn reaches tool validation.
+    // Plan 3's approval-parity fix has not landed yet, so this is not yet an
+    // approval round-trip; the assertion below proves the tool call is still
+    // never auto-executed, not that today's specific rejection stage is final.
     assert_eq!(
         response.pointer("/result/stage"),
         Some(&serde_json::Value::String("failed".to_owned()))
     );
-    assert!(
-        response
-            .pointer("/result/safe_failure")
-            .and_then(serde_json::Value::as_str)
-            .is_some_and(|value| value.contains("advertises no tools"))
+    assert_eq!(
+        response.pointer("/result/safe_failure"),
+        Some(&serde_json::Value::String("invalid_tool_action".to_owned()))
     );
     server.join().unwrap();
 }
@@ -83,7 +89,7 @@ fn ollama_turn_uses_native_live_http_endpoint() {
         let request = read_http_request(&mut stream);
         assert!(request.starts_with("POST /api/chat "));
         assert!(!request.contains("\"tools\""));
-        let body = r#"{"message":{"role":"assistant","content":"Ollama response"},"prompt_eval_count":5,"eval_count":2}"#;
+        let body = r#"{"done":true,"message":{"role":"assistant","content":"Ollama response"},"prompt_eval_count":5,"eval_count":2}"#;
         write_response(&mut stream, body);
     });
 
