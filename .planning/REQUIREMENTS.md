@@ -71,27 +71,27 @@ Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HOST-01 | TBD | Pending |
-| HOST-02 | TBD | Pending |
-| HOST-03 | TBD | Pending |
-| HOST-04 | TBD | Pending |
-| HOST-05 | TBD | Pending |
-| VOICE-01 | TBD | Pending |
-| VOICE-02 | TBD | Pending |
-| VOICE-03 | TBD | Pending |
-| VOICE-04 | TBD | Pending |
-| VOICE-05 | TBD | Pending |
-| APPROVAL-01 | TBD | Pending |
-| AUDIO-01 | TBD | Pending |
-| AUDIO-02 | TBD | Pending |
-| AUDIO-03 | TBD | Pending |
-| SIRI-01 | TBD | Pending |
+| HOST-01 | Phase 1 | Pending |
+| HOST-02 | Phase 1 | Pending |
+| HOST-03 | Phase 1 | Pending |
+| HOST-04 | Phase 1 | Pending |
+| HOST-05 | Phase 1 | Pending |
+| VOICE-01 | Phase 2 | Pending |
+| VOICE-02 | Phase 2 | Pending |
+| VOICE-03 | Phase 2 | Pending |
+| VOICE-04 | Phase 2 | Pending |
+| VOICE-05 | Phase 2 | Pending |
+| APPROVAL-01 | Phase 2 | Pending |
+| AUDIO-01 | Phase 3 | Pending |
+| AUDIO-02 | Phase 3 | Pending |
+| AUDIO-03 | Phase 3 | Pending |
+| SIRI-01 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 15 total
-- Mapped to phases: 0 (pending roadmap creation)
-- Unmapped: 15 ⚠️
+- Mapped to phases: 15 (Phase 1: 5, Phase 2: 6, Phase 3: 3, Phase 4: 1)
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-08-22*
-*Last updated: 2026-08-22 after initial definition*
+*Last updated: 2026-08-22 after roadmap creation (traceability populated)*
