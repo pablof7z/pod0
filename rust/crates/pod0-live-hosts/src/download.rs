@@ -32,6 +32,10 @@ pub struct DownloadResponse {
 }
 
 impl LiveHosts {
+    #[tracing::instrument(
+        skip(self, request, cancellation),
+        fields(status = tracing::field::Empty, duration_ms = tracing::field::Empty, outcome = tracing::field::Empty)
+    )]
     pub async fn download(
         &self,
         request: DownloadRequest,
@@ -40,11 +44,15 @@ impl LiveHosts {
         cancellation.check()?;
         request.options.limits.validate()?;
         let temp_path = temporary_path(&request.staged_path)?;
+        let started = std::time::Instant::now();
         let result = self
             .run(request.options.timeout, cancellation, async {
                 self.download_inner(&request, &temp_path).await
             })
             .await;
+        crate::tracing_support::record_outcome(started, &result, |response| {
+            response.evidence.status
+        });
         if result.is_err() {
             let _ = tokio::fs::remove_file(&temp_path).await;
         }

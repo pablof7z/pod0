@@ -48,6 +48,10 @@ pub struct EmbeddingResponse {
 }
 
 impl LiveHosts {
+    #[tracing::instrument(
+        skip(self, request, cancellation),
+        fields(status = tracing::field::Empty, duration_ms = tracing::field::Empty, outcome = tracing::field::Empty)
+    )]
     pub async fn openai_embeddings(
         &self,
         request: OpenAiEmbeddingRequest,
@@ -56,29 +60,40 @@ impl LiveHosts {
         cancellation.check()?;
         validate_request(&request.embedding)?;
         let body = openai_body(&request.embedding);
-        self.run(request.embedding.timeout, cancellation, async {
-            let response = self
-                .provider_request(&request.endpoint, ProviderKind::Embeddings)?
-                .json(&body)
-                .send()
-                .await
-                .map_err(|error| AdapterError::from_reqwest(&error))?;
-            let (response, evidence) = self
-                .provider_response(response, ProviderKind::Embeddings, request.embedding.limits)
-                .await?;
-            let bytes = bounded_body(response, request.embedding.limits.maximum_body_bytes).await?;
-            parse_openai(
-                &bytes,
-                evidence,
-                request.embedding.inputs.len(),
-                request.embedding.dimensions,
-                request.embedding.maximum_dimensions,
-                request.embedding.maximum_vectors,
-            )
-        })
-        .await
+        let started = std::time::Instant::now();
+        let result = self
+            .run(request.embedding.timeout, cancellation, async {
+                let response = self
+                    .provider_request(&request.endpoint, ProviderKind::Embeddings)?
+                    .json(&body)
+                    .send()
+                    .await
+                    .map_err(|error| AdapterError::from_reqwest(&error))?;
+                let (response, evidence) = self
+                    .provider_response(response, ProviderKind::Embeddings, request.embedding.limits)
+                    .await?;
+                let bytes =
+                    bounded_body(response, request.embedding.limits.maximum_body_bytes).await?;
+                parse_openai(
+                    &bytes,
+                    evidence,
+                    request.embedding.inputs.len(),
+                    request.embedding.dimensions,
+                    request.embedding.maximum_dimensions,
+                    request.embedding.maximum_vectors,
+                )
+            })
+            .await;
+        crate::tracing_support::record_outcome(started, &result, |response| {
+            response.evidence.status
+        });
+        result
     }
 
+    #[tracing::instrument(
+        skip(self, request, cancellation),
+        fields(status = tracing::field::Empty, duration_ms = tracing::field::Empty, outcome = tracing::field::Empty)
+    )]
     pub async fn ollama_embeddings(
         &self,
         request: OllamaEmbeddingRequest,
@@ -87,27 +102,34 @@ impl LiveHosts {
         cancellation.check()?;
         validate_request(&request.embedding)?;
         let body = ollama_body(&request.embedding);
-        self.run(request.embedding.timeout, cancellation, async {
-            let response = self
-                .provider_request(&request.endpoint, ProviderKind::Ollama)?
-                .json(&body)
-                .send()
-                .await
-                .map_err(|error| AdapterError::from_reqwest(&error))?;
-            let (response, evidence) = self
-                .provider_response(response, ProviderKind::Ollama, request.embedding.limits)
-                .await?;
-            let bytes = bounded_body(response, request.embedding.limits.maximum_body_bytes).await?;
-            parse_ollama(
-                &bytes,
-                evidence,
-                request.embedding.inputs.len(),
-                request.embedding.dimensions,
-                request.embedding.maximum_dimensions,
-                request.embedding.maximum_vectors,
-            )
-        })
-        .await
+        let started = std::time::Instant::now();
+        let result = self
+            .run(request.embedding.timeout, cancellation, async {
+                let response = self
+                    .provider_request(&request.endpoint, ProviderKind::Ollama)?
+                    .json(&body)
+                    .send()
+                    .await
+                    .map_err(|error| AdapterError::from_reqwest(&error))?;
+                let (response, evidence) = self
+                    .provider_response(response, ProviderKind::Ollama, request.embedding.limits)
+                    .await?;
+                let bytes =
+                    bounded_body(response, request.embedding.limits.maximum_body_bytes).await?;
+                parse_ollama(
+                    &bytes,
+                    evidence,
+                    request.embedding.inputs.len(),
+                    request.embedding.dimensions,
+                    request.embedding.maximum_dimensions,
+                    request.embedding.maximum_vectors,
+                )
+            })
+            .await;
+        crate::tracing_support::record_outcome(started, &result, |response| {
+            response.evidence.status
+        });
+        result
     }
 }
 

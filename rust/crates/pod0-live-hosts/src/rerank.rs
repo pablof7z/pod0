@@ -43,6 +43,10 @@ pub struct RerankResponse {
 }
 
 impl LiveHosts {
+    #[tracing::instrument(
+        skip(self, request, cancellation),
+        fields(status = tracing::field::Empty, duration_ms = tracing::field::Empty, outcome = tracing::field::Empty)
+    )]
     pub async fn rerank(
         &self,
         request: RerankRequest,
@@ -68,20 +72,26 @@ impl LiveHosts {
         if let Some(top_n) = request.top_n {
             body["top_n"] = json!(top_n);
         }
-        self.run(request.timeout, cancellation, async {
-            let response = self
-                .provider_request(&request.endpoint, ProviderKind::Rerank)?
-                .json(&body)
-                .send()
-                .await
-                .map_err(|error| AdapterError::from_reqwest(&error))?;
-            let (response, evidence) = self
-                .provider_response(response, ProviderKind::Rerank, request.limits)
-                .await?;
-            let bytes = bounded_body(response, request.limits.maximum_body_bytes).await?;
-            parse_response(&bytes, evidence, &request.documents, response_limit)
-        })
-        .await
+        let started = std::time::Instant::now();
+        let result = self
+            .run(request.timeout, cancellation, async {
+                let response = self
+                    .provider_request(&request.endpoint, ProviderKind::Rerank)?
+                    .json(&body)
+                    .send()
+                    .await
+                    .map_err(|error| AdapterError::from_reqwest(&error))?;
+                let (response, evidence) = self
+                    .provider_response(response, ProviderKind::Rerank, request.limits)
+                    .await?;
+                let bytes = bounded_body(response, request.limits.maximum_body_bytes).await?;
+                parse_response(&bytes, evidence, &request.documents, response_limit)
+            })
+            .await;
+        crate::tracing_support::record_outcome(started, &result, |response| {
+            response.evidence.status
+        });
+        result
     }
 }
 

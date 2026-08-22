@@ -50,7 +50,35 @@ impl TtsClient {
         Ok(Self { client })
     }
 
+    #[tracing::instrument(
+        skip(self, request, cancellation),
+        fields(status = tracing::field::Empty, duration_ms = tracing::field::Empty, outcome = tracing::field::Empty)
+    )]
     pub async fn generate(
+        &self,
+        request: &GenerationRequest<'_>,
+        cancellation: &CancellationToken,
+    ) -> Result<GenerationEvidence, TtsError> {
+        let started = Instant::now();
+        let result = self.generate_inner(request, cancellation).await;
+        let span = tracing::Span::current();
+        span.record(
+            "duration_ms",
+            u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
+        );
+        match &result {
+            Ok(evidence) => {
+                span.record("status", evidence.provider.status);
+                span.record("outcome", "ok");
+            }
+            Err(error) => {
+                span.record("outcome", tts_error_kind(error));
+            }
+        }
+        result
+    }
+
+    async fn generate_inner(
         &self,
         request: &GenerationRequest<'_>,
         cancellation: &CancellationToken,
@@ -155,6 +183,23 @@ impl<'a> GenerationControl<'a> {
                 }
             })
             .unwrap_or(Err(TtsError::Cancelled))
+    }
+}
+
+/// A short, non-secret error label for the `outcome` span field — never the
+/// request/response body or credential, since `TtsError`'s `Debug` never
+/// carries those either.
+fn tts_error_kind(error: &TtsError) -> &'static str {
+    match error {
+        TtsError::InvalidRequest(_) => "invalid_request",
+        TtsError::Credential(_) => "credential",
+        TtsError::Network(_) => "network",
+        TtsError::Provider(_) => "provider_error",
+        TtsError::Protocol(_) => "protocol",
+        TtsError::Limit(_) => "limit",
+        TtsError::File(_) => "file",
+        TtsError::Timeout => "timeout",
+        TtsError::Cancelled => "cancelled",
     }
 }
 

@@ -8,12 +8,13 @@ publish = false
 description = "Portable ElevenLabs-compatible TTS generation for Pod0 hosts"
 
 [dependencies]
-# reqwest, serde, sha2, and zeroize are MIT OR Apache-2.0.
+# reqwest, serde, sha2, tracing, and zeroize are MIT OR Apache-2.0.
 # tokio is MIT.
 reqwest = { version = "=0.12.28", default-features = false, features = ["json", "rustls-tls", "stream"] }
 serde = { version = "=1.0.228", features = ["derive"] }
 sha2 = { version = "=0.10.9" }
 tokio = { version = "=1.53.1", features = ["fs", "io-util", "macros", "sync", "time"] }
+tracing = { version = "=0.1.44" }
 zeroize = { version = "=1.9.0" }
 
 [dev-dependencies]

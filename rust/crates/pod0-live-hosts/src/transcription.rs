@@ -51,6 +51,10 @@ pub struct TranscriptionResponse {
 }
 
 impl LiveHosts {
+    #[tracing::instrument(
+        skip(self, request, cancellation),
+        fields(status = tracing::field::Empty, duration_ms = tracing::field::Empty, outcome = tracing::field::Empty)
+    )]
     pub async fn transcribe_audio(
         &self,
         request: TranscriptionRequest,
@@ -59,37 +63,43 @@ impl LiveHosts {
         cancellation.check()?;
         request.limits.validate()?;
         validate_request(&request)?;
-        self.run(request.timeout, cancellation, async {
-            let file = audio_part(&request.audio_path, request.maximum_upload_bytes).await?;
-            let mut form = Form::new()
-                .part("file", file)
-                .text("model", request.model.clone())
-                .text(
-                    "response_format",
-                    request.response_format.as_str().to_owned(),
-                );
-            if let Some(language) = &request.language {
-                form = form.text("language", language.clone());
-            }
-            if let Some(prompt) = &request.prompt {
-                form = form.text("prompt", prompt.clone());
-            }
-            if let Some(temperature) = request.temperature {
-                form = form.text("temperature", temperature.to_string());
-            }
-            let response = self
-                .provider_request(&request.endpoint, ProviderKind::Transcription)?
-                .multipart(form)
-                .send()
-                .await
-                .map_err(|error| AdapterError::from_reqwest(&error))?;
-            let (response, evidence) = self
-                .provider_response(response, ProviderKind::Transcription, request.limits)
-                .await?;
-            let bytes = bounded_body(response, request.limits.maximum_body_bytes).await?;
-            parse_response(&bytes, evidence, request.maximum_output_bytes)
-        })
-        .await
+        let started = std::time::Instant::now();
+        let result = self
+            .run(request.timeout, cancellation, async {
+                let file = audio_part(&request.audio_path, request.maximum_upload_bytes).await?;
+                let mut form = Form::new()
+                    .part("file", file)
+                    .text("model", request.model.clone())
+                    .text(
+                        "response_format",
+                        request.response_format.as_str().to_owned(),
+                    );
+                if let Some(language) = &request.language {
+                    form = form.text("language", language.clone());
+                }
+                if let Some(prompt) = &request.prompt {
+                    form = form.text("prompt", prompt.clone());
+                }
+                if let Some(temperature) = request.temperature {
+                    form = form.text("temperature", temperature.to_string());
+                }
+                let response = self
+                    .provider_request(&request.endpoint, ProviderKind::Transcription)?
+                    .multipart(form)
+                    .send()
+                    .await
+                    .map_err(|error| AdapterError::from_reqwest(&error))?;
+                let (response, evidence) = self
+                    .provider_response(response, ProviderKind::Transcription, request.limits)
+                    .await?;
+                let bytes = bounded_body(response, request.limits.maximum_body_bytes).await?;
+                parse_response(&bytes, evidence, request.maximum_output_bytes)
+            })
+            .await;
+        crate::tracing_support::record_outcome(started, &result, |response| {
+            response.evidence.status
+        });
+        result
     }
 }
 

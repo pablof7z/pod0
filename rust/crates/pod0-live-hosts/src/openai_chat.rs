@@ -10,6 +10,10 @@ use crate::{
 };
 
 impl LiveHosts {
+    #[tracing::instrument(
+        skip(self, request, cancellation),
+        fields(status = tracing::field::Empty, duration_ms = tracing::field::Empty, outcome = tracing::field::Empty)
+    )]
     pub async fn openai_chat(
         &self,
         request: OpenAiChatRequest,
@@ -18,24 +22,31 @@ impl LiveHosts {
         cancellation.check()?;
         request.chat.limits.validate()?;
         let body = request_body(&request.chat, false)?;
-        self.run(request.chat.timeout, cancellation, async {
-            let response = self
-                .provider_request(&request.endpoint, ProviderKind::OpenAiCompatible)?
-                .json(&body)
-                .send()
-                .await
-                .map_err(|error| AdapterError::from_reqwest(&error))?;
-            let (response, evidence) = self
-                .provider_response(
-                    response,
-                    ProviderKind::OpenAiCompatible,
-                    request.chat.limits,
-                )
-                .await?;
-            let bytes = bounded_body(response, request.chat.limits.maximum_body_bytes).await?;
-            parse_openai(&bytes, evidence, request.chat.maximum_output_bytes)
-        })
-        .await
+        let started = std::time::Instant::now();
+        let result = self
+            .run(request.chat.timeout, cancellation, async {
+                let response = self
+                    .provider_request(&request.endpoint, ProviderKind::OpenAiCompatible)?
+                    .json(&body)
+                    .send()
+                    .await
+                    .map_err(|error| AdapterError::from_reqwest(&error))?;
+                let (response, evidence) = self
+                    .provider_response(
+                        response,
+                        ProviderKind::OpenAiCompatible,
+                        request.chat.limits,
+                    )
+                    .await?;
+                let bytes =
+                    bounded_body(response, request.chat.limits.maximum_body_bytes).await?;
+                parse_openai(&bytes, evidence, request.chat.maximum_output_bytes)
+            })
+            .await;
+        crate::tracing_support::record_outcome(started, &result, |response| {
+            response.evidence.status
+        });
+        result
     }
 }
 

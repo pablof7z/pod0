@@ -19,6 +19,7 @@ mod openai_chat;
 mod provider;
 mod rerank;
 mod secret;
+mod tracing_support;
 mod transcription;
 mod transcription_upload;
 mod url_debug;

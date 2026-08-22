@@ -94,6 +94,10 @@ pub struct HttpGetResponse {
 }
 
 impl LiveHosts {
+    #[tracing::instrument(
+        skip(self, request, cancellation),
+        fields(status = tracing::field::Empty, duration_ms = tracing::field::Empty, outcome = tracing::field::Empty)
+    )]
     pub async fn http_get(
         &self,
         request: HttpGetRequest,
@@ -101,20 +105,27 @@ impl LiveHosts {
     ) -> Result<HttpGetResponse, AdapterError> {
         cancellation.check()?;
         request.options.limits.validate()?;
-        self.run(request.options.timeout, cancellation, async {
-            let (response, evidence) = self
-                .follow_get(
-                    &request.url,
-                    request.accept.as_deref(),
-                    request.entity_tag.as_deref(),
-                    request.last_modified.as_deref(),
-                    request.options,
-                )
-                .await?;
-            let body = bounded_body(response, request.options.limits.maximum_body_bytes).await?;
-            Ok(HttpGetResponse { evidence, body })
-        })
-        .await
+        let started = std::time::Instant::now();
+        let result = self
+            .run(request.options.timeout, cancellation, async {
+                let (response, evidence) = self
+                    .follow_get(
+                        &request.url,
+                        request.accept.as_deref(),
+                        request.entity_tag.as_deref(),
+                        request.last_modified.as_deref(),
+                        request.options,
+                    )
+                    .await?;
+                let body =
+                    bounded_body(response, request.options.limits.maximum_body_bytes).await?;
+                Ok(HttpGetResponse { evidence, body })
+            })
+            .await;
+        crate::tracing_support::record_outcome(started, &result, |response| {
+            response.evidence.status
+        });
+        result
     }
 
     pub(crate) async fn follow_get(
