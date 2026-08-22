@@ -116,6 +116,77 @@ fn ollama_turn_uses_native_live_http_endpoint() {
     server.join().unwrap();
 }
 
+#[test]
+fn headless_turn_completes_after_approved_capability_execution() {
+    let chat_listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let chat_address = chat_listener.local_addr().unwrap();
+    let chat_server = std::thread::spawn(move || {
+        // Turn 1: the model proposes search_podcast_directory.
+        let (mut stream, _) = chat_listener.accept().unwrap();
+        let request = read_http_request(&mut stream);
+        assert!(request.starts_with("POST /v1/chat/completions "));
+        let body = r#"{"choices":[{"message":{"role":"assistant","content":"","tool_calls":[{"id":"call-1","type":"function","function":{"name":"search_podcast_directory","arguments":"{\"query\":\"daily tech news\"}"}}]}}],"usage":{"prompt_tokens":10,"completion_tokens":4}}"#;
+        write_response(&mut stream, body);
+
+        // Turn 2: after approval and capability execution feed the search
+        // result back as a tool message, the model completes with plain text.
+        let (mut stream, _) = chat_listener.accept().unwrap();
+        let request = read_http_request(&mut stream);
+        assert!(
+            request.contains("[tool result]") && request.contains("Daily Tech News"),
+            "expected the second turn to carry the capability result back to the model, got {request:?}"
+        );
+        let body = r#"{"choices":[{"message":{"role":"assistant","content":"I found Daily Tech News for you.","tool_calls":[]}}],"usage":{"prompt_tokens":12,"completion_tokens":6}}"#;
+        write_response(&mut stream, body);
+    });
+
+    let search_listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let search_address = search_listener.local_addr().unwrap();
+    let search_server = std::thread::spawn(move || {
+        let (mut stream, _) = search_listener.accept().unwrap();
+        let request = read_http_request(&mut stream);
+        assert!(
+            request.starts_with("GET /search?media=podcast"),
+            "expected an iTunes-style search request, got {request:?}"
+        );
+        let body = r#"{"resultCount":1,"results":[{"collectionId":123,"trackName":"Daily Tech News","artistName":"Someone","feedUrl":"https://example.com/feed","artworkUrl100":"https://example.com/art.png","trackCount":50}]}"#;
+        write_response(&mut stream, body);
+    });
+
+    // Point the headless searchPodcastDirectory capability at the local
+    // fixture instead of itunes.apple.com.
+    // SAFETY: this test is single-threaded with respect to
+    // POD0_PODCAST_SEARCH_URL; no other test in this binary reads or writes
+    // it (matches live_search.rs's established pattern for the same env var).
+    unsafe {
+        std::env::set_var(
+            "POD0_PODCAST_SEARCH_URL",
+            format!("http://{search_address}/search"),
+        );
+    }
+
+    let directory = tempfile::tempdir_in(".").unwrap();
+    let store = directory.path().join("pod0.sqlite");
+    let config = HostConfig::openai_compatible(
+        format!("http://{chat_address}/v1"),
+        Some("integration-secret".to_owned()),
+    );
+    let mut shell = Shell::new(config).unwrap();
+    assert!(shell.handle(create_request(&store)).ok);
+
+    let response = shell.handle(ask_request("Find me a daily tech news podcast"));
+    assert!(response.ok, "{:?}", response.error);
+    let response = serde_json::to_value(response).unwrap();
+    assert_eq!(
+        response.pointer("/result/stage"),
+        Some(&serde_json::Value::String("completed".to_owned())),
+        "expected the real approval + capability state machine to reach completed, got {response:?}"
+    );
+
+    chat_server.join().unwrap();
+    search_server.join().unwrap();
+}
+
 fn create_request(path: &std::path::Path) -> CliRequest {
     serde_json::from_value(serde_json::json!({
         "v": 1,
