@@ -13,7 +13,7 @@ Voice Mode currently falls back to a stub delegate instead of routing through th
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Headless Host Crates** - Six Rust host crates are committed, compile in and out of the workspace, and validate the real approval/capability state machine in one CI job
+- [x] **Phase 1: Headless Host Crates** - Six Rust host crates are committed, compile in and out of the workspace, and validate the real approval/capability state machine in one CI job
 - [ ] **Phase 2: Voice Conversation Authority** - Voice Mode routes through `SharedAgentConversationSession` via a new adapter, with barge-in cancelling the Rust turn and approvals surfaced through a real voice presenter
 - [ ] **Phase 3: Audio Session Interruption & Physical Hardware Validation** - `AudioSessionCoordinatorProtocol` delivers interruption/route-change events, and playback survives real-hardware interruptions
 - [ ] **Phase 4: Siri/Shortcuts Re-enablement** - Siri/Shortcuts voice-agent routing is flipped back on, gated on cold/warm invocation tests passing after Phases 2 and 3 are green
@@ -120,7 +120,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (Phase 3 may run in paralle
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Headless Host Crates | 6/6 | In Progress|  |
+| 1. Headless Host Crates | 6/6 | Complete | 2026-08-23 |
 | 2. Voice Conversation Authority | 0/TBD | Not started | - |
 | 3. Audio Session Interruption & Physical Hardware Validation | 0/TBD | Not started | - |
 | 4. Siri/Shortcuts Re-enablement | 0/TBD | Not started | - |
