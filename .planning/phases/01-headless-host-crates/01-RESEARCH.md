@@ -417,20 +417,17 @@ No new dependency in this phase triggers a SLOP or SUS verdict — `tracing`/`tr
 
 ## Open Questions
 
-1. **Does `pod0-cli/src/host/playback.rs` construct an `HttpMediaSource`, and if so, where — is that the second runtime-collision call site in practice, or purely latent?**
+1. **(RESOLVED)** Does `pod0-cli/src/host/playback.rs` construct an `HttpMediaSource`, and if so, where — is that the second runtime-collision call site in practice, or purely latent?
    - What we know: `pod0-cli` depends on `pod0-portable-media`; `pod0-portable-media::HttpMediaSource` builds its own runtime.
-   - What's unclear: whether `HostExecutor`/`playback::execute` actually constructs an `HttpMediaSource` today (making the dual-runtime bug live in the current test suite) or whether that wiring doesn't exist yet.
-   - Recommendation: `grep -n "HttpMediaSource" crates/pod0-cli/src/host/playback.rs` as the first task of the runtime-consolidation plan step — this determines whether the fix is "prevent a bug" or "fix an already-triggerable bug."
+   - Resolution (verified by `gsd-plan-checker` against the working tree): `playback.rs:29` does call `MediaLoader::new` — the runtime collision is live, not latent. Plan 02 Task 1 fixes exactly that call site.
 
-2. **Does `app/host_loop.rs` dispatch `HostRequestEnvelope`s one at a time or concurrently?**
+2. **(RESOLVED)** Does `app/host_loop.rs` dispatch `HostRequestEnvelope`s one at a time or concurrently?
    - What we know: `host/recall.rs` and `pod0-portable-media`'s media loader both call `.block_on` synchronously from what appears to be a single dispatch thread.
-   - What's unclear: whether Pitfall 5's "concurrent facade calls" scenario (diagnostic reads racing normal dispatch) has a headless analog inside `pod0-cli` itself, independent of the FFI-boundary concern PITFALLS.md was originally describing.
-   - Recommendation: Read `crates/pod0-cli/src/app/host_loop.rs` (not read this session) before finalizing the runtime-flavor decision (current-thread vs. multi-thread) — this is the one piece of Claude's-Discretion scope this research could not fully close.
+   - Resolution: irrelevant to the runtime-flavor decision — a `tokio::runtime::Handle` is `Clone + Send + Sync` and works correctly under either single- or multi-threaded dispatch, so leaving the current-thread flavor unchanged is safe regardless of `host_loop.rs`'s actual dispatch model.
 
-3. **Does `pod0_facade::HostObservation::AgentModelCompleted.proposed_tool_call`'s type accept `Vec<ToolCall>`/`Option<ToolCall>`/something else, and does it match `LiveHosts::ChatResponse.tool_calls: Vec<ToolCall>`'s shape 1:1?**
-   - What we know: `agent_http.rs::completed()` hardcodes `None` for this field today; the type itself was not read this session (lives in `pod0-facade`, likely re-exported from `pod0-application::agent_turn_contract` or similar).
-   - What's unclear: exact field type/cardinality — determines whether the mapping is a direct pass-through or needs a shape-adapting function.
-   - Recommendation: `grep -n "proposed_tool_call" crates/pod0-facade/src crates/pod0-application/src` as an early planning task before committing to the tool-call migration's exact code shape.
+3. **(RESOLVED)** Does `pod0_facade::HostObservation::AgentModelCompleted.proposed_tool_call`'s type accept `Vec<ToolCall>`/`Option<ToolCall>`/something else, and does it match `LiveHosts::ChatResponse.tool_calls: Vec<ToolCall>`'s shape 1:1?
+   - What we know: `agent_http.rs::completed()` hardcodes `None` for this field today.
+   - Resolution (verified by `gsd-plan-checker` via direct read of `agent_provider_output.rs`/`chat.rs`): `AgentModelToolCallObservation{provider_call_id, tool_name, arguments_json}` matches `ChatResponse.tool_calls: Vec<ToolCall>` 1:1 — a direct pass-through mapping, no shape-adapting function needed.
 
 ## Sources
 
