@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 current_phase: 1
 current_phase_name: Headless Host Crates
 status: executing
-stopped_at: Phase 1 context gathered
-last_updated: "2026-08-22T15:30:07.436Z"
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-08-22T15:58:05.503Z"
 last_activity: 2026-08-22
-last_activity_desc: ROADMAP.md and STATE.md created; requirements coverage validated 15/15
-state_head: 6c59e54c09bce2792122ff18c6bd251a68831a91
+last_activity_desc: Phase 1 execution started
+state_head: 65fc096e953b5d7054689cde821dfeb016f64989
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-08-22)
 
 ## Current Position
 
-Phase: 1 (Headless Host Crates) — READY TO EXECUTE
-Plan: 0 of TBD in current phase
+Phase: 1 (Headless Host Crates) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-08-22 — ROADMAP.md and STATE.md created; requirements coverage validated 15/15
+Last activity: 2026-08-22 — Phase 1 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -54,6 +54,11 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 01 P01 | 55min | 2 tasks | 148 files |
 
 ## Accumulated Context
 
@@ -64,6 +69,9 @@ Recent decisions affecting current work:
 
 - Roadmap: scoped to 4 phases (coarse granularity) — headless crates, voice conversation authority (adapter + cancellation + approval combined per research's "one risk unit" framing), audio session/physical hardware validation, Siri re-enablement.
 - Roadmap: Phase 3 (audio session) is independent of Phase 2 (voice adapter/cancellation) — different subsystem, can execute in parallel; Phase 4 (Siri) gates on both.
+- [Phase 1]: RelaySecurity::AllowInsecureNumericLoopback chosen as NostrPublisher's production default to match its existing ws://127.0.0.1:9 unit test
+- [Phase 1]: nostr pinned to =0.44.7 (exact RUSTSEC-patched version) rather than latest =0.45.3, avoiding an unnecessary minor-version API change
+- [Phase 1]: pod0-cli's pre-existing rustyline BSL-1.0 license rejection and pod0-application's cross-language fixture-version drift left unfixed as out of scope for this workspace-membership plan; logged to windows ledger
 
 ### Pending Todos
 
@@ -87,6 +95,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-08-22T14:58:53.750Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-headless-host-crates/01-CONTEXT.md
+Last session: 2026-08-22T15:58:05.495Z
+Stopped at: Completed 01-01-PLAN.md
+Resume file: None

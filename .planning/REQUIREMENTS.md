@@ -9,8 +9,8 @@ Requirements for closing GitHub issue #142 (Voice→Rust agent cutover) and #84 
 
 ### Headless Host Crates
 
-- [ ] **HOST-01**: The six new Rust host crates (`pod0-cli`, `pod0-live-hosts`, `pod0-nostr-host`, `pod0-portable-media`, `pod0-system-hosts`, `pod0-tts-host`) are committed to the repository and compile cleanly, both standalone and as part of the Cargo workspace
-- [ ] **HOST-02**: All host crates build, test, and lint together in one CI job (`cargo build/test/clippy --workspace --all-targets`), not only per-crate in isolation
+- [x] **HOST-01**: The six new Rust host crates (`pod0-cli`, `pod0-live-hosts`, `pod0-nostr-host`, `pod0-portable-media`, `pod0-system-hosts`, `pod0-tts-host`) are committed to the repository and compile cleanly, both standalone and as part of the Cargo workspace
+- [x] **HOST-02**: All host crates build, test, and lint together in one CI job (`cargo build/test/clippy --workspace --all-targets`), not only per-crate in isolation
 - [ ] **HOST-03**: HTTP provider clients (`pod0-live-hosts`, `pod0-cli`) share one pooled `reqwest::Client` per process with explicit timeouts, instead of constructing duplicate/unpooled clients
 - [ ] **HOST-04**: All six host crates share exactly one `tokio` runtime instance when linked into the same process — no per-crate `Runtime::new`/`#[tokio::main]`
 - [ ] **HOST-05**: `pod0-cli::HostExecutor` reaches approval and capability-execution parity with the native `CoreAgentHost` (no longer auto-denies approvals), so headless tests validate the real state machine
@@ -71,8 +71,8 @@ Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HOST-01 | Phase 1 | Pending |
-| HOST-02 | Phase 1 | Pending |
+| HOST-01 | Phase 1 | Complete |
+| HOST-02 | Phase 1 | Complete |
 | HOST-03 | Phase 1 | Pending |
 | HOST-04 | Phase 1 | Pending |
 | HOST-05 | Phase 1 | Pending |
@@ -88,6 +88,7 @@ Populated during roadmap creation.
 | SIRI-01 | Phase 4 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 15 total
 - Mapped to phases: 15 (Phase 1: 5, Phase 2: 6, Phase 3: 3, Phase 4: 1)
 - Unmapped: 0 ✓
