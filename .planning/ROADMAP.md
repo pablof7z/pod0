@@ -30,10 +30,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. HTTP provider clients in `pod0-live-hosts`/`pod0-cli` share one pooled `reqwest::Client` per process with explicit timeouts, not duplicate/unpooled clients
   4. All six host crates share exactly one `tokio` runtime instance when linked into the same process
   5. `pod0-cli::HostExecutor` reaches approval and capability-execution parity with `CoreAgentHost` — headless tests exercise real approvals instead of auto-denying
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: TBD
+- [ ] 01-01-PLAN.md — Join all six host crates into the Cargo workspace and pass the existing CI job (HOST-01, HOST-02)
+- [ ] 01-02-PLAN.md — Consolidate to one tokio runtime, one pooled HTTP client, and add tracing instrumentation (HOST-03, HOST-04)
+- [ ] 01-03-PLAN.md — Flip approval to Approve, wire searchPodcastDirectory capability execution, and prove the state machine headlessly (HOST-05)
 
 ### Phase 2: Voice Conversation Authority
 **Goal**: Voice interactions use the exact same durable, cancellable, Rust-owned agent conversation as text — no `StubVoiceTurnDelegate` fallback, shared turn exclusivity, Rust-acknowledged barge-in, and a real voice approval presenter.
