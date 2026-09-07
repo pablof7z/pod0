@@ -31,7 +31,6 @@ bindings, but the marker remains `staged`: Rust owns no live user data yet and
 Swift remains authoritative until the first complete vertical-slice cutover.
 Typed, cancellable URLSession and AVFoundation adapters can execute generated
 feed/playback host requests and return bounded observations without moving
-native media behavior into Rust. There is no Android application. Generic NMP
 is pinned behind the Pod0 adapter and is not linked into the facade while
 security issue #85 is open.
 
@@ -50,8 +49,6 @@ The migration is incremental. SwiftUI, AVFoundation, audio sessions/routes,
 media controls, BGTask/URLSession entry points, notifications, Keychain,
 biometrics, widgets, and platform integrations remain native. Stable durable
 library, playback-policy, transcript, knowledge, workflow, agent, and
-Pod0-specific Nostr behavior moves by complete vertical slice to a Pod0-owned
-Rust kernel over generic NMP.
 
 Authoritative engineering sources:
 
@@ -59,7 +56,6 @@ Authoritative engineering sources:
 - [Accepted ADRs](docs/architecture/README.md)
 - [App-core schema migration policy](docs/architecture/schema-migrations.md)
 - [Swift ownership inventory](docs/architecture/ownership.md)
-- [iOS-first shared-core roadmap](Plans/2026-07-18-ios-first-rust-nmp-roadmap.md)
 - [Live GitHub milestones](https://github.com/pablof7z/pod0/milestones)
 
 The older [`docs/spec`](docs/spec/README.md) corpus is historical product/design
@@ -83,7 +79,6 @@ App/Sources/
 ├── Voice/        Apple audio/speech capture
 └── Design/       SF typography, haptics, animation, native materials
 
-rust/              Pod0 domain, application, facade, and isolated NMP adapter
 Generated/Pod0Core generated Swift and Kotlin sources from one UniFFI artifact
 BindingsSmoke/     generated-binding runtime qualification harnesses
 ```

@@ -87,7 +87,6 @@ Allowed fields are schema version, random signal ID, random install ID,
 timestamp, typed signal name/outcome, coarse latency bucket, typed error class,
 and optional domain revision. Forbidden fields include podcast or episode
 titles, feed/media URLs, transcript/search/recall text, notes, clips, chat
-content, credentials, Nostr identifiers, file paths, and stable device/account
 identifiers.
 
 Signals are capped at 10,000, remain in application support, fail open without

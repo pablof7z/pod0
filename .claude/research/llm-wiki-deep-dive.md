@@ -130,7 +130,6 @@ sources:
 - **Compile cost per show?** Need dollars/episode and seconds-of-compute for a Sonnet-tier model. llm-wiki is user-invoked and uncosted, so no signal there.
 - **Page granularity.** Per-episode (always), per-show evergreen, per-person, per-concept — but where do "thread" pages live (the running argument across 8 episodes)? No llm-wiki analogue.
 - **Vector index choice.** SQLite-vec? sqlite-vss? Apple NLEmbedding? llm-wiki sidesteps embeddings (full-text + agent reasoning) — suspicious at podcast scale.
-- **Multi-user / family sharing.** llm-wiki is single-user. Do we want shared wikis via Nostr DMs? The template already has Nostr agent comms.
 - **Briefing audio integration.** llm-wiki's `/wiki:output` is text. Our interruptible TTS briefing from a wiki traversal — agent tool, separate generator, or dedicated `BriefingComposer`?
 - **How does llm-wiki actually score 80%-overlap dedup?** Shell + LLM judgment, not deterministic. Worth a closer read of `compile.md` before we copy.
 - **`_index.md` everywhere** — does it scale to 200 shows × 50 episodes? In SQLite, treat indexes as views, materialize only on iCloud export.

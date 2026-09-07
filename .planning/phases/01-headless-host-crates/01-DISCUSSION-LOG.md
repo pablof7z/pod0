@@ -16,7 +16,6 @@ Mode: `--auto` — all areas auto-selected, each question auto-resolved to its r
 | Option | Description | Selected |
 |--------|-------------|----------|
 | Keep env vars | `pod0-cli` continues reading `POD0_OPENAI_API_KEY` etc. from environment variables | ✓ |
-| Migrate to keyring | Route credentials through the existing `pod0-system-hosts` keyring integration used for Nostr keys | |
 
 **User's choice:** [auto] Recommended default selected — env vars are the standard headless/CI-friendly pattern; a CI runner has no keyring session to unlock.
 **Notes:** README already documents a mitigation ("credentials never returned by the CLI protocol"). Keyring migration deferred as a future, non-blocking improvement.

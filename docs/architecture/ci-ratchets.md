@@ -24,7 +24,6 @@ It enforces:
 - existing 300–500-line source is reported and cannot grow;
 - any reduction in a soft-baseline file must ratchet its recorded ceiling down;
 - new source must start below 300 lines;
-- local/vendored generic NMP crates cannot acquire Pod0 product nouns.
 
 The file-length baseline is
 [`file-length-baseline.json`](file-length-baseline.json). It is not a license to

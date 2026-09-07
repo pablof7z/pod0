@@ -24,11 +24,6 @@
   - Endpoint: Configurable via `POD0_PODCAST_SEARCH_URL` environment variable
 
 **Decentralized Protocol:**
-- Nostr (decentralized event protocol) - For podcaster identity and content discovery
-  - SDK/Client: `nostr` crate v0.44.6 with async WebSocket relay communication
-  - Protocol: Nostr event protocol with cryptographic signing
-  - Integration: `pod0-nostr-host` crate handles relay connections, event construction, and authentication
-  - Location: `rust/crates/pod0-nostr-host/src/` - WebSocket relay communication, event signing, subscription management
 
 ## Data Storage
 
@@ -57,9 +52,7 @@
   - Location: `App/Sources/Services/KeychainStore.swift` - Synchronous Keychain wrapper for Generic Password items
   - Security model: `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` (device-bound, never migrated)
 
-**Nostr Identity:**
 - Self-signed keypairs (ECDSA k256)
-  - Generation: Via `pod0-nostr-host` using k256 with schnorr signing
   - Storage: Keychain (via Rust `pod0-system-hosts` keyring integration)
   - Location: `rust/crates/pod0-system-hosts/src/` - Platform-native keyring stores
 
@@ -69,7 +62,6 @@
 - None detected in current stack
 
 **Logs:**
-- Print/console logging via Rust `log` crate (max level: info) in `pod0-nostr-host`
 - iOS: Native os.log framework (not visible in Rust bindings)
 - CLI: Console output via println/eprintln
 
@@ -92,7 +84,6 @@
 - `POD0_PODCAST_SEARCH_URL` - Podcast search endpoint (optional, used in tests)
 
 **Secrets location:**
-- iOS Keychain: OpenRouter API keys, ElevenLabs endpoint/key, Nostr private keys
   - Access: Synchronous Keychain queries via `KeychainStore` enum
   - Persistence: Device-local only, no backup/sync
 
@@ -111,7 +102,6 @@
 - Podcast metadata API calls (pull-based)
 - LLM API requests (request-response)
 - TTS generation requests (request-response)
-- Nostr relay connections (full duplex WebSocket)
 
 ## Data Flow & Integration Points
 
@@ -130,11 +120,7 @@
 5. ElevenLabs TTS called via `pod0-tts-host` (custom HTTP implementation)
 6. Audio stored in SQLite or returned via URLSession
 
-**Request Path: Nostr Integration**
-1. Podcast identity/content discovery via Nostr protocol
-2. `pod0-nostr-host` initiates WebSocket relay connection (tokio-tungstenite)
 3. Events signed with k256 ECDSA keypair (from Keychain)
-4. Relay message protocol handled via nostr crate JSON serialization
 5. Events indexed in SQLite recall index
 
 ## Platform-Specific Integrations

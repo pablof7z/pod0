@@ -27,7 +27,6 @@ summary: "Reference matrix mapping tool families to services, stores, permission
 | Briefing | `generate_briefing`, `synthesize_briefing_audio` | `BriefingComposer` | BriefingStorage + files | paid_provider / attention | near |
 | Highlights | `create_highlight`, `create_clip_semantic`, `anchor_note` | `HighlightService` | SwiftData + clip files | mutate_undoable | near |
 | External research | `perplexity_search`, `fact_check_claim` | `ResearchService` | research artifacts | external_network / paid_provider | mid |
-| Social/Nostr | `send_nostr_reply`, `share_clip`, `read_episode_discussion` | `SocialService` | AppState + relay | public_or_social | mid |
 | Export | `export_wiki_markdown` | `ExportService` | artifact files | sensitive_settings | mid |
 | Diagnostics | `run_health_check` | `DiagnosticsService` | logs + artifacts | sensitive_settings | mid |
 | Destructive | `delete_user_data`, `unsubscribe_from_feed` | app-owned flows | multiple | destructive | explicit UI only |

@@ -38,7 +38,6 @@ The answer should be playable, cited, and actionable. If the answer references a
 - Generated wiki claims need timestamp-backed citations.
 - The agent should use tools to inspect the library instead of carrying the whole library in the system prompt.
 - Voice interaction is a primary surface, not an accessory.
-- Nostr communication is a real command channel and needs safety boundaries.
 - UX must feel like a polished iOS audio app, not an AI demo wrapped in tabs.
 
 ## Boundaries

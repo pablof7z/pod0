@@ -221,27 +221,27 @@
     },
     {
       "variant": "ExecuteAgentModelTurn",
-      "domain": "agent_publication",
+      "domain": "agent",
       "target_executor": "CoreAgentHost",
-      "authorization_fact": "agent_publication.effect_authorized",
+      "authorization_fact": "agent.effect_authorized",
       "lease_required": true,
       "child_issue": 215,
       "implementation_status": "persisted_lease_enforced_for_turn_start_model_phase"
     },
     {
       "variant": "PresentAgentApproval",
-      "domain": "agent_publication",
+      "domain": "agent",
       "target_executor": "CoreAgentHost",
-      "authorization_fact": "agent_publication.effect_authorized",
+      "authorization_fact": "agent.effect_authorized",
       "lease_required": true,
       "child_issue": 215,
       "implementation_status": "persisted_lease_enforced"
     },
     {
       "variant": "ExecuteAgentCapability",
-      "domain": "agent_publication",
+      "domain": "agent",
       "target_executor": "CoreAgentHost",
-      "authorization_fact": "agent_publication.effect_authorized",
+      "authorization_fact": "agent.effect_authorized",
       "lease_required": true,
       "child_issue": 215,
       "implementation_status": "persisted_lease_enforced_including_generated_audio_recovery"

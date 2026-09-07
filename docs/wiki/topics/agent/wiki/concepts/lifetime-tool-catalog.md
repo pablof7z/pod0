@@ -63,9 +63,7 @@ The lifetime tool surface should be organized by domain. The model sees only the
 - `ingest_external_source`, `compare_podcast_claim_to_web`
 - `create_research_note`, `attach_source_to_wiki_page`
 
-## Social, Nostr, And Creator Tools
 
-- `send_nostr_reply`, `share_episode_to_contact`
 - `request_remote_action_approval`, `approve_remote_action`
 - `read_episode_discussion`
 

@@ -8,7 +8,6 @@ index](architecture/README.md).
 
 Pod0 is a Swift 6/Tuist iOS+iPadOS application with a widget. `rust/` is an
 additive Pod0-owned domain/application/facade workspace with a typed UniFFI
-surface, deterministic policy tests, and an exact generic NMP pin. Generated
 Swift and Kotlin APIs derive from the same Rust metadata. The Swift API is
 linked into iOS as `Pod0Core` and has a runtime smoke test; the Kotlin API has a
 JVM compile/runtime smoke test. `pod0-storage` provides versioned,
@@ -20,8 +19,7 @@ chapters, notes, and clips; download desired state and recovery; recall
 configuration, indexing, and retrieval; publisher and model chapter workflows;
 scheduled-agent definitions, occurrences, and artifacts; interactive
 product-proof agent conversations, proposals, permissions, recall citations,
-model usage, generated audio provenance, tracked NMP publication receipts, and
-feed-discovery download/notification policy with durable recovery. The facade contract is now version 54. It exposes bounded commands,
+feed-discovery download/notification policy with durable recovery. The facade contract is now version 56. It exposes bounded commands,
 projections, domain events, and correlated host requests across those migrated
 domains. Exact integer milliseconds, stable identifiers, explicit revisions,
 effect fences, cancellation, and typed failure states prevent native adapters
@@ -31,9 +29,7 @@ Cancellable native host adapters execute URLSession/provider primitives,
 AVFoundation playback, Keychain/security prompts, platform files,
 notifications, speech, and other Apple capabilities. Swift renders Rust
 projections and retains durable authority only for explicitly unmigrated
-settings and categories, plus temporary development migration inputs. Pod0-specific Nostr
 publication semantics and receipts are Rust-owned over the exactly pinned
-generic NMP dependency. There is no Android product project; Kotlin binding
 smoke tests and Android-compatible Rust builds are readiness checks only.
 
 ### Application state
@@ -88,7 +84,6 @@ retry/block policy, external-operation evidence, artifact adoption, and
 restart recovery for every active durable workflow. This includes publisher
 and model chapters, downloads, transcript/evidence preparation, feed discovery
 and notification obligations, scheduled and interactive agent work, generated
-artifacts, and Pod0 Nostr publication receipts.
 
 The Swift `WorkflowRuntime` is now an opportunity adapter only. It announces
 foreground/BGTask and input changes to the Rust facade; typed native hosts
@@ -130,7 +125,6 @@ The Pod0 Rust kernel progressively owns:
 - highlights, notes, clips, conversations, briefings, and artifacts;
 - download/workflow desired state, retry, cancellation, and recovery;
 - agent validation, permission, commit, and generated-artifact semantics;
-- Pod0-specific Nostr behavior over a pinned generic NMP dependency.
 
 ## Native/shared communication
 
@@ -203,7 +197,6 @@ Swift and Kotlin bindings. CI rejects drift from Rust metadata.
 - Versions 27–46 extend the same typed, single-writer pattern through download
   workflows, recall configuration/indexing/retrieval, scheduled agents,
   interactive conversations and permissions, model-usage evidence, generated
-  audio provenance, and tracked NMP publication. Version 45 also makes the
   product-proof agent catalog and provider-neutral tool definitions Rust-owned;
   native code only encodes them for the selected model provider. Swift retains
   only bounded projections and exact native capability executors for those
@@ -249,12 +242,10 @@ See [ADR-0003](architecture/adr/0003-typed-uniffi-application-facade.md).
 4. Subscribe → library → episode detail → native play → durable resume as the
    first complete Rust-authoritative slice.
 5. Transcript/knowledge vertical slices.
-6. Download/workflow/agent/Nostr vertical slices.
 7. Evidence-based Android investment gate; Android product work only after go.
 
 Every cutover uses one writer, preserves existing data, verifies migration and
 restart behavior, and deletes replaced ownership immediately. The executable
-dependency graph is in the [roadmap](../Plans/2026-07-18-ios-first-rust-nmp-roadmap.md).
 
 ## Enforcement
 

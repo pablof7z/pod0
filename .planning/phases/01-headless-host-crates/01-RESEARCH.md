@@ -9,7 +9,6 @@
 
 ### Locked Decisions
 
-- **D-01 Credential Handling:** `pod0-cli` keeps reading provider credentials from environment variables (`POD0_OPENAI_API_KEY`, `POD0_OLLAMA_BASE_URL`, etc.) for this milestone, rather than migrating to the `pod0-system-hosts` keyring integration already used for Nostr keys. Reversible.
 - **D-02 Observability:** Add `tracing`/`tracing-subscriber` instrumentation to `pod0-live-hosts` and `pod0-tts-host` in this phase (per-call request/cancellation correlation IDs, never the API key or raw body), with a subscriber installed only in `pod0-cli`. The synchronous `Pod0Facade` stays silent — no logging crosses the FFI boundary.
 - **D-03 Tokio Runtime Consolidation:** Exactly one `tokio::runtime::Runtime` is constructed once at the `pod0-cli` binary's entrypoint (and at any future host-process boundary) and threaded down to host adapters as a `Handle`, rather than each adapter lazily calling `tokio::runtime::Handle::current()`. Costly to reverse — decide now.
 - **D-04 CI Scope:** The existing `cargo deny` job is confirmed to cover the six new crates and their new dependencies (`reqwest`, `tokio`) as part of this phase — not spun up as new CI infrastructure, just verified in-scope.
@@ -41,7 +40,6 @@
 
 ## Summary
 
-The three-crate STACK/PITFALLS/ARCHITECTURE research from earlier today is directionally correct but was written before this session's direct inspection; several of its specifics have since shifted or needed sharper detail. The most consequential finding: **three of the six crates (`pod0-nostr-host`, `pod0-system-hosts`, `pod0-tts-host`) carry their own `[workspace]` table in their `Cargo.toml`**, which is the mechanism keeping them out of the parent workspace today — `rust/Cargo.toml`'s `members` list currently only contains `pod0-live-hosts`, `pod0-portable-media`, and `pod0-cli` (added in the current uncommitted diff). HOST-01 cannot be satisfied by editing `rust/Cargo.toml` alone; the `[workspace]` stanza must also be deleted from each of the three standalone crates' manifests, or Cargo will refuse to nest them.
 
 Second: the tokio-runtime-consolidation risk PITFALLS.md predicted is not hypothetical — it is **already present** in the current working tree. `pod0-cli/src/host.rs:45` and `pod0-portable-media/src/source.rs:95` each independently call `tokio::runtime::Builder::new_current_thread()`, and `pod0-cli` depends on `pod0-portable-media` directly, so both runtimes already coexist in the same process today, unconsolidated.
 
@@ -80,9 +78,7 @@ members = [
     "crates/uniffi-bindgen",
 ]
 ```
-`pod0-nostr-host`, `pod0-system-hosts`, `pod0-tts-host` are **absent** from `members`. This is not an oversight fixable by adding three lines — each of those three crates' own `Cargo.toml` ends with:
 
-**[VERIFIED: rust/crates/pod0-nostr-host/Cargo.toml, rust/crates/pod0-system-hosts/Cargo.toml, rust/crates/pod0-tts-host/Cargo.toml, read this session]**
 ```toml
 [workspace]
 ```
@@ -91,13 +87,9 @@ An empty `[workspace]` table makes a crate its own workspace root. Cargo refuses
 # This crate is deliberately self-contained until the parent workspace adopts it.
 [workspace]
 ```
-(Same comment, same mechanism, in `pod0-tts-host`. `pod0-nostr-host` has the bare `[workspace]` with no comment.)
 
-**Required for HOST-01:** delete the `[workspace]` table (and any now-redundant `[package]` field duplication vs. `workspace.package` inheritance — `pod0-nostr-host`/`pod0-system-hosts`/`pod0-tts-host` currently hardcode `version = "0.1.0"`, `edition = "2024"`, etc. per-crate rather than using `version.workspace = true` like `pod0-cli` already does) from all three crates, then add all six crate paths to `rust/Cargo.toml`'s `members`.
 
-**New workspace.dependencies needed:** the three newly-joining crates pull dependencies not yet in `rust/Cargo.toml`'s `[workspace.dependencies]` table — `futures-util` (two different pinned versions across `pod0-live-hosts` `=0.3.33` and `pod0-nostr-host` `=0.3.34` — **must be reconciled to one version** before joining a single workspace, since Cargo will otherwise resolve two versions in the dependency graph, which `cargo-deny`'s `[bans] multiple-versions = "warn"` will flag), `k256`, `log`, `tokio-tungstenite`, `rand_core`, `keyring-core`, `cap-primitives`, `cap-std`, `notify-rust`, `zbus-secret-service-keyring-store`, `windows-native-keyring-store`, `apple-native-keyring-store`, `mac-usernotifications`, `objc2-foundation`, `hound`, `rodio`, `thiserror` (two pinned versions again: `pod0-portable-media` uses `=2.0.18`, `pod0-system-hosts` uses `=2.0.20` — reconcile), `futures-util` sink feature.
 
-**Standalone-build requirement (HOST-01's "compiles standalone outside the workspace"):** once the `[workspace]` stanza is removed from a crate, `cargo build -p <crate>` from *inside* the parent workspace still works (that's the normal case), but building the crate directory in isolation (`cd crates/pod0-nostr-host && cargo build`) will only succeed if the crate's own `Cargo.toml` has concrete version pins for every workspace-inherited field, not `field.workspace = true` — because outside the workspace there is no `[workspace.package]`/`[workspace.dependencies]` to inherit from. Verify this literally: after the `[workspace]` deletion + `members` addition, run `cd rust/crates/pod0-nostr-host && cargo build` (and same for the other two) as a standalone sanity check — a crate that used `version.workspace = true` will fail this exact check the moment `[workspace]` is deleted from its own manifest, so the planner must either keep concrete literals in these three crates' manifests (not convert them to `.workspace = true` like `pod0-cli`) or accept that "standalone" means "buildable via `cargo build -p` from the repo root," not "buildable from a bare `cd` into the crate directory." **[ASSUMED — the two readings of "compiles standalone outside the workspace" produce different manifest requirements; recommend the planner pick the `cargo build -p` interpretation, matching how `pod0-live-hosts`/`pod0-portable-media`/`pod0-cli` already do it with `.workspace = true`, and treat literal-standalone-cd as not required, since CI never does a bare `cd` build.]**
 
 ## Two Runtimes Already Collide Today
 
@@ -144,7 +136,6 @@ fn from_client_builder(...) -> Result<Self> {
 |---|---|
 | `pod0-cli` | `["rt", "time"]` |
 | `pod0-live-hosts` | `["fs", "io-util", "macros", "rt-multi-thread", "sync", "time"]` |
-| `pod0-nostr-host` | `["io-util", "net", "rt", "time"]` |
 | `pod0-portable-media` | `["net", "rt", "time"]` |
 | `pod0-system-hosts` | (no tokio dependency) |
 | `pod0-tts-host` | `["fs", "io-util", "macros", "sync", "time"]` |
@@ -275,7 +266,6 @@ cargo audit
 ```
 This already runs `--workspace --all-targets` (`cargo build` is implied by `clippy`/`test`, both of which compile everything). **HOST-02 requires zero new CI YAML.** The only action needed is making `rust/Cargo.toml`'s `members` list include all six crates (see Workspace Membership Gap) — once that's true, this existing single job automatically covers them.
 
-`check_rust_dependency_policy.py` discovers manifests via `sorted((rust / "crates").glob("*/Cargo.toml"))` (`check_rust_dependency_policy.py:60`, [VERIFIED, read this session]) — a glob over every directory under `crates/`, not a hardcoded crate list. This means the policy script **already inspects** `pod0-nostr-host`/`pod0-system-hosts`/`pod0-tts-host` today even though they're outside the workspace (their manifests physically exist on disk) — no script changes needed for HOST-01/02. Same applies to `check_rust_facade_boundary.py` (walks facade source files by token-scan, not a crate allowlist).
 
 D-04 (confirmed in-scope, not new infra) is correct: `cargo deny check` runs against whatever `cargo metadata` resolves for the *actual* workspace members — once the three crates join `members`, `cargo deny`'s existing `deny.toml` (`[licenses] allow` list already includes MIT/Apache-2.0/BSD/ISC/etc., which covers every new crate's license per each `Cargo.toml`'s inline license comments) applies to them automatically. No `deny.toml` edit is required unless a genuinely new license family appears — spot-check: `keyring-core`, `cap-primitives`/`cap-std`, `notify-rust`, `zbus-secret-service-keyring-store`, `k256`, `tokio-tungstenite` are all MIT/Apache-2.0-family per crates.io metadata **[CITED: crates.io package pages — not independently re-verified this session beyond the STACK.md pass; treat as MEDIUM confidence, spot-check during `cargo deny check`'s first real run against the joined workspace since that is the authoritative check]**.
 
@@ -390,7 +380,6 @@ No new dependency in this phase triggers a SLOP or SUS verdict — `tracing`/`tr
 |---------------|---------|-----------------|
 | V2 Authentication | No | No user-facing auth surface in this phase; provider API keys are service credentials, not user auth |
 | V5 Input Validation | Yes | Provider HTTP responses are already bounded (`read_bounded`/`bounded_body` cap response size; `HttpLimits::validate` rejects zero-byte limits) — preserve these bounds through the `LiveHosts` migration, don't drop them |
-| V6 Cryptography | No new surface | `zeroize` already applied to credential-holding structs in `pod0-live-hosts`/`pod0-tts-host`/`pod0-nostr-host`; `SecretString` wrapping for `openai_api_key` (needed for the `agent_http.rs` migration) must use the existing `zeroize`-backed type, not a plain `String` |
 | V7 Error Handling & Logging | Yes | D-02's own constraint: tracing spans must record `request_id`/`cancellation_id`/provider-kind/status/duration fields only — never the API key or raw request/response body; `pod0-live-hosts` already has `RedactedUrl` (`url_debug.rs`) for this — reuse it |
 | V9 Communications | Yes | `reqwest` with `rustls-tls` feature already enforced across all HTTP-touching crates (`pod0-live-hosts`, `pod0-portable-media`, `pod0-tts-host`, `pod0-cli` all specify `rustls-tls` in their `reqwest` feature list — verified via each crate's `Cargo.toml`, read this session) |
 
@@ -432,7 +421,6 @@ No new dependency in this phase triggers a SLOP or SUS verdict — `tracing`/`tr
 ## Sources
 
 ### Primary (HIGH confidence — direct `Read`/`grep` against the working tree this session)
-- `rust/Cargo.toml`, `rust/crates/{pod0-cli,pod0-live-hosts,pod0-nostr-host,pod0-portable-media,pod0-system-hosts,pod0-tts-host}/Cargo.toml` — workspace membership, `[workspace]` stanzas, dependency version pins
 - `rust/crates/pod0-cli/src/{host.rs,host/agent_http.rs,host/agent_payload.rs,host/search.rs}` — exact duplicate-client and approval-deny code
 - `rust/crates/pod0-portable-media/src/source.rs` — second runtime construction site
 - `rust/crates/pod0-live-hosts/src/{client.rs,http.rs,chat.rs,openai_chat.rs,ollama_chat.rs,chat_request.rs,provider.rs}` — migration-target method signatures

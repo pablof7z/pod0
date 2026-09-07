@@ -68,17 +68,6 @@
       ]
     },
     {
-      "id": "native-nmp-sdk-adapter",
-      "classification": "native_by_design",
-      "current_owner": "Swift adoption point for the upstream NMP engine, account store, write intents, and receipt facts",
-      "target_owner": "Swift and future Kotlin adapters over the upstream NMP SDK",
-      "reason": "NMP owns platform-integrated identity, signing, routing, transport, and receipt mechanics while Pod0 Rust owns publication intent and durable product state.",
-      "boundary": "Translate typed Pod0 publication drafts into generic NMP write intents and map NMP receipt facts back into typed observations; do not implement signing, relay policy, or durable Pod0 product decisions.",
-      "persisted_state": "NMP-owned engine and account checkpoints only; Pod0 publication state and receipt links remain Rust-owned.",
-      "priority": "keep_native",
-      "includes": ["App/Sources/NMP/"]
-    },
-    {
       "id": "native-chapter-provider-capabilities",
       "classification": "native_by_design",
       "current_owner": "Swift URLSession and platform credential capability adapters",
@@ -304,7 +293,7 @@
       "current_owner": "Rust owns interactive and scheduled turn state, conversation history, model usage, generated audio provenance, tool identity, permissions, fences, supported commits, and publication receipts; Swift retains typed provider/platform capabilities, transient presentation streams, and decode-only rollback compatibility",
       "target_owner": "Pod0 Rust agent/application layer",
       "reason": "Tool validation, permission, durable commits, jobs, and generated artifact policy must be identical across platforms.",
-      "boundary": "ADR-0008 and agent-tool-permissions.json require typed Rust proposals, durable grants, effect fences, commits, and bounded projections. Native presents conversations/approvals and returns raw observations for typed platform capabilities. The upstream NMP SDK alone owns the engine, identity, signing, routing, and receipt facts; the app facade accepts no relay selection.",
+      "boundary": "The agent permission matrix requires typed Rust proposals, durable grants, effect fences, commits, and bounded projections. Native presents conversations and approvals and returns raw observations for typed platform capabilities.",
       "persisted_state": "Rust SQLite owns conversations, turns, model usage, memories, scheduled tasks/occurrences, generated audio and artifact provenance, and publication receipts. Swift retains platform files awaiting acknowledged adoption and immutable rollback manifests only.",
       "migration_issues": [60, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138],
       "deletion_target": "Issues #130, #135, and #136 completed scheduled/conversation/artifact/publication authority cutovers. Facade v45 deleted native catalog and provider-neutral schema ownership. Issue #133 completed the product-proof Rust agent owner; #134 finishes native capability qualification, #137 qualifies the physical-device signer, and #138 removes remaining compatibility ownership.",
@@ -376,11 +365,11 @@
       "classification": "temporary_swift",
       "current_owner": "Swift owns explicitly temporary categorization, clip-boundary assistance, and remaining provider/workflow adapters",
       "target_owner": "Pod0 Rust domain/application/workflow layers plus thin native capabilities",
-      "reason": "The residual mixed service layer contains unsettled product behavior and thin platform executors. Listening, subscription durability, downloads, transcript workflow state, scheduled agents, active conversations, generated audio, and Nostr receipt authority have already moved to Rust and must not reappear here.",
+      "reason": "The residual mixed service layer contains unsettled product behavior and thin platform executors. Listening, subscription durability, downloads, transcript workflow state, scheduled agents, active conversations, and generated audio have already moved to Rust and must not reappear here.",
       "boundary": "Migrated domains use typed Rust commands and projections. Temporary behavior writes only through its declared typed owner and may not create a second durable store.",
       "persisted_state": "Temporary durable Swift state is limited to categories and explicitly unmigrated adjuncts. Migrated library, workflow, conversation, memory, artifact, activity, and publication facts remain Rust-owned or retired.",
       "migration_issues": [58, 59, 60, 69, 79, 80, 81, 82, 83, 94, 95, 96, 97, 115, 116, 117, 118, 119, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138],
-      "deletion_target": "Issues #60, #119, #130, #133, #134, and #138 removed durable workflow, agent, and Nostr authority from this layer. Remaining categorization and clip-boundary assistance are one-shot product surfaces outside #60; product proof #56 determines the clip path while categorization stays isolated until it receives a named owner decision.",
+      "deletion_target": "Issues #60, #119, #130, #133, #134, and #138 removed durable workflow and agent authority from this layer. Remaining categorization and clip-boundary assistance are one-shot product surfaces outside #60; product proof #56 determines the clip path while categorization stays isolated until it receives a named owner decision.",
       "priority": "high",
       "includes": ["App/Sources/Services/"],
       "excludes": ["App/Sources/Services/AssemblyAICredentialStore.swift", "App/Sources/Services/BYOK", "App/Sources/Services/ClipExporter.swift", "App/Sources/Services/DataExport.swift", "App/Sources/Services/DeepLinkHandler.swift", "App/Sources/Services/ElevenLabsCredentialStore.swift", "App/Sources/Services/EpisodeDownloadService+Delegate.swift", "App/Sources/Services/HandoffActivityType.swift", "App/Sources/Services/KeychainStore.swift", "App/Sources/Services/NotificationService.swift", "App/Sources/Services/NowPlayingSnapshotStore.swift", "App/Sources/Services/OllamaCredentialStore.swift", "App/Sources/Services/OpenRouterCredentialStore.swift", "App/Sources/Services/PerplexityCredentialStore.swift", "App/Sources/Services/Pod0FeedbackProtocol.swift", "App/Sources/Services/PodcastCatalogEpisodeSearchService.swift", "App/Sources/Services/SharedEpisodeImportCoordinator.swift", "App/Sources/Services/RecallProviderService.swift", "App/Sources/Services/ReviewPrompt.swift", "App/Sources/Services/SpotlightIndexer.swift", "App/Sources/Services/SpotlightIndexer+Erasure.swift", "App/Sources/Services/WorkflowClient.swift", "App/Sources/Services/WorkflowClient+Intents.swift", "App/Sources/Services/iCloudSettingsSync.swift"]

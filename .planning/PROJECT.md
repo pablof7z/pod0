@@ -13,7 +13,6 @@ Voice interactions use the exact same durable, cancellable, Rust-owned agent con
 ### Validated
 
 - ✓ Rust kernel is sole authority for library, listening, playback policy, transcripts, chapters, notes, clips, downloads, recall — M2/M3 (closed)
-- ✓ Rust owns durable workflows, agent artifacts, permissions, and Nostr coordination — M4, 41/42 issues closed
 - ✓ Text Agent conversations run through Rust-owned `SharedAgentConversationSession`
 - ✓ One typed UniFFI facade with generated Swift/Kotlin bindings and CI drift detection — M2 (closed)
 - ✓ iOS listen-to-recall reliability foundation (truthful workflow status, grounded recall evidence) — M1, 20/22 issues closed
@@ -23,7 +22,6 @@ Voice interactions use the exact same durable, cancellable, Rust-owned agent con
 - [ ] Voice Mode routes through the same Rust-owned `SharedAgentConversationSession` as text Agent, with no `StubVoiceTurnDelegate` production fallback (#142)
 - [ ] Voice and text share one durable conversation that survives relaunch; cancellation, barge-in, approval, provider-failure, and process-death tests pass (#142)
 - [ ] Siri/Shortcuts voice-agent routing re-enabled only after cold/warm invocation tests pass (#142)
-- [ ] New headless Rust host crates (`pod0-cli`, `pod0-live-hosts`, `pod0-nostr-host`, `pod0-portable-media`, `pod0-system-hosts`, `pod0-tts-host`) are committed, compile cleanly in and out of the workspace, and are integrated into CI (supports #142 validation outside the simulator)
 - [ ] Physical-device playback route/interruption validation — wired, Bluetooth, Siri interruption, lock-screen controls — on real hardware (#84)
 
 ### Out of Scope
@@ -38,8 +36,6 @@ Voice interactions use the exact same durable, cancellable, Rust-owned agent con
 
 - Native Swift 6 / Tuist iOS+iPadOS app (`Podcastr` scheme) with an additive Pod0 Rust kernel (`rust/crates/`: domain, application, storage, facade) linked into iOS via UniFFI.
 - Architecture rule: **native executes platform primitives; Rust owns durable product decisions.** Enforced pattern is "one writer per domain" — Swift never writes Rust-owned state back, only renders bounded projections and sends typed commands.
-- The GitHub milestone/issue tracker is the authoritative source of current engineering status — verified live via `gh api` on 2026-08-22 (not from `Plans/2026-07-18-ios-first-rust-nmp-roadmap.md`, which is older and partially superseded): M0, M2, M3 fully closed; M1 has 2 open issues (#56 epic, #84); M4 has 1 open issue (#142); M5/M6 are gated and not started.
-- The working tree currently has six new, uncommitted Rust crates (`pod0-cli`, `pod0-live-hosts`, `pod0-nostr-host`, `pod0-portable-media`, `pod0-system-hosts`, `pod0-tts-host`) plus `Cargo.toml`/`Cargo.lock` changes (added `reqwest`, `tokio`) — active work-in-progress toward #142's headless validation path.
 - Known concerns from the codebase map (`.planning/codebase/CONCERNS.md`, generated 2026-08-22): high unwrap/panic density in `pod0-storage` (3,107 instances), new untested headless methods on `Pod0Facade` (`pending_host_effects`, `next_host_effect_at`), uncommitted external API integrations (OpenAI/Ollama HTTP clients in `pod0-live-hosts`) without visible retry/observability, and effect-outbox query complexity risk.
 - Recent commits (`docs: require real headless Pod0 capabilities`, `docs: record Rust-first agent interface decision`) track directly to this scope.
 

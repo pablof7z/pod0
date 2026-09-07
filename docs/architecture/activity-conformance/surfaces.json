@@ -55,7 +55,7 @@
       "kind": "recovery",
       "path": "rust/crates/pod0-facade/src/runtime_agent_recovery.rs",
       "surface": "agent_recovery",
-      "target_owner": "AgentPublicationStateMachine",
+      "target_owner": "AgentStateMachine",
       "child_issue": 215,
       "implementation_status": "read_only_rehydration_with_durable_internal_commands_and_typed_capability_ambiguity_recovery_transition"
     },
@@ -149,14 +149,6 @@
     },
     {
       "kind": "recovery",
-      "path": "rust/crates/pod0-facade/src/runtime_publication.rs",
-      "surface": "publication_rehydration",
-      "target_owner": "AgentPublicationStateMachine",
-      "child_issue": 215,
-      "implementation_status": "dedicated_exact_publication_lease_and_typed_receipt_status_transition_commits"
-    },
-    {
-      "kind": "recovery",
       "path": "rust/crates/pod0-facade/src/runtime_recall_commands.rs",
       "surface": "recall_query_rehydration",
       "target_owner": "RecallKnowledgeStateMachine",
@@ -199,7 +191,7 @@
       "kind": "recovery",
       "path": "rust/crates/pod0-facade/src/runtime_agent_commands.rs",
       "surface": "agent_command_recovery",
-      "target_owner": "AgentPublicationStateMachine",
+      "target_owner": "AgentStateMachine",
       "child_issue": 215,
       "implementation_status": "typed_agent_command_transition_commit_adapters"
     },
@@ -278,7 +270,7 @@
     {
       "kind": "authoritative_mutation_module",
       "path": "rust/crates/pod0-storage/src/effect_outbox_agent_observation.rs",
-      "domain": "agent_publication",
+      "domain": "agent",
       "target_boundary": "TransitionCommit",
       "child_issue": 215,
       "implementation_status": "private_exact_agent_model_lease_staging"
@@ -306,14 +298,6 @@
       "target_boundary": "TransitionCommit",
       "child_issue": 214,
       "implementation_status": "exact_leased_stream_cursor_and_terminal_observation_staging"
-    },
-    {
-      "kind": "authoritative_mutation_module",
-      "path": "rust/crates/pod0-storage/src/effect_outbox_publication.rs",
-      "domain": "agent_publication",
-      "target_boundary": "TransitionCommit",
-      "child_issue": 215,
-      "implementation_status": "dedicated_exact_publication_lease_claim"
     },
     {
       "kind": "authoritative_mutation_module",
@@ -421,16 +405,8 @@
     },
     {
       "kind": "authoritative_mutation_module",
-      "path": "rust/crates/pod0-storage/src/transition_commit_publication_observation.rs",
-      "domain": "agent_publication",
-      "target_boundary": "TransitionCommit",
-      "child_issue": 215,
-      "implementation_status": "typed_exact_lease_receipt_observation_and_atomic_publication_transition_commit"
-    },
-    {
-      "kind": "authoritative_mutation_module",
       "path": "rust/crates/pod0-storage/src/transition_commit_agent_recall_stage.rs",
-      "domain": "agent_publication",
+      "domain": "agent",
       "target_boundary": "TransitionCommit",
       "child_issue": 215,
       "implementation_status": "private_atomic_effect_attempt_staging_under_agent_recall_transition_commit"
@@ -438,7 +414,7 @@
     {
       "kind": "authoritative_mutation_module",
       "path": "rust/crates/pod0-storage/src/transition_commit_agent_capability_recovery.rs",
-      "domain": "agent_publication",
+      "domain": "agent",
       "target_boundary": "TransitionCommit",
       "child_issue": 215,
       "implementation_status": "typed_ambiguous_attempt_recovery_transition_with_exact_recovery_payload"
@@ -494,7 +470,7 @@
     {
       "kind": "authoritative_mutation_module",
       "path": "rust/crates/pod0-storage/src/transition_commit_scheduled_agent_effects.rs",
-      "domain": "agent_publication",
+      "domain": "agent",
       "target_boundary": "TransitionCommit",
       "child_issue": 215,
       "implementation_status": "private_scheduled_effect_authorization_component"
@@ -502,7 +478,7 @@
     {
       "kind": "authoritative_mutation_module",
       "path": "rust/crates/pod0-storage/src/transition_commit_scheduled_agent_actions.rs",
-      "domain": "agent_publication",
+      "domain": "agent",
       "target_boundary": "TransitionCommit",
       "child_issue": 215,
       "implementation_status": "typed_atomic_scheduled_occurrence_retry_cancel_and_effect_fencing"
@@ -598,7 +574,7 @@
     {
       "kind": "authoritative_mutation_module",
       "path": "rust/crates/pod0-storage/src/agent_generated_audio_store.rs",
-      "domain": "agent_publication",
+      "domain": "agent",
       "target_boundary": "TransitionCommit",
       "child_issue": 215,
       "implementation_status": "private_transition_commit_generated_audio_projection_helper"
@@ -606,7 +582,7 @@
     {
       "kind": "authoritative_mutation_module",
       "path": "rust/crates/pod0-storage/src/agent_history_cutover.rs",
-      "domain": "agent_publication",
+      "domain": "agent",
       "target_boundary": "TransitionCommit",
       "child_issue": 215,
       "implementation_status": "typed_transition_commit_adapter_no_direct_sql"
@@ -614,7 +590,7 @@
     {
       "kind": "authoritative_mutation_module",
       "path": "rust/crates/pod0-storage/src/transition_commit_agent_history_cutover.rs",
-      "domain": "agent_publication",
+      "domain": "agent",
       "target_boundary": "TransitionCommit",
       "child_issue": 215,
       "implementation_status": "typed_migration_transition_commit_for_stage_verify_authority_and_discard"
@@ -622,7 +598,7 @@
     {
       "kind": "authoritative_mutation_module",
       "path": "rust/crates/pod0-storage/src/agent_store.rs",
-      "domain": "agent_publication",
+      "domain": "agent",
       "target_boundary": "TransitionCommit",
       "child_issue": 215,
       "implementation_status": "private_transition_commit_projection_writer_with_test_only_direct_helpers"
@@ -630,7 +606,7 @@
     {
       "kind": "authoritative_mutation_module",
       "path": "rust/crates/pod0-storage/src/scheduled_agent_store_command_receipts.rs",
-      "domain": "agent_publication",
+      "domain": "agent",
       "target_boundary": "TransitionCommit",
       "child_issue": 215,
       "implementation_status": "private_scheduled_command_receipt_component"
@@ -1014,7 +990,7 @@
     {
       "kind": "authoritative_mutation_module",
       "path": "rust/crates/pod0-storage/src/transition_commit_agent_cancellation.rs",
-      "domain": "agent_publication",
+      "domain": "agent",
       "target_boundary": "TransitionCommit",
       "child_issue": 215,
       "implementation_status": "transition_commit_authoritative"
@@ -1085,22 +1061,6 @@
     },
     {
       "kind": "authoritative_mutation_module",
-      "path": "rust/crates/pod0-storage/src/publication_store_observe.rs",
-      "domain": "agent_publication",
-      "target_boundary": "TransitionCommit",
-      "child_issue": 215,
-      "implementation_status": "public_typed_leased_transition_commit_adapter_with_private_atomic_projection_helper"
-    },
-    {
-      "kind": "authoritative_mutation_module",
-      "path": "rust/crates/pod0-storage/src/publication_store_write.rs",
-      "domain": "agent_publication",
-      "target_boundary": "TransitionCommit",
-      "child_issue": 215,
-      "implementation_status": "public_typed_transition_commit_adapters_with_private_atomic_projection_helpers"
-    },
-    {
-      "kind": "authoritative_mutation_module",
       "path": "rust/crates/pod0-storage/src/recall_configuration_store.rs",
       "domain": "recall_knowledge",
       "target_boundary": "TransitionCommit",
@@ -1126,7 +1086,7 @@
     {
       "kind": "authoritative_mutation_module",
       "path": "rust/crates/pod0-storage/src/transition_commit_scheduled_agent_cutover.rs",
-      "domain": "agent_publication",
+      "domain": "agent",
       "target_boundary": "TransitionCommit",
       "child_issue": 215,
       "implementation_status": "typed_migration_transition_commit_for_stage_verify_authority_and_discard"
@@ -1134,7 +1094,7 @@
     {
       "kind": "authoritative_mutation_module",
       "path": "rust/crates/pod0-storage/src/scheduled_agent_cutover_stage.rs",
-      "domain": "agent_publication",
+      "domain": "agent",
       "target_boundary": "TransitionCommit",
       "child_issue": 215,
       "implementation_status": "private_migration_staging_helper_owned_by_cutover_transition_commit"
@@ -1142,7 +1102,7 @@
     {
       "kind": "authoritative_mutation_module",
       "path": "rust/crates/pod0-storage/src/scheduled_agent_store_completion.rs",
-      "domain": "agent_publication",
+      "domain": "agent",
       "target_boundary": "TransitionCommit",
       "child_issue": 215,
       "implementation_status": "private_scheduled_observation_transition_commit_completion_helper"
@@ -1150,7 +1110,7 @@
     {
       "kind": "authoritative_mutation_module",
       "path": "rust/crates/pod0-storage/src/scheduled_agent_store_observations.rs",
-      "domain": "agent_publication",
+      "domain": "agent",
       "target_boundary": "TransitionCommit",
       "child_issue": 215,
       "implementation_status": "public_typed_leased_transition_commit_adapter_with_private_projection_helpers"
@@ -1158,7 +1118,7 @@
     {
       "kind": "authoritative_mutation_module",
       "path": "rust/crates/pod0-storage/src/scheduled_agent_store_reconcile.rs",
-      "domain": "agent_publication",
+      "domain": "agent",
       "target_boundary": "TransitionCommit",
       "child_issue": 215,
       "implementation_status": "public_typed_transition_commit_adapter_with_private_attempt_projection_helpers"
@@ -1166,7 +1126,7 @@
     {
       "kind": "authoritative_mutation_module",
       "path": "rust/crates/pod0-storage/src/scheduled_agent_store_tasks.rs",
-      "domain": "agent_publication",
+      "domain": "agent",
       "target_boundary": "TransitionCommit",
       "child_issue": 215,
       "implementation_status": "public_typed_transition_commit_adapters_with_private_task_projection_helpers"
@@ -1182,7 +1142,7 @@
     {
       "kind": "authoritative_mutation_module",
       "path": "rust/crates/pod0-storage/src/effect_outbox_scheduled_agent_observation.rs",
-      "domain": "agent_publication",
+      "domain": "agent",
       "target_boundary": "TransitionCommit",
       "child_issue": 215,
       "implementation_status": "private_exact_scheduled_agent_lease_staging"

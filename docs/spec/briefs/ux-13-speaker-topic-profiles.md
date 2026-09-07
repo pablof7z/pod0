@@ -22,7 +22,6 @@ Editorial typography, generous whitespace, restrained Liquid Glass on chrome onl
 3. **"Has Tyler Cowen changed his mind on AI risk?"** — User opens the topic *AI risk*, scrolls to *Stance evolution by speaker*, taps Cowen's row. A timeline of his quoted positions across episodes unfolds chronologically — each quote a card that plays the source clip on tap.
 4. **"Tell me when this person shows up again."** — Toggle *Follow speaker* on the profile. New appearances surface in #14's proactive feed; a single haptic ping (configurable) on next detection.
 5. **"What does my library actually say about Ozempic?"** — Topic profile *Ozempic* shows: definition, 23 episodes, 14 speakers, contradictions panel ("Attia: cautious endorsement / Lustig: skeptical"), parent topic *GLP-1 agonists*, subtopic *muscle loss concerns*.
-6. **"This guest's name has a typo and the photo is wrong."** — User taps the (i) on the portrait, sees source attribution, can *Suggest correction* (writes a Nostr event per #12) or *Replace photo* with an upload.
 
 ---
 
@@ -308,7 +307,6 @@ The threshold maps to the speaker-identity confidence score (open question 1). D
 2. **Photo licensing.** Scraped portraits are a copyright minefield. Proposal: prefer Perplexity-cited Wikimedia/Commons sources with explicit license metadata, fall back to the speaker's verified social avatar (per-platform terms apply), fall back to monogram. Never mass-cache without per-image attribution. Owner's *Suggest correction* path lets a guest replace their own photo. Legal review required before ship.
 3. **"Best clips" curation cost.** Generating clips per speaker requires a re-ranker pass over their transcript chunks; expensive at library scale. Proposal: lazy generation on first profile view, cached, regenerated on follow + new appearance. Coordinate with #8.
 4. **Topic graph drift.** Wiki regeneration changes parent/subtopic edges; deep links to a topic page may land on a now-merged topic. Proposal: redirect table written on every wiki rebuild; old IDs resolve to canonical IDs with a banner.
-5. **Privacy of "follow."** A followed speaker is local-only by default. If the user opts to share follows over Nostr (per #12), what does the event look like? Proposal: an opaque follow event keyed to a normalized speaker ID, no portrait, with an opt-in profile-publish step. Coordinate with #12.
 6. **Self-stance feature creep.** *Stance evolution* is editorially powerful but risks misrepresentation (a quote out of context). Proposal: every quote card carries a *Hear in context* affordance that plays 12s of pre-roll audio; no quote ever appears stripped of its tap-to-source path.
 7. **Coordination with #14.** Follow lives here; delivery lives there. We need a clean event schema (`speaker_appeared`, `topic_referenced`, with confidence and source-episode-id). I propose drafting it jointly with #14's owner.
 8. **Wiki ↔ profile sync cost.** When wiki regenerates a person summary, our profile's bio should match (same source, same revision). Proposal: bio is a *view onto* the wiki's bio field; we render, we do not duplicate.

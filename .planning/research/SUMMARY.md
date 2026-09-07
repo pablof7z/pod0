@@ -76,7 +76,6 @@ Based on combined research, the natural phase structure follows the dependency g
 
 ### Phase 1: Headless host crates — commit, harden, and gate in CI
 **Rationale:** Everything else (adapter development, cancellation-race testing, barge-in latency validation) is cheaper and faster to prove against a real `pod0-application` actor over NDJSON/REPL than against the simulator. This phase is also independently required by PROJECT.md's Active requirements, not just a #142 convenience.
-**Delivers:** `pod0-cli`, `pod0-live-hosts`, `pod0-nostr-host`, `pod0-portable-media`, `pod0-system-hosts`, `pod0-tts-host` committed, compiling in and out of the workspace, in CI (`--workspace --all-targets`).
 **Addresses:** Stack's client-reuse/observability findings; FEATURES.md's implicit prerequisite for headless validation.
 **Avoids:** Pitfalls 3 (unpooled/untimed HTTP clients), 4 (multi-runtime FFI deadlocks), 5 (untested-together crates), 6 (bootstrap/effect-outbox signature risk).
 

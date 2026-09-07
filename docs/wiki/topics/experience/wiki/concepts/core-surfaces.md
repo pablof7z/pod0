@@ -24,7 +24,6 @@ The app should not hide its differentiator behind a single chat tab. Knowledge, 
 - Episode Detail: show notes, transcript, speaker list, wiki summary, clips, bookmarks, and related threads.
 - Universal Search: keyword, semantic, transcript, wiki, and directory search in one place.
 - Wiki: concept, person, show, and cross-episode pages.
-- Agent Chat: typed and Nostr-aware conversation with visible citations and action cards.
 - Voice Mode: full-screen or compact live conversation state.
 - Briefings: generated audio summaries with source anchors and resumable beats.
 

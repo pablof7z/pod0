@@ -74,16 +74,12 @@ Recent decisions affecting current work:
 
 - Roadmap: scoped to 4 phases (coarse granularity) — headless crates, voice conversation authority (adapter + cancellation + approval combined per research's "one risk unit" framing), audio session/physical hardware validation, Siri re-enablement.
 - Roadmap: Phase 3 (audio session) is independent of Phase 2 (voice adapter/cancellation) — different subsystem, can execute in parallel; Phase 4 (Siri) gates on both.
-- [Phase 1]: RelaySecurity::AllowInsecureNumericLoopback chosen as NostrPublisher's production default to match its existing ws://127.0.0.1:9 unit test
-- [Phase 1]: nostr pinned to =0.44.7 (exact RUSTSEC-patched version) rather than latest =0.45.3, avoiding an unnecessary minor-version API change
 - [Phase 1]: pod0-cli's pre-existing rustyline BSL-1.0 license rejection and pod0-application's cross-language fixture-version drift left unfixed as out of scope for this workspace-membership plan; logged to windows ledger
 - [Phase 1]: Switched HostExecutor's shared runtime from current-thread to multi-thread (worker_threads(1)) — current-thread's Handle::block_on hangs when called cross-thread, which is the real pod0-host-pump shape
 - [Phase 1]: pod0-tts-host keeps concrete tracing version literal (not .workspace = true) to preserve its Plan 01-01 standalone-buildability property
 - [Phase 1]: Moved pod0-application from pod0-cli's dev-dependencies to dependencies to reach MAX_AGENT_MESSAGE_BYTES from production code (capability.rs)
 - [Phase 1]: Task 3's fixture needed a second local HTTP endpoint (POD0_PODCAST_SEARCH_URL redirect) for the iTunes search capability call, beyond the plan's literal two-response chat fixture
 - [Phase 1]: [Phase 1, Plan 04]: pod0-cli reworked to drop dependency on uncommitted pod0-facade/pod0-storage APIs (5 methods/5 types) — closed HOST-01/HOST-02 gap; create_store now returns an explicit error pending a real store-bootstrap primitive, and 11 tests across 6 files are #[ignore]d until that lands
-- [Phase 1]: [Phase 1, Plan 05]: NostrPublisher::new_with_handle added as an additive Handle-based constructor mirroring pod0-portable-media's owned_runtime/handle dual-field pattern; closes the concretely-fixable half of SC4/HOST-04 (no process yet links all six host crates, which remains open per ROADMAP.md's 2026-08-22 reword)
-- [Phase 1]: [Phase 1, Plan 05]: pod0-nostr-host's tokio dependency was missing the 'macros' feature needed by relay.rs's pre-existing tokio::select! for a truly standalone -p pod0-nostr-host build — fixed as a Rule 3 blocking-issue auto-fix, previously masked because every prior verification command built it alongside sibling crates
 - [Phase 1]: [Phase 1, Plan 06]: Pod0Facade::open requires a fourth authoritative domain (clips) beyond listening/notes/transcripts — clip_snapshot() is called unconditionally inside FacadeState::open
 - [Phase 1]: [Phase 1, Plan 06]: host_drain.rs's and settings.rs's re-ignored tests name genuinely new pod0-facade/pod0-storage bugs (non-idempotent next_leased_host_requests; uncommitted workflow-configuration revision-conflict fix), both confirmed against committed HEAD and out of this plan's pod0-cli-only scope
 

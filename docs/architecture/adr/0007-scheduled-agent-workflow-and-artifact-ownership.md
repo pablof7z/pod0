@@ -39,8 +39,6 @@ security, file, and presentation capabilities. A native adapter may retain an
 in-flight OS/provider handle and transient streaming text. It cannot decide
 whether an occurrence is due, retryable, complete, authorized, or selected.
 
-Generic NMP does not own Pod0 scheduled jobs or artifacts. Pod0 may hand a
-committed artifact's generic write directly to the app-owned upstream NMP
 engine, but publication is a separate durable obligation and is never evidence
 that the agent occurrence completed.
 
@@ -57,7 +55,6 @@ that the agent occurrence completed.
 | Credential material | Keychain/provider stores | Native platform security facility |
 
 No completion fact is inferred from a non-empty native message, an accepted
-provider request, a closed stream, a file existing, or an NMP receipt. Rust
 accepts completion only from a correlated observation for the current attempt
 and commits it with the output reference and recurrence update.
 
@@ -187,7 +184,6 @@ evidence and cannot overwrite Rust authority.
   framework.
 - Chat presentation may remain native, but it cannot remain a durable
   completion authority.
-- Nostr publication remains independently recoverable and cannot widen this
   workflow boundary.
 
 ## Rejected alternatives
@@ -201,5 +197,4 @@ evidence and cannot overwrite Rust authority.
   and forward-compatible typed behavior.
 - **Move provider clients into Rust now:** blocks iOS validation and moves
   credential/platform primitives across the wrong boundary.
-- **Use NMP as the job store:** leaks Pod0 product nouns into generic protocol
   infrastructure.

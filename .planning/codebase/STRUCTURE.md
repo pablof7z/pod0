@@ -16,7 +16,6 @@ pod0/
 │   │   ├── Domain/               # Unmigrated Swift domain types
 │   │   ├── Features/             # Feature views by vertical (Library, Player, etc.)
 │   │   ├── Knowledge/            # Embedding/reranking provider execution
-│   │   ├── NMP/                  # Nostr media publishing adapter
 │   │   ├── Services/             # Platform adapters (URLSession, speech, etc.)
 │   │   ├── State/                # AppStateStore, Persistence, mutations
 │   │   ├── Transcript/           # Transcript parsing, models, adapters
@@ -250,7 +249,6 @@ pod0/
 
 **Plans/**
 - Purpose: Long-term roadmaps, phase breakdowns, design proposals
-- Key files: `2026-07-18-ios-first-rust-nmp-roadmap.md` (authoritative sequencing)
 
 ---
 

@@ -138,7 +138,6 @@ public protocol EpisodeSummarizerProtocol: Sendable {
 
 public protocol EpisodeFetcherProtocol: Sendable {
     func episodeExists(episodeID: EpisodeID) async -> Bool
-    func episodeMetadata(episodeID: EpisodeID) async -> (podcastTitle: String, episodeTitle: String, durationSeconds: Int?)?
 }
 
 public protocol PlaybackHostProtocol: Sendable {

@@ -91,7 +91,6 @@ Source: subsequent user clarification
 
 ## Unresolved Tensions / Risks
 
-- Exact operating systems, credential storage, protocol syntax, NMP scope, and
   the definition of complete feature parity remain open.
 - A portable implementation validates the headless app's real behavior, not
   AVFoundation, Keychain, background URLSession, or other shipped Apple

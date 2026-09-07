@@ -6,7 +6,6 @@
 <domain>
 ## Phase Boundary
 
-This phase commits, hardens, and CI-gates the six new Rust host crates (`pod0-cli`, `pod0-live-hosts`, `pod0-nostr-host`, `pod0-portable-media`, `pod0-system-hosts`, `pod0-tts-host`) so they prove the same `pod0-application` command/event/host-effect state machine that iOS runs — headlessly, without the simulator. It touches only Rust. No Swift, no Voice UI, no `VoiceAgentSessionAdapter` work happens in this phase — that's Phase 2.
 
 </domain>
 
@@ -17,7 +16,6 @@ Discussed in `--auto` mode: for each gray area, the recommended option (grounded
 
 ### Credential Handling
 
-- **D-01:** `pod0-cli` keeps reading provider credentials from environment variables (`POD0_OPENAI_API_KEY`, `POD0_OLLAMA_BASE_URL`, etc.) for this milestone, rather than migrating to the `pod0-system-hosts` keyring integration already used for Nostr keys. — **Reversibility:** reversible — a keyring migration can be layered on later without changing the `HostExecutor`/provider-adapter contract.
   - [auto] Credential Handling — Q: "Keep env-var credentials for `pod0-cli`, or route through the existing keyring integration now?" → Selected: "Keep env vars for this milestone" (recommended default — env vars are the standard headless/CI-friendly pattern; a CI runner has no keyring session to unlock, and the existing README-documented mitigation, "credentials are never returned by the CLI protocol," already applies)
 
 ### Observability
@@ -60,7 +58,6 @@ Discussed in `--auto` mode: for each gray area, the recommended option (grounded
 
 ### Codebase State
 - `.planning/codebase/CONCERNS.md` — the six specific, already-identified gaps in the new crates (unpooled/duplicate HTTP clients, auto-denying approvals, untested headless methods, uncommitted Cargo.lock changes, effect-outbox signature risk, bootstrap atomicity)
-- `.planning/codebase/INTEGRATIONS.md` — existing CI pipeline shape (`.github/workflows/test.yml`, `cargo deny` for license/advisory checks), existing provider integrations (OpenRouter, ElevenLabs, Nostr) these crates adapt
 - `rust/README.md` — documented credential-handling mitigation for `pod0-cli`
 
 </canonical_refs>
@@ -71,7 +68,6 @@ Discussed in `--auto` mode: for each gray area, the recommended option (grounded
 ### Reusable Assets
 - `pod0-application::Retryability` (Never/Automatic/AfterUserAction) — already a durable, UniFFI-exported retry-classification type; adapters should classify failures into it rather than adding client-side retry middleware
 - `ProviderError` types in `pod0-live-hosts` (with `retry_after`) — already carry what's needed for the durable effect outbox to own retry timing
-- `pod0-system-hosts` keyring integration (used today for Nostr keys) — available if credential handling is revisited post-milestone
 
 ### Established Patterns
 - Facade stays fully synchronous — durable work crosses FFI via a leased/polled effect-outbox pattern (`pending_host_effects`, `next_leased_headless_host_requests`, `record_leased_host_observation`), never UniFFI async futures (Swift 6 `Sendable` conformance for async FFI is unresolved upstream)

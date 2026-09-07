@@ -10,7 +10,6 @@ aliases: [UX Brief Map]
 confidence: medium
 volatility: warm
 verified: 2026-05-09
-summary: "The existing 15 UX briefs cover Now Playing, library, episode detail, wiki, agent chat, voice, search, briefings, threads, onboarding, ambient surfaces, Nostr, profiles, notifications, and Liquid Glass."
 ---
 
 # UX Brief Index
@@ -22,7 +21,6 @@ The existing `docs/spec/briefs` set is the primary source collection for detaile
 - Playback: UX 01 Now Playing.
 - Library and episode browsing: UX 02 Library, UX 03 Episode Detail.
 - Knowledge: UX 04 LLM Wiki, UX 09 Cross Episode Threading, UX 13 Speaker Topic Profiles.
-- Agent: UX 05 Agent Chat, UX 12 Nostr Communication, UX 14 Proactive Agent Notifications.
 - Voice and briefings: UX 06 Voice Mode, UX 08 Briefings TLDR.
 - Search: UX 07 Search Discovery.
 - Onboarding: UX 10 Onboarding.

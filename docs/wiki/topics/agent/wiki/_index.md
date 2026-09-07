@@ -17,7 +17,6 @@ Last updated: 2026-05-09
 | [concepts/tool-permissions-and-approvals.md](concepts/tool-permissions-and-approvals.md) | Permission classes and approval gates for tool calls. | agent, permissions | 2026-05-09 |
 | [concepts/background-agent-operations.md](concepts/background-agent-operations.md) | Durable job queue design for long-running agent work. | agent, background, jobs | 2026-05-09 |
 | [concepts/voice-briefing-loop.md](concepts/voice-briefing-loop.md) | Interruptible STT/TTS conversation and generated briefing flow. | voice, briefing | 2026-05-09 |
-| [concepts/nostr-command-safety.md](concepts/nostr-command-safety.md) | Safety model for remote Nostr commands. | nostr, safety | 2026-05-09 |
 | [concepts/in-episode-agent.md](concepts/in-episode-agent.md) | Context-aware one-tap voice drop from Now Playing. | agent, voice, now-playing | 2026-05-09 |
 | [references/implementation-map.md](references/implementation-map.md) | Repo placement for current and planned agent implementation. | implementation, swift | 2026-05-09 |
 | [references/tool-family-matrix.md](references/tool-family-matrix.md) | Tool families mapped to services, stores, permissions, and priority. | tools, implementation | 2026-05-09 |
@@ -25,7 +24,6 @@ Last updated: 2026-05-09
 ## Categories
 
 - **topics**: agent-runtime-and-context.md, agent-tool-platform.md
-- **concepts**: tool-surface.md, lifetime-tool-catalog.md, tenex-delegate-tool.md, tool-execution-infrastructure.md, tool-permissions-and-approvals.md, background-agent-operations.md, voice-briefing-loop.md, nostr-command-safety.md, in-episode-agent.md
 - **references**: implementation-map.md, tool-family-matrix.md
 
 ## Recent Changes

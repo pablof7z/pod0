@@ -43,8 +43,6 @@ to add temporary native policy. `current_owner`, `target_owner`,
 3. Download intent and recovery: #115–#119; scheduled-agent workflow and
    artifact ownership: #125–#130. Rust now owns active agent conversations,
    memories, scheduled state, model usage, generated audio provenance, and
-   tracked NMP publication after #135/#136. The #131 cohort completed agent,
-   Nostr, signer, and migration ownership through #138. Any residual one-shot
    readers are development-only cleanup debt with no release-based retention.
 4. Native UI and platform capabilities remain native and converge on typed
    host/projection boundaries as their domains migrate.

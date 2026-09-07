@@ -58,7 +58,6 @@ e8576390bc7c0dd56d88980b3f68c295a814f456
 c0d0ba2798ae177980ff7d6d3e41516faade18b2
 ```
 
-Other unpublished commits have one disposition each:
 
 | Commit(s) | Disposition | Destination / rationale |
 |---|---|---|
@@ -126,7 +125,6 @@ The root has 12 tracked paths (`338` insertions, `19` deletions) and 51 untracke
 
 `origin/HEAD` resolves to `origin/master`. Remote branches already contained by `origin/master` are **superseded** by the default branch: `agent/bdd-harness` `75b99e82701b429c8cf51b9e9a678583e3a311a7`, `agent/binding-layout-identity` `b229bda48177609f2f8e070bf1ad798e2f13c8bc`, `agent/ci-concurrency-group` `3cd9c081921e32b86717087a2a5172c8a9102b98`, `agent/feed-fetch-durable-workflow` `f960019657524e36683fc9f848d513ffc9dea2f8`, `agent/ios-product-proof-cohort` `7c83a1e250cf7afb909b82efc431e4712944dc74`, `agent/ios-product-proof-evidence` `36be739232c55d4c217f4ebc2c816fe79b9731a8`, `agent/note-target-clip` `5db353eabc510b1b6249087443a49cbd94b52fb8`, `agent/pbxproj-absolute-path-guard` `8cc3f9cd1ff27c62c38c926353a0c71715331def`, `agent/per-show-transcript-policy` `9635c49f86bef4f456a909d22785e719ba47dd0c`, `agent/player-fullscreen-no-glass` `04bb644c0dc51f57bc64294c4a6fa330e7c1d7ad`, `agent/player-menu-chapter-proportions` `37bd53297150042d5ef26522b9b46c722204cc54`, `agent/player-view-progress-polish` `d2acb5f4a959146c6bd3fbedebef9be4eb132884`, `agent/podcast-categories` `0df5188d678c5b9f8c9e0db89dc048aa9cc7906f`, `agent/share-episode-import` `3d760867c5dda81f4b5575a0873b39521db33e49`, `agent/speaker-identity` `0594a0ac46ca1a37a6df0be84d9f7b9dd517d4d9`, `clip-transcript-view` `bc65665f4e140b86285281f4f116d0c280be9cdf`, `durable-workflow-epic-19` `6669ac19fa2baddf36c9415a54739a9e5ee69e98`, `feature/sync-up` `49f64fbd3ddd1ab39f80a69623fef4e97abc3bcd`, `fix-download-host-test-timeout` `50b9bcf1bc8a9a1ae29000a215812d19ca7475dd`, `worktree-continue-listening-swipe` `a609b51da58e820dbb9baa44ce3d7d2702c330fd`, `worktree-home-podcast-row-size` `8bbc58fd78603be9df4365f6612e10e101ec8227`, and `worktree-remove-see-all-podcasts` `f702972a9f32c1286753640dc0f54f6c20120986`.
 
-`origin/master` `49f64fbd3ddd1ab39f80a69623fef4e97abc3bcd` is **retain** as the published base. Remote-only/stale tips not contained by default are **archive** in place, with no integration implied: `agent/cache-github-hosted-ci` `62f5b07482811fc09ca67108725d551ae3b267ff`, `agent/clip-notes-exploration-note` `2ca183bbeabfb34cb831c08d48ac46aba1338fed`, `agent/document-github-hosted-ci` `a63c04ff330bd71f443eb3978add87fb49ce4f4e`, `chore/track-nmp-master` `817dd322d85f4a5b2c50e5fed5626404c7e46a6c`, `copilot/upgrade-pod0-nmp-master` `84dbcf04ac5926988325621589679a075deac140`, and `surface-narrowing` `8dd74dbbb6b93220d500e142977e5f5671008ecc`.
 
 ## GitHub and Validation State
 
@@ -134,7 +132,6 @@ The root has 12 tracked paths (`338` insertions, `19` deletions) and 51 untracke
 |---|---|---|
 | Open pull requests | Empty set after refresh | retain as evidence; a new reconciliation PR is task 8.2. |
 | Issue #84 | Open, `M1 - iOS product-proof foundation`, updated `2026-07-26T14:15:58Z` | retain open until the physical audio matrix passes. |
-| Issue #142 | Open, `M4 - Durable workflows, agent artifacts, and Nostr coordination`, updated `2026-07-24T00:43:29Z` | retain open until shared Voice-to-Rust authority passes. |
 | Latest default-branch CI | Run `31967090316`, failure on `49f64fbd3ddd1ab39f80a69623fef4e97abc3bcd`, created `2026-08-16T19:16:31Z` | retain as blocker evidence; no later default-branch run exists. |
 | Latest successful default CI | Run `31648057249`, success on `fb476674d5c7637d153c25ff10f1d99a0ac125f6` | archive as historical evidence only; it does not qualify current work. |
 
@@ -148,18 +145,11 @@ Created `agent/reconcile-and-finish-repository-state` at `c0d0ba2798ae177980ff7d
 
 | Item | Disposition | Evidence / recovery |
 |---|---|---|
-| `rust/crates/pod0-nostr-host` | discard | The isolated crate had no consumer and implemented private-key parsing and BIP-340 signing outside NMP, violating the enforced single-owner boundary. Its complete committed lineage remains recoverable from safety refs `.../local/master` and the verified all-lineages bundle. The workspace member and now-unused shared `nostr` dependency were removed. |
 
-## Nostr-removal Refresh
 
 Snapshot time: `2026-09-07T10:34:35Z` after `git fetch --all --prune`.
 
 - Active checkout: `agent/reconcile-and-finish-repository-state` at `69c7817abe55d2d79690530aebd54270b9cb02f9`.
 - Local `master`: `c0d0ba2798ae177980ff7d6d3e41516faade18b2`; active checkout is its direct one-commit extension (`0 1`).
 - Published `origin/master`: `49f64fbd3ddd1ab39f80a69623fef4e97abc3bcd`; active checkout is a direct 39-commit extension (`0 39`).
-- Refreshed safety namespace: `refs/backup/remove-nostr-20260907/head` plus the 21 earlier `refs/backup/reconcile-20260907/*` refs.
-- Refreshed complete bundle: `.git/reconciliation-backups/2026-09-07-nostr-removal/local-lineages.bundle`, SHA-256 `0c2b10ad4535f8a115058a87c35b24d04ffc20e3bbf249bf402f6b5df89aeb90`; `git bundle verify` reports complete history with all local, remote, stash, worktree, and safety refs.
-- Refreshed tracked patch: `.git/reconciliation-backups/2026-09-07-nostr-removal/pre-removal-tracked.patch`, SHA-256 `c51c0c533893d067ce4faa616055310f8e107c9ae06357202518e904646818ba`; `git apply --numstat` succeeds.
-- Refreshed index patch: `.git/reconciliation-backups/2026-09-07-nostr-removal/pre-removal-index.patch`, empty-tree SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`; the index is clean.
-- Refreshed untracked archive: `.git/reconciliation-backups/2026-09-07-nostr-removal/pre-removal-untracked.tar.gz`, SHA-256 `27163c13ad38a2f425ba75d6ffa8fe29f50069b6d34147692c60ba6d9cffecef`; `gzip -t` succeeds and the archive was built from all 69 untracked files.
 - Current checkout inventory has 121 status entries. No checkout file was changed by the remote refresh or safety capture except this ledger and the new OpenSpec planning artifacts, all of which are included in the refreshed untracked archive or tracked patch.

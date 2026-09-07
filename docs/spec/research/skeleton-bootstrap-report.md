@@ -53,7 +53,6 @@ non-functional placeholders awaiting the synthesized product spec.
 - `App/Sources/Services/SpotlightIndexer.swift` — three Spotlight domain
   identifiers (`com.apptemplate.spotlight.{items,notes,memories}` →
   `com.podcastr.spotlight.*`).
-- `App/Sources/Services/{Nostr,OpenRouter,ElevenLabs}CredentialStore.swift`
   and `UserIdentityStore.swift` — keychain service-name fallback strings
   (these compose with `Bundle.main.bundleIdentifier`, so the live value
   changes automatically; only the fallback was stale).

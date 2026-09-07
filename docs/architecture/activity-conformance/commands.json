@@ -356,27 +356,18 @@
     },
     {
       "variant": "StartAgentTurn",
-      "domain": "agent_publication",
-      "target_owner": "AgentPublicationStateMachine",
-      "request_disposition_fact": "agent_publication.request_disposition",
+      "domain": "agent",
+      "target_owner": "AgentStateMachine",
+      "request_disposition_fact": "agent.request_disposition",
       "transition_fact_policy": "required_when_state_changes",
       "child_issue": 215,
       "implementation_status": "typed_atomic_admission_leased_model_approval_and_native_capability_with_durable_execution_command"
     },
     {
-      "variant": "PublishGeneratedEpisode",
-      "domain": "agent_publication",
-      "target_owner": "AgentPublicationStateMachine",
-      "request_disposition_fact": "agent_publication.request_disposition",
-      "transition_fact_policy": "required_when_state_changes",
-      "child_issue": 215,
-      "implementation_status": "typed_atomic_publication_prepare_dedicated_exact_lease_receipt_and_status_observations"
-    },
-    {
       "variant": "CancelAgentTurn",
-      "domain": "agent_publication",
-      "target_owner": "AgentPublicationStateMachine",
-      "request_disposition_fact": "agent_publication.request_disposition",
+      "domain": "agent",
+      "target_owner": "AgentStateMachine",
+      "request_disposition_fact": "agent.request_disposition",
       "transition_fact_policy": "required_when_state_changes",
       "child_issue": 215,
       "implementation_status": "typed_atomic_cancellation_supersedes_persisted_effects_and_internal_commands"

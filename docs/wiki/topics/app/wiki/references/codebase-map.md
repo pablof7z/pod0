@@ -57,7 +57,6 @@ Use this map before editing. Podcastr has many connected surfaces, and the faste
 - `App/Sources/Features/Settings/`: settings shell, downloads/storage/playback/transcripts/wiki/notification/category screens.
 - `App/Sources/Features/Settings/AI/`: provider connection, model selection, catalog services, voice browser, usage cost screens.
 - `App/Sources/Services/BYOK*` and provider credential stores: BYOK auth, token import, Keychain storage.
-- `App/Sources/Features/Settings/Agent/`, `App/Sources/Features/Identity/`, `App/Sources/Services/Nostr*`: identity, friends, approvals, and relay-backed agent features.
 
 ## Tests And Docs
 

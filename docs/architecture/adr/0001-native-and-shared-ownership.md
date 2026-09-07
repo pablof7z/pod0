@@ -22,7 +22,6 @@ The Pod0 Rust kernel progressively owns stable, durable, cross-platform product
 facts and decisions: identities and schemas, subscriptions and feed policy,
 queue/resume/completion policy, workflow desired state, transcript and evidence
 normalization, durable user artifacts, agent validation/commits, and
-Pod0-specific Nostr semantics.
 
 Each migrated fact has one Rust writer. Native code may retain a bounded view
 projection but not a second authoritative cache or policy implementation.

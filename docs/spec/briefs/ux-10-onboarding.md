@@ -50,7 +50,6 @@ This brief assumes **A**. If product disagrees, the wireframes for Steps 4 and 6
 
 **Required:** S1, S2, S3, S6.
 **Optional in-flow:** S4 BYOK upgrade, S5 voice persona.
-**Deferred to first contextual use:** Mic permission (asked at S6, not before), daily briefing schedule (asked once after S7 dismissed), Nostr key reveal (Settings).
 
 Power-user escape: a low-contrast *"I know what I'm doing"* link on S1 jumps to a 30-second condensed flow (paste OPML, paste OpenRouter key, done).
 
@@ -241,7 +240,6 @@ Onboarding must be fully usable under VoiceOver, with the screen off, one-handed
 ## 10. Open Questions / Risks
 
 - **Trial budget economics.** Need finance sign-off on per-user ceiling and abuse vectors (multi-install farming). Recommend: device-attested + capped at one briefing + ~2K agent tokens.
-- **Nostr literacy.** "Reveal key" wording — do we say *nsec*? Recommendation: hide the term entirely outside Settings.
 - **OpenRouter onboarding handoff.** When a trial user opts into BYOK, do we deep-link to OpenRouter signup with our referral, or open in-app web view? In-app keeps the thread; deep-link improves trust.
 - **Voice persona at first run.** Risk: choosing a voice cold (no context) feels arbitrary. Mitigation: make it skippable, default to Aria, allow change after first briefing when the voice is *embodied*.
 - **The 3-minute target.** Honest measurement needed. With trial budget on and OPML detection cached, S1→S6 play-start is reachable in ~90 seconds. Briefing generation (LLM + TTS) is the long pole — must stream first audio chunk within 6 seconds or the magic dies.

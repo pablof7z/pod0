@@ -13,14 +13,12 @@ Kept for the reasoning rather than the conclusion: the conclusion is three lines
 
 ## Current Working Model
 
-- Notes and clips are two independent projections over the same episode timeline. Notes anchor to a *point* (`Anchor.episode(id, positionSeconds)`); clips are a *span* (`startMs...endMs`) with frozen `transcriptText` and an optional, never-user-editable `caption`.
 - Nothing links them. There is no clip variant in `NoteTarget`, no query for "notes inside a clip's span", and no UI showing notes and clips together beyond per-episode counts in `StarredSegment`.
 - Adding `NoteTarget::Clip { clip_id }` looks structurally cheap — the codec is already a tagged union with a per-variant column layout and an `Unsupported { wire_code }` escape hatch — but it is a real schema migration crossing domain → storage → facade → uniffi → Swift.
 
 ## Observations
 
 - `NoteTarget` variants (`rust/crates/pod0-domain/src/notes.rs:38-49`): `Note { note_id }`, `Episode { episode_id, position_milliseconds }`, `Unsupported { wire_code }`. No clip variant.
-- Swift `Anchor` mirrors this with only `.note(id:)` and `.episode(id:positionSeconds:)` (`App/Sources/Domain/Anchor.swift`).
 - Storage codec is tagged with per-variant columns (`rust/crates/pod0-storage/src/note_store_codec.rs:60-127`): code 0=none, 1=note, 2=episode, 255=unsupported, plus `note_id` / `episode_id` / `position_ms` payload columns.
 - The notes table has an **exact** required-column assertion (`rust/crates/pod0-storage/src/schema_notes.rs:30-52`) listing `target_code`, `target_note_id`, `target_wire_code` — there is no `target_episode_id`; the episode target reuses the shared `episode_id` / `position_ms` columns.
 - Schema validation is a hard equality gate on the kernel version (`rust/crates/pod0-storage/src/schema.rs:38-49`), with versioned `require_columns` blocks layered by version (`if version >= 2`, `>= 3`, ...).

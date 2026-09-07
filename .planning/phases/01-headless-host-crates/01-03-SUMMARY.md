@@ -129,7 +129,6 @@ See `key-decisions` in frontmatter — the `pod0-application` dependency-tier mo
 - **Issue:** The plan's Task 3 action describes serving "two sequential HTTP responses from the same fixture thread" for the model-turn chat endpoint, but a `search_podcast_directory` capability also issues a real HTTP request to the iTunes search endpoint (via `search::search`) between the two model turns. Without intercepting that second endpoint too, the test would either hang reaching the real internet or fail non-deterministically.
 - **Fix:** Added a second local `TcpListener` fixture for the search request, redirected via the `POD0_PODCAST_SEARCH_URL` env var — the exact mechanism `tests/live_search.rs` already establishes for the same purpose (including its documented single-threaded-w.r.t.-this-env-var safety comment, reused verbatim in the new test).
 - **Files modified:** `rust/crates/pod0-cli/tests/live_agent.rs`
-- **Verification:** `cargo test -p pod0-cli --test live_agent --locked` passes, run 4 times consecutively with no flakiness.
 - **Committed in:** `8edb3c1a` (Task 3 commit)
 
 **3. [Task-boundary deviation, not a bug] Task 2's bound-clamping test was authored as part of Task 1's commit, not a separate one**

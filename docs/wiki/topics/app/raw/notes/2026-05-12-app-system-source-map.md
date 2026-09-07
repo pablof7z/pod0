@@ -14,7 +14,6 @@ verified: 2026-05-12
 ## Primary Documents
 
 - `README.md` describes Podcastr as an iOS podcast player centered on an embedded AI agent with knowledge of subscribed shows and episodes.
-- `docs/spec/PROJECT_CONTEXT.md` defines the vision: talk to all podcasts, retrieve remembered moments, generate TLDR briefings, use voice mode, and support Nostr-mediated agent communication.
 - `docs/architecture.md` documents the inherited single-store pattern: `AppState`, `AppStateStore`, SwiftUI views, direct store mutations, and App Group persistence.
 - `docs/features.md` captures inherited template systems: shake-to-feedback, agent loop, friends, anchors, persistence, and CI/CD.
 - `AGENTS.md` adds repo rules: no serif fonts; prefer files below 300 lines and keep them under 500 lines.
@@ -32,7 +31,6 @@ verified: 2026-05-12
 
 ## State And Persistence
 
-- `AppState` stores subscriptions, episodes, notes, friends, agent memories, categories, per-category settings, Nostr allow/block/pending lists, agent activity, clips, threading topics, and threading mentions.
 - `AppStateStore` is `@MainActor` and `@Observable`. UI and agent tools mutate through it; the store handles persistence side effects, projections, widget reloads, iCloud settings sync, episode position debouncing, RAG attachment, download service attachment, subscription refresh, and background flushing.
 - Episode metadata is held in app state and supported by `EpisodeSQLiteStore` for larger episode storage needs.
 - Secrets are excluded from the app-state blob. Provider API keys live in Keychain-backed stores.
@@ -51,7 +49,6 @@ verified: 2026-05-12
 - `AgentTools+Podcast` defines podcast-domain tools for playback, search, wiki, transcripts, briefing generation, Perplexity search, summarization, similar episodes, played state, downloads, transcription, feed refresh, navigation, delegation, inventory, clips, segment queues, generated TTS episodes, voice configuration, directory search, subscription, and external episode playback.
 - BYOK provider setup uses `ASWebAuthenticationSession` in `BYOKConnectService`, PKCE against `https://byok.f7z.io`, and a `podcastr://byok` callback.
 - `PodcastBYOKCredentialImporter` stores returned provider keys for OpenRouter, ElevenLabs, AssemblyAI, Ollama, and Perplexity through their Keychain-backed stores.
-- Nostr identity, friends, pending approvals, relay settings, NIP-46 remote signing, feedback, and agent settings live under `Services/Nip46`, `Services/Nostr*`, `Features/Feedback`, `Features/Friends`, and `Features/Settings/Agent`.
 
 ## Build And Operating Rules
 

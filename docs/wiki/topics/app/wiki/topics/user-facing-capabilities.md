@@ -48,7 +48,6 @@ Settings is organized around account, library, listening, intelligence, and syst
 
 ## Feedback And Identity
 
-Shake-to-feedback is global and uses a compose/capture/annotate workflow. The app also carries Nostr identity, remote signing, friends, pending approvals, and feedback thread surfaces, so external agent/user interaction is part of the app model.
 
 ## See Also
 

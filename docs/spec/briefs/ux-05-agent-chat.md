@@ -1,6 +1,5 @@
 # UX-05 — Agent Chat (text-mode)
 
-> Owner: Designer (Aditi). Coordinates with #6 Voice Mode, #4 Wiki, #12 Nostr, #14 Proactive, #15 Liquid Glass.
 > Inherits from: `App/Sources/Features/Agent/AgentChatView.swift`, `AgentChatBubble.swift`, `ChatMessage.swift`, and `Design/GlassSurface.swift`.
 
 ---
@@ -37,7 +36,6 @@ Agent Chat root
 │   ├── Pinned: General · Now Playing thread (auto-pinned while playing)
 │   ├── Per-podcast threads (one per subscription, sorted by recent activity)
 │   ├── Briefings (auto-created threads for each generated briefing)
-│   └── Friend agent DMs (delegated to #12 Nostr; appear here with a small relay glyph)
 ├── Single Thread
 │   ├── Header: thread title, podcast art (or General glyph), context-drawer affordance
 │   ├── Message stream (mixed media, see §4)
@@ -121,7 +119,6 @@ Agent Chat root
 │   This Week · 12:04                 │
 │   Last Week · 09:33                 │
 ├─────────────────────────────────────┤
-│ 🤝 Friends (Nostr)                  │
 │   Maya's agent shared a clip        │
 ╰─────────────────────────────────────╯
 ```

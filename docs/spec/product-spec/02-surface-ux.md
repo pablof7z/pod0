@@ -72,7 +72,6 @@ Where a podcast becomes a **document**. Three modes share the same content:
 
 **Quote-share card.** Generated image with artwork, speaker, timestamp, and a deep-link back. Three output formats: image, audio + subtitle-burned video, link.
 
-**Clip composer.** Drag handles; sentence-snapped (word-snap via second long-press). Subtitle style row: *Editorial / Bold*, speaker-labels toggle. Output to clip-share targets (universal link, iMessage, Twitter/X, Mastodon, Nostr, copy audio).
 
 **Edge cases.** No transcript / no budget: show notes become the readable object; one-tap *"Transcribe this episode (1 credit)."* Low-confidence regions (<0.6 confidence): 1 pt dotted underline; long-press shows top-3 alternates + *report correction*. 5 h Lex Fridman: virtualize the transcript (±2 chapters around scroll laid out); long-press the chapter rail expands a full-height speaker timeline minimap. Live episode: hide *Read transcript* until first chapter finalized; show *Transcribing live* badge.
 
@@ -251,7 +250,6 @@ The first five minutes must feel like the app was waiting for *this user specifi
 
 **S2 — the detection moment.** OPML imports and 47 shows fan out as the user watches; ovals are real artwork crops, not placeholders. Total animation: 1.4 s. Empty library → curated 12-show starter pack. *"Auto-detect from Apple Podcasts" is platform-impossible — we are honest in copy.*
 
-**S3 — the quiet promise.** Identity generated invisibly. A constellation animation; one line: *"This stays on your device."* No keys shown unless asked. The term "nsec" never appears outside Settings.
 
 **S4.** The agent is introduced as having *"read every episode you subscribe to"*; trial budget explained in two sentences; *"I have a key already"* opt-out present.
 
@@ -289,11 +287,8 @@ Phone, watch, car dashboard, and AirPods are one product — a single agent alwa
 
 **Privacy on Lock Screen.** Settings → *Hide transcript on Lock Screen* (default ON for episodes the user flags sensitive). Briefing-rendering Live Activity copy uses *"Preparing your briefing…"*, never *"agent generating."*
 
-### 5.12 Nostr Communication
 
-> Source: [docs/spec/briefs/ux-12-nostr-communication.md](briefs/ux-12-nostr-communication.md)
 
-Nostr is **not a tab. It is a relay layer** that lets people — and the agents they trust — exchange podcast knowledge as if they shared one library. A clip you send a friend lands in their app as a *playable, transcript-aware artifact*, not a URL. A question your friend's agent asks of your library returns prose, not a payload. A command you fire from your laptop arrives at your phone as a normal agent reply with a small *via desktop* glyph.
 
 **Three principles.** Provenance is ambient, never a banner. Trust is tiered, not binary. The wire is invisible until it matters.
 
@@ -301,18 +296,14 @@ Nostr is **not a tab. It is a relay layer** that lets people — and the agents 
 
 **Two voices in one thread, four message kinds.** My human messages: right-aligned tinted glass capsule (system accent at 18 %). Friend's human: left-aligned neutral glass with friend avatar at 24 pt. **My agent: left-aligned, unbubbled editorial serif (matches UX-05).** Friend's agent: same, with a hairline vertical glass rule on the leading edge tinted to friend's accent + small-caps eyebrow `Maya's agent · 14:02`. **The eyebrow is the trust signal:** human-from-friend has none (we trust faces); agent-from-friend always carries one (we verify machines).
 
-**Provenance chips.** 9 pt mono caption with a 6 pt circular avatar, prefixed `via`. Always at the trailing edge of the metadata row, never in headlines. Tap → sheet with original Nostr event id (copyable), the tool call, and *Revoke this action* button if reversible.
 
-**Permissions infrastructure already present in the template.** `Friend.identifier` is hex pubkey; `NostrPendingApproval` queues first-contact handshakes; `NostrRelayService` (WebSocket + reconnect + ACL) and `AgentRelayBridge` already run the agent loop for inbound DMs. We extend with `permissionTier: PermissionTier` and `toolOverrides: [String: Bool]` on `Friend`.
 
-**Cross-device own-DMs.** From a Nostr client on desktop you send your own npub a DM ("Make a 12-min briefing for tomorrow's commute"). Phone agent runs `generate_briefing`, replies on the same thread. Phone chat shows the message with a `􀙗 desktop` glyph — same prose, different origin. *My Other Devices* is its own pinned thread.
 
 **Tool-exposure audit (security-critical).** Not every tool is safe to expose to friend-pubkey-driven calls. Default exposures:
 - **Reader tier:** `query_transcripts`, `query_wiki`, `summarize_episode`, `find_similar_episodes`. No mutations.
 - **Suggester tier:** above + drafts of `play_episode_at`, `generate_briefing` that surface as approval cards on the user's device.
 - **Actor tier:** all of the above + `play_episode_at`, `set_now_playing`, `generate_briefing`, `send_clip` — gated by per-tool overrides.
 
-**npub QR reveal.** Cinematic moment: card lifts off its row, expands to fill the screen, QR draws on with a 320 ms staggered shimmer (rows of QR modules cascade in). Tap dismisses with reverse morph. A single line below: `npub1…7q9` in mono with copy glyph.
 
 ### 5.13 Speaker & Topic Profiles
 
@@ -351,7 +342,6 @@ Most apps treat notifications as a megaphone. We treat them as a **front page** 
 | Drop | `NEW · <show>` | solid rule | no |
 | Thread | `THIS WEEK · CROSS-EPISODE` | solid rule | no |
 | Echo | `YOU ASKED · <date>` | dashed, italic | no |
-| Friend | `FROM <name> ·` Nostr glyph | solid rule | priority-only |
 | Transcript | `READY · TRANSCRIPT` | solid rule | never |
 
 **Smart Push Budget.** Default 1/day; max 3; off. Surplus pools in Today / Inbox. After day 7, surface a tooltip: *"Want more? Raise your push budget in Settings."* Never auto-raise.

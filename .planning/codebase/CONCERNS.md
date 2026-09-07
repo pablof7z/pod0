@@ -25,8 +25,6 @@
 - Fix approach: Run `cargo audit` before committing. Document timeout and connection pooling configuration. Ensure error handling for network failures is comprehensive.
 
 **New untracked crates in early integration stages:**
-- Issue: Six new crates are untracked (uncommitted): `pod0-cli`, `pod0-live-hosts`, `pod0-nostr-host`, `pod0-portable-media`, `pod0-system-hosts`, `pod0-tts-host`. These are substantial implementations (1,400+ lines collectively) that may have incomplete error handling or untested edge cases.
-- Files: `rust/crates/pod0-cli/`, `rust/crates/pod0-live-hosts/`, `rust/crates/pod0-nostr-host/`, `rust/crates/pod0-portable-media/`, `rust/crates/pod0-system-hosts/`, `rust/crates/pod0-tts-host/`
 - Impact: These crates are not in workspace dependency tracking, may not compile cleanly, and are not integrated into CI/CD. If merged without testing, they introduce untested code paths.
 - Fix approach: Commit to a feature branch, run full workspace tests, validate cross-crate dependencies, ensure all crates build in isolation and together.
 

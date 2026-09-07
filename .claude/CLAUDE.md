@@ -63,7 +63,6 @@ Pod0 is a native iOS podcast app that turns a listener's library into a searchab
 - Zeroize 1.9.0 - Secure memory clearing
 - Keyring-core 1.0.0 - Native keyring access (macOS, Windows, Linux)
 - Apple-native-keyring-store 1.0.2 - macOS Keychain integration
-- Nostr 0.44.6 - Nostr protocol (decentralized event protocol)
 - URL 2.5.7 - URL parsing and manipulation
 - Tempfile 3.27.0 - Temporary file handling
 - Time 0.3.47 - Date/time with formatting and parsing
@@ -96,7 +95,6 @@ Pod0 is a native iOS podcast app that turns a listener's library into a searchab
 - macOS development machine
 - iOS 26+ (deployment target)
 - SQLite database (bundled)
-- Network connectivity for RSS feed fetching, LLM API calls, TTS generation, Nostr relay connections
 - Native capabilities: AVFoundation audio, URLSession networking, Keychain secrets
 
 ## Key Dependencies Map
@@ -112,7 +110,6 @@ Pod0 is a native iOS podcast app that turns a listener's library into a searchab
 | `pod0-portable-media` | Audio playback/streaming | rodio, hound, reqwest, tokio, url |
 | `pod0-live-hosts` | Live capability adapters | tokio, reqwest, serde, zeroize |
 | `pod0-system-hosts` | OS-level capabilities | keyring, notifications, cap-std/cap-primitives |
-| `pod0-nostr-host` | Nostr protocol integration | nostr, tokio, k256, zeroize, sha2 |
 | `pod0-tts-host` | Text-to-speech generation | reqwest, serde, tokio, zeroize |
 <!-- GSD:stack-end -->
 

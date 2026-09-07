@@ -60,7 +60,6 @@ Defines the `podcast_generation` skill instance. Holds:
 - `manual` — multi-section markdown covering:
   - **When to use** (TLDRs, summaries, mock interviews, compilation episodes)
   - **Turn structure** — `speech` vs `snippet`; ordering matters; min 1 turn
-  - **Chapter generation** — consecutive `speech` turns collapse into one chapter (title = first ~60 chars of combined text); each `snippet` turn becomes its own chapter using the source episode's artwork; all chapters are flagged `isAIGenerated`; chapter timestamps come from concatenated turn durations
   - **Voice selection** — call `list_available_voices` first; pick by name/gender/accent; multi-speaker dialogue alternates `voice_id` per turn; `configure_agent_voice` sets the default for omitted `voice_id`s
   - **Emotion cues** — ElevenLabs supports `[cheerfully]`, `[excitedly]`, `[laughs]`, etc. in `text`
   - **Snippets** — resolve `episode_id`, `start_seconds`, `end_seconds` via `query_transcripts` or chapter lists before calling
@@ -143,7 +142,6 @@ At the tool-dispatch branch (line 235 where `upgrade_thinking` is intercepted), 
 Pass `enabledSkills` into `AgentTools.dispatch(...)` so the defensive gate in `dispatchPodcast` has the context it needs.
 
 ### 15. `App/Sources/Agent/AgentRelayBridge.swift`
-Mirror the same two changes (Nostr-headless reply path):
 - Add `var enabledSkills: Set<String> = []` local to `reply(...)`.
 - Same `+ AgentSkillRegistry.schemas(for: enabledSkills)` in the tools list (line 58).
 - Same in-band interception for `use_skill` (line 93–98).

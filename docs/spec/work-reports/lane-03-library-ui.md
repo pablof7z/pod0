@@ -63,7 +63,6 @@ struct LibraryMockEpisode: Identifiable, Hashable {
     let number: Int
     let title: String
     let summary: String
-    let durationSeconds: Int
     let publishedAt: Date
     let isPlayed: Bool
     let playbackProgress: Double     // 0...1

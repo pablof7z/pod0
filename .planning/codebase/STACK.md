@@ -63,7 +63,6 @@
 - Apple-native-keyring-store 1.0.2 - macOS Keychain integration
 
 **Protocol Support:**
-- Nostr 0.44.6 - Nostr protocol (decentralized event protocol)
 - URL 2.5.7 - URL parsing and manipulation
 
 **Testing & Utilities:**
@@ -108,7 +107,6 @@
 **Production:**
 - iOS 26+ (deployment target)
 - SQLite database (bundled)
-- Network connectivity for RSS feed fetching, LLM API calls, TTS generation, Nostr relay connections
 - Native capabilities: AVFoundation audio, URLSession networking, Keychain secrets
 
 ## Key Dependencies Map
@@ -124,7 +122,6 @@
 | `pod0-portable-media` | Audio playback/streaming | rodio, hound, reqwest, tokio, url |
 | `pod0-live-hosts` | Live capability adapters | tokio, reqwest, serde, zeroize |
 | `pod0-system-hosts` | OS-level capabilities | keyring, notifications, cap-std/cap-primitives |
-| `pod0-nostr-host` | Nostr protocol integration | nostr, tokio, k256, zeroize, sha2 |
 | `pod0-tts-host` | Text-to-speech generation | reqwest, serde, tokio, zeroize |
 
 ---

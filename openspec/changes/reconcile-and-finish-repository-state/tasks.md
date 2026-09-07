@@ -1,5 +1,3 @@
-> **Superseded for delivery on 2026-09-07 by `remove-nostr-support`.** Checked
-> repository/bootstrap/quality work remains retained input. Task 4.2's NMP
 > package/binding result is historical and will be deleted. Remaining 2.1,
 > 3.1, and 4.5-4.7 proof obligations move into the removal change. Unstarted
 > Voice tasks 5.1-5.7 remain deferred to issue #142; audio/device tasks 6.1-6.5
@@ -31,13 +29,11 @@
 - [x] 3.2 Split every newly introduced Rust source file at or above the 300-line soft limit along ownership-aligned seams without creating generic helpers; verify `scripts/check_file_lengths.py` passes and no source file exceeds the 500-line hard limit.
 - [x] 3.3 Apply pinned Rust formatting to the 22 drifted files and review the result for semantic changes; verify `cargo fmt --all --check` and `git diff --check` pass.
 - [x] 3.4 Make the secret/source-boundary checker safely scope or classify binary artifacts such as WAV input while retaining source/config coverage; verify positive checks pass with the WAV present and negative secret fixtures still fail.
-- [x] 3.5 Diagnose and remove the full-suite-only TCP download flake without increasing timeouts blindly; verify the isolated suite and at least two consecutive complete no-fail-fast workspace test runs pass.
 - [x] 3.6 Run the pinned full Rust quality gate including strict Clippy, all workspace tests, dependency policy, facade/schema policy, `cargo-deny`, and `cargo-audit`; verify every command succeeds with the repository-declared tool versions and no unaccounted ignores.
 
 ## 4. Restore Generated Artifacts and Apple Baseline
 
 - [x] 4.1 Align the local/bootstrap toolchain with the declared Xcode, Tuist, Rust, cargo-deny, cargo-audit, cargo-ndk, NDK, and API versions; verify the toolchain-only release-input gate reports the exact pinned versions.
-- [x] 4.2 Prepare the pinned NMP Swift package and rebuild/regenerate Pod0Core bindings and XCFramework from the reconciled Rust sources; verify binding fingerprints, generated Swift/Kotlin sources, and the core binding drift/freshness checks all agree.
 - [x] 4.3 Regenerate the Xcode project and both Swift package locks from canonical inputs, reviewing generated diffs separately; verify package resolution succeeds and project/lock drift checks are clean.
 - [x] 4.4 Compile and exercise Kotlin bindings and build the complete Rust core for Apple device/simulator and Android arm64/x86_64; verify the binding smoke and portability scripts pass without opening the Android product phase.
 - [ ] 4.5 Use XcodeBuildMCP to build and run the app on a disposable supported simulator and execute the full iOS test suite; verify the app launches, the expected accessibility tree appears, and every automated test passes on the candidate SHA.

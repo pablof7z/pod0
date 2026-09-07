@@ -38,7 +38,6 @@ Generated wiki pages are persisted by `WikiStorage`; search and briefing flows c
 
 ## Agent
 
-The agent is both conversational UI and tool runner. `AgentPrompt` gives it a compact live inventory. The larger library, transcripts, wiki pages, generated briefings, playback actions, category changes, downloads, transcription requests, Nostr delegation, external podcast lookup, clips, and generated TTS episodes are exposed through tools rather than stuffing everything into the prompt.
 
 This keeps the default prompt small while still letting the agent act on the app. The detailed agent strategy lives in [[agent-runtime-and-context|Agent Runtime And Context]] ([Agent Runtime And Context](../../../agent/wiki/topics/agent-runtime-and-context.md)).
 

@@ -1,6 +1,3 @@
-> **Delivery status (2026-09-07): superseded by `remove-nostr-support`.**
-> Completed non-Nostr reconciliation work is retained by the replacement;
-> NMP-specific work is deleted, and unfinished Voice/audio/Siri expansion stays
 > deferred to GitHub issues #142 and #84 rather than being silently claimed.
 
 ## Why

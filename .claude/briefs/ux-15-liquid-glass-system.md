@@ -34,7 +34,6 @@ Two-source palette: **System neutrals** for chrome/text, **Brand semantics** for
 | `accent.player`  | `#E94B2B`        | `#FF6A4A`        | Now-playing identity — *warm copper*           |
 | `accent.agent`   | `#5B3FE0` → `#2872F0` (gradient) | `#7A5BFF` → `#4D8FFF` | Agent identity — *electric indigo→azure*  |
 | `accent.wiki`    | `#1F6E55`        | `#46C29A`        | LLM wiki citations, knowledge surfaces — *moss*|
-| `accent.friend`  | `#D9892F`        | `#F2B45C`        | Nostr friend / friend-agent action — *amber*   |
 | `accent.live`    | `#C72D4D`        | `#FF5577`        | Recording / "agent listening" — *signal red*   |
 
 ### 2.3 Semantic state
@@ -85,7 +84,6 @@ Dynamic Type: every token must scale. New York is reserved for sizes ≥ 19pt (i
 - **Primary set: SF Symbols 6**, `.regular` weight at body sizes, `.semibold` inside chips and on the player. Hierarchical rendering by default; multicolor only for the now-playing waveform and the agent orb.
 - **Stroke width**: 1.5pt for custom glyphs at 24pt frame, 1.25pt at 20pt, 2pt at 32pt+. **Never** mix outline and filled icons in the same row.
 - **State convention**: outline = inactive, filled = active. Play→Pause toggles via `play.fill` ↔ `pause.fill` (both filled — they're both *active* states; the empty-circle play is for "muted/unloaded" only).
-- **Custom glyphs**: agent orb (live), waveform-with-cursor (transcript scrubber), nostr-zap (friend), wiki-leaf (knowledge).
 - **Icon padding inside chips**: icon + 6pt + label + 4pt edge — never less.
 
 ---
@@ -140,7 +138,6 @@ Five tiers. Choose by **what is behind the glass** and **how alive the surface i
 | `wiki.citation`       | T0 + wiki hairline | `md` | 12 | Leaf glyph + 2-line excerpt + episode + timestamp link|
 | `speaker.chip`        | T1   | `pill` | 6h/10v   | Avatar 20pt + name + speaker color dot               |
 | `agent.message`       | T2 agent tint | `bubble` | 14 | Orb 28pt + body + tool-call ribbons (if any)         |
-| `friend.message`      | T2 friend tint | `bubble` | 14 | Friend avatar + body + nostr zap glyph              |
 
 ### 6.3 Surfaces
 
@@ -239,7 +236,6 @@ All cues are short (≤450ms), -18 LUFS, ducked under any active audio. Each has
 
 ---
 
-## 9. Agent / Now-Playing / Nostr Visual Signals
 
 These three signals must be **distinguishable in 200ms peripheral vision**. They never share the same hue family; they never share the same shape.
 
@@ -261,12 +257,10 @@ These three signals must be **distinguishable in 200ms peripheral vision**. They
 - Behavior: line continuously fills left-to-right at playback rate. Tapping the surface morphs (matched geometry) into the full player.
 - **Copper is exclusive**: `accentPlayer` appears only on (a) this line, (b) the full Now Playing player chrome, (c) the `playerOrb` button, and (d) the home-screen "now playing" mini-thumbnail badge. Nothing else.
 
-### 9.3 Nostr / friend-agent signal — **the Amber Seam**
 
 - Form: a 2pt amber hairline that runs along the leading edge of any element initiated by a friend (incoming message bubble, "Maya sent you a clip" toast, friend-agent suggested action chip).
 - Material: solid `accent.friend`, glows at 8pt blur radius for 400ms on appear, then settles to 2pt static seam.
 - Avatar treatment: 24pt circle with a 1pt amber ring; never the standard hairline.
-- **Critical**: amber seam appears *only* when origin is a Nostr event (real friend or friend's agent). Never used for system suggestions.
 
 The three signals are *mutually exclusive per element* — a card cannot be both "from a friend" and "agent-generated." If the agent forwards a friend's message, the bubble is friend (amber), with a small agent orb badge.
 
@@ -299,7 +293,6 @@ The three signals are *mutually exclusive per element* — a card cannot be both
 │║                                  │
 │║  Listen to 14:02, she mentions   │
 │║  exactly what you asked about.   │
-│║  ⚡ via Nostr                    │
 └──────────────────────────────────┘
 
   CHIP RAIL (T1 clear)

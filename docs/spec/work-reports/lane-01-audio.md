@@ -102,7 +102,6 @@ func clear()
 enum Mode  { case off, duration(TimeInterval), endOfEpisode }
 enum Phase { case idle, armed(remaining:), armedEndOfEpisode, fading(remaining:), fired }
 
-var onFadeTick: (Float) -> Void   // 1.0 → 0.0 over `fadeDurationSeconds` (8 s)
 var onFire: () -> Void
 
 func set(_ mode: Mode)
@@ -141,7 +140,6 @@ Migration path:
 
 ### Existing `Episode` model is sufficient
 
-`App/Sources/Podcast/Episode.swift` (Lane 2) currently exposes `id, title, publishedAt, mediaURL?, durationSeconds?, summary?`. The engine uses `mediaURL`, `title`, `durationSeconds`. When Lane 2 evolves the model (artwork URL, show ref, show notes), the engine will pick those up automatically — `publishNowPlaying()` is the single point that maps `Episode → MPNowPlayingInfoCenter`.
 
 ### `AppStateStore` — untouched
 

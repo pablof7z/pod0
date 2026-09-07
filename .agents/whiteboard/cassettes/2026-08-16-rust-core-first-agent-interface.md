@@ -84,7 +84,6 @@ Source: user selection in response to the v1 fidelity question
   store bootstrap, and deterministic host set remain undecided.
 - A Rust implementation of audio or provider hosts can test equivalent
   behavior but cannot validate the shipped AVFoundation, Keychain, background
-  session, or NMP adapters.
 
 ## Rejected / Deferred Alternatives
 

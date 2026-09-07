@@ -16,7 +16,6 @@ The product makes three promises that no other podcast app currently makes toget
 
 **Design north star (single sentence):** *the home screen feels quiet; the player breathes; the agent is electric — and the user can always feel which is which.*
 
-**Foundations we inherit (do not rebuild):** SwiftUI + Tuist, iOS 26 deployment target, Swift 6 strict concurrency, an `@Observable` `AppStateStore`, a working tool-calling agent loop over OpenRouter SSE, a complete Nostr subsystem (relays, keypair, ACLs, agent relay bridge for cross-device DMs), Keychain BYOK stores for OpenRouter and ElevenLabs, shake-to-feedback, Live Activities and widgets via the App Group, App Intents + Siri, GitHub Actions → TestFlight CI. The skeleton is renamed end-to-end to **Podcastr**, builds green, and has stubbed module/feature folders waiting for this spec.
 
 ---
 
@@ -29,7 +28,6 @@ These five moments are the demo reel and the acceptance test for v1. If any one 
 | 1 | *"Play the part of yesterday's Tim Ferriss where he talked about keto."* — agent finds the timestamp, opens the player, presses play. <2 s perceived. | Voice + RAG + `play_episode_at` tool + transcript ingest pipeline working end-to-end. |
 | 2 | *"What was that podcast last week about stamps?"* — fuzzy semantic recall surfaces a clip card; tap plays at the right second. | Embeddings + hybrid FTS5/vec search + clip card surface. |
 | 3 | *"Give me a TLDR of this week's podcasts in 12 minutes."* — `generate_briefing` produces a TTS-narrated synthesized episode in <90 s, plays it, the user says *"Wait, who was that guest?"* mid-briefing — the briefing ducks, the agent answers from RAG, the briefing resumes at the same syllable. | Briefing composer + barge-in voice mode + audio session coordination + LLM streaming. |
-| 4 | *"Send my partner a clip of the part where she's mentioned."* — agent finds the speaker name + timestamp, builds an audio + waveform clip card, shares via Nostr DM (or iMessage) with provenance. | Diarization + clip composer + Nostr send pipeline. |
 | 5 | *"What does this podcast say about Ozempic across all their episodes?"* — agent runs cross-episode synthesis from transcripts + wiki, returns a comparison block with two-column pull quotes and contradictions surfaced. | LLM wiki + cross-episode threading + hallucination guardrails (every claim cites a span). |
 
 A sixth story, *"What's a contrarian take on what they just said?"*, exercises `perplexity_search` and is included as the differentiator versus closed-corpus assistants. It ships at v1 if the BYOK path for Perplexity lands; otherwise v1.1.
@@ -121,7 +119,6 @@ These are what no competitor has stitched together. Each row must work in concer
 | Speaker + topic profiles | UX-13 | Speaker resolver (RSS notes → NER → voiceprint), agent tool `summarize_speaker` |
 | Snipd-parity learning loop: headphone / CarPlay snips, mentioned books, guest graph, auto-chapters, AI DJ-style routes | UX-01, UX-03, UX-04, UX-07, UX-11, UX-13 | Span-grounded `Snip` model, entity extraction workers, `Book` resolver, `Person` resolver, `ChapterCompiler`, `PlaybackRouteCompiler`; see [Snipd Feature Model](research/snipd-feature-model.md) |
 | Proactive editorial Today | UX-14 | Insight ranking job (BG), `IsightCard` taxonomy, push budget (1/day default) |
-| Nostr-mediated cross-device + friend agent | UX-12 | Existing `NostrRelayService` + `AgentRelayBridge`, new `PermissionTier`, `toolOverrides` on `Friend` |
 | Onboarding to first briefing in <90 s | UX-10 | Trial budget service, OPML detection animation |
 | In-episode voice drop — context-aware agent actions while listening | UX-16 | `InEpisodeAgentController`, `TranscriptWindowProvider`, agent tools `seek_to_topic_start`, `create_clip_semantic`, `anchor_note`, `research_inline` |
 

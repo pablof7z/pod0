@@ -24,7 +24,6 @@ Primary local sources:
 - [UX 09 Cross Episode Threading](../../../../../spec/briefs/ux-09-cross-episode-threading.md)
 - [UX 10 Onboarding](../../../../../spec/briefs/ux-10-onboarding.md)
 - [UX 11 Ambient Surfaces](../../../../../spec/briefs/ux-11-ambient-surfaces.md)
-- [UX 12 Nostr Communication](../../../../../spec/briefs/ux-12-nostr-communication.md)
 - [UX 13 Speaker Topic Profiles](../../../../../spec/briefs/ux-13-speaker-topic-profiles.md)
 - [UX 14 Proactive Agent Notifications](../../../../../spec/briefs/ux-14-proactive-agent-notifications.md)
 - [UX 15 Liquid Glass System](../../../../../spec/briefs/ux-15-liquid-glass-system.md)

@@ -30,7 +30,6 @@ The current `AgentTools` pattern is a good start, but it should become a `ToolGa
 - activity and audit logging
 - durable artifact and job handles in tool results
 
-The LLM should see the smallest useful tool set for the current surface. A Now Playing voice turn should not see storage reset tools. A Nostr DM should not see social send, playback start, or destructive tools without approval.
 
 ## Design Principles
 

@@ -45,7 +45,6 @@ Goal is **parity**, not victory, on the floor — so the agent layer is the diff
 | Mark played / unplayed | Manual + automatic on completion threshold (e.g. last 30s) | must | v1 |
 | Bookmarks | Timestamped bookmarks per episode with optional note | must | v1 |
 | Clip creation | Trim a 5–120s clip, optional caption, share as audio/video card | should | v1.1 |
-| Clip share targets | Universal link, iMessage, Twitter/X, Mastodon, Nostr, copy audio | should | v1.1 |
 | Background audio | AVAudioSession `.playback` category, mixWithOthers off by default | must | v1 |
 | Interruption handling | Calls, Siri, alarms — pause + resume cleanly | must | v1 |
 
@@ -217,6 +216,5 @@ Smart playlists, alt feeds, Apple Podcasts Subscriptions OAuth, translated trans
 - AI chapters / transcripts / wikis / briefings: `ux-04`, `ux-08`, `ux-13`.
 - CarPlay / Watch / Widgets / Live Activities: `ux-11-ambient-surfaces.md`.
 - Voice mode and barge-in: `ux-06-voice-mode.md`.
-- Nostr / friend agent: `ux-12-nostr-communication.md`.
 
 If a feature is listed here *and* in a brief, the brief governs the *experience* and this document governs the *requirement to exist*.

@@ -4,7 +4,6 @@
 - **Status:** CURRENT PRACTICE. Every scenario in `features/` executes on
   every `cargo test` run; pod0 has deliberately not adopted a backlog of
   aspirational scenarios.
-- **Lineage:** modelled on NMP's `docs/bdd/000-bdd-approach.md`, adapted to
   pod0's constraints (synchronous facade, rusqlite store, 300/500 file
   limits, cargo-deny license gates).
 

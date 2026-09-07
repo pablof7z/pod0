@@ -49,7 +49,6 @@
   **Risk / conflict**: Needs enough per-user data; privacy framing required.
 
 - **Feature**: Crowd-sourced timestamp comments (episode-level threaded notes at a moment)
-  **Why it fits Podcastr**: Nostr DMs to the agent already live in our roadmap — extending that to public episode annotations per timestamp creates a social graph without requiring a full social network.
   **Effort**: M
   **Risk / conflict**: Moderation burden; could dilute the focused AI identity if overdone.
 
