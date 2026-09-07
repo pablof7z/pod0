@@ -154,9 +154,18 @@ impl EffectOutbox {
                  MAX(a.lease_expires_at_ms) FROM pod0_effect_attempts a WHERE \
                  a.intent_id=i.intent_id AND a.state_code=1),?1)) END) \
                  FROM pod0_effect_intents i WHERE i.effect_kind_code!=14 \
-                 AND i.state_code IN(1,2) AND (i.state_code=1 OR i.effect_kind_code!=10 OR \
-                 json_extract(i.request_json,'$.execution.AgentCapability.request.capability.\
-                 execution_mode')='RecoverExisting') AND NOT EXISTS(SELECT 1 FROM \
+                 AND i.state_code IN(1,2) AND (i.state_code=1 OR ((\
+                 i.effect_kind_code NOT IN(7,8,10) AND NOT (i.effect_kind_code=4 AND \
+                 json_extract(i.request_json,'$.kind')='ModelChapterProvider' AND \
+                 json_type(i.request_json,'$.execution.ModelChapter.request.action.Execute') \
+                 IS NOT NULL)) OR json_type(i.request_json,\
+                 '$.execution.Transcript.request.capability.FetchPublisher') IS NOT NULL OR \
+                 json_type(i.request_json,\
+                 '$.execution.Transcript.request.capability.RecoverProvider') IS NOT NULL OR \
+                 json_type(i.request_json,'$.execution.ModelChapter.request.action.Recover') \
+                 IS NOT NULL OR json_extract(i.request_json,\
+                 '$.execution.AgentCapability.request.capability.execution_mode')=\
+                 'RecoverExisting')) AND NOT EXISTS(SELECT 1 FROM \
                  pod0_effect_attempts observed WHERE observed.intent_id=i.intent_id \
                  AND observed.state_code=1 AND observed.observed_at_ms IS NOT NULL AND \
                  (json_type(i.request_json,'$.execution.Playback.request.action.ObservePlayback') \

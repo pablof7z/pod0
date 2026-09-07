@@ -18,6 +18,9 @@ pub(crate) use agent_capability::commit_agent_capability_observation;
 #[path = "transition_commit_agent_capability_recovery.rs"]
 mod agent_capability_recovery;
 pub(crate) use agent_capability_recovery::commit_expired_agent_capability_recovery;
+#[path = "transition_commit_agent_model_recovery.rs"]
+mod agent_model_recovery;
+pub(crate) use agent_model_recovery::commit_expired_agent_model_recovery;
 #[path = "transition_commit_agent_capability_generated.rs"]
 mod agent_capability_generated;
 #[path = "transition_commit_agent_cancellation.rs"]

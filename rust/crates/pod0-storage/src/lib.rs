@@ -86,6 +86,8 @@ mod effect_outbox_immutability_tests;
 mod effect_outbox_model;
 #[cfg(test)]
 mod effect_outbox_tests;
+#[cfg(test)]
+mod effect_outbox_recovery_tests;
 mod evidence_codec;
 mod evidence_commands;
 mod evidence_model;

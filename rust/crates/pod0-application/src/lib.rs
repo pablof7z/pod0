@@ -113,6 +113,9 @@ mod download_finalization_activity;
 mod download_observation_activity;
 mod download_recovery_activity;
 mod effect_lease_contract;
+mod effect_recovery_policy;
+#[cfg(test)]
+mod effect_recovery_policy_tests;
 mod effects;
 mod episode_web_metadata;
 mod episode_web_metadata_entities;

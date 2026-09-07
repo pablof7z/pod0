@@ -86,6 +86,7 @@ mod runtime_download_deadline_tests;
 mod runtime_download_workflow_tests;
 #[cfg(test)]
 mod runtime_evidence_tests;
+mod runtime_expired_effect_recovery;
 #[cfg(test)]
 mod runtime_memory_tests;
 #[cfg(test)]

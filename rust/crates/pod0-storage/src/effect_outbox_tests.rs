@@ -15,6 +15,14 @@ use crate::transition_commit::TransitionCommit;
 use crate::{EffectOutbox, EffectOutboxError, TransitionIngress, TransitionIngressKind};
 
 pub(super) fn commit_effect(path: &std::path::Path) -> EffectIntentId {
+    commit_effect_request(path, ExternalEffectKind::CoreWake, exact_test_execution())
+}
+
+pub(super) fn commit_effect_request(
+    path: &std::path::Path,
+    kind: ExternalEffectKind,
+    execution: pod0_application::DurableEffectExecution,
+) -> EffectIntentId {
     let episode_id = EpisodeId::from_parts(10, 1);
     let transaction_id = ActivityTransactionId::from_parts(11, 1);
     let correlation_id = ActivityCorrelationId::from_parts(12, 1);
@@ -33,12 +41,12 @@ pub(super) fn commit_effect(path: &std::path::Path) -> EffectIntentId {
         fact,
     };
     let request = DurableExternalEffectRequest {
-        kind: ExternalEffectKind::TranscriptProvider,
+        kind,
         subject: ActivitySubject::Episode { episode_id },
         episode_id: Some(episode_id),
         not_before: Some(UnixTimestampMilliseconds::new(1_000)),
         deadline_at: Some(UnixTimestampMilliseconds::new(10_000)),
-        execution: exact_test_execution(),
+        execution,
     };
     let plan = TransitionPlan::new(
         transaction_id,
@@ -51,13 +59,7 @@ pub(super) fn commit_effect(path: &std::path::Path) -> EffectIntentId {
                     disposition: RequestDisposition::Accepted,
                 },
             ),
-            vec![base(
-                2,
-                ActivityFact::EffectAuthorized {
-                    intent_id,
-                    kind: ExternalEffectKind::TranscriptProvider,
-                },
-            )],
+            vec![base(2, ActivityFact::EffectAuthorized { intent_id, kind })],
         ),
         vec![AuthorizedExternalEffect {
             intent_id,

@@ -29,11 +29,7 @@ impl FacadeState {
         let mut changed = false;
         let mut requests = Vec::with_capacity(maximum);
         while requests.len() < maximum {
-            if let Some(store) = &self.store {
-                changed |= store
-                    .prepare_expired_agent_capability_recovery(self.now())
-                    .unwrap_or(false);
-            }
+            changed |= self.reconcile_expired_effects();
             changed |= self.reconcile_download_deadlines();
             changed |= self.prepare_transcript_host_request();
             changed |= self.prepare_model_chapter_host_request();

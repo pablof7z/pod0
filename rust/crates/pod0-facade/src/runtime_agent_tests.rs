@@ -4,6 +4,9 @@ pub(crate) use super::test_support::{
 use crate::runtime_playback_test_support::PlaybackFixture;
 use crate::*;
 
+#[path = "runtime_agent_model_recovery_tests.rs"]
+mod model_recovery_tests;
+
 struct AgentRecoveryClock(i64);
 
 impl pod0_application::Clock for AgentRecoveryClock {

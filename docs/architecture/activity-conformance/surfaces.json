@@ -61,6 +61,14 @@
     },
     {
       "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_expired_effect_recovery.rs",
+      "surface": "expired_effect_recovery",
+      "target_owner": "RustCapabilityRecoveryStateMachines",
+      "child_issue": 215,
+      "implementation_status": "bounded_live_reconciliation_before_any_expired_external_effect_reclaim"
+    },
+    {
+      "kind": "recovery",
       "path": "rust/crates/pod0-facade/src/runtime_chapter_model_completion.rs",
       "surface": "chapter_completion_recovery",
       "target_owner": "ChapterStateMachine",
@@ -418,6 +426,14 @@
       "target_boundary": "TransitionCommit",
       "child_issue": 215,
       "implementation_status": "typed_ambiguous_attempt_recovery_transition_with_exact_recovery_payload"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_agent_model_recovery.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "typed_ambiguous_model_attempt_recovery_with_outcome_unknown_transition"
     },
     {
       "kind": "authoritative_mutation_module",

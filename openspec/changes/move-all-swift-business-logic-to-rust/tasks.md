@@ -13,7 +13,7 @@
 - [x] 2.3 Implement the durable typed internal-command outbox with correlation, causation, idempotent target consumption, and wake-after-commit behavior; verify crash/replay tests do not lose or duplicate a target-domain mutation.
 - [x] 2.4 Implement immutable native-effect requests with effect, lease, attempt, fence, and cancellation identity; verify unleased, expired, duplicate, and stale-fence claims are rejected.
 - [x] 2.5 Implement bounded raw native observations and Rust-owned semantic outcome mapping; verify fixtures distinguish success, rejection, retryable evidence, cancellation, and outcome unknown without native booleans becoming product truth.
-- [ ] 2.6 Implement correlated cancellation and exact-operation recovery for long-running capabilities; verify late callbacks and superseded attempts cannot mutate product state.
+- [x] 2.6 Implement correlated cancellation and exact-operation recovery for long-running capabilities; verify late callbacks and superseded attempts cannot mutate product state.
 - [ ] 2.7 Add bounded batch query and projection primitives for hot native reads; verify baseline-sized and large-history benchmarks meet the documented limits.
 - [ ] 2.8 Regenerate Swift and Kotlin bindings for the substrate and verify both compile and pass parity fixtures for ids, integer units, enums, bounded collections, and typed failures.
 

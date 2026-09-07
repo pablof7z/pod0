@@ -60,6 +60,7 @@ pub(crate) fn commit_expired_agent_capability_recovery(
                 turn_id,
                 current_revision,
                 committed_revision,
+                transition: pod0_application::AgentPublicationTransition::ToolStateChanged,
                 recovery,
             })
             .map(|plan| plan.map_mutation(|mutation| (mutation, after)))
@@ -97,7 +98,7 @@ fn candidate(
              WHERE i.effect_kind_code=10 AND i.state_code=2 AND a.state_code=1 \
              AND json_extract(i.request_json,\
              '$.execution.AgentCapability.request.capability.execution_mode')='Perform' \
-             AND a.lease_expires_at_ms<?1 ORDER BY a.lease_expires_at_ms,a.attempt_id LIMIT 1",
+             AND a.lease_expires_at_ms<=?1 ORDER BY a.lease_expires_at_ms,a.attempt_id LIMIT 1",
             [now.value],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
         )

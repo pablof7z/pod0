@@ -8,6 +8,7 @@ pub struct AgentCapabilityRecoveryActivityInput {
     pub turn_id: pod0_domain::AgentTurnId,
     pub current_revision: pod0_domain::StateRevision,
     pub committed_revision: pod0_domain::StateRevision,
+    pub transition: crate::AgentPublicationTransition,
     pub recovery: Option<crate::DurableAgentCapabilityEffectRequest>,
 }
 

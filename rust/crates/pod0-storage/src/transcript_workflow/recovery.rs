@@ -22,9 +22,14 @@ impl LibraryStore {
                 "SELECT {WORKFLOW_COLUMNS} FROM pod0_transcript_workflows WHERE stage IN(
                  'requested','publisher_requested','submission_authorized','provider_accepted',
                  'completion_observed','transcript_committed','evidence_requested','retry_scheduled')
+                 AND (stage!='submission_authorized' OR NOT EXISTS(
+                 SELECT 1 FROM pod0_effect_intents i JOIN pod0_effect_attempts a
+                 ON a.intent_id=i.intent_id WHERE i.episode_id=pod0_transcript_workflows.episode_id
+                 AND i.effect_kind_code=7 AND i.state_code=2 AND a.state_code=1
+                 AND a.lease_expires_at_ms>?2))
                  ORDER BY updated_at_ms,episode_id LIMIT ?1"
             )).map_err(|error| StorageError::sqlite("prepare transcript recovery", error))?;
-            let rows = statement.query_map([i64::from(limit)+1], decode_row)
+            let rows = statement.query_map(rusqlite::params![i64::from(limit)+1, now_ms], decode_row)
                 .map_err(|error| StorageError::sqlite("query transcript recovery", error))?;
             let mut records = rows.collect::<Result<Vec<_>,_>>()
                 .map_err(|_| StorageError::TranscriptWorkflowConflict)?;
