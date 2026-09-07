@@ -6,6 +6,9 @@ extension Pod0NativeHostDispatcher {
         delivery: @escaping Delivery
     ) {
         let task = Task { @MainActor [weak self] in
+            // Let the caller publish this task in `activeTasks` before the
+            // native effect can complete or a duplicate lease is evaluated.
+            await Task.yield()
             guard let self else { return }
             let result = await agentHost.execute(envelope.request)
             guard activeTasks.removeValue(forKey: envelope.requestId) != nil else { return }
