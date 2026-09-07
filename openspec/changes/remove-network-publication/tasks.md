@@ -35,7 +35,7 @@
 - [x] 5.2 Remove obsolete conformance, ownership, roadmap, and release-readiness entries.
 - [x] 5.3 Add a zero-reference path/content checker with no historical, migration, fixture, generated, or planning allowlist.
 - [x] 5.4 Seed forbidden content and path fixtures and verify the checker rejects both.
-- [ ] 5.5 Integrate the retained ownership-inventory commits and re-run the literal absence scrub.
+- [x] 5.5 Integrate the retained ownership-inventory commits and re-run the literal absence scrub.
 
 ## 6. Qualify the Candidate
 
