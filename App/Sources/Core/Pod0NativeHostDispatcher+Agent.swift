@@ -19,8 +19,7 @@ extension Pod0NativeHostDispatcher {
                 envelope,
                 sequenceNumber: 0,
                 observation: observation,
-                delivery: delivery,
-                remember: false
+                delivery: delivery
             )
         }
         activeTasks[envelope.requestId] = ActiveTask(
