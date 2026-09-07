@@ -5,6 +5,8 @@ use pod0_domain::{
 
 use crate::StorageError;
 
+type EncodedCategorySettings = (Option<i64>, Option<i64>, Option<i64>, i64, i64);
+
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct CategoryCollectionSnapshot {
     pub revision: StateRevision,
@@ -55,7 +57,7 @@ pub(crate) fn decode_item_kind(code: i64) -> Result<CategoryItemKind, StorageErr
 
 pub(crate) fn encode_settings(
     settings: CategorySettings,
-) -> Result<(Option<i64>, Option<i64>, Option<i64>, i64, i64), StorageError> {
+) -> Result<EncodedCategorySettings, StorageError> {
     let (code, latest, wifi_only) = match settings.auto_download_override {
         None => (None, None, None),
         Some(policy) => {
