@@ -18,6 +18,10 @@ extension Persistence {
         sharedArtifactAuthority.withLock { $0.settings = true }
     }
 
+    func activateSharedCategoryAuthority() {
+        sharedArtifactAuthority.withLock { $0.categories = true }
+    }
+
     func metadataState(from state: AppState) -> AppState {
         var metadata = state
         metadata.episodes = []
@@ -34,6 +38,10 @@ extension Persistence {
         }
         if sharedArtifactAuthority.withLock({ $0.settings }) {
             metadata.settings = ProductSettingsBridge.nativeMetadataOnly(from: state.settings)
+        }
+        if sharedArtifactAuthority.withLock({ $0.categories }) {
+            metadata.categories = []
+            metadata.categorySettings = [:]
         }
         metadata.agentScheduledTasks = []
         metadata.agentMemories = []

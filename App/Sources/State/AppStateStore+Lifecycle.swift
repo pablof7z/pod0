@@ -81,13 +81,20 @@ extension AppStateStore {
             return
         }
         do {
-            let projection = try client.facade.setProductSettings(
-                commandId: CommandId(uuid: UUID()),
-                expectedRevision: current.revision,
-                writerId: ProductSettingsWriterIdentity.current(),
-                values: try ProductSettingsBridge.values(from: settings)
-            )
-            guard projection.authoritative, let committed = projection.settings else { return }
+            let intents = try ProductSettingsBridge.intents(from: current.values, to: settings)
+            let committed: ProductSettings
+            if intents.isEmpty {
+                committed = current
+            } else {
+                let projection = try client.facade.applyProductSettingIntents(
+                    commandId: CommandId(uuid: UUID()),
+                    expectedRevision: current.revision,
+                    writerId: ProductSettingsWriterIdentity.current(),
+                    intents: intents
+                )
+                guard projection.authoritative, let value = projection.settings else { return }
+                committed = value
+            }
             productSettingsProjection = committed
             let projected = ProductSettingsBridge.applying(committed.values, to: settings)
             mutateState { $0.settings = projected }

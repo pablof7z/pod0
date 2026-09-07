@@ -17,6 +17,7 @@ enum SharedLibraryBootstrapStage: String {
     case chapterCommit
     case facade
     case productSettings
+    case categories
     case recallConfiguration
     case downloadWorkflowCutover
     case feedDiscoveryWorkflowCutover
