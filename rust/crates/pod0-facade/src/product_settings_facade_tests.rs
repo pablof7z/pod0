@@ -1,3 +1,4 @@
+use pod0_application::{PlaybackSettingToggle, ProductSettingIntent};
 use pod0_domain::{CommandId, ContentDigest, ProductSettingsValues};
 
 use crate::Pod0Facade;
@@ -23,15 +24,20 @@ fn facade_imports_once_and_routes_later_mutations_through_rust() {
     let current = authority.settings.unwrap();
     assert_eq!(current.values.agent_display_name, "Imported");
 
-    let mut changed = current.values.clone();
-    changed.agent_display_name = "Committed".into();
     let projection = facade
-        .set_product_settings(command(2), current.revision, digest(2), changed)
+        .apply_product_setting_intents(
+            command(2),
+            current.revision,
+            digest(2),
+            vec![ProductSettingIntent::SetPlaybackToggle {
+                setting: PlaybackSettingToggle::AutoSkipAds,
+                enabled: true,
+            }],
+        )
         .unwrap();
-    assert_eq!(
-        projection.settings.unwrap().values.agent_display_name,
-        "Committed"
-    );
+    let committed = projection.settings.unwrap();
+    assert!(committed.values.auto_skip_ads);
+    assert_eq!(committed.values.agent_display_name, "Imported");
 }
 
 fn command(value: u64) -> CommandId {

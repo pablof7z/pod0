@@ -105,6 +105,7 @@ pub use scheduled_agent_completion::*;
 pub use scheduled_agent_observation::*;
 pub use scheduled_agent_policy::*;
 pub use settings_transition::*;
+pub use settings_intent::*;
 pub use settings_validation::*;
 pub use speaker_activity::*;
 pub use transcript_activity::*;

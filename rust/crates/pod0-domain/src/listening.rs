@@ -36,7 +36,7 @@ pub struct PodcastRecord {
     pub last_modified: Option<String>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum AutoDownloadMode {
     Off,
     Latest { count: u16 },
@@ -44,7 +44,7 @@ pub enum AutoDownloadMode {
     Unsupported { wire_code: u32 },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct AutoDownloadPolicy {
     pub mode: AutoDownloadMode,
     pub wifi_only: bool,

@@ -182,6 +182,9 @@ mod scheduled_agent_policy;
 mod scheduled_agent_tests;
 mod settings_transition;
 mod settings_transition_candidate;
+mod settings_intent;
+#[cfg(test)]
+mod settings_intent_tests;
 #[cfg(test)]
 mod settings_transition_tests;
 mod settings_validation;

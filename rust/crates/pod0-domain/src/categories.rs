@@ -8,7 +8,7 @@ pub const MAX_CATEGORY_DESCRIPTION_BYTES: usize = 1_024;
 /// who wants more lenses than this wants search, not categories.
 pub const MAX_CATEGORIES: usize = 64;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, uniffi::Record)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct CategoryRevision {
     pub value: u64,
 }
@@ -25,7 +25,7 @@ impl CategoryRevision {
 /// Who put a category there. The distinction is not cosmetic: a rebuild of
 /// the machine-generated taxonomy must not silently discard groupings the
 /// user or the agent curated deliberately.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum CategoryOrigin {
     /// Produced by a bulk categorization pass over the library.
     Generated,
@@ -41,7 +41,7 @@ pub enum CategoryOrigin {
 /// What a category holds. Podcasts and episodes share `LibraryItemId` so the
 /// membership primitive needs no per-kind verb, but the resolved kind is
 /// recorded once the kernel has looked the id up.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum CategoryItemKind {
     Podcast,
     Episode,
@@ -59,7 +59,7 @@ pub struct CategoryMember {
 
 /// Product policy attached to one category. Absence of an auto-download
 /// override means the subscription's own policy remains authoritative.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct CategorySettings {
     pub auto_download_override: Option<AutoDownloadPolicy>,
     pub rag_enabled: bool,
@@ -74,6 +74,20 @@ impl Default for CategorySettings {
             notifications_enabled: true,
         }
     }
+}
+
+/// Complete input for one category replacement. The kernel derives slugs and
+/// validates membership against the authoritative subscription collection.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
+pub struct CategoryReplacementInput {
+    pub category_id: CategoryId,
+    pub name: String,
+    pub description: String,
+    pub color_hex: Option<String>,
+    pub origin: CategoryOrigin,
+    pub podcast_ids: Vec<crate::PodcastId>,
+    pub settings: CategorySettings,
+    pub generated_at: UnixTimestampMilliseconds,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]

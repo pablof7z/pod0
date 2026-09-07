@@ -1,3 +1,4 @@
+use pod0_application::{ProductSettingIntent, apply_product_setting_intents};
 use pod0_domain::{
     CommandId, ContentDigest, ProductSettings, ProductSettingsValues, SettingsWriterVersion,
     StateRevision,
@@ -54,6 +55,39 @@ impl Pod0Facade {
         let (store, observed_at_ms) = self.settings_store_and_time()?;
         let fingerprint =
             settings_fingerprint(b"local", expected_revision.value, writer_id, &values)?;
+        store
+            .set_local_product_settings(
+                command_id,
+                fingerprint,
+                expected_revision,
+                writer_id,
+                values,
+                observed_at_ms,
+            )
+            .map_err(FacadeOpenError::from)?;
+        settings_projection(&store)
+    }
+
+    pub fn apply_product_setting_intents(
+        &self,
+        command_id: CommandId,
+        expected_revision: StateRevision,
+        writer_id: ContentDigest,
+        intents: Vec<ProductSettingIntent>,
+    ) -> Result<ProductSettingsAuthorityProjection, FacadeOpenError> {
+        let (store, observed_at_ms) = self.settings_store_and_time()?;
+        let current = store
+            .product_settings()
+            .map_err(FacadeOpenError::from)?
+            .ok_or(FacadeOpenError::NotAuthoritative)?;
+        let values = apply_product_setting_intents(&current.values, &intents)
+            .map_err(|_| FacadeOpenError::StorageUnavailable)?;
+        let fingerprint = settings_fingerprint(
+            b"typed-intents",
+            expected_revision.value,
+            writer_id,
+            &values,
+        )?;
         store
             .set_local_product_settings(
                 command_id,
