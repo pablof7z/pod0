@@ -75,8 +75,17 @@ final class ModelChapterWorkflowProjectionTests: XCTestCase {
             createdAt: UnixTimestampMilliseconds(value: 1_000),
             updatedAt: UnixTimestampMilliseconds(value: 2_000),
             allowedActions: actions,
-            retryAction: nil,
-            cancelAction: nil
+            retryAction: actions.canRetry ? actionToken(.retry) : nil,
+            cancelAction: actions.canCancel ? actionToken(.cancel) : nil
+        )
+    }
+
+    private func actionToken(_ action: WorkflowActionKind) -> WorkflowActionToken {
+        WorkflowActionToken(
+            action: action,
+            target: .modelChapters(episodeId: EpisodeId(high: 1, low: 2)),
+            expectedWorkflowRevision: StateRevision(value: 7),
+            authorization: ContentDigest(word0: 1, word1: 2, word2: 3, word3: 4)
         )
     }
 }

@@ -45,6 +45,7 @@ fn removal_migration_clears_external_publication_state_without_touching_unrelate
     assert_eq!(scalar(&connection, "SELECT COUNT(*) FROM pod0_effect_intents WHERE effect_kind_code=14"), 0);
     assert_eq!(scalar(&connection, "SELECT COUNT(*) FROM pod0_activity_facts WHERE subject_code=7"), 0);
     assert_eq!(scalar(&connection, "SELECT COUNT(*) FROM pod0_activity_facts WHERE subject_code=0"), 1);
+    assert_eq!(scalar(&connection, "SELECT authority_active FROM pod0_memory_state WHERE singleton=1"), 1);
 }
 
 #[test]

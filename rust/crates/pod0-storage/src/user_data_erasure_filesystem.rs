@@ -5,7 +5,7 @@ use pod0_domain::CommandId;
 use crate::user_data_erasure::UserDataErasureConfirmation;
 use crate::user_data_erasure_evidence::verify_evidence;
 use crate::user_data_erasure_marker::{MarkerLocation, TargetState, sync_parent, write_marker};
-use crate::{CoreStoreMigrator, MigrationClock, StorageError, UserDataTargetKind};
+use crate::{LibraryStore, StorageError, UserDataTargetKind, create_authoritative_store};
 
 pub(crate) fn quarantine_target(
     prepared: &mut UserDataErasureConfirmation,
@@ -118,14 +118,11 @@ pub(crate) fn ensure_fresh_store(
         return Err(StorageError::CommandConflict);
     };
     if source.exists() {
-        return validate_store_id(source, prepared.marker.fresh_store_id);
+        validate_store_id(source, prepared.marker.fresh_store_id)?;
+        LibraryStore::open_authoritative(source)?;
+        return Ok(());
     }
-    CoreStoreMigrator::new(ErasureClock).migrate(
-        source,
-        crate::CURRENT_SCHEMA_VERSION,
-        &prepared.quarantine_root.join("fresh-store.backup"),
-        prepared.marker.fresh_store_id,
-    )?;
+    create_authoritative_store(source, prepared.marker.fresh_store_id, 1)?;
     validate_store_id(source, prepared.marker.fresh_store_id)
 }
 
@@ -211,11 +208,4 @@ fn filesystem_state(
         verify_evidence(quarantine, evidence)?;
     }
     Ok(true)
-}
-
-struct ErasureClock;
-impl MigrationClock for ErasureClock {
-    fn now_milliseconds(&self) -> i64 {
-        1
-    }
 }

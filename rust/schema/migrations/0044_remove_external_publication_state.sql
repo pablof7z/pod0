@@ -60,3 +60,10 @@ DROP TABLE pod0_publication_commands;
 DROP TABLE pod0_publication_facts;
 DROP TABLE pod0_publications;
 DROP TABLE pod0_signer_state;
+
+-- Native memory import was retired before this schema shipped. Rust owns the
+-- empty or already-populated memory store from this point forward.
+UPDATE pod0_memory_state
+SET authority_active = 1,
+    source_generation = COALESCE(source_generation, 1)
+WHERE singleton = 1 AND authority_active = 0;

@@ -60,7 +60,7 @@ fn facade_issues_one_shot_confirmation_fences_handles_and_erases_every_target() 
     ] {
         assert_eq!(sanitized[key], serde_json::json!([]));
     }
-    assert_eq!(sanitized["categorySettings"], serde_json::json!({}));
+    assert_eq!(sanitized["categorySettings"], serde_json::json!([]));
     assert_ne!(
         std::fs::read(&product_projection).unwrap(),
         b"private projection"

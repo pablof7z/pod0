@@ -31,26 +31,15 @@ fn command(id: u64, command: ApplicationCommand) -> CommandEnvelope {
     }
 }
 
-fn activate(facade: &Pod0Facade) {
-    let digest = ContentDigest::from_bytes([7; 32]);
-    let inspection = facade.inspect_legacy_memory_cutover(digest, 24, Vec::new(), None);
-    let generation = inspection.source_generation.expect("generation");
-    assert_eq!(
-        facade
-            .stage_legacy_memory_cutover(digest, 24, Vec::new(), None)
-            .stage,
-        LegacyMemoryCutoverStage::Staged
-    );
-    assert_eq!(
-        facade.verify_legacy_memory_cutover(generation).stage,
-        LegacyMemoryCutoverStage::Verified
-    );
-    let committed = facade.commit_legacy_memory_cutover(generation);
-    assert_eq!(
-        committed.stage,
-        LegacyMemoryCutoverStage::Authoritative,
-        "{committed:?}"
-    );
+fn prepare_for_cutover(fixture: &PlaybackFixture) {
+    let connection = rusqlite::Connection::open(&fixture.target).unwrap();
+    connection
+        .execute(
+            "UPDATE pod0_memory_state \
+             SET authority_active=0,source_generation=NULL WHERE singleton=1",
+            [],
+        )
+        .unwrap();
 }
 
 fn activity(fixture: &PlaybackFixture, id: u64) -> Vec<pod0_application::CommittedActivityFact> {
@@ -80,7 +69,6 @@ fn memory_cutover_activity(
 #[test]
 fn memory_commands_are_revision_checked_bounded_and_restart_durable() {
     let fixture = PlaybackFixture::new();
-    activate(&fixture.facade);
     fixture.facade.dispatch(command(
         1,
         ApplicationCommand::CreateMemory {
@@ -150,6 +138,7 @@ fn memory_commands_are_revision_checked_bounded_and_restart_durable() {
 #[test]
 fn legacy_memory_cutover_preserves_compiled_provenance() {
     let fixture = PlaybackFixture::new();
+    prepare_for_cutover(&fixture);
     let memory_id = MemoryId::from_parts(90, 1);
     let memory = LegacyMemoryInput {
         memory_id,
@@ -205,7 +194,6 @@ fn legacy_memory_cutover_preserves_compiled_provenance() {
 #[test]
 fn deferred_agent_record_memory_is_not_advertised_or_committed() {
     let fixture = PlaybackFixture::new();
-    activate(&fixture.facade);
     let start = command(
         20,
         ApplicationCommand::StartAgentTurn {

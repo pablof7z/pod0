@@ -56,8 +56,17 @@ final class PublisherChapterWorkflowProjectionTests: XCTestCase {
             updatedAt: UnixTimestampMilliseconds(value: 2_000),
             canRetry: canRetry,
             canCancel: canCancel,
-            retryAction: nil,
-            cancelAction: nil
+            retryAction: canRetry ? actionToken(.retry) : nil,
+            cancelAction: canCancel ? actionToken(.cancel) : nil
+        )
+    }
+
+    private func actionToken(_ action: WorkflowActionKind) -> WorkflowActionToken {
+        WorkflowActionToken(
+            action: action,
+            target: .publisherChapters(episodeId: EpisodeId(high: 1, low: 2)),
+            expectedWorkflowRevision: StateRevision(value: 7),
+            authorization: ContentDigest(word0: 1, word1: 2, word2: 3, word3: 4)
         )
     }
 }
