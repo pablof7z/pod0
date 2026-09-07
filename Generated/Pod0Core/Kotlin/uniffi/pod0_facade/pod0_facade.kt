@@ -116,11 +116,21 @@ import uniffi.pod0_application.WorkflowCapabilitySnapshotInput
 import uniffi.pod0_application.WorkflowConfiguration
 import uniffi.pod0_application.WorkflowReconcilePlan
 import uniffi.pod0_domain.ActivityCorrelationId
+import uniffi.pod0_domain.CategoryId
+import uniffi.pod0_domain.CategoryOrigin
+import uniffi.pod0_domain.CategoryReplacementInput
+import uniffi.pod0_domain.CategoryRevision
+import uniffi.pod0_domain.CategorySettings
 import uniffi.pod0_domain.ClipRecord
 import uniffi.pod0_domain.CommandId
 import uniffi.pod0_domain.ContentDigest
 import uniffi.pod0_domain.EpisodeId
 import uniffi.pod0_domain.FfiConverterTypeActivityCorrelationId
+import uniffi.pod0_domain.FfiConverterTypeCategoryId
+import uniffi.pod0_domain.FfiConverterTypeCategoryOrigin
+import uniffi.pod0_domain.FfiConverterTypeCategoryReplacementInput
+import uniffi.pod0_domain.FfiConverterTypeCategoryRevision
+import uniffi.pod0_domain.FfiConverterTypeCategorySettings
 import uniffi.pod0_domain.FfiConverterTypeClipRecord
 import uniffi.pod0_domain.FfiConverterTypeCommandId
 import uniffi.pod0_domain.FfiConverterTypeContentDigest
@@ -192,6 +202,11 @@ import uniffi.pod0_application.RustBuffer as RustBufferWorkflowCapabilitySnapsho
 import uniffi.pod0_application.RustBuffer as RustBufferWorkflowConfiguration
 import uniffi.pod0_application.RustBuffer as RustBufferWorkflowReconcilePlan
 import uniffi.pod0_domain.RustBuffer as RustBufferActivityCorrelationId
+import uniffi.pod0_domain.RustBuffer as RustBufferCategoryId
+import uniffi.pod0_domain.RustBuffer as RustBufferCategoryOrigin
+import uniffi.pod0_domain.RustBuffer as RustBufferCategoryReplacementInput
+import uniffi.pod0_domain.RustBuffer as RustBufferCategoryRevision
+import uniffi.pod0_domain.RustBuffer as RustBufferCategorySettings
 import uniffi.pod0_domain.RustBuffer as RustBufferClipRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferCommandId
 import uniffi.pod0_domain.RustBuffer as RustBufferContentDigest
@@ -980,6 +995,16 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_agent_history_cutover(
     ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_category_authority(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_import_legacy_categories(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_move_podcast_to_category(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_replace_categories(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_set_category_settings(
+    ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_download_cutover(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_discard_staged_legacy_download_cutover(
@@ -1132,6 +1157,16 @@ internal object UniffiLib {
     external fun uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_agent_history_cutover(`ptr`: Long,`backupDigest`: RustBufferContentDigest.ByValue,`backupByteCount`: Long,`conversations`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_verify_legacy_agent_history_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_category_authority(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_import_legacy_categories(`ptr`: Long,`commandId`: RustBufferCommandId.ByValue,`sourceGeneration`: Long,`categories`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_move_podcast_to_category(`ptr`: Long,`commandId`: RustBufferCommandId.ByValue,`expectedRevision`: RustBufferStateRevision.ByValue,`podcastId`: RustBufferPodcastId.ByValue,`categoryId`: RustBufferCategoryId.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_replace_categories(`ptr`: Long,`commandId`: RustBufferCommandId.ByValue,`expectedRevision`: RustBufferStateRevision.ByValue,`categories`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_set_category_settings(`ptr`: Long,`commandId`: RustBufferCommandId.ByValue,`categoryId`: RustBufferCategoryId.ByValue,`expectedRevision`: RustBufferCategoryRevision.ByValue,`settings`: RustBufferCategorySettings.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_commit_legacy_download_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
@@ -1606,6 +1641,21 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_agent_history_cutover() != 46685) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_category_authority() != 44837) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_import_legacy_categories() != 59082) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_move_podcast_to_category() != 41394) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_replace_categories() != 48395) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_set_category_settings() != 12085) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_download_cutover() != 39705) {
@@ -2281,6 +2331,16 @@ public interface Pod0FacadeInterface {
 
     fun `verifyLegacyAgentHistoryCutover`(`sourceGeneration`: kotlin.ULong): LegacyAgentHistoryCutoverProjection
 
+    fun `categoryAuthority`(): CategoryAuthorityProjection
+
+    fun `importLegacyCategories`(`commandId`: CommandId, `sourceGeneration`: kotlin.ULong, `categories`: List<CategoryReplacementInput>): CategoryAuthorityProjection
+
+    fun `movePodcastToCategory`(`commandId`: CommandId, `expectedRevision`: StateRevision, `podcastId`: PodcastId, `categoryId`: CategoryId): CategoryAuthorityProjection
+
+    fun `replaceCategories`(`commandId`: CommandId, `expectedRevision`: StateRevision, `categories`: List<CategoryReplacementInput>): CategoryAuthorityProjection
+
+    fun `setCategorySettings`(`commandId`: CommandId, `categoryId`: CategoryId, `expectedRevision`: CategoryRevision, `settings`: CategorySettings): CategoryAuthorityProjection
+
     fun `commitLegacyDownloadCutover`(`sourceGeneration`: kotlin.ULong): LegacyDownloadCutoverProjection
 
     fun `discardStagedLegacyDownloadCutover`(`sourceGeneration`: kotlin.ULong, `candidates`: List<LegacyDownloadCutoverCandidate>): LegacyDownloadCutoverProjection
@@ -2584,6 +2644,90 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
         it,
 
         FfiConverterULong.lower(`sourceGeneration`),_status)
+}
+    }
+    )
+    }
+
+
+
+    @Throws(FacadeOpenException::class)override fun `categoryAuthority`(): CategoryAuthorityProjection {
+            return FfiConverterTypeCategoryAuthorityProjection.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FacadeOpenException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_category_authority(
+        it,
+        _status)
+}
+    }
+    )
+    }
+
+
+
+    @Throws(FacadeOpenException::class)override fun `importLegacyCategories`(`commandId`: CommandId, `sourceGeneration`: kotlin.ULong, `categories`: List<CategoryReplacementInput>): CategoryAuthorityProjection {
+            return FfiConverterTypeCategoryAuthorityProjection.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FacadeOpenException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_import_legacy_categories(
+        it,
+
+        FfiConverterTypeCommandId.lower(`commandId`),
+        FfiConverterULong.lower(`sourceGeneration`),
+        FfiConverterSequenceTypeCategoryReplacementInput.lower(`categories`),_status)
+}
+    }
+    )
+    }
+
+
+
+    @Throws(FacadeOpenException::class)override fun `movePodcastToCategory`(`commandId`: CommandId, `expectedRevision`: StateRevision, `podcastId`: PodcastId, `categoryId`: CategoryId): CategoryAuthorityProjection {
+            return FfiConverterTypeCategoryAuthorityProjection.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FacadeOpenException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_move_podcast_to_category(
+        it,
+
+        FfiConverterTypeCommandId.lower(`commandId`),
+        FfiConverterTypeStateRevision.lower(`expectedRevision`),
+        FfiConverterTypePodcastId.lower(`podcastId`),
+        FfiConverterTypeCategoryId.lower(`categoryId`),_status)
+}
+    }
+    )
+    }
+
+
+
+    @Throws(FacadeOpenException::class)override fun `replaceCategories`(`commandId`: CommandId, `expectedRevision`: StateRevision, `categories`: List<CategoryReplacementInput>): CategoryAuthorityProjection {
+            return FfiConverterTypeCategoryAuthorityProjection.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FacadeOpenException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_replace_categories(
+        it,
+
+        FfiConverterTypeCommandId.lower(`commandId`),
+        FfiConverterTypeStateRevision.lower(`expectedRevision`),
+        FfiConverterSequenceTypeCategoryReplacementInput.lower(`categories`),_status)
+}
+    }
+    )
+    }
+
+
+
+    @Throws(FacadeOpenException::class)override fun `setCategorySettings`(`commandId`: CommandId, `categoryId`: CategoryId, `expectedRevision`: CategoryRevision, `settings`: CategorySettings): CategoryAuthorityProjection {
+            return FfiConverterTypeCategoryAuthorityProjection.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FacadeOpenException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_set_category_settings(
+        it,
+
+        FfiConverterTypeCommandId.lower(`commandId`),
+        FfiConverterTypeCategoryId.lower(`categoryId`),
+        FfiConverterTypeCategoryRevision.lower(`expectedRevision`),
+        FfiConverterTypeCategorySettings.lower(`settings`),_status)
 }
     }
     )
@@ -3947,6 +4091,137 @@ public object FfiConverterTypeUserDataErasureToken: FfiConverter<UserDataErasure
 
     override fun write(value: UserDataErasureToken, buf: ByteBuffer) {
         buf.putLong(lower(value))
+    }
+}
+
+
+
+data class CategoryAuthorityProjection (
+    val `authoritative`: kotlin.Boolean
+    ,
+    val `revision`: StateRevision
+    ,
+    val `categories`: List<CategoryProjection>
+    ,
+    val `totalPodcastMembers`: kotlin.ULong
+    ,
+    val `truncated`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCategoryAuthorityProjection: FfiConverterRustBuffer<CategoryAuthorityProjection> {
+    override fun read(buf: ByteBuffer): CategoryAuthorityProjection {
+        return CategoryAuthorityProjection(
+            FfiConverterBoolean.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterSequenceTypeCategoryProjection.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: CategoryAuthorityProjection) = (
+            FfiConverterBoolean.allocationSize(value.`authoritative`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`revision`) +
+            FfiConverterSequenceTypeCategoryProjection.allocationSize(value.`categories`) +
+            FfiConverterULong.allocationSize(value.`totalPodcastMembers`) +
+            FfiConverterBoolean.allocationSize(value.`truncated`)
+    )
+
+    override fun write(value: CategoryAuthorityProjection, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`authoritative`, buf)
+            FfiConverterTypeStateRevision.write(value.`revision`, buf)
+            FfiConverterSequenceTypeCategoryProjection.write(value.`categories`, buf)
+            FfiConverterULong.write(value.`totalPodcastMembers`, buf)
+            FfiConverterBoolean.write(value.`truncated`, buf)
+    }
+}
+
+
+
+data class CategoryProjection (
+    val `categoryId`: CategoryId
+    ,
+    val `revision`: CategoryRevision
+    ,
+    val `name`: kotlin.String
+    ,
+    val `slug`: kotlin.String
+    ,
+    val `description`: kotlin.String
+    ,
+    val `colorHex`: kotlin.String?
+    ,
+    val `origin`: CategoryOrigin
+    ,
+    val `settings`: CategorySettings
+    ,
+    val `podcastIds`: List<PodcastId>
+    ,
+    val `generatedAt`: UnixTimestampMilliseconds
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCategoryProjection: FfiConverterRustBuffer<CategoryProjection> {
+    override fun read(buf: ByteBuffer): CategoryProjection {
+        return CategoryProjection(
+            FfiConverterTypeCategoryId.read(buf),
+            FfiConverterTypeCategoryRevision.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeCategoryOrigin.read(buf),
+            FfiConverterTypeCategorySettings.read(buf),
+            FfiConverterSequenceTypePodcastId.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: CategoryProjection) = (
+            FfiConverterTypeCategoryId.allocationSize(value.`categoryId`) +
+            FfiConverterTypeCategoryRevision.allocationSize(value.`revision`) +
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterString.allocationSize(value.`slug`) +
+            FfiConverterString.allocationSize(value.`description`) +
+            FfiConverterOptionalString.allocationSize(value.`colorHex`) +
+            FfiConverterTypeCategoryOrigin.allocationSize(value.`origin`) +
+            FfiConverterTypeCategorySettings.allocationSize(value.`settings`) +
+            FfiConverterSequenceTypePodcastId.allocationSize(value.`podcastIds`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`generatedAt`)
+    )
+
+    override fun write(value: CategoryProjection, buf: ByteBuffer) {
+            FfiConverterTypeCategoryId.write(value.`categoryId`, buf)
+            FfiConverterTypeCategoryRevision.write(value.`revision`, buf)
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterString.write(value.`slug`, buf)
+            FfiConverterString.write(value.`description`, buf)
+            FfiConverterOptionalString.write(value.`colorHex`, buf)
+            FfiConverterTypeCategoryOrigin.write(value.`origin`, buf)
+            FfiConverterTypeCategorySettings.write(value.`settings`, buf)
+            FfiConverterSequenceTypePodcastId.write(value.`podcastIds`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`generatedAt`, buf)
     }
 }
 
@@ -10384,6 +10659,34 @@ public object FfiConverterSequenceTypeLegacyAgentHistoryConversationInput: FfiCo
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeCategoryReplacementInput: FfiConverterRustBuffer<List<CategoryReplacementInput>> {
+    override fun read(buf: ByteBuffer): List<CategoryReplacementInput> {
+        val len = buf.getInt()
+        return List<CategoryReplacementInput>(len) {
+            FfiConverterTypeCategoryReplacementInput.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<CategoryReplacementInput>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeCategoryReplacementInput.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<CategoryReplacementInput>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeCategoryReplacementInput.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeClipRecord: FfiConverterRustBuffer<List<ClipRecord>> {
     override fun read(buf: ByteBuffer): List<ClipRecord> {
         val len = buf.getInt()
@@ -10458,6 +10761,62 @@ public object FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer<List<No
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeNoteRecord.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypePodcastId: FfiConverterRustBuffer<List<PodcastId>> {
+    override fun read(buf: ByteBuffer): List<PodcastId> {
+        val len = buf.getInt()
+        return List<PodcastId>(len) {
+            FfiConverterTypePodcastId.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<PodcastId>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypePodcastId.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<PodcastId>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypePodcastId.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeCategoryProjection: FfiConverterRustBuffer<List<CategoryProjection>> {
+    override fun read(buf: ByteBuffer): List<CategoryProjection> {
+        val len = buf.getInt()
+        return List<CategoryProjection>(len) {
+            FfiConverterTypeCategoryProjection.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<CategoryProjection>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeCategoryProjection.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<CategoryProjection>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeCategoryProjection.write(it, buf)
         }
     }
 }
@@ -10797,6 +11156,16 @@ public object FfiConverterSequenceTypeProductSettingIntent: FfiConverterRustBuff
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
 
 
 

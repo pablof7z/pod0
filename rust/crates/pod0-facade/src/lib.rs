@@ -8,6 +8,9 @@ mod agent_history_cutover_mapping;
 #[cfg(test)]
 mod agent_history_cutover_tests;
 mod agent_history_cutover_types;
+mod category_facade;
+#[cfg(test)]
+mod category_facade_tests;
 mod chapter_migration;
 mod chapter_migration_mapping;
 #[cfg(test)]
@@ -145,6 +148,7 @@ mod user_data_erasure_target_mapping;
 #[cfg(test)]
 include!("runtime_split_test_modules.rs");
 pub use agent_history_cutover_types::*;
+pub use category_facade::{CategoryAuthorityProjection, CategoryProjection};
 pub use chapter_migration::{
     LegacyChapterBackupEvidence, LegacyChapterImportPlan, LegacyChapterImportReport,
     LegacyChapterImportState, LegacyChapterImportVerification, LegacyChapterMigrationFailure,

@@ -72,7 +72,8 @@ pub use pod0_application::{
 pub use pod0_domain::{
     AdSpanEvaluation, AdSpanId, AdSpanInput, AgentAuthorizationId, AgentCommitId,
     AgentExecutionFenceId, AgentProposalId, AgentTurnId, ArtifactReference, AutoDownloadMode,
-    AutoDownloadPolicy, CancellationId, ChapterAdKind, ChapterArtifactId, ChapterArtifactInput,
+    AutoDownloadPolicy, CancellationId, CategoryId, CategoryOrigin, CategoryReplacementInput,
+    CategoryRevision, CategorySettings, ChapterAdKind, ChapterArtifactId, ChapterArtifactInput,
     ChapterArtifactProvenance, ChapterArtifactSource, ChapterId, ChapterInput,
     ChapterLegacyProvenance, ChapterLegacySource, ChapterModelSubmissionFenceId,
     ChapterPlaybackSessionId, ClipEvidenceReference, ClipId, ClipRecord, ClipRevision, ClipSource,

@@ -653,6 +653,16 @@ public protocol Pod0FacadeProtocol: AnyObject, Sendable {
 
     func verifyLegacyAgentHistoryCutover(sourceGeneration: UInt64)  -> LegacyAgentHistoryCutoverProjection
 
+    func categoryAuthority() throws  -> CategoryAuthorityProjection
+
+    func importLegacyCategories(commandId: CommandId, sourceGeneration: UInt64, categories: [CategoryReplacementInput]) throws  -> CategoryAuthorityProjection
+
+    func movePodcastToCategory(commandId: CommandId, expectedRevision: StateRevision, podcastId: PodcastId, categoryId: CategoryId) throws  -> CategoryAuthorityProjection
+
+    func replaceCategories(commandId: CommandId, expectedRevision: StateRevision, categories: [CategoryReplacementInput]) throws  -> CategoryAuthorityProjection
+
+    func setCategorySettings(commandId: CommandId, categoryId: CategoryId, expectedRevision: CategoryRevision, settings: CategorySettings) throws  -> CategoryAuthorityProjection
+
     func commitLegacyDownloadCutover(sourceGeneration: UInt64)  -> LegacyDownloadCutoverProjection
 
     func discardStagedLegacyDownloadCutover(sourceGeneration: UInt64, candidates: [LegacyDownloadCutoverCandidate])  -> LegacyDownloadCutoverProjection
@@ -902,6 +912,65 @@ open func verifyLegacyAgentHistoryCutover(sourceGeneration: UInt64) -> LegacyAge
     uniffi_pod0_facade_fn_method_pod0facade_verify_legacy_agent_history_cutover(
             self.uniffiCloneHandle(),
         FfiConverterUInt64.lower(sourceGeneration),uniffiCallStatus
+    )
+})
+}
+
+open func categoryAuthority()throws  -> CategoryAuthorityProjection  {
+    return try  FfiConverterTypeCategoryAuthorityProjection_lift(try rustCallWithError(FfiConverterTypeFacadeOpenError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_category_authority(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+
+open func importLegacyCategories(commandId: CommandId, sourceGeneration: UInt64, categories: [CategoryReplacementInput])throws  -> CategoryAuthorityProjection  {
+    return try  FfiConverterTypeCategoryAuthorityProjection_lift(try rustCallWithError(FfiConverterTypeFacadeOpenError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_import_legacy_categories(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeCommandId_lower(commandId),
+        FfiConverterUInt64.lower(sourceGeneration),
+        FfiConverterSequenceTypeCategoryReplacementInput.lower(categories),uniffiCallStatus
+    )
+})
+}
+
+open func movePodcastToCategory(commandId: CommandId, expectedRevision: StateRevision, podcastId: PodcastId, categoryId: CategoryId)throws  -> CategoryAuthorityProjection  {
+    return try  FfiConverterTypeCategoryAuthorityProjection_lift(try rustCallWithError(FfiConverterTypeFacadeOpenError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_move_podcast_to_category(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeCommandId_lower(commandId),
+        FfiConverterTypeStateRevision_lower(expectedRevision),
+        FfiConverterTypePodcastId_lower(podcastId),
+        FfiConverterTypeCategoryId_lower(categoryId),uniffiCallStatus
+    )
+})
+}
+
+open func replaceCategories(commandId: CommandId, expectedRevision: StateRevision, categories: [CategoryReplacementInput])throws  -> CategoryAuthorityProjection  {
+    return try  FfiConverterTypeCategoryAuthorityProjection_lift(try rustCallWithError(FfiConverterTypeFacadeOpenError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_replace_categories(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeCommandId_lower(commandId),
+        FfiConverterTypeStateRevision_lower(expectedRevision),
+        FfiConverterSequenceTypeCategoryReplacementInput.lower(categories),uniffiCallStatus
+    )
+})
+}
+
+open func setCategorySettings(commandId: CommandId, categoryId: CategoryId, expectedRevision: CategoryRevision, settings: CategorySettings)throws  -> CategoryAuthorityProjection  {
+    return try  FfiConverterTypeCategoryAuthorityProjection_lift(try rustCallWithError(FfiConverterTypeFacadeOpenError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_set_category_settings(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeCommandId_lower(commandId),
+        FfiConverterTypeCategoryId_lower(categoryId),
+        FfiConverterTypeCategoryRevision_lower(expectedRevision),
+        FfiConverterTypeCategorySettings_lower(settings),uniffiCallStatus
     )
 })
 }
@@ -1802,6 +1871,158 @@ public func FfiConverterTypeUserDataErasureToken_lower(_ value: UserDataErasureT
 }
 
 
+
+
+public struct CategoryAuthorityProjection: Equatable, Hashable {
+    public let authoritative: Bool
+    public let revision: StateRevision
+    public let categories: [CategoryProjection]
+    public let totalPodcastMembers: UInt64
+    public let truncated: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(authoritative: Bool, revision: StateRevision, categories: [CategoryProjection], totalPodcastMembers: UInt64, truncated: Bool) {
+        self.authoritative = authoritative
+        self.revision = revision
+        self.categories = categories
+        self.totalPodcastMembers = totalPodcastMembers
+        self.truncated = truncated
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CategoryAuthorityProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCategoryAuthorityProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CategoryAuthorityProjection {
+        return
+            try CategoryAuthorityProjection(
+                authoritative: FfiConverterBool.read(from: &buf),
+                revision: FfiConverterTypeStateRevision.read(from: &buf),
+                categories: FfiConverterSequenceTypeCategoryProjection.read(from: &buf),
+                totalPodcastMembers: FfiConverterUInt64.read(from: &buf),
+                truncated: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CategoryAuthorityProjection, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.authoritative, into: &buf)
+        FfiConverterTypeStateRevision.write(value.revision, into: &buf)
+        FfiConverterSequenceTypeCategoryProjection.write(value.categories, into: &buf)
+        FfiConverterUInt64.write(value.totalPodcastMembers, into: &buf)
+        FfiConverterBool.write(value.truncated, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCategoryAuthorityProjection_lift(_ buf: RustBuffer) throws -> CategoryAuthorityProjection {
+    return try FfiConverterTypeCategoryAuthorityProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCategoryAuthorityProjection_lower(_ value: CategoryAuthorityProjection) -> RustBuffer {
+    return FfiConverterTypeCategoryAuthorityProjection.lower(value)
+}
+
+
+public struct CategoryProjection: Equatable, Hashable {
+    public let categoryId: CategoryId
+    public let revision: CategoryRevision
+    public let name: String
+    public let slug: String
+    public let description: String
+    public let colorHex: String?
+    public let origin: CategoryOrigin
+    public let settings: CategorySettings
+    public let podcastIds: [PodcastId]
+    public let generatedAt: UnixTimestampMilliseconds
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(categoryId: CategoryId, revision: CategoryRevision, name: String, slug: String, description: String, colorHex: String?, origin: CategoryOrigin, settings: CategorySettings, podcastIds: [PodcastId], generatedAt: UnixTimestampMilliseconds) {
+        self.categoryId = categoryId
+        self.revision = revision
+        self.name = name
+        self.slug = slug
+        self.description = description
+        self.colorHex = colorHex
+        self.origin = origin
+        self.settings = settings
+        self.podcastIds = podcastIds
+        self.generatedAt = generatedAt
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CategoryProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCategoryProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CategoryProjection {
+        return
+            try CategoryProjection(
+                categoryId: FfiConverterTypeCategoryId.read(from: &buf),
+                revision: FfiConverterTypeCategoryRevision.read(from: &buf),
+                name: FfiConverterString.read(from: &buf),
+                slug: FfiConverterString.read(from: &buf),
+                description: FfiConverterString.read(from: &buf),
+                colorHex: FfiConverterOptionString.read(from: &buf),
+                origin: FfiConverterTypeCategoryOrigin.read(from: &buf),
+                settings: FfiConverterTypeCategorySettings.read(from: &buf),
+                podcastIds: FfiConverterSequenceTypePodcastId.read(from: &buf),
+                generatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CategoryProjection, into buf: inout [UInt8]) {
+        FfiConverterTypeCategoryId.write(value.categoryId, into: &buf)
+        FfiConverterTypeCategoryRevision.write(value.revision, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.slug, into: &buf)
+        FfiConverterString.write(value.description, into: &buf)
+        FfiConverterOptionString.write(value.colorHex, into: &buf)
+        FfiConverterTypeCategoryOrigin.write(value.origin, into: &buf)
+        FfiConverterTypeCategorySettings.write(value.settings, into: &buf)
+        FfiConverterSequenceTypePodcastId.write(value.podcastIds, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.generatedAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCategoryProjection_lift(_ buf: RustBuffer) throws -> CategoryProjection {
+    return try FfiConverterTypeCategoryProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCategoryProjection_lower(_ value: CategoryProjection) -> RustBuffer {
+    return FfiConverterTypeCategoryProjection.lower(value)
+}
 
 
 public struct EpisodeActivityDetail: Equatable, Hashable {
@@ -9385,6 +9606,31 @@ fileprivate struct FfiConverterSequenceTypeLegacyAgentHistoryConversationInput: 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeCategoryReplacementInput: FfiConverterRustBuffer {
+    typealias SwiftType = [CategoryReplacementInput]
+
+    public static func write(_ value: [CategoryReplacementInput], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCategoryReplacementInput.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CategoryReplacementInput] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CategoryReplacementInput]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCategoryReplacementInput.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeClipRecord: FfiConverterRustBuffer {
     typealias SwiftType = [ClipRecord]
 
@@ -9452,6 +9698,56 @@ fileprivate struct FfiConverterSequenceTypeNoteRecord: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeNoteRecord.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypePodcastId: FfiConverterRustBuffer {
+    typealias SwiftType = [PodcastId]
+
+    public static func write(_ value: [PodcastId], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypePodcastId.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [PodcastId] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [PodcastId]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypePodcastId.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCategoryProjection: FfiConverterRustBuffer {
+    typealias SwiftType = [CategoryProjection]
+
+    public static func write(_ value: [CategoryProjection], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCategoryProjection.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CategoryProjection] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CategoryProjection]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCategoryProjection.read(from: &buf))
         }
         return seq
     }
@@ -10433,6 +10729,21 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_agent_history_cutover() != 46685) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_category_authority() != 44837) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_import_legacy_categories() != 59082) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_move_podcast_to_category() != 41394) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_replace_categories() != 48395) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_set_category_settings() != 12085) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_download_cutover() != 39705) {

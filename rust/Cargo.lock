@@ -2322,6 +2322,7 @@ dependencies = [
  "pod0-recall-index",
  "pod0-storage",
  "rusqlite",
+ "serde",
  "serde_json",
  "sha2",
  "tempfile",

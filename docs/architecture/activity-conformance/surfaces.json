@@ -1493,6 +1493,14 @@
       "target_boundary": "TransitionCommit",
       "child_issue": 216,
       "implementation_status": "private_deterministic_ingress_identity_fingerprint_and_revision_helpers"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/library_store_category_collection.rs",
+      "domain": "user_artifact",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "private_atomic_category_collection_writer_reachable_from_typed_transition_commit"
     }
   ]
 }
