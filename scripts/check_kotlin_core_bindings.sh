@@ -20,7 +20,7 @@ JAVA_HOME="$TOOLS_ROOT/temurin-jre-$JRE_VERSION/Contents/Home"
 export JAVA_HOME
 
 if [[ ! -f "$KOTLIN_ARCHIVE" ]]; then
-  curl -fL "https://github.com/JetBrains/kotlin/releases/download/v$KOTLIN_VERSION/kotlin-compiler-$KOTLIN_VERSION.zip" \
+  curl --retry 5 --retry-all-errors --retry-delay 2 -fL "https://github.com/JetBrains/kotlin/releases/download/v$KOTLIN_VERSION/kotlin-compiler-$KOTLIN_VERSION.zip" \
     -o "$KOTLIN_ARCHIVE"
 fi
 echo "$KOTLIN_SHA256  $KOTLIN_ARCHIVE" | shasum -a 256 -c -
@@ -30,7 +30,7 @@ if [[ ! -x "$KOTLIN_HOME/bin/kotlinc" ]]; then
 fi
 
 if [[ ! -f "$JRE_ARCHIVE" ]]; then
-  curl -fL "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.11%2B10/OpenJDK21U-jre_aarch64_mac_hotspot_21.0.11_10.tar.gz" \
+  curl --retry 5 --retry-all-errors --retry-delay 2 -fL "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.11%2B10/OpenJDK21U-jre_aarch64_mac_hotspot_21.0.11_10.tar.gz" \
     -o "$JRE_ARCHIVE"
 fi
 echo "$JRE_SHA256  $JRE_ARCHIVE" | shasum -a 256 -c -
@@ -40,7 +40,7 @@ if [[ ! -x "$JAVA_HOME/bin/java" ]]; then
 fi
 
 if [[ ! -f "$JNA_JAR" ]]; then
-  curl -fL "https://repo1.maven.org/maven2/net/java/dev/jna/jna/$JNA_VERSION/jna-$JNA_VERSION.jar" \
+  curl --retry 5 --retry-all-errors --retry-delay 2 -fL "https://repo1.maven.org/maven2/net/java/dev/jna/jna/$JNA_VERSION/jna-$JNA_VERSION.jar" \
     -o "$JNA_JAR"
 fi
 echo "$JNA_SHA256  $JNA_JAR" | shasum -a 256 -c -
