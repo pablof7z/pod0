@@ -38,6 +38,13 @@ The inventory plus the exact exception manifest is a ratchet, not permission
 to add temporary native policy. `current_owner`, `target_owner`,
 `migration_issues`, and `deletion_target` document removal responsibility.
 
+The native business-logic checker reads every production Swift and Kotlin
+source, masks comments and string literals, and rejects native product-policy
+declarations, direct durable product-store writes, semantic fact construction,
+and direct external-effect dispatch outside the exact shrinking exception set.
+Generated bindings and sources already assigned to deletion are inspected for
+inventory coverage but cannot become new exception paths.
+
 ## Migration priority
 
 1. Listening identity/state and playback policy: #78–#83.

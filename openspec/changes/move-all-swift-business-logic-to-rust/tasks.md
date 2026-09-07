@@ -19,7 +19,7 @@
 
 ## 3. Make Boundary Enforcement Complete
 
-- [ ] 3.1 Replace temporary-file-only checking with semantic scans of all production Swift and Kotlin sources for policy, direct durable writes, semantic fact construction, and direct effect dispatch; verify known violations outside the exception list fail the checker.
+- [x] 3.1 Replace temporary-file-only checking with semantic scans of all production Swift and Kotlin sources for policy, direct durable writes, semantic fact construction, and direct effect dispatch; verify known violations outside the exception list fail the checker.
 - [ ] 3.2 Add negative fixtures for unregistered inputs, arbitrary mutation closures, wildcard routing, native defaults/fallback/retry, fabricated activity, in-memory-only authorization, stale observations, and restored retired writers; verify each fixture fails for its intended rule.
 - [ ] 3.3 Make the inventory and generated-binding parity checks mandatory in CI; verify a missing owner and a one-platform binding change each fail the required job.
 - [ ] 3.4 Change the exception ratchet to reject every new native business-policy exception and require same-wave deletion of resolved exceptions; verify the final empty exception set passes.

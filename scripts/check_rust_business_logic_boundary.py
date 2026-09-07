@@ -10,7 +10,8 @@ import re
 import sys
 import tempfile
 
-from check_architecture_ownership import entry_matches, production_swift_files
+from check_architecture_ownership import matching_entries, production_files
+from native_business_logic_scan import RULES, semantic_violations
 
 
 DECLARATION = re.compile(
@@ -24,11 +25,6 @@ PROHIBITED_TEMPLATE_TEXT = (
     "Temporary Swift behind a migration-safe boundary",
     "Temporary Swift without an issue",
 )
-CANONICAL_ACTIVITY_CONSTRUCTION = re.compile(
-    r"\b(?:DomainEventEnvelope|ActivityFact|ActivityEventEnvelope)\s*\("
-)
-
-
 def symbols(path: Path) -> list[str]:
     result: list[str] = []
     for match in DECLARATION.finditer(path.read_text(encoding="utf-8")):
@@ -37,18 +33,35 @@ def symbols(path: Path) -> list[str]:
     return result
 
 
+def native_files(
+    root: Path, ownership: dict[str, object], coverage: dict[str, object]
+) -> tuple[list[str], dict[str, dict[str, object]], list[str]]:
+    sources = {
+        extension: roots
+        for extension, roots in coverage["production_sources"].items()
+        if extension in {".swift", ".kt"}
+    }
+    files = production_files(root, sources)
+    owners: dict[str, dict[str, object]] = {}
+    errors: list[str] = []
+    for path in files:
+        matches = matching_entries(path, ownership["entries"])
+        if len(matches) != 1:
+            errors.append(f"native semantic scan has no exact owner: {path}")
+            continue
+        owners[path] = matches[0]
+    return files, owners, errors
+
+
 def temporary_files(
-    root: Path, ownership: dict[str, object]
+    files: list[str], owners: dict[str, dict[str, object]]
 ) -> tuple[dict[str, str], list[str]]:
     result: dict[str, str] = {}
     errors: list[str] = []
-    for path in production_swift_files(root, ownership["production_roots"]):
-        matches = [
-            entry for entry in ownership["entries"] if entry_matches(path, entry)
-        ]
-        if len(matches) != 1:
+    for path in files:
+        entry = owners.get(path)
+        if entry is None:
             continue
-        entry = matches[0]
         classification = entry["classification"]
         if classification == "undecided_pending_investigation":
             errors.append(f"undecided production owner is forbidden: {path}")
@@ -68,9 +81,14 @@ def validate(root: Path) -> list[str]:
                 encoding="utf-8"
             )
         )
+        coverage = json.loads(
+            (root / ownership["coverage_manifest"]).read_text(encoding="utf-8")
+        )
     except (OSError, json.JSONDecodeError) as error:
         return [str(error)]
-    actual, errors = temporary_files(root, ownership)
+    files, owners, errors = native_files(root, ownership, coverage)
+    actual, temporary_errors = temporary_files(files, owners)
+    errors.extend(temporary_errors)
     rows = policy.get("exceptions", [])
     registered = {row.get("path"): row for row in rows}
     if len(registered) != len(rows):
@@ -110,16 +128,19 @@ def validate(root: Path) -> list[str]:
         if phrase in template:
             errors.append(f"PR template still permits forbidden policy: {phrase}")
 
-    for relative_root in ownership["production_roots"]:
-        directory = root / relative_root
-        for path in directory.rglob("*.swift"):
-            if CANONICAL_ACTIVITY_CONSTRUCTION.search(
-                path.read_text(encoding="utf-8")
-            ):
-                errors.append(
-                    "canonical Rust activity construction found in Swift: "
-                    f"{path.relative_to(root).as_posix()}"
-                )
+    for relative_path in files:
+        owner = owners.get(relative_path)
+        if owner is None or owner["classification"] in {
+            "generated_binding",
+            "delete_without_replacement",
+        }:
+            continue
+        if relative_path in registered:
+            continue
+        for rule_id, line, description in semantic_violations(root / relative_path):
+            errors.append(
+                f"{relative_path}:{line}: {description} [{rule_id}] outside exact exception"
+            )
     return errors
 
 
@@ -133,11 +154,24 @@ def write_fixture(root: Path, extra_symbol: bool) -> None:
     architecture = root / "docs/architecture"
     architecture.mkdir(parents=True)
     ownership = {
+        "coverage_manifest": "docs/architecture/ownership-coverage.json",
         "production_roots": ["App/Sources"],
-        "entries": [{
-            "id": "legacy", "classification": "temporary_swift",
-            "includes": ["App/Sources/Legacy.swift"],
-        }],
+        "entries": [
+            {
+                "id": "legacy", "classification": "temporary_swift",
+                "includes": ["App/Sources/Legacy.swift"],
+            },
+            {
+                "id": "native", "classification": "native_by_design",
+                "includes": ["App/Sources/Native.swift", "Android/Sources/"],
+            },
+        ],
+    }
+    coverage = {
+        "production_sources": {
+            ".swift": ["App/Sources"],
+            ".kt": ["Android/Sources"],
+        }
     }
     policy = {
         "maximum_exception_files": 1,
@@ -154,6 +188,17 @@ def write_fixture(root: Path, extra_symbol: bool) -> None:
     (architecture / "ownership.json").write_text(
         json.dumps(ownership), encoding="utf-8"
     )
+    (architecture / "ownership-coverage.json").write_text(
+        json.dumps(coverage), encoding="utf-8"
+    )
+    (root / "App/Sources/Native.swift").write_text(
+        "struct NativeView { let help = \"ActivityFact(value)\" }\n"
+        "// ExternalEffectDispatcher.shared.dispatch(effect)\n",
+        encoding="utf-8",
+    )
+    kotlin = root / "Android/Sources/Native.kt"
+    kotlin.parent.mkdir(parents=True)
+    kotlin.write_text("class NativeView\n", encoding="utf-8")
     (architecture / "rust-business-logic-exceptions.json").write_text(
         json.dumps(policy), encoding="utf-8"
     )
@@ -187,6 +232,28 @@ def run_self_test() -> int:
         if not any("ceiling must equal" in item for item in validate(root)):
             print("Rust business-logic checker permitted ceiling slack", file=sys.stderr)
             return 1
+    violation_sources = {
+        "native_product_policy": "struct EpisodeBusinessPolicy {}\n",
+        "direct_durable_write": "ProductStateStore.shared.save(value)\n",
+        "semantic_fact_construction": "ActivityFact(value)\n",
+        "direct_effect_dispatch": "ExternalEffectDispatcher.shared.dispatch(effect)\n",
+    }
+    for index, (rule_id, source) in enumerate(violation_sources.items()):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_fixture(root, extra_symbol=False)
+            path = (
+                root / "App/Sources/Native.swift"
+                if index % 2 == 0
+                else root / "Android/Sources/Native.kt"
+            )
+            path.write_text(source, encoding="utf-8")
+            if not any(f"[{rule_id}]" in item for item in validate(root)):
+                print(f"Rust business-logic checker missed {rule_id}", file=sys.stderr)
+                return 1
+    if {item[0] for item in RULES} != set(violation_sources):
+        print("Rust business-logic self-test does not cover every semantic rule", file=sys.stderr)
+        return 1
     print("Rust business-logic negative fixtures passed")
     return 0
 
@@ -200,13 +267,24 @@ def main() -> int:
     args = parser.parse_args()
     if args.self_test:
         return run_self_test()
-    errors = validate(Path(args.root).resolve())
+    root = Path(args.root).resolve()
+    errors = validate(root)
     if errors:
         print("Rust business-logic ownership check failed:", file=sys.stderr)
         for error in errors:
             print(f"- {error}", file=sys.stderr)
         return 1
-    print("Rust business-logic exception set is exact and non-growing")
+    ownership = json.loads(
+        (root / "docs/architecture/ownership.json").read_text(encoding="utf-8")
+    )
+    coverage = json.loads(
+        (root / ownership["coverage_manifest"]).read_text(encoding="utf-8")
+    )
+    files, _, _ = native_files(root, ownership, coverage)
+    print(
+        f"Rust business-logic semantic scan covered {len(files)} production "
+        "Swift/Kotlin files; exception set is exact and non-growing"
+    )
     return 0
 
 
