@@ -17,7 +17,9 @@ final class CoreRecallIndexCutoverTests: XCTestCase {
         try Data("legacy-shm".utf8).write(to: sharedMemory)
         try Data("keep".utf8).write(to: unrelated)
 
-        let facade = Pod0Facade()
+        let facade = try Pod0Facade.create(
+            storePath: root.appendingPathComponent("core.sqlite").path
+        )
         let commandID = CommandId(uuid: UUID())
         let cancellationID = CancellationId(uuid: UUID())
         facade.dispatch(command: CommandEnvelope(

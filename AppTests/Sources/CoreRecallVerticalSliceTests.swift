@@ -89,7 +89,7 @@ final class CoreRecallVerticalSliceTests: XCTestCase {
         let recallStarted = expectation(description: "Recall capability started")
         await first.deferredRecallHost.attach(CancellationRecallHost(started: recallStarted))
         let cancelledTask = Task {
-            await first.recall(
+            return await first.recall(
                 query: "cancel this recall",
                 scope: .episode(episodeId: EpisodeId(uuid: episodeID)),
                 limit: 3
@@ -112,7 +112,7 @@ final class CoreRecallVerticalSliceTests: XCTestCase {
         XCTAssertEqual(restored.generationId?.stableString, firstResult.generationID)
         XCTAssertEqual(restored.totalSpans, firstResult.spanCount)
 
-        let reopened = await makeClient(
+        let reopened = try await makeClient(
             facade: reopenedFacade,
             coreStoreURL: persistence.sharedCoreStoreURL,
             embedder: embedder
@@ -145,11 +145,15 @@ final class CoreRecallVerticalSliceTests: XCTestCase {
         facade: Pod0Facade,
         coreStoreURL: URL,
         embedder: RestartCountingEmbedder
-    ) async -> SharedLibraryClient {
+    ) async throws -> SharedLibraryClient {
+        let observationOutbox = try NativeHostObservationOutbox(
+            fileURL: coreStoreURL.appendingPathExtension("native-observations")
+        )
         let client = SharedLibraryClient(
             facade: facade,
             coreStoreURL: coreStoreURL,
-            feedHost: VerticalSliceFeedHost()
+            feedHost: VerticalSliceFeedHost(),
+            observationOutbox: observationOutbox
         )
         await attachRecall(to: client, embedder: embedder)
         client.start()
@@ -196,7 +200,7 @@ private actor RestartCountingEmbedder: EmbeddingsClient {
 
 private struct VerticalSliceReranker: RerankerClient {
     func rerank(query: String, documents: [String], topN: Int?) async throws -> [Int] {
-        Array(documents.indices)
+        return Array(documents.indices)
     }
 }
 
