@@ -1,4 +1,5 @@
 import Foundation
+import Pod0Core
 
 // MARK: - Podcast categories
 
@@ -9,7 +10,25 @@ extension AppStateStore {
     /// Single-write entry-point so the `state.didSet` save fires once per
     /// recompute, regardless of how many categories the model returned.
     func setCategories(_ categories: [PodcastCategory]) {
-        mutateState { $0.categories = categories }
+        guard let client = sharedLibrary, let current = categoryProjection else {
+            Self.logger.error("Blocked category replacement before Rust authority")
+            return
+        }
+        do {
+            let projection = try client.facade.replaceCategories(
+                commandId: CommandId(uuid: UUID()),
+                expectedRevision: current.revision,
+                categories: CategoryBridge.inputs(
+                    categories: categories,
+                    settings: state.categorySettings
+                )
+            )
+            guard projection.authoritative, !projection.truncated else { return }
+            categoryProjection = projection
+            mutateProjectionState { CategoryBridge.applying(projection, to: &$0) }
+        } catch {
+            Self.logger.error("Category replacement was rejected by the shared core")
+        }
     }
 
     /// Moves a podcast into one category and removes it from every other
@@ -24,15 +43,20 @@ extension AppStateStore {
               state.categories.contains(where: { $0.id == categoryID })
         else { return false }
 
-        var categories = state.categories
-        for index in categories.indices {
-            categories[index].subscriptionIDs.removeAll { $0 == podcastID }
-            if categories[index].id == categoryID {
-                categories[index].subscriptionIDs.append(podcastID)
-            }
-        }
-        if categories != state.categories {
-            mutateState { $0.categories = categories }
+        guard let client = sharedLibrary, let current = categoryProjection else { return false }
+        do {
+            let projection = try client.facade.movePodcastToCategory(
+                commandId: CommandId(uuid: UUID()),
+                expectedRevision: current.revision,
+                podcastId: PodcastId(uuid: podcastID),
+                categoryId: CategoryId(uuid: categoryID)
+            )
+            guard projection.authoritative, !projection.truncated else { return false }
+            categoryProjection = projection
+            mutateProjectionState { CategoryBridge.applying(projection, to: &$0) }
+        } catch {
+            Self.logger.error("Category membership mutation was rejected by the shared core")
+            return false
         }
         return true
     }

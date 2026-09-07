@@ -84,6 +84,12 @@ extension AppStateStore {
             to: freshState.settings
         )
         productSettingsProjection = committedSettings
+        let categories = try freshClient.facade.categoryAuthority()
+        guard categories.authoritative, !categories.truncated else {
+            throw SharedLibraryError.unavailable
+        }
+        CategoryBridge.applying(categories, to: &hydratedState)
+        categoryProjection = categories
         await signalStore?.resumeAfterUserDataErasure()
         installFreshStateAfterUserDataErasure(hydratedState, client: freshClient)
     }

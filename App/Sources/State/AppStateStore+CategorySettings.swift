@@ -1,4 +1,5 @@
 import Foundation
+import Pod0Core
 
 // MARK: - Per-category settings
 //
@@ -27,7 +28,23 @@ extension AppStateStore {
     func updateCategorySettings(_ id: UUID, _ block: (inout CategorySettings) -> Void) {
         var record = state.categorySettings[id] ?? .default(for: id)
         block(&record)
-        mutateState { $0.categorySettings[id] = record }
+        guard let client = sharedLibrary,
+              let current = categoryProjection,
+              let category = current.categories.first(where: { $0.categoryId.uuid == id })
+        else { return }
+        do {
+            let projection = try client.facade.setCategorySettings(
+                commandId: CommandId(uuid: UUID()),
+                categoryId: CategoryId(uuid: id),
+                expectedRevision: category.revision,
+                settings: CategoryBridge.coreSettings(record)
+            )
+            guard projection.authoritative, !projection.truncated else { return }
+            categoryProjection = projection
+            mutateProjectionState { CategoryBridge.applying(projection, to: &$0) }
+        } catch {
+            Self.logger.error("Category settings mutation was rejected by the shared core")
+        }
     }
 
     /// Returns the auto-download policy that should actually drive new-episode

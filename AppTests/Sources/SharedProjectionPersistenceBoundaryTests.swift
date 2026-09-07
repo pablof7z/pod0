@@ -4,6 +4,39 @@ import XCTest
 
 @MainActor
 final class SharedProjectionPersistenceBoundaryTests: XCTestCase {
+    func testCategoryInteractionCommitsRustProjectionWithoutNativeCategoryStore() throws {
+        let fileURL = AppStateTestSupport.uniqueTempFileURL()
+        let persistence = Persistence(fileURL: fileURL)
+        defer { persistence.reset() }
+        let podcast = Podcast(
+            feedURL: URL(string: "https://category.example/feed.xml")!,
+            title: "Category fixture"
+        )
+        let category = PodcastCategory(
+            name: "Research",
+            slug: "research",
+            description: "Episodes worth revisiting.",
+            subscriptionIDs: [podcast.id]
+        )
+        var source = AppState()
+        source.podcasts = [podcast]
+        source.subscriptions = [PodcastSubscription(podcastID: podcast.id)]
+        source.categories = [category]
+        persistence.save(source)
+        let store = AppStateStore(
+            persistence: persistence,
+            startSubscriptionRefresh: false
+        )
+
+        store.updateCategorySettings(category.id) { $0.ragEnabled = false }
+
+        let committed = try XCTUnwrap(store.sharedLibrary?.facade.categoryAuthority())
+        XCTAssertFalse(try XCTUnwrap(committed.categories.first).settings.ragEnabled)
+        let metadata = persistence.metadataState(from: store.state)
+        XCTAssertTrue(metadata.categories.isEmpty)
+        XCTAssertTrue(metadata.categorySettings.isEmpty)
+    }
+
     func testProjectionMutationRebuildsReadModelWithoutNativeSave() {
         let made = AppStateTestSupport.makeIsolatedStore()
         defer { AppStateTestSupport.disposeIsolatedStore(at: made.fileURL) }

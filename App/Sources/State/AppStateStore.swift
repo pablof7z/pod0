@@ -14,6 +14,7 @@ final class AppStateStore {
     @ObservationIgnored private(set) var sharedLibrary: SharedLibraryClient?
     @ObservationIgnored private(set) var sharedLibraryUnavailableReason: String?
     @ObservationIgnored var productSettingsProjection: ProductSettings?
+    @ObservationIgnored var categoryProjection: CategoryAuthorityProjection?
     @ObservationIgnored private(set) var startupRecoveryRequired = false
     /// Bounded Rust projection; never persisted as native durable state.
     var newEpisodeNotificationsEnabled = true
@@ -190,15 +191,19 @@ final class AppStateStore {
         self.productSignals = productSignals
         var loadedState = preparedStartup.state
         var initialProductSettings: ProductSettings?
+        var initialCategories: CategoryAuthorityProjection?
         if case .ready(let preparation)? = preparedStartup.bootstrap {
             initialProductSettings = preparation.productSettings
+            initialCategories = preparation.categories
             loadedState.settings = ProductSettingsBridge.applying(
                 preparation.productSettings.values,
                 to: loadedState.settings
             )
+            CategoryBridge.applying(preparation.categories, to: &loadedState)
         }
         self.state = loadedState
         productSettingsProjection = initialProductSettings
+        categoryProjection = initialCategories
         if preparedStartup.loadFailed {
             startupRecoveryRequired = true
             sharedLibraryUnavailableReason = "app_state_recovery_required"
