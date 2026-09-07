@@ -1,4 +1,7 @@
-use crate::{MAX_PROJECTION_ITEMS, OperationStage, ProjectionRequest, ProjectionScope};
+use crate::{
+    MAX_PROJECTION_BATCH_ITEMS, MAX_PROJECTION_ITEMS, OperationStage, ProjectionBatchRequest,
+    ProjectionRequest, ProjectionScope,
+};
 
 #[test]
 fn projection_requests_are_bounded_and_terminal_stages_are_explicit() {
@@ -20,4 +23,26 @@ fn projection_requests_are_bounded_and_terminal_stages_are_explicit() {
     assert!(!OperationStage::Accepted.is_terminal());
     assert!(OperationStage::Failed.is_terminal());
     assert!(OperationStage::Unsupported { wire_code: 99 }.is_terminal());
+}
+
+#[test]
+fn projection_batches_are_bounded_without_changing_request_order() {
+    let requests = (0..=MAX_PROJECTION_BATCH_ITEMS)
+        .map(|offset| ProjectionRequest {
+            scope: ProjectionScope::Library,
+            offset: u32::from(offset),
+            max_items: 1,
+        })
+        .collect::<Vec<_>>();
+    let batch = ProjectionBatchRequest { requests };
+    assert_eq!(
+        batch.bounded_requests().len(),
+        usize::from(MAX_PROJECTION_BATCH_ITEMS)
+    );
+    assert!(batch.has_more());
+    assert_eq!(batch.bounded_requests()[0].offset, 0);
+    assert_eq!(
+        batch.bounded_requests().last().unwrap().offset,
+        u32::from(MAX_PROJECTION_BATCH_ITEMS - 1)
+    );
 }

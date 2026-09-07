@@ -219,6 +219,7 @@ pub trait ProjectionSubscriber: Send + Sync {
 pub trait Pod0ApplicationApi: Send + Sync {
     fn dispatch(&self, command: CommandEnvelope);
     fn snapshot(&self, request: ProjectionRequest) -> ProjectionEnvelope;
+    fn snapshot_batch(&self, request: ProjectionBatchRequest) -> ProjectionBatchEnvelope;
     fn subscribe(
         &self,
         request: ProjectionRequest,

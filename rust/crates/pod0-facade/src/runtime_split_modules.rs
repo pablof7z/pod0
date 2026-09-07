@@ -85,6 +85,8 @@ mod runtime_playback_transcripts;
 mod runtime_playback_transitions;
 mod runtime_projection;
 mod runtime_projection_envelope;
+#[cfg(test)]
+mod runtime_projection_batch_tests;
 mod runtime_recall_commands;
 mod runtime_recall_completion;
 mod runtime_recall_configuration;

@@ -50,6 +50,10 @@ impl Pod0Facade {
         self.state().snapshot(request)
     }
 
+    pub fn snapshot_batch(&self, request: ProjectionBatchRequest) -> ProjectionBatchEnvelope {
+        self.state().snapshot_batch(request)
+    }
+
     /// Plans the exact bounded chapter-model capability request from the
     /// authoritative Rust episode, transcript, and chapter selections.
     pub fn plan_chapter_model_request(

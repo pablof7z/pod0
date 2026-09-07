@@ -1,7 +1,8 @@
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use pod0_application::{
-    ApplicationCommand, CommandEnvelope, ProjectionEnvelope, ProjectionRequest,
+    ApplicationCommand, CommandEnvelope, ProjectionBatchEnvelope, ProjectionBatchRequest,
+    ProjectionEnvelope, ProjectionRequest,
 };
 use pod0_domain::{CancellationId, CommandId, SubscriptionId};
 use pod0_recall_index::{RECALL_INDEX_DIMENSIONS, RecallIndex, recall_index_path_for_core_store};
