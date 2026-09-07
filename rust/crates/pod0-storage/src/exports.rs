@@ -84,6 +84,7 @@ pub use crate::note_import_model::{
 };
 pub use crate::note_import_store::{commit_note_cutover, read_note_import};
 pub use crate::note_store_model::NoteCollectionSnapshot;
+pub use crate::product_settings_store::SettingsCommitOutcome;
 pub use crate::recall_configuration_store::RecallConfigurationMutation;
 pub use crate::recall_cutover_store::{
     RecallIndexCutoverStage, RecallIndexCutoverStartOutcome, StoredRecallIndexCutoverWorkflow,

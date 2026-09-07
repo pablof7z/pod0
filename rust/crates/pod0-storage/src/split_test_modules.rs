@@ -55,6 +55,7 @@ mod external_publication_removal_migration_tests;
 mod migration_transcript_history_tests;
 mod note_import_tests;
 mod note_schema_test_support;
+mod product_settings_store_tests;
 mod recovery_test_support;
 mod recovery_tests;
 mod schema_revert_test_support;

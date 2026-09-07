@@ -178,6 +178,11 @@ mod scheduled_agent_host_ledger_tests;
 mod scheduled_agent_observation;
 mod scheduled_agent_observation_validation;
 mod scheduled_agent_policy;
+mod settings_transition;
+mod settings_transition_candidate;
+#[cfg(test)]
+mod settings_transition_tests;
+mod settings_validation;
 #[cfg(test)]
 mod scheduled_agent_tests;
 mod shared_episode_resolution;

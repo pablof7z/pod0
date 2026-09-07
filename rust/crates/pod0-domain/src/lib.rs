@@ -129,6 +129,7 @@ mod memories;
 mod notes;
 mod playback_policy;
 mod recall_configuration;
+mod settings;
 mod transcript_artifact;
 mod transcript_artifact_hash;
 mod transcript_artifact_validation;
@@ -148,6 +149,7 @@ pub use memories::*;
 pub use notes::*;
 pub use playback_policy::*;
 pub use recall_configuration::*;
+pub use settings::*;
 pub use transcript_artifact::*;
 pub use transcript_command::*;
 

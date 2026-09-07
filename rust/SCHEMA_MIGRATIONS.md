@@ -63,6 +63,10 @@ database boundary. Lease claims and terminalization may advance only the
 mutable state and fence columns; request identity, authorization, correlation,
 payload, timing, and provenance cannot be updated or deleted.
 
+Version 46 adds the dormant Rust product-settings aggregate plus append-only
+validation and sync-conflict evidence. Settings authority remains native until
+the separately verified one-time import commits its domain cutover marker.
+
 SQL steps are sequential files under `rust/schema/migrations`. Their SHA-256
 lock and `CURRENT_SCHEMA_VERSION` are checked in CI. Never edit a shipped step;
 add the next version and update the lock in the same reviewed change.

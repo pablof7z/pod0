@@ -27,7 +27,7 @@
 
 ## 4. Migrate Settings, Categories, Credentials, and Usage
 
-- [ ] 4.1 Define versioned Rust schemas and transitions for durable settings, defaults, validation state, revisions, and sync-conflict evidence; verify deterministic local and remote merge tests pass.
+- [x] 4.1 Define versioned Rust schemas and transitions for durable settings, defaults, validation state, revisions, and sync-conflict evidence; verify deterministic local and remote merge tests pass.
 - [ ] 4.2 Import the legacy `Settings.swift` and AppState/iCloud-backed values once, commit the settings authority marker, and disable native writes; verify clean, populated, conflicting, and interrupted upgrade fixtures preserve one writer.
 - [ ] 4.3 Move categories, category membership and overrides, category settings, and auto-download policy into a Rust owner; verify membership, override, default, and conflict scenario tests pass.
 - [ ] 4.4 Replace category and settings UI mutations with typed Rust intents and bounded projections; verify iOS interaction tests change committed Rust state without touching a native product store.
