@@ -23,8 +23,8 @@ pub use crate::agent_action_validation::validate_agent_action;
 pub fn agent_tool_policy(tool: AgentToolName) -> AgentToolPolicy {
     use AgentAuthority::{DurableScopedGrant, DurableTurnGrant, None, OneShotApproval};
     use AgentToolClass::{
-        DestructiveWrite, ExternalSideEffect, Publication, ReadOnly, ReversibleWrite,
-        SecretBearing, SessionLocal,
+        DestructiveWrite, ExternalSideEffect, ReadOnly, ReversibleWrite, SecretBearing,
+        SessionLocal,
     };
     use AgentToolName::*;
     let (classes, authority, execution) = match tool {
@@ -89,9 +89,9 @@ pub fn agent_tool_policy(tool: AgentToolName) -> AgentToolPolicy {
             AgentExecutionKind::NativeCapability,
         ),
         GeneratePodcastArtwork => (
-            vec![ExternalSideEffect, SecretBearing, Publication],
+            vec![ExternalSideEffect, SecretBearing],
             OneShotApproval,
-            AgentExecutionKind::NativeCapabilityAndNmpPublication,
+            AgentExecutionKind::NativeCapability,
         ),
         PlayEpisode | PausePlayback | SetPlaybackRate | SetSleepTimer | DownloadEpisode
         | RefreshFeed | SubscribePodcast => (

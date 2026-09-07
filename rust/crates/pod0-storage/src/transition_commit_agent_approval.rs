@@ -1,5 +1,5 @@
 use pod0_application::{
-    AgentAuthorizationObservation, AgentEffectObservationActivityInput, AgentPublicationTransition,
+    AgentAuthorizationObservation, AgentEffectObservationActivityInput, AgentTransition,
     AgentWorkflowAcceptance, EffectOutcome, agent_authorization_id, plan_agent_effect_observation,
 };
 use pod0_domain::{AgentTurnId, CommandId, ContentDigest, StateRevision};
@@ -71,7 +71,7 @@ pub(crate) fn commit_agent_approval_observation(
                 correlation_id: lease.correlation_id,
                 episode_id: None,
                 outcome: EffectOutcome::Succeeded,
-                transition: AgentPublicationTransition::ApprovalChanged,
+                transition: AgentTransition::ApprovalChanged,
                 next_authorization: None,
                 advance_turn: !replay && after.projection().stage
                     == pod0_application::AgentTurnStage::Authorized,

@@ -115,11 +115,6 @@ struct Settings: Codable, Hashable, Sendable {
     var imageGenerationModelName: String = ""
     var legacyRecallRerankerEnabled: Bool?
 
-    // Blossom
-    /// Blossom BUD-02 server used for uploading podcast artwork, audio, chapters, and
-    /// transcripts. Defaults to blossom.primal.net. Configurable in Settings > Agent.
-    var blossomServerURL: String = "https://blossom.primal.net"
-
     // OpenRouter credentials (secret stored in Keychain; only metadata here)
     var openRouterCredentialSource: OpenRouterCredentialSource = .none
     var openRouterBYOKKeyID: String?
@@ -239,7 +234,6 @@ struct Settings: Codable, Hashable, Sendable {
         case chapterCompilationModel, chapterCompilationModelName
         case legacyRecallEmbeddingsModel = "embeddingsModel", legacyRecallEmbeddingsModelName = "embeddingsModelName", legacyRecallRerankerEnabled = "rerankerEnabled"
         case imageGenerationModel, imageGenerationModelName
-        case blossomServerURL
         case openRouterAPIKey                                             // legacy
         case openRouterCredentialSource
         case openRouterBYOKKeyID, openRouterBYOKKeyLabel, openRouterConnectedAt
@@ -276,7 +270,6 @@ struct Settings: Codable, Hashable, Sendable {
         legacyRecallEmbeddingsModelName = try c.decodeIfPresent(String.self, forKey: .legacyRecallEmbeddingsModelName)
         imageGenerationModel = try c.decodeIfPresent(String.self, forKey: .imageGenerationModel) ?? "google/gemini-2.5-flash-image"
         imageGenerationModelName = try c.decodeIfPresent(String.self, forKey: .imageGenerationModelName) ?? ""
-        blossomServerURL = try c.decodeIfPresent(String.self, forKey: .blossomServerURL) ?? "https://blossom.primal.net"
         legacyRecallRerankerEnabled = try c.decodeIfPresent(Bool.self, forKey: .legacyRecallRerankerEnabled)
         openRouterCredentialSource = try c.decodeIfPresent(OpenRouterCredentialSource.self, forKey: .openRouterCredentialSource) ?? .none
         openRouterBYOKKeyID = try c.decodeIfPresent(String.self, forKey: .openRouterBYOKKeyID)
@@ -342,7 +335,6 @@ struct Settings: Codable, Hashable, Sendable {
         try c.encodeIfPresent(legacyRecallEmbeddingsModelName, forKey: .legacyRecallEmbeddingsModelName)
         try c.encode(imageGenerationModel, forKey: .imageGenerationModel)
         try c.encode(imageGenerationModelName, forKey: .imageGenerationModelName)
-        try c.encode(blossomServerURL, forKey: .blossomServerURL)
         try c.encodeIfPresent(legacyRecallRerankerEnabled, forKey: .legacyRecallRerankerEnabled)
         try c.encode(openRouterCredentialSource, forKey: .openRouterCredentialSource)
         try c.encodeIfPresent(openRouterBYOKKeyID, forKey: .openRouterBYOKKeyID)

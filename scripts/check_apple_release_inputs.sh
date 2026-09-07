@@ -132,8 +132,6 @@ for location, (_, version, _) in expected.items():
         raise SystemExit(
             f"Project.swift does not declare the exact {version} pin for {location}"
         )
-if '.local(path: ".build/nmp/Packages/NMP")' not in manifest:
-    raise SystemExit("Project.swift does not consume the prepared NMP Swift package")
 PY
 
 for generated_lock in "$project_lock" "$workspace_lock"; do

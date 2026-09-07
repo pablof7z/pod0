@@ -75,8 +75,6 @@ impl Pod0Facade {
             .transpose()
             .map_err(FacadeOpenError::from)?;
         let agent_store = pod0_storage::AgentStore::open(path).map_err(FacadeOpenError::from)?;
-        let publication_store =
-            pod0_storage::PublicationStore::open(path).map_err(FacadeOpenError::from)?;
         let recall_index = RecallIndex::open(
             &recall_index_path_for_core_store(path),
             RECALL_INDEX_DIMENSIONS,
@@ -89,7 +87,6 @@ impl Pod0Facade {
                 transcript: transcript_store,
                 scheduled_agent: scheduled_agent_store,
                 agent: agent_store,
-                publication: publication_store,
             },
             recall_index,
             clock,

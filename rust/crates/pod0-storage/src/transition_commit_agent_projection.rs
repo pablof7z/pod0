@@ -23,7 +23,7 @@ pub(crate) fn commit_agent_projection_result(
         return Err(StorageError::InvalidActivity);
     };
     let turn_id = *turn_id;
-    if command.request.target != ActivityDomain::AgentPublication
+    if command.request.target != ActivityDomain::Agent
         || command.request.subject != (pod0_application::ActivitySubject::AgentTurn { turn_id })
         || command.request.episode_id.is_some()
     {

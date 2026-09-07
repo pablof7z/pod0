@@ -12,9 +12,7 @@ use pod0_domain::{
     SubscriptionId,
 };
 use pod0_recall_index::RecallIndex;
-use pod0_storage::{
-    AgentStore, EvidenceStore, LibraryStore, PublicationStore, ScheduledAgentStore, TranscriptStore,
-};
+use pod0_storage::{AgentStore, EvidenceStore, LibraryStore, ScheduledAgentStore, TranscriptStore};
 
 use crate::ProjectionSubscriber;
 use crate::runtime_delivery_content::ProjectionDeliveryContent;
@@ -41,7 +39,6 @@ pub(super) struct FacadeState {
     pub(super) transcript_store: Option<TranscriptStore>,
     pub(super) scheduled_agent_store: Option<ScheduledAgentStore>,
     pub(super) agent_store: Option<AgentStore>,
-    pub(super) publication_store: Option<PublicationStore>,
     pub(super) recall_index: RecallIndex,
     pub(super) recall_configuration: pod0_domain::RecallConfiguration,
     pub(super) recall_interrupts: Arc<RecallInterruptRegistry>,

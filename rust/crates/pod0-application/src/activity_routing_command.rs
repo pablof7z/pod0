@@ -56,9 +56,9 @@ pub const fn application_command_owner(command: &ApplicationCommand) -> Activity
         | Command::ReconcileScheduledRuns
         | Command::RetryScheduledRun { .. }
         | Command::CancelScheduledRun { .. } => ActivityOwner::Domain(Domain::ScheduledAgent),
-        Command::StartAgentTurn { .. }
-        | Command::PublishGeneratedEpisode { .. }
-        | Command::CancelAgentTurn { .. } => ActivityOwner::Domain(Domain::AgentPublication),
+        Command::StartAgentTurn { .. } | Command::CancelAgentTurn { .. } => {
+            ActivityOwner::Domain(Domain::Agent)
+        }
         Command::CommitChapter { .. }
         | Command::EnsurePublisherChapters { .. }
         | Command::RetryPublisherChapters { .. }

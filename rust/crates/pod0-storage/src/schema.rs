@@ -124,9 +124,6 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
             connection,
         )?;
     }
-    if version >= 25 {
-        crate::schema_publications::validate_publication_schema(connection)?;
-    }
     if version >= 27 {
         crate::schema_agent::validate_agent_history_cutover_schema(connection)?;
     }

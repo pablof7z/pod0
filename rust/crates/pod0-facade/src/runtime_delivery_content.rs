@@ -41,7 +41,6 @@ fn clear_global_operations(projection: &mut Projection) {
         Projection::Playback { value } => value.operations.clear(),
         Projection::Transcript { value } => value.operations.clear(),
         Projection::Chapter { value } => value.operations.clear(),
-        Projection::Publications { value } => value.operations.clear(),
         Projection::Notes { value } => value.operations.clear(),
         Projection::Memories { value } => value.operations.clear(),
         Projection::Clips { value } => value.operations.clear(),

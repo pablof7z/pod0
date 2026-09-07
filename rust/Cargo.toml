@@ -11,7 +11,6 @@ members = [
     "crates/pod0-cli",
     "crates/pod0-bdd",
     "crates/uniffi-bindgen",
-    "crates/pod0-nostr-host",
     "crates/pod0-system-hosts",
     "crates/pod0-tts-host",
 ]
@@ -31,7 +30,6 @@ pod0-recall-index = { path = "crates/pod0-recall-index", version = "=0.1.0" }
 pod0-facade = { path = "crates/pod0-facade", version = "=0.1.0" }
 pod0-live-hosts = { path = "crates/pod0-live-hosts", version = "=0.1.0" }
 pod0-portable-media = { path = "crates/pod0-portable-media", version = "=0.1.0" }
-nostr = { version = "=0.44.7" }
 libc = { version = "=0.2.186" }
 rusqlite = { version = "=0.39.0", default-features = false, features = ["backup", "bundled"] }
 quick-xml = { version = "=0.41.0" }

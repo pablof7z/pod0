@@ -22,7 +22,6 @@ const SETTINGS_KEYS: &[&str] = &[
     "autoMarkPlayedAtEnd",
     "autoPlayNext",
     "autoSkipAds",
-    "blossomServerURL",
     "categorizationModel",
     "categorizationModelName",
     "chapterCompilationModel",

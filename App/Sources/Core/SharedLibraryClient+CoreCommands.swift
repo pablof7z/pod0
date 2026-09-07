@@ -30,7 +30,6 @@ extension SharedLibraryClient {
             guard !Task.isCancelled else { return }
             await executor.dispatch(envelope, to: facade)
             guard !Task.isCancelled, drainHostRequests else { return }
-            await nmp.publishPending(from: facade)
             dispatcher.executePendingRequests(from: facade)
         }
     }

@@ -5,9 +5,9 @@ use pod0_domain::{
 
 use crate::{
     ActivityActor, ActivityFact, ActivityFactDraft, ActivityOrigin, ActivitySubject,
-    AgentPublicationTransition, AuthorizedExternalEffect, DomainTransitionKind,
-    DurableExternalEffectRequest, DurableInternalCommandRequest, EffectObservationActivityIdentity,
-    EffectOutcome, ExternalEffectKind, NonEmptyActivityFacts, RequestDisposition, TransitionPlan,
+    AgentTransition, AuthorizedExternalEffect, DomainTransitionKind, DurableExternalEffectRequest,
+    DurableInternalCommandRequest, EffectObservationActivityIdentity, EffectOutcome,
+    ExternalEffectKind, NonEmptyActivityFacts, RequestDisposition, TransitionPlan,
     TransitionPlanError,
 };
 
@@ -34,7 +34,7 @@ pub struct AgentEffectObservationActivityInput {
     pub correlation_id: ActivityCorrelationId,
     pub episode_id: Option<EpisodeId>,
     pub outcome: EffectOutcome,
-    pub transition: AgentPublicationTransition,
+    pub transition: AgentTransition,
     pub next_authorization: Option<AgentEffectAuthorization>,
     pub advance_turn: bool,
 }
@@ -110,7 +110,7 @@ pub fn plan_agent_effect_observation(
         base(
             2,
             ActivityFact::DomainTransition {
-                kind: DomainTransitionKind::AgentPublication(input.transition),
+                kind: DomainTransitionKind::Agent(input.transition),
                 previous_revision: input.current_revision,
                 committed_revision: input.committed_revision,
             },
@@ -153,7 +153,7 @@ pub fn plan_agent_effect_observation(
             u8::try_from(index).expect("bounded agent fact count"),
             ActivityFact::InternalCommandAuthorized {
                 internal_command_id,
-                target: crate::ActivityDomain::AgentPublication,
+                target: crate::ActivityDomain::Agent,
             },
         ));
         vec![crate::AuthorizedInternalCommand {
@@ -163,7 +163,7 @@ pub fn plan_agent_effect_observation(
                 kind: crate::InternalCommandKind::AdvanceAgentTurn {
                     turn_id: input.turn_id,
                 },
-                target: crate::ActivityDomain::AgentPublication,
+                target: crate::ActivityDomain::Agent,
                 subject,
                 episode_id: None,
             },
@@ -257,9 +257,7 @@ pub fn plan_agent_turn_start(
                 base(
                     1,
                     ActivityFact::DomainTransition {
-                        kind: DomainTransitionKind::AgentPublication(
-                            AgentPublicationTransition::TurnStateChanged,
-                        ),
+                        kind: DomainTransitionKind::Agent(AgentTransition::TurnStateChanged),
                         previous_revision: input.current_revision,
                         committed_revision: input.committed_revision,
                     },

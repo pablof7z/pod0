@@ -151,23 +151,6 @@ impl LibraryStore {
         crate::transition_commit::commit_expired_agent_capability_recovery(self.path(), now)
     }
 
-    pub fn claim_next_publication_effect(
-        &self,
-        now: pod0_domain::UnixTimestampMilliseconds,
-        lease_duration_milliseconds: u32,
-    ) -> Result<Option<crate::PublicationEffectLease>, crate::EffectOutboxError> {
-        crate::EffectOutbox::open(self.path())?
-            .claim_next_publication(now, lease_duration_milliseconds)
-    }
-
-    pub fn active_publication_lease(
-        &self,
-        publication_id: pod0_domain::PublicationId,
-    ) -> Result<Option<pod0_application::PersistedEffectLeaseIdentity>, crate::EffectOutboxError>
-    {
-        crate::EffectOutbox::open(self.path())?.active_publication_lease(publication_id)
-    }
-
     pub fn effect_kind(
         &self,
         intent_id: pod0_domain::EffectIntentId,

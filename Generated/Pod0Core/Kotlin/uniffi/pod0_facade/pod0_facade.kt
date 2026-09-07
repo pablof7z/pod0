@@ -58,12 +58,8 @@ import uniffi.pod0_application.FfiConverterTypeDownloadIntentOrigin
 import uniffi.pod0_application.FfiConverterTypeHostObservationReceipt
 import uniffi.pod0_application.FfiConverterTypeLeasedHostObservationEnvelope
 import uniffi.pod0_application.FfiConverterTypeLeasedHostRequestEnvelope
-import uniffi.pod0_application.FfiConverterTypeLeasedNMPPublicationDraft
-import uniffi.pod0_application.FfiConverterTypeLeasedNMPPublicationObservation
-import uniffi.pod0_application.FfiConverterTypeLeasedNMPPublicationReceipt
 import uniffi.pod0_application.FfiConverterTypeLegacyAgentHistoryConversationInput
 import uniffi.pod0_application.FfiConverterTypeModelChapterObservation
-import uniffi.pod0_application.FfiConverterTypeNMPPublicationReceiptLink
 import uniffi.pod0_application.FfiConverterTypeProjectionEnvelope
 import uniffi.pod0_application.FfiConverterTypeProjectionRequest
 import uniffi.pod0_application.FfiConverterTypePublisherChapterObservation
@@ -89,12 +85,8 @@ import uniffi.pod0_application.FfiConverterTypeWorkflowReconcilePlan
 import uniffi.pod0_application.HostObservationReceipt
 import uniffi.pod0_application.LeasedHostObservationEnvelope
 import uniffi.pod0_application.LeasedHostRequestEnvelope
-import uniffi.pod0_application.LeasedNmpPublicationDraft
-import uniffi.pod0_application.LeasedNmpPublicationObservation
-import uniffi.pod0_application.LeasedNmpPublicationReceipt
 import uniffi.pod0_application.LegacyAgentHistoryConversationInput
 import uniffi.pod0_application.ModelChapterObservation
-import uniffi.pod0_application.NmpPublicationReceiptLink
 import uniffi.pod0_application.ProjectionEnvelope
 import uniffi.pod0_application.ProjectionRequest
 import uniffi.pod0_application.PublisherChapterObservation
@@ -160,12 +152,8 @@ import uniffi.pod0_application.RustBuffer as RustBufferDownloadIntentOrigin
 import uniffi.pod0_application.RustBuffer as RustBufferHostObservationReceipt
 import uniffi.pod0_application.RustBuffer as RustBufferLeasedHostObservationEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferLeasedHostRequestEnvelope
-import uniffi.pod0_application.RustBuffer as RustBufferLeasedNMPPublicationDraft
-import uniffi.pod0_application.RustBuffer as RustBufferLeasedNMPPublicationObservation
-import uniffi.pod0_application.RustBuffer as RustBufferLeasedNMPPublicationReceipt
 import uniffi.pod0_application.RustBuffer as RustBufferLegacyAgentHistoryConversationInput
 import uniffi.pod0_application.RustBuffer as RustBufferModelChapterObservation
-import uniffi.pod0_application.RustBuffer as RustBufferNMPPublicationReceiptLink
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionRequest
 import uniffi.pod0_application.RustBuffer as RustBufferPublisherChapterObservation
@@ -1010,17 +998,9 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_next_leased_host_requests(
     ): Int
-    external fun uniffi_pod0_facade_checksum_method_pod0facade_next_nmp_publications(
-    ): Int
-    external fun uniffi_pod0_facade_checksum_method_pod0facade_nmp_publication_receipt_links(
-    ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_plan_chapter_model_request(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_record_leased_host_observation(
-    ): Int
-    external fun uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_observation(
-    ): Int
-    external fun uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_receipt(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_snapshot(
     ): Int
@@ -1159,18 +1139,10 @@ internal object UniffiLib {
     ): Unit
     external fun uniffi_pod0_facade_fn_method_pod0facade_next_leased_host_requests(`ptr`: Long,`maximumCount`: Short,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
-    external fun uniffi_pod0_facade_fn_method_pod0facade_next_nmp_publications(`ptr`: Long,`maximumCount`: Short,uniffi_out_err: UniffiRustCallStatus,
-    ): RustBuffer.ByValue
-    external fun uniffi_pod0_facade_fn_method_pod0facade_nmp_publication_receipt_links(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus,
-    ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_plan_chapter_model_request(`ptr`: Long,`episodeId`: RustBufferEpisodeId.ByValue,`configuredModel`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBufferChapterModelPlan.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_record_leased_host_observation(`ptr`: Long,`observation`: RustBufferLeasedHostObservationEnvelope.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBufferHostObservationReceipt.ByValue
-    external fun uniffi_pod0_facade_fn_method_pod0facade_record_nmp_publication_observation(`ptr`: Long,`observation`: RustBufferLeasedNMPPublicationObservation.ByValue,uniffi_out_err: UniffiRustCallStatus,
-    ): Unit
-    external fun uniffi_pod0_facade_fn_method_pod0facade_record_nmp_publication_receipt(`ptr`: Long,`receipt`: RustBufferLeasedNMPPublicationReceipt.ByValue,uniffi_out_err: UniffiRustCallStatus,
-    ): Unit
     external fun uniffi_pod0_facade_fn_method_pod0facade_snapshot(`ptr`: Long,`request`: RustBufferProjectionRequest.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBufferProjectionEnvelope.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_subscribe(`ptr`: Long,`request`: RustBufferProjectionRequest.ByValue,`subscriber`: Long,uniffi_out_err: UniffiRustCallStatus,
@@ -1648,22 +1620,10 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_next_leased_host_requests() != 33049) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_next_nmp_publications() != 60210) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_nmp_publication_receipt_links() != 65294) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_plan_chapter_model_request() != 64977) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_leased_host_observation() != 35742) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_observation() != 26243) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_receipt() != 24054) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_snapshot() != 46308) {
@@ -2297,10 +2257,6 @@ public interface Pod0FacadeInterface {
 
     fun `nextLeasedHostRequests`(`maximumCount`: kotlin.UShort): List<LeasedHostRequestEnvelope>
 
-    fun `nextNmpPublications`(`maximumCount`: kotlin.UShort): List<LeasedNmpPublicationDraft>
-
-    fun `nmpPublicationReceiptLinks`(): List<NmpPublicationReceiptLink>
-
     /**
      * Plans the exact bounded chapter-model capability request from the
      * authoritative Rust episode, transcript, and chapter selections.
@@ -2308,10 +2264,6 @@ public interface Pod0FacadeInterface {
     fun `planChapterModelRequest`(`episodeId`: EpisodeId, `configuredModel`: kotlin.String): ChapterModelPlan
 
     fun `recordLeasedHostObservation`(`observation`: LeasedHostObservationEnvelope): HostObservationReceipt
-
-    fun `recordNmpPublicationObservation`(`observation`: LeasedNmpPublicationObservation)
-
-    fun `recordNmpPublicationReceipt`(`receipt`: LeasedNmpPublicationReceipt)
 
     fun `snapshot`(`request`: ProjectionRequest): ProjectionEnvelope
 
@@ -2837,33 +2789,6 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
     }
 
 
-    override fun `nextNmpPublications`(`maximumCount`: kotlin.UShort): List<LeasedNmpPublicationDraft> {
-            return FfiConverterSequenceTypeLeasedNMPPublicationDraft.lift(
-    callWithHandle {
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_next_nmp_publications(
-        it,
-
-        FfiConverterUShort.lower(`maximumCount`),_status)
-}
-    }
-    )
-    }
-
-
-    override fun `nmpPublicationReceiptLinks`(): List<NmpPublicationReceiptLink> {
-            return FfiConverterSequenceTypeNMPPublicationReceiptLink.lift(
-    callWithHandle {
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_nmp_publication_receipt_links(
-        it,
-        _status)
-}
-    }
-    )
-    }
-
-
 
     /**
      * Plans the exact bounded chapter-model capability request from the
@@ -2895,32 +2820,6 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
     }
     )
     }
-
-
-    override fun `recordNmpPublicationObservation`(`observation`: LeasedNmpPublicationObservation)
-        =
-    callWithHandle {
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_record_nmp_publication_observation(
-        it,
-
-        FfiConverterTypeLeasedNMPPublicationObservation.lower(`observation`),_status)
-}
-    }
-
-
-
-    override fun `recordNmpPublicationReceipt`(`receipt`: LeasedNmpPublicationReceipt)
-        =
-    callWithHandle {
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_record_nmp_publication_receipt(
-        it,
-
-        FfiConverterTypeLeasedNMPPublicationReceipt.lower(`receipt`),_status)
-}
-    }
-
 
 
     override fun `snapshot`(`request`: ProjectionRequest): ProjectionEnvelope {
@@ -10215,34 +10114,6 @@ public object FfiConverterSequenceTypeLeasedHostRequestEnvelope: FfiConverterRus
 /**
  * @suppress
  */
-public object FfiConverterSequenceTypeLeasedNMPPublicationDraft: FfiConverterRustBuffer<List<LeasedNmpPublicationDraft>> {
-    override fun read(buf: ByteBuffer): List<LeasedNmpPublicationDraft> {
-        val len = buf.getInt()
-        return List<LeasedNmpPublicationDraft>(len) {
-            FfiConverterTypeLeasedNMPPublicationDraft.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<LeasedNmpPublicationDraft>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeLeasedNMPPublicationDraft.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<LeasedNmpPublicationDraft>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeLeasedNMPPublicationDraft.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
 public object FfiConverterSequenceTypeLegacyAgentHistoryConversationInput: FfiConverterRustBuffer<List<LegacyAgentHistoryConversationInput>> {
     override fun read(buf: ByteBuffer): List<LegacyAgentHistoryConversationInput> {
         val len = buf.getInt()
@@ -10261,34 +10132,6 @@ public object FfiConverterSequenceTypeLegacyAgentHistoryConversationInput: FfiCo
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeLegacyAgentHistoryConversationInput.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeNMPPublicationReceiptLink: FfiConverterRustBuffer<List<NmpPublicationReceiptLink>> {
-    override fun read(buf: ByteBuffer): List<NmpPublicationReceiptLink> {
-        val len = buf.getInt()
-        return List<NmpPublicationReceiptLink>(len) {
-            FfiConverterTypeNMPPublicationReceiptLink.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<NmpPublicationReceiptLink>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeNMPPublicationReceiptLink.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<NmpPublicationReceiptLink>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeNMPPublicationReceiptLink.write(it, buf)
         }
     }
 }
@@ -10684,14 +10527,6 @@ public object FfiConverterSequenceTypeUserDataErasureTargetLocation: FfiConverte
         }
     }
 }
-
-
-
-
-
-
-
-
 
 
 

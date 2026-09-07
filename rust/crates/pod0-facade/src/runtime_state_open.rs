@@ -3,9 +3,7 @@ use std::sync::Arc;
 use pod0_application::{Clock, InternalCommandKind, PlaybackPolicyState};
 use pod0_domain::StateRevision;
 use pod0_recall_index::RecallIndex;
-use pod0_storage::{
-    AgentStore, EvidenceStore, LibraryStore, PublicationStore, ScheduledAgentStore, TranscriptStore,
-};
+use pod0_storage::{AgentStore, EvidenceStore, LibraryStore, ScheduledAgentStore, TranscriptStore};
 
 use crate::runtime_playback_state::PlaybackRuntime;
 use crate::runtime_state::FacadeState;
@@ -16,7 +14,6 @@ pub(super) struct FacadeStores {
     pub(super) transcript: TranscriptStore,
     pub(super) scheduled_agent: Option<ScheduledAgentStore>,
     pub(super) agent: AgentStore,
-    pub(super) publication: PublicationStore,
 }
 
 impl FacadeState {
@@ -31,7 +28,6 @@ impl FacadeState {
             transcript: transcript_store,
             scheduled_agent: scheduled_agent_store,
             agent: agent_store,
-            publication: publication_store,
         } = stores;
         let _ = store.clear_session_sleep_timer(clock.now().value)?;
         for command in store.pending_download_finalization_commands(100)? {
@@ -82,7 +78,6 @@ impl FacadeState {
             transcript_store: Some(transcript_store),
             scheduled_agent_store,
             agent_store: Some(agent_store),
-            publication_store: Some(publication_store),
             recall_index,
             recall_configuration,
             playback,
@@ -97,7 +92,6 @@ impl FacadeState {
         state.rehydrate_transcript_workflows()?;
         state.resume_workflow_internal_commands();
         state.rehydrate_agent_turns()?;
-        state.rehydrate_publications()?;
         state.rehydrate_recall_queries()?;
         state.recover_recall_index_cutover()?;
         Ok(state)

@@ -1,5 +1,5 @@
 use pod0_application::{
-    AgentActionObservation, AgentActionOutcome, AgentPublicationTransition,
+    AgentActionObservation, AgentActionOutcome, AgentTransition,
     AgentRecallHostOutcome, AgentRecallProgressActivityInput, AgentTurnStage,
     AgentWorkflowAcceptance, DurableEffectExecution, DurableExternalEffectRequest, EffectOutcome,
     plan_agent_effect_observation, plan_agent_recall_progress,
@@ -75,7 +75,7 @@ pub(crate) fn commit_agent_recall_observation(
                         correlation_id: input.lease.correlation_id,
                         episode_id: None,
                         outcome: observation_outcome(&input.observation.outcome),
-                        transition: AgentPublicationTransition::ToolStateChanged,
+                        transition: AgentTransition::ToolStateChanged,
                         next_authorization: if projection.stage == AgentTurnStage::AwaitingModel {
                             Some(pod0_application::AgentEffectAuthorization::Model(
                                 super::effect_requests::model_effect_request(

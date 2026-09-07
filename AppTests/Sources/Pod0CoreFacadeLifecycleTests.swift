@@ -36,7 +36,7 @@ final class Pod0CoreFacadeLifecycleTests: XCTestCase {
 
         XCTAssertEqual(subscriber.revisions, [baseline, baseline + 1])
         let projection = facade.snapshot(request: request)
-        XCTAssertEqual(projection.contractVersion, 55)
+        XCTAssertEqual(projection.contractVersion, 56)
         guard case let .library(value) = projection.projection else {
             return XCTFail("Expected a bounded library projection")
         }

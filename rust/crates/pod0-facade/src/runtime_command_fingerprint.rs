@@ -4,7 +4,7 @@ use crate::runtime_clip_command_fingerprint::hash_clip_command;
 use crate::runtime_command_fingerprint_values::{
     finish_command_hash, hash_command_tail, hash_evidence_input, hash_optional, hash_policy,
 };
-use crate::runtime_cross_platform_fingerprint::{hash_publication, hash_recall_query};
+use crate::runtime_cross_platform_fingerprint::hash_recall_query;
 use crate::runtime_download_command_fingerprint::hash_download_command;
 use crate::runtime_note_command_fingerprint::hash_note_command;
 use crate::runtime_playback_fingerprint::hash_playback;
@@ -197,9 +197,6 @@ pub(super) fn command_fingerprint(command: &ApplicationCommand) -> String {
         }
         ApplicationCommand::StartAgentTurn { .. } | ApplicationCommand::CancelAgentTurn { .. } => {
             hash_agent_command(&mut hash, command)
-        }
-        ApplicationCommand::PublishGeneratedEpisode { intent } => {
-            hash_publication(&mut hash, intent)
         }
         ApplicationCommand::CommitChapter {
             expected_selection_revision,

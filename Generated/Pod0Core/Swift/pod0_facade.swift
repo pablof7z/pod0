@@ -689,10 +689,6 @@ public protocol Pod0FacadeProtocol: AnyObject, Sendable {
 
     func nextLeasedHostRequests(maximumCount: UInt16)  -> [LeasedHostRequestEnvelope]
 
-    func nextNmpPublications(maximumCount: UInt16)  -> [LeasedNmpPublicationDraft]
-
-    func nmpPublicationReceiptLinks()  -> [NmpPublicationReceiptLink]
-
     /**
      * Plans the exact bounded chapter-model capability request from the
      * authoritative Rust episode, transcript, and chapter selections.
@@ -700,10 +696,6 @@ public protocol Pod0FacadeProtocol: AnyObject, Sendable {
     func planChapterModelRequest(episodeId: EpisodeId, configuredModel: String)  -> ChapterModelPlan
 
     func recordLeasedHostObservation(observation: LeasedHostObservationEnvelope)  -> HostObservationReceipt
-
-    func recordNmpPublicationObservation(observation: LeasedNmpPublicationObservation)
-
-    func recordNmpPublicationReceipt(receipt: LeasedNmpPublicationReceipt)
 
     func snapshot(request: ProjectionRequest)  -> ProjectionEnvelope
 
@@ -1101,25 +1093,6 @@ open func nextLeasedHostRequests(maximumCount: UInt16) -> [LeasedHostRequestEnve
 })
 }
 
-open func nextNmpPublications(maximumCount: UInt16) -> [LeasedNmpPublicationDraft]  {
-    return try!  FfiConverterSequenceTypeLeasedNMPPublicationDraft.lift(try! rustCall() {
-        uniffiCallStatus in
-    uniffi_pod0_facade_fn_method_pod0facade_next_nmp_publications(
-            self.uniffiCloneHandle(),
-        FfiConverterUInt16.lower(maximumCount),uniffiCallStatus
-    )
-})
-}
-
-open func nmpPublicationReceiptLinks() -> [NmpPublicationReceiptLink]  {
-    return try!  FfiConverterSequenceTypeNMPPublicationReceiptLink.lift(try! rustCall() {
-        uniffiCallStatus in
-    uniffi_pod0_facade_fn_method_pod0facade_nmp_publication_receipt_links(
-            self.uniffiCloneHandle(),uniffiCallStatus
-    )
-})
-}
-
     /**
      * Plans the exact bounded chapter-model capability request from the
      * authoritative Rust episode, transcript, and chapter selections.
@@ -1143,24 +1116,6 @@ open func recordLeasedHostObservation(observation: LeasedHostObservationEnvelope
         FfiConverterTypeLeasedHostObservationEnvelope_lower(observation),uniffiCallStatus
     )
 })
-}
-
-open func recordNmpPublicationObservation(observation: LeasedNmpPublicationObservation)  {try! rustCall() {
-        uniffiCallStatus in
-    uniffi_pod0_facade_fn_method_pod0facade_record_nmp_publication_observation(
-            self.uniffiCloneHandle(),
-        FfiConverterTypeLeasedNMPPublicationObservation_lower(observation),uniffiCallStatus
-    )
-}
-}
-
-open func recordNmpPublicationReceipt(receipt: LeasedNmpPublicationReceipt)  {try! rustCall() {
-        uniffiCallStatus in
-    uniffi_pod0_facade_fn_method_pod0facade_record_nmp_publication_receipt(
-            self.uniffiCloneHandle(),
-        FfiConverterTypeLeasedNMPPublicationReceipt_lower(receipt),uniffiCallStatus
-    )
-}
 }
 
 open func snapshot(request: ProjectionRequest) -> ProjectionEnvelope  {
@@ -9244,31 +9199,6 @@ fileprivate struct FfiConverterSequenceTypeLeasedHostRequestEnvelope: FfiConvert
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-fileprivate struct FfiConverterSequenceTypeLeasedNMPPublicationDraft: FfiConverterRustBuffer {
-    typealias SwiftType = [LeasedNmpPublicationDraft]
-
-    public static func write(_ value: [LeasedNmpPublicationDraft], into buf: inout [UInt8]) {
-        let len = Int32(value.count)
-        writeInt(&buf, len)
-        for item in value {
-            FfiConverterTypeLeasedNMPPublicationDraft.write(item, into: &buf)
-        }
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [LeasedNmpPublicationDraft] {
-        let len: Int32 = try readInt(&buf)
-        var seq = [LeasedNmpPublicationDraft]()
-        seq.reserveCapacity(Int(len))
-        for _ in 0 ..< len {
-            seq.append(try FfiConverterTypeLeasedNMPPublicationDraft.read(from: &buf))
-        }
-        return seq
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
 fileprivate struct FfiConverterSequenceTypeLegacyAgentHistoryConversationInput: FfiConverterRustBuffer {
     typealias SwiftType = [LegacyAgentHistoryConversationInput]
 
@@ -9286,31 +9216,6 @@ fileprivate struct FfiConverterSequenceTypeLegacyAgentHistoryConversationInput: 
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeLegacyAgentHistoryConversationInput.read(from: &buf))
-        }
-        return seq
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-fileprivate struct FfiConverterSequenceTypeNMPPublicationReceiptLink: FfiConverterRustBuffer {
-    typealias SwiftType = [NmpPublicationReceiptLink]
-
-    public static func write(_ value: [NmpPublicationReceiptLink], into buf: inout [UInt8]) {
-        let len = Int32(value.count)
-        writeInt(&buf, len)
-        for item in value {
-            FfiConverterTypeNMPPublicationReceiptLink.write(item, into: &buf)
-        }
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [NmpPublicationReceiptLink] {
-        let len: Int32 = try readInt(&buf)
-        var seq = [NmpPublicationReceiptLink]()
-        seq.reserveCapacity(Int(len))
-        for _ in 0 ..< len {
-            seq.append(try FfiConverterTypeNMPPublicationReceiptLink.read(from: &buf))
         }
         return seq
     }
@@ -10398,22 +10303,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_pod0_facade_checksum_method_pod0facade_next_leased_host_requests() != 33049) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_next_nmp_publications() != 60210) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_nmp_publication_receipt_links() != 65294) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_pod0_facade_checksum_method_pod0facade_plan_chapter_model_request() != 64977) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_record_leased_host_observation() != 35742) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_observation() != 26243) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_receipt() != 24054) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_snapshot() != 46308) {

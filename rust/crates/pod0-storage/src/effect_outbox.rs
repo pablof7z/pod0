@@ -177,9 +177,6 @@ include!("effect_outbox_chapter_observation.rs");
 include!("effect_outbox_download_observation.rs");
 include!("effect_outbox_playback_observation.rs");
 
-#[path = "effect_outbox_publication.rs"]
-mod publication;
-
 #[path = "effect_outbox_agent_observation.rs"]
 mod agent_observation;
 pub(crate) use agent_observation::{

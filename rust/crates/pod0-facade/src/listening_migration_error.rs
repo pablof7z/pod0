@@ -73,10 +73,6 @@ impl From<StorageError> for LegacyListeningMigrationError {
             | StorageError::AgentTurnNotFound
             | StorageError::AgentTurnConflict
             | StorageError::InvalidAgentState
-            | StorageError::PublicationCommandConflict
-            | StorageError::PublicationNotFound
-            | StorageError::PublicationConflict
-            | StorageError::InvalidPublication
             | StorageError::InvalidActivity => Self::TargetBlocked,
             StorageError::Io { .. } | StorageError::Sqlite { .. } => Self::StorageUnavailable,
         }

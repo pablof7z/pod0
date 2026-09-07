@@ -160,7 +160,6 @@ include!("note_activity_modules.rs");
 mod playback_activity;
 mod playback_effect_contract;
 mod playback_observation_activity;
-mod publication;
 mod recall_configuration_activity;
 mod recall_contract;
 mod recall_workflow_activity;

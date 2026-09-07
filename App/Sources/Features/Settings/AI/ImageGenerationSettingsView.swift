@@ -3,8 +3,7 @@ import SwiftUI
 // MARK: - ImageGenerationSettingsView
 //
 // Settings for the image-generation pipeline used by the agent's
-// `generate_podcast_artwork` tool: image model (via OpenRouter) and the
-// Blossom upload server URL.
+// `generate_podcast_artwork` tool: image model via OpenRouter.
 
 struct ImageGenerationSettingsView: View {
     @Environment(AppStateStore.self) private var store
@@ -15,7 +14,6 @@ struct ImageGenerationSettingsView: View {
     var body: some View {
         Form {
             modelSection
-            blossomSection
         }
         .navigationTitle("Image Generation")
         .navigationBarTitleDisplayMode(.inline)
@@ -54,25 +52,6 @@ struct ImageGenerationSettingsView: View {
             Text("OpenRouter Model")
         } footer: {
             Text("The image model used by generate_podcast_artwork. Requires an OpenRouter key configured in Providers.")
-        }
-    }
-
-    private var blossomSection: some View {
-        Section {
-            HStack {
-                Label("Server URL", systemImage: "server.rack")
-                Spacer()
-                TextField("https://blossom.primal.net", text: $settings.blossomServerURL)
-                    .multilineTextAlignment(.trailing)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .foregroundStyle(.secondary)
-                    .font(AppTheme.Typography.caption)
-            }
-        } header: {
-            Text("Blossom Upload")
-        } footer: {
-            Text("Generated podcast artwork is uploaded here so it can be referenced by a public URL.")
         }
     }
 

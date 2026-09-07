@@ -143,8 +143,6 @@ failures with a kernel-owned backoff expressed through
 bytes or a typed failure; it owns no fetch retry, admission, or expiry policy.
 Swift still owns transcript-generation/index workflow scheduling, remaining
 agent workflow state, and presentation state until their complete vertical
-slices land. Nostr identity, signing, routing, transport, queries, and receipts
-belong to the single upstream `NMPEngine` owned by the iOS application. The
 facade exposes only Pod0 publication drafts and bounded product audit updates.
 
 Canonical chapter artifacts, selections, and workflows are Rust-owned. Contract

@@ -4,10 +4,10 @@ use pod0_domain::{
 
 use crate::{
     ActivityActor, ActivityFact, ActivityFactDraft, ActivityOrigin, ActivitySubject,
-    AgentPublicationTransition, AuthorizedExternalEffect, AuthorizedInternalCommand,
-    DomainTransitionKind, DurableExternalEffectRequest, DurableInternalCommandRequest,
-    ExternalEffectKind, InternalCommandActivityIdentity, NonEmptyActivityFacts, RequestDisposition,
-    TransitionPlan, TransitionPlanError,
+    AgentTransition, AuthorizedExternalEffect, AuthorizedInternalCommand, DomainTransitionKind,
+    DurableExternalEffectRequest, DurableInternalCommandRequest, ExternalEffectKind,
+    InternalCommandActivityIdentity, NonEmptyActivityFacts, RequestDisposition, TransitionPlan,
+    TransitionPlanError,
 };
 
 include!("agent_capability_recovery_activity.rs");
@@ -90,9 +90,7 @@ pub fn plan_agent_execution_with_request(
     let mut tail = vec![base(
         1,
         ActivityFact::DomainTransition {
-            kind: DomainTransitionKind::AgentPublication(
-                AgentPublicationTransition::ToolStateChanged,
-            ),
+            kind: DomainTransitionKind::Agent(AgentTransition::ToolStateChanged),
             previous_revision: input.current_revision,
             committed_revision: input.committed_revision,
         },
@@ -141,7 +139,7 @@ pub fn plan_agent_execution_with_request(
         Vec::new()
     };
     let internal_target = match request.continuation {
-        AgentExecutionContinuation::RustProjection => Some(crate::ActivityDomain::AgentPublication),
+        AgentExecutionContinuation::RustProjection => Some(crate::ActivityDomain::Agent),
         AgentExecutionContinuation::RustTool { target } => Some(target),
         _ => None,
     };
@@ -240,9 +238,7 @@ pub fn plan_agent_projection_completion(
     let mut tail = vec![base(
         1,
         ActivityFact::DomainTransition {
-            kind: DomainTransitionKind::AgentPublication(
-                AgentPublicationTransition::ToolStateChanged,
-            ),
+            kind: DomainTransitionKind::Agent(AgentTransition::ToolStateChanged),
             previous_revision: input.current_revision,
             committed_revision: input.committed_revision,
         },

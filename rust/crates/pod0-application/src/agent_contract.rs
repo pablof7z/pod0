@@ -42,7 +42,6 @@ pub enum AgentToolClass {
     ExternalSideEffect,
     DestructiveWrite,
     SecretBearing,
-    Publication,
     SessionLocal,
 }
 
@@ -52,7 +51,6 @@ pub enum AgentExecutionKind {
     RustProjection,
     NativeCapability,
     NativeConversationPresentation,
-    NativeCapabilityAndNmpPublication,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]

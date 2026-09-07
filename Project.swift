@@ -30,10 +30,6 @@ let project = Project(
         developmentRegion: "en"
     ),
     packages: [
-        // Prepared from the exact Rust dependency revision by
-        // `scripts/prepare_nmp_swift_package.sh`. NMP intentionally builds
-        // its Swift bindings and XCFramework from the same source revision.
-        .local(path: ".build/nmp/Packages/NMP"),
         // Kingfisher — memory + disk image cache. Backs `CachedAsyncImage`
         // so artwork URLs (subscription / episode covers, iTunes Search
         // results, etc.) fetch at most once per session instead of
@@ -92,10 +88,6 @@ let project = Project(
                     "SWIFT_VERSION": "6.0",
                     "SWIFT_STRICT_CONCURRENCY": "complete",
                     "SKIP_INSTALL": "YES",
-                    // Keep this static XCFramework's processed headers away
-                    // from NMP's static XCFramework headers. Both correctly
-                    // contain module.modulemap, which otherwise collide in
-                    // Xcode's shared Products/include directory.
                     "CONFIGURATION_BUILD_DIR": "$(BUILD_DIR)/Pod0Core/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)",
                 ]
             )
@@ -116,7 +108,6 @@ let project = Project(
             ],
             entitlements: .file(path: "App/Resources/Podcastr.entitlements"),
             dependencies: [
-                .package(product: "NMP"),
                 .package(product: "Kingfisher"),
                 .target(name: coreBindingsName),
                 .target(name: "\(appName)Widget"),

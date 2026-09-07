@@ -26,12 +26,6 @@ pub struct EffectLease {
     pub expires_at: UnixTimestampMilliseconds,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PublicationEffectLease {
-    pub lease: pod0_application::PersistedEffectLeaseIdentity,
-    pub draft: pod0_application::Pod0PublicationDraft,
-}
-
 impl EffectLease {
     #[must_use]
     pub const fn identity(&self) -> pod0_application::PersistedEffectLeaseIdentity {

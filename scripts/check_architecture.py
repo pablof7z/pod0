@@ -34,7 +34,7 @@ def main() -> int:
         (scripts / "check_main_actor_core_io.py", True),
         (scripts / "check_render_path_normalization.py", True),
         (scripts / "check_file_lengths.py", True),
-        (scripts / "check_nmp_domain_boundary.py", True),
+        (scripts / "check_removed_protocol_absence.py", True),
         (scripts / "check_rust_dependency_policy.py", True),
         (scripts / "check_rust_facade_boundary.py", True),
         (scripts / "check_rust_schema_policy.py", True),
@@ -51,7 +51,6 @@ def main() -> int:
         (scripts / "check_agent_single_writer.py", True),
         (scripts / "check_agent_tool_permissions.py", True),
         (scripts / "check_shared_workflow_owner.py", True),
-        (scripts / "check_signer_secret_boundary.py", True),
         (scripts / "check_pbxproj_absolute_paths.py", True),
     ]
     failed = False

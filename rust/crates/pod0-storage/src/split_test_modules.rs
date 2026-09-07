@@ -51,6 +51,7 @@ mod migration_chapter_workflow_tests;
 mod migration_scheduled_agent_tests;
 mod migration_subscription_policy_tests;
 mod migration_tests;
+mod external_publication_removal_migration_tests;
 mod migration_transcript_history_tests;
 mod note_import_tests;
 mod note_schema_test_support;

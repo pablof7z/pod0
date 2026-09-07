@@ -2,7 +2,7 @@ import Foundation
 import Pod0Core
 
 extension AppStateStore {
-    /// Deletes Pod0 product data while retaining settings and every Keychain item.
+    /// Deletes Pod0 product data while retaining current settings and credentials.
     func clearAllData() {
         let settings = state.settings
         Task { @MainActor [weak self] in

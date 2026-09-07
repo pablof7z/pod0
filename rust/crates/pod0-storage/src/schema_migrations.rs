@@ -28,8 +28,8 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../../../schema/migrations/0022_scheduled_agent_cutover_evidence.sql"),
     include_str!("../../../schema/migrations/0023_agent_turns.sql"),
     include_str!("../../../schema/migrations/0024_agent_generated_audio.sql"),
-    include_str!("../../../schema/migrations/0025_nmp_publications.sql"),
-    include_str!("../../../schema/migrations/0026_nostr_signer_state.sql"),
+    include_str!("../../../schema/migrations/0025_external_publications.sql"),
+    include_str!("../../../schema/migrations/0026_external_signer_state.sql"),
     include_str!("../../../schema/migrations/0027_agent_history_cutover.sql"),
     include_str!("../../../schema/migrations/0028_agent_memories.sql"),
     include_str!("../../../schema/migrations/0029_feed_discoveries.sql"),
@@ -47,6 +47,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../../../schema/migrations/0041_workflow_configuration.sql"),
     include_str!("../../../schema/migrations/0042_durable_cancellation_effects.sql"),
     include_str!("../../../schema/migrations/0043_library_network_workflows.sql"),
+    include_str!("../../../schema/migrations/0044_remove_external_publication_state.sql"),
 ];
 
 pub(crate) fn migration_sql(version: u32) -> Option<&'static str> {

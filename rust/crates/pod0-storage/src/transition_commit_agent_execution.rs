@@ -22,7 +22,7 @@ pub(crate) fn commit_agent_execution(
     let InternalCommandKind::AdvanceAgentTurn { turn_id } = command.request.kind else {
         return Err(StorageError::InvalidActivity);
     };
-    if command.request.target != ActivityDomain::AgentPublication
+    if command.request.target != ActivityDomain::Agent
         || command.request.subject != (pod0_application::ActivitySubject::AgentTurn { turn_id })
         || command.request.episode_id.is_some()
     {
@@ -52,8 +52,7 @@ pub(crate) fn commit_agent_execution(
             let execution = agent_tool_policy(proposal.action.tool()).execution;
             let continuation = match execution {
         AgentExecutionKind::NativeCapability
-        | AgentExecutionKind::NativeConversationPresentation
-        | AgentExecutionKind::NativeCapabilityAndNmpPublication => {
+        | AgentExecutionKind::NativeConversationPresentation => {
             AgentExecutionContinuation::NativeCapability
         }
         AgentExecutionKind::RustProjection

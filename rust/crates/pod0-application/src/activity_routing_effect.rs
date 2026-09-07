@@ -35,7 +35,7 @@ pub const fn host_request_owner(request: &HostRequest) -> ActivityOwner {
         Request::ExecuteScheduledAgentTurn { .. } => ActivityOwner::Domain(Domain::ScheduledAgent),
         Request::ExecuteAgentModelTurn { .. }
         | Request::PresentAgentApproval { .. }
-        | Request::ExecuteAgentCapability { .. } => ActivityOwner::Domain(Domain::AgentPublication),
+        | Request::ExecuteAgentCapability { .. } => ActivityOwner::Domain(Domain::Agent),
         Request::ScheduleCoreWake { .. } => ActivityOwner::Domain(Domain::Lifecycle),
         Request::Unsupported { .. } => ActivityOwner::Boundary,
     }

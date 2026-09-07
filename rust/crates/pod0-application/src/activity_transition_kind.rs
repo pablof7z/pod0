@@ -69,12 +69,11 @@ pub enum ScheduledAgentActivityTransition {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum AgentPublicationTransition {
+pub enum AgentTransition {
     TurnStateChanged,
     ApprovalChanged,
     ToolStateChanged,
     ArtifactAdopted,
-    PublicationStateChanged,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -109,7 +108,7 @@ pub enum DomainTransitionKind {
     Chapter(ChapterTransition),
     RecallKnowledge(RecallKnowledgeTransition),
     ScheduledAgent(ScheduledAgentActivityTransition),
-    AgentPublication(AgentPublicationTransition),
+    Agent(AgentTransition),
     UserArtifact(UserArtifactTransition),
     Lifecycle(LifecycleTransition),
 }

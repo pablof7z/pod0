@@ -1,7 +1,7 @@
 use pod0_domain::CommandId;
 
 use crate::{
-    AgentStore, LibraryStore, PublicationStore, ScheduledAgentStore, StorageError, TranscriptStore,
+    AgentStore, LibraryStore, ScheduledAgentStore, StorageError, TranscriptStore,
     chapter_store_is_authoritative, create_authoritative_store,
     scheduled_agent_store_is_authoritative,
 };
@@ -22,7 +22,6 @@ fn fresh_store_initializes_every_runtime_authority_and_reopens() {
     TranscriptStore::open_authoritative(&path).unwrap();
     ScheduledAgentStore::open_authoritative(&path).unwrap();
     AgentStore::open(&path).unwrap();
-    PublicationStore::open(&path).unwrap();
     assert!(chapter_store_is_authoritative(&path).unwrap());
     assert!(scheduled_agent_store_is_authoritative(&path).unwrap());
 }

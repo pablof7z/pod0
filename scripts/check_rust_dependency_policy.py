@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-import re
 import sys
 
 
@@ -29,12 +28,6 @@ def manifest_dependencies(text: str) -> list[tuple[str, str]]:
 
 def dependency_errors(relative: str, name: str, specification: str) -> list[str]:
     errors: list[str] = []
-    package_match = re.search(r'package\s*=\s*"([^"]+)"', specification)
-    package = package_match.group(1) if package_match else name
-    if package == "nmp" or package.startswith("nmp-"):
-        errors.append(
-            f"{relative}: mechanism/protocol crate dependency {package!r} is forbidden"
-        )
     if "git" in specification and "rev" not in specification:
         errors.append(f"{relative}: Git dependency {name!r} must use an exact rev")
     return errors
@@ -66,20 +59,12 @@ def validate(root: Path) -> list[str]:
 
 
 def self_test() -> None:
-    fixture = '[dependencies]\nnmp = { workspace = true }\n[package]\nname = "fixture"'
-    assert manifest_dependencies(fixture) == [("nmp", "{ workspace = true }")]
+    fixture = '[dependencies]\nexample = { workspace = true }\n[package]\nname = "fixture"'
+    assert manifest_dependencies(fixture) == [("example", "{ workspace = true }")]
     assert dependency_errors(
-        "crates/pod0-facade/Cargo.toml", "nmp", "{ workspace = true }"
+        "crates/pod0-facade/Cargo.toml", "example", "{ git = \"example\" }"
     ) == [
-        "crates/pod0-facade/Cargo.toml: mechanism/protocol crate dependency "
-        "'nmp' is forbidden"
-    ]
-    assert dependency_errors(
-        "crates/pod0-facade/Cargo.toml", "nmp-store", "{ git = \"example\" }"
-    ) == [
-        "crates/pod0-facade/Cargo.toml: mechanism/protocol crate dependency "
-        "'nmp-store' is forbidden",
-        "crates/pod0-facade/Cargo.toml: Git dependency 'nmp-store' must use an exact rev",
+        "crates/pod0-facade/Cargo.toml: Git dependency 'example' must use an exact rev",
     ]
 
 

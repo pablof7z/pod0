@@ -116,38 +116,6 @@ impl Pod0Facade {
         requests
     }
 
-    pub fn next_nmp_publications(
-        &self,
-        maximum_count: u16,
-    ) -> Vec<pod0_application::LeasedNMPPublicationDraft> {
-        self.state()
-            .take_pending_publications(usize::from(maximum_count.clamp(1, 32)))
-    }
-
-    pub fn nmp_publication_receipt_links(
-        &self,
-    ) -> Vec<pod0_application::NMPPublicationReceiptLink> {
-        self.state().publication_receipt_links()
-    }
-
-    pub fn record_nmp_publication_receipt(
-        &self,
-        receipt: pod0_application::LeasedNMPPublicationReceipt,
-    ) {
-        if self.state().record_publication_receipt(receipt) {
-            self.notify_subscribers();
-        }
-    }
-
-    pub fn record_nmp_publication_observation(
-        &self,
-        observation: pod0_application::LeasedNMPPublicationObservation,
-    ) {
-        if self.state().record_publication_observation(observation) {
-            self.notify_subscribers();
-        }
-    }
-
     pub fn record_leased_host_observation(
         &self,
         observation: pod0_application::LeasedHostObservationEnvelope,

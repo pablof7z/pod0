@@ -45,7 +45,6 @@ impl Default for FacadeState {
             transcript_store: None,
             scheduled_agent_store: None,
             agent_store: None,
-            publication_store: None,
             recall_index: default_recall_index(),
             recall_configuration: pod0_domain::RecallConfiguration::default(),
             recall_interrupts: Arc::default(),

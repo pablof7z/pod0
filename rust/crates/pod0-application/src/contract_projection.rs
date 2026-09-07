@@ -53,9 +53,6 @@ pub enum ProjectionScope {
     AgentConversation {
         conversation_id: pod0_domain::ConversationId,
     },
-    Publications {
-        publication_id: Option<pod0_domain::PublicationId>,
-    },
     Notes {
         scope: NoteProjectionScope,
     },
@@ -154,9 +151,6 @@ pub enum Projection {
     },
     AgentConversation {
         value: crate::AgentConversationProjection,
-    },
-    Publications {
-        value: crate::PublicationsProjection,
     },
     Notes {
         value: NotesProjection,

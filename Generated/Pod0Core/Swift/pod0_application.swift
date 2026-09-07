@@ -4775,176 +4775,6 @@ public func FfiConverterTypeLeasedHostRequestEnvelope_lower(_ value: LeasedHostR
 }
 
 
-public struct LeasedNmpPublicationDraft: Equatable, Hashable {
-    public let lease: PersistedEffectLeaseIdentity
-    public let draft: Pod0PublicationDraft
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(lease: PersistedEffectLeaseIdentity, draft: Pod0PublicationDraft) {
-        self.lease = lease
-        self.draft = draft
-    }
-
-
-
-
-}
-
-#if compiler(>=6)
-extension LeasedNmpPublicationDraft: Sendable {}
-#endif
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeLeasedNMPPublicationDraft: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LeasedNmpPublicationDraft {
-        return
-            try LeasedNmpPublicationDraft(
-                lease: FfiConverterTypePersistedEffectLeaseIdentity.read(from: &buf),
-                draft: FfiConverterTypePod0PublicationDraft.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: LeasedNmpPublicationDraft, into buf: inout [UInt8]) {
-        FfiConverterTypePersistedEffectLeaseIdentity.write(value.lease, into: &buf)
-        FfiConverterTypePod0PublicationDraft.write(value.draft, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeLeasedNMPPublicationDraft_lift(_ buf: RustBuffer) throws -> LeasedNmpPublicationDraft {
-    return try FfiConverterTypeLeasedNMPPublicationDraft.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeLeasedNMPPublicationDraft_lower(_ value: LeasedNmpPublicationDraft) -> RustBuffer {
-    return FfiConverterTypeLeasedNMPPublicationDraft.lower(value)
-}
-
-
-public struct LeasedNmpPublicationObservation: Equatable, Hashable {
-    public let lease: PersistedEffectLeaseIdentity
-    public let publicationId: PublicationId
-    public let observation: PublicationStatusObservation
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(lease: PersistedEffectLeaseIdentity, publicationId: PublicationId, observation: PublicationStatusObservation) {
-        self.lease = lease
-        self.publicationId = publicationId
-        self.observation = observation
-    }
-
-
-
-
-}
-
-#if compiler(>=6)
-extension LeasedNmpPublicationObservation: Sendable {}
-#endif
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeLeasedNMPPublicationObservation: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LeasedNmpPublicationObservation {
-        return
-            try LeasedNmpPublicationObservation(
-                lease: FfiConverterTypePersistedEffectLeaseIdentity.read(from: &buf),
-                publicationId: FfiConverterTypePublicationId.read(from: &buf),
-                observation: FfiConverterTypePublicationStatusObservation.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: LeasedNmpPublicationObservation, into buf: inout [UInt8]) {
-        FfiConverterTypePersistedEffectLeaseIdentity.write(value.lease, into: &buf)
-        FfiConverterTypePublicationId.write(value.publicationId, into: &buf)
-        FfiConverterTypePublicationStatusObservation.write(value.observation, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeLeasedNMPPublicationObservation_lift(_ buf: RustBuffer) throws -> LeasedNmpPublicationObservation {
-    return try FfiConverterTypeLeasedNMPPublicationObservation.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeLeasedNMPPublicationObservation_lower(_ value: LeasedNmpPublicationObservation) -> RustBuffer {
-    return FfiConverterTypeLeasedNMPPublicationObservation.lower(value)
-}
-
-
-public struct LeasedNmpPublicationReceipt: Equatable, Hashable {
-    public let lease: PersistedEffectLeaseIdentity
-    public let publicationId: PublicationId
-    public let receiptId: UInt64
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(lease: PersistedEffectLeaseIdentity, publicationId: PublicationId, receiptId: UInt64) {
-        self.lease = lease
-        self.publicationId = publicationId
-        self.receiptId = receiptId
-    }
-
-
-
-
-}
-
-#if compiler(>=6)
-extension LeasedNmpPublicationReceipt: Sendable {}
-#endif
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeLeasedNMPPublicationReceipt: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LeasedNmpPublicationReceipt {
-        return
-            try LeasedNmpPublicationReceipt(
-                lease: FfiConverterTypePersistedEffectLeaseIdentity.read(from: &buf),
-                publicationId: FfiConverterTypePublicationId.read(from: &buf),
-                receiptId: FfiConverterUInt64.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: LeasedNmpPublicationReceipt, into buf: inout [UInt8]) {
-        FfiConverterTypePersistedEffectLeaseIdentity.write(value.lease, into: &buf)
-        FfiConverterTypePublicationId.write(value.publicationId, into: &buf)
-        FfiConverterUInt64.write(value.receiptId, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeLeasedNMPPublicationReceipt_lift(_ buf: RustBuffer) throws -> LeasedNmpPublicationReceipt {
-    return try FfiConverterTypeLeasedNMPPublicationReceipt.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeLeasedNMPPublicationReceipt_lower(_ value: LeasedNmpPublicationReceipt) -> RustBuffer {
-    return FfiConverterTypeLeasedNMPPublicationReceipt.lower(value)
-}
-
-
 public struct LegacyAgentHistoryConversationInput: Equatable, Hashable {
     public let conversationId: ConversationId
     public let title: String
@@ -5803,64 +5633,6 @@ public func FfiConverterTypeModelChapterWorkflowProjection_lower(_ value: ModelC
 }
 
 
-public struct NmpPublicationReceiptLink: Equatable, Hashable {
-    public let publicationId: PublicationId
-    public let receiptId: UInt64
-    public let lease: PersistedEffectLeaseIdentity
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(publicationId: PublicationId, receiptId: UInt64, lease: PersistedEffectLeaseIdentity) {
-        self.publicationId = publicationId
-        self.receiptId = receiptId
-        self.lease = lease
-    }
-
-
-
-
-}
-
-#if compiler(>=6)
-extension NmpPublicationReceiptLink: Sendable {}
-#endif
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeNMPPublicationReceiptLink: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NmpPublicationReceiptLink {
-        return
-            try NmpPublicationReceiptLink(
-                publicationId: FfiConverterTypePublicationId.read(from: &buf),
-                receiptId: FfiConverterUInt64.read(from: &buf),
-                lease: FfiConverterTypePersistedEffectLeaseIdentity.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: NmpPublicationReceiptLink, into buf: inout [UInt8]) {
-        FfiConverterTypePublicationId.write(value.publicationId, into: &buf)
-        FfiConverterUInt64.write(value.receiptId, into: &buf)
-        FfiConverterTypePersistedEffectLeaseIdentity.write(value.lease, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeNMPPublicationReceiptLink_lift(_ buf: RustBuffer) throws -> NmpPublicationReceiptLink {
-    return try FfiConverterTypeNMPPublicationReceiptLink.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeNMPPublicationReceiptLink_lower(_ value: NmpPublicationReceiptLink) -> RustBuffer {
-    return FfiConverterTypeNMPPublicationReceiptLink.lower(value)
-}
-
-
 public struct NewEpisodeNotificationSettingsProjection: Equatable, Hashable {
     public let enabled: Bool
     public let revision: StateRevision
@@ -6555,80 +6327,6 @@ public func FfiConverterTypePlaybackProjection_lower(_ value: PlaybackProjection
 }
 
 
-public struct Pod0PublicationDraft: Equatable, Hashable {
-    public let publicationId: PublicationId
-    public let expectedAuthorHex: String
-    public let correlationToken: String
-    public let createdAtSeconds: UInt64
-    public let kind: UInt16
-    public let tags: [[String]]
-    public let content: String
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(publicationId: PublicationId, expectedAuthorHex: String, correlationToken: String, createdAtSeconds: UInt64, kind: UInt16, tags: [[String]], content: String) {
-        self.publicationId = publicationId
-        self.expectedAuthorHex = expectedAuthorHex
-        self.correlationToken = correlationToken
-        self.createdAtSeconds = createdAtSeconds
-        self.kind = kind
-        self.tags = tags
-        self.content = content
-    }
-
-
-
-
-}
-
-#if compiler(>=6)
-extension Pod0PublicationDraft: Sendable {}
-#endif
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypePod0PublicationDraft: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Pod0PublicationDraft {
-        return
-            try Pod0PublicationDraft(
-                publicationId: FfiConverterTypePublicationId.read(from: &buf),
-                expectedAuthorHex: FfiConverterString.read(from: &buf),
-                correlationToken: FfiConverterString.read(from: &buf),
-                createdAtSeconds: FfiConverterUInt64.read(from: &buf),
-                kind: FfiConverterUInt16.read(from: &buf),
-                tags: FfiConverterSequenceSequenceString.read(from: &buf),
-                content: FfiConverterString.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: Pod0PublicationDraft, into buf: inout [UInt8]) {
-        FfiConverterTypePublicationId.write(value.publicationId, into: &buf)
-        FfiConverterString.write(value.expectedAuthorHex, into: &buf)
-        FfiConverterString.write(value.correlationToken, into: &buf)
-        FfiConverterUInt64.write(value.createdAtSeconds, into: &buf)
-        FfiConverterUInt16.write(value.kind, into: &buf)
-        FfiConverterSequenceSequenceString.write(value.tags, into: &buf)
-        FfiConverterString.write(value.content, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypePod0PublicationDraft_lift(_ buf: RustBuffer) throws -> Pod0PublicationDraft {
-    return try FfiConverterTypePod0PublicationDraft.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypePod0PublicationDraft_lower(_ value: Pod0PublicationDraft) -> RustBuffer {
-    return FfiConverterTypePod0PublicationDraft.lower(value)
-}
-
-
 public struct PodcastDetailProjection: Equatable, Hashable {
     public let podcast: PodcastRecord?
     public let subscription: PodcastSubscriptionRecord?
@@ -6956,134 +6654,6 @@ public func FfiConverterTypeProjectionRequest_lift(_ buf: RustBuffer) throws -> 
 #endif
 public func FfiConverterTypeProjectionRequest_lower(_ value: ProjectionRequest) -> RustBuffer {
     return FfiConverterTypeProjectionRequest.lower(value)
-}
-
-
-public struct PublicationStatusObservation: Equatable, Hashable {
-    public let kind: PublicationFactKind
-    public let routeId: PublicationRouteId?
-    public let attempt: UInt64?
-    public let eventIdHex: String?
-    public let observedAt: UnixTimestampMilliseconds?
-    public let detail: String?
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(kind: PublicationFactKind, routeId: PublicationRouteId?, attempt: UInt64?, eventIdHex: String?, observedAt: UnixTimestampMilliseconds?, detail: String?) {
-        self.kind = kind
-        self.routeId = routeId
-        self.attempt = attempt
-        self.eventIdHex = eventIdHex
-        self.observedAt = observedAt
-        self.detail = detail
-    }
-
-
-
-
-}
-
-#if compiler(>=6)
-extension PublicationStatusObservation: Sendable {}
-#endif
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypePublicationStatusObservation: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PublicationStatusObservation {
-        return
-            try PublicationStatusObservation(
-                kind: FfiConverterTypePublicationFactKind.read(from: &buf),
-                routeId: FfiConverterOptionTypePublicationRouteId.read(from: &buf),
-                attempt: FfiConverterOptionUInt64.read(from: &buf),
-                eventIdHex: FfiConverterOptionString.read(from: &buf),
-                observedAt: FfiConverterOptionTypeUnixTimestampMilliseconds.read(from: &buf),
-                detail: FfiConverterOptionString.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: PublicationStatusObservation, into buf: inout [UInt8]) {
-        FfiConverterTypePublicationFactKind.write(value.kind, into: &buf)
-        FfiConverterOptionTypePublicationRouteId.write(value.routeId, into: &buf)
-        FfiConverterOptionUInt64.write(value.attempt, into: &buf)
-        FfiConverterOptionString.write(value.eventIdHex, into: &buf)
-        FfiConverterOptionTypeUnixTimestampMilliseconds.write(value.observedAt, into: &buf)
-        FfiConverterOptionString.write(value.detail, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypePublicationStatusObservation_lift(_ buf: RustBuffer) throws -> PublicationStatusObservation {
-    return try FfiConverterTypePublicationStatusObservation.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypePublicationStatusObservation_lower(_ value: PublicationStatusObservation) -> RustBuffer {
-    return FfiConverterTypePublicationStatusObservation.lower(value)
-}
-
-
-public struct PublicationsProjection: Equatable, Hashable {
-    public let items: [PublicationRecord]
-    public let operations: [OperationProjection]
-    public let hasMore: Bool
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(items: [PublicationRecord], operations: [OperationProjection], hasMore: Bool) {
-        self.items = items
-        self.operations = operations
-        self.hasMore = hasMore
-    }
-
-
-
-
-}
-
-#if compiler(>=6)
-extension PublicationsProjection: Sendable {}
-#endif
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypePublicationsProjection: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PublicationsProjection {
-        return
-            try PublicationsProjection(
-                items: FfiConverterSequenceTypePublicationRecord.read(from: &buf),
-                operations: FfiConverterSequenceTypeOperationProjection.read(from: &buf),
-                hasMore: FfiConverterBool.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: PublicationsProjection, into buf: inout [UInt8]) {
-        FfiConverterSequenceTypePublicationRecord.write(value.items, into: &buf)
-        FfiConverterSequenceTypeOperationProjection.write(value.operations, into: &buf)
-        FfiConverterBool.write(value.hasMore, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypePublicationsProjection_lift(_ buf: RustBuffer) throws -> PublicationsProjection {
-    return try FfiConverterTypePublicationsProjection.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypePublicationsProjection_lower(_ value: PublicationsProjection) -> RustBuffer {
-    return FfiConverterTypePublicationsProjection.lower(value)
 }
 
 
@@ -10925,7 +10495,6 @@ public enum AgentExecutionKind: Equatable, Hashable {
     case rustProjection
     case nativeCapability
     case nativeConversationPresentation
-    case nativeCapabilityAndNmpPublication
 
 
 
@@ -10955,8 +10524,6 @@ public struct FfiConverterTypeAgentExecutionKind: FfiConverterRustBuffer {
 
         case 4: return .nativeConversationPresentation
 
-        case 5: return .nativeCapabilityAndNmpPublication
-
         default: throw UniffiInternalError.unexpectedEnumCase
         }
     }
@@ -10979,10 +10546,6 @@ public struct FfiConverterTypeAgentExecutionKind: FfiConverterRustBuffer {
 
         case .nativeConversationPresentation:
             writeInt(&buf, Int32(4))
-
-
-        case .nativeCapabilityAndNmpPublication:
-            writeInt(&buf, Int32(5))
 
         }
     }
@@ -11438,7 +11001,6 @@ public enum AgentToolClass: Equatable, Hashable {
     case externalSideEffect
     case destructiveWrite
     case secretBearing
-    case publication
     case sessionLocal
 
 
@@ -11471,9 +11033,7 @@ public struct FfiConverterTypeAgentToolClass: FfiConverterRustBuffer {
 
         case 5: return .secretBearing
 
-        case 6: return .publication
-
-        case 7: return .sessionLocal
+        case 6: return .sessionLocal
 
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -11503,12 +11063,8 @@ public struct FfiConverterTypeAgentToolClass: FfiConverterRustBuffer {
             writeInt(&buf, Int32(5))
 
 
-        case .publication:
-            writeInt(&buf, Int32(6))
-
-
         case .sessionLocal:
-            writeInt(&buf, Int32(7))
+            writeInt(&buf, Int32(6))
 
         }
     }
@@ -12245,8 +11801,6 @@ public enum ApplicationCommand: Equatable, Hashable {
     )
     case startAgentTurn(conversationId: ConversationId?, userInput: String, modelReference: String
     )
-    case publishGeneratedEpisode(intent: PublicationIntent
-    )
     case cancelAgentTurn(turnId: AgentTurnId, expectedTurnRevision: StateRevision
     )
     case commitChapter(expectedSelectionRevision: StateRevision, artifact: ChapterArtifactInput
@@ -12441,73 +11995,70 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
         case 44: return .startAgentTurn(conversationId: try FfiConverterOptionTypeConversationId.read(from: &buf), userInput: try FfiConverterString.read(from: &buf), modelReference: try FfiConverterString.read(from: &buf)
         )
 
-        case 45: return .publishGeneratedEpisode(intent: try FfiConverterTypePublicationIntent.read(from: &buf)
+        case 45: return .cancelAgentTurn(turnId: try FfiConverterTypeAgentTurnId.read(from: &buf), expectedTurnRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 46: return .cancelAgentTurn(turnId: try FfiConverterTypeAgentTurnId.read(from: &buf), expectedTurnRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 46: return .commitChapter(expectedSelectionRevision: try FfiConverterTypeStateRevision.read(from: &buf), artifact: try FfiConverterTypeChapterArtifactInput.read(from: &buf)
         )
 
-        case 47: return .commitChapter(expectedSelectionRevision: try FfiConverterTypeStateRevision.read(from: &buf), artifact: try FfiConverterTypeChapterArtifactInput.read(from: &buf)
+        case 47: return .ensurePublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
         )
 
-        case 48: return .ensurePublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf)
+        case 48: return .retryPublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 49: return .retryPublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 49: return .cancelPublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 50: return .cancelPublisherChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 50: return .ensureModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), configuredModel: try FfiConverterString.read(from: &buf)
         )
 
-        case 51: return .ensureModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), configuredModel: try FfiConverterString.read(from: &buf)
+        case 51: return .retryModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), configuredModel: try FfiConverterString.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 52: return .retryModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), configuredModel: try FfiConverterString.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 52: return .cancelModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 53: return .cancelModelChapters(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), expectedWorkflowRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 53: return .createNote(text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), author: try FfiConverterTypeNoteAuthor.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
         )
 
-        case 54: return .createNote(text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), author: try FfiConverterTypeNoteAuthor.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
+        case 54: return .updateNote(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
         )
 
-        case 55: return .updateNote(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), text: try FfiConverterString.read(from: &buf), kind: try FfiConverterTypeNoteKind.read(from: &buf), target: try FfiConverterOptionTypeNoteTarget.read(from: &buf)
+        case 55: return .setNoteDeleted(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
         )
 
-        case 56: return .setNoteDeleted(noteId: try FfiConverterTypeNoteId.read(from: &buf), expectedNoteRevision: try FfiConverterTypeNoteRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
+        case 56: return .clearNotes(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 57: return .clearNotes(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 57: return .createMemory(content: try FfiConverterString.read(from: &buf)
         )
 
-        case 58: return .createMemory(content: try FfiConverterString.read(from: &buf)
+        case 58: return .updateMemory(memoryId: try FfiConverterTypeMemoryId.read(from: &buf), expectedMemoryRevision: try FfiConverterTypeMemoryRevision.read(from: &buf), content: try FfiConverterString.read(from: &buf)
         )
 
-        case 59: return .updateMemory(memoryId: try FfiConverterTypeMemoryId.read(from: &buf), expectedMemoryRevision: try FfiConverterTypeMemoryRevision.read(from: &buf), content: try FfiConverterString.read(from: &buf)
+        case 59: return .setMemoryDeleted(memoryId: try FfiConverterTypeMemoryId.read(from: &buf), expectedMemoryRevision: try FfiConverterTypeMemoryRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
         )
 
-        case 60: return .setMemoryDeleted(memoryId: try FfiConverterTypeMemoryId.read(from: &buf), expectedMemoryRevision: try FfiConverterTypeMemoryRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
+        case 60: return .clearMemories(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 61: return .clearMemories(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 61: return .createClip(clipId: try FfiConverterTypeClipId.read(from: &buf), episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), podcastId: try FfiConverterTypePodcastId.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf), source: try FfiConverterTypeClipSource.read(from: &buf)
         )
 
-        case 62: return .createClip(clipId: try FfiConverterTypeClipId.read(from: &buf), episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), podcastId: try FfiConverterTypePodcastId.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf), source: try FfiConverterTypeClipSource.read(from: &buf)
+        case 62: return .updateClip(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf)
         )
 
-        case 63: return .updateClip(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), startMilliseconds: try FfiConverterUInt64.read(from: &buf), endMilliseconds: try FfiConverterUInt64.read(from: &buf), caption: try FfiConverterOptionString.read(from: &buf), speakerId: try FfiConverterOptionTypeSpeakerId.read(from: &buf), frozenTranscriptText: try FfiConverterString.read(from: &buf)
+        case 63: return .setClipDeleted(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
         )
 
-        case 64: return .setClipDeleted(clipId: try FfiConverterTypeClipId.read(from: &buf), expectedClipRevision: try FfiConverterTypeClipRevision.read(from: &buf), deleted: try FfiConverterBool.read(from: &buf)
+        case 64: return .clearClips(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 65: return .clearClips(expectedCollectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 65: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
         )
 
-        case 66: return .cancelOperation(cancellationId: try FfiConverterTypeCancellationId.read(from: &buf)
-        )
-
-        case 67: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 66: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -12765,61 +12316,56 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
             FfiConverterString.write(modelReference, into: &buf)
 
 
-        case let .publishGeneratedEpisode(intent):
-            writeInt(&buf, Int32(45))
-            FfiConverterTypePublicationIntent.write(intent, into: &buf)
-
-
         case let .cancelAgentTurn(turnId,expectedTurnRevision):
-            writeInt(&buf, Int32(46))
+            writeInt(&buf, Int32(45))
             FfiConverterTypeAgentTurnId.write(turnId, into: &buf)
             FfiConverterTypeStateRevision.write(expectedTurnRevision, into: &buf)
 
 
         case let .commitChapter(expectedSelectionRevision,artifact):
-            writeInt(&buf, Int32(47))
+            writeInt(&buf, Int32(46))
             FfiConverterTypeStateRevision.write(expectedSelectionRevision, into: &buf)
             FfiConverterTypeChapterArtifactInput.write(artifact, into: &buf)
 
 
         case let .ensurePublisherChapters(episodeId):
-            writeInt(&buf, Int32(48))
+            writeInt(&buf, Int32(47))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
 
 
         case let .retryPublisherChapters(episodeId,expectedWorkflowRevision):
-            writeInt(&buf, Int32(49))
+            writeInt(&buf, Int32(48))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
         case let .cancelPublisherChapters(episodeId,expectedWorkflowRevision):
-            writeInt(&buf, Int32(50))
+            writeInt(&buf, Int32(49))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
         case let .ensureModelChapters(episodeId,configuredModel):
-            writeInt(&buf, Int32(51))
+            writeInt(&buf, Int32(50))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterString.write(configuredModel, into: &buf)
 
 
         case let .retryModelChapters(episodeId,configuredModel,expectedWorkflowRevision):
-            writeInt(&buf, Int32(52))
+            writeInt(&buf, Int32(51))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterString.write(configuredModel, into: &buf)
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
         case let .cancelModelChapters(episodeId,expectedWorkflowRevision):
-            writeInt(&buf, Int32(53))
+            writeInt(&buf, Int32(52))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypeStateRevision.write(expectedWorkflowRevision, into: &buf)
 
 
         case let .createNote(text,kind,author,target):
-            writeInt(&buf, Int32(54))
+            writeInt(&buf, Int32(53))
             FfiConverterString.write(text, into: &buf)
             FfiConverterTypeNoteKind.write(kind, into: &buf)
             FfiConverterTypeNoteAuthor.write(author, into: &buf)
@@ -12827,7 +12373,7 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .updateNote(noteId,expectedNoteRevision,text,kind,target):
-            writeInt(&buf, Int32(55))
+            writeInt(&buf, Int32(54))
             FfiConverterTypeNoteId.write(noteId, into: &buf)
             FfiConverterTypeNoteRevision.write(expectedNoteRevision, into: &buf)
             FfiConverterString.write(text, into: &buf)
@@ -12836,43 +12382,43 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .setNoteDeleted(noteId,expectedNoteRevision,deleted):
-            writeInt(&buf, Int32(56))
+            writeInt(&buf, Int32(55))
             FfiConverterTypeNoteId.write(noteId, into: &buf)
             FfiConverterTypeNoteRevision.write(expectedNoteRevision, into: &buf)
             FfiConverterBool.write(deleted, into: &buf)
 
 
         case let .clearNotes(expectedCollectionRevision):
-            writeInt(&buf, Int32(57))
+            writeInt(&buf, Int32(56))
             FfiConverterTypeStateRevision.write(expectedCollectionRevision, into: &buf)
 
 
         case let .createMemory(content):
-            writeInt(&buf, Int32(58))
+            writeInt(&buf, Int32(57))
             FfiConverterString.write(content, into: &buf)
 
 
         case let .updateMemory(memoryId,expectedMemoryRevision,content):
-            writeInt(&buf, Int32(59))
+            writeInt(&buf, Int32(58))
             FfiConverterTypeMemoryId.write(memoryId, into: &buf)
             FfiConverterTypeMemoryRevision.write(expectedMemoryRevision, into: &buf)
             FfiConverterString.write(content, into: &buf)
 
 
         case let .setMemoryDeleted(memoryId,expectedMemoryRevision,deleted):
-            writeInt(&buf, Int32(60))
+            writeInt(&buf, Int32(59))
             FfiConverterTypeMemoryId.write(memoryId, into: &buf)
             FfiConverterTypeMemoryRevision.write(expectedMemoryRevision, into: &buf)
             FfiConverterBool.write(deleted, into: &buf)
 
 
         case let .clearMemories(expectedCollectionRevision):
-            writeInt(&buf, Int32(61))
+            writeInt(&buf, Int32(60))
             FfiConverterTypeStateRevision.write(expectedCollectionRevision, into: &buf)
 
 
         case let .createClip(clipId,episodeId,podcastId,startMilliseconds,endMilliseconds,caption,speakerId,frozenTranscriptText,source):
-            writeInt(&buf, Int32(62))
+            writeInt(&buf, Int32(61))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypePodcastId.write(podcastId, into: &buf)
@@ -12885,7 +12431,7 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .updateClip(clipId,expectedClipRevision,startMilliseconds,endMilliseconds,caption,speakerId,frozenTranscriptText):
-            writeInt(&buf, Int32(63))
+            writeInt(&buf, Int32(62))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeClipRevision.write(expectedClipRevision, into: &buf)
             FfiConverterUInt64.write(startMilliseconds, into: &buf)
@@ -12896,24 +12442,24 @@ public struct FfiConverterTypeApplicationCommand: FfiConverterRustBuffer {
 
 
         case let .setClipDeleted(clipId,expectedClipRevision,deleted):
-            writeInt(&buf, Int32(64))
+            writeInt(&buf, Int32(63))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeClipRevision.write(expectedClipRevision, into: &buf)
             FfiConverterBool.write(deleted, into: &buf)
 
 
         case let .clearClips(expectedCollectionRevision):
-            writeInt(&buf, Int32(65))
+            writeInt(&buf, Int32(64))
             FfiConverterTypeStateRevision.write(expectedCollectionRevision, into: &buf)
 
 
         case let .cancelOperation(cancellationId):
-            writeInt(&buf, Int32(66))
+            writeInt(&buf, Int32(65))
             FfiConverterTypeCancellationId.write(cancellationId, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(67))
+            writeInt(&buf, Int32(66))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -17702,8 +17248,6 @@ public enum OperationResult: Equatable, Hashable {
     case queueUpdated
     case agentTurnStarted(conversationId: ConversationId, turnId: AgentTurnId
     )
-    case publicationPrepared(publicationId: PublicationId
-    )
     case recallFinished(queryId: RecallQueryId, evidenceCount: UInt16
     )
     case evidenceRebuilt(episodeId: EpisodeId, generationId: EvidenceGenerationId, spanCount: UInt32
@@ -17792,57 +17336,54 @@ public struct FfiConverterTypeOperationResult: FfiConverterRustBuffer {
         case 12: return .agentTurnStarted(conversationId: try FfiConverterTypeConversationId.read(from: &buf), turnId: try FfiConverterTypeAgentTurnId.read(from: &buf)
         )
 
-        case 13: return .publicationPrepared(publicationId: try FfiConverterTypePublicationId.read(from: &buf)
+        case 13: return .recallFinished(queryId: try FfiConverterTypeRecallQueryId.read(from: &buf), evidenceCount: try FfiConverterUInt16.read(from: &buf)
         )
 
-        case 14: return .recallFinished(queryId: try FfiConverterTypeRecallQueryId.read(from: &buf), evidenceCount: try FfiConverterUInt16.read(from: &buf)
+        case 14: return .evidenceRebuilt(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), generationId: try FfiConverterTypeEvidenceGenerationId.read(from: &buf), spanCount: try FfiConverterUInt32.read(from: &buf)
         )
 
-        case 15: return .evidenceRebuilt(episodeId: try FfiConverterTypeEpisodeId.read(from: &buf), generationId: try FfiConverterTypeEvidenceGenerationId.read(from: &buf), spanCount: try FfiConverterUInt32.read(from: &buf)
+        case 15: return .recallIndexCutoverCommitted(schemaVersion: try FfiConverterUInt32.read(from: &buf), removedLegacyFileCount: try FfiConverterUInt8.read(from: &buf)
         )
 
-        case 16: return .recallIndexCutoverCommitted(schemaVersion: try FfiConverterUInt32.read(from: &buf), removedLegacyFileCount: try FfiConverterUInt8.read(from: &buf)
+        case 16: return .recallConfigurationImported(imported: try FfiConverterBool.read(from: &buf), revision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 17: return .recallConfigurationImported(imported: try FfiConverterBool.read(from: &buf), revision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 17: return .recallConfigurationUpdated(revision: try FfiConverterTypeStateRevision.read(from: &buf), reindexedEpisodeCount: try FfiConverterUInt32.read(from: &buf)
         )
 
-        case 18: return .recallConfigurationUpdated(revision: try FfiConverterTypeStateRevision.read(from: &buf), reindexedEpisodeCount: try FfiConverterUInt32.read(from: &buf)
+        case 18: return .transcriptCommitted(receipt: try FfiConverterTypeTranscriptCommitReceipt.read(from: &buf)
         )
 
-        case 19: return .transcriptCommitted(receipt: try FfiConverterTypeTranscriptCommitReceipt.read(from: &buf)
+        case 19: return .chapterCommitted(receipt: try FfiConverterTypeChapterCommitReceipt.read(from: &buf)
         )
 
-        case 20: return .chapterCommitted(receipt: try FfiConverterTypeChapterCommitReceipt.read(from: &buf)
+        case 20: return .noteCreated(noteId: try FfiConverterTypeNoteId.read(from: &buf)
         )
 
-        case 21: return .noteCreated(noteId: try FfiConverterTypeNoteId.read(from: &buf)
+        case 21: return .noteUpdated(noteId: try FfiConverterTypeNoteId.read(from: &buf)
         )
 
-        case 22: return .noteUpdated(noteId: try FfiConverterTypeNoteId.read(from: &buf)
+        case 22: return .notesCleared
+
+        case 23: return .memoryCreated(memoryId: try FfiConverterTypeMemoryId.read(from: &buf), memoryRevision: try FfiConverterTypeMemoryRevision.read(from: &buf), collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 23: return .notesCleared
-
-        case 24: return .memoryCreated(memoryId: try FfiConverterTypeMemoryId.read(from: &buf), memoryRevision: try FfiConverterTypeMemoryRevision.read(from: &buf), collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 24: return .memoryUpdated(memoryId: try FfiConverterTypeMemoryId.read(from: &buf), memoryRevision: try FfiConverterTypeMemoryRevision.read(from: &buf), collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 25: return .memoryUpdated(memoryId: try FfiConverterTypeMemoryId.read(from: &buf), memoryRevision: try FfiConverterTypeMemoryRevision.read(from: &buf), collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 25: return .memoriesCleared(collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 26: return .memoriesCleared(collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 26: return .clipCreated(clipId: try FfiConverterTypeClipId.read(from: &buf), clipRevision: try FfiConverterTypeClipRevision.read(from: &buf), collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 27: return .clipCreated(clipId: try FfiConverterTypeClipId.read(from: &buf), clipRevision: try FfiConverterTypeClipRevision.read(from: &buf), collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 27: return .clipUpdated(clipId: try FfiConverterTypeClipId.read(from: &buf), clipRevision: try FfiConverterTypeClipRevision.read(from: &buf), collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 28: return .clipUpdated(clipId: try FfiConverterTypeClipId.read(from: &buf), clipRevision: try FfiConverterTypeClipRevision.read(from: &buf), collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        case 28: return .clipsCleared(collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
         )
 
-        case 29: return .clipsCleared(collectionRevision: try FfiConverterTypeStateRevision.read(from: &buf)
-        )
-
-        case 30: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 29: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -17914,106 +17455,101 @@ public struct FfiConverterTypeOperationResult: FfiConverterRustBuffer {
             FfiConverterTypeAgentTurnId.write(turnId, into: &buf)
 
 
-        case let .publicationPrepared(publicationId):
-            writeInt(&buf, Int32(13))
-            FfiConverterTypePublicationId.write(publicationId, into: &buf)
-
-
         case let .recallFinished(queryId,evidenceCount):
-            writeInt(&buf, Int32(14))
+            writeInt(&buf, Int32(13))
             FfiConverterTypeRecallQueryId.write(queryId, into: &buf)
             FfiConverterUInt16.write(evidenceCount, into: &buf)
 
 
         case let .evidenceRebuilt(episodeId,generationId,spanCount):
-            writeInt(&buf, Int32(15))
+            writeInt(&buf, Int32(14))
             FfiConverterTypeEpisodeId.write(episodeId, into: &buf)
             FfiConverterTypeEvidenceGenerationId.write(generationId, into: &buf)
             FfiConverterUInt32.write(spanCount, into: &buf)
 
 
         case let .recallIndexCutoverCommitted(schemaVersion,removedLegacyFileCount):
-            writeInt(&buf, Int32(16))
+            writeInt(&buf, Int32(15))
             FfiConverterUInt32.write(schemaVersion, into: &buf)
             FfiConverterUInt8.write(removedLegacyFileCount, into: &buf)
 
 
         case let .recallConfigurationImported(imported,revision):
-            writeInt(&buf, Int32(17))
+            writeInt(&buf, Int32(16))
             FfiConverterBool.write(imported, into: &buf)
             FfiConverterTypeStateRevision.write(revision, into: &buf)
 
 
         case let .recallConfigurationUpdated(revision,reindexedEpisodeCount):
-            writeInt(&buf, Int32(18))
+            writeInt(&buf, Int32(17))
             FfiConverterTypeStateRevision.write(revision, into: &buf)
             FfiConverterUInt32.write(reindexedEpisodeCount, into: &buf)
 
 
         case let .transcriptCommitted(receipt):
-            writeInt(&buf, Int32(19))
+            writeInt(&buf, Int32(18))
             FfiConverterTypeTranscriptCommitReceipt.write(receipt, into: &buf)
 
 
         case let .chapterCommitted(receipt):
-            writeInt(&buf, Int32(20))
+            writeInt(&buf, Int32(19))
             FfiConverterTypeChapterCommitReceipt.write(receipt, into: &buf)
 
 
         case let .noteCreated(noteId):
-            writeInt(&buf, Int32(21))
+            writeInt(&buf, Int32(20))
             FfiConverterTypeNoteId.write(noteId, into: &buf)
 
 
         case let .noteUpdated(noteId):
-            writeInt(&buf, Int32(22))
+            writeInt(&buf, Int32(21))
             FfiConverterTypeNoteId.write(noteId, into: &buf)
 
 
         case .notesCleared:
-            writeInt(&buf, Int32(23))
+            writeInt(&buf, Int32(22))
 
 
         case let .memoryCreated(memoryId,memoryRevision,collectionRevision):
-            writeInt(&buf, Int32(24))
+            writeInt(&buf, Int32(23))
             FfiConverterTypeMemoryId.write(memoryId, into: &buf)
             FfiConverterTypeMemoryRevision.write(memoryRevision, into: &buf)
             FfiConverterTypeStateRevision.write(collectionRevision, into: &buf)
 
 
         case let .memoryUpdated(memoryId,memoryRevision,collectionRevision):
-            writeInt(&buf, Int32(25))
+            writeInt(&buf, Int32(24))
             FfiConverterTypeMemoryId.write(memoryId, into: &buf)
             FfiConverterTypeMemoryRevision.write(memoryRevision, into: &buf)
             FfiConverterTypeStateRevision.write(collectionRevision, into: &buf)
 
 
         case let .memoriesCleared(collectionRevision):
-            writeInt(&buf, Int32(26))
+            writeInt(&buf, Int32(25))
             FfiConverterTypeStateRevision.write(collectionRevision, into: &buf)
 
 
         case let .clipCreated(clipId,clipRevision,collectionRevision):
-            writeInt(&buf, Int32(27))
+            writeInt(&buf, Int32(26))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeClipRevision.write(clipRevision, into: &buf)
             FfiConverterTypeStateRevision.write(collectionRevision, into: &buf)
 
 
         case let .clipUpdated(clipId,clipRevision,collectionRevision):
-            writeInt(&buf, Int32(28))
+            writeInt(&buf, Int32(27))
             FfiConverterTypeClipId.write(clipId, into: &buf)
             FfiConverterTypeClipRevision.write(clipRevision, into: &buf)
             FfiConverterTypeStateRevision.write(collectionRevision, into: &buf)
 
 
         case let .clipsCleared(collectionRevision):
-            writeInt(&buf, Int32(29))
+            writeInt(&buf, Int32(28))
             FfiConverterTypeStateRevision.write(collectionRevision, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(30))
+            writeInt(&buf, Int32(29))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -19028,8 +18564,6 @@ public enum Projection: Equatable, Hashable {
     )
     case agentConversation(value: AgentConversationProjection
     )
-    case publications(value: PublicationsProjection
-    )
     case notes(value: NotesProjection
     )
     case memories(value: MemoriesProjection
@@ -19107,19 +18641,16 @@ public struct FfiConverterTypeProjection: FfiConverterRustBuffer {
         case 16: return .agentConversation(value: try FfiConverterTypeAgentConversationProjection.read(from: &buf)
         )
 
-        case 17: return .publications(value: try FfiConverterTypePublicationsProjection.read(from: &buf)
+        case 17: return .notes(value: try FfiConverterTypeNotesProjection.read(from: &buf)
         )
 
-        case 18: return .notes(value: try FfiConverterTypeNotesProjection.read(from: &buf)
+        case 18: return .memories(value: try FfiConverterTypeMemoriesProjection.read(from: &buf)
         )
 
-        case 19: return .memories(value: try FfiConverterTypeMemoriesProjection.read(from: &buf)
+        case 19: return .clips(value: try FfiConverterTypeClipsProjection.read(from: &buf)
         )
 
-        case 20: return .clips(value: try FfiConverterTypeClipsProjection.read(from: &buf)
-        )
-
-        case 21: return .unsupported(value: try FfiConverterTypeUnsupportedProjection.read(from: &buf)
+        case 20: return .unsupported(value: try FfiConverterTypeUnsupportedProjection.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -19210,28 +18741,23 @@ public struct FfiConverterTypeProjection: FfiConverterRustBuffer {
             FfiConverterTypeAgentConversationProjection.write(value, into: &buf)
 
 
-        case let .publications(value):
-            writeInt(&buf, Int32(17))
-            FfiConverterTypePublicationsProjection.write(value, into: &buf)
-
-
         case let .notes(value):
-            writeInt(&buf, Int32(18))
+            writeInt(&buf, Int32(17))
             FfiConverterTypeNotesProjection.write(value, into: &buf)
 
 
         case let .memories(value):
-            writeInt(&buf, Int32(19))
+            writeInt(&buf, Int32(18))
             FfiConverterTypeMemoriesProjection.write(value, into: &buf)
 
 
         case let .clips(value):
-            writeInt(&buf, Int32(20))
+            writeInt(&buf, Int32(19))
             FfiConverterTypeClipsProjection.write(value, into: &buf)
 
 
         case let .unsupported(value):
-            writeInt(&buf, Int32(21))
+            writeInt(&buf, Int32(20))
             FfiConverterTypeUnsupportedProjection.write(value, into: &buf)
 
         }
@@ -19284,8 +18810,6 @@ public enum ProjectionScope: Equatable, Hashable {
     )
     case agentConversations
     case agentConversation(conversationId: ConversationId
-    )
-    case publications(publicationId: PublicationId?
     )
     case notes(scope: NoteProjectionScope
     )
@@ -19359,19 +18883,16 @@ public struct FfiConverterTypeProjectionScope: FfiConverterRustBuffer {
         case 16: return .agentConversation(conversationId: try FfiConverterTypeConversationId.read(from: &buf)
         )
 
-        case 17: return .publications(publicationId: try FfiConverterOptionTypePublicationId.read(from: &buf)
+        case 17: return .notes(scope: try FfiConverterTypeNoteProjectionScope.read(from: &buf)
         )
 
-        case 18: return .notes(scope: try FfiConverterTypeNoteProjectionScope.read(from: &buf)
+        case 18: return .memories(scope: try FfiConverterTypeMemoryProjectionScope.read(from: &buf)
         )
 
-        case 19: return .memories(scope: try FfiConverterTypeMemoryProjectionScope.read(from: &buf)
+        case 19: return .clips(scope: try FfiConverterTypeClipProjectionScope.read(from: &buf)
         )
 
-        case 20: return .clips(scope: try FfiConverterTypeClipProjectionScope.read(from: &buf)
-        )
-
-        case 21: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
+        case 20: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
 
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -19459,28 +18980,23 @@ public struct FfiConverterTypeProjectionScope: FfiConverterRustBuffer {
             FfiConverterTypeConversationId.write(conversationId, into: &buf)
 
 
-        case let .publications(publicationId):
-            writeInt(&buf, Int32(17))
-            FfiConverterOptionTypePublicationId.write(publicationId, into: &buf)
-
-
         case let .notes(scope):
-            writeInt(&buf, Int32(18))
+            writeInt(&buf, Int32(17))
             FfiConverterTypeNoteProjectionScope.write(scope, into: &buf)
 
 
         case let .memories(scope):
-            writeInt(&buf, Int32(19))
+            writeInt(&buf, Int32(18))
             FfiConverterTypeMemoryProjectionScope.write(scope, into: &buf)
 
 
         case let .clips(scope):
-            writeInt(&buf, Int32(20))
+            writeInt(&buf, Int32(19))
             FfiConverterTypeClipProjectionScope.write(scope, into: &buf)
 
 
         case let .unsupported(wireCode):
-            writeInt(&buf, Int32(21))
+            writeInt(&buf, Int32(20))
             FfiConverterUInt32.write(wireCode, into: &buf)
 
         }
@@ -24063,54 +23579,6 @@ fileprivate struct FfiConverterOptionTypePodcastSubscriptionRecord: FfiConverter
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-fileprivate struct FfiConverterOptionTypePublicationId: FfiConverterRustBuffer {
-    typealias SwiftType = PublicationId?
-
-    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
-        guard let value = value else {
-            writeInt(&buf, Int8(0))
-            return
-        }
-        writeInt(&buf, Int8(1))
-        FfiConverterTypePublicationId.write(value, into: &buf)
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
-        switch try readInt(&buf) as Int8 {
-        case 0: return nil
-        case 1: return try FfiConverterTypePublicationId.read(from: &buf)
-        default: throw UniffiInternalError.unexpectedOptionalTag
-        }
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-fileprivate struct FfiConverterOptionTypePublicationRouteId: FfiConverterRustBuffer {
-    typealias SwiftType = PublicationRouteId?
-
-    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
-        guard let value = value else {
-            writeInt(&buf, Int8(0))
-            return
-        }
-        writeInt(&buf, Int8(1))
-        FfiConverterTypePublicationRouteId.write(value, into: &buf)
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
-        switch try readInt(&buf) as Int8 {
-        case 0: return nil
-        case 1: return try FfiConverterTypePublicationRouteId.read(from: &buf)
-        default: throw UniffiInternalError.unexpectedOptionalTag
-        }
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
 fileprivate struct FfiConverterOptionTypeScheduledAttemptId: FfiConverterRustBuffer {
     typealias SwiftType = ScheduledAttemptId?
 
@@ -25500,31 +24968,6 @@ fileprivate struct FfiConverterSequenceTypePodcastSubscriptionRecord: FfiConvert
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-fileprivate struct FfiConverterSequenceTypePublicationRecord: FfiConverterRustBuffer {
-    typealias SwiftType = [PublicationRecord]
-
-    public static func write(_ value: [PublicationRecord], into buf: inout [UInt8]) {
-        let len = Int32(value.count)
-        writeInt(&buf, len)
-        for item in value {
-            FfiConverterTypePublicationRecord.write(item, into: &buf)
-        }
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [PublicationRecord] {
-        let len: Int32 = try readInt(&buf)
-        var seq = [PublicationRecord]()
-        seq.reserveCapacity(Int(len))
-        for _ in 0 ..< len {
-            seq.append(try FfiConverterTypePublicationRecord.read(from: &buf))
-        }
-        return seq
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
 fileprivate struct FfiConverterSequenceTypeQueueEntry: FfiConverterRustBuffer {
     typealias SwiftType = [QueueEntry]
 
@@ -25617,31 +25060,6 @@ fileprivate struct FfiConverterSequenceTypeWorkflowReconcileIntent: FfiConverter
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeWorkflowReconcileIntent.read(from: &buf))
-        }
-        return seq
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-fileprivate struct FfiConverterSequenceSequenceString: FfiConverterRustBuffer {
-    typealias SwiftType = [[String]]
-
-    public static func write(_ value: [[String]], into buf: inout [UInt8]) {
-        let len = Int32(value.count)
-        writeInt(&buf, len)
-        for item in value {
-            FfiConverterSequenceString.write(item, into: &buf)
-        }
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [[String]] {
-        let len: Int32 = try readInt(&buf)
-        var seq = [[String]]()
-        seq.reserveCapacity(Int(len))
-        for _ in 0 ..< len {
-            seq.append(try FfiConverterSequenceString.read(from: &buf))
         }
         return seq
     }

@@ -31,7 +31,7 @@ pub use crate::download_store_cutover_model::*;
 pub use crate::download_store_model::*;
 pub use crate::download_store_request::download_start_request_id;
 pub use crate::effect_outbox::EffectOutbox;
-pub use crate::effect_outbox_model::{EffectLease, EffectOutboxError, PublicationEffectLease};
+pub use crate::effect_outbox_model::{EffectLease, EffectOutboxError};
 pub use crate::evidence_model::{
     EvidenceGenerationState, EvidenceGenerationSummary, EvidencePruneReceipt,
     EvidenceSelectionReceipt, EvidenceStageReceipt, EvidenceVerificationReceipt,
@@ -84,7 +84,6 @@ pub use crate::note_import_model::{
 };
 pub use crate::note_import_store::{commit_note_cutover, read_note_import};
 pub use crate::note_store_model::NoteCollectionSnapshot;
-pub use crate::publication_store::{PublicationPrepareOutcome, PublicationStore};
 pub use crate::recall_configuration_store::RecallConfigurationMutation;
 pub use crate::recall_cutover_store::{
     RecallIndexCutoverStage, RecallIndexCutoverStartOutcome, StoredRecallIndexCutoverWorkflow,

@@ -200,15 +200,6 @@ pub(crate) use agent_history_cutover::{
     commit_agent_history_cutover_stage, commit_agent_history_cutover_verify,
 };
 
-#[path = "transition_commit_publication.rs"]
-mod publication;
-pub(crate) use publication::commit_publication_prepare;
-#[path = "transition_commit_publication_observation.rs"]
-mod publication_observation;
-pub(crate) use publication_observation::{
-    commit_publication_observation, commit_publication_receipt,
-};
-
 #[path = "transition_commit_scheduled_agent_observation.rs"]
 mod scheduled_agent_observation;
 pub(crate) use scheduled_agent_observation::commit_scheduled_agent_observation;

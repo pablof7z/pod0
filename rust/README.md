@@ -26,8 +26,6 @@ The permanent operating rule is:
   projections, and executes supported HTTP and agent-model host requests.
   Unsupported media capabilities remain explicitly unavailable.
 
-No Pod0 Rust crate depends on NMP protocol machinery. The iOS app consumes the
-upstream `NMP` Swift SDK as the sole engine/account boundary; Pod0 Rust remains
 limited to product nouns, authorization, and durable product state.
 
 The app-owned facade is the typed single-writer boundary used by the migrated
@@ -89,14 +87,11 @@ for Android arm64/x86_64. Those results prove API portability, not permission
 to begin the M6 Android application phase; the M5 product/architecture gate
 remains authoritative.
 
-## NMP pin and upgrade policy
 
 The upstream Swift SDK is prepared at Git revision
 `bca64d75eeee8496b93ca220976c4fa6046cf6cb` by
-`scripts/prepare_nmp_swift_package.sh`. NMP is pre-1.0, so an upgrade requires
 review of its public Swift surface, then:
 
 1. update the exact revision in the preparation script;
-2. rebuild the NMP XCFramework and generated bindings from that source;
 3. run upstream Swift tests and Pod0's full Apple build/tests;
 4. record any Swift/Kotlin/Android surface gaps that affect Pod0.
