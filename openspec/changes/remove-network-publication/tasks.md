@@ -39,12 +39,12 @@
 
 ## 6. Qualify the Candidate
 
-- [ ] 6.1 Pass strict OpenSpec, architecture, ownership, schema, dependency, facade, generated-artifact, and literal-absence checks.
-- [ ] 6.2 Pass complete locked Rust format, lint, tests, audit, deny, and portability checks.
-- [ ] 6.3 Compile and exercise regenerated Kotlin bindings.
+- [x] 6.1 Pass strict OpenSpec, architecture, ownership, schema, dependency, facade, generated-artifact, and literal-absence checks.
+- [x] 6.2 Pass complete locked Rust format, lint, tests, audit, deny, and portability checks.
+- [x] 6.3 Compile and exercise regenerated Kotlin bindings.
 - [x] 6.4 Generate Apple inputs and pass the Apple release-input gate.
 - [x] 6.5 Build, install, launch, and inspect an erased simulator with XcodeBuildMCP.
-- [ ] 6.6 Pass the complete iOS test suite with zero required skips.
+- [x] 6.6 Pass the complete iOS test suite with zero required skips.
 
 ## 7. Publish and Merge
 
