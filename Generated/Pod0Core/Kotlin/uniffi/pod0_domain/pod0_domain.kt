@@ -1720,6 +1720,8 @@ data class CategoryRecord (
     ,
     val `origin`: CategoryOrigin
     ,
+    val `settings`: CategorySettings
+    ,
     val `members`: List<CategoryMember>
     ,
     val `createdAt`: UnixTimestampMilliseconds
@@ -1750,6 +1752,7 @@ public object FfiConverterTypeCategoryRecord: FfiConverterRustBuffer<CategoryRec
             FfiConverterString.read(buf),
             FfiConverterOptionalString.read(buf),
             FfiConverterTypeCategoryOrigin.read(buf),
+            FfiConverterTypeCategorySettings.read(buf),
             FfiConverterSequenceTypeCategoryMember.read(buf),
             FfiConverterTypeUnixTimestampMilliseconds.read(buf),
             FfiConverterTypeUnixTimestampMilliseconds.read(buf),
@@ -1765,6 +1768,7 @@ public object FfiConverterTypeCategoryRecord: FfiConverterRustBuffer<CategoryRec
             FfiConverterString.allocationSize(value.`description`) +
             FfiConverterOptionalString.allocationSize(value.`colorHex`) +
             FfiConverterTypeCategoryOrigin.allocationSize(value.`origin`) +
+            FfiConverterTypeCategorySettings.allocationSize(value.`settings`) +
             FfiConverterSequenceTypeCategoryMember.allocationSize(value.`members`) +
             FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`createdAt`) +
             FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`updatedAt`) +
@@ -1779,6 +1783,7 @@ public object FfiConverterTypeCategoryRecord: FfiConverterRustBuffer<CategoryRec
             FfiConverterString.write(value.`description`, buf)
             FfiConverterOptionalString.write(value.`colorHex`, buf)
             FfiConverterTypeCategoryOrigin.write(value.`origin`, buf)
+            FfiConverterTypeCategorySettings.write(value.`settings`, buf)
             FfiConverterSequenceTypeCategoryMember.write(value.`members`, buf)
             FfiConverterTypeUnixTimestampMilliseconds.write(value.`createdAt`, buf)
             FfiConverterTypeUnixTimestampMilliseconds.write(value.`updatedAt`, buf)
@@ -1816,6 +1821,53 @@ public object FfiConverterTypeCategoryRevision: FfiConverterRustBuffer<CategoryR
 
     override fun write(value: CategoryRevision, buf: ByteBuffer) {
             FfiConverterULong.write(value.`value`, buf)
+    }
+}
+
+
+
+/**
+ * Product policy attached to one category. Absence of an auto-download
+ * override means the subscription's own policy remains authoritative.
+ */
+data class CategorySettings (
+    val `autoDownloadOverride`: AutoDownloadPolicy?
+    ,
+    val `ragEnabled`: kotlin.Boolean
+    ,
+    val `notificationsEnabled`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCategorySettings: FfiConverterRustBuffer<CategorySettings> {
+    override fun read(buf: ByteBuffer): CategorySettings {
+        return CategorySettings(
+            FfiConverterOptionalTypeAutoDownloadPolicy.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: CategorySettings) = (
+            FfiConverterOptionalTypeAutoDownloadPolicy.allocationSize(value.`autoDownloadOverride`) +
+            FfiConverterBoolean.allocationSize(value.`ragEnabled`) +
+            FfiConverterBoolean.allocationSize(value.`notificationsEnabled`)
+    )
+
+    override fun write(value: CategorySettings, buf: ByteBuffer) {
+            FfiConverterOptionalTypeAutoDownloadPolicy.write(value.`autoDownloadOverride`, buf)
+            FfiConverterBoolean.write(value.`ragEnabled`, buf)
+            FfiConverterBoolean.write(value.`notificationsEnabled`, buf)
     }
 }
 
@@ -5022,6 +5074,53 @@ public object FfiConverterTypeRecallQueryId: FfiConverterRustBuffer<RecallQueryI
 
 
 
+/**
+ * Canonical policy plus conflict evidence when legacy or agent activity has
+ * placed one podcast in multiple categories with different overrides.
+ */
+data class ResolvedCategoryAutoDownloadPolicy (
+    val `policy`: AutoDownloadPolicy
+    ,
+    val `source`: CategoryAutoDownloadSource
+    ,
+    val `conflictingCategoryIds`: List<CategoryId>
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeResolvedCategoryAutoDownloadPolicy: FfiConverterRustBuffer<ResolvedCategoryAutoDownloadPolicy> {
+    override fun read(buf: ByteBuffer): ResolvedCategoryAutoDownloadPolicy {
+        return ResolvedCategoryAutoDownloadPolicy(
+            FfiConverterTypeAutoDownloadPolicy.read(buf),
+            FfiConverterTypeCategoryAutoDownloadSource.read(buf),
+            FfiConverterSequenceTypeCategoryId.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ResolvedCategoryAutoDownloadPolicy) = (
+            FfiConverterTypeAutoDownloadPolicy.allocationSize(value.`policy`) +
+            FfiConverterTypeCategoryAutoDownloadSource.allocationSize(value.`source`) +
+            FfiConverterSequenceTypeCategoryId.allocationSize(value.`conflictingCategoryIds`)
+    )
+
+    override fun write(value: ResolvedCategoryAutoDownloadPolicy, buf: ByteBuffer) {
+            FfiConverterTypeAutoDownloadPolicy.write(value.`policy`, buf)
+            FfiConverterTypeCategoryAutoDownloadSource.write(value.`source`, buf)
+            FfiConverterSequenceTypeCategoryId.write(value.`conflictingCategoryIds`, buf)
+    }
+}
+
+
+
 data class ScheduledAttemptId (
     val `high`: kotlin.ULong
     ,
@@ -6000,6 +6099,79 @@ public object FfiConverterTypeAutoDownloadMode : FfiConverterRustBuffer<AutoDown
             is AutoDownloadMode.Unsupported -> {
                 buf.putInt(4)
                 FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class CategoryAutoDownloadSource {
+
+    object Subscription : CategoryAutoDownloadSource()
+
+
+    data class Category(
+        val `categoryId`: uniffi.pod0_domain.CategoryId) : CategoryAutoDownloadSource()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCategoryAutoDownloadSource : FfiConverterRustBuffer<CategoryAutoDownloadSource>{
+    override fun read(buf: ByteBuffer): CategoryAutoDownloadSource {
+        return when(buf.getInt()) {
+            1 -> CategoryAutoDownloadSource.Subscription
+            2 -> CategoryAutoDownloadSource.Category(
+                FfiConverterTypeCategoryId.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: CategoryAutoDownloadSource): ULong = when(value) {
+        is CategoryAutoDownloadSource.Subscription -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CategoryAutoDownloadSource.Category -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeCategoryId.allocationSize(value.`categoryId`)
+            )
+        }
+    }
+
+    override fun write(value: CategoryAutoDownloadSource, buf: ByteBuffer) {
+        when(value) {
+            is CategoryAutoDownloadSource.Subscription -> {
+                buf.putInt(1)
+                Unit
+            }
+            is CategoryAutoDownloadSource.Category -> {
+                buf.putInt(2)
+                FfiConverterTypeCategoryId.write(value.`categoryId`, buf)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
@@ -9128,6 +9300,38 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeAutoDownloadPolicy: FfiConverterRustBuffer<AutoDownloadPolicy?> {
+    override fun read(buf: ByteBuffer): AutoDownloadPolicy? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeAutoDownloadPolicy.read(buf)
+    }
+
+    override fun allocationSize(value: AutoDownloadPolicy?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeAutoDownloadPolicy.allocationSize(value)
+        }
+    }
+
+    override fun write(value: AutoDownloadPolicy?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeAutoDownloadPolicy.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeChapterLegacyProvenance: FfiConverterRustBuffer<ChapterLegacyProvenance?> {
     override fun read(buf: ByteBuffer): ChapterLegacyProvenance? {
         if (buf.get().toInt() == 0) {
@@ -9686,6 +9890,34 @@ public object FfiConverterSequenceTypeAdSpanInput: FfiConverterRustBuffer<List<A
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeAdSpanInput.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeCategoryId: FfiConverterRustBuffer<List<CategoryId>> {
+    override fun read(buf: ByteBuffer): List<CategoryId> {
+        val len = buf.getInt()
+        return List<CategoryId>(len) {
+            FfiConverterTypeCategoryId.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<CategoryId>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeCategoryId.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<CategoryId>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeCategoryId.write(it, buf)
         }
     }
 }

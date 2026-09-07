@@ -153,7 +153,9 @@ revision-consistent projection batches capped at 16 requests, with every nested
 projection retaining the existing 200-item bound. Contract version 59 adds the
 one-time product-settings import, Rust-owned local and remote transitions, and
 the authoritative settings projection used by native persistence and sync
-transports.
+transports. Contract version 60 completes the category record with Rust-owned
+settings, an optional auto-download override, and deterministic conflict
+evidence for overlapping legacy membership.
 Swift still owns transcript-generation/index workflow scheduling, remaining
 agent workflow state, and presentation state until their complete vertical
 facade exposes only Pod0 publication drafts and bounded product audit updates.

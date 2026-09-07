@@ -28,3 +28,6 @@ pub(crate) use category::{
 #[path = "transition_commit_category_tag.rs"]
 mod category_tag;
 pub(crate) use category_tag::commit_category_tag;
+#[path = "transition_commit_category_policy.rs"]
+mod category_policy;
+pub(crate) use category_policy::commit_category_settings;

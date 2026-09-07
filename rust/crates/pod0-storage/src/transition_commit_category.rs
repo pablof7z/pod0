@@ -111,7 +111,7 @@ pub(crate) fn commit_category_delete(
     )
 }
 
-fn commit(
+pub(super) fn commit(
     path: &std::path::Path,
     command_id: CommandId,
     command_fingerprint: &str,
@@ -189,6 +189,9 @@ fn commit(
         RequestDisposition::Rejected {
             reason: RequestRejectionReason::MissingSubject,
         } => Err(StorageError::EntityNotFound),
+        RequestDisposition::Rejected {
+            reason: RequestRejectionReason::RevisionConflict,
+        } => Err(StorageError::RevisionConflict),
         RequestDisposition::Rejected { .. } => Err(StorageError::InvalidCategory),
         _ => Err(StorageError::InvalidActivity),
     }
