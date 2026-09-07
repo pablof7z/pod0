@@ -19,18 +19,17 @@ RUST_TOOL_PATTERN = re.compile(
 RUST_TOOL_SOURCE = ROOT / "rust/crates/pod0-application/src/agent_tool_names.rs"
 ALLOWED_CLASSES = {
     "read_only", "reversible_write", "external_side_effect",
-    "destructive_write", "secret_bearing", "publication", "session_local",
+    "destructive_write", "secret_bearing", "session_local",
 }
 ALLOWED_AUTHORITIES = {
     "none", "durable_turn_grant", "durable_scoped_grant", "one_shot_approval",
 }
 PRIVILEGED_CLASSES = {
-    "external_side_effect", "destructive_write", "secret_bearing", "publication",
+    "external_side_effect", "destructive_write", "secret_bearing",
 }
 ALLOWED_EXECUTION = {
     "rust_commit", "rust_projection", "native_capability",
     "native_conversation_presentation",
-    "native_capability_and_nmp_publication",
 }
 
 
@@ -87,9 +86,6 @@ def validate(payload: dict, actual: list[str]) -> list[str]:
         execution = row.get("execution")
         if execution not in ALLOWED_EXECUTION:
             errors.append(f"{name}: unknown execution boundary {execution!r}")
-        if "publication" in classes and "nmp_publication" not in str(execution):
-            errors.append(f"{name}: publication must route through NMP")
-
     if "relay" in json.dumps(payload).lower():
         errors.append("the app tool contract must not expose relay selection")
     if payload.get("decision_issue") != 132:
@@ -111,9 +107,9 @@ def self_test(payload: dict, actual: list[str]) -> list[str]:
     unsafe = copy.deepcopy(payload)
     next(row for row in unsafe["tools"] if "external_side_effect" in row["classes"])["authority"] = "none"
     cases.append(("unauthorized external effect", unsafe))
-    bypass = copy.deepcopy(payload)
-    next(row for row in bypass["tools"] if "publication" in row["classes"])["execution"] = "native_capability"
-    cases.append(("publication bypass", bypass))
+    invalid_execution = copy.deepcopy(payload)
+    invalid_execution["tools"][0]["execution"] = "unknown"
+    cases.append(("invalid execution", invalid_execution))
     for label, fixture in cases:
         if not validate(fixture, actual):
             failures.append(f"self-test did not reject {label}")

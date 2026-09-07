@@ -236,7 +236,6 @@ The mini-bar uniquely shows the **active transcript line, not just the title** �
 
 1. **Auto-scroll lock-out duration after manual scroll** — we propose: indefinite, until user taps "Return to live" pill (Slack model). Alternative: 8s timeout. Needs user testing.
 2. **Speaker color stability across episodes** — keyed on diarized speaker_id, but cross-episode identity matching is non-trivial. If we get it wrong, the "green-haired guest" memory hook breaks. Spec needs to specify the matching threshold and a manual override.
-3. **Where does Nostr share live?** Inside the standard Share sheet as an extension, or as a primary chip alongside ↗ Share? Coordinate with UX-12. Recommendation: extension only — keep the surface uncluttered.
 4. **Agent inline-answer vs full-chat threshold** — at what point does an inline answer escalate to opening UX-05 Agent Chat? Proposed rule: ≤3 turns inline; "Continue in chat" CTA appears on turn 3.
 5. **Wiki peek invocation** — automatic noun-linking inside transcript could feel magical or noisy. Proposal: linked nouns are *invisible* until the user enters "explore mode" (long-press anywhere on transcript), then key entities surface as underlined glass.
 6. **Clip-share trim UX** — auto-snap to sentence is great for speed but users will want to extend. Proposal: clip sheet opens with sentence pre-trimmed and two glass handles to extend ±. (May overlap with UX-03; coordinate.)

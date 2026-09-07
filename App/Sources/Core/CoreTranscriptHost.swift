@@ -41,7 +41,7 @@ actor CoreTranscriptHost: CoreTranscriptHosting {
         } catch is CancellationError {
             return .transcriptCapabilityObserved(observation: .cancelled)
         } catch {
-            return failure(error, for: capability)
+            return failure(error)
         }
     }
 
@@ -91,25 +91,22 @@ actor CoreTranscriptHost: CoreTranscriptHosting {
         return .transcriptCapabilityObserved(observation: value)
     }
 
-    private func failure(
-        _ error: Error,
-        for request: TranscriptCapabilityRequest
-    ) -> HostObservation {
+    private func failure(_ error: Error) -> HostObservation {
         if let failure = error as? CoreTranscriptTransportError {
             return wrappedFailure(
-                evidence(failure, request: request),
+                evidence(failure),
                 detail: safeDetail(failure),
                 retryAfterMilliseconds: failure.retryAfterMilliseconds
             )
         }
         if let failure = error as? AssemblyAITranscriptClient.TranscribeError {
-            return wrappedFailure(evidence(failure, request: request), detail: failure.errorDescription)
+            return wrappedFailure(evidence(failure), detail: failure.errorDescription)
         }
         if let failure = error as? ElevenLabsScribeClient.ScribeError {
-            return wrappedFailure(evidence(failure, request: request), detail: failure.errorDescription)
+            return wrappedFailure(evidence(failure), detail: failure.errorDescription)
         }
         if let failure = error as? OpenRouterWhisperClient.WhisperError {
-            return wrappedFailure(evidence(failure, request: request), detail: failure.errorDescription)
+            return wrappedFailure(evidence(failure), detail: failure.errorDescription)
         }
         if let failure = error as? AppleNativeSTTClient.STTError {
             return wrappedFailure(evidence(failure), detail: failure.errorDescription)
@@ -118,9 +115,9 @@ actor CoreTranscriptHost: CoreTranscriptHosting {
             return wrappedFailure(.invalidResponse, detail: "Invalid transcript observation")
         }
         if let failure = error as? URLError {
-            return wrappedFailure(evidence(failure, request: request), detail: "Transcript transport failed")
+            return wrappedFailure(evidence(failure), detail: "Transcript transport failed")
         }
-        return wrappedFailure(phaseEvidence(.transport, request: request), detail: "Transcript capability failed")
+        return wrappedFailure(.transport, detail: "Transcript capability failed")
     }
 
     private func wrappedFailure(

@@ -52,7 +52,6 @@ pub(super) fn cancellation_identity(
             id(request.cancellation_id, request.request_id)
         }
         DurableEffectExecution::LegacyDomainDerived
-        | DurableEffectExecution::Publication { .. }
         | DurableEffectExecution::Cancellation { .. } => None,
     }
 }

@@ -27,7 +27,7 @@ pub(crate) fn commit_agent_tool_completion(
         return Err(StorageError::InvalidActivity);
     };
     let turn_id = *turn_id;
-    if command.request.target != ActivityDomain::AgentPublication
+    if command.request.target != ActivityDomain::Agent
         || command.request.subject != (pod0_application::ActivitySubject::AgentTurn { turn_id })
     {
         return Err(StorageError::InvalidActivity);

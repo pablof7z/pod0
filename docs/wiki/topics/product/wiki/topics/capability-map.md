@@ -12,7 +12,6 @@ aliases: [Product Capability Map]
 confidence: medium
 volatility: warm
 verified: 2026-05-09
-summary: "The product decomposes into baseline playback, transcript ingestion, span-grounded snips, entity extraction, wiki compilation, retrieval, agent tools, voice, Nostr, and polished iOS UX."
 ---
 
 # Capability Map
@@ -63,9 +62,7 @@ This keeps the system prompt compact while giving the agent precise access to th
 
 Voice mode supports live orders and interruptible briefings. Briefings are not just summaries: they are generated audio programs with anchors back to episodes and the wiki.
 
-## Nostr Layer
 
-Nostr provides remote communication with the user's agent. It is a command surface and needs explicit boundaries for actions that affect playback, messages, purchases, external research, or data sharing.
 
 ## Experience Layer
 

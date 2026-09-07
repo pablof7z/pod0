@@ -3,7 +3,6 @@
 ## What people love
 - **Value-for-value payments that work**: Streaming sats per minute and one-tap Boosts feel natural once the wallet is funded; loyalists describe it as "changed how I listen" and say the timestamp data sent with boosts gives podcasters actionable signal on which moments land (Stacker News AMA, thrillerbitcoin.com).
 - **Boostagrams as two-way communication**: A boost with a message (min 100 sats) appears ranked by amount in episode comments, creating a visible tipping ladder that rewards larger supporters — popular with No Agenda / Bitcoin podcast crowd (Stacker News ~podcasts).
-- **Nostr-native social layer**: v1.1 (2024) made Fountain the first podcasting client to publish comments and boosts to Nostr relays, so engagement survives the app. Users can import Nsec/Npub; the home feed pulls from Primal and other audio-Nostr clients (thebitcoinmanual.com).
 - **Clips + earn-on-likes flywheel**: Circular clip editor with transcript reference; sharing earns you 10 sats per like from other listeners. The clips feed (Stories-style) doubles as content-discovery (blog.fountain.fm/p/1-0).
 - **Promoted-podcast earn-while-listening**: Advertisers fund a sats pool; listeners earn a share of ad budget in real time while the promoted episode plays — voluntary, non-interruptive (Fountain 0.4.0 blog).
 - **Splits that pay contributors instantly**: Adding a co-host/guest Lightning Address means they get cut of every boost and stream automatically, no invoicing needed (support.fountain.fm).
@@ -22,10 +21,8 @@
 - **Splits**: Podcast-level revenue sharing across hosts/guests via Lightning Address; automatic on every boost and stream.
 - **Streaming sats**: Configurable sats-per-minute that fires automatically while listening.
 - **Podcasting 2.0 namespace**: Chapters, transcripts (auto + RSS-linked), person tags, value blocks, soundbites.
-- **Nostr social graph**: Comments/boosts published to Nostr relays; cross-app visibility via Nsec/Npub login.
 - **Clips**: Transcript-assisted circular clip editor; clips feed (Stories-style); earn sats when others like your clip.
 - **Earn-while-listening**: Daily randomised rewards + promoted-episode pay-per-second pool.
-- **Wallet**: Custodial Fountain wallet (top-up via card via Strike partnership); Nostr Wallet Connect for external wallets; LNURL/Lightning Address for withdrawals.
 - **"For you" feed**: Home feed surfaces clips, playlists, boost activity from followed accounts.
 - **Charts**: "Hot on Fountain" discovery ranking driven by listener payments, not downloads.
 
@@ -40,20 +37,14 @@
 
 ## What Podcastr should steal (3–7 ideas)
 
-- **Feature**: Nostr-native comments + boosts
-  - **Why it fits Podcastr**: We already plan Nostr DM infrastructure for the AI agent. Publishing episode comments as Nostr events is a trivial extension — comments survive Podcastr the app, users keep their social graph, and we interop with Fountain's existing Nostr audience from day one. Strongest cross-pollination angle in the whole landscape.
   - **Effort**: M
-  - **Risk / conflict**: Nostr UX still unfamiliar to mainstream; must abstract Nsec safely. Doesn't conflict with editorial theme — frame it as "your voice, everywhere."
 
 - **Feature**: Transcript-pinned boostagrams / AI-aware comments
   - **Why it fits Podcastr**: Fountain timestamps boosts to a moment in the episode. We can go further: attach a comment to a transcript segment, let the AI agent surface "most boosted moments" in a TLDR, or answer "what did listeners love about this episode?" RAG over boosted moments is a unique angle Fountain can't match.
   - **Effort**: M
   - **Risk / conflict**: Requires Lightning wallet or sats abstraction. Can soft-launch as free "highlights" without payment.
 
-- **Feature**: Clips from transcript — share-to-Nostr
-  - **Why it fits Podcastr**: Our RAG pipeline already produces transcripts. Clip creation from transcript text is a natural editorial surface. Publishing clips as Nostr events (kind 1 or podcast-specific kind) feeds the Nostr audience loop and drives discovery without algorithmic platforms.
   - **Effort**: S–M
-  - **Risk / conflict**: Low. Clips are purely additive; sharing to Nostr is a toggle.
 
 - **Feature**: Splits / value-block visualisation
   - **Why it fits Podcastr**: If we add Lightning tipping at all, showing the user who gets paid (hosts, guests, RSS-declared contributors) adds transparency that editorial-minded users appreciate. The AI agent could explain "who made this episode" from person tags.
@@ -66,15 +57,12 @@
   - **Risk / conflict**: Needs enough listeners to generate signal; single-user vault still works via personal replay data.
 
 - **Feature**: Earn-while-listening (as onboarding, not primary value prop)
-  - **Why it fits Podcastr**: Fountain's implementation is flawed (lottery-like, confusing). But the mechanic of rewarding early users with sats for listening to featured/partner shows is a proven growth hack — it funded Fountain's early audience. Could work as a Podcastr launch incentive tied to Nostr zaps.
   - **Effort**: L
   - **Risk / conflict**: High regulatory and UX complexity; risk of the same backlash Fountain got. Deprioritise unless we have a Lightning wallet strategy locked.
 
 ## Anti-patterns to avoid
-- **Making Bitcoin a prerequisite**: Fountain's core value is locked behind Lightning wallet funding. Even with Strike, this loses mainstream users. For Podcastr, any Lightning/Nostr features must be fully optional and invisible until the user opts in.
 - **Opaque earning promises**: "Earn sats by listening" is marketing that reliably disappoints. If we touch earn mechanics, the copy must be radically honest about amounts and conditions.
 - **Letting payment UI dominate the player**: Boost/stream controls are prominent in Fountain's player to the point of distraction for non-paying users. Our editorial/AI identity should be the hero; tipping should be contextual and subtle.
 - **Neglecting core podcast-app fundamentals**: Fountain's stability bugs and battery drain cost it mainstream users. Our Liquid Glass / cinematic motion bar is worthless if playback is unreliable. Nail the basics before layering social.
 
 ## One-line pitch
-Fountain proved that Nostr + Lightning can turn podcast listening into a two-way social contract — Podcastr can inherit that open social graph on day one while the AI agent transforms passive boosts into active intelligence ("here's what listeners loved, here's what you missed").

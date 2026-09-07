@@ -29,7 +29,6 @@ The single funnel for every agent run is
 Voice piggybacks on this through `Voice/VoiceTurnDelegate.swift`. Briefings
 invoke the LLM as a tool from inside the chat session — they do **not** open a
 second turn loop. The only true second entry point is
-`App/Sources/Agent/AgentRelayBridge.reply` (Nostr-inbound).
 
 ## Existing surfaces this must reconcile with
 
@@ -79,7 +78,6 @@ content sniffing:
 ```
 .typedChat           // AgentChatSession from chat UI
 .voiceMessage        // AgentChatSession via VoiceTurnDelegate
-.nostrInbound        // AgentRelayBridge.reply
 .briefingCompose     // future: standalone briefing job, if it ever leaves the chat session
 .background          // future
 .manual              // dev/test
@@ -253,7 +251,6 @@ the calm UX during a voice conversation.
 | `App/Sources/Agent/RunLog/AgentRunLogger.swift` | `@MainActor` `ObservableObject` singleton, JSON persistence to Application Support. |
 | `App/Sources/Agent/RunLog/AgentRunCollector.swift` | Mutable per-run accumulator used inside `runAgentTurns`. |
 | `App/Sources/Features/Settings/Agent/AgentRunListView.swift` | Run list. |
-| `App/Sources/Features/Settings/Agent/AgentRunDetailView.swift` | Per-run drilldown. Reference is 566 lines; **split** at the 500-line cap into shell + `AgentRunTurnSection.swift` + `AgentRunMessageRow.swift`. |
 | `App/Sources/Features/Settings/Agent/AgentRunToolFormatter.swift` | Phase 1: generic. Phase 2: podcast-aware overrides. |
 
 **EDIT**
@@ -262,7 +259,6 @@ the calm UX during a voice conversation.
 |---|---|
 | `App/Sources/Features/Agent/AgentChatSession.swift` | Instrument `runAgentTurns(batchID:)` — see capture map below. Thread `source: AgentRunSource` through `send`/`startSend`/`regenerateSend`. |
 | `App/Sources/Voice/VoiceTurnDelegate.swift` | Pass `.voiceMessage` into `startSend`. |
-| `App/Sources/Agent/AgentRelayBridge.swift` | Wrap `reply`'s `for _ in 0..<maxTurns` loop with the same collector pattern, `source: .nostrInbound`. |
 | `App/Sources/Features/Agent/AgentLLMClient.swift` (+ `AgentOpenRouterClient.swift`, `AgentOllamaClient.swift`) | Extend `AgentResult` with `tokensUsed: AgentTokenUsage?`. Best-effort — pass `nil` if the provider doesn't surface usage. |
 | `App/Sources/State/CostLedger.swift` (Phase 2) | Add `runID: UUID?` to `UsageRecord` so Run Logs and Cost Ledger join. |
 | `App/Sources/Features/Settings/Agent/AgentSettingsView.swift` | Add a `NavigationLink` row pointing at `AgentRunListView()` after the existing Activity Log row (~line 84). |
@@ -301,14 +297,12 @@ the `rawMessages.append` payload and the dispatch record.
    through `startSend` / `send` / `regenerateSend`. Voice delegate passes
    `.voiceMessage`.
 4. Wrap `AgentRelayBridge.reply`'s loop with the same collector,
-   `source: .nostrInbound`.
 5. Port `AgentRunListView`, `AgentRunDetailView` (split if > 500 lines),
    `AgentRunToolFormatter` into `App/Sources/Features/Settings/Agent/`. Wire
    to `AgentRunLogger.shared` via `@StateObject` / `@ObservedObject`.
 6. Add the "Run History" `NavigationLink` row in
    `AgentSettingsView.agentSection`, badge = `AgentRunLogger.shared.runs.count`.
 7. Manually verify all four sources end-to-end: typed → `.typedChat`,
-   voice → `.voiceMessage`, Nostr DM (or stub) → `.nostrInbound`, force
    network error → `.failed` + `failureReason`, max-turns → `.turnsExhausted`.
 8. `swift build` clean, no Sendability warnings on `AgentRun` /
    `AgentRunTurnData`. Open Settings → Agent → Run History in the simulator
@@ -319,7 +313,6 @@ the `rawMessages.append` payload and the dispatch record.
 - **Phase 1 — parity port (PR-1):** Types, logger, list, detail, formatter,
   settings link, instrumentation in `AgentChatSession` + `AgentRelayBridge`.
   Generic UI only. Token capture optional.
-- **Phase 2 — podcast enrichments:** `episodeContext`, `playbackPositionSec`,
   `briefingID` on `AgentRun`. Podcast-aware tool formatter (UUID → title,
   seconds → `mm:ss`). "When this run started" context card. Bidirectional
   link with `AgentActivitySheet`. `runID` on `UsageRecord`.
@@ -371,7 +364,6 @@ the `rawMessages.append` payload and the dispatch record.
 - Voice barge-in: each `submitUtterance` is one run, or is a multi-utterance
   conversation one run? Recommend per-utterance (matches the reference's
   "one prompt → one run" intuition).
-- Nostr-inbound runs may carry peer pubkeys that are pseudo-PII. Hash on
   export?
 - Briefings *can* be authored standalone (no chat session). If/when that
   ships, it becomes the third entry point and needs its own collector wrap.

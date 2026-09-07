@@ -12,18 +12,15 @@ The operating rule is:
 ## Accepted decisions
 
 1. [ADR-0001: Native and shared ownership](adr/0001-native-and-shared-ownership.md)
-2. [ADR-0002: Pod0 Rust kernel and NMP boundary](adr/0002-pod0-rust-kernel-and-nmp-boundary.md)
-3. [ADR-0003: Typed UniFFI application facade](adr/0003-typed-uniffi-application-facade.md)
-4. [ADR-0004: Persistence, schemas, and single-writer migration](adr/0004-persistence-and-single-writer-migration.md)
-5. [ADR-0005: Android investment gate](adr/0005-android-investment-gate.md)
-6. [ADR-0006: Shared Rust recall-index execution](adr/0006-shared-rust-recall-index.md)
-7. [ADR-0007: Scheduled agent workflow and artifact ownership](adr/0007-scheduled-agent-workflow-and-artifact-ownership.md)
-8. [ADR-0008: Agent actions, permissions, commits, and NMP publication](adr/0008-agent-actions-permissions-and-nmp-publication.md)
-9. [ADR-0009: Rust activity, transition, and effect authority](adr/0009-rust-activity-transition-effect-authority.md)
+2. [ADR-0003: Typed UniFFI application facade](adr/0003-typed-uniffi-application-facade.md)
+3. [ADR-0004: Persistence, schemas, and single-writer migration](adr/0004-persistence-and-single-writer-migration.md)
+4. [ADR-0005: Android investment gate](adr/0005-android-investment-gate.md)
+5. [ADR-0006: Shared Rust recall-index execution](adr/0006-shared-rust-recall-index.md)
+6. [ADR-0007: Scheduled agent workflow and artifact ownership](adr/0007-scheduled-agent-workflow-and-artifact-ownership.md)
+7. [ADR-0009: Rust activity, transition, and effect authority](adr/0009-rust-activity-transition-effect-authority.md)
 
 ## Planning and enforcement
 
-- [iOS-first shared-core roadmap](../../Plans/2026-07-18-ios-first-rust-nmp-roadmap.md)
 - [Swift ownership inventory](ownership.md)
 - [Shrinking non-Rust business-logic exceptions](rust-business-logic-exceptions.json)
 - [Agent tool permission matrix](agent-tool-permissions.json)

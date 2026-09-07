@@ -176,7 +176,6 @@ impl crate::runtime_state::FacadeState {
         self.transcript_store.take();
         self.scheduled_agent_store.take();
         self.agent_store.take();
-        self.publication_store.take();
         self.recall_index = default_recall_index();
         self.listening = empty_listening_snapshot();
         self.notes.notes.clear();

@@ -30,7 +30,6 @@ On success, the tool returns a delegation event ID and tells the caller to stop 
 
 ## TENEX Compatibility Requirements
 
-- Fresh delegations are represented as kind `1` Nostr events.
 - The event p-tags the recipient agent.
 - When there is a parent conversation root, include a delegation parent tag equivalent to `["delegation", parent_root_id]`.
 - Preserve project or workspace context tags when applicable.

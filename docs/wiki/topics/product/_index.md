@@ -27,7 +27,6 @@ Last updated: 2026-05-09
 | File | Summary | Tags | Updated |
 |------|---------|------|---------|
 | [product-vision.md](wiki/topics/product-vision.md) | Defines the product promise and non-negotiables. | product, vision | 2026-05-09 |
-| [capability-map.md](wiki/topics/capability-map.md) | Maps the product into baseline, knowledge, agent, voice, Nostr, and UX pillars. | product, architecture | 2026-05-09 |
 | [snipd-feature-model.md](wiki/topics/snipd-feature-model.md) | Converts Snipd's public learning features into Podcastr product requirements. | product, snipd | 2026-05-09 |
 | [launch-floor.md](wiki/references/launch-floor.md) | Summarizes table-stakes podcast-player features that cannot be skipped. | launch, baseline | 2026-05-09 |
 

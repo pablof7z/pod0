@@ -1,6 +1,5 @@
 # UX-14 — Proactive Agent & Notifications
 
-> Owner: Designer (Aditi). Coordinates with #1 Now Playing, #2 Library, #5 Agent Chat, #8 Briefings, #9 Threading, #10 Onboarding, #12 Nostr, #15 Liquid Glass.
 > Inherits from: `App/Sources/Features/Agent/`, `Design/GlassSurface.swift`, `UNUserNotificationCenter`, ActivityKit, `BGAppRefreshTask`.
 
 ---
@@ -23,7 +22,6 @@ After a week away, the user comes back to seven quiet editions and feels seen.
 2. **Favorite show drop.** Acquired publishes at 2 PM — no push. At 6 PM she opens the app; **Today** has a hero card: *"Acquired dropped a new one. The agent listened; here's a 30-sec narrated preview."*
 3. **Cross-podcast convergence.** Three shows mention semaglutide. *Threads* card: *"Ozempic came up across 3 podcasts you follow."* Tap → #9.
 4. **Echo from a question past.** Last month she asked about Karpathy. He's on Lex this week. *Echo* card, dashed rule, italic eyebrow — inferential.
-5. **Friend clip.** Maya's agent shares a 42-sec clip via Nostr (#12). Lands in **Inbox** under *From Friends*. Never pushed unless Maya is Priority.
 6. **Transcript ready.** A 3-hour episode finishes transcribing. Small glass dot on the Library tile + a passive Today card. **Never a push** — we resist the temptation.
 
 ---
@@ -54,7 +52,6 @@ Proactive root
 | Drop | `NEW · <show>` | solid rule | no |
 | Thread | `THIS WEEK · CROSS-EPISODE` | solid rule | no |
 | Echo | `YOU ASKED · <date>` | dashed, italic | no |
-| Friend | `FROM <name> ·` Nostr glyph | solid rule | priority-only |
 | Transcript | `READY · TRANSCRIPT` | solid rule | never |
 
 ---
@@ -68,7 +65,6 @@ Proactive root
 - **Hero card**: full-width, 220pt min, editorial serif, inline play affordance as a glass capsule tinted in show-accent at 22%.
 - **Stack cards**: 124pt min. Eyebrow + headline + dek. Glyph cluster (play, save, dismiss) in muted glass; animates in only on long-press.
 - **Echo cards** wear a **dashed leading rule** (1pt, 60% glass) and italic eyebrow — inferential should *feel* inferential.
-- **Friend cards** add a small Nostr relay glyph (matches #5) and 36pt avatar; subtle tint toward friend's accent.
 
 **Color & light.** System Liquid Glass canvas with a *time-of-day vertical gradient* at 6% opacity — predawn cool blue → midday neutral → evening warm amber. The only chrome that signals "morning paper." Show-art tints stay inside Drop cards.
 
@@ -144,7 +140,6 @@ Proactive root
 ├─────────────────────────────────────┤
 │ 📌 PINNED                           │
 │  ┌───────────────────────────────┐ │
-│  │ FROM MAYA · NOSTR             │ │
 │  │ "the part about Brian Eno"    │ │
 │  │ 0:42 clip · Rick Rubin show ▶ │ │
 │  └───────────────────────────────┘ │
@@ -186,7 +181,6 @@ Proactive root
 │   Drops (favorite shows)  ●─── on  │
 │   Cross-podcast threads   ●─── on  │
 │   Echoes (past questions) ●─── on  │
-│   Friend clips (Nostr)    Priority>│
 │   Transcript ready        Today only│
 ├─────────────────────────────────────┤
 │ QUIET HOURS                         │

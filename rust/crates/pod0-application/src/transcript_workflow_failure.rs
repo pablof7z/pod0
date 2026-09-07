@@ -3,6 +3,12 @@ use crate::{
     TranscriptWorkflowAllowedActions, TranscriptWorkflowFailureCode, TranscriptWorkflowStage,
 };
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TranscriptFailurePhase {
+    pub submission_authorized: bool,
+    pub provider_accepted: bool,
+}
+
 #[must_use]
 pub const fn transcript_allowed_actions(
     stage: TranscriptWorkflowStage,
@@ -41,6 +47,7 @@ pub const fn transcript_allowed_actions(
 #[must_use]
 pub const fn classify_transcript_failure(
     evidence: TranscriptFailureEvidence,
+    phase: TranscriptFailurePhase,
 ) -> TranscriptFailureClassification {
     use TranscriptFailureEvidence as Evidence;
     use TranscriptRetryDisposition as Retry;
@@ -61,36 +68,17 @@ pub const fn classify_transcript_failure(
         Evidence::PublisherUnavailable => {
             classification(Code::PublisherUnavailable, Retry::Replan, false, true)
         }
-        Evidence::Offline {
-            submission_authorized,
-            provider_accepted,
-        } => phase_failure(Code::Offline, submission_authorized, provider_accepted),
-        Evidence::RateLimited {
-            submission_authorized,
-            provider_accepted,
-        } => phase_failure(Code::RateLimited, submission_authorized, provider_accepted),
-        Evidence::TimedOut {
-            submission_authorized,
-            provider_accepted,
-        } => phase_failure(Code::TimedOut, submission_authorized, provider_accepted),
-        Evidence::Transport {
-            submission_authorized,
-            provider_accepted,
-        } => phase_failure(Code::Transport, submission_authorized, provider_accepted),
+        Evidence::Offline => phase_failure(Code::Offline, phase),
+        Evidence::RateLimited => phase_failure(Code::RateLimited, phase),
+        Evidence::TimedOut => phase_failure(Code::TimedOut, phase),
+        Evidence::Transport => phase_failure(Code::Transport, phase),
         Evidence::PermissionDenied => {
             classification(Code::PermissionDenied, Retry::ExplicitOnly, false, true)
         }
         Evidence::ProviderRejected => {
             classification(Code::ProviderRejected, Retry::Never, true, false)
         }
-        Evidence::ProviderUnavailable {
-            submission_authorized,
-            provider_accepted,
-        } => phase_failure(
-            Code::ProviderUnavailable,
-            submission_authorized,
-            provider_accepted,
-        ),
+        Evidence::ProviderUnavailable => phase_failure(Code::ProviderUnavailable, phase),
         Evidence::ResponseTooLarge => {
             classification(Code::ResponseTooLarge, Retry::Never, true, false)
         }
@@ -98,33 +86,23 @@ pub const fn classify_transcript_failure(
             classification(Code::InvalidResponse, Retry::ExplicitOnly, true, false)
         }
         Evidence::StaleInput => classification(Code::StaleInput, Retry::Replan, false, false),
-        Evidence::StorageUnavailable {
-            submission_authorized,
-            provider_accepted,
-        } => phase_failure(
-            Code::StorageUnavailable,
-            submission_authorized,
-            provider_accepted,
-        ),
+        Evidence::StorageUnavailable => phase_failure(Code::StorageUnavailable, phase),
         Evidence::ProviderRecoveryUnavailable => classification(
             Code::ProviderRecoveryUnavailable,
             Retry::ExplicitOnly,
             true,
             false,
         ),
-        Evidence::RetryExhausted { may_have_submitted } => classification(
+        Evidence::RetryExhausted => classification(
             Code::RetryExhausted,
             Retry::ExplicitOnly,
-            may_have_submitted,
-            !may_have_submitted,
+            phase.submission_authorized || phase.provider_accepted,
+            !phase.submission_authorized && !phase.provider_accepted,
         ),
-        Evidence::Cancelled {
-            submission_authorized,
-            provider_accepted,
-        } => classification(
+        Evidence::Cancelled => classification(
             Code::Cancelled,
             Retry::Never,
-            submission_authorized || provider_accepted,
+            phase.submission_authorized || phase.provider_accepted,
             false,
         ),
         Evidence::Unsupported { wire_code } => {
@@ -135,17 +113,16 @@ pub const fn classify_transcript_failure(
 
 const fn phase_failure(
     code: TranscriptWorkflowFailureCode,
-    submission_authorized: bool,
-    provider_accepted: bool,
+    phase: TranscriptFailurePhase,
 ) -> TranscriptFailureClassification {
-    if provider_accepted {
+    if phase.provider_accepted {
         classification(
             code,
             TranscriptRetryDisposition::RecoverPersisted,
             true,
             false,
         )
-    } else if submission_authorized {
+    } else if phase.submission_authorized {
         classification(code, TranscriptRetryDisposition::ExplicitOnly, true, false)
     } else {
         classification(

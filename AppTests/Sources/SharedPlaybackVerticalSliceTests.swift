@@ -1,11 +1,12 @@
 import Foundation
 import Observation
+import Pod0Core
 import XCTest
 @testable import Podcastr
 
 @MainActor
 final class SharedPlaybackVerticalSliceTests: XCTestCase {
-    func testSharedPlaybackSurvivesRelaunchWithRustAsSoleWriter() async throws {
+    func testSharedPlaybackSurvivesFacadeReopenWithRustAsSoleWriter() async throws {
         let fileURL = AppStateTestSupport.uniqueTempFileURL()
         let persistence = Persistence(fileURL: fileURL)
         defer { persistence.reset() }
@@ -65,31 +66,53 @@ final class SharedPlaybackVerticalSliceTests: XCTestCase {
         }
         XCTAssertEqual(playback.sleepTimer, .off)
         XCTAssertEqual(playback.engine.sleepTimer.mode, .off)
+        let durableEnvelope = await client.coreSnapshot(ProjectionRequest(
+            scope: .playback,
+            offset: 0,
+            maxItems: 1
+        ))
+        guard case .playback(let durablePlayback) = durableEnvelope.projection else {
+            return XCTFail("Expected the authoritative playback projection")
+        }
+        XCTAssertEqual(durablePlayback.current?.durableResumePositionMilliseconds, 47_000)
+        XCTAssertEqual(durablePlayback.rate.value, 1_500)
+        XCTAssertEqual(durablePlayback.sleepMode, .off)
 
         client.shutdown()
         let relaunched = makeStore(persistence)
         defer { relaunched.sharedLibrary?.shutdown() }
         let restoredPlayback = PlaybackState(engine: AudioEngine())
-        try XCTUnwrap(relaunched.sharedLibrary).attachPlayback(
+        let relaunchedClient = try XCTUnwrap(relaunched.sharedLibrary)
+        relaunchedClient.attachPlayback(
             restoredPlayback,
             store: relaunched
         )
-        await waitFor("durable playback to restore after relaunch") {
+        let relaunchedEnvelope = await relaunchedClient.coreSnapshot(ProjectionRequest(
+            scope: .playback,
+            offset: 0,
+            maxItems: 1
+        ))
+        guard case .playback(let relaunchedProjection) = relaunchedEnvelope.projection else {
+            return XCTFail("Expected the relaunched playback projection")
+        }
+        XCTAssertEqual(
+            relaunchedProjection.current?.durableResumePositionMilliseconds,
+            47_000
+        )
+        XCTAssertEqual(relaunchedProjection.rate.value, 1_500)
+        XCTAssertEqual(relaunchedProjection.sleepMode, .off)
+        XCTAssertEqual(relaunchedProjection.queue.first?.queueEntryId.uuid, queuedID)
+        XCTAssertEqual(relaunchedProjection.queue.first?.episodeId.uuid, second.id)
+        await waitFor("durable playback to project after facade reopen") {
             relaunched.episode(id: first.id)?.playbackPosition == 47
                 && restoredPlayback.episode?.id == first.id
-                && abs(restoredPlayback.engine.currentTime - 47) <= 0.001
-                && abs(restoredPlayback.engine.rate - 1.5) <= 0.001
                 && restoredPlayback.sleepTimer == .off
-                && restoredPlayback.engine.sleepTimer.mode == .off
                 && restoredPlayback.queue.first?.episodeID == second.id
         }
 
         XCTAssertEqual(relaunched.episode(id: first.id)?.playbackPosition, 47)
         XCTAssertEqual(restoredPlayback.episode?.id, first.id)
-        XCTAssertEqual(restoredPlayback.engine.currentTime, 47, accuracy: 0.001)
-        XCTAssertEqual(restoredPlayback.engine.rate, 1.5, accuracy: 0.001)
         XCTAssertEqual(restoredPlayback.sleepTimer, .off)
-        XCTAssertEqual(restoredPlayback.engine.sleepTimer.mode, .off)
         XCTAssertEqual(restoredPlayback.queue.first?.id, queuedID)
         XCTAssertEqual(restoredPlayback.queue.first?.episodeID, second.id)
 

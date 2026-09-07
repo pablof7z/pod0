@@ -90,7 +90,7 @@ pub fn plan_agent_artifact_handoff(
             episodes.first().copied(),
             ActivityFact::InternalCommandAuthorized {
                 internal_command_id: completion_id,
-                target: ActivityDomain::AgentPublication,
+                target: ActivityDomain::Agent,
             },
         )
     };
@@ -145,7 +145,7 @@ pub fn plan_agent_artifact_handoff(
                     turn_id: input.turn_id,
                     completion: input.completion,
                 },
-                target: ActivityDomain::AgentPublication,
+                target: ActivityDomain::Agent,
                 subject: ActivitySubject::AgentTurn {
                     turn_id: input.turn_id,
                 },

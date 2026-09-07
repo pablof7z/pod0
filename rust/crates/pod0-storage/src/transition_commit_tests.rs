@@ -217,57 +217,8 @@ fn state_dependent_planning_runs_under_the_immediate_write_lock() {
     assert_eq!(count(&connection, "pod0_activity_facts"), 3);
 }
 
-#[test]
-fn every_fault_seam_rolls_back_state_facts_outboxes_and_receipt() {
-    let points = [
-        CommitFaultPoint::BeforeMutation,
-        CommitFaultPoint::AfterMutation,
-        CommitFaultPoint::AfterFacts,
-        CommitFaultPoint::AfterEffectIntents,
-        CommitFaultPoint::AfterInternalCommands,
-        CommitFaultPoint::AfterReceipt,
-    ];
-    for (index, target) in points.into_iter().enumerate() {
-        let fixture = Fixture::new();
-        fixture
-            .migrate_to_current(30 + u64::try_from(index).unwrap())
-            .unwrap();
-        let connection = Connection::open(&fixture.store).unwrap();
-        connection
-            .execute("CREATE TABLE test_state(value TEXT)", [])
-            .unwrap();
-        drop(connection);
-        let result = TransitionCommit::open(&fixture.store)
-            .unwrap()
-            .commit_with_fault(
-                ingress(1),
-                plan(),
-                UnixTimestampMilliseconds::new(100),
-                |transaction, _, value| {
-                    transaction
-                        .execute("INSERT INTO test_state VALUES(?1)", [value])
-                        .unwrap();
-                    Ok(StateRevision::new(10))
-                },
-                |point| {
-                    (point != target)
-                        .then_some(())
-                        .ok_or(StorageError::Interrupted)
-                },
-            );
-        assert!(matches!(result, Err(StorageError::Interrupted)));
-        let connection = Connection::open(&fixture.store).unwrap();
-        for table in [
-            "test_state",
-            "pod0_activity_facts",
-            "pod0_effect_intents",
-            "pod0_internal_command_intents",
-            "pod0_transition_receipts",
-        ] {
-            assert_eq!(count(&connection, table), 0, "{target:?}: {table}");
-        }
-    }
-}
-
 #[path = "transition_commit_causation_tests.rs"]
 mod causation;
+
+#[path = "transition_commit_fault_tests.rs"]
+mod faults;

@@ -75,7 +75,7 @@ impl LibraryStore {
             Err(error) => return Err(error),
         };
         commit(self.path(), command, request_id, finalization, committed_at)?;
-        Ok(self.download_workflow(current.episode_id)?)
+        self.download_workflow(current.episode_id)
     }
 }
 

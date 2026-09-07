@@ -52,9 +52,6 @@ pub enum OperationResult {
         conversation_id: ConversationId,
         turn_id: AgentTurnId,
     },
-    PublicationPrepared {
-        publication_id: pod0_domain::PublicationId,
-    },
     RecallFinished {
         query_id: RecallQueryId,
         evidence_count: u16,

@@ -124,9 +124,6 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
             connection,
         )?;
     }
-    if version >= 25 {
-        crate::schema_publications::validate_publication_schema(connection)?;
-    }
     if version >= 27 {
         crate::schema_agent::validate_agent_history_cutover_schema(connection)?;
     }
@@ -161,7 +158,7 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
         crate::schema_speakers::validate_speaker_schema(connection)?;
     }
     if version >= 37 {
-        crate::schema_activity::validate_activity_schema(connection)?;
+        crate::schema_activity::validate_activity_schema(connection, version)?;
     }
     if version >= 38 {
         require_columns(

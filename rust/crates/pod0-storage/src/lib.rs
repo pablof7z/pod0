@@ -14,6 +14,9 @@ mod agent_store_codec;
 mod agent_store_history;
 mod agent_store_model;
 mod agent_store_recovery;
+mod authoritative_bootstrap;
+#[cfg(test)]
+mod authoritative_bootstrap_tests;
 mod backup;
 mod category_store_model;
 mod category_store_read;
@@ -78,6 +81,8 @@ mod download_store_request;
 mod download_store_retry;
 mod download_store_write;
 mod effect_outbox;
+#[cfg(test)]
+mod effect_outbox_immutability_tests;
 mod effect_outbox_model;
 #[cfg(test)]
 mod effect_outbox_tests;
@@ -183,13 +188,6 @@ mod note_legacy_backup;
 mod note_store_codec;
 mod note_store_model;
 mod note_store_read;
-mod publication_store;
-mod publication_store_codec;
-mod publication_store_observe;
-mod publication_store_read;
-#[cfg(test)]
-mod publication_store_tests;
-mod publication_store_write;
 mod recall_configuration_store;
 mod recall_cutover_store;
 mod recall_workflow_store;
@@ -228,7 +226,6 @@ mod schema_memories;
 mod schema_migrations;
 mod schema_model_chapter_workflows;
 mod schema_notes;
-mod schema_publications;
 mod schema_scheduled_agent;
 mod schema_speakers;
 mod schema_transcript_workflows;
@@ -242,22 +239,6 @@ mod transcript_backup_atomic;
 mod transcript_effect_request;
 mod transcript_import;
 mod transcript_import_commit;
-mod user_data_erasure_inventory;
-pub use user_data_erasure_inventory::*;
-mod user_data_erasure_exclusions;
-pub use user_data_erasure_exclusions::*;
-mod user_data_erasure;
-mod user_data_erasure_evidence;
-mod user_data_erasure_filesystem;
-mod user_data_erasure_marker;
-mod user_data_erasure_projection;
-mod user_data_erasure_recovery;
-pub use user_data_erasure::{
-    LeasedNativeErasureAction, UserDataErasureConfirmation, UserDataErasureFaultPoint,
-    UserDataErasureProgress, confirm_user_data_erasure, observe_native_user_data_erasure,
-    prepare_user_data_erasure, recover_user_data_erasure,
-};
-pub use user_data_erasure_recovery::pending_user_data_erasure_markers;
 mod transcript_import_digest;
 mod transcript_import_discard;
 mod transcript_import_model;
@@ -287,6 +268,14 @@ mod transition_commit_lifecycle_observation;
 mod transition_commit_lifecycle_wake;
 mod transition_commit_listening_cutover;
 mod transition_commit_model;
+mod user_data_erasure;
+mod user_data_erasure_evidence;
+mod user_data_erasure_exclusions;
+mod user_data_erasure_filesystem;
+mod user_data_erasure_inventory;
+mod user_data_erasure_marker;
+mod user_data_erasure_projection;
+mod user_data_erasure_recovery;
 mod workflow_configuration_store;
 pub(crate) use chapter_import_model::{
     ChapterEvidenceKind, ChapterEvidenceValidation, InspectedChapterEvidence,

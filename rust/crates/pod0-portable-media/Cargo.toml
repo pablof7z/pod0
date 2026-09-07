@@ -1,0 +1,21 @@
+[package]
+name = "pod0-portable-media"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.93"
+license = "MIT"
+publish = false
+
+[dependencies]
+hound = "=3.5.1"
+reqwest = { version = "=0.12.28", default-features = false, features = ["rustls-tls"] }
+rodio = { version = "=0.21.1", default-features = false, features = ["flac", "mp3", "mp4", "vorbis", "wav"] }
+thiserror = "=2.0.20"
+tokio = { version = "=1.53.1", features = ["net", "rt", "time"] }
+url = "=2.5.7"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+rodio = { version = "=0.21.1", default-features = false, features = ["flac", "mp3", "mp4", "playback", "vorbis", "wav"] }
+
+[lib]
+path = "src/lib.rs"

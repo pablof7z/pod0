@@ -223,9 +223,6 @@ impl FacadeState {
                     ),
                 }
             }
-            ProjectionScope::Publications { publication_id } => {
-                self.publication_projection(publication_id, &request)
-            }
             ProjectionScope::Notes { scope } => self.notes_projection(scope, offset, item_limit),
             ProjectionScope::Memories { scope } => {
                 let mut memories = self.memories.memories.clone();

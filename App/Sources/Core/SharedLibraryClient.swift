@@ -15,7 +15,6 @@ final class SharedLibraryClient {
     let deferredPlaybackHost: DeferredPlaybackHost
     let deferredAgentHost: DeferredAgentHost
     let deferredRecallHost: DeferredRecallHost
-    let nmp: NMPClient
     private var subscriber: SharedLibrarySubscriber?
     var librarySubscriptionID: SubscriptionId?
     var playbackSubscriptionID: SubscriptionId?
@@ -95,7 +94,6 @@ final class SharedLibraryClient {
         self.deferredPlaybackHost = playbackHost
         self.deferredAgentHost = agentHost
         self.deferredRecallHost = recallHost
-        self.nmp = NMPClient()
         self.dispatcher = Pod0NativeHostDispatcher(
             feedHost: feedHost,
             downloadHost: downloadHost,
@@ -129,8 +127,6 @@ final class SharedLibraryClient {
                 return
             }
             install(subscriptions)
-            _ = try? await nmp.ensureAccount()
-            await nmp.resume(from: facade)
             dispatcher.executePendingRequests(from: facade)
         }
     }
@@ -171,7 +167,7 @@ final class SharedLibraryClient {
             if let store { publishNewEpisodeNotificationSettings(to: store) }
         case .podcastDetail, .episodeDetail,
              .recall, .evidenceIndex, .transcript, .chapter, .agentConversations,
-             .agentConversation, .publications, .unsupported:
+             .agentConversation, .unsupported:
             break
         }
     }

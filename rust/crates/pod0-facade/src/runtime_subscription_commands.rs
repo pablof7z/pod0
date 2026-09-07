@@ -1,5 +1,8 @@
 use pod0_application::{CommandEnvelope, OperationResult};
-use pod0_domain::{AutoDownloadPolicy, PodcastId, TranscriptStartPolicy};
+use pod0_domain::{
+    AutoDownloadPolicy, CancellationId, CommandId, ContentDigest, PodcastId, TranscriptStartPolicy,
+};
+use sha2::{Digest as _, Sha256};
 
 use crate::runtime_state::FacadeState;
 
@@ -90,6 +93,9 @@ impl FacadeState {
                     self.revision.value.max(settings.revision.value),
                 );
                 self.new_episode_notification_settings = settings;
+                if !enabled {
+                    self.withdraw_feed_notifications(envelope.command_id);
+                }
                 let _ = self.reconcile_feed_discovery_workflows();
                 self.succeed(envelope.command_id, None);
             }
@@ -98,6 +104,25 @@ impl FacadeState {
                     envelope.command_id,
                     crate::runtime_storage_commands::storage_failure(error),
                 );
+            }
+        }
+    }
+
+    fn withdraw_feed_notifications(&mut self, parent_command_id: CommandId) {
+        let Some(store) = self.store.clone() else {
+            return;
+        };
+        let Ok(records) = store.requested_feed_discovery_notifications(64) else {
+            return;
+        };
+        for record in records {
+            let (command_id, fingerprint) =
+                notification_withdrawal_identity(parent_command_id, record.cancellation_id);
+            if store
+                .cancel_durable_effects(command_id, fingerprint, record.cancellation_id, self.now())
+                .is_ok()
+            {
+                self.host_requests.cancel(record.cancellation_id);
             }
         }
     }
@@ -163,4 +188,19 @@ impl FacadeState {
             OperationResult::PreferencesUpdated { podcast_id },
         );
     }
+}
+
+fn notification_withdrawal_identity(
+    parent_command_id: CommandId,
+    cancellation_id: CancellationId,
+) -> (CommandId, ContentDigest) {
+    let mut hash = Sha256::new();
+    hash.update(b"pod0/feed-notification-withdrawal/v1\0");
+    hash.update(parent_command_id.into_bytes());
+    hash.update(cancellation_id.into_bytes());
+    let digest: [u8; 32] = hash.finalize().into();
+    (
+        CommandId::from_bytes(digest[..16].try_into().expect("digest prefix")),
+        ContentDigest::from_bytes(digest),
+    )
 }

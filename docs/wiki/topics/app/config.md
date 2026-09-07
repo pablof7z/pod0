@@ -9,7 +9,6 @@ freshness_threshold: 30
 
 ## Scope
 
-This topic wiki is the app-wide entry point for Podcastr. It explains how the current shipped code hangs together across product surfaces, Swift modules, persistent state, audio playback, transcripts, local wiki/RAG, agent tools, BYOK provider credentials, Nostr identity, settings, feedback, and release operations.
 
 ## Conventions
 

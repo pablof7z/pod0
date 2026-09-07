@@ -21,13 +21,14 @@ pub use pod0_application::{
     DomainEvent, DomainEventEnvelope, DownloadAdmissionDecision, DownloadDesiredState,
     DownloadEnvironmentObservation, DownloadIntentOrigin, DownloadNetworkState, DownloadWaitReason,
     DownloadWorkflowAllowedActions, DownloadWorkflowFailure, DownloadWorkflowFailureCode,
-    DownloadWorkflowProjection, DownloadWorkflowStage, DownloadWorkflowsProjection, EpisodeSummary,
-    EvidenceIndexProjection, EvidenceIndexSpanProjection, EvidenceIndexStage,
-    FACADE_CONTRACT_VERSION, HostFailureCode, HostObservation, HostObservationEnvelope,
-    HostObservationReceipt, HostObservationRejection, HostRequest, HostRequestEnvelope,
-    KernelProbeCommand, KernelProbeProjection, LeasedHostObservationEnvelope,
-    LeasedHostRequestEnvelope, LegacyAgentHistoryConversationInput, LegacyAgentHistoryMessageInput,
-    LegacyAgentHistoryTurnInput, LibraryProjection, LocalAudioCapability,
+    DownloadWorkflowProjection, DownloadWorkflowStage, DownloadWorkflowsProjection,
+    DurableExternalEffectRequest, EpisodeSummary, EvidenceIndexProjection,
+    EvidenceIndexSpanProjection, EvidenceIndexStage, ExternalEffectKind, FACADE_CONTRACT_VERSION,
+    HostFailureCode, HostObservation, HostObservationEnvelope, HostObservationReceipt,
+    HostObservationRejection, HostRequest, HostRequestEnvelope, KernelProbeCommand,
+    KernelProbeProjection, LeasedHostObservationEnvelope, LeasedHostRequestEnvelope,
+    LegacyAgentHistoryConversationInput, LegacyAgentHistoryMessageInput,
+    LegacyAgentHistoryTurnInput, LibraryNetworkStep, LibraryProjection, LocalAudioCapability,
     MAX_AGENT_COMPOSED_CHAPTER_ITEMS, MAX_CHAPTER_MODEL_EPISODE_TEXT_BYTES,
     MAX_CHAPTER_MODEL_TRANSCRIPT_CHARACTERS, MAX_CHAPTER_MODEL_TRANSCRIPT_INPUT_BYTES,
     MAX_CHAPTER_MODEL_TRANSCRIPT_SEGMENTS, MAX_EVIDENCE_INDEX_PAGE_ITEMS, MAX_FEED_RESPONSE_BYTES,
@@ -55,7 +56,7 @@ pub use pod0_application::{
     ScheduledAgentProjection, ScheduledAgentStage, ScheduledAgentWorkflowProjection,
     ScheduledTaskInput, ScheduledTaskProjection, TranscriptCommitReceipt, TranscriptCommitRequest,
     TranscriptContractProjection, TranscriptContractRejection, TranscriptCredentialCapabilities,
-    TranscriptEvidenceInput, TranscriptProjection, TranscriptProjectionScope,
+    TranscriptEvidenceInput, TranscriptProjection, TranscriptProjectionScope, TranscriptProvider,
     TranscriptSegmentInput, TranscriptSegmentProjection, TranscriptSpeakerProjection,
     TranscriptSummaryProjection, TranscriptWordProjection, UnsupportedProjection, UserAction,
     WORKFLOW_CONFIGURATION_SCHEMA_VERSION, WorkflowActionDispatchResult, WorkflowActionKind,
@@ -65,11 +66,6 @@ pub use pod0_application::{
     WorkflowReconcileIntent, WorkflowReconcilePlan, bounded_host_request_count,
     bounded_playback_observation_interval, download_attempt_id, download_input_version,
     download_intent_id, evaluate_download_admission,
-};
-pub use pod0_application::{
-    MAX_PUBLICATION_DETAIL_BYTES, MAX_PUBLICATION_FACTS, MAX_PUBLICATION_URL_BYTES,
-    POD0_PODCAST_EPISODE_KIND, POD0_PODCAST_SHOW_KIND, POD0_PUBLICATION_SCHEMA_VERSION,
-    PublicationsProjection,
 };
 pub use pod0_domain::{
     AdSpanEvaluation, AdSpanId, AdSpanInput, AgentAuthorizationId, AgentCommitId,
@@ -93,12 +89,7 @@ pub use pod0_domain::{
     StateRevision, SubscriptionId, TranscriptArtifactId, TranscriptArtifactInput,
     TranscriptArtifactSegmentInput, TranscriptArtifactSpeakerInput, TranscriptArtifactStatus,
     TranscriptArtifactWordInput, TranscriptProvenance, TranscriptSegmentId, TranscriptSource,
-    TranscriptVersionId, UnixTimestampMilliseconds, make_feed_identity_v1,
+    TranscriptStartPolicy, TranscriptVersionId, UnixTimestampMilliseconds, make_feed_identity_v1,
     resolve_episode_identity_v1, resolve_legacy_parent_id, resolve_podcast_identity_v1,
     validate_listening_snapshot,
-};
-pub use pod0_domain::{
-    PublicationArtifactKind, PublicationFact, PublicationFactKind, PublicationId,
-    PublicationIntent, PublicationMediaEvidence, PublicationRecord, PublicationRouteId,
-    PublicationStage,
 };

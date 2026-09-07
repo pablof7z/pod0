@@ -1,6 +1,6 @@
 use pod0_application::{
     AgentActionObservation, AgentActionOutcome, AgentCapabilityOutcome,
-    AgentEffectObservationActivityInput, AgentPublicationTransition, AgentWorkflowAcceptance,
+    AgentEffectObservationActivityInput, AgentTransition, AgentWorkflowAcceptance,
     DurableAgentCapabilityOutcome, EffectOutcome, agent_host_failure_outcome,
     continuation_model_fence_id, plan_agent_effect_observation,
 };
@@ -93,7 +93,7 @@ pub(crate) fn commit_agent_capability_observation(
                 correlation_id: lease.correlation_id,
                 episode_id: generated.as_ref().map(|value| value.episode_id),
                 outcome: effect_outcome,
-                transition: AgentPublicationTransition::ToolStateChanged,
+                transition: AgentTransition::ToolStateChanged,
                 next_authorization,
                 advance_turn: false,
             })

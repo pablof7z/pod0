@@ -131,28 +131,24 @@ impl LibraryStore {
         )
     }
 
+    pub fn claim_next_headless_effect(
+        &self,
+        now: pod0_domain::UnixTimestampMilliseconds,
+        lease_duration_milliseconds: u32,
+        maximum_active_publisher_chapters: u16,
+    ) -> Result<Option<crate::EffectLease>, crate::EffectOutboxError> {
+        crate::EffectOutbox::open(self.path())?.claim_next_generated_for_headless(
+            now,
+            lease_duration_milliseconds,
+            maximum_active_publisher_chapters,
+        )
+    }
+
     pub fn prepare_expired_agent_capability_recovery(
         &self,
         now: pod0_domain::UnixTimestampMilliseconds,
     ) -> Result<bool, StorageError> {
         crate::transition_commit::commit_expired_agent_capability_recovery(self.path(), now)
-    }
-
-    pub fn claim_next_publication_effect(
-        &self,
-        now: pod0_domain::UnixTimestampMilliseconds,
-        lease_duration_milliseconds: u32,
-    ) -> Result<Option<crate::PublicationEffectLease>, crate::EffectOutboxError> {
-        crate::EffectOutbox::open(self.path())?
-            .claim_next_publication(now, lease_duration_milliseconds)
-    }
-
-    pub fn active_publication_lease(
-        &self,
-        publication_id: pod0_domain::PublicationId,
-    ) -> Result<Option<pod0_application::PersistedEffectLeaseIdentity>, crate::EffectOutboxError>
-    {
-        crate::EffectOutbox::open(self.path())?.active_publication_lease(publication_id)
     }
 
     pub fn effect_kind(
@@ -168,6 +164,20 @@ impl LibraryStore {
     ) -> Result<Option<pod0_application::DurableExternalEffectRequest>, crate::EffectOutboxError>
     {
         crate::EffectOutbox::open(self.path())?.effect_request(intent_id)
+    }
+
+    pub fn pending_effect_requests(
+        &self,
+        maximum_count: u16,
+    ) -> Result<Vec<pod0_application::DurableExternalEffectRequest>, crate::EffectOutboxError> {
+        crate::EffectOutbox::open(self.path())?.pending_requests(maximum_count)
+    }
+
+    pub fn next_effect_claim_at(
+        &self,
+        now: pod0_domain::UnixTimestampMilliseconds,
+    ) -> Result<Option<pod0_domain::UnixTimestampMilliseconds>, crate::EffectOutboxError> {
+        crate::EffectOutbox::open(self.path())?.next_claim_at(now)
     }
 
     pub fn active_evidence_embedding_effects(

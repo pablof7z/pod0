@@ -46,7 +46,25 @@ fn facade_issues_one_shot_confirmation_fences_handles_and_erases_every_target() 
     let fresh_store_id = finish_native(progress, locations);
     assert_ne!(fresh_store_id, old_store_id);
     assert_eq!(store_id(&fixture.target), fresh_store_id);
-    assert!(!std::path::Path::new(&product_projection).exists());
+    let sanitized: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&product_projection).unwrap()).unwrap();
+    assert_eq!(sanitized["persistenceGeneration"], serde_json::json!(0));
+    assert_eq!(sanitized["settings"]["llmModel"], "retained/model");
+    for key in [
+        "podcasts",
+        "subscriptions",
+        "episodes",
+        "notes",
+        "categories",
+        "clips",
+    ] {
+        assert_eq!(sanitized[key], serde_json::json!([]));
+    }
+    assert_eq!(sanitized["categorySettings"], serde_json::json!([]));
+    assert_ne!(
+        std::fs::read(&product_projection).unwrap(),
+        b"private projection"
+    );
     assert!(matches!(
         fixture.facade.confirm_erasure(token),
         Err(UserDataErasureError::Conflict)

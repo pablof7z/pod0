@@ -56,7 +56,6 @@ Snipd wins the **knowledge-capture loop** (snip → export → spaced review). I
 2. **No voice mode.** Snipd is entirely touch-driven. Our barge-in voice agent lets you snip, query, and navigate hands-free while driving or working out — a step change beyond triple-tap.
 3. **Briefings are unbuilt.** AI DJ compresses one episode; we can generate a narrated multi-episode briefing ("TLDR this week's keto content") across the user's entire subscribed feed.
 4. **No editorial personality.** Snipd's UI is data-dense and utilitarian. Liquid Glass + editorial typography creates an aesthetic moat that matters for word-of-mouth in the Huberman / Tim Ferriss / Naval audience.
-5. **No social graph / Nostr.** Snipd shares are link-only. Nostr DMs to the agent + relay-based snip sharing creates a verifiable, open social layer Snipd cannot replicate quickly.
 6. **Headphone control conflict is unresolved.** Configurable remote-command mapping (hold / double / triple with fallback skip-back) is a direct pain-point win.
 
 ## What Podcastr should steal (5 ideas)

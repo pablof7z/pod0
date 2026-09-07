@@ -213,7 +213,7 @@ final class SharedLibraryVerticalSliceTests: XCTestCase {
 
         try await store?.clearAllDataAndWait()
 
-        XCTAssertTrue(store?.state.podcasts.isEmpty == true)
+        XCTAssertTrue(store?.state.podcasts.allSatisfy { $0.id == Podcast.unknownID } == true)
         XCTAssertTrue(store?.state.subscriptions.isEmpty == true)
         XCTAssertTrue(store?.state.episodes.isEmpty == true)
         store = nil
@@ -222,7 +222,7 @@ final class SharedLibraryVerticalSliceTests: XCTestCase {
             sharedFeedHost: QueuedCoreFeedHost([]),
             startSubscriptionRefresh: false
         )
-        XCTAssertTrue(relaunched.state.podcasts.isEmpty)
+        XCTAssertTrue(relaunched.state.podcasts.allSatisfy { $0.id == Podcast.unknownID })
         XCTAssertTrue(relaunched.state.subscriptions.isEmpty)
         XCTAssertTrue(relaunched.state.episodes.isEmpty)
     }

@@ -168,9 +168,6 @@ impl FacadeState {
             | ApplicationCommand::CancelAgentTurn { .. }) => {
                 self.accept_agent_command(&envelope, command, &fingerprint)
             }
-            ApplicationCommand::PublishGeneratedEpisode { intent } => {
-                self.pub_nmp(&envelope, &fingerprint, &intent)
-            }
             ApplicationCommand::CommitChapter {
                 expected_selection_revision,
                 artifact,

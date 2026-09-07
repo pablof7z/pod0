@@ -40,10 +40,6 @@ enum LegacyTranscriptWorkflowCutover {
         }
 
         if projection.stage == .authoritative {
-            _ = try LegacyTranscriptWorkflowBackupManifest.load(
-                from: backupRoot,
-                sourceGeneration: generation
-            )
             guard try jobStore.legacyTranscriptJobsAreRetired() else {
                 throw LegacyTranscriptWorkflowCutoverError.legacyRowsRemain
             }

@@ -31,6 +31,8 @@ mod memory_cutover;
 mod memory_cutover_types;
 mod note_migration;
 mod runtime;
+#[cfg(test)]
+mod runtime_bootstrap_tests;
 mod runtime_open_error;
 mod workflow_action_facade;
 #[cfg(test)]

@@ -61,7 +61,6 @@ These tools are scoped exclusively to the **In-Episode Agent** (UX-16) surface â
 
 ## Safety And Logging
 
-Mutating tools commit through the Rust Agent authority, where typed proposals, permission grants, execution fences, operation receipts, and conversation projections provide the durable evidence. The retired native Agent activity log is not an audit source and has no writer or UI. Remote Nostr calls expose a narrower default tool set than in-app chat; tools that start playback, send messages, share clips, delegate work, or perform external research remain explicitly classified and fail closed when unavailable.
 
 ## See Also
 
@@ -69,7 +68,6 @@ Mutating tools commit through the Rust Agent authority, where typed proposals, p
 - [[agent-tool-platform|Agent Tool Platform]] ([Agent Tool Platform](../topics/agent-tool-platform.md)) - complete infrastructure design.
 - [[lifetime-tool-catalog|Lifetime Tool Catalog]] ([Lifetime Tool Catalog](lifetime-tool-catalog.md)) - full tool family catalog.
 - [[retrieval-and-citation-model|Retrieval And Citation Model]] ([Retrieval And Citation Model](../../../knowledge/wiki/concepts/retrieval-and-citation-model.md)) - retrieval contracts behind the tools.
-- [[nostr-command-safety|Nostr Command Safety]] ([Nostr Command Safety](nostr-command-safety.md)) - remote invocation boundaries.
 
 ## Sources
 

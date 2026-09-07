@@ -33,7 +33,6 @@ Agent work should follow the current codebase shape.
 - `App/Sources/Agent/AgentTools+Wiki.swift` - compiled wiki lookup.
 - `App/Sources/Agent/AgentTools+Briefing.swift` - briefing generation.
 - `App/Sources/Agent/AgentTools+Web.swift` - external research.
-- `App/Sources/Agent/AgentRelayBridge.swift` - Nostr inbound loop and remote safety gates.
 - `App/Sources/Agent/ToolRegistry.swift` - proposed metadata registry for dynamic tool palettes.
 - `App/Sources/Agent/ToolGateway.swift` - proposed central execution, permission, audit, and dispatch path.
 - `App/Sources/Agent/AgentExecutionContext.swift` - proposed per-call context object.

@@ -24,6 +24,7 @@ fn cancellation_atomically_authorizes_the_exact_target_request() {
             episode_id: Some(episode_id),
             host_request_id: target_request_id,
             cancellation_id,
+            requires_host_cancellation: true,
         }),
     })
     .unwrap();

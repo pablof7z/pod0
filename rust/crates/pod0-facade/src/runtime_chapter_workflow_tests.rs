@@ -216,7 +216,17 @@ fn terminal_failure_can_be_retried_then_cancelled_through_typed_commands() {
             expected_workflow_revision: retried.workflow_revision,
         },
     });
-    assert!(facade.next_leased_host_requests(64).is_empty());
+    let cancellation = facade
+        .next_leased_host_requests(64)
+        .into_iter()
+        .find(|leased| {
+            matches!(
+                leased.request.request,
+                HostRequest::CancelAuthorizedEffect { target_request_id }
+                    if target_request_id == retried_request.request.request_id
+            )
+        })
+        .expect("claimed retry must receive an exact persisted cancellation request");
     assert_eq!(
         workflows(&facade, Some(fixture.episode_id)).publisher[0].stage,
         PublisherChapterWorkflowStage::Cancelled
@@ -231,6 +241,24 @@ fn terminal_failure_can_be_retried_then_cancelled_through_typed_commands() {
         workflows(&facade, Some(fixture.episode_id)).publisher[0].stage,
         PublisherChapterWorkflowStage::Cancelled
     );
+    let receipt = facade.record_leased_host_observation(LeasedHostObservationEnvelope {
+        lease: cancellation.lease,
+        observation: HostObservationEnvelope {
+            request_id: cancellation.request.request_id,
+            cancellation_id: cancellation.request.cancellation_id,
+            observed_request_revision: cancellation.request.issued_revision,
+            sequence_number: 0,
+            observed_at: cancellation.lease.expires_at,
+            observation: HostObservation::AuthorizedEffectCancellationApplied {
+                target_request_id: retried_request.request.request_id,
+            },
+        },
+    });
+    assert!(matches!(
+        receipt,
+        HostObservationReceipt::Persisted { terminal: true, .. }
+    ));
+    assert!(facade.next_leased_host_requests(64).is_empty());
 }
 
 #[test]

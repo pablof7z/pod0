@@ -2,13 +2,11 @@
 
 ## Method
 
-Synthesized 10 competitor briefs (Spotify, Apple, Overcast, Pocket Casts, Castro, Snipd, Fountain, YouTube, Airchat, Podimo). For each candidate I asked: does it amplify our pillars (agent / RAG / voice / Nostr / Liquid Glass) or fight them; does its absence break a marquee user story; how big is the engineering on top of what's shipped (mini-player, voice mode, transcript ingest + RAG, briefings, agent chat, Nostr infra, wiki, search-with-transcript-hits); and does it widen the moat or just buy parity. Features were deduplicated across competitors — Smart Speed / Trim Silence / Enhance Voices collapse into one item; tap-to-seek transcript appears in five briefs and becomes one. Where every competitor agreed it was usually parity; where exactly one had it (Castro's Inbox, Fountain's Nostr, Airchat's auto-play river) I weighed it for differentiation upside.
 
 No invented features — everything traces to a brief. Items already shipped in the codebase are noted inline.
 
 ## Scoring rubric
 
-- **Pillar fit (1–5)** — does it amplify AI / voice / Nostr / Liquid Glass identity, or fight it?
 - **User impact (1–5)** — how much does it move a marquee story (play-the-keto-part, TLDR-this-week, friend-DMs-the-agent, lean-back-briefing) forward?
 - **Effort (S/M/L)** — engineering size on top of shipped surfaces.
 - **Differentiation (1–5)** — does it widen moat vs Snipd/Spotify, or just achieve parity?
@@ -86,7 +84,6 @@ This is where we win. Every item here only exists because of the agent + RAG + v
   Score: pillar 5 / impact 4 / diff 4 / **P1**
 
 - **Personal "Most Replayed" graph**
-  Sources: YouTube (mass-scale), Snipd (Hive Brain). Plot the user's own replay/pause/seek density on the scrubber. Agent uses peaks as another "what mattered" input. Federate later (opt-in, Nostr) into community heatmaps.
   Why now: turns the player's own behavior into intelligence; no competitor does the personal version.
   Effort: M.
   Score: pillar 4 / impact 3 / diff 5 / **P1**
@@ -97,20 +94,13 @@ This is where we win. Every item here only exists because of the agent + RAG + v
   Effort: M (rides on voice mode polish that just landed).
   Score: pillar 5 / impact 4 / diff 5 / **P1**
 
-### Bucket C — Social / Nostr-native moats
 
-Where Nostr + Lightning + agent give us a structural edge no closed app can copy.
 
-- **Nostr-published timestamped comments**
-  Sources: Fountain (canonical), YouTube (timestamp-comment behaviour). Comments pinned to a transcript span, published as Nostr events. Survives the app, interops with Fountain from day one. Nostr infra exists (`NostrRelayService.swift`, `Nip46/`).
   Why now: only Fountain ships this, and they're stuck on the Bitcoin-only onramp. Text-only is weeks of work and immediately differentiates.
   Effort: M.
   Score: pillar 5 / impact 4 / diff 5 / **P0**
 
-- **Friend-DMs-the-agent (Nostr DM → tool-call)**
-  Source: Podcastr pillar; Fountain proves audio-Nostr audience exists. A friend's DM ("send me the 3-min keto bit from yesterday's Tim") enters the agent's tool loop and fires `find_similar_episodes` + clip-share. Same bus lets a user's other devices command the agent.
   Why now: the only social mechanic in the competitive set nobody can copy without our exact stack.
-  Effort: M (NIP-44 ingress → agent transport adapter).
   Score: pillar 5 / impact 5 / diff 5 / **P0**
 
 - **3-fidelity clip share (quote card / waveform video / audio)**
@@ -160,7 +150,6 @@ Where craft is the feature. Competitors lose on visual identity.
 - **Auto-snips / auto-folders without consent (Snipd, Pocket Casts Smart Folders Apr 2025).** Every AI artifact is opt-in or surfaces in review state.
 - **Discovery-first home (Apple Listen Now, Spotify Home).** Default view is the user's world; recommendations carry explicit provenance.
 - **Smart-Playlist rule UIs (Pocket Casts, Overcast).** The agent IS the playlist; natural language beats a form-builder. We won't ship the form.
-- **Bitcoin-as-prerequisite (Fountain).** Nostr text features ship without a wallet. Lightning is opt-in if at all.
 - **Wrapped-only stats (Spotify, Pocket Casts).** Annual recap is a marketing stunt; ours are always-on and agent-queryable.
 - **Shipping a rewrite without parity (Overcast 2024).** When we touch the playback engine for Smart Speed, ship behind a flag and keep the old path until parity is proven.
 
@@ -169,12 +158,10 @@ Where craft is the feature. Competitors lose on visual identity.
 1. **Cross-episode RAG chat surface.** The Snipd-killer; our entire wedge is library-wide chat the agent can act on.
 2. **Smart Speed + Voice Boost.** Without these, every Overcast power user dismisses us in 30 seconds — and they own the influencer layer.
 3. **AI Inbox triage (agent-driven Castro two-stack).** Solves the queue-rot problem every other app has and makes the agent's intelligence a daily editorial surface.
-4. **Friend-DMs-the-agent over Nostr.** The only social mechanic no competitor can copy without our exact stack — uniquely ours, ship it loud.
 5. **Lean-back briefing river (auto-play TLDRs, transcript-under-waveform, barge-in).** Turns TLDR-this-week from a tap-tap into a daily ritual; Airchat architecture proven at scale.
 6. **Tap-to-seek transcript with long-press → ask-the-agent.** Apple proved demand; we make every paragraph a prompt for the agent, not just a seek target.
 7. **Liquid Glass Now-Playing card with editorial art backdrop.** Castro-class visual identity, leapfrogged by iOS 26 material — the screenshot that recruits users.
 8. **3-fidelity clip share (quote card / waveform video / audio) with universal-link "Play from XX:XX."** Top-of-funnel growth loop and the natural payoff to every "find me the X part" agent answer.
-9. **Nostr-published timestamped comments.** Lightning-free, ships in weeks, instantly interoperable with Fountain's audience and structurally uncopyable by closed apps.
 10. **Configurable headphone-control mapping + per-show playback overrides.** Two small items that together unblock ambient snipping (Bucket B) and surface the agent's per-show context model.
 
 ## Open questions for the user
@@ -185,7 +172,6 @@ Where craft is the feature. Competitors lose on visual identity.
 2. **Auto-process every subscribed episode for transcripts + embeddings, or on-demand only?**
    Always-on means cross-episode chat answers in <1 s but burns Whisper / embeddings cost on episodes the user may never play. On-demand keeps cost predictable but introduces a "thinking..." latency the first time the user asks anything across the library.
 
-3. **Nostr social this round: text-only comments first, or comments + Lightning boosts together?**
    Text-only ships in weeks and avoids the wallet onramp Fountain stumbles on. Boosts together gives one cohesive launch story but means custodial-wallet UX, regulatory thinking, and a real anti-spam strategy on day one.
 
 4. **Wrapped-style annual recap, or always-on agent-queryable stats only?**

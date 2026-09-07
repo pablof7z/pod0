@@ -110,6 +110,7 @@ fn raw_failure_evidence_classifies_retry_and_submission_risk() {
     let cases = [
         (
             E::MissingCredential,
+            false,
             C::MissingCredential,
             R::ExplicitOnly,
             false,
@@ -117,6 +118,7 @@ fn raw_failure_evidence_classifies_retry_and_submission_risk() {
         ),
         (
             E::HttpResponse { status_code: 429 },
+            true,
             C::RateLimited,
             R::AutomaticRequest,
             false,
@@ -124,24 +126,23 @@ fn raw_failure_evidence_classifies_retry_and_submission_risk() {
         ),
         (
             E::HttpResponse { status_code: 503 },
+            true,
             C::ProviderUnavailable,
             R::ExplicitOnly,
             true,
             false,
         ),
         (
-            E::Offline {
-                submission_authorized: false,
-            },
+            E::Offline,
+            false,
             C::Offline,
             R::AutomaticRequest,
             false,
             true,
         ),
         (
-            E::TimedOut {
-                submission_authorized: true,
-            },
+            E::TimedOut,
+            true,
             C::AmbiguousSubmission,
             R::ExplicitOnly,
             true,
@@ -149,6 +150,7 @@ fn raw_failure_evidence_classifies_retry_and_submission_risk() {
         ),
         (
             E::ResponseTooLarge,
+            true,
             C::ResponseTooLarge,
             R::ExplicitOnly,
             true,
@@ -156,42 +158,40 @@ fn raw_failure_evidence_classifies_retry_and_submission_risk() {
         ),
         (
             E::StalePublisherBase,
+            true,
             C::StalePublisherBase,
             R::Replan,
             true,
             false,
         ),
         (
-            E::StorageUnavailable {
-                submission_authorized: true,
-            },
+            E::StorageUnavailable,
+            true,
             C::StorageUnavailable,
             R::ResumePersisted,
             true,
             false,
         ),
         (
-            E::RetryExhausted {
-                may_have_submitted: true,
-            },
+            E::RetryExhausted,
+            true,
             C::RetryExhausted,
             R::Never,
             true,
             false,
         ),
-        (
-            E::Cancelled {
-                submission_authorized: false,
-            },
-            C::Cancelled,
-            R::Never,
-            false,
-            true,
-        ),
+        (E::Cancelled, false, C::Cancelled, R::Never, false, true),
     ];
-    for (evidence, code, retry, may_have_submitted, resubmission_is_safe) in cases {
+    for (evidence, submission_authorized, code, retry, may_have_submitted, resubmission_is_safe) in
+        cases
+    {
         assert_eq!(
-            classify_chapter_model_failure(evidence),
+            classify_chapter_model_failure(
+                evidence,
+                ChapterModelFailurePhase {
+                    submission_authorized,
+                },
+            ),
             ChapterModelFailureClassification {
                 code,
                 retry,
@@ -200,6 +200,23 @@ fn raw_failure_evidence_classifies_retry_and_submission_risk() {
             }
         );
     }
+
+    let before = classify_chapter_model_failure(
+        E::Transport,
+        ChapterModelFailurePhase {
+            submission_authorized: false,
+        },
+    );
+    let after = classify_chapter_model_failure(
+        E::Transport,
+        ChapterModelFailurePhase {
+            submission_authorized: true,
+        },
+    );
+    assert_eq!(before.code, C::Transport);
+    assert!(before.resubmission_is_safe);
+    assert_eq!(after.code, C::AmbiguousSubmission);
+    assert!(!after.resubmission_is_safe);
 }
 
 #[test]

@@ -68,7 +68,7 @@
       "agent"
     ],
     "single_writer_guards_passed": true,
-    "nmp_domain_boundary_passed": true
+    "architecture_boundary_passed": true
   },
   "external_gates": {
     "physical_iphone_connected": false,

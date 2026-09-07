@@ -79,7 +79,7 @@ final class CoreDownloadDispatcherTests: XCTestCase {
         XCTAssertTrue(dispatcher.downloadRequests.isEmpty)
     }
 
-    func testRelaunchOutboxReplayNotifiesNativeHostToRetireStagedEvidence() async throws {
+    func testRelaunchOutboxReplayRetainsStagedEvidenceUntilRustAcceptsIt() async throws {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(
             "pod0-download-replay-\(UUID().uuidString).json"
         )
@@ -112,7 +112,7 @@ final class CoreDownloadDispatcherTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(10))
         }
 
-        XCTAssertTrue(dispatcher.observationRecoveryReady)
+        XCTAssertFalse(dispatcher.observationRecoveryReady)
         XCTAssertTrue(host.retiredRequestIDs.isEmpty)
         let pendingCount = await outbox.pendingCount()
         XCTAssertEqual(pendingCount, 1)

@@ -23,7 +23,6 @@ Each tool registration should include:
 
 - name, description, JSON schema, and result schema
 - domain and owning service
-- allowed surfaces: chat, voice, Now Playing, widget, Nostr, background
 - permission class and approval strategy
 - timeout, retry policy, and idempotency key behavior
 - cost class: free, local compute, network, paid provider
@@ -39,12 +38,10 @@ Every call receives an `AgentExecutionContext`:
 - surface and route
 - current playback state
 - current episode and transcript window when present
-- actor: local user, approved friend, remote Nostr pubkey, background scheduler
 - network, battery, privacy mode, and provider availability
 - current per-turn and per-month budget
 - locale and accessibility mode
 
-The same tool can behave differently by context. `query_transcripts` is safe everywhere. `play_episode_at` is local-safe, voice-safe, Nostr-approval-only, and background-blocked.
 
 ## Result Envelope
 

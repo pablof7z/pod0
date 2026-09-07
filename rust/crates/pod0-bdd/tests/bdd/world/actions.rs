@@ -91,7 +91,6 @@ impl PodWorld {
                 panic!("pod0-bdd: the scenario never staged a feed at {url:?}, so the host has nothing to return")
             })
             .render();
-        let n = self.next_count();
         let receipt = self
             .facade()
             .record_leased_host_observation(LeasedHostObservationEnvelope {
@@ -101,9 +100,7 @@ impl PodWorld {
                     cancellation_id: request.request.cancellation_id,
                     observed_request_revision: request.request.issued_revision,
                     sequence_number: 0,
-                    observed_at: UnixTimestampMilliseconds::new(
-                        1_800_000_100_000 + i64::try_from(n).expect("fixture counter fits an i64"),
-                    ),
+                    observed_at: UnixTimestampMilliseconds::new(request.lease.expires_at.value - 1),
                     observation: HostObservation::FeedBytesFetched {
                         bytes,
                         entity_tag: None,

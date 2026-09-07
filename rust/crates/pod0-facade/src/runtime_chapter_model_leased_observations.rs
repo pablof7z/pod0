@@ -1,5 +1,5 @@
 use pod0_application::{
-    ActivityFailureCode, ChapterModelFailureEvidence, HostObservation, HostObservationReceipt,
+    ChapterModelFailureEvidence, ChapterModelFailurePhase, HostObservation, HostObservationReceipt,
     HostObservationRejection, LeasedHostObservationEnvelope, OperationStage,
     classify_chapter_model_failure,
 };
@@ -11,7 +11,8 @@ use pod0_storage::{
 
 use crate::runtime_chapter_model_mapping::{failure_wire, host_failure_evidence};
 use crate::runtime_chapter_model_receipts::{
-    failure_disposition, generic_host_failure, persisted, rejected, retain, storage_receipt,
+    failure_disposition, generic_host_failure, model_failure_effect_outcome, persisted, rejected,
+    retain, storage_receipt,
 };
 use crate::runtime_state::{FacadeState, failure};
 
@@ -144,9 +145,7 @@ impl FacadeState {
             )),
             HostObservation::Cancelled => Some(self.model_failure_action(
                 record,
-                ChapterModelFailureEvidence::Cancelled {
-                    submission_authorized: true,
-                },
+                ChapterModelFailureEvidence::Cancelled,
                 None,
                 None,
                 true,
@@ -163,7 +162,12 @@ impl FacadeState {
         retry_after_milliseconds: Option<u64>,
         cancelled: bool,
     ) -> ModelChapterObservationAction {
-        let classification = classify_chapter_model_failure(evidence);
+        let classification = classify_chapter_model_failure(
+            evidence,
+            ChapterModelFailurePhase {
+                submission_authorized: record.submission_authorized_at_ms.is_some(),
+            },
+        );
         let disposition = failure_disposition(
             record,
             classification,
@@ -171,6 +175,7 @@ impl FacadeState {
             self.now().value,
             retry_after_milliseconds.map(|value| i64::try_from(value).unwrap_or(i64::MAX)),
         );
+        let outcome = model_failure_effect_outcome(classification, &disposition, cancelled);
         ModelChapterObservationAction::Failure {
             input: ModelChapterFailureInput {
                 episode_id: record.episode_id,
@@ -183,13 +188,7 @@ impl FacadeState {
                 disposition,
                 observed_at_ms: self.now().value,
             },
-            outcome: if cancelled {
-                pod0_application::EffectOutcome::Cancelled
-            } else {
-                pod0_application::EffectOutcome::Failed {
-                    code: activity_failure(classification.code),
-                }
-            },
+            outcome,
         }
     }
 
@@ -240,20 +239,6 @@ fn model_record(
             HostObservationRejection::StaleWorkflow,
         )),
         Err(_) => Err(retain(leased.observation.request_id)),
-    }
-}
-
-fn activity_failure(
-    code: pod0_application::ModelChapterWorkflowFailureCode,
-) -> ActivityFailureCode {
-    use pod0_application::ModelChapterWorkflowFailureCode as Code;
-    match code {
-        Code::Offline => ActivityFailureCode::Offline,
-        Code::TimedOut => ActivityFailureCode::TimedOut,
-        Code::MissingCredential => ActivityFailureCode::PermissionDenied,
-        Code::ResponseTooLarge => ActivityFailureCode::ResponseTooLarge,
-        Code::ProviderUnavailable | Code::Transport => ActivityFailureCode::ProviderUnavailable,
-        _ => ActivityFailureCode::InvalidResponse,
     }
 }
 

@@ -1,7 +1,6 @@
 # Podcast Player — Project Context
 
 > **Historical, non-authoritative research.** See [`README.md`](README.md).
-> Claims about inherited friends, Nostr, feedback, persistence, paths, or
 > shipped features do not describe current `master`.
 
 > Shared context for all UX/research/engineering agents working on the spec phase.
@@ -16,7 +15,6 @@ The user can:
   - *"Hey, play the part of this episode where they talk about keto."*
   - *"Last week I listened to a podcast about stamps or something — what was it?"*
   - *"Make me a TLDR of all the podcasts this week."* → agent generates a TTS audio briefing the user can listen to and **interrupt at any point** to ask follow-up questions.
-- Communicate with the agent via **Nostr DMs** (template already supports a Friend agent system) and via **voice mode** (STT in, agent voice out, barge-in friendly).
 
 The bar for UX is *spectacular, absolutely gorgeous*. iOS 26 Liquid Glass aesthetic. Editorial typography. Cinematic motion. We want to set a new bar above Spotify, Overcast, Pocket Casts, Castro.
 
@@ -27,7 +25,6 @@ Located at `/Users/pablofernandez/Work/ios-app-template` (now cloned into `/User
 - **SwiftUI + Tuist**, iOS 17+ baseline, target iOS 26 Liquid Glass design language.
 - **AppStateStore** (`@Observable` store, App Group UserDefaults persistence).
 - **Agent loop** — tool-calling via OpenRouter. Schema + dispatcher in `App/Sources/Agent/AgentTools.swift`. Extend with new tools.
-- **Friend system** — already designed for Nostr-based agent-to-agent communication.
 - **Shake-to-feedback**, haptics, glass surface modifier, pressable button style — keep all of this.
 - **TestFlight CI** — push to main → GitHub Actions deploys.
 
@@ -49,7 +46,6 @@ Located at `/Users/pablofernandez/Work/ios-app-template` (now cloned into `/User
    - `summarize_episode(episode_id)` — on-demand episode summary.
    - `find_similar_episodes(seed_episode_id)` — discovery.
    - `open_screen(route)` / `set_now_playing(timestamp)` — UI mutation tools.
-8. **Nostr-mediated agent commands** — friend's agent (or your own agent on another device) can DM commands and receive responses.
 
 ## Sample Marquee User Stories
 

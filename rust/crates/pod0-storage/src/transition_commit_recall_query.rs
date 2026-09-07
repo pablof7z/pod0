@@ -9,6 +9,7 @@ use super::TransitionCommit;
 use super::application_support::{fingerprint, legacy_library_receipt, next_core_revision};
 use crate::{StorageError, TransitionIngress, TransitionIngressKind};
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn commit_recall_query_start(
     path: &std::path::Path,
     command_id: CommandId,

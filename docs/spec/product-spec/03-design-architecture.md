@@ -33,7 +33,6 @@ This is the **ground truth** for every surface designer. If a token is not here 
 | `accent.player` | `#E94B2B` | `#FF6A4A` | **Copper — exclusive to Now-Playing surfaces.** Mini-bar progress line, full-player chrome, `playerOrb` button, home-screen mini-thumbnail badge. Nothing else. |
 | `accent.agent` | `#5B3FE0`→`#2872F0` gradient | `#7A5BFF`→`#4D8FFF` | **Electric indigo→azure — agent identity.** Orb, agent-CTA buttons, agent message tint, voice-mode backdrop. |
 | `accent.wiki` | `#1F6E55` | `#46C29A` | **Moss — knowledge surfaces.** Wiki citations, leaf glyph. |
-| `accent.friend` | `#D9892F` | `#F2B45C` | **Amber — Nostr friend / friend-agent action.** 2 pt amber seam on the leading edge of any element initiated by a friend. |
 | `accent.live` | `#C72D4D` | `#FF5577` | Recording / "agent listening" — signal red. |
 
 **Rule of mutual exclusion.** A card cannot be both *from a friend* and *agent-generated*. If the agent forwards a friend's message, the bubble is friend (amber), with a small agent orb badge.
@@ -82,14 +81,8 @@ Every surface must pass: Dynamic Type to AX5 (single column at AX3+; eyebrow sta
 **Already shipping in the renamed Podcastr skeleton:**
 
 - **Entry & app lifecycle.** `AppMain.swift` (`PodcastrApp` `@main`), `App/RootView.swift` (TabView with Today / Library / Wiki / Ask / Home / Settings), `App/AppDelegate.swift` (deep-link routing, notification action buttons, shake handler).
-- **Domain models.** `Item`, `Note`, `Friend`, `AgentMemory`, `Anchor` (discriminated union), `Settings`, `AgentActivity`, `NostrPendingApproval`. All `Codable + Sendable`; every decoder uses `decodeIfPresent` for forward-compat.
-- **State.** `State/AppStateStore.swift` plus six extension files (`+Items`, `+Notes`, `+Memories`, `+Friends`, `+Nostr`, `+AgentActivity`, `+DerivedViews`). `@MainActor @Observable`. Single source of truth.
 - **Persistence.** `State/Persistence.swift` encodes the entire `AppState` as JSON, writes to App Group `UserDefaults` keyed `podcastr.state.v1`. `iCloudSettingsSync` already merges arbitrary `Settings` fields key-by-key.
-- **Agent loop.** `Features/Agent/AgentChatSession.swift` plus `AgentOpenRouterClient.swift` runs the SSE streaming loop with up to 20 turns. `Agent/AgentTools.swift` + `AgentToolSchema.swift` + `AgentPrompt.swift`, with tool dispatchers split into `+Items`, `+NotesMemory`, `+Reminders`, `+DueDates`, `+Search`. `AgentRelayBridge.swift` runs the same loop at 8-turn cap for inbound Nostr DMs.
-- **Nostr subsystem.** The template implementation is not inherited. Pod0 uses
-  upstream NMP for identity, Keychain checkpointing, signing, routing, relay
   transport, queries, and publication receipts.
-- **Services.** `KeychainStore`, `OpenRouterCredentialStore`, `ElevenLabsCredentialStore`, `NostrCredentialStore`, `BYOKConnectService` (PKCE), `NotificationService`, `BadgeManager`, `SpotlightIndexer`, `iCloudSettingsSync`, `DataExport`, `DeepLinkHandler`, `VoiceItemService` (`SFSpeechRecognizer` dictation, harden for full-duplex), `ChatHistoryStore`, `ReviewPrompt`, `UserIdentityStore`.
 - **Design.** `AppTheme` (split by concern), `GlassSurface` (calls native iOS 26 `.glassEffect()`), `Haptics`, `PressableStyle`, `ShakeDetector`, `MarkdownView`, `AsyncButton`.
 - **Feedback.** Shake → `FeedbackWorkflow` state machine, `FeedbackStore` in `Documents/feedback_threads.json`. Wire `FeedbackView.performSubmission` to a backend later; that hook exists.
 - **Build & CI.** `Project.swift` (iOS 26 deployment target, Swift 6 strict concurrency, App Group `group.com.podcastr.app`, bundle ID `io.f7z.podcast`, widget bundle ID `io.f7z.podcast.widget`, URL scheme `podcastr://`); `.github/workflows/{test,testflight}.yml`; `ci_scripts/`.
@@ -263,13 +256,11 @@ The agent's **eyes become its tools**; its memory is a vector store. This is the
 
 Final contract: every mutating tool records an `AgentActivityEntry` with a new `AgentActivityKind` case so per-batch undo keeps working. Current protocol-dependency action tools return JSON envelopes directly; central audit/activity logging should be added in the `ToolGateway` wrapper before remote Actor-tier exposure.
 
-**Reuse of the existing loop.** `AgentChatSession.runAgentTurns` (text) and `AgentRelayBridge` (Nostr inbound, 8-turn cap) both stay. Voice mode (UX-06) hooks `AgentChatSession.send(message, source: .voice)` with a per-sentence callback so TTS streams while the LLM is still generating.
 
 ### 7.10 Concurrency, background tasks, lifecycle
 
 **Swift 6 strict concurrency stays on.** Inter-actor boundaries pass `Sendable` value types only.
 
-- **Main-actor:** `AppStateStore`, `AgentChatSession`, `AgentRelayBridge`, `VoiceItemService`, `NostrRelayService`, `ChatHistoryStore`, `AudioConversationManager`, `BriefingPlayer` state, `RAGQueryService` request-coordinator, `PlaybackEngine` observable wrapper.
 - **Background:** RSS parsing, OPML parse, transcript chunking, embedding HTTP calls, vector-store reads — `Task.detached` or background actors that return `Sendable` value types and hop back to `@MainActor` for the write.
 - **System frameworks:** `AVPlayer` callbacks fire on a private queue; translate through `MainActor.run { … }`. `SFSpeechRecognizer` callbacks already use `MainActor.assumeIsolated` in the existing `VoiceItemService`.
 - **Background tasks.** `BGAppRefreshTask` for RSS poll (≤30 s); `BGProcessingTask` for transcription + embedding indexing + wiki compile (longer, deferrable, can require power). Identifiers registered in `Info.plist`.

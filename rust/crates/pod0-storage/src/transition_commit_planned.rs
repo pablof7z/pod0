@@ -109,6 +109,7 @@ impl TransitionCommit {
         append_receipt(&transaction, ingress, transaction_id, disposition, first_sequence, last_sequence, committed_revision, committed_at)?;
         fault(CommitFaultPoint::AfterReceipt)?;
         transaction.commit().map_err(|error| StorageError::sqlite("commit transition", error))?;
+        fault(CommitFaultPoint::AfterCommit)?;
         Ok(CommitReceipt { transaction_id, disposition, first_sequence, last_sequence, committed_revision, replayed: false })
     }
 }

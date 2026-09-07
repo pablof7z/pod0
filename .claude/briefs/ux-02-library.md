@@ -252,7 +252,6 @@ Show detail is reached from any subscription. Episode detail (#3) and Wiki (#4) 
 1. **Recommendation surface boundary with #14** — recommendations are *pull* (user navigates to Discover); nudges are *push* (#14). Same agent, different surface. Need explicit handshake on regeneration cadence and provenance display.
 2. **Three-axis episode status** (downloaded × played × transcribed) — risks visual noise. Current proposal: icon row with text-on-tap. Validate with usability test.
 3. **Smart Playlists scope** — local structured filters here; agent-generated playlists live in Discover with provenance, never mixed.
-4. **Sharing a subscription via Nostr** — Nostr event (per template's friend system) or `pcst://` universal link? Coordinate with #12.
 5. **OPML at 2k+ feeds** — perf budget for parse + initial fetch + transcription queueing. Needs engineer-agent input.
 
 ---

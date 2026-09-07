@@ -1,8 +1,8 @@
 use pod0_application::{
-    ChapterModelFailureClassification, ChapterModelHostFailureCode, ChapterModelRetryDisposition,
-    HostFailureCode, HostObservationReceipt, HostObservationRejection,
-    MODEL_CHAPTER_REQUEST_DEADLINE_MILLISECONDS, ModelChapterWorkflowFailureCode,
-    model_chapter_retry_delay_milliseconds,
+    ActivityFailureCode, ChapterModelFailureClassification, ChapterModelHostFailureCode,
+    ChapterModelRetryDisposition, EffectOutcome, HostFailureCode, HostObservationReceipt,
+    HostObservationRejection, MODEL_CHAPTER_REQUEST_DEADLINE_MILLISECONDS,
+    ModelChapterWorkflowFailureCode, model_chapter_retry_delay_milliseconds,
 };
 use pod0_domain::{HostRequestId, StateRevision};
 use pod0_storage::{ModelChapterFailureDisposition, ModelChapterWorkflowRecord, StorageError};
@@ -69,6 +69,34 @@ pub(super) fn generic_host_failure(code: HostFailureCode) -> ChapterModelHostFai
     }
 }
 
+pub(super) fn model_failure_effect_outcome(
+    classification: ChapterModelFailureClassification,
+    disposition: &ModelChapterFailureDisposition,
+    cancelled: bool,
+) -> EffectOutcome {
+    if matches!(disposition, ModelChapterFailureDisposition::Ambiguous) {
+        EffectOutcome::OutcomeUnknown
+    } else if cancelled {
+        EffectOutcome::Cancelled
+    } else {
+        EffectOutcome::Failed {
+            code: activity_failure(classification.code),
+        }
+    }
+}
+
+fn activity_failure(code: ModelChapterWorkflowFailureCode) -> ActivityFailureCode {
+    use ModelChapterWorkflowFailureCode as Code;
+    match code {
+        Code::Offline => ActivityFailureCode::Offline,
+        Code::TimedOut => ActivityFailureCode::TimedOut,
+        Code::MissingCredential => ActivityFailureCode::PermissionDenied,
+        Code::ResponseTooLarge => ActivityFailureCode::ResponseTooLarge,
+        Code::ProviderUnavailable | Code::Transport => ActivityFailureCode::ProviderUnavailable,
+        _ => ActivityFailureCode::InvalidResponse,
+    }
+}
+
 pub(super) fn persisted(request_id: HostRequestId, terminal: bool) -> HostObservationReceipt {
     HostObservationReceipt::Persisted {
         request_id,
@@ -96,5 +124,49 @@ pub(super) fn storage_receipt(
             rejected(request_id, HostObservationRejection::StaleWorkflow)
         }
         _ => retain(request_id),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn classification(code: ModelChapterWorkflowFailureCode) -> ChapterModelFailureClassification {
+        ChapterModelFailureClassification {
+            code,
+            retry: ChapterModelRetryDisposition::ExplicitOnly,
+            may_have_submitted: true,
+            resubmission_is_safe: false,
+        }
+    }
+
+    #[test]
+    fn semantic_effect_outcomes_keep_failure_cancellation_and_ambiguity_distinct() {
+        assert_eq!(
+            model_failure_effect_outcome(
+                classification(ModelChapterWorkflowFailureCode::AmbiguousSubmission),
+                &ModelChapterFailureDisposition::Ambiguous,
+                false,
+            ),
+            EffectOutcome::OutcomeUnknown
+        );
+        assert_eq!(
+            model_failure_effect_outcome(
+                classification(ModelChapterWorkflowFailureCode::Cancelled),
+                &ModelChapterFailureDisposition::Fail,
+                true,
+            ),
+            EffectOutcome::Cancelled
+        );
+        assert_eq!(
+            model_failure_effect_outcome(
+                classification(ModelChapterWorkflowFailureCode::Offline),
+                &ModelChapterFailureDisposition::Block,
+                false,
+            ),
+            EffectOutcome::Failed {
+                code: ActivityFailureCode::Offline,
+            }
+        );
     }
 }

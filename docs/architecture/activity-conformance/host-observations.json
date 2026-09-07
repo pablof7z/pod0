@@ -176,27 +176,27 @@
     },
     {
       "variant": "AgentModelCompleted",
-      "domain": "agent_publication",
-      "target_owner": "AgentPublicationStateMachine",
-      "outcome_fact": "agent_publication.effect_observed",
+      "domain": "agent",
+      "target_owner": "AgentStateMachine",
+      "outcome_fact": "agent.effect_observed",
       "exact_effect_identity_required": true,
       "child_issue": 215,
       "implementation_status": "typed_atomic_leased_observation_for_turn_start_model_phase"
     },
     {
       "variant": "AgentApprovalObserved",
-      "domain": "agent_publication",
-      "target_owner": "AgentPublicationStateMachine",
-      "outcome_fact": "agent_publication.effect_observed",
+      "domain": "agent",
+      "target_owner": "AgentStateMachine",
+      "outcome_fact": "agent.effect_observed",
       "exact_effect_identity_required": true,
       "child_issue": 215,
       "implementation_status": "typed_atomic_leased_observation"
     },
     {
       "variant": "AgentCapabilityObserved",
-      "domain": "agent_publication",
-      "target_owner": "AgentPublicationStateMachine",
-      "outcome_fact": "agent_publication.effect_observed",
+      "domain": "agent",
+      "target_owner": "AgentStateMachine",
+      "outcome_fact": "agent.effect_observed",
       "exact_effect_identity_required": true,
       "child_issue": 215,
       "implementation_status": "typed_atomic_leased_observation_including_generated_audio_adoption"

@@ -44,10 +44,6 @@ pub(crate) const TABLES_ADDED_AFTER_V13: &str = "
     DROP TABLE pod0_agent_history_staged_conversations;
     DROP TABLE pod0_agent_history_cutover_evidence;
     DROP TABLE pod0_agent_conversation_metadata;
-    DROP TABLE pod0_publication_commands;
-    DROP TABLE pod0_publication_facts;
-    DROP TABLE pod0_signer_state;
-    DROP TABLE pod0_publications;
     DROP TABLE pod0_agent_generated_audio_artifacts;
     DROP TABLE pod0_agent_audit;
     DROP TABLE pod0_agent_command_receipts;

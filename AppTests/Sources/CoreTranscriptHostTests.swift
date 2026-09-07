@@ -58,7 +58,7 @@ final class CoreTranscriptHostTests: XCTestCase {
         )
     }
 
-    func testRecoveryFailurePreservesAcceptedSubmissionPhase() async {
+    func testRecoveryFailureReturnsRawFailureEvidence() async {
         let host = CoreTranscriptHost(transport: StubTranscriptTransport { request in
             guard case .recoverProvider = request else {
                 throw CoreTranscriptTransportError.invalidRequest
@@ -71,7 +71,7 @@ final class CoreTranscriptHostTests: XCTestCase {
         ))
 
         XCTAssertEqual(observation, .transcriptCapabilityObserved(observation: .failed(
-            evidence: .timedOut(submissionAuthorized: true, providerAccepted: true),
+            evidence: .timedOut,
             safeDetail: "Transcript provider request timed out",
             retryAfterMilliseconds: nil
         )))

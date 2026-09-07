@@ -39,7 +39,6 @@ fn subject(value: ActivitySubject) -> (u8, Option<[u8; 16]>) {
             (5, Some(occurrence_id.into_bytes()))
         }
         ActivitySubject::TranscriptWorkflow { workflow_id } => (6, Some(workflow_id.into_bytes())),
-        ActivitySubject::Publication { publication_id } => (7, Some(publication_id.into_bytes())),
         ActivitySubject::Note { note_id } => (8, Some(note_id.into_bytes())),
         ActivitySubject::Memory { memory_id } => (9, Some(memory_id.into_bytes())),
         ActivitySubject::Clip { clip_id } => (10, Some(clip_id.into_bytes())),
@@ -68,7 +67,6 @@ const fn effect_kind_code(value: ExternalEffectKind) -> u8 {
         ExternalEffectKind::ScheduledAgentProvider => 11,
         ExternalEffectKind::CoreWake => 12,
         ExternalEffectKind::Filesystem => 13,
-        ExternalEffectKind::Publication => 14,
         ExternalEffectKind::PublisherChapterProvider
         | ExternalEffectKind::ModelChapterProvider => 4,
         ExternalEffectKind::Cancellation => 16,
@@ -85,7 +83,7 @@ const fn domain_code(value: ActivityDomain) -> u8 {
         ActivityDomain::Chapter => 5,
         ActivityDomain::RecallKnowledge => 6,
         ActivityDomain::ScheduledAgent => 7,
-        ActivityDomain::AgentPublication => 8,
+        ActivityDomain::Agent => 8,
         ActivityDomain::UserArtifact => 9,
         ActivityDomain::Lifecycle => 10,
     }

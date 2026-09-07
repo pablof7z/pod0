@@ -6,7 +6,7 @@ use pod0_domain::{
 use crate::{
     AgentApprovalRequest, AgentEffectAuthorization, AgentModelExecutionRequest,
     AgentCancellationActivityInput, AgentCancellationMutation, AgentEffectObservationActivityInput,
-    AgentPublicationTransition, AgentProposalProjection, AgentToolAction, AgentAuthority,
+    AgentTransition, AgentProposalProjection, AgentToolAction, AgentAuthority,
     AgentTurnStartActivityInput, AgentTurnStartMutation, DurableAgentApprovalEffectRequest,
     DurableAgentModelEffectRequest, EffectOutcome, ExternalEffectKind, RequestDisposition,
     RequestRejectionReason, plan_agent_cancellation, plan_agent_effect_observation,
@@ -113,7 +113,7 @@ fn model_observation_retires_exact_attempt_and_can_authorize_one_next_phase() {
         correlation_id: ActivityCorrelationId::from_parts(7, 8),
         episode_id: None,
         outcome: EffectOutcome::Succeeded,
-        transition: AgentPublicationTransition::TurnStateChanged,
+        transition: AgentTransition::TurnStateChanged,
         next_authorization: Some(AgentEffectAuthorization::Approval(
             DurableAgentApprovalEffectRequest {
                 request_id: HostRequestId::from_parts(2, 3),

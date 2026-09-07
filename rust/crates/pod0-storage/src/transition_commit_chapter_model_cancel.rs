@@ -55,12 +55,15 @@ impl LibraryStore {
                     transition: DomainTransitionKind::Chapter(
                         ChapterTransition::ModelWorkflowStateChanged,
                     ),
-                    target: current.request_id.map(|host_request_id| CancellationEffectTarget {
-                        subject: ActivitySubject::Episode { episode_id },
-                        episode_id: Some(episode_id),
-                        host_request_id,
-                        cancellation_id: current.cancellation_id,
-                    }),
+                    target: current
+                        .request_id
+                        .map(|host_request_id| CancellationEffectTarget {
+                            subject: ActivitySubject::Episode { episode_id },
+                            episode_id: Some(episode_id),
+                            host_request_id,
+                            cancellation_id: current.cancellation_id,
+                            requires_host_cancellation: true,
+                        }),
                 })
                 .map(|plan| plan.map_mutation(|()| ChapterWorkflowMutation::Apply))
                 .map_err(|_| StorageError::InvalidActivity)

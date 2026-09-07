@@ -76,8 +76,8 @@ pub fn plan_agent_capability_recovery(
         tail.push(base(
             3,
             crate::ActivityFact::DomainTransition {
-                kind: crate::DomainTransitionKind::AgentPublication(
-                    crate::AgentPublicationTransition::ToolStateChanged,
+                kind: crate::DomainTransitionKind::Agent(
+                    crate::AgentTransition::ToolStateChanged,
                 ),
                 previous_revision: input.current_revision,
                 committed_revision: input.committed_revision,

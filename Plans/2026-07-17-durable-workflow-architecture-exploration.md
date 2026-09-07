@@ -30,7 +30,6 @@ Status: archived (promoted to GitHub epic #19)
   - Derived content: `persistAndIndex` (`TranscriptIngestService.swift:302-401`) flips `.ready` before embedding; chunk-index failure swallowed; metadata backfill then embeds shallow title/desc chunk and flips the same overloaded `metadataIndexed` flag → failure permanently masked, search silently degraded. No re-index path exists. Chapters/wiki are detached unawaited `Task`s; wiki queue RAM-only (`WikiRefreshExecutor.swift:60-62`); `WikiTriggers`' intended durable scheduler was never built.
   - Scheduled agent runs: `AgentScheduledTaskRunner.swift:26-33` consumes slot (`markTaskRun` advances `nextRunAt`) before fire-and-forget run; no-key/LLM-error/turn-exhaustion burn interval, no retry; async persist means marker can be lost on hard kill → not even reliably at-most-once. `retry()` wired only to UI chat.
   - Persistence: `Persistence.save` background mode spawns per-call unordered `Task.detached` → older snapshot can win; writer (`PersistenceBackgroundWriter.swift:7-22`) is last-enqueue-wins, no revision gate; untested (durability tests use `.immediate` only). SQLite sidecar + JSON metadata written non-atomically w.r.t. each other, skew undetected at load. Background flush is fire-and-forget, no `beginBackgroundTask`/`willTerminate` hook.
-  - Store: all setters accept any transition; `store.state` publicly mutable and externally written (`NostrAgentResponder.swift:142`); projection cache correctness depends on callers manually calling `invalidateEpisodeProjections()` (shallow fingerprint `AppStateStore+EpisodeProjections.swift:245-251`).
   - No `BGTaskScheduler`/`BGAppRefreshTask` anywhere (grep-confirmed).
 - Corrections to the external review: download queue is durable (bg `URLSession` + `taskDescription` + persisted `.queued`) — that half refuted; "transcription queue" reasoning based on dead code; inbox triage/agent picks already use the correct write-on-success pattern.
 
@@ -61,7 +60,6 @@ Status: archived (promoted to GitHub epic #19)
 
 - Triage deleted → the 60s dispatch window, triage-gating question, and `waitForTriageToSettle` are gone; feed refresh now dispatches side effects immediately post-upsert (implemented on `surface-narrowing` branch).
 - Wiki + briefings deleted → wiki RAM-only queue, WikiTriggers scheduler gap, briefing pipelines all out of scope; derived artifacts shrink to: transcript, chunk index, chapters/ad-segments, notifications.
-- Dead `TranscriptionQueue` deleted (was epic issue 5). Feedback + nostr deleted → `NostrAgentResponder`'s direct `store.state` mutation (invariant-violation example) gone.
 - Epic shrinks from 17 issues to ~12; scheduled-agent-run durability gains importance (proactivity is a headline keep + needs BGTaskScheduler).
 
 ## Hypotheses
@@ -74,7 +72,6 @@ Status: archived (promoted to GitHub epic #19)
 - Migration risk: pipelines migrate one at a time; interim period has two dispatch mechanisms coexisting — reconciler must not double-fire work already dispatched the old way (idempotency keys per (kind, subjectID) mitigate).
 - Data already in the wild: episodes stuck in `.transcribing`, silently-unindexed transcripts (masked by `metadataIndexed`) — need one-time repair migrations, not just new-path correctness.
 - Retry storms: reconciler + backoff must cap attempts or a persistently-failing LLM/API job could burn battery/quota.
-- `private(set) state` refactor touches preview/fixture code and `NostrAgentResponder` — mechanical but wide.
 
 ## Evidence Gathered
 

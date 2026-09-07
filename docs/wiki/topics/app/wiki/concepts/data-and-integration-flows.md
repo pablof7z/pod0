@@ -1,7 +1,5 @@
 ---
 title: "Data And Integration Flows"
-summary: "How podcasts, playback, transcripts, RAG, wiki, agent tools, provider credentials, and Nostr communication connect inside Podcastr."
-tags: [data-flow, integrations, rag, byok, nostr]
 aliases: [Podcastr data flows, integration map]
 sources:
   - raw/notes/2026-05-12-app-system-source-map.md
@@ -52,16 +50,13 @@ The key design rule is that the agent should use tools for detailed content and 
 
 BYOK returns provider tokens through a PKCE web-auth flow. `PodcastBYOKCredentialImporter` stores each raw API key in the right Keychain-backed credential store and leaves only source/key-label metadata in `Settings`. OpenRouter drives chat, models, wiki, embeddings, and Whisper; ElevenLabs drives Scribe and TTS; AssemblyAI and Apple can transcribe; Ollama can serve models/embeddings; Perplexity powers online lookup.
 
-## Nostr And Feedback
 
-Nostr is used for identity, remote signing, trusted friends, pending approvals, relay-backed communication, and feedback workflows. Treat Nostr writes as externally visible operations that need identity, relay, approval, and provenance checks.
 
 ## See Also
 
 - [[app-operating-model|App Operating Model]] ([App Operating Model](../topics/app-operating-model.md))
 - [[knowledge-pipeline|Knowledge Pipeline]] ([Knowledge Pipeline](../../../knowledge/wiki/topics/knowledge-pipeline.md))
 - [[tool-surface|Tool Surface]] ([Tool Surface](../../../agent/wiki/concepts/tool-surface.md))
-- [[nostr-command-safety|Nostr Command Safety]] ([Nostr Command Safety](../../../agent/wiki/concepts/nostr-command-safety.md))
 
 ## Sources
 

@@ -52,8 +52,6 @@
   - **Risk / conflict**: Only relevant if we produce or license original content.
 
 - **Feature**: Timestamped social reactions inside the player
-  - **Why it fits Podcastr**: Nostr DMs to the agent are already planned. Extending to lightweight Nostr-based public reactions at audio timestamps would be a natural fit — decentralized, creator-owned, and brand-differentiating vs. Podimo's closed comments.
-  - **Effort**: L (Nostr event schema, relay infra, UI)
   - **Risk / conflict**: Adds social complexity; could dilute the "personal AI" focus.
 
 - **Feature**: Quote / clip sharing as branded visual cards

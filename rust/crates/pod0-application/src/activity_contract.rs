@@ -1,8 +1,8 @@
 use pod0_domain::{
     ActivityCorrelationId, ActivityId, ActivityTransactionId, AgentTurnId, ClipId, CommandId,
     ConversationId, EffectAttemptId, EffectIntentId, EpisodeId, HostRequestId, InternalCommandId,
-    MemoryId, NoteId, PodcastId, PublicationId, ScheduledOccurrenceId, SpeakerEntityId,
-    StateRevision, TranscriptArtifactId, TranscriptWorkflowId, UnixTimestampMilliseconds,
+    MemoryId, NoteId, PodcastId, ScheduledOccurrenceId, SpeakerEntityId, StateRevision,
+    TranscriptArtifactId, TranscriptWorkflowId, UnixTimestampMilliseconds,
 };
 
 use crate::DomainTransitionKind;
@@ -40,7 +40,7 @@ pub enum ActivityDomain {
     Chapter,
     RecallKnowledge,
     ScheduledAgent,
-    AgentPublication,
+    Agent,
     UserArtifact,
     Lifecycle,
 }
@@ -65,9 +65,6 @@ pub enum ActivitySubject {
     },
     TranscriptWorkflow {
         workflow_id: TranscriptWorkflowId,
-    },
-    Publication {
-        publication_id: PublicationId,
     },
     Note {
         note_id: NoteId,
@@ -128,7 +125,6 @@ pub enum ExternalEffectKind {
     ScheduledAgentProvider,
     CoreWake,
     Filesystem,
-    Publication,
     PublisherChapterProvider,
     ModelChapterProvider,
     Cancellation,

@@ -141,10 +141,14 @@ failures with a kernel-owned backoff expressed through
 `CoreWakeReason::FeedFetchRetry`, and projects its progress through
 `LibraryProjection.feed_fetches`. Swift executes the bounded fetch and returns
 bytes or a typed failure; it owns no fetch retry, admission, or expiry policy.
+Contract version 56 adds the shared command receipt vocabulary. A receipt keeps
+stable command and cancellation identity, optional expected-revision context,
+the committed revision, replay evidence, and one typed terminal disposition:
+applied, rejected, stale, duplicate, not allowed, already complete, no-op,
+cancelled, failed, or outcome unknown. Native clients do not invent or persist
+these dispositions.
 Swift still owns transcript-generation/index workflow scheduling, remaining
 agent workflow state, and presentation state until their complete vertical
-slices land. Nostr identity, signing, routing, transport, queries, and receipts
-belong to the single upstream `NMPEngine` owned by the iOS application. The
 facade exposes only Pod0 publication drafts and bounded product audit updates.
 
 Canonical chapter artifacts, selections, and workflows are Rust-owned. Contract

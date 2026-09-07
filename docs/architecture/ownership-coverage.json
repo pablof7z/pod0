@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "production_sources": {
+    ".swift": ["App/Sources/", "App/Widget/Sources/"],
+    ".kt": ["Generated/Pod0Core/Kotlin/"],
+    ".rs": [
+      "rust/crates/pod0-domain/src/",
+      "rust/crates/pod0-application/src/",
+      "rust/crates/pod0-storage/src/",
+      "rust/crates/pod0-facade/src/",
+      "rust/crates/pod0-recall-index/src/",
+      "rust/crates/pod0-live-hosts/src/",
+      "rust/crates/pod0-system-hosts/src/",
+      "rust/crates/pod0-tts-host/src/",
+      "rust/crates/pod0-portable-media/src/",
+      "rust/crates/pod0-cli/src/"
+    ]
+  },
+  "behavioral_inventories": [
+    {"path": "docs/architecture/activity-conformance/commands.json", "kind": "command", "identity_fields": ["variant"], "owner_fields": ["target_owner"], "fact_fields": ["request_disposition_fact"], "fact_owner_field": "domain"},
+    {"path": "docs/architecture/activity-conformance/host-requests.json", "kind": "effect", "identity_fields": ["variant"], "owner_fields": ["target_executor"], "fact_fields": ["authorization_fact"], "fact_owner_field": "domain"},
+    {"path": "docs/architecture/activity-conformance/host-observations.json", "kind": "observation", "identity_fields": ["variant"], "owner_fields": ["target_owner"], "fact_fields": ["outcome_fact"], "fact_owner_field": "domain"},
+    {"path": "docs/architecture/activity-conformance/surfaces.json", "kind": "module_surface", "kind_field": "kind", "identity_fields": ["kind", "path"], "owner_fields": ["target_owner", "target_executor", "target_boundary"]}
+  ],
+  "derived_behavior_patterns": [
+    {"kind": "transition", "roots": ["rust/crates/pod0-application/src/", "rust/crates/pod0-storage/src/"], "filename_contains": ["activity", "transition"]},
+    {"kind": "internal_command", "roots": ["rust/crates/pod0-application/src/", "rust/crates/pod0-facade/src/", "rust/crates/pod0-storage/src/"], "filename_contains": ["internal_command"]},
+    {"kind": "projection", "roots": ["rust/crates/pod0-application/src/", "rust/crates/pod0-facade/src/", "rust/crates/pod0-storage/src/"], "filename_contains": ["projection"]},
+    {"kind": "durable_store", "roots": ["rust/crates/pod0-storage/src/"], "filename_contains": ["store", "schema", "outbox"]}
+  ]
+}

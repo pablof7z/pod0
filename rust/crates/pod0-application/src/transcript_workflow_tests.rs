@@ -167,25 +167,34 @@ fn committed_generation_drives_a_deterministic_evidence_version() {
 
 #[test]
 fn failure_classification_never_resubmits_an_ambiguous_attempt() {
-    let before = classify_transcript_failure(TranscriptFailureEvidence::Transport {
-        submission_authorized: false,
-        provider_accepted: false,
-    });
+    let before = classify_transcript_failure(
+        TranscriptFailureEvidence::Transport,
+        TranscriptFailurePhase {
+            submission_authorized: false,
+            provider_accepted: false,
+        },
+    );
     assert_eq!(before.retry, TranscriptRetryDisposition::AutomaticRequest);
     assert!(before.resubmission_is_safe);
 
-    let ambiguous = classify_transcript_failure(TranscriptFailureEvidence::Transport {
-        submission_authorized: true,
-        provider_accepted: false,
-    });
+    let ambiguous = classify_transcript_failure(
+        TranscriptFailureEvidence::Transport,
+        TranscriptFailurePhase {
+            submission_authorized: true,
+            provider_accepted: false,
+        },
+    );
     assert_eq!(ambiguous.retry, TranscriptRetryDisposition::ExplicitOnly);
     assert!(ambiguous.may_have_submitted);
     assert!(!ambiguous.resubmission_is_safe);
 
-    let accepted = classify_transcript_failure(TranscriptFailureEvidence::TimedOut {
-        submission_authorized: true,
-        provider_accepted: true,
-    });
+    let accepted = classify_transcript_failure(
+        TranscriptFailureEvidence::TimedOut,
+        TranscriptFailurePhase {
+            submission_authorized: true,
+            provider_accepted: true,
+        },
+    );
     assert_eq!(accepted.retry, TranscriptRetryDisposition::RecoverPersisted);
     assert!(!accepted.resubmission_is_safe);
 }

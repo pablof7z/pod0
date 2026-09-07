@@ -196,46 +196,21 @@ pub enum TranscriptFailureEvidence {
     InvalidRequest,
     UnsupportedProvider,
     PublisherUnavailable,
-    Offline {
-        submission_authorized: bool,
-        provider_accepted: bool,
-    },
-    RateLimited {
-        submission_authorized: bool,
-        provider_accepted: bool,
-    },
-    TimedOut {
-        submission_authorized: bool,
-        provider_accepted: bool,
-    },
-    Transport {
-        submission_authorized: bool,
-        provider_accepted: bool,
-    },
+    Offline,
+    RateLimited,
+    TimedOut,
+    Transport,
     PermissionDenied,
     ProviderRejected,
-    ProviderUnavailable {
-        submission_authorized: bool,
-        provider_accepted: bool,
-    },
+    ProviderUnavailable,
     ResponseTooLarge,
     InvalidResponse,
     StaleInput,
-    StorageUnavailable {
-        submission_authorized: bool,
-        provider_accepted: bool,
-    },
+    StorageUnavailable,
     ProviderRecoveryUnavailable,
-    RetryExhausted {
-        may_have_submitted: bool,
-    },
-    Cancelled {
-        submission_authorized: bool,
-        provider_accepted: bool,
-    },
-    Unsupported {
-        wire_code: u32,
-    },
+    RetryExhausted,
+    Cancelled,
+    Unsupported { wire_code: u32 },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Record)]

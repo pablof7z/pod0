@@ -17,7 +17,7 @@ pub(crate) fn commit_transcript_observation(
     input: TranscriptObservationCommitInput,
 ) -> Result<TranscriptObservationCommitOutcome, StorageError> {
     let store = crate::LibraryStore::open_authoritative(path)?;
-    let (outcome, transition) = transcript_observation_semantics(&input.observation.observation);
+    let (outcome, transition) = transcript_observation_semantics(&input.decision);
     let staged_observation = input.observation.clone();
     let mutation_observation = input.observation.clone();
     let decision = input.decision.clone();

@@ -5,8 +5,6 @@ A deep read of every Swift file under `App/Sources/` plus the build, CI, and ent
 The task brief was written from the original template README. The actual codebase has evolved well past the README. This report reconciles the two and recommends a concrete extension shape. The most important corrections up front:
 
 - **ElevenLabs is already fully integrated** (Keychain store, voices service, TTS preview, settings UI). We extend, not add.
-- **Nostr is a complete subsystem** (relay service, key pair, Bech32, allowlist/blocklist, pending approvals, agent reply bridge). Keep verbatim.
-- **The agent loop file is `Features/Agent/AgentChatSession.swift`**, not `Agent/AgentSession.swift` as the README and task claim. There is also `AgentRelayBridge.swift` that runs the same loop for Nostr-inbound messages.
 - **Tool dispatchers are already split** into `AgentTools+Items.swift`, `+DueDates`, `+NotesMemory`, `+Reminders`, `+Search`, with the schema in `AgentToolSchema.swift`. New podcast tools should live alongside these as `AgentTools+Podcast.swift`, `+Wiki.swift`, `+Briefing.swift` — not in a new `AgentExtensions/` folder.
 - **iOS 26 deployment target, Swift 6 strict concurrency, and Liquid Glass `.glassEffect()`** are already configured in `Project.swift` and `GlassSurface.swift`. No work needed there.
 
@@ -15,20 +13,14 @@ The task brief was written from the original template README. The actual codebas
 `App/Sources/` is ~25,500 lines of Swift across ~150 files in eight top-level groups. Largest file is `ItemDetailSheet.swift` at 494 lines (under the 500 hard limit).
 
 - **Entry** — `AppMain.swift`, `App/RootView.swift`, `App/AppDelegate.swift`. SwiftUI `@main`, `TabView`, shake handler, deep-link routing, notification action buttons.
-- **Domain** — `Item`, `Note`, `Friend`, `AgentMemory`, `Anchor`, `Settings`, `AgentActivity`, `NostrPendingApproval`. All `Codable + Sendable`; every decoder uses `decodeIfPresent` for forward-compat.
-- **State** — `State/AppStateStore.swift` plus six extension files (Items, Notes, Memories, Friends, Nostr, AgentActivity, DerivedViews). `@MainActor @Observable`. Single source of truth.
 - **Persistence** — `State/Persistence.swift` encodes the entire `AppState` to JSON, writes to App Group `UserDefaults` keyed `apptemplate.state.v1`.
-- **Agent** — `Agent/AgentTools.swift` plus `+Items`, `+NotesMemory`, `+Reminders`, `+DueDates`, `+Search`, with `AgentToolSchema.swift` and `AgentPrompt.swift`. The streaming loop lives in `Features/Agent/AgentChatSession.swift` and `AgentOpenRouterClient.swift`. `AgentRelayBridge.swift` runs the same loop for Nostr-inbound DMs.
-- **Services** — `KeychainStore`, `OpenRouterCredentialStore`, `ElevenLabsCredentialStore`, `NostrCredentialStore`, `BYOKConnectService` (PKCE), `NostrRelayService` (WebSocket + kind-1 + reconnect), `NostrKeyPair` (P256K), `Bech32`, `NotificationService`, `BadgeManager`, `SpotlightIndexer`, `iCloudSettingsSync`, `DataExport`, `DeepLinkHandler`, `VoiceItemService` (`SFSpeechRecognizer` dictation), `ChatHistoryStore`, `ReviewPrompt`, `UserIdentityStore`.
 - **Design** — `AppTheme` (split by concern), `GlassSurface` (calls native iOS 26 `.glassEffect()`), `Haptics`, `PressableStyle`, `ShakeDetector`, `MarkdownView`, `AsyncButton`.
 - **Features** — `Home`, `Agent`, `Feedback`, `Friends`, `Onboarding`, `Search`, `Settings`. No feature writes state outside the store.
 - **Intents + Widget** — App Intents for Siri/Shortcuts; widget extension reads the App Group `UserDefaults` blob via `WidgetPersistence`.
 
 Mutation fan-out: `state.didSet` triggers `Persistence.save` (whole-blob JSON), `SpotlightIndexer.reindex`, `BadgeManager.sync`, `WidgetCenter.shared.reloadAllTimelines()`, and `iCloudSettingsSync.shared.push`. Cheap at hundreds of items, ruinous at thousands of transcript chunks — see Section 6.
 
-Agent loop (`AgentChatSession.runAgentTurns`): refresh system prompt → call `AgentOpenRouterClient.streamCompletion` → accumulate SSE delta chunks into `(assistantMessage, toolCalls)` → dispatch each tool via `AgentTools.dispatch` → append a `role: tool` JSON-result message → repeat up to `maxTurns = 20`. Cancellation, error, retry already handled. Reused at `maxTurns = 8` for Nostr DM-driven actions in `AgentRelayBridge`.
 
-Friends: `Friend.identifier` is a Nostr hex pubkey; `addFriend` auto-inserts into `nostrAllowedPubkeys`. Items created by a friend's agent carry `requestedByFriendID` + `requestedByDisplayName` for provenance.
 
 Feedback: shake → `FeedbackWorkflow` state machine (idle → composing → awaitingScreenshot → annotating); persisted threads in `FeedbackStore` (`Documents/feedback_threads.json`, separate from `AppState`).
 
@@ -36,8 +28,6 @@ Feedback: shake → `FeedbackWorkflow` state machine (idle → composing → awa
 
 Anything that already does its job is not in scope to change.
 
-- `KeychainStore`, `OpenRouterCredentialStore`, `ElevenLabsCredentialStore`, `NostrCredentialStore`, `BYOKConnectService` (PKCE flow with state validation).
-- `NostrRelayService`, `NostrKeyPair`, `Bech32`, `NostrPendingApproval`, the entire `nostrAllowedPubkeys` / `nostrBlockedPubkeys` / `nostrPendingApprovals` ACL, `AgentRelayBridge`.
 - `Friend` model and all `AppStateStore+Friends` operations.
 - Feedback subsystem end to end: `ShakeDetector`, `FeedbackWorkflow`, `FeedbackView`, `FeedbackStore`, `ScreenshotAnnotationView`, `FeedbackBubble`, `FeedbackThreadDetailView`, `FeedbackThreadRow`. Wire `FeedbackView.performSubmission` to whatever backend we choose later; that hook already exists.
 - `Haptics`, `PressableStyle`, `GlassSurface` (already calls native iOS 26 `.glassEffect()`), `ShakeDetector`, `AppTheme.{Spacing,Corner,Layout}`.
@@ -78,7 +68,6 @@ The task brief proposed `App/Sources/AgentExtensions/`. Don't. Every tool dispat
 
 ## 5. Concurrency model
 
-`AppStateStore`, `AgentChatSession`, `AgentRelayBridge`, `VoiceItemService`, `NostrRelayService`, and `ChatHistoryStore` are all `@MainActor`. That stays. New components follow the same rule:
 
 - **Main-actor**: anything that writes to `AppStateStore` or owns SwiftUI-observable state (`AudioConversationManager`, `BriefingPlayer` state, `RAGQueryService` request-coordinator, `PlaybackEngine`'s observable wrapper).
 - **Background**: pure CPU/IO work — RSS parsing, OPML parse, transcript chunking, embedding HTTP calls, vector-store reads — runs on dedicated `Task.detached` or background actors that return `Sendable` value types and hop back to `@MainActor` for the write.
@@ -114,7 +103,6 @@ Required additions to `App/Resources/Info.plist`:
 
 ## 8. Settings and secrets
 
-Existing Keychain entries: `OpenRouterCredentialStore`, `ElevenLabsCredentialStore`, `NostrCredentialStore`. Pattern is uniform: a service-scoped `(service, account)` pair, `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`, all access through a typed enum.
 
 New entries follow the same pattern:
 
@@ -148,7 +136,6 @@ Integration: a fake `AgentOpenRouterClient` driving the loop end-to-end with scr
 5. **Transcript-ingestion latency vs UX promise.** "Talk to all your podcasts" implies the transcript is ready. Scribe isn't instant. Need a "transcript pending" UX plus a background prefetch queue from the moment the user subscribes.
 6. **Briefing interruption integrity.** Duck/stop TTS within 200 ms, hold script position, resume at the next `<beat>`. State-machine spec, not just implementation.
 7. **CarPlay** — its own scene + entitlement; phase-2.
-8. **Nostr-mediated agent commands.** The relay bridge already exists. An extended toolset means a friend's DM could `play_episode_at` on the user's device. Audit which tools are safe to expose; gate the rest behind explicit approval.
 
 ## Final structure (annotated)
 

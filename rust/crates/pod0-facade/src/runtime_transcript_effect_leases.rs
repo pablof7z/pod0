@@ -10,6 +10,21 @@ impl FacadeState {
         &mut self,
         maximum_count: u16,
     ) -> (bool, Vec<LeasedHostRequestEnvelope>) {
+        self.next_leased_requests(maximum_count, false)
+    }
+
+    pub(super) fn next_leased_headless_requests(
+        &mut self,
+        maximum_count: u16,
+    ) -> (bool, Vec<LeasedHostRequestEnvelope>) {
+        self.next_leased_requests(maximum_count, true)
+    }
+
+    fn next_leased_requests(
+        &mut self,
+        maximum_count: u16,
+        defer_core_wakes: bool,
+    ) -> (bool, Vec<LeasedHostRequestEnvelope>) {
         let maximum = bounded_host_request_count(maximum_count);
         let mut changed = false;
         let mut requests = Vec::with_capacity(maximum);
@@ -25,11 +40,20 @@ impl FacadeState {
             let Some(store) = self.store.clone() else {
                 break;
             };
-            let Ok(Some(lease)) = store.claim_next_effect_with_publisher_limit(
-                self.now(),
-                120_000,
-                pod0_application::MAX_ACTIVE_PUBLISHER_CHAPTER_REQUESTS,
-            ) else {
+            let lease = if defer_core_wakes {
+                store.claim_next_headless_effect(
+                    self.now(),
+                    120_000,
+                    pod0_application::MAX_ACTIVE_PUBLISHER_CHAPTER_REQUESTS,
+                )
+            } else {
+                store.claim_next_effect_with_publisher_limit(
+                    self.now(),
+                    120_000,
+                    pod0_application::MAX_ACTIVE_PUBLISHER_CHAPTER_REQUESTS,
+                )
+            };
+            let Ok(Some(lease)) = lease else {
                 break;
             };
             changed = true;

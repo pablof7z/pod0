@@ -22,7 +22,6 @@ const SETTINGS_KEYS: &[&str] = &[
     "autoMarkPlayedAtEnd",
     "autoPlayNext",
     "autoSkipAds",
-    "blossomServerURL",
     "categorizationModel",
     "categorizationModelName",
     "chapterCompilationModel",
@@ -89,7 +88,7 @@ pub(crate) fn sanitized_application_state(settings_json: &[u8]) -> Result<Vec<u8
         "episodes": [],
         "notes": [],
         "categories": [],
-        "categorySettings": {},
+        "categorySettings": [],
         "settings": retained,
         "clips": [],
     });
@@ -123,7 +122,7 @@ pub(crate) fn validate_sanitized_application_state(bytes: &[u8]) -> Result<(), S
         ]
         .iter()
         .any(|key| object[*key] != serde_json::json!([]))
-        || object["categorySettings"] != serde_json::json!({})
+        || object["categorySettings"] != serde_json::json!([])
     {
         return Err(StorageError::CommandConflict);
     }

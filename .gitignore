@@ -14,7 +14,5 @@ DerivedDevice/
 rust/target/
 .build/pod0core/
 .build/pod0-tools/
-.build/nmp/
-.build/nmp-swift-target/
 .build/DerivedData*/
 __pycache__/

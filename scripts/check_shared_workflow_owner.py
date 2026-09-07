@@ -73,8 +73,6 @@ RECOVERY_TESTS = {
         "requested_restart_reissues_exactly_once_and_accepted_restart_is_ambiguous",
     "rust/crates/pod0-facade/src/runtime_agent_tests.rs":
         "native_action_is_fenced_and_restart_never_blindly_replays_it",
-    "rust/crates/pod0-facade/src/runtime_publication_tests.rs":
-        "generated_episode_publication_hands_off_to_nmp_and_persists_receipt_across_restart",
 }
 
 

@@ -33,11 +33,9 @@ The prompt should not include full episode transcripts, full wiki pages, or long
 
 ## Runtime Strategy
 
-Text chat, voice mode, and Nostr inbound messages should use the same underlying tool-calling loop where possible. That keeps behavior consistent and concentrates safety controls in one place.
 
 ## Operational Rule
 
-The agent's eyes are its tools. If it needs facts, it calls `query_wiki`, `query_transcripts`, or `search_episodes`. If it needs to act, it calls playback or UI tools. If a remote Nostr command asks for a sensitive action, the bridge should gate or ask for approval before dispatch.
 
 ## See Also
 

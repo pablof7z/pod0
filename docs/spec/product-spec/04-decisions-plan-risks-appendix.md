@@ -47,10 +47,6 @@ Resolve before sprint zero. Each carries a recommended default; the row says wha
 | 13 | **Transcript ready over Lock Screen.** UX-14 + UX-11. | Today only, never push. | Privacy + push-budget. |
 | 14 | **Photo licensing source order.** UX-13 §9. Legal review. | Wikimedia Commons → verified social → monogram. | Copyright. |
 | 15 | **Speaker-resolver confidence threshold default.** UX-13 §3. | `medium`. User can lower to surface plausible matches. | Resolver false-positive rate. |
-| 16 | **Per-show *Shareable / Private* toggle for Nostr.** UX-12 §9. | Default Shareable; Health / Finance preset auto-Private. | Library privacy. |
-| 17 | **Default Nostr relay set.** UX-12 §9. | 3 relays minimum, parallel writes, first-ack reads, none Apple-/Anthropic-owned. | Single-relay rate-limit risk. |
-| 18 | **NIP-44 vs NIP-04 for friend DMs.** UX-12 §9. | NIP-44 mandatory for sensitive content (Health-tagged); NIP-04 fallback otherwise. | Privacy. |
-| 19 | **Cross-device delegation key (NIP-26-style).** UX-12 §9. | Per-device, scoped, revocable from My Other Devices. | Don't leak the seed. |
 | 20 | **Trial budget per-user ceiling.** UX-10 §10. Finance sign-off. | One briefing + ~2 K agent tokens, device-attested. | Abuse / multi-install farming. |
 | 21 | **OpenRouter signup deep-link.** UX-10 §10. | In-app web view (keeps thread); deep-link with referral code. | BYOK conversion. |
 | 22 | **Embedding provider Keychain store.** Architecture §8. | Verify OpenRouter `openai/text-embedding-3-large` is reliably available **before** designing around it. If not, add `EmbeddingProviderCredentialStore`. | Vendor coverage. |
@@ -65,13 +61,11 @@ Resolve before sprint zero. Each carries a recommended default; the row says wha
 
 **Baseline.** Every "must" row in §4.1 (variable speed, Smart Speed, Voice Boost, configurable skip, sleep timer, chapter support, AirPlay 2, CarPlay, Lock Screen / Now Playing / Control Center, smart Up Next queue, resume / mark-played, bookmarks, RSS + OPML import-export, iTunes + Podcast Index search, manual + background refresh, downloads + auto-download policy, storage + auto-delete, filter / sort, played-state viz, iCloud sync, Dynamic Type, VoiceOver, reduce motion / transparency, captions / transcripts, in-library + directory search, share-with-timestamp, App Intents + Siri, Live Activity, Watch companion, iPad multitasking, PiP + video, theme + accent, default speed / skip, auto-download defaults, restore-from-backup, analytics opt-out, data delete, per-show cache clear).
 
-**Differentiating.** Five marquee user stories from §2. Now Playing transcript surface (UX-01). Library + Discover (UX-02). Episode Detail + Reading + Follow-Along (UX-03). Wiki browser including Topic, Person, Citation Peek, Generate Page (UX-04). Agent Chat with editorial unbubbled prose, embedded media cards, Tool-Call Inspector (UX-05). Voice mode with sub-second barge-in via SpeechAnalyzer + Flash v2.5 (UX-06). Semantic Search + Topic chips + Voice search overlay (UX-07). Briefings: compose + player + branch contract + library shelf (UX-08). Threading: ribbon + transcript inline + detail sheet (UX-09). Onboarding S1–S7 with trial budget (UX-10). Lock Screen Live Activity, Dynamic Island, small + medium widgets, CarPlay (Audio entitlement, deferred from v1.0 to v1.0.x if entitlement provisioning is slow), Watch standalone playback (UX-11). Nostr friend / friend-agent comms with permission tiers, share-clip, cross-device own-DMs (UX-12). Speaker + Topic profiles with peek sheet, Follow, Brief-me handoff (UX-13). Today + Inbox + 1-push-default + Insight Card taxonomy (UX-14). Liquid Glass design system: AppTheme tokens, Sounds.swift, Haptics extensions, AgentOrb component (UX-15).
 
 ### v1.1 — Fast-follow (~6 weeks post-launch)
 
 **Baseline.** Volume normalization, long-press scrub, shake-to-extend sleep timer, Handoff iPhone↔iPad↔Mac↔Watch, episode-update detection, premium / private feeds, episode size cap, archive, custom playlists, queue / badge / history sync, RTL + CJK + initial localizations (es / pt / ja / de / fr), language indicator, quiet hours, download-complete notifs, recent / saved searches, clip creation + share, data export, reset settings, diagnostics export, Mac Catalyst, external display, large widgets, action button shortcut presets.
 
-**Differentiating.** SwiftData lands empty (architecture §6). Wake-word "Hey, podcast" (UX-06). Briefing scheduling (UX-08 + UX-14 handoff). Voice persona swap post-S5. Threading evolution view for guests (≥3 chronological mentions). Speaker-stance evolution `Hear in context` affordance. Per-tier per-tool override UI for Nostr friends. iCloud-Drive Obsidian mirror for the wiki. Shared subscription via `pcst://` deep link or Nostr event. Co-listen via SharePlay (deferred to v2 if SharePlay budget tight).
 
 ### v2 — After product-market fit
 
@@ -92,7 +86,6 @@ Smart playlists, alt feeds, Apple Podcasts Subscriptions OAuth, translated trans
 | 7 | **Live Activity battery drain** (transcript-line scrolling at high frequency) | Medium / High | Throttle to one update per transcript-segment boundary (~6–10 s), not per word. Battery soak test before ship. | Ambient |
 | 8 | **Trial-budget abuse** (multi-install farming during onboarding) | Medium / Medium | Device-attested + capped at one briefing + ~2 K agent tokens. Finance sign-off on per-user ceiling. | Onboarding |
 | 9 | **Photo / clip licensing posture** (scraped portraits, cross-publisher clip embedding) | Medium / High (legal) | Wikimedia/Commons → verified social → monogram. Quote ceiling 125 char. Fair-use ≤20 s clip ceiling for inline cross-publisher. Legal review before ship. | UX-13 + UX-09 |
-| 10 | **Nostr DM tool-exposure (privilege escalation)** | Low / Severe | Tier-gated tool exposure (Reader / Suggester / Actor). Per-tool overrides. TTL on agent-originated DMs; max hop count of 2. | Nostr |
 
 ---
 
@@ -116,7 +109,6 @@ Smart playlists, alt feeds, Apple Podcasts Subscriptions OAuth, translated trans
 - [docs/spec/briefs/ux-09-cross-episode-threading.md](briefs/ux-09-cross-episode-threading.md) — Cross-Episode Knowledge Threading.
 - [docs/spec/briefs/ux-10-onboarding.md](briefs/ux-10-onboarding.md) — Onboarding & First Run.
 - [docs/spec/briefs/ux-11-ambient-surfaces.md](briefs/ux-11-ambient-surfaces.md) — Ambient Surfaces (Lock Screen / Live Activities / Widgets / CarPlay / Watch / AirPods / Action Button / Shortcuts).
-- [docs/spec/briefs/ux-12-nostr-communication.md](briefs/ux-12-nostr-communication.md) — Nostr Communication.
 - [docs/spec/briefs/ux-13-speaker-topic-profiles.md](briefs/ux-13-speaker-topic-profiles.md) — Speaker & Topic Profiles.
 - [docs/spec/briefs/ux-14-proactive-agent-notifications.md](briefs/ux-14-proactive-agent-notifications.md) — Proactive Agent & Notifications.
 - [docs/spec/briefs/ux-15-liquid-glass-system.md](briefs/ux-15-liquid-glass-system.md) — Liquid Glass Design System & Motion Language.

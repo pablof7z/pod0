@@ -2,7 +2,7 @@ use pod0_domain::{AgentTurnId, CommandId, StateRevision};
 
 use crate::{
     ActivityActor, ActivityFact, ActivityFactDraft, ActivityOrigin, ActivitySubject,
-    AgentPublicationTransition, DomainTransitionKind, DurableExternalEffectRequest,
+    AgentTransition, DomainTransitionKind, DurableExternalEffectRequest,
     DurableInternalCommandRequest, NonEmptyActivityFacts, RequestDisposition, TransitionPlan,
     TransitionPlanError,
 };
@@ -64,9 +64,7 @@ pub fn plan_agent_cancellation(
             vec![base(
                 1,
                 ActivityFact::DomainTransition {
-                    kind: DomainTransitionKind::AgentPublication(
-                        AgentPublicationTransition::TurnStateChanged,
-                    ),
+                    kind: DomainTransitionKind::Agent(AgentTransition::TurnStateChanged),
                     previous_revision: input.current_revision,
                     committed_revision: input.committed_revision,
                 },

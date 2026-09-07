@@ -35,9 +35,7 @@ pub const fn host_observation_owner(observation: &HostObservation) -> ActivityOw
         }
         Observation::AgentModelCompleted { .. }
         | Observation::AgentApprovalObserved { .. }
-        | Observation::AgentCapabilityObserved { .. } => {
-            ActivityOwner::Domain(Domain::AgentPublication)
-        }
+        | Observation::AgentCapabilityObserved { .. } => ActivityOwner::Domain(Domain::Agent),
         Observation::CoreWakeReached { .. } => ActivityOwner::Domain(Domain::Lifecycle),
         Observation::Failed { .. } | Observation::Cancelled => ActivityOwner::CorrelatedEffect,
         Observation::Unsupported { .. } => ActivityOwner::Boundary,

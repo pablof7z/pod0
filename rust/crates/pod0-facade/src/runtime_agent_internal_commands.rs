@@ -61,8 +61,7 @@ impl FacadeState {
             AgentExecutionKind::RustCommit
             | AgentExecutionKind::RustProjection
             | AgentExecutionKind::NativeCapability
-            | AgentExecutionKind::NativeConversationPresentation
-            | AgentExecutionKind::NativeCapabilityAndNmpPublication => {}
+            | AgentExecutionKind::NativeConversationPresentation => {}
         }
         true
     }

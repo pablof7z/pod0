@@ -21,9 +21,11 @@ The permanent operating rule is:
   command/projection/event/host-request contract is documented in
   [`FACADE_CONTRACT.md`](FACADE_CONTRACT.md). Swift and Kotlin bindings derive
   from that same source and are committed under `Generated/Pod0Core`.
+- `pod0-cli` is the headless platform shell. It opens or creates isolated
+  authoritative stores, maps a versioned JSON protocol to facade commands and
+  projections, and executes supported HTTP and agent-model host requests.
+  Unsupported media capabilities remain explicitly unavailable.
 
-No Pod0 Rust crate depends on NMP protocol machinery. The iOS app consumes the
-upstream `NMP` Swift SDK as the sole engine/account boundary; Pod0 Rust remains
 limited to product nouns, authorization, and durable product state.
 
 The app-owned facade is the typed single-writer boundary used by the migrated
@@ -32,6 +34,20 @@ dispatch path remains fire-and-forget; durable work reports through bounded
 state projections and typed host requests. The transcript store becomes
 authoritative only after its verified legacy import commits the selection,
 episode readiness, listening revision, and cutover marker atomically.
+
+## Headless CLI
+
+Run newline-delimited JSON over stdin/stdout:
+
+```sh
+cargo run -p pod0-cli -- --json --create --store ./pod0.sqlite
+```
+
+Use `--repl` for the interactive shell. Agent turns require a configured
+endpoint and model: `POD0_OPENAI_BASE_URL` plus optional
+`POD0_OPENAI_API_KEY`, or `POD0_OLLAMA_BASE_URL`/`OLLAMA_HOST`, together with
+`POD0_AGENT_MODEL`. Credentials and endpoint values are never returned by the
+CLI protocol.
 
 ## Reproducible checks
 
@@ -71,14 +87,11 @@ for Android arm64/x86_64. Those results prove API portability, not permission
 to begin the M6 Android application phase; the M5 product/architecture gate
 remains authoritative.
 
-## NMP pin and upgrade policy
 
 The upstream Swift SDK is prepared at Git revision
 `bca64d75eeee8496b93ca220976c4fa6046cf6cb` by
-`scripts/prepare_nmp_swift_package.sh`. NMP is pre-1.0, so an upgrade requires
 review of its public Swift surface, then:
 
 1. update the exact revision in the preparation script;
-2. rebuild the NMP XCFramework and generated bindings from that source;
 3. run upstream Swift tests and Pod0's full Apple build/tests;
 4. record any Swift/Kotlin/Android surface gaps that affect Pod0.

@@ -69,7 +69,6 @@ pub(super) fn subject(value: ActivitySubject) -> (u8, Option<[u8; 16]>) {
             (5, Some(occurrence_id.into_bytes()))
         }
         ActivitySubject::TranscriptWorkflow { workflow_id } => (6, Some(workflow_id.into_bytes())),
-        ActivitySubject::Publication { publication_id } => (7, Some(publication_id.into_bytes())),
         ActivitySubject::Note { note_id } => (8, Some(note_id.into_bytes())),
         ActivitySubject::Memory { memory_id } => (9, Some(memory_id.into_bytes())),
         ActivitySubject::Clip { clip_id } => (10, Some(clip_id.into_bytes())),

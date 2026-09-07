@@ -75,7 +75,11 @@ fn commit_configuration(
             } else if import && stored.is_some() {
                 RequestDisposition::NoSemanticChange
             } else if expected_revision.is_some_and(|expected| {
-                stored.as_ref().map(|value| value.revision) != Some(expected)
+                stored
+                    .as_ref()
+                    .map_or(expected != StateRevision::INITIAL, |value| {
+                        value.revision != expected
+                    })
             }) {
                 RequestDisposition::Rejected {
                     reason: pod0_application::RequestRejectionReason::RevisionConflict,

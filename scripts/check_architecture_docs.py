@@ -18,9 +18,7 @@ HISTORICAL_DOCS = (
     "docs/spec/research/template-architecture-and-extension-plan.md",
 )
 STALE_CURRENT_CLAIMS = (
-    "The NMP adapter remains isolated from the facade while the security hold",
     "Swift retains a temporary provider-schema formatter plus artifact and run-log storage",
-    "currently owns subscription, download, transcript, knowledge, agent, Nostr, and artifact decisions",
     "Swift provider networking and polling clients",
 )
 
@@ -79,15 +77,6 @@ def validate(root: Path) -> list[str]:
         if "Historical planning record" not in opening:
             errors.append(f"{relative_path} is not marked as a historical planning record")
 
-    adr = read(
-        root,
-        "docs/architecture/adr/0008-agent-actions-permissions-and-nmp-publication.md",
-    )
-    if "The interactive agent currently receives" in adr:
-        errors.append("ADR-0008 presents its pre-migration context as current behavior")
-    if "## Implementation status" not in adr:
-        errors.append("ADR-0008 has no implementation-status section")
-
     return errors
 
 
@@ -100,8 +89,6 @@ def write_fixture(root: Path, *, documented: int, duplicate_key: bool = False) -
             '{"entries": [], "entries": []}\n' if duplicate_key else '{"entries": []}\n',
         HISTORICAL_DOCS[0]: "# Spec\n\n> Historical planning record; not current.\n",
         HISTORICAL_DOCS[1]: "# Research\n\n> Historical planning record; not current.\n",
-        "docs/architecture/adr/0008-agent-actions-permissions-and-nmp-publication.md":
-            "# ADR\n\n## Implementation status\n\nCurrent.\n",
     }
     for relative_path, content in paths.items():
         path = root / relative_path

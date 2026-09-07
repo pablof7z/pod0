@@ -25,9 +25,6 @@ pub enum DurableEffectExecution {
     Feed {
         request: crate::DurableFeedEffectRequest,
     },
-    Publication {
-        draft: crate::Pod0PublicationDraft,
-    },
     AgentModel {
         request: DurableAgentModelEffectRequest,
     },

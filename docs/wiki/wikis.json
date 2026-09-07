@@ -19,7 +19,7 @@
     },
     "agent": {
       "path": "/Users/pablofernandez/Work/podcast-player/docs/wiki/topics/agent",
-      "description": "Embedded agent runtime, tools, voice loop, and Nostr command safety."
+      "description": "Embedded agent runtime, tools, voice loop, and command safety."
     },
     "experience": {
       "path": "/Users/pablofernandez/Work/podcast-player/docs/wiki/topics/experience",

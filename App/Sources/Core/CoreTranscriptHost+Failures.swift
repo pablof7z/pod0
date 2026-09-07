@@ -2,69 +2,57 @@ import Foundation
 import Pod0Core
 
 extension CoreTranscriptHost {
-    func evidence(
-        _ failure: CoreTranscriptTransportError,
-        request: TranscriptCapabilityRequest
-    ) -> TranscriptFailureEvidence {
+    func evidence(_ failure: CoreTranscriptTransportError) -> TranscriptFailureEvidence {
         switch failure {
         case .missingCredential: .missingCredential
         case .missingLocalAudio: .missingLocalAudio
         case .invalidRequest: .invalidRequest
         case .unsupportedProvider: .unsupportedProvider
         case .publisherUnavailable: .publisherUnavailable
-        case .offline: phaseEvidence(.offline, request: request)
-        case .rateLimited: phaseEvidence(.rateLimited, request: request)
-        case .timedOut: phaseEvidence(.timedOut, request: request)
-        case .transport: phaseEvidence(.transport, request: request)
+        case .offline: .offline
+        case .rateLimited: .rateLimited
+        case .timedOut: .timedOut
+        case .transport: .transport
         case .permissionDenied: .permissionDenied
         case .providerRejected: .providerRejected
-        case .providerUnavailable: phaseEvidence(.providerUnavailable, request: request)
+        case .providerUnavailable: .providerUnavailable
         case .responseTooLarge: .responseTooLarge
         case .invalidResponse: .invalidResponse
         case .providerRecoveryUnavailable: .providerRecoveryUnavailable
         }
     }
 
-    func evidence(
-        _ failure: AssemblyAITranscriptClient.TranscribeError,
-        request: TranscriptCapabilityRequest
-    ) -> TranscriptFailureEvidence {
+    func evidence(_ failure: AssemblyAITranscriptClient.TranscribeError) -> TranscriptFailureEvidence {
         switch failure {
         case .missingAPIKey: .missingCredential
         case .invalidAudioURL: .invalidRequest
-        case .http(let status): httpEvidence(status, request: request)
-        case .timedOut: phaseEvidence(.timedOut, request: request)
-        case .cancelled: phaseEvidence(.cancelled, request: request)
+        case .http(let status): httpEvidence(status)
+        case .timedOut: .timedOut
+        case .cancelled: .cancelled
         case .remoteError: .providerRejected
         case .invalidResponse, .decoding: .invalidResponse
         }
     }
 
-    func evidence(
-        _ failure: ElevenLabsScribeClient.ScribeError,
-        request: TranscriptCapabilityRequest
-    ) -> TranscriptFailureEvidence {
+    func evidence(_ failure: ElevenLabsScribeClient.ScribeError) -> TranscriptFailureEvidence {
         switch failure {
         case .missingAPIKey: .missingCredential
         case .invalidAudioURL: .invalidRequest
-        case .http(let status): httpEvidence(status, request: request)
-        case .timedOut: phaseEvidence(.timedOut, request: request)
-        case .cancelled: phaseEvidence(.cancelled, request: request)
+        case .http(let status): httpEvidence(status)
+        case .timedOut: .timedOut
+        case .cancelled: .cancelled
         case .invalidResponse, .decoding: .invalidResponse
         }
     }
 
-    func evidence(
-        _ failure: OpenRouterWhisperClient.WhisperError,
-        request: TranscriptCapabilityRequest
-    ) -> TranscriptFailureEvidence {
+    func evidence(_ failure: OpenRouterWhisperClient.WhisperError) -> TranscriptFailureEvidence {
         switch failure {
         case .missingAPIKey: .missingCredential
         case .invalidAudioURL: .invalidRequest
-        case .downloadFailed: phaseEvidence(.transport, request: request)
-        case .http(let status): httpEvidence(status, request: request)
-        case .timedOut: phaseEvidence(.timedOut, request: request)
-        case .cancelled: phaseEvidence(.cancelled, request: request)
+        case .downloadFailed: .transport
+        case .http(let status): httpEvidence(status)
+        case .timedOut: .timedOut
+        case .cancelled: .cancelled
         case .invalidResponse, .decoding: .invalidResponse
         }
     }
@@ -73,62 +61,29 @@ extension CoreTranscriptHost {
         switch failure {
         case .notAuthorized: .permissionDenied
         case .requiresLocalFile, .audioFileUnreadable: .missingLocalAudio
-        case .unavailable, .modelUnavailableForLocale: .providerUnavailable(
-            submissionAuthorized: false,
-            providerAccepted: false
-        )
+        case .unavailable, .modelUnavailableForLocale: .providerUnavailable
         case .noResults: .invalidResponse
         }
     }
 
-    func evidence(
-        _ failure: URLError,
-        request: TranscriptCapabilityRequest
-    ) -> TranscriptFailureEvidence {
+    func evidence(_ failure: URLError) -> TranscriptFailureEvidence {
         switch failure.code {
         case .notConnectedToInternet, .networkConnectionLost, .internationalRoamingOff:
-            phaseEvidence(.offline, request: request)
-        case .timedOut: phaseEvidence(.timedOut, request: request)
+            .offline
+        case .timedOut: .timedOut
         case .userAuthenticationRequired, .userCancelledAuthentication: .permissionDenied
         case .dataLengthExceedsMaximum: .responseTooLarge
-        case .cancelled: phaseEvidence(.cancelled, request: request)
-        default: phaseEvidence(.transport, request: request)
+        case .cancelled: .cancelled
+        default: .transport
         }
     }
 
-    func phaseEvidence(
-        _ kind: CoreTranscriptPhaseFailure,
-        request: TranscriptCapabilityRequest
-    ) -> TranscriptFailureEvidence {
-        let phase = request.providerPhase
-        return switch kind {
-        case .offline:
-            .offline(submissionAuthorized: phase.authorized, providerAccepted: phase.accepted)
-        case .rateLimited:
-            .rateLimited(submissionAuthorized: phase.authorized, providerAccepted: phase.accepted)
-        case .timedOut:
-            .timedOut(submissionAuthorized: phase.authorized, providerAccepted: phase.accepted)
-        case .transport:
-            .transport(submissionAuthorized: phase.authorized, providerAccepted: phase.accepted)
-        case .providerUnavailable:
-            .providerUnavailable(
-                submissionAuthorized: phase.authorized,
-                providerAccepted: phase.accepted
-            )
-        case .cancelled:
-            .cancelled(submissionAuthorized: phase.authorized, providerAccepted: phase.accepted)
-        }
-    }
-
-    func httpEvidence(
-        _ status: Int,
-        request: TranscriptCapabilityRequest
-    ) -> TranscriptFailureEvidence {
+    func httpEvidence(_ status: Int) -> TranscriptFailureEvidence {
         switch status {
         case 401, 403: .missingCredential
-        case 408, 504: phaseEvidence(.timedOut, request: request)
-        case 429: phaseEvidence(.rateLimited, request: request)
-        case 500...599: phaseEvidence(.providerUnavailable, request: request)
+        case 408, 504: .timedOut
+        case 429: .rateLimited
+        case 500...599: .providerUnavailable
         case 413: .responseTooLarge
         case 400...499: .providerRejected
         default: .invalidResponse
@@ -152,20 +107,6 @@ extension CoreTranscriptHost {
         case .responseTooLarge: "Transcript response exceeds the core limit"
         case .invalidResponse: "Transcript provider returned an invalid response"
         case .providerRecoveryUnavailable: "Transcript provider recovery is unavailable"
-        }
-    }
-}
-
-enum CoreTranscriptPhaseFailure {
-    case offline, rateLimited, timedOut, transport, providerUnavailable, cancelled
-}
-
-private extension TranscriptCapabilityRequest {
-    var providerPhase: (authorized: Bool, accepted: Bool) {
-        switch self {
-        case .submitProvider: (true, false)
-        case .recoverProvider: (true, true)
-        case .fetchPublisher, .transcribeLocal: (false, false)
         }
     }
 }

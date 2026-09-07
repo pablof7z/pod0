@@ -87,7 +87,6 @@ Three rules that fall out of the split:
   - **Required**: `audio_url`, `title`.
   - **Optional**: `feed_url`, `duration_seconds`, `timestamp`.
   - **Drop**: `image_url`, `podcast_title`. The system resolves both from the `Podcast` record fetched via `feed_url` when supplied.
-  - Tool description updated to: "When you know the show's RSS feed_url (e.g. from `search_podcast_directory`), pass it — the player will then show the show's real artwork. If you only have a raw audio URL (user-pasted link, Nostr-shared URL), omit feed_url; the episode plays under an Unknown-podcast record."
 - **`App/Sources/Agent/AgentTools+PodcastExternal.swift`** — `playExternalEpisodeTool`:
   - If `feed_url` supplied → `ensurePodcast(feedURL:)` → upsert Episode under that podcast.
   - Else → upsert Episode under `Podcast.unknownID`.

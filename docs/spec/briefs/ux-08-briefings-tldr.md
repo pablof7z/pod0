@@ -245,7 +245,6 @@ A briefing must be **immediately distinguishable** from an episode while still f
 │   │   Huberman · Attia · Hard Fork   │   │
 │   ╰──────────────────────────────────╯   │
 │                                          │
-│   [ iMessage ] [ Nostr DM ] [ Save ]     │
 └──────────────────────────────────────────┘
 ```
 

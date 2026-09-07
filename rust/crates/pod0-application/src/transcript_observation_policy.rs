@@ -5,9 +5,10 @@ use pod0_domain::{
 
 use crate::{
     TRANSCRIPT_HOST_REQUEST_DEADLINE_MILLISECONDS, TRANSCRIPT_RETRY_BASE_MILLISECONDS,
-    TranscriptCapabilityObservation, TranscriptFailureEvidence, TranscriptRetryDisposition,
-    TranscriptWorkflowFailureCode, classify_transcript_failure, transcript_attempt_id,
-    transcript_retry_not_before, transcript_submission_fence_id, transcript_workflow_request_id,
+    TranscriptCapabilityObservation, TranscriptFailureEvidence, TranscriptFailurePhase,
+    TranscriptRetryDisposition, TranscriptWorkflowFailureCode, classify_transcript_failure,
+    transcript_attempt_id, transcript_retry_not_before, transcript_submission_fence_id,
+    transcript_workflow_request_id,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -108,10 +109,7 @@ pub fn decide_transcript_observation(
         ),
         TranscriptCapabilityObservation::Cancelled => failure_decision(
             input.state,
-            TranscriptFailureEvidence::Cancelled {
-                submission_authorized: input.state.submission_authorized,
-                provider_accepted: input.state.provider_accepted,
-            },
+            TranscriptFailureEvidence::Cancelled,
             None,
             None,
             input.observed_at,
@@ -128,7 +126,13 @@ fn failure_decision(
     observed_at: UnixTimestampMilliseconds,
     retry_issued_revision: StateRevision,
 ) -> TranscriptObservationDecision {
-    let classification = classify_transcript_failure(evidence);
+    let classification = classify_transcript_failure(
+        evidence,
+        TranscriptFailurePhase {
+            submission_authorized: state.submission_authorized,
+            provider_accepted: state.provider_accepted,
+        },
+    );
     let transition = retry_transition(
         state,
         classification,

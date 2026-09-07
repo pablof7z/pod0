@@ -2,9 +2,9 @@ use pod0_domain::{CommandId, StateRevision};
 
 use crate::{
     ActivityActor, ActivityDomain, ActivityFact, ActivityFactDraft, ActivityOrigin,
-    ActivitySubject, AgentPublicationTransition, DomainTransitionKind,
-    DurableExternalEffectRequest, DurableInternalCommandRequest, NonEmptyActivityFacts,
-    RequestDisposition, ScheduledAgentActivityTransition, TransitionPlan, TransitionPlanError,
+    ActivitySubject, AgentTransition, DomainTransitionKind, DurableExternalEffectRequest,
+    DurableInternalCommandRequest, NonEmptyActivityFacts, RequestDisposition,
+    ScheduledAgentActivityTransition, TransitionPlan, TransitionPlanError,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -38,8 +38,8 @@ pub fn plan_legacy_business_cutover(
     let (subject, domain, transition) = match input.domain {
         LegacyBusinessCutoverDomain::AgentHistory => (
             ActivitySubject::Global,
-            ActivityDomain::AgentPublication,
-            DomainTransitionKind::AgentPublication(AgentPublicationTransition::TurnStateChanged),
+            ActivityDomain::Agent,
+            DomainTransitionKind::Agent(AgentTransition::TurnStateChanged),
         ),
         LegacyBusinessCutoverDomain::ScheduledAgent => (
             ActivitySubject::Global,

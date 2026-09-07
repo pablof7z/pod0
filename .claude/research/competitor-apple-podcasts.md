@@ -56,7 +56,6 @@
   - **Risk / conflict**: False positives on show-name detection could be annoying. Needs a confidence threshold.
 
 - **Feature**: Timestamped share links
-  - **Why it fits Podcastr**: Sharing "the keto part" is a marquee story. Users should be able to share a deep link that opens Podcastr at the exact segment. Also surfaces Nostr DM use case: share a moment to a friend over Nostr.
   - **Effort**: S (universal link + custom URL scheme with t= param)
   - **Risk / conflict**: Links only useful if recipient also has Podcastr; fallback web player needed for viral sharing.
 

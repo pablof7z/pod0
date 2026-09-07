@@ -38,7 +38,7 @@ fn stage_feed_observation(
     {
         return Ok(());
     }
-    if !state.is_some_and(|(code, _)| code == 1) {
+    if state.is_none_or(|(code, _)| code != 1) {
         return Err(StorageError::CommandConflict);
     }
     let outcome = serde_json::to_string(&EffectOutcome::Succeeded)

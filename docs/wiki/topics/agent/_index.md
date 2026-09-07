@@ -1,6 +1,5 @@
 # Agent Wiki Index
 
-> Embedded agent runtime, tool surface, voice loop, and Nostr command safety.
 
 Last updated: 2026-05-09
 
@@ -35,7 +34,6 @@ Last updated: 2026-05-09
 | [tool-permissions-and-approvals.md](wiki/concepts/tool-permissions-and-approvals.md) | Permission classes and approval gates for tool calls. | agent, permissions | 2026-05-09 |
 | [background-agent-operations.md](wiki/concepts/background-agent-operations.md) | Durable job queue design for long-running agent work. | agent, background, jobs | 2026-05-09 |
 | [voice-briefing-loop.md](wiki/concepts/voice-briefing-loop.md) | Interruptible STT/TTS conversation and generated briefing flow. | voice, briefing | 2026-05-09 |
-| [nostr-command-safety.md](wiki/concepts/nostr-command-safety.md) | Safety model for Nostr-mediated agent commands. | nostr, safety | 2026-05-09 |
 | [implementation-map.md](wiki/references/implementation-map.md) | Where agent-related implementation should land in the repo. | implementation, swift | 2026-05-09 |
 | [tool-family-matrix.md](wiki/references/tool-family-matrix.md) | Tool families mapped to services, stores, permissions, and priority. | tools, implementation | 2026-05-09 |
 | [in-episode-agent.md](wiki/concepts/in-episode-agent.md) | Context-aware one-tap voice drop from Now Playing: seek, clip, annotate, or research without leaving the player. | agent, voice, now-playing, clip | 2026-05-09 |
@@ -43,7 +41,6 @@ Last updated: 2026-05-09
 ## Categories
 
 - **topics**: agent-runtime-and-context.md, agent-tool-platform.md
-- **concepts**: tool-surface.md, lifetime-tool-catalog.md, tenex-delegate-tool.md, tool-execution-infrastructure.md, tool-permissions-and-approvals.md, background-agent-operations.md, voice-briefing-loop.md, nostr-command-safety.md, in-episode-agent.md
 - **references**: implementation-map.md, tool-family-matrix.md
 
 ## Recent Changes

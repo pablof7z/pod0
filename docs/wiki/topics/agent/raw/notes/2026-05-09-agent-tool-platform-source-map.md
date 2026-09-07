@@ -4,7 +4,6 @@ source: "Local repo code, docs, and conversation request on 2026-05-09"
 type: notes
 ingested: 2026-05-09
 tags: [agent, tools, infrastructure, source-map]
-summary: "Source context for designing a complete tool platform: current AgentTools, PodcastAgentToolDeps, podcast schemas, agent prompt, Nostr bridge, knowledge stack, briefing stack, voice stack, and existing wiki articles."
 ---
 
 # Agent Tool Platform Source Map
@@ -15,7 +14,6 @@ Primary local sources:
 
 - [Agent runtime article](../../wiki/topics/agent-runtime-and-context.md)
 - [Existing tool surface article](../../wiki/concepts/tool-surface.md)
-- [Nostr safety article](../../wiki/concepts/nostr-command-safety.md)
 - [In-episode agent article](../../wiki/concepts/in-episode-agent.md)
 - [Knowledge pipeline](../../../knowledge/wiki/topics/knowledge-pipeline.md)
 - [Retrieval and citation model](../../../knowledge/wiki/concepts/retrieval-and-citation-model.md)

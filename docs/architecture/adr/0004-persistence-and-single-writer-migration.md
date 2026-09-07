@@ -75,7 +75,6 @@ tested export/restore path; silently re-enabling the old writer is forbidden.
 The migrated store now includes podcast, subscription, episode library,
 queue/resume/completion/rate/sleep policy, relevant preferences, notes, and
 clips. Transcript normalization, broader knowledge/search, workflow, agent, and
-Nostr state remain in their current owners until their own complete vertical
 slices.
 
 ## Consequences

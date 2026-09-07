@@ -25,7 +25,6 @@ Podcastr is a Tuist-based SwiftUI app with an app target, widget target, and uni
 
 ## Verification
 
-Use targeted tests when touching a narrow subsystem. The `AppTests/Sources/` directory is organized by behavior: RSS parsing, podcast search, playback queue, transcript parsing, RAG, wiki verification, agent tools, BYOK/NIP-46, persistence, downloads, settings encoding, OPML import/export, and more.
 
 For UI or runtime changes, build and launch the app on the requested simulator or device. For provider, transcription, RAG, or network behavior, verify the exact provider path being changed instead of assuming another provider's tests cover it.
 

@@ -1,7 +1,6 @@
 # Feature Reference
 
 > **Historical template/feature research.** This document contains removed and
-> superseded friend, Nostr, persistence, and agent examples. It is retained as
 > provenance, not as a current implementation guide. Use
 > [`architecture.md`](architecture.md), the
 > [architecture ADRs](architecture/README.md), and code/tests on `master`.
@@ -46,13 +45,11 @@ Tools return JSON strings (`{"success": true, "id": "..."}` or `{"error": "..."`
 
 ### Channel concept (from win-the-day)
 
-win-the-day has two agent channels: `.ownerChat` (voice/typed compose) and `.peerAgent` (Nostr inbound). The peer agent channel gets a different tool set — `send_friend_message` and `end_conversation` are only callable by peer agents, not the owner. Implement this pattern by adding a `channel` parameter to `AgentSession` and filtering `AgentTools.schema` based on it.
 
 ---
 
 ## Friends System
 
-**Source:** win-the-day-app `RockingLife/Domain/Models.swift` (`NostrFriend`), `Features/Settings/AgentFriendsView.swift`
 
 ### Model
 
@@ -60,7 +57,6 @@ win-the-day has two agent channels: `.ownerChat` (voice/typed compose) and `.pee
 struct Friend: Codable, Identifiable, Hashable, Sendable {
     var id: UUID
     var displayName: String
-    var identifier: String   // Nostr pubkey, username, etc.
     var addedAt: Date
     var avatarURL: String?
     var about: String?
@@ -76,11 +72,7 @@ store.addItem(title: title, source: .agent, friendID: friend.id, friendName: fri
 
 The `HomeView.ItemRow` reads `requestedByDisplayName` to display "From Alice" under the task.
 
-### Advanced: Nostr-backed friends (from win-the-day)
 
-Replace `identifier` with a Nostr hex pubkey. Friends map to `nostrAllowedPubkeys` — incoming Nostr events from friends are auto-approved; from strangers they go to `nostrPendingApprovals`. See:
-- `NostrAgentService.handleInbound()` — inbound event routing
-- `NostrApprovalPresenter` — approval UI
 - `AgentFriendsView` — QR code add, relay management
 
 ---
@@ -148,13 +140,11 @@ For SwiftData (used in cut-tracker), replace the JSON blob with a `ModelContaine
 
 ---
 
-## NIP-74 — Agent-Owned Podcasts
 
 **Source:** `App/Sources/Agent/AgentTools+OwnedPodcasts.swift`, `App/Sources/Agent/LiveAgentOwnedPodcastManager.swift`, `App/Sources/Agent/AgentToolSchema+Podcast.swift`, `App/Sources/Features/Settings/Agent/AgentPodcastsView.swift`
 
 ### Concept
 
-The AI agent can create and manage its own podcast shows — complete with AI-generated cover art and optional Nostr publishing via NIP-74. Agent-owned shows appear in the library alongside subscribed shows and can contain TTS-generated episodes.
 
 ### Tools
 
@@ -164,22 +154,15 @@ The AI agent can create and manage its own podcast shows — complete with AI-ge
 | `update_podcast` | Update metadata on an existing agent-owned show by `podcast_id`. |
 | `delete_my_podcast` | Delete an agent-owned show and all its episodes. |
 | `list_my_podcasts` | List all agent-owned shows with metadata and episode counts. |
-| `generate_podcast_artwork` | Generate cover art via the configured image-gen model, upload via Blossom, return a CDN URL. |
-| `publish_episode` | Publish an existing TTS episode to Nostr (NIP-74). Requires `visibility=public` and Nostr enabled in Settings. |
 
-`generate_tts_episode` (in `AgentTools+TTS.swift`) accepts an optional `podcast_id`; when the podcast is public and Nostr is enabled, the episode is auto-published after generation.
 
 ### Lifecycle (`LiveAgentOwnedPodcastManager`)
 
 1. `createPodcast(...)` — sends a typed synthetic-podcast input through the Pod0 Rust facade, which commits the show to the shared library.
-2. If `visibility == .public` and Nostr is enabled, immediately publishes a NIP-74 show event signed by the agent's Nostr key from `NostrCredentialStore`.
-3. `generateAndUploadArtwork(prompt:)` — calls the image-gen API (model configured in Image Generation Settings), uploads the result to the user's Blossom server, returns the CDN URL.
-4. `publishEpisodeToNostr(episodeID:)` — looks up the episode, builds a NIP-74 episode event, signs and publishes, returns the `naddr`.
 
 ### Visibility
 
 - `private` — show exists only in the local library; not signed or published.
-- `public` — show and episodes are signed with the agent's nsec and published to Nostr relays as NIP-74 events.
 
 Visibility can be changed after creation via `update_podcast(podcast_id:, visibility:)`.
 
