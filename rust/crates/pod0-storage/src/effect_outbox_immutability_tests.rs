@@ -11,18 +11,22 @@ fn database_keeps_effect_requests_immutable_while_leases_advance_state() {
     fixture.migrate_to_current(53).unwrap();
     let intent_id = commit_effect(&fixture.store);
     let connection = Connection::open(&fixture.store).unwrap();
-    assert!(connection
-        .execute(
-            "UPDATE pod0_effect_intents SET request_json=request_json WHERE intent_id=?1",
-            [intent_id.into_bytes().as_slice()],
-        )
-        .is_err());
-    assert!(connection
-        .execute(
-            "DELETE FROM pod0_effect_intents WHERE intent_id=?1",
-            [intent_id.into_bytes().as_slice()],
-        )
-        .is_err());
+    assert!(
+        connection
+            .execute(
+                "UPDATE pod0_effect_intents SET request_json=request_json WHERE intent_id=?1",
+                [intent_id.into_bytes().as_slice()],
+            )
+            .is_err()
+    );
+    assert!(
+        connection
+            .execute(
+                "DELETE FROM pod0_effect_intents WHERE intent_id=?1",
+                [intent_id.into_bytes().as_slice()],
+            )
+            .is_err()
+    );
     drop(connection);
 
     let lease = EffectOutbox::open(&fixture.store)

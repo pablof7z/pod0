@@ -79,6 +79,8 @@ mod chapter_projection;
 mod chapter_workflow;
 mod clip_contract;
 mod command_disposition;
+#[cfg(test)]
+mod command_disposition_tests;
 mod contract;
 mod contract_failure;
 mod contract_library_input;
@@ -97,8 +99,6 @@ mod contract_state_subscription;
 mod contract_state_tests;
 mod contract_state_transcript_validation;
 mod contract_state_validation;
-#[cfg(test)]
-mod command_disposition_tests;
 mod core_wake;
 mod download_activity;
 mod download_contract;
@@ -199,11 +199,11 @@ mod transcript_finalization_activity;
 mod transcript_observation_activity;
 #[cfg(test)]
 mod transcript_observation_activity_tests;
-#[cfg(test)]
-mod transcript_observation_semantics_tests;
 mod transcript_observation_policy;
 #[cfg(test)]
 mod transcript_observation_policy_tests;
+#[cfg(test)]
+mod transcript_observation_semantics_tests;
 mod transcript_projection;
 mod transcript_recovery_activity;
 mod transcript_workflow;

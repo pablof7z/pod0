@@ -81,11 +81,11 @@ mod download_store_request;
 mod download_store_retry;
 mod download_store_write;
 mod effect_outbox;
+#[cfg(test)]
+mod effect_outbox_immutability_tests;
 mod effect_outbox_model;
 #[cfg(test)]
 mod effect_outbox_tests;
-#[cfg(test)]
-mod effect_outbox_immutability_tests;
 mod evidence_codec;
 mod evidence_commands;
 mod evidence_model;
