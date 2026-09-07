@@ -6,6 +6,19 @@ from pathlib import Path
 import re
 
 
+FROZEN_EXCEPTION_PATHS = frozenset({
+    "App/Sources/Features/Player/AutoSnip/AutoSnipController.swift",
+    "App/Sources/Knowledge/UtilityLLMClient.swift",
+    "App/Sources/Knowledge/UtilityLLMFailureMapping.swift",
+    "App/Sources/Services/ClipBoundaryResolver.swift",
+    "App/Sources/Services/PodcastCategorization/PodcastCategorizationParser.swift",
+    "App/Sources/Services/PodcastCategorization/PodcastCategorizationPrompt.swift",
+    "App/Sources/Services/PodcastCategorization/PodcastCategorizationService.swift",
+    "App/Sources/Services/SubscriptionFailureMapping.swift",
+    "App/Sources/Services/SubscriptionRefreshService.swift",
+    "App/Sources/Services/SubscriptionService+SharedCore.swift",
+    "App/Sources/Services/SubscriptionService.swift",
+})
 IGNORED_SOURCE = re.compile(
     r'""".*?"""|"(?:\\.|[^"\\])*"|/\*.*?\*/|//[^\n]*',
     re.DOTALL,

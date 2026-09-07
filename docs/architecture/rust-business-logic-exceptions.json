@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "policy": "Existing non-Rust business-logic files are exact, shrinking exceptions. New files and new declarations are forbidden. Issue #219 requires zero exceptions.",
+  "policy": "Existing non-Rust business-logic files are a frozen, shrinking set. New paths, replacement exceptions, and new declarations are forbidden. Resolved rows are deleted in the same wave. Issue #219 requires zero exceptions.",
   "maximum_exception_files": 11,
   "allowed_roles": ["decode_only_migration", "legacy_presentation_model", "legacy_product_policy", "legacy_diagnostics_authority", "native_transport_candidate"],
   "exceptions": [

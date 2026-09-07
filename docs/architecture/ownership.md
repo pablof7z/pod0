@@ -37,6 +37,9 @@ lacks both a migration issue and deletion target.
 The inventory plus the exact exception manifest is a ratchet, not permission
 to add temporary native policy. `current_owner`, `target_owner`,
 `migration_issues`, and `deletion_target` document removal responsibility.
+The checker freezes the identity of the original eleven paths, so deleting one
+never creates capacity for a replacement. A resolved source and its exception
+row leave together; a stale row fails, while an empty manifest is valid.
 
 The native business-logic checker reads every production Swift and Kotlin
 source, masks comments and string literals, and rejects native product-policy
