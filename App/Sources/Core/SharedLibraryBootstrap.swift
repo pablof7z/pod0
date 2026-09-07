@@ -190,6 +190,13 @@ enum SharedLibraryBootstrap {
             }
             stage = .facade
             let facade = try Pod0Facade.open(storePath: target.path)
+            stage = .productSettings
+            let productSettings = try importLegacyProductSettings(
+                legacyState.settings,
+                sourceGeneration: legacyState.persistenceGeneration,
+                target: target,
+                into: facade
+            )
             stage = .recallConfiguration
             try importLegacyRecallConfiguration(legacyRecallConfiguration, into: facade)
             let legacyJobStore = JobStore(fileURL: persistence.episodeStore.fileURL)
@@ -224,7 +231,8 @@ enum SharedLibraryBootstrap {
                 facade: facade,
                 coreStoreURL: target,
                 feedHost: feedHost,
-                observationOutbox: observationOutbox
+                observationOutbox: observationOutbox,
+                productSettings: productSettings
             ))
         } catch {
             let code = SharedLibraryBootstrapFailureCode.classify(error)

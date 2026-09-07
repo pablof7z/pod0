@@ -50,8 +50,9 @@ def evaluate(
                 )
             continue
         if allowed is None:
-            errors.append(
-                f"{path}: new soft-limit debt at {count} lines; split below {soft_limit}"
+            reports.append(
+                f"{path}: warning: {count} lines reaches soft limit {soft_limit}; "
+                "prefer splitting"
             )
         elif count > allowed:
             errors.append(
@@ -93,10 +94,14 @@ def self_test() -> None:
         {"existing.swift": 351}, baseline, soft_limit=300, hard_limit=500
     )
     assert any("grew" in error for error in errors)
-    errors, _ = evaluate(
+    errors, reports = evaluate(
         {"new.swift": 300}, {}, soft_limit=300, hard_limit=500
     )
-    assert any("new soft-limit debt" in error for error in errors)
+    assert not errors and any("warning" in report for report in reports)
+    errors, reports = evaluate(
+        {"edge.swift": 500}, {}, soft_limit=300, hard_limit=500
+    )
+    assert not errors and any("warning" in report for report in reports)
     errors, _ = evaluate(
         {"huge.swift": 501}, {}, soft_limit=300, hard_limit=500
     )

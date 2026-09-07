@@ -1,5 +1,13 @@
 use super::*;
 
+struct LiveRecoveryClock(i64);
+
+impl pod0_application::Clock for LiveRecoveryClock {
+    fn now(&self) -> UnixTimestampMilliseconds {
+        UnixTimestampMilliseconds::new(self.0)
+    }
+}
+
 #[test]
 fn provider_status_stream_recovers_by_operation_without_reposting() {
     let fixture = fixture();
@@ -87,6 +95,34 @@ fn restart_after_claim_is_ambiguous_and_never_reposts() {
                 }
             )
     }));
+}
+
+#[test]
+fn live_expired_submission_is_ambiguous_and_never_reposts() {
+    let fixture = fixture();
+    ensure(&fixture.facade, fixture.episode_id, 31);
+    let request = model_request(&fixture.facade);
+    fixture
+        .facade
+        .state()
+        .set_clock(std::sync::Arc::new(LiveRecoveryClock(
+            request.lease.expires_at.value + 1,
+        )));
+
+    assert!(
+        fixture
+            .facade
+            .next_leased_host_requests(64)
+            .into_iter()
+            .all(|leased| !matches!(
+                leased.request.request,
+                HostRequest::ExecuteChapterModel { .. }
+            ))
+    );
+    assert_eq!(
+        workflows(&fixture.facade, Some(fixture.episode_id)).model[0].stage,
+        ModelChapterWorkflowStage::Ambiguous
+    );
 }
 
 #[test]

@@ -9,6 +9,19 @@ python3 scripts/check_architecture.py --self-test
 The same command runs before iOS compilation in pull-request, branch, and
 TestFlight test jobs.
 
+Ownership coverage and cross-platform generated-binding parity also run as one
+mandatory CI step:
+
+```bash
+./scripts/check_mandatory_ci_gates.sh --self-test
+./scripts/check_mandatory_ci_gates.sh
+```
+
+The self-test proves that an unowned production source and a one-platform stale
+binding snapshot each fail the same gate invoked by both workflows. The live
+gate checks the complete ownership inventory, regenerates and compares Swift
+and Kotlin, then compiles and executes both binding smokes.
+
 It enforces:
 
 - every `ApplicationCommand`, `HostRequest`, and `HostObservation` variant has
@@ -16,7 +29,7 @@ It enforces:
 - recovery, authoritative mutation, and native execution source surfaces match
   the exact ADR-0009 conformance inventory, so the exception baseline cannot
   grow silently;
-- every production Swift file has exactly one ownership entry;
+- every production Swift, Kotlin, and Rust file has exactly one ownership entry;
 - migrating/temporary owners have implementation issues and deletion targets;
 - native presentation does not gain new direct durable-store/runtime access;
 - current direct-access exceptions are exact, used, and issue-linked;
@@ -24,6 +37,7 @@ It enforces:
 - existing 300–500-line source is reported and cannot grow;
 - any reduction in a soft-baseline file must ratchet its recorded ceiling down;
 - new source must start below 300 lines;
+- maintained source at 300–500 lines emits a visible split warning;
 
 The file-length baseline is
 [`file-length-baseline.json`](file-length-baseline.json). It is not a license to

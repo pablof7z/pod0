@@ -9,6 +9,9 @@ use pod0_domain::{ContentDigest, TranscriptSource};
 use crate::runtime_playback_test_support::PlaybackFixture;
 use crate::*;
 
+#[path = "runtime_transcript_workflow_recovery_tests/expired.rs"]
+mod expired;
+
 #[test]
 fn accepted_provider_operation_recovers_once_after_a_durable_wake() {
     let fixture = PlaybackFixture::new();

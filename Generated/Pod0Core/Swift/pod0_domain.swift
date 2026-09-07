@@ -5018,6 +5018,262 @@ public func FfiConverterTypePodcastSubscriptionRecord_lower(_ value: PodcastSubs
 }
 
 
+public struct ProductSettings: Equatable, Hashable {
+    public let schemaVersion: UInt32
+    public let revision: StateRevision
+    public let writerVersion: SettingsWriterVersion
+    public let values: ProductSettingsValues
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(schemaVersion: UInt32, revision: StateRevision, writerVersion: SettingsWriterVersion, values: ProductSettingsValues) {
+        self.schemaVersion = schemaVersion
+        self.revision = revision
+        self.writerVersion = writerVersion
+        self.values = values
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ProductSettings: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeProductSettings: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ProductSettings {
+        return
+            try ProductSettings(
+                schemaVersion: FfiConverterUInt32.read(from: &buf),
+                revision: FfiConverterTypeStateRevision.read(from: &buf),
+                writerVersion: FfiConverterTypeSettingsWriterVersion.read(from: &buf),
+                values: FfiConverterTypeProductSettingsValues.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ProductSettings, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.schemaVersion, into: &buf)
+        FfiConverterTypeStateRevision.write(value.revision, into: &buf)
+        FfiConverterTypeSettingsWriterVersion.write(value.writerVersion, into: &buf)
+        FfiConverterTypeProductSettingsValues.write(value.values, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProductSettings_lift(_ buf: RustBuffer) throws -> ProductSettings {
+    return try FfiConverterTypeProductSettings.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProductSettings_lower(_ value: ProductSettings) -> RustBuffer {
+    return FfiConverterTypeProductSettings.lower(value)
+}
+
+
+/**
+ * Portable product preferences. Secret material and legacy-only migration
+ * fields are deliberately absent from this type.
+ */
+public struct ProductSettingsValues: Equatable, Hashable {
+    public let agentInitialModel: String
+    public let agentInitialModelName: String
+    public let agentThinkingModel: String
+    public let agentThinkingModelName: String
+    public let memoryCompilationModel: String
+    public let memoryCompilationModelName: String
+    public let utilityModel: String
+    public let utilityModelName: String
+    public let categorizationModel: String
+    public let categorizationModelName: String
+    public let chapterCompilationModel: String
+    public let chapterCompilationModelName: String
+    public let imageGenerationModel: String
+    public let imageGenerationModelName: String
+    public let ollamaChatUrl: String
+    public let youtubeExtractorUrl: String?
+    public let transcriptionProvider: SpeechTranscriptionSetting
+    public let openRouterWhisperModel: String
+    public let assemblyAiSttModel: String
+    public let elevenLabsSttModel: String
+    public let elevenLabsTtsModel: String
+    public let elevenLabsVoiceId: String
+    public let elevenLabsVoiceName: String
+    public let defaultPlaybackRateMilli: UInt16
+    public let skipForwardSeconds: UInt16
+    public let skipBackwardSeconds: UInt16
+    public let autoMarkPlayedAtEnd: Bool
+    public let autoDeleteDownloadsAfterPlayed: Bool
+    public let autoPlayNext: Bool
+    public let autoSkipAds: Bool
+    public let headphoneDoubleTapAction: HeadphoneGestureSetting
+    public let headphoneTripleTapAction: HeadphoneGestureSetting
+    public let autoIngestPublisherTranscripts: Bool
+    public let autoFallbackToScribe: Bool
+    public let agentDisplayName: String
+    public let agentAvatarUrl: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(agentInitialModel: String, agentInitialModelName: String, agentThinkingModel: String, agentThinkingModelName: String, memoryCompilationModel: String, memoryCompilationModelName: String, utilityModel: String, utilityModelName: String, categorizationModel: String, categorizationModelName: String, chapterCompilationModel: String, chapterCompilationModelName: String, imageGenerationModel: String, imageGenerationModelName: String, ollamaChatUrl: String, youtubeExtractorUrl: String?, transcriptionProvider: SpeechTranscriptionSetting, openRouterWhisperModel: String, assemblyAiSttModel: String, elevenLabsSttModel: String, elevenLabsTtsModel: String, elevenLabsVoiceId: String, elevenLabsVoiceName: String, defaultPlaybackRateMilli: UInt16, skipForwardSeconds: UInt16, skipBackwardSeconds: UInt16, autoMarkPlayedAtEnd: Bool, autoDeleteDownloadsAfterPlayed: Bool, autoPlayNext: Bool, autoSkipAds: Bool, headphoneDoubleTapAction: HeadphoneGestureSetting, headphoneTripleTapAction: HeadphoneGestureSetting, autoIngestPublisherTranscripts: Bool, autoFallbackToScribe: Bool, agentDisplayName: String, agentAvatarUrl: String?) {
+        self.agentInitialModel = agentInitialModel
+        self.agentInitialModelName = agentInitialModelName
+        self.agentThinkingModel = agentThinkingModel
+        self.agentThinkingModelName = agentThinkingModelName
+        self.memoryCompilationModel = memoryCompilationModel
+        self.memoryCompilationModelName = memoryCompilationModelName
+        self.utilityModel = utilityModel
+        self.utilityModelName = utilityModelName
+        self.categorizationModel = categorizationModel
+        self.categorizationModelName = categorizationModelName
+        self.chapterCompilationModel = chapterCompilationModel
+        self.chapterCompilationModelName = chapterCompilationModelName
+        self.imageGenerationModel = imageGenerationModel
+        self.imageGenerationModelName = imageGenerationModelName
+        self.ollamaChatUrl = ollamaChatUrl
+        self.youtubeExtractorUrl = youtubeExtractorUrl
+        self.transcriptionProvider = transcriptionProvider
+        self.openRouterWhisperModel = openRouterWhisperModel
+        self.assemblyAiSttModel = assemblyAiSttModel
+        self.elevenLabsSttModel = elevenLabsSttModel
+        self.elevenLabsTtsModel = elevenLabsTtsModel
+        self.elevenLabsVoiceId = elevenLabsVoiceId
+        self.elevenLabsVoiceName = elevenLabsVoiceName
+        self.defaultPlaybackRateMilli = defaultPlaybackRateMilli
+        self.skipForwardSeconds = skipForwardSeconds
+        self.skipBackwardSeconds = skipBackwardSeconds
+        self.autoMarkPlayedAtEnd = autoMarkPlayedAtEnd
+        self.autoDeleteDownloadsAfterPlayed = autoDeleteDownloadsAfterPlayed
+        self.autoPlayNext = autoPlayNext
+        self.autoSkipAds = autoSkipAds
+        self.headphoneDoubleTapAction = headphoneDoubleTapAction
+        self.headphoneTripleTapAction = headphoneTripleTapAction
+        self.autoIngestPublisherTranscripts = autoIngestPublisherTranscripts
+        self.autoFallbackToScribe = autoFallbackToScribe
+        self.agentDisplayName = agentDisplayName
+        self.agentAvatarUrl = agentAvatarUrl
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ProductSettingsValues: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeProductSettingsValues: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ProductSettingsValues {
+        return
+            try ProductSettingsValues(
+                agentInitialModel: FfiConverterString.read(from: &buf),
+                agentInitialModelName: FfiConverterString.read(from: &buf),
+                agentThinkingModel: FfiConverterString.read(from: &buf),
+                agentThinkingModelName: FfiConverterString.read(from: &buf),
+                memoryCompilationModel: FfiConverterString.read(from: &buf),
+                memoryCompilationModelName: FfiConverterString.read(from: &buf),
+                utilityModel: FfiConverterString.read(from: &buf),
+                utilityModelName: FfiConverterString.read(from: &buf),
+                categorizationModel: FfiConverterString.read(from: &buf),
+                categorizationModelName: FfiConverterString.read(from: &buf),
+                chapterCompilationModel: FfiConverterString.read(from: &buf),
+                chapterCompilationModelName: FfiConverterString.read(from: &buf),
+                imageGenerationModel: FfiConverterString.read(from: &buf),
+                imageGenerationModelName: FfiConverterString.read(from: &buf),
+                ollamaChatUrl: FfiConverterString.read(from: &buf),
+                youtubeExtractorUrl: FfiConverterOptionString.read(from: &buf),
+                transcriptionProvider: FfiConverterTypeSpeechTranscriptionSetting.read(from: &buf),
+                openRouterWhisperModel: FfiConverterString.read(from: &buf),
+                assemblyAiSttModel: FfiConverterString.read(from: &buf),
+                elevenLabsSttModel: FfiConverterString.read(from: &buf),
+                elevenLabsTtsModel: FfiConverterString.read(from: &buf),
+                elevenLabsVoiceId: FfiConverterString.read(from: &buf),
+                elevenLabsVoiceName: FfiConverterString.read(from: &buf),
+                defaultPlaybackRateMilli: FfiConverterUInt16.read(from: &buf),
+                skipForwardSeconds: FfiConverterUInt16.read(from: &buf),
+                skipBackwardSeconds: FfiConverterUInt16.read(from: &buf),
+                autoMarkPlayedAtEnd: FfiConverterBool.read(from: &buf),
+                autoDeleteDownloadsAfterPlayed: FfiConverterBool.read(from: &buf),
+                autoPlayNext: FfiConverterBool.read(from: &buf),
+                autoSkipAds: FfiConverterBool.read(from: &buf),
+                headphoneDoubleTapAction: FfiConverterTypeHeadphoneGestureSetting.read(from: &buf),
+                headphoneTripleTapAction: FfiConverterTypeHeadphoneGestureSetting.read(from: &buf),
+                autoIngestPublisherTranscripts: FfiConverterBool.read(from: &buf),
+                autoFallbackToScribe: FfiConverterBool.read(from: &buf),
+                agentDisplayName: FfiConverterString.read(from: &buf),
+                agentAvatarUrl: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ProductSettingsValues, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.agentInitialModel, into: &buf)
+        FfiConverterString.write(value.agentInitialModelName, into: &buf)
+        FfiConverterString.write(value.agentThinkingModel, into: &buf)
+        FfiConverterString.write(value.agentThinkingModelName, into: &buf)
+        FfiConverterString.write(value.memoryCompilationModel, into: &buf)
+        FfiConverterString.write(value.memoryCompilationModelName, into: &buf)
+        FfiConverterString.write(value.utilityModel, into: &buf)
+        FfiConverterString.write(value.utilityModelName, into: &buf)
+        FfiConverterString.write(value.categorizationModel, into: &buf)
+        FfiConverterString.write(value.categorizationModelName, into: &buf)
+        FfiConverterString.write(value.chapterCompilationModel, into: &buf)
+        FfiConverterString.write(value.chapterCompilationModelName, into: &buf)
+        FfiConverterString.write(value.imageGenerationModel, into: &buf)
+        FfiConverterString.write(value.imageGenerationModelName, into: &buf)
+        FfiConverterString.write(value.ollamaChatUrl, into: &buf)
+        FfiConverterOptionString.write(value.youtubeExtractorUrl, into: &buf)
+        FfiConverterTypeSpeechTranscriptionSetting.write(value.transcriptionProvider, into: &buf)
+        FfiConverterString.write(value.openRouterWhisperModel, into: &buf)
+        FfiConverterString.write(value.assemblyAiSttModel, into: &buf)
+        FfiConverterString.write(value.elevenLabsSttModel, into: &buf)
+        FfiConverterString.write(value.elevenLabsTtsModel, into: &buf)
+        FfiConverterString.write(value.elevenLabsVoiceId, into: &buf)
+        FfiConverterString.write(value.elevenLabsVoiceName, into: &buf)
+        FfiConverterUInt16.write(value.defaultPlaybackRateMilli, into: &buf)
+        FfiConverterUInt16.write(value.skipForwardSeconds, into: &buf)
+        FfiConverterUInt16.write(value.skipBackwardSeconds, into: &buf)
+        FfiConverterBool.write(value.autoMarkPlayedAtEnd, into: &buf)
+        FfiConverterBool.write(value.autoDeleteDownloadsAfterPlayed, into: &buf)
+        FfiConverterBool.write(value.autoPlayNext, into: &buf)
+        FfiConverterBool.write(value.autoSkipAds, into: &buf)
+        FfiConverterTypeHeadphoneGestureSetting.write(value.headphoneDoubleTapAction, into: &buf)
+        FfiConverterTypeHeadphoneGestureSetting.write(value.headphoneTripleTapAction, into: &buf)
+        FfiConverterBool.write(value.autoIngestPublisherTranscripts, into: &buf)
+        FfiConverterBool.write(value.autoFallbackToScribe, into: &buf)
+        FfiConverterString.write(value.agentDisplayName, into: &buf)
+        FfiConverterOptionString.write(value.agentAvatarUrl, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProductSettingsValues_lift(_ buf: RustBuffer) throws -> ProductSettingsValues {
+    return try FfiConverterTypeProductSettingsValues.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProductSettingsValues_lower(_ value: ProductSettingsValues) -> RustBuffer {
+    return FfiConverterTypeProductSettingsValues.lower(value)
+}
+
+
 public struct PublisherTranscriptReference: Equatable, Hashable {
     public let url: String
     public let mediaType: String?
@@ -5557,6 +5813,60 @@ public func FfiConverterTypeScheduledTaskId_lift(_ buf: RustBuffer) throws -> Sc
 #endif
 public func FfiConverterTypeScheduledTaskId_lower(_ value: ScheduledTaskId) -> RustBuffer {
     return FfiConverterTypeScheduledTaskId.lower(value)
+}
+
+
+public struct SettingsWriterVersion: Equatable, Hashable {
+    public let counter: UInt64
+    public let writerId: ContentDigest
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(counter: UInt64, writerId: ContentDigest) {
+        self.counter = counter
+        self.writerId = writerId
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension SettingsWriterVersion: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSettingsWriterVersion: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SettingsWriterVersion {
+        return
+            try SettingsWriterVersion(
+                counter: FfiConverterUInt64.read(from: &buf),
+                writerId: FfiConverterTypeContentDigest.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SettingsWriterVersion, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.counter, into: &buf)
+        FfiConverterTypeContentDigest.write(value.writerId, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSettingsWriterVersion_lift(_ buf: RustBuffer) throws -> SettingsWriterVersion {
+    return try FfiConverterTypeSettingsWriterVersion.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSettingsWriterVersion_lower(_ value: SettingsWriterVersion) -> RustBuffer {
+    return FfiConverterTypeSettingsWriterVersion.lower(value)
 }
 
 
@@ -7447,6 +7757,100 @@ public func FfiConverterTypeEpisodeIdentityResolution_lower(_ value: EpisodeIden
 
 
 
+
+public enum HeadphoneGestureSetting: Equatable, Hashable {
+
+    case skipForward
+    case skipBackward
+    case nextChapter
+    case previousChapter
+    case clipNow
+    case none
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension HeadphoneGestureSetting: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeHeadphoneGestureSetting: FfiConverterRustBuffer {
+    typealias SwiftType = HeadphoneGestureSetting
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> HeadphoneGestureSetting {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .skipForward
+
+        case 2: return .skipBackward
+
+        case 3: return .nextChapter
+
+        case 4: return .previousChapter
+
+        case 5: return .clipNow
+
+        case 6: return .none
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: HeadphoneGestureSetting, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .skipForward:
+            writeInt(&buf, Int32(1))
+
+
+        case .skipBackward:
+            writeInt(&buf, Int32(2))
+
+
+        case .nextChapter:
+            writeInt(&buf, Int32(3))
+
+
+        case .previousChapter:
+            writeInt(&buf, Int32(4))
+
+
+        case .clipNow:
+            writeInt(&buf, Int32(5))
+
+
+        case .none:
+            writeInt(&buf, Int32(6))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeHeadphoneGestureSetting_lift(_ buf: RustBuffer) throws -> HeadphoneGestureSetting {
+    return try FfiConverterTypeHeadphoneGestureSetting.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeHeadphoneGestureSetting_lower(_ value: HeadphoneGestureSetting) -> RustBuffer {
+    return FfiConverterTypeHeadphoneGestureSetting.lower(value)
+}
+
+
+
 public
 enum ListeningDomainError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
@@ -8628,6 +9032,86 @@ public func FfiConverterTypeRecallRerankProvider_lift(_ buf: RustBuffer) throws 
 #endif
 public func FfiConverterTypeRecallRerankProvider_lower(_ value: RecallRerankProvider) -> RustBuffer {
     return FfiConverterTypeRecallRerankProvider.lower(value)
+}
+
+
+
+
+public enum SpeechTranscriptionSetting: Equatable, Hashable {
+
+    case elevenLabsScribe
+    case assemblyAi
+    case openRouterWhisper
+    case appleNative
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension SpeechTranscriptionSetting: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSpeechTranscriptionSetting: FfiConverterRustBuffer {
+    typealias SwiftType = SpeechTranscriptionSetting
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SpeechTranscriptionSetting {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .elevenLabsScribe
+
+        case 2: return .assemblyAi
+
+        case 3: return .openRouterWhisper
+
+        case 4: return .appleNative
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: SpeechTranscriptionSetting, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .elevenLabsScribe:
+            writeInt(&buf, Int32(1))
+
+
+        case .assemblyAi:
+            writeInt(&buf, Int32(2))
+
+
+        case .openRouterWhisper:
+            writeInt(&buf, Int32(3))
+
+
+        case .appleNative:
+            writeInt(&buf, Int32(4))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSpeechTranscriptionSetting_lift(_ buf: RustBuffer) throws -> SpeechTranscriptionSetting {
+    return try FfiConverterTypeSpeechTranscriptionSetting.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSpeechTranscriptionSetting_lower(_ value: SpeechTranscriptionSetting) -> RustBuffer {
+    return FfiConverterTypeSpeechTranscriptionSetting.lower(value)
 }
 
 

@@ -82,7 +82,8 @@ def validate_privileged_writers(root: Path) -> list[str]:
             for token in LEGACY_PREBUILT_COMMIT_TOKENS:
                 if token in source:
                     errors.append(
-                        f"prebuilt transition plan bypass {token!r} in {relative}"
+                        "prebuilt transition plan bypass "
+                        f"{token!r} in {relative} [arbitrary_mutation_closure]"
                     )
         for token in FORBIDDEN_PUBLIC_AUTHORITY_TOKENS:
             if token in source:

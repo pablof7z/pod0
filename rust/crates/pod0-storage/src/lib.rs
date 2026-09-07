@@ -85,6 +85,8 @@ mod effect_outbox;
 mod effect_outbox_immutability_tests;
 mod effect_outbox_model;
 #[cfg(test)]
+mod effect_outbox_recovery_tests;
+#[cfg(test)]
 mod effect_outbox_tests;
 mod evidence_codec;
 mod evidence_commands;
@@ -188,6 +190,7 @@ mod note_legacy_backup;
 mod note_store_codec;
 mod note_store_model;
 mod note_store_read;
+mod product_settings_store;
 mod recall_configuration_store;
 mod recall_cutover_store;
 mod recall_workflow_store;
@@ -226,6 +229,7 @@ mod schema_memories;
 mod schema_migrations;
 mod schema_model_chapter_workflows;
 mod schema_notes;
+mod schema_product_settings;
 mod schema_scheduled_agent;
 mod schema_speakers;
 mod schema_transcript_workflows;

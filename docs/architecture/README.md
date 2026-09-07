@@ -22,6 +22,9 @@ The operating rule is:
 ## Planning and enforcement
 
 - [Swift ownership inventory](ownership.md)
+- [Swift policy migration assignments](swift-policy-migration-map.json)
+- [Authority negative fixtures](authority-negative-fixtures.md)
+- [Authority cutover wave checklist](cutover-wave-checklist.md)
 - [Shrinking non-Rust business-logic exceptions](rust-business-logic-exceptions.json)
 - [Agent tool permission matrix](agent-tool-permissions.json)
 - [Native UI to durable-state boundary](ui-storage-boundary.md)

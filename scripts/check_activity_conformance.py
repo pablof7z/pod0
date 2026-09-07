@@ -76,8 +76,23 @@ def run_self_test() -> int:
         root = Path(directory)
         write_fixture(root, extra_command=True)
         errors = validate(root)
-        if not any("NewVariant" in error for error in errors):
+        if not any(
+            "NewVariant" in error and "[unregistered_input]" in error
+            for error in errors
+        ):
             print("activity conformance missed new command variant", file=sys.stderr)
+            return 1
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        write_fixture(root, extra_command=False)
+        router = root / "rust/crates/pod0-application/src/activity_routing_command.rs"
+        router.write_text(
+            "fn owner(value: Command) { match value { Command::Known => (), _ => () } }\n",
+            encoding="utf-8",
+        )
+        errors = validate(root)
+        if not any("[wildcard_routing]" in error for error in errors):
+            print("activity conformance missed wildcard routing", file=sys.stderr)
             return 1
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
@@ -126,7 +141,9 @@ def run_self_test() -> int:
             encoding="utf-8",
         )
         errors = validate(root)
-        if not any("prebuilt transition plan bypass" in error for error in errors):
+        if not any(
+            "[arbitrary_mutation_closure]" in error for error in errors
+        ):
             print("activity conformance missed prebuilt plan bypass", file=sys.stderr)
             return 1
     print("Activity conformance negative fixtures passed")

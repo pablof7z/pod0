@@ -22,14 +22,25 @@ impl EffectOutbox {
             .map_err(|_| EffectOutboxError::Storage)?;
         let row = transaction
             .query_row(
-                "SELECT i.intent_id,i.authorizing_activity_id,i.correlation_id,i.fence,i.request_json \
+                "SELECT i.intent_id,i.authorizing_activity_id,i.correlation_id,i.fence,i.request_json,\
+                 i.state_code \
                  FROM pod0_effect_intents i WHERE i.effect_kind_code!=14 \
-                 AND (i.state_code=1 OR i.effect_kind_code!=10 OR json_extract(i.request_json,\
-                 '$.execution.AgentCapability.request.capability.execution_mode')='RecoverExisting') \
                  AND (?3=0 OR i.effect_kind_code!=12 OR COALESCE(json_extract(i.request_json,\
                  '$.execution.Lifecycle.request.wake_at.value'),i.available_at_ms)<=?1) \
                  AND i.available_at_ms<=?1 AND (i.state_code=1 OR \
-                 (i.state_code=2 AND NOT EXISTS(SELECT 1 FROM pod0_effect_attempts a \
+                 (i.state_code=2 AND ((i.effect_kind_code NOT IN(7,8,10) AND NOT (\
+                 i.effect_kind_code=4 AND json_extract(i.request_json,'$.kind')=\
+                 'ModelChapterProvider' AND json_type(i.request_json,\
+                 '$.execution.ModelChapter.request.action.Execute') IS NOT NULL)) OR \
+                 json_type(i.request_json,\
+                 '$.execution.Transcript.request.capability.FetchPublisher') IS NOT NULL OR \
+                 json_type(i.request_json,\
+                 '$.execution.Transcript.request.capability.RecoverProvider') IS NOT NULL OR \
+                 json_type(i.request_json,\
+                 '$.execution.ModelChapter.request.action.Recover') IS NOT NULL OR \
+                 json_extract(i.request_json,\
+                 '$.execution.AgentCapability.request.capability.execution_mode')=\
+                 'RecoverExisting') AND NOT EXISTS(SELECT 1 FROM pod0_effect_attempts a \
                  WHERE a.intent_id=i.intent_id AND a.state_code=1 AND \
                  (a.lease_expires_at_ms>?1 OR (a.observed_at_ms IS NOT NULL AND \
                  json_type(i.request_json,'$.execution.Playback.request.action.ObservePlayback') \
@@ -55,14 +66,20 @@ impl EffectOutbox {
                         row.get::<_, Vec<u8>>(2)?,
                         row.get::<_, i64>(3)?,
                         row.get::<_, String>(4)?,
+                        row.get::<_, i64>(5)?,
                     ))
                 },
             )
             .optional()
             .map_err(|_| EffectOutboxError::Storage)?;
-        let Some((intent, activity, correlation, prior_fence, payload)) = row else {
+        let Some((intent, activity, correlation, prior_fence, payload, prior_state)) = row else {
             return Ok(None);
         };
+        let request: DurableExternalEffectRequest =
+            serde_json::from_str(&payload).map_err(|_| EffectOutboxError::InvalidRecord)?;
+        if prior_state == 2 && !request.expired_lease_reclaim_is_exact() {
+            return Err(EffectOutboxError::InvalidRecord);
+        }
         let fence = prior_fence
             .checked_add(1)
             .ok_or(EffectOutboxError::InvalidRecord)?;
@@ -94,8 +111,6 @@ impl EffectOutbox {
         transaction
             .commit()
             .map_err(|_| EffectOutboxError::Storage)?;
-        let request: DurableExternalEffectRequest =
-            serde_json::from_str(&payload).map_err(|_| EffectOutboxError::InvalidRecord)?;
         let fence = u64::try_from(fence).map_err(|_| EffectOutboxError::InvalidRecord)?;
         Ok(Some(EffectLease {
             intent_id: EffectIntentId::from_bytes(id(&intent)?),

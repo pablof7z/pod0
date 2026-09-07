@@ -8,9 +8,12 @@ import json
 from pathlib import Path
 import re
 import sys
-import tempfile
 
-from check_architecture_ownership import entry_matches, production_swift_files
+from check_architecture_ownership import matching_entries, production_files
+from native_business_logic_scan import (
+    FROZEN_EXCEPTION_PATHS,
+    semantic_violations,
+)
 
 
 DECLARATION = re.compile(
@@ -24,11 +27,6 @@ PROHIBITED_TEMPLATE_TEXT = (
     "Temporary Swift behind a migration-safe boundary",
     "Temporary Swift without an issue",
 )
-CANONICAL_ACTIVITY_CONSTRUCTION = re.compile(
-    r"\b(?:DomainEventEnvelope|ActivityFact|ActivityEventEnvelope)\s*\("
-)
-
-
 def symbols(path: Path) -> list[str]:
     result: list[str] = []
     for match in DECLARATION.finditer(path.read_text(encoding="utf-8")):
@@ -37,18 +35,35 @@ def symbols(path: Path) -> list[str]:
     return result
 
 
+def native_files(
+    root: Path, ownership: dict[str, object], coverage: dict[str, object]
+) -> tuple[list[str], dict[str, dict[str, object]], list[str]]:
+    sources = {
+        extension: roots
+        for extension, roots in coverage["production_sources"].items()
+        if extension in {".swift", ".kt"}
+    }
+    files = production_files(root, sources)
+    owners: dict[str, dict[str, object]] = {}
+    errors: list[str] = []
+    for path in files:
+        matches = matching_entries(path, ownership["entries"])
+        if len(matches) != 1:
+            errors.append(f"native semantic scan has no exact owner: {path}")
+            continue
+        owners[path] = matches[0]
+    return files, owners, errors
+
+
 def temporary_files(
-    root: Path, ownership: dict[str, object]
+    files: list[str], owners: dict[str, dict[str, object]]
 ) -> tuple[dict[str, str], list[str]]:
     result: dict[str, str] = {}
     errors: list[str] = []
-    for path in production_swift_files(root, ownership["production_roots"]):
-        matches = [
-            entry for entry in ownership["entries"] if entry_matches(path, entry)
-        ]
-        if len(matches) != 1:
+    for path in files:
+        entry = owners.get(path)
+        if entry is None:
             continue
-        entry = matches[0]
         classification = entry["classification"]
         if classification == "undecided_pending_investigation":
             errors.append(f"undecided production owner is forbidden: {path}")
@@ -68,13 +83,20 @@ def validate(root: Path) -> list[str]:
                 encoding="utf-8"
             )
         )
+        coverage = json.loads(
+            (root / ownership["coverage_manifest"]).read_text(encoding="utf-8")
+        )
     except (OSError, json.JSONDecodeError) as error:
         return [str(error)]
-    actual, errors = temporary_files(root, ownership)
+    files, owners, errors = native_files(root, ownership, coverage)
+    actual, temporary_errors = temporary_files(files, owners)
+    errors.extend(temporary_errors)
     rows = policy.get("exceptions", [])
     registered = {row.get("path"): row for row in rows}
     if len(registered) != len(rows):
         errors.append("duplicate Rust business-logic exception path")
+    for path in sorted(set(registered) - FROZEN_EXCEPTION_PATHS):
+        errors.append(f"new native business-logic exception is forbidden: {path}")
     for path in sorted(set(actual) - set(registered)):
         errors.append(f"temporary Swift file missing exact exception: {path}")
     for path in sorted(set(registered) - set(actual)):
@@ -110,85 +132,20 @@ def validate(root: Path) -> list[str]:
         if phrase in template:
             errors.append(f"PR template still permits forbidden policy: {phrase}")
 
-    for relative_root in ownership["production_roots"]:
-        directory = root / relative_root
-        for path in directory.rglob("*.swift"):
-            if CANONICAL_ACTIVITY_CONSTRUCTION.search(
-                path.read_text(encoding="utf-8")
-            ):
-                errors.append(
-                    "canonical Rust activity construction found in Swift: "
-                    f"{path.relative_to(root).as_posix()}"
-                )
+    for relative_path in files:
+        owner = owners.get(relative_path)
+        if owner is None or owner["classification"] in {
+            "generated_binding",
+            "delete_without_replacement",
+        }:
+            continue
+        if relative_path in registered:
+            continue
+        for rule_id, line, description in semantic_violations(root / relative_path):
+            errors.append(
+                f"{relative_path}:{line}: {description} [{rule_id}] outside exact exception"
+            )
     return errors
-
-
-def write_fixture(root: Path, extra_symbol: bool) -> None:
-    source = root / "App/Sources/Legacy.swift"
-    source.parent.mkdir(parents=True)
-    source.write_text(
-        "struct Legacy {}\n" + ("struct AddedPolicy {}\n" if extra_symbol else ""),
-        encoding="utf-8",
-    )
-    architecture = root / "docs/architecture"
-    architecture.mkdir(parents=True)
-    ownership = {
-        "production_roots": ["App/Sources"],
-        "entries": [{
-            "id": "legacy", "classification": "temporary_swift",
-            "includes": ["App/Sources/Legacy.swift"],
-        }],
-    }
-    policy = {
-        "maximum_exception_files": 1,
-        "allowed_roles": ["legacy_product_policy"],
-        "exceptions": [{
-            "ownership_id": "legacy",
-            "path": "App/Sources/Legacy.swift",
-            "symbols": ["Legacy"],
-            "allowed_role": "legacy_product_policy",
-            "child_issue": 213,
-            "deletion_condition": "Delete in #213.",
-        }],
-    }
-    (architecture / "ownership.json").write_text(
-        json.dumps(ownership), encoding="utf-8"
-    )
-    (architecture / "rust-business-logic-exceptions.json").write_text(
-        json.dumps(policy), encoding="utf-8"
-    )
-    github = root / ".github"
-    github.mkdir()
-    (github / "pull_request_template.md").write_text(
-        "Rust business logic only.\n", encoding="utf-8"
-    )
-
-
-def run_self_test() -> int:
-    with tempfile.TemporaryDirectory() as directory:
-        root = Path(directory)
-        write_fixture(root, extra_symbol=False)
-        if validate(root):
-            print("Rust business-logic valid fixture failed", file=sys.stderr)
-            return 1
-    with tempfile.TemporaryDirectory() as directory:
-        root = Path(directory)
-        write_fixture(root, extra_symbol=True)
-        if not any("declarations changed" in item for item in validate(root)):
-            print("Rust business-logic checker missed new policy", file=sys.stderr)
-            return 1
-    with tempfile.TemporaryDirectory() as directory:
-        root = Path(directory)
-        write_fixture(root, extra_symbol=False)
-        policy_path = root / "docs/architecture/rust-business-logic-exceptions.json"
-        policy = json.loads(policy_path.read_text(encoding="utf-8"))
-        policy["maximum_exception_files"] = 2
-        policy_path.write_text(json.dumps(policy), encoding="utf-8")
-        if not any("ceiling must equal" in item for item in validate(root)):
-            print("Rust business-logic checker permitted ceiling slack", file=sys.stderr)
-            return 1
-    print("Rust business-logic negative fixtures passed")
-    return 0
 
 
 def main() -> int:
@@ -199,14 +156,27 @@ def main() -> int:
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
-        return run_self_test()
-    errors = validate(Path(args.root).resolve())
+        from rust_business_logic_boundary_fixtures import run_self_test
+
+        return run_self_test(validate)
+    root = Path(args.root).resolve()
+    errors = validate(root)
     if errors:
         print("Rust business-logic ownership check failed:", file=sys.stderr)
         for error in errors:
             print(f"- {error}", file=sys.stderr)
         return 1
-    print("Rust business-logic exception set is exact and non-growing")
+    ownership = json.loads(
+        (root / "docs/architecture/ownership.json").read_text(encoding="utf-8")
+    )
+    coverage = json.loads(
+        (root / ownership["coverage_manifest"]).read_text(encoding="utf-8")
+    )
+    files, _, _ = native_files(root, ownership, coverage)
+    print(
+        f"Rust business-logic semantic scan covered {len(files)} production "
+        "Swift/Kotlin files; exception set is exact and non-growing"
+    )
     return 0
 
 

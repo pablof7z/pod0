@@ -210,5 +210,8 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
     if version >= 43 {
         library_network::validate(connection)?;
     }
+    if version >= 46 {
+        crate::schema_product_settings::validate(connection)?;
+    }
     Ok(())
 }

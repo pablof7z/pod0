@@ -124,9 +124,7 @@ impl TransitionCommit {
         )
     }
 }
-
 include!("transition_commit_planned.rs");
-
 include!("transition_commit_write.rs");
 include!("transition_commit_values.rs");
 
@@ -164,6 +162,9 @@ pub(crate) use workflow_configuration::{
     commit_workflow_capabilities, commit_workflow_configuration_import,
     commit_workflow_configuration_set,
 };
+#[path = "transition_commit_product_settings.rs"]
+mod product_settings;
+pub(crate) use product_settings::commit_product_settings_change;
 #[path = "transition_commit_workflow_reconcile.rs"]
 mod workflow_reconcile;
 pub(crate) use workflow_reconcile::{

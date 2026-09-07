@@ -113,6 +113,9 @@ mod download_finalization_activity;
 mod download_observation_activity;
 mod download_recovery_activity;
 mod effect_lease_contract;
+mod effect_recovery_policy;
+#[cfg(test)]
+mod effect_recovery_policy_tests;
 mod effects;
 mod episode_web_metadata;
 mod episode_web_metadata_entities;
@@ -177,6 +180,11 @@ mod scheduled_agent_observation_validation;
 mod scheduled_agent_policy;
 #[cfg(test)]
 mod scheduled_agent_tests;
+mod settings_transition;
+mod settings_transition_candidate;
+#[cfg(test)]
+mod settings_transition_tests;
+mod settings_validation;
 mod shared_episode_resolution;
 mod speaker_activity;
 mod transcript_activity;

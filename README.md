@@ -126,8 +126,8 @@ Shared-core and generated-binding checks:
 
 ```bash
 ./scripts/check_rust.sh
-./scripts/check_core_binding_drift.sh
-./scripts/check_kotlin_core_bindings.sh
+./scripts/check_mandatory_ci_gates.sh --self-test
+./scripts/check_mandatory_ci_gates.sh
 ./scripts/check_core_portability.sh
 ```
 

@@ -74,6 +74,35 @@ pub struct ProjectionRequest {
     pub max_items: u16,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct ProjectionBatchRequest {
+    pub requests: Vec<ProjectionRequest>,
+}
+
+impl ProjectionBatchRequest {
+    #[must_use]
+    pub fn bounded_requests(&self) -> &[ProjectionRequest] {
+        let end = self
+            .requests
+            .len()
+            .min(usize::from(crate::MAX_PROJECTION_BATCH_ITEMS));
+        &self.requests[..end]
+    }
+
+    #[must_use]
+    pub fn has_more(&self) -> bool {
+        self.requests.len() > usize::from(crate::MAX_PROJECTION_BATCH_ITEMS)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct ProjectionBatchEnvelope {
+    pub contract_version: u32,
+    pub state_revision: StateRevision,
+    pub projections: Vec<ProjectionEnvelope>,
+    pub has_more: bool,
+}
+
 impl ProjectionRequest {
     #[must_use]
     pub fn bounded_max_items(self) -> usize {

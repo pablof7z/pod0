@@ -30,6 +30,9 @@ mod listening_migration_error;
 mod memory_cutover;
 mod memory_cutover_types;
 mod note_migration;
+mod product_settings_facade;
+#[cfg(test)]
+mod product_settings_facade_tests;
 mod runtime;
 #[cfg(test)]
 mod runtime_bootstrap_tests;
@@ -86,6 +89,7 @@ mod runtime_download_deadline_tests;
 mod runtime_download_workflow_tests;
 #[cfg(test)]
 mod runtime_evidence_tests;
+mod runtime_expired_effect_recovery;
 #[cfg(test)]
 mod runtime_memory_tests;
 #[cfg(test)]
@@ -186,6 +190,7 @@ pub use note_migration::{
     LegacyNoteImportVerification, LegacyNoteMigrationError, commit_staged_legacy_note_import,
     inspect_legacy_note_source, read_staged_legacy_note_import, stage_legacy_note_import,
 };
+pub use product_settings_facade::ProductSettingsAuthorityProjection;
 pub use runtime::Pod0Facade;
 pub use runtime_open_error::{FacadeOpenError, SchemaBlockReason};
 pub use scheduled_agent_cutover_types::*;
@@ -218,6 +223,7 @@ pub trait ProjectionSubscriber: Send + Sync {
 pub trait Pod0ApplicationApi: Send + Sync {
     fn dispatch(&self, command: CommandEnvelope);
     fn snapshot(&self, request: ProjectionRequest) -> ProjectionEnvelope;
+    fn snapshot_batch(&self, request: ProjectionBatchRequest) -> ProjectionBatchEnvelope;
     fn subscribe(
         &self,
         request: ProjectionRequest,

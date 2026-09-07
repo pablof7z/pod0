@@ -1,7 +1,5 @@
 mod support;
 
-use std::io::{Read as _, Write as _};
-use std::net::TcpListener;
 use std::time::{Duration, Instant};
 
 use pod0_application::{CoreWakeReason, DurableLifecycleEffectRequest};
@@ -10,21 +8,12 @@ use pod0_domain::{
     CancellationId, CommandId, HostRequestId, StateRevision, UnixTimestampMilliseconds,
 };
 use pod0_facade::{
-    ApplicationCommand, CommandEnvelope, Pod0Facade, Projection, ProjectionRequest, ProjectionScope,
+    AgentTurnStage, ApplicationCommand, CommandEnvelope, Pod0Facade, Projection, ProjectionRequest,
+    ProjectionScope,
 };
 
 #[test]
-fn opening_store_wakes_for_restart_recovered_leased_work() {
-    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-    let address = listener.local_addr().unwrap();
-    let server = std::thread::spawn(move || {
-        let (mut stream, _) = listener.accept().unwrap();
-        let mut request = [0_u8; 4096];
-        let _ = stream.read(&mut request).unwrap();
-        let body = r#"{"choices":[{"message":{"role":"assistant","content":"Recovered"}}]}"#;
-        write_response(&mut stream, body);
-    });
-
+fn opening_store_wakes_to_fence_ambiguous_leased_work() {
     let directory = tempfile::tempdir_in(".").unwrap();
     let store = directory.path().join("pod0.sqlite");
     support::create_authoritative_store(&store);
@@ -47,13 +36,8 @@ fn opening_store_wakes_for_restart_recovered_leased_work() {
         .expect("simulate a host that exited while holding the lease");
     drop(facade);
 
-    let mut shell = Shell::new(HostConfig::openai_compatible(
-        format!("http://{address}/v1"),
-        None,
-    ))
-    .unwrap();
+    let mut shell = Shell::new(HostConfig::empty()).unwrap();
     assert!(shell.handle(open_request(&store)).ok);
-    server.join().unwrap();
 
     let deadline = Instant::now() + Duration::from_secs(3);
     loop {
@@ -72,11 +56,11 @@ fn opening_store_wakes_for_restart_recovered_leased_work() {
         else {
             panic!("expected recovered conversation")
         };
-        if value.turns[0].messages.len() == 2 {
-            assert_eq!(value.turns[0].messages[1].content, "Recovered");
+        if value.turns[0].stage == AgentTurnStage::OutcomeAmbiguous {
+            assert_eq!(value.turns[0].messages.len(), 1);
             break;
         }
-        assert!(Instant::now() < deadline, "leased work did not recover");
+        assert!(Instant::now() < deadline, "leased work was not fenced");
         std::thread::sleep(Duration::from_millis(20));
     }
 }
@@ -169,15 +153,6 @@ fn host_drain_request() -> CliRequest {
         "limit": 10
     }))
     .unwrap()
-}
-
-fn write_response(stream: &mut std::net::TcpStream, body: &str) {
-    let response = format!(
-        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
-        body.len(),
-        body
-    );
-    stream.write_all(response.as_bytes()).unwrap();
 }
 
 fn now_milliseconds() -> i64 {

@@ -19,9 +19,9 @@ chapters, notes, and clips; download desired state and recovery; recall
 configuration, indexing, and retrieval; publisher and model chapter workflows;
 scheduled-agent definitions, occurrences, and artifacts; interactive
 product-proof agent conversations, proposals, permissions, recall citations,
-model usage, generated audio provenance, and feed-discovery
-download/notification policy with durable recovery. The facade contract is now version 57.
-It exposes bounded commands,
+model usage, generated audio provenance, feed-discovery download/notification
+policy with durable recovery, and portable product settings with versioned
+sync-conflict evidence. The facade contract is now version 59. It exposes bounded commands,
 projections, domain events, and correlated host requests across those migrated
 domains. Exact integer milliseconds, stable identifiers, explicit revisions,
 effect fences, cancellation, and typed failure states prevent native adapters
@@ -31,8 +31,9 @@ Cancellable native host adapters execute URLSession/provider primitives,
 AVFoundation playback, Keychain/security prompts, platform files,
 notifications, speech, and other Apple capabilities. Swift renders Rust
 projections and retains durable authority only for explicitly unmigrated
-domains. Live Apple tests, Rust tests, Kotlin binding smoke tests, and
-Android-compatible Rust builds are readiness checks only.
+categories and temporary development migration inputs. There is no Android
+product project; Kotlin binding smoke tests and Android-compatible Rust builds
+are readiness checks only.
 
 ### Application state
 

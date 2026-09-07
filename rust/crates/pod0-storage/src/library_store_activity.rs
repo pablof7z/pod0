@@ -151,6 +151,12 @@ impl LibraryStore {
         crate::transition_commit::commit_expired_agent_capability_recovery(self.path(), now)
     }
 
+    pub fn prepare_expired_agent_model_recovery(
+        &self,
+        now: pod0_domain::UnixTimestampMilliseconds,
+    ) -> Result<bool, StorageError> {
+        crate::transition_commit::commit_expired_agent_model_recovery(self.path(), now)
+    }
     pub fn effect_kind(
         &self,
         intent_id: pod0_domain::EffectIntentId,

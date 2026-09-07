@@ -72,8 +72,20 @@ extension AppStateStore {
         else {
             throw SharedLibraryError.unavailable
         }
+        let settingsAuthority = try freshClient.facade.productSettingsAuthority()
+        guard settingsAuthority.authoritative,
+              let committedSettings = settingsAuthority.settings
+        else {
+            throw SharedLibraryError.unavailable
+        }
+        var hydratedState = freshState
+        hydratedState.settings = ProductSettingsBridge.applying(
+            committedSettings.values,
+            to: freshState.settings
+        )
+        productSettingsProjection = committedSettings
         await signalStore?.resumeAfterUserDataErasure()
-        installFreshStateAfterUserDataErasure(freshState, client: freshClient)
+        installFreshStateAfterUserDataErasure(hydratedState, client: freshClient)
     }
 
     private static func encodeRetainedSettings(_ settings: Settings?) throws -> Data {

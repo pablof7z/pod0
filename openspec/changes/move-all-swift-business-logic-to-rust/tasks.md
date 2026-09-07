@@ -13,22 +13,22 @@
 - [x] 2.3 Implement the durable typed internal-command outbox with correlation, causation, idempotent target consumption, and wake-after-commit behavior; verify crash/replay tests do not lose or duplicate a target-domain mutation.
 - [x] 2.4 Implement immutable native-effect requests with effect, lease, attempt, fence, and cancellation identity; verify unleased, expired, duplicate, and stale-fence claims are rejected.
 - [x] 2.5 Implement bounded raw native observations and Rust-owned semantic outcome mapping; verify fixtures distinguish success, rejection, retryable evidence, cancellation, and outcome unknown without native booleans becoming product truth.
-- [ ] 2.6 Implement correlated cancellation and exact-operation recovery for long-running capabilities; verify late callbacks and superseded attempts cannot mutate product state.
-- [ ] 2.7 Add bounded batch query and projection primitives for hot native reads; verify baseline-sized and large-history benchmarks meet the documented limits.
+- [x] 2.6 Implement correlated cancellation and exact-operation recovery for long-running capabilities; verify late callbacks and superseded attempts cannot mutate product state.
+- [x] 2.7 Add bounded batch query and projection primitives for hot native reads; verify baseline-sized and large-history benchmarks meet the documented limits.
 - [ ] 2.8 Regenerate Swift and Kotlin bindings for the substrate and verify both compile and pass parity fixtures for ids, integer units, enums, bounded collections, and typed failures.
 
 ## 3. Make Boundary Enforcement Complete
 
-- [ ] 3.1 Replace temporary-file-only checking with semantic scans of all production Swift and Kotlin sources for policy, direct durable writes, semantic fact construction, and direct effect dispatch; verify known violations outside the exception list fail the checker.
-- [ ] 3.2 Add negative fixtures for unregistered inputs, arbitrary mutation closures, wildcard routing, native defaults/fallback/retry, fabricated activity, in-memory-only authorization, stale observations, and restored retired writers; verify each fixture fails for its intended rule.
-- [ ] 3.3 Make the inventory and generated-binding parity checks mandatory in CI; verify a missing owner and a one-platform binding change each fail the required job.
-- [ ] 3.4 Change the exception ratchet to reject every new native business-policy exception and require same-wave deletion of resolved exceptions; verify the final empty exception set passes.
-- [ ] 3.5 Add a source-file length gate with a 300-line warning and 500-line failure for maintained source files; verify representative over-limit fixtures produce the expected result.
+- [x] 3.1 Replace temporary-file-only checking with semantic scans of all production Swift and Kotlin sources for policy, direct durable writes, semantic fact construction, and direct effect dispatch; verify known violations outside the exception list fail the checker.
+- [x] 3.2 Add negative fixtures for unregistered inputs, arbitrary mutation closures, wildcard routing, native defaults/fallback/retry, fabricated activity, in-memory-only authorization, stale observations, and restored retired writers; verify each fixture fails for its intended rule.
+- [x] 3.3 Make the inventory and generated-binding parity checks mandatory in CI; verify a missing owner and a one-platform binding change each fail the required job.
+- [x] 3.4 Change the exception ratchet to reject every new native business-policy exception and require same-wave deletion of resolved exceptions; verify the final empty exception set passes.
+- [x] 3.5 Add a source-file length gate with a 300-line warning and 500-line failure for maintained source files; verify representative over-limit fixtures produce the expected result.
 
 ## 4. Migrate Settings, Categories, Credentials, and Usage
 
-- [ ] 4.1 Define versioned Rust schemas and transitions for durable settings, defaults, validation state, revisions, and sync-conflict evidence; verify deterministic local and remote merge tests pass.
-- [ ] 4.2 Import the legacy `Settings.swift` and AppState/iCloud-backed values once, commit the settings authority marker, and disable native writes; verify clean, populated, conflicting, and interrupted upgrade fixtures preserve one writer.
+- [x] 4.1 Define versioned Rust schemas and transitions for durable settings, defaults, validation state, revisions, and sync-conflict evidence; verify deterministic local and remote merge tests pass.
+- [x] 4.2 Import the legacy `Settings.swift` and AppState/iCloud-backed values once, commit the settings authority marker, and disable native writes; verify clean, populated, conflicting, and interrupted upgrade fixtures preserve one writer.
 - [ ] 4.3 Move categories, category membership and overrides, category settings, and auto-download policy into a Rust owner; verify membership, override, default, and conflict scenario tests pass.
 - [ ] 4.4 Replace category and settings UI mutations with typed Rust intents and bounded projections; verify iOS interaction tests change committed Rust state without touching a native product store.
 - [ ] 4.5 Keep Keychain/OAuth material native behind opaque credential handles while moving connection metadata, authorization, validation state, and missing-credential interpretation to Rust; verify secrets never appear in Rust persistence, logs, facts, or projections.

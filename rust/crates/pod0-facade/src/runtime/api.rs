@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use pod0_application::{
-    CommandEnvelope, HostObservationReceipt, ProjectionEnvelope, ProjectionRequest,
+    CommandEnvelope, HostObservationReceipt, ProjectionBatchEnvelope, ProjectionBatchRequest,
+    ProjectionEnvelope, ProjectionRequest,
 };
 use pod0_domain::SubscriptionId;
 
@@ -15,6 +16,10 @@ impl Pod0ApplicationApi for Pod0Facade {
 
     fn snapshot(&self, request: ProjectionRequest) -> ProjectionEnvelope {
         Self::snapshot(self, request)
+    }
+
+    fn snapshot_batch(&self, request: ProjectionBatchRequest) -> ProjectionBatchEnvelope {
+        Self::snapshot_batch(self, request)
     }
 
     fn subscribe(

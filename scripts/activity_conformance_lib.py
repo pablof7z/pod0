@@ -170,7 +170,7 @@ def exact_set_errors(
     label: str, actual: set[str], registered: set[str]
 ) -> list[str]:
     errors = [
-        f"{label} missing inventory row: {item}"
+        f"{label} missing inventory row: {item} [unregistered_input]"
         for item in sorted(actual - registered)
     ]
     errors += [
@@ -225,7 +225,9 @@ def validate_exhaustive_routers(root: Path) -> list[str]:
         routed = set(re.findall(rf"\b{prefix}::([A-Z][A-Za-z0-9_]*)", router))
         errors += exact_set_errors(f"{enum_name} router", variants, routed)
         if re.search(r"(?:^|[\s|])_\s*=>", router):
-            errors.append(f"{router_path}: wildcard route is forbidden")
+            errors.append(
+                f"{router_path}: wildcard route is forbidden [wildcard_routing]"
+            )
     return errors
 
 

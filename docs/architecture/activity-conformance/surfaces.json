@@ -61,6 +61,14 @@
     },
     {
       "kind": "recovery",
+      "path": "rust/crates/pod0-facade/src/runtime_expired_effect_recovery.rs",
+      "surface": "expired_effect_recovery",
+      "target_owner": "RustCapabilityRecoveryStateMachines",
+      "child_issue": 215,
+      "implementation_status": "bounded_live_reconciliation_before_any_expired_external_effect_reclaim"
+    },
+    {
+      "kind": "recovery",
       "path": "rust/crates/pod0-facade/src/runtime_chapter_model_completion.rs",
       "surface": "chapter_completion_recovery",
       "target_owner": "ChapterStateMachine",
@@ -418,6 +426,14 @@
       "target_boundary": "TransitionCommit",
       "child_issue": 215,
       "implementation_status": "typed_ambiguous_attempt_recovery_transition_with_exact_recovery_payload"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_agent_model_recovery.rs",
+      "domain": "agent_publication",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 215,
+      "implementation_status": "typed_ambiguous_model_attempt_recovery_with_outcome_unknown_transition"
     },
     {
       "kind": "authoritative_mutation_module",
@@ -1453,6 +1469,22 @@
       "target_boundary": "TransitionCommit",
       "child_issue": 216,
       "implementation_status": "private_deterministic_ingress_identity_fingerprint_and_revision_helpers"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/product_settings_store.rs",
+      "domain": "product_settings",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "authoritative_read_adapter_and_typed_settings_transition_delegate"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_product_settings.rs",
+      "domain": "product_settings",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "typed_atomic_product_settings_import_local_mutation_and_remote_merge"
     }
   ]
 }
