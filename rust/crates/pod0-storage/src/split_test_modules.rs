@@ -5,6 +5,7 @@ mod activity_store_latest_tests;
 mod activity_store_integrity_tests;
 mod category_store_test_support;
 mod category_store_tests;
+mod category_policy_tests;
 mod chapter_import_evidence_tests;
 mod chapter_import_failure_tests;
 mod chapter_import_recovery_tests;

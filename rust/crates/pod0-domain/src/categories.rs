@@ -1,4 +1,6 @@
-use crate::{CategoryId, LibraryItemId, UnixTimestampMilliseconds};
+use crate::{
+    AutoDownloadMode, AutoDownloadPolicy, CategoryId, LibraryItemId, UnixTimestampMilliseconds,
+};
 
 pub const MAX_CATEGORY_NAME_BYTES: usize = 128;
 pub const MAX_CATEGORY_DESCRIPTION_BYTES: usize = 1_024;
@@ -55,6 +57,40 @@ pub struct CategoryMember {
     pub added_at: UnixTimestampMilliseconds,
 }
 
+/// Product policy attached to one category. Absence of an auto-download
+/// override means the subscription's own policy remains authoritative.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct CategorySettings {
+    pub auto_download_override: Option<AutoDownloadPolicy>,
+    pub rag_enabled: bool,
+    pub notifications_enabled: bool,
+}
+
+impl Default for CategorySettings {
+    fn default() -> Self {
+        Self {
+            auto_download_override: None,
+            rag_enabled: true,
+            notifications_enabled: true,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum CategoryAutoDownloadSource {
+    Subscription,
+    Category { category_id: CategoryId },
+}
+
+/// Canonical policy plus conflict evidence when legacy or agent activity has
+/// placed one podcast in multiple categories with different overrides.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct ResolvedCategoryAutoDownloadPolicy {
+    pub policy: AutoDownloadPolicy,
+    pub source: CategoryAutoDownloadSource,
+    pub conflicting_category_ids: Vec<CategoryId>,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct CategoryRecord {
     pub category_id: CategoryId,
@@ -67,6 +103,7 @@ pub struct CategoryRecord {
     /// `#RRGGBB` or `#RRGGBBAA`, or `None` to let presentation derive a tint.
     pub color_hex: Option<String>,
     pub origin: CategoryOrigin,
+    pub settings: CategorySettings,
     pub members: Vec<CategoryMember>,
     pub created_at: UnixTimestampMilliseconds,
     pub updated_at: UnixTimestampMilliseconds,
@@ -100,8 +137,21 @@ pub enum CategoryValidationError {
     EmptyDescription,
     DescriptionTooLarge,
     InvalidColorHex,
+    UnsupportedAutoDownloadPolicy,
     UnsupportedOrigin,
     TooManyCategories,
+}
+
+pub fn validate_category_settings(
+    settings: CategorySettings,
+) -> Result<(), CategoryValidationError> {
+    if settings
+        .auto_download_override
+        .is_some_and(|policy| matches!(policy.mode, AutoDownloadMode::Unsupported { .. }))
+    {
+        return Err(CategoryValidationError::UnsupportedAutoDownloadPolicy);
+    }
+    Ok(())
 }
 
 pub fn validate_category(
@@ -223,5 +273,22 @@ mod tests {
         // No ASCII to slug: the caller must fall back to the id rather than
         // treat this as a usable routing key.
         assert_eq!(category_slug("哲学"), "");
+    }
+
+    #[test]
+    fn category_settings_default_to_inheritance_and_reject_unsupported_policy() {
+        assert_eq!(CategorySettings::default().auto_download_override, None);
+        assert!(CategorySettings::default().rag_enabled);
+        assert!(CategorySettings::default().notifications_enabled);
+        assert_eq!(
+            validate_category_settings(CategorySettings {
+                auto_download_override: Some(AutoDownloadPolicy {
+                    mode: AutoDownloadMode::Unsupported { wire_code: 99 },
+                    wifi_only: false,
+                }),
+                ..CategorySettings::default()
+            }),
+            Err(CategoryValidationError::UnsupportedAutoDownloadPolicy)
+        );
     }
 }

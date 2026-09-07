@@ -27,6 +27,7 @@ pub(crate) const TABLES_ADDED_AFTER_V13: &str = "
     DROP TABLE pod0_feed_fetch_workflows;
     DROP TABLE pod0_speaker_assignments;
     DROP TABLE pod0_speakers;
+    DROP TABLE pod0_category_settings;
     DROP TABLE pod0_category_members;
     DROP TABLE pod0_categories;
     DROP TABLE pod0_category_state;

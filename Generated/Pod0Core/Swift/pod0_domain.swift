@@ -1442,6 +1442,7 @@ public struct CategoryRecord: Equatable, Hashable {
      */
     public let colorHex: String?
     public let origin: CategoryOrigin
+    public let settings: CategorySettings
     public let members: [CategoryMember]
     public let createdAt: UnixTimestampMilliseconds
     public let updatedAt: UnixTimestampMilliseconds
@@ -1456,7 +1457,7 @@ public struct CategoryRecord: Equatable, Hashable {
          */slug: String, description: String,
         /**
          * `#RRGGBB` or `#RRGGBBAA`, or `None` to let presentation derive a tint.
-         */colorHex: String?, origin: CategoryOrigin, members: [CategoryMember], createdAt: UnixTimestampMilliseconds, updatedAt: UnixTimestampMilliseconds, deleted: Bool) {
+         */colorHex: String?, origin: CategoryOrigin, settings: CategorySettings, members: [CategoryMember], createdAt: UnixTimestampMilliseconds, updatedAt: UnixTimestampMilliseconds, deleted: Bool) {
         self.categoryId = categoryId
         self.revision = revision
         self.name = name
@@ -1464,6 +1465,7 @@ public struct CategoryRecord: Equatable, Hashable {
         self.description = description
         self.colorHex = colorHex
         self.origin = origin
+        self.settings = settings
         self.members = members
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -1493,6 +1495,7 @@ public struct FfiConverterTypeCategoryRecord: FfiConverterRustBuffer {
                 description: FfiConverterString.read(from: &buf),
                 colorHex: FfiConverterOptionString.read(from: &buf),
                 origin: FfiConverterTypeCategoryOrigin.read(from: &buf),
+                settings: FfiConverterTypeCategorySettings.read(from: &buf),
                 members: FfiConverterSequenceTypeCategoryMember.read(from: &buf),
                 createdAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
                 updatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf),
@@ -1508,6 +1511,7 @@ public struct FfiConverterTypeCategoryRecord: FfiConverterRustBuffer {
         FfiConverterString.write(value.description, into: &buf)
         FfiConverterOptionString.write(value.colorHex, into: &buf)
         FfiConverterTypeCategoryOrigin.write(value.origin, into: &buf)
+        FfiConverterTypeCategorySettings.write(value.settings, into: &buf)
         FfiConverterSequenceTypeCategoryMember.write(value.members, into: &buf)
         FfiConverterTypeUnixTimestampMilliseconds.write(value.createdAt, into: &buf)
         FfiConverterTypeUnixTimestampMilliseconds.write(value.updatedAt, into: &buf)
@@ -1578,6 +1582,68 @@ public func FfiConverterTypeCategoryRevision_lift(_ buf: RustBuffer) throws -> C
 #endif
 public func FfiConverterTypeCategoryRevision_lower(_ value: CategoryRevision) -> RustBuffer {
     return FfiConverterTypeCategoryRevision.lower(value)
+}
+
+
+/**
+ * Product policy attached to one category. Absence of an auto-download
+ * override means the subscription's own policy remains authoritative.
+ */
+public struct CategorySettings: Equatable, Hashable {
+    public let autoDownloadOverride: AutoDownloadPolicy?
+    public let ragEnabled: Bool
+    public let notificationsEnabled: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(autoDownloadOverride: AutoDownloadPolicy?, ragEnabled: Bool, notificationsEnabled: Bool) {
+        self.autoDownloadOverride = autoDownloadOverride
+        self.ragEnabled = ragEnabled
+        self.notificationsEnabled = notificationsEnabled
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CategorySettings: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCategorySettings: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CategorySettings {
+        return
+            try CategorySettings(
+                autoDownloadOverride: FfiConverterOptionTypeAutoDownloadPolicy.read(from: &buf),
+                ragEnabled: FfiConverterBool.read(from: &buf),
+                notificationsEnabled: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CategorySettings, into buf: inout [UInt8]) {
+        FfiConverterOptionTypeAutoDownloadPolicy.write(value.autoDownloadOverride, into: &buf)
+        FfiConverterBool.write(value.ragEnabled, into: &buf)
+        FfiConverterBool.write(value.notificationsEnabled, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCategorySettings_lift(_ buf: RustBuffer) throws -> CategorySettings {
+    return try FfiConverterTypeCategorySettings.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCategorySettings_lower(_ value: CategorySettings) -> RustBuffer {
+    return FfiConverterTypeCategorySettings.lower(value)
 }
 
 
@@ -5654,6 +5720,68 @@ public func FfiConverterTypeRecallQueryId_lower(_ value: RecallQueryId) -> RustB
 }
 
 
+/**
+ * Canonical policy plus conflict evidence when legacy or agent activity has
+ * placed one podcast in multiple categories with different overrides.
+ */
+public struct ResolvedCategoryAutoDownloadPolicy: Equatable, Hashable {
+    public let policy: AutoDownloadPolicy
+    public let source: CategoryAutoDownloadSource
+    public let conflictingCategoryIds: [CategoryId]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(policy: AutoDownloadPolicy, source: CategoryAutoDownloadSource, conflictingCategoryIds: [CategoryId]) {
+        self.policy = policy
+        self.source = source
+        self.conflictingCategoryIds = conflictingCategoryIds
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ResolvedCategoryAutoDownloadPolicy: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeResolvedCategoryAutoDownloadPolicy: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ResolvedCategoryAutoDownloadPolicy {
+        return
+            try ResolvedCategoryAutoDownloadPolicy(
+                policy: FfiConverterTypeAutoDownloadPolicy.read(from: &buf),
+                source: FfiConverterTypeCategoryAutoDownloadSource.read(from: &buf),
+                conflictingCategoryIds: FfiConverterSequenceTypeCategoryId.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ResolvedCategoryAutoDownloadPolicy, into buf: inout [UInt8]) {
+        FfiConverterTypeAutoDownloadPolicy.write(value.policy, into: &buf)
+        FfiConverterTypeCategoryAutoDownloadSource.write(value.source, into: &buf)
+        FfiConverterSequenceTypeCategoryId.write(value.conflictingCategoryIds, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeResolvedCategoryAutoDownloadPolicy_lift(_ buf: RustBuffer) throws -> ResolvedCategoryAutoDownloadPolicy {
+    return try FfiConverterTypeResolvedCategoryAutoDownloadPolicy.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeResolvedCategoryAutoDownloadPolicy_lower(_ value: ResolvedCategoryAutoDownloadPolicy) -> RustBuffer {
+    return FfiConverterTypeResolvedCategoryAutoDownloadPolicy.lower(value)
+}
+
+
 public struct ScheduledAttemptId: Equatable, Hashable {
     public let high: UInt64
     public let low: UInt64
@@ -6894,6 +7022,75 @@ public func FfiConverterTypeAutoDownloadMode_lift(_ buf: RustBuffer) throws -> A
 #endif
 public func FfiConverterTypeAutoDownloadMode_lower(_ value: AutoDownloadMode) -> RustBuffer {
     return FfiConverterTypeAutoDownloadMode.lower(value)
+}
+
+
+
+
+public enum CategoryAutoDownloadSource: Equatable, Hashable {
+
+    case subscription
+    case category(categoryId: CategoryId
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CategoryAutoDownloadSource: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCategoryAutoDownloadSource: FfiConverterRustBuffer {
+    typealias SwiftType = CategoryAutoDownloadSource
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CategoryAutoDownloadSource {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .subscription
+
+        case 2: return .category(categoryId: try FfiConverterTypeCategoryId.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: CategoryAutoDownloadSource, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .subscription:
+            writeInt(&buf, Int32(1))
+
+
+        case let .category(categoryId):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeCategoryId.write(categoryId, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCategoryAutoDownloadSource_lift(_ buf: RustBuffer) throws -> CategoryAutoDownloadSource {
+    return try FfiConverterTypeCategoryAutoDownloadSource.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCategoryAutoDownloadSource_lower(_ value: CategoryAutoDownloadSource) -> RustBuffer {
+    return FfiConverterTypeCategoryAutoDownloadSource.lower(value)
 }
 
 
@@ -9430,6 +9627,30 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeAutoDownloadPolicy: FfiConverterRustBuffer {
+    typealias SwiftType = AutoDownloadPolicy?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeAutoDownloadPolicy.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeAutoDownloadPolicy.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeChapterLegacyProvenance: FfiConverterRustBuffer {
     typealias SwiftType = ChapterLegacyProvenance?
 
@@ -9856,6 +10077,31 @@ fileprivate struct FfiConverterSequenceTypeAdSpanInput: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeAdSpanInput.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCategoryId: FfiConverterRustBuffer {
+    typealias SwiftType = [CategoryId]
+
+    public static func write(_ value: [CategoryId], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCategoryId.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CategoryId] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CategoryId]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCategoryId.read(from: &buf))
         }
         return seq
     }

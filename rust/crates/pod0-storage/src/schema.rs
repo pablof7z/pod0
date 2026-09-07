@@ -152,7 +152,7 @@ pub(crate) fn validate_schema(connection: &Connection, version: u32) -> Result<(
         crate::schema_model_chapter_workflows::validate_model_chapter_workflow_schema(connection)?;
     }
     if version >= 34 {
-        crate::schema_categories::validate_category_schema(connection)?;
+        crate::schema_categories::validate_category_schema(connection, version)?;
     }
     if version >= 35 {
         crate::schema_speakers::validate_speaker_schema(connection)?;

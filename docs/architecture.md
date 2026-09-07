@@ -21,7 +21,8 @@ scheduled-agent definitions, occurrences, and artifacts; interactive
 product-proof agent conversations, proposals, permissions, recall citations,
 model usage, generated audio provenance, feed-discovery download/notification
 policy with durable recovery, and portable product settings with versioned
-sync-conflict evidence. The facade contract is now version 59. It exposes bounded commands,
+sync-conflict evidence, plus category policy and deterministic override
+resolution. The facade contract is now version 60. It exposes bounded commands,
 projections, domain events, and correlated host requests across those migrated
 domains. Exact integer milliseconds, stable identifiers, explicit revisions,
 effect fences, cancellation, and typed failure states prevent native adapters
@@ -45,8 +46,8 @@ call typed methods; migrated commands dispatch to the shared facade, and direct
 `AppState` contains replaceable projections for podcasts, subscriptions,
 episodes, notes, clips, memories, and scheduled tasks. Those projections are
 not written back as native durable authority. Swift remains authoritative for
-settings and categories/category settings, plus explicitly retained
-development migration inputs. The former Agent activity log has no live native
+categories/category settings, plus explicitly retained development migration
+inputs. The former Agent activity log has no live native
 writer or UI; its decode-only payload is removed after Rust conversation and
 memory authority are verified and is then excluded from every native write.
 

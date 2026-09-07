@@ -67,7 +67,7 @@ fun qualifyFeedDiscoveryContract() {
                 1u,
             ),
         )
-        check(envelope.contractVersion == 59u)
+        check(envelope.contractVersion == 60u)
         val projection = envelope.projection
         check(projection is Projection.NewEpisodeNotificationSettings)
         check(projection.value.enabled)

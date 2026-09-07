@@ -1,10 +1,15 @@
-use pod0_domain::{CategoryId, CategoryOrigin, CommandId, StateRevision, category_slug};
+use pod0_domain::{
+    CategoryId, CategoryOrigin, CategorySettings, CommandId, StateRevision, category_slug,
+};
 use rusqlite::params;
 
 use crate::StorageError;
 use crate::category_store_model::encode_origin;
 use crate::category_store_write_support::{bump_category, finish_category_command};
 use crate::library_store::LibraryStore;
+
+#[path = "library_store_category_policy.rs"]
+pub(crate) mod policy;
 
 /// Field-level edit intent. `None` means "leave as it is" — distinct from a
 /// present value, which is why this is not just `Option<String>` threaded
@@ -96,7 +101,34 @@ pub(crate) fn create_category_in_transaction(
         "INSERT INTO pod0_categories(category_id,category_revision,name,slug,description,color_hex,origin_code,created_at_ms,updated_at_ms,deleted,created_command_id) VALUES(?1,1,?2,?3,?4,?5,?6,?7,?7,0,?8)",
         params![category_id.into_bytes().as_slice(), name, slug_or_id(name, category_id), description, color_hex, encode_origin(origin)?, observed_at_ms, command_id.into_bytes().as_slice()],
     ).map_err(|error| StorageError::sqlite("create category", error))?;
+    insert_default_settings(transaction, category_id, observed_at_ms)?;
     finish_category_command(transaction, command_id, fingerprint, observed_at_ms)
+}
+
+fn insert_default_settings(
+    transaction: &rusqlite::Transaction<'_>,
+    category_id: CategoryId,
+    observed_at_ms: i64,
+) -> Result<(), StorageError> {
+    let (code, latest, wifi_only, rag, notifications) =
+        crate::category_store_model::encode_settings(CategorySettings::default())?;
+    transaction
+        .execute(
+            "INSERT INTO pod0_category_settings(category_id,auto_download_code,\
+             auto_download_latest_count,wifi_only,rag_enabled,notifications_enabled,updated_at_ms) \
+             VALUES(?1,?2,?3,?4,?5,?6,?7)",
+            params![
+                category_id.into_bytes().as_slice(),
+                code,
+                latest,
+                wifi_only,
+                rag,
+                notifications,
+                observed_at_ms
+            ],
+        )
+        .map_err(|error| StorageError::sqlite("create category settings", error))?;
+    Ok(())
 }
 
 pub(crate) fn update_category_in_transaction(
