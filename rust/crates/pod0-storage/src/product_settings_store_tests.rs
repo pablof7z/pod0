@@ -45,9 +45,11 @@ fn populated_legacy_import_preserves_values_and_single_writer_authority() {
     let fixture = imported_fixture();
     commit_listening_cutover(&fixture.target, 1_800_000_000_000).unwrap();
     let store = LibraryStore::open_authoritative(&fixture.target).unwrap();
-    let mut values = ProductSettingsValues::default();
-    values.agent_display_name = "Migrated Agent".to_owned();
-    values.skip_forward_seconds = 45;
+    let values = ProductSettingsValues {
+        agent_display_name: "Migrated Agent".to_owned(),
+        skip_forward_seconds: 45,
+        ..ProductSettingsValues::default()
+    };
 
     let outcome = store
         .import_legacy_product_settings(
@@ -131,8 +133,10 @@ fn unmarked_existing_settings_fail_closed_without_overwrite() {
     let fixture = imported_fixture();
     commit_listening_cutover(&fixture.target, 1_800_000_000_000).unwrap();
     let store = LibraryStore::open_authoritative(&fixture.target).unwrap();
-    let mut original = ProductSettingsValues::default();
-    original.agent_display_name = "Original".to_owned();
+    let original = ProductSettingsValues {
+        agent_display_name: "Original".to_owned(),
+        ..ProductSettingsValues::default()
+    };
     store
         .import_legacy_product_settings(
             command(5),

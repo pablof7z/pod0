@@ -1,4 +1,5 @@
 use super::*;
+use crate::transition_commit::CommitFaultPoint;
 
 #[test]
 fn every_fault_seam_exposes_only_old_or_complete_transition() {

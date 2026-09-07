@@ -11,8 +11,10 @@ fn facade_imports_once_and_routes_later_mutations_through_rust() {
         .to_string_lossy()
         .into_owned();
     let facade = Pod0Facade::create(path).unwrap();
-    let mut imported = ProductSettingsValues::default();
-    imported.agent_display_name = "Imported".into();
+    let imported = ProductSettingsValues {
+        agent_display_name: "Imported".into(),
+        ..ProductSettingsValues::default()
+    };
 
     let authority = facade
         .import_legacy_product_settings(command(1), 12, digest(1), imported)

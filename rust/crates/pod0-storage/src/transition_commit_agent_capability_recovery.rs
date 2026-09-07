@@ -60,7 +60,6 @@ pub(crate) fn commit_expired_agent_capability_recovery(
                 turn_id,
                 current_revision,
                 committed_revision,
-                transition: pod0_application::AgentPublicationTransition::ToolStateChanged,
                 recovery,
             })
             .map(|plan| plan.map_mutation(|mutation| (mutation, after)))

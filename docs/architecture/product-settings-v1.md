@@ -10,7 +10,7 @@ and bounded settings projections.
 aggregate with both the global core revision and sync-writer version. The v1
 value has exact Rust defaults and contains portable product preferences only.
 It excludes secret bytes, opaque credential handles, decode-only migration
-fields, and Nostr/NMP-adjacent publication configuration.
+fields, and retired publication configuration.
 
 Every attempted settings command records a redaction-safe validation result in
 `pod0_settings_validation_evidence`. Equal-counter updates from different

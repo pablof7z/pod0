@@ -4470,6 +4470,266 @@ public object FfiConverterTypePodcastSubscriptionRecord: FfiConverterRustBuffer<
 
 
 
+data class ProductSettings (
+    val `schemaVersion`: kotlin.UInt
+    ,
+    val `revision`: StateRevision
+    ,
+    val `writerVersion`: SettingsWriterVersion
+    ,
+    val `values`: ProductSettingsValues
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeProductSettings: FfiConverterRustBuffer<ProductSettings> {
+    override fun read(buf: ByteBuffer): ProductSettings {
+        return ProductSettings(
+            FfiConverterUInt.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterTypeSettingsWriterVersion.read(buf),
+            FfiConverterTypeProductSettingsValues.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ProductSettings) = (
+            FfiConverterUInt.allocationSize(value.`schemaVersion`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`revision`) +
+            FfiConverterTypeSettingsWriterVersion.allocationSize(value.`writerVersion`) +
+            FfiConverterTypeProductSettingsValues.allocationSize(value.`values`)
+    )
+
+    override fun write(value: ProductSettings, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`schemaVersion`, buf)
+            FfiConverterTypeStateRevision.write(value.`revision`, buf)
+            FfiConverterTypeSettingsWriterVersion.write(value.`writerVersion`, buf)
+            FfiConverterTypeProductSettingsValues.write(value.`values`, buf)
+    }
+}
+
+
+
+/**
+ * Portable product preferences. Secret material and legacy-only migration
+ * fields are deliberately absent from this type.
+ */
+data class ProductSettingsValues (
+    val `agentInitialModel`: kotlin.String
+    ,
+    val `agentInitialModelName`: kotlin.String
+    ,
+    val `agentThinkingModel`: kotlin.String
+    ,
+    val `agentThinkingModelName`: kotlin.String
+    ,
+    val `memoryCompilationModel`: kotlin.String
+    ,
+    val `memoryCompilationModelName`: kotlin.String
+    ,
+    val `utilityModel`: kotlin.String
+    ,
+    val `utilityModelName`: kotlin.String
+    ,
+    val `categorizationModel`: kotlin.String
+    ,
+    val `categorizationModelName`: kotlin.String
+    ,
+    val `chapterCompilationModel`: kotlin.String
+    ,
+    val `chapterCompilationModelName`: kotlin.String
+    ,
+    val `imageGenerationModel`: kotlin.String
+    ,
+    val `imageGenerationModelName`: kotlin.String
+    ,
+    val `ollamaChatUrl`: kotlin.String
+    ,
+    val `youtubeExtractorUrl`: kotlin.String?
+    ,
+    val `transcriptionProvider`: SpeechTranscriptionSetting
+    ,
+    val `openRouterWhisperModel`: kotlin.String
+    ,
+    val `assemblyAiSttModel`: kotlin.String
+    ,
+    val `elevenLabsSttModel`: kotlin.String
+    ,
+    val `elevenLabsTtsModel`: kotlin.String
+    ,
+    val `elevenLabsVoiceId`: kotlin.String
+    ,
+    val `elevenLabsVoiceName`: kotlin.String
+    ,
+    val `defaultPlaybackRateMilli`: kotlin.UShort
+    ,
+    val `skipForwardSeconds`: kotlin.UShort
+    ,
+    val `skipBackwardSeconds`: kotlin.UShort
+    ,
+    val `autoMarkPlayedAtEnd`: kotlin.Boolean
+    ,
+    val `autoDeleteDownloadsAfterPlayed`: kotlin.Boolean
+    ,
+    val `autoPlayNext`: kotlin.Boolean
+    ,
+    val `autoSkipAds`: kotlin.Boolean
+    ,
+    val `headphoneDoubleTapAction`: HeadphoneGestureSetting
+    ,
+    val `headphoneTripleTapAction`: HeadphoneGestureSetting
+    ,
+    val `autoIngestPublisherTranscripts`: kotlin.Boolean
+    ,
+    val `autoFallbackToScribe`: kotlin.Boolean
+    ,
+    val `agentDisplayName`: kotlin.String
+    ,
+    val `agentAvatarUrl`: kotlin.String?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeProductSettingsValues: FfiConverterRustBuffer<ProductSettingsValues> {
+    override fun read(buf: ByteBuffer): ProductSettingsValues {
+        return ProductSettingsValues(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeSpeechTranscriptionSetting.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUShort.read(buf),
+            FfiConverterUShort.read(buf),
+            FfiConverterUShort.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterTypeHeadphoneGestureSetting.read(buf),
+            FfiConverterTypeHeadphoneGestureSetting.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ProductSettingsValues) = (
+            FfiConverterString.allocationSize(value.`agentInitialModel`) +
+            FfiConverterString.allocationSize(value.`agentInitialModelName`) +
+            FfiConverterString.allocationSize(value.`agentThinkingModel`) +
+            FfiConverterString.allocationSize(value.`agentThinkingModelName`) +
+            FfiConverterString.allocationSize(value.`memoryCompilationModel`) +
+            FfiConverterString.allocationSize(value.`memoryCompilationModelName`) +
+            FfiConverterString.allocationSize(value.`utilityModel`) +
+            FfiConverterString.allocationSize(value.`utilityModelName`) +
+            FfiConverterString.allocationSize(value.`categorizationModel`) +
+            FfiConverterString.allocationSize(value.`categorizationModelName`) +
+            FfiConverterString.allocationSize(value.`chapterCompilationModel`) +
+            FfiConverterString.allocationSize(value.`chapterCompilationModelName`) +
+            FfiConverterString.allocationSize(value.`imageGenerationModel`) +
+            FfiConverterString.allocationSize(value.`imageGenerationModelName`) +
+            FfiConverterString.allocationSize(value.`ollamaChatUrl`) +
+            FfiConverterOptionalString.allocationSize(value.`youtubeExtractorUrl`) +
+            FfiConverterTypeSpeechTranscriptionSetting.allocationSize(value.`transcriptionProvider`) +
+            FfiConverterString.allocationSize(value.`openRouterWhisperModel`) +
+            FfiConverterString.allocationSize(value.`assemblyAiSttModel`) +
+            FfiConverterString.allocationSize(value.`elevenLabsSttModel`) +
+            FfiConverterString.allocationSize(value.`elevenLabsTtsModel`) +
+            FfiConverterString.allocationSize(value.`elevenLabsVoiceId`) +
+            FfiConverterString.allocationSize(value.`elevenLabsVoiceName`) +
+            FfiConverterUShort.allocationSize(value.`defaultPlaybackRateMilli`) +
+            FfiConverterUShort.allocationSize(value.`skipForwardSeconds`) +
+            FfiConverterUShort.allocationSize(value.`skipBackwardSeconds`) +
+            FfiConverterBoolean.allocationSize(value.`autoMarkPlayedAtEnd`) +
+            FfiConverterBoolean.allocationSize(value.`autoDeleteDownloadsAfterPlayed`) +
+            FfiConverterBoolean.allocationSize(value.`autoPlayNext`) +
+            FfiConverterBoolean.allocationSize(value.`autoSkipAds`) +
+            FfiConverterTypeHeadphoneGestureSetting.allocationSize(value.`headphoneDoubleTapAction`) +
+            FfiConverterTypeHeadphoneGestureSetting.allocationSize(value.`headphoneTripleTapAction`) +
+            FfiConverterBoolean.allocationSize(value.`autoIngestPublisherTranscripts`) +
+            FfiConverterBoolean.allocationSize(value.`autoFallbackToScribe`) +
+            FfiConverterString.allocationSize(value.`agentDisplayName`) +
+            FfiConverterOptionalString.allocationSize(value.`agentAvatarUrl`)
+    )
+
+    override fun write(value: ProductSettingsValues, buf: ByteBuffer) {
+            FfiConverterString.write(value.`agentInitialModel`, buf)
+            FfiConverterString.write(value.`agentInitialModelName`, buf)
+            FfiConverterString.write(value.`agentThinkingModel`, buf)
+            FfiConverterString.write(value.`agentThinkingModelName`, buf)
+            FfiConverterString.write(value.`memoryCompilationModel`, buf)
+            FfiConverterString.write(value.`memoryCompilationModelName`, buf)
+            FfiConverterString.write(value.`utilityModel`, buf)
+            FfiConverterString.write(value.`utilityModelName`, buf)
+            FfiConverterString.write(value.`categorizationModel`, buf)
+            FfiConverterString.write(value.`categorizationModelName`, buf)
+            FfiConverterString.write(value.`chapterCompilationModel`, buf)
+            FfiConverterString.write(value.`chapterCompilationModelName`, buf)
+            FfiConverterString.write(value.`imageGenerationModel`, buf)
+            FfiConverterString.write(value.`imageGenerationModelName`, buf)
+            FfiConverterString.write(value.`ollamaChatUrl`, buf)
+            FfiConverterOptionalString.write(value.`youtubeExtractorUrl`, buf)
+            FfiConverterTypeSpeechTranscriptionSetting.write(value.`transcriptionProvider`, buf)
+            FfiConverterString.write(value.`openRouterWhisperModel`, buf)
+            FfiConverterString.write(value.`assemblyAiSttModel`, buf)
+            FfiConverterString.write(value.`elevenLabsSttModel`, buf)
+            FfiConverterString.write(value.`elevenLabsTtsModel`, buf)
+            FfiConverterString.write(value.`elevenLabsVoiceId`, buf)
+            FfiConverterString.write(value.`elevenLabsVoiceName`, buf)
+            FfiConverterUShort.write(value.`defaultPlaybackRateMilli`, buf)
+            FfiConverterUShort.write(value.`skipForwardSeconds`, buf)
+            FfiConverterUShort.write(value.`skipBackwardSeconds`, buf)
+            FfiConverterBoolean.write(value.`autoMarkPlayedAtEnd`, buf)
+            FfiConverterBoolean.write(value.`autoDeleteDownloadsAfterPlayed`, buf)
+            FfiConverterBoolean.write(value.`autoPlayNext`, buf)
+            FfiConverterBoolean.write(value.`autoSkipAds`, buf)
+            FfiConverterTypeHeadphoneGestureSetting.write(value.`headphoneDoubleTapAction`, buf)
+            FfiConverterTypeHeadphoneGestureSetting.write(value.`headphoneTripleTapAction`, buf)
+            FfiConverterBoolean.write(value.`autoIngestPublisherTranscripts`, buf)
+            FfiConverterBoolean.write(value.`autoFallbackToScribe`, buf)
+            FfiConverterString.write(value.`agentDisplayName`, buf)
+            FfiConverterOptionalString.write(value.`agentAvatarUrl`, buf)
+    }
+}
+
+
+
 data class PublisherTranscriptReference (
     val `url`: kotlin.String
     ,
@@ -4871,6 +5131,44 @@ public object FfiConverterTypeScheduledTaskId: FfiConverterRustBuffer<ScheduledT
     override fun write(value: ScheduledTaskId, buf: ByteBuffer) {
             FfiConverterULong.write(value.`high`, buf)
             FfiConverterULong.write(value.`low`, buf)
+    }
+}
+
+
+
+data class SettingsWriterVersion (
+    val `counter`: kotlin.ULong
+    ,
+    val `writerId`: ContentDigest
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSettingsWriterVersion: FfiConverterRustBuffer<SettingsWriterVersion> {
+    override fun read(buf: ByteBuffer): SettingsWriterVersion {
+        return SettingsWriterVersion(
+            FfiConverterULong.read(buf),
+            FfiConverterTypeContentDigest.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SettingsWriterVersion) = (
+            FfiConverterULong.allocationSize(value.`counter`) +
+            FfiConverterTypeContentDigest.allocationSize(value.`writerId`)
+    )
+
+    override fun write(value: SettingsWriterVersion, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`counter`, buf)
+            FfiConverterTypeContentDigest.write(value.`writerId`, buf)
     }
 }
 
@@ -6776,6 +7074,46 @@ public object FfiConverterTypeEpisodeIdentityResolution : FfiConverterRustBuffer
 
 
 
+enum class HeadphoneGestureSetting {
+
+    SKIP_FORWARD,
+    SKIP_BACKWARD,
+    NEXT_CHAPTER,
+    PREVIOUS_CHAPTER,
+    CLIP_NOW,
+    NONE;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeHeadphoneGestureSetting: FfiConverterRustBuffer<HeadphoneGestureSetting> {
+    override fun read(buf: ByteBuffer) = try {
+
+        HeadphoneGestureSetting.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: HeadphoneGestureSetting) = 4UL
+
+    override fun write(value: HeadphoneGestureSetting, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
 
 sealed class ListeningDomainException: kotlin.Exception() {
 
@@ -8342,6 +8680,44 @@ public object FfiConverterTypeRecallRerankProvider : FfiConverterRustBuffer<Reca
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+
+enum class SpeechTranscriptionSetting {
+
+    ELEVEN_LABS_SCRIBE,
+    ASSEMBLY_AI,
+    OPEN_ROUTER_WHISPER,
+    APPLE_NATIVE;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSpeechTranscriptionSetting: FfiConverterRustBuffer<SpeechTranscriptionSetting> {
+    override fun read(buf: ByteBuffer) = try {
+
+        SpeechTranscriptionSetting.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: SpeechTranscriptionSetting) = 4UL
+
+    override fun write(value: SpeechTranscriptionSetting, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
     }
 }
 

@@ -1469,6 +1469,22 @@
       "target_boundary": "TransitionCommit",
       "child_issue": 216,
       "implementation_status": "private_deterministic_ingress_identity_fingerprint_and_revision_helpers"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/product_settings_store.rs",
+      "domain": "product_settings",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "authoritative_read_adapter_and_typed_settings_transition_delegate"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/transition_commit_product_settings.rs",
+      "domain": "product_settings",
+      "target_boundary": "TransitionCommit",
+      "child_issue": 217,
+      "implementation_status": "typed_atomic_product_settings_import_local_mutation_and_remote_merge"
     }
   ]
 }

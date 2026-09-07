@@ -1,5 +1,5 @@
 use pod0_application::{
-    AgentCapabilityRecoveryActivityInput, AgentPublicationTransition, AgentWorkflowAcceptance,
+    AgentCapabilityRecoveryActivityInput, AgentWorkflowAcceptance,
     DurableEffectExecution, DurableExternalEffectRequest, EffectOutcome,
     plan_agent_capability_recovery,
 };
@@ -55,7 +55,6 @@ pub(crate) fn commit_expired_agent_model_recovery(
                 turn_id: candidate.turn_id,
                 current_revision,
                 committed_revision,
-                transition: AgentPublicationTransition::TurnStateChanged,
                 recovery: None,
             })
             .map(|plan| plan.map_mutation(|mutation| (mutation, state)))
@@ -84,7 +83,8 @@ fn candidate(
     connection: &rusqlite::Connection,
     now: UnixTimestampMilliseconds,
 ) -> Result<Option<Candidate>, StorageError> {
-    let row: Option<(Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>, String)> = connection
+    type CandidateRow = (Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>, String);
+    let row: Option<CandidateRow> = connection
         .query_row(
             "SELECT i.intent_id,a.attempt_id,i.authorizing_activity_id,i.correlation_id,\
              i.subject_id,i.request_json FROM pod0_effect_attempts a JOIN pod0_effect_intents i \

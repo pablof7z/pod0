@@ -15,7 +15,8 @@ mod agent_store_history;
 mod agent_store_model;
 mod agent_store_recovery;
 mod authoritative_bootstrap;
-#[cfg(test)] mod authoritative_bootstrap_tests;
+#[cfg(test)]
+mod authoritative_bootstrap_tests;
 mod backup;
 mod category_store_model;
 mod category_store_read;
@@ -84,9 +85,9 @@ mod effect_outbox;
 mod effect_outbox_immutability_tests;
 mod effect_outbox_model;
 #[cfg(test)]
-mod effect_outbox_tests;
-#[cfg(test)]
 mod effect_outbox_recovery_tests;
+#[cfg(test)]
+mod effect_outbox_tests;
 mod evidence_codec;
 mod evidence_commands;
 mod evidence_model;

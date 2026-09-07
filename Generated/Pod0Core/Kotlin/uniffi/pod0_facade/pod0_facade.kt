@@ -60,6 +60,8 @@ import uniffi.pod0_application.FfiConverterTypeLeasedHostObservationEnvelope
 import uniffi.pod0_application.FfiConverterTypeLeasedHostRequestEnvelope
 import uniffi.pod0_application.FfiConverterTypeLegacyAgentHistoryConversationInput
 import uniffi.pod0_application.FfiConverterTypeModelChapterObservation
+import uniffi.pod0_application.FfiConverterTypeProjectionBatchEnvelope
+import uniffi.pod0_application.FfiConverterTypeProjectionBatchRequest
 import uniffi.pod0_application.FfiConverterTypeProjectionEnvelope
 import uniffi.pod0_application.FfiConverterTypeProjectionRequest
 import uniffi.pod0_application.FfiConverterTypePublisherChapterObservation
@@ -87,6 +89,8 @@ import uniffi.pod0_application.LeasedHostObservationEnvelope
 import uniffi.pod0_application.LeasedHostRequestEnvelope
 import uniffi.pod0_application.LegacyAgentHistoryConversationInput
 import uniffi.pod0_application.ModelChapterObservation
+import uniffi.pod0_application.ProjectionBatchEnvelope
+import uniffi.pod0_application.ProjectionBatchRequest
 import uniffi.pod0_application.ProjectionEnvelope
 import uniffi.pod0_application.ProjectionRequest
 import uniffi.pod0_application.PublisherChapterObservation
@@ -123,7 +127,10 @@ import uniffi.pod0_domain.FfiConverterTypeListeningDomainSnapshot
 import uniffi.pod0_domain.FfiConverterTypeMemoryId
 import uniffi.pod0_domain.FfiConverterTypeNoteRecord
 import uniffi.pod0_domain.FfiConverterTypePodcastId
+import uniffi.pod0_domain.FfiConverterTypeProductSettings
+import uniffi.pod0_domain.FfiConverterTypeProductSettingsValues
 import uniffi.pod0_domain.FfiConverterTypeScheduledTaskId
+import uniffi.pod0_domain.FfiConverterTypeSettingsWriterVersion
 import uniffi.pod0_domain.FfiConverterTypeSpeakerId
 import uniffi.pod0_domain.FfiConverterTypeStateRevision
 import uniffi.pod0_domain.FfiConverterTypeSubscriptionId
@@ -132,7 +139,10 @@ import uniffi.pod0_domain.ListeningDomainSnapshot
 import uniffi.pod0_domain.MemoryId
 import uniffi.pod0_domain.NoteRecord
 import uniffi.pod0_domain.PodcastId
+import uniffi.pod0_domain.ProductSettings
+import uniffi.pod0_domain.ProductSettingsValues
 import uniffi.pod0_domain.ScheduledTaskId
+import uniffi.pod0_domain.SettingsWriterVersion
 import uniffi.pod0_domain.SpeakerId
 import uniffi.pod0_domain.StateRevision
 import uniffi.pod0_domain.SubscriptionId
@@ -154,6 +164,8 @@ import uniffi.pod0_application.RustBuffer as RustBufferLeasedHostObservationEnve
 import uniffi.pod0_application.RustBuffer as RustBufferLeasedHostRequestEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferLegacyAgentHistoryConversationInput
 import uniffi.pod0_application.RustBuffer as RustBufferModelChapterObservation
+import uniffi.pod0_application.RustBuffer as RustBufferProjectionBatchEnvelope
+import uniffi.pod0_application.RustBuffer as RustBufferProjectionBatchRequest
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionRequest
 import uniffi.pod0_application.RustBuffer as RustBufferPublisherChapterObservation
@@ -185,7 +197,10 @@ import uniffi.pod0_domain.RustBuffer as RustBufferListeningDomainSnapshot
 import uniffi.pod0_domain.RustBuffer as RustBufferMemoryId
 import uniffi.pod0_domain.RustBuffer as RustBufferNoteRecord
 import uniffi.pod0_domain.RustBuffer as RustBufferPodcastId
+import uniffi.pod0_domain.RustBuffer as RustBufferProductSettings
+import uniffi.pod0_domain.RustBuffer as RustBufferProductSettingsValues
 import uniffi.pod0_domain.RustBuffer as RustBufferScheduledTaskId
+import uniffi.pod0_domain.RustBuffer as RustBufferSettingsWriterVersion
 import uniffi.pod0_domain.RustBuffer as RustBufferSpeakerId
 import uniffi.pod0_domain.RustBuffer as RustBufferStateRevision
 import uniffi.pod0_domain.RustBuffer as RustBufferSubscriptionId
@@ -994,6 +1009,14 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_memory_cutover(
     ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_import_legacy_product_settings(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_merge_remote_product_settings(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_product_settings_authority(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_set_product_settings(
+    ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_dispatch(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_next_leased_host_requests(
@@ -1003,6 +1026,8 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_pod0_facade_checksum_method_pod0facade_record_leased_host_observation(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_snapshot(
+    ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_snapshot_batch(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_subscribe(
     ): Int
@@ -1135,6 +1160,14 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_verify_legacy_memory_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_import_legacy_product_settings(`ptr`: Long,`commandId`: RustBufferCommandId.ByValue,`sourceGeneration`: Long,`writerId`: RustBufferContentDigest.ByValue,`values`: RustBufferProductSettingsValues.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_merge_remote_product_settings(`ptr`: Long,`commandId`: RustBufferCommandId.ByValue,`schemaVersion`: Int,`writerVersion`: RustBufferSettingsWriterVersion.ByValue,`values`: RustBufferProductSettingsValues.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_product_settings_authority(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_set_product_settings(`ptr`: Long,`commandId`: RustBufferCommandId.ByValue,`expectedRevision`: RustBufferStateRevision.ByValue,`writerId`: RustBufferContentDigest.ByValue,`values`: RustBufferProductSettingsValues.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_dispatch(`ptr`: Long,`command`: RustBufferCommandEnvelope.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): Unit
     external fun uniffi_pod0_facade_fn_method_pod0facade_next_leased_host_requests(`ptr`: Long,`maximumCount`: Short,uniffi_out_err: UniffiRustCallStatus,
@@ -1145,6 +1178,8 @@ internal object UniffiLib {
     ): RustBufferHostObservationReceipt.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_snapshot(`ptr`: Long,`request`: RustBufferProjectionRequest.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBufferProjectionEnvelope.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_snapshot_batch(`ptr`: Long,`request`: RustBufferProjectionBatchRequest.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBufferProjectionBatchEnvelope.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_subscribe(`ptr`: Long,`request`: RustBufferProjectionRequest.ByValue,`subscriber`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBufferSubscriptionId.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_unsubscribe(`ptr`: Long,`subscriptionId`: RustBufferSubscriptionId.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1614,6 +1649,18 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_memory_cutover() != 30698) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_import_legacy_product_settings() != 47138) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_merge_remote_product_settings() != 65352) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_product_settings_authority() != 60118) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_set_product_settings() != 19162) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_dispatch() != 4557) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1627,6 +1674,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_snapshot() != 46308) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_snapshot_batch() != 1485) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_subscribe() != 29651) {
@@ -2253,6 +2303,14 @@ public interface Pod0FacadeInterface {
 
     fun `verifyLegacyMemoryCutover`(`sourceGeneration`: kotlin.ULong): LegacyMemoryCutoverProjection
 
+    fun `importLegacyProductSettings`(`commandId`: CommandId, `sourceGeneration`: kotlin.ULong, `writerId`: ContentDigest, `values`: ProductSettingsValues): ProductSettingsAuthorityProjection
+
+    fun `mergeRemoteProductSettings`(`commandId`: CommandId, `schemaVersion`: kotlin.UInt, `writerVersion`: SettingsWriterVersion, `values`: ProductSettingsValues): ProductSettingsAuthorityProjection
+
+    fun `productSettingsAuthority`(): ProductSettingsAuthorityProjection
+
+    fun `setProductSettings`(`commandId`: CommandId, `expectedRevision`: StateRevision, `writerId`: ContentDigest, `values`: ProductSettingsValues): ProductSettingsAuthorityProjection
+
     fun `dispatch`(`command`: CommandEnvelope)
 
     fun `nextLeasedHostRequests`(`maximumCount`: kotlin.UShort): List<LeasedHostRequestEnvelope>
@@ -2266,6 +2324,8 @@ public interface Pod0FacadeInterface {
     fun `recordLeasedHostObservation`(`observation`: LeasedHostObservationEnvelope): HostObservationReceipt
 
     fun `snapshot`(`request`: ProjectionRequest): ProjectionEnvelope
+
+    fun `snapshotBatch`(`request`: ProjectionBatchRequest): ProjectionBatchEnvelope
 
     fun `subscribe`(`request`: ProjectionRequest, `subscriber`: ProjectionSubscriber): SubscriptionId
 
@@ -2762,6 +2822,74 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
     }
 
 
+
+    @Throws(FacadeOpenException::class)override fun `importLegacyProductSettings`(`commandId`: CommandId, `sourceGeneration`: kotlin.ULong, `writerId`: ContentDigest, `values`: ProductSettingsValues): ProductSettingsAuthorityProjection {
+            return FfiConverterTypeProductSettingsAuthorityProjection.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FacadeOpenException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_import_legacy_product_settings(
+        it,
+
+        FfiConverterTypeCommandId.lower(`commandId`),
+        FfiConverterULong.lower(`sourceGeneration`),
+        FfiConverterTypeContentDigest.lower(`writerId`),
+        FfiConverterTypeProductSettingsValues.lower(`values`),_status)
+}
+    }
+    )
+    }
+
+
+
+    @Throws(FacadeOpenException::class)override fun `mergeRemoteProductSettings`(`commandId`: CommandId, `schemaVersion`: kotlin.UInt, `writerVersion`: SettingsWriterVersion, `values`: ProductSettingsValues): ProductSettingsAuthorityProjection {
+            return FfiConverterTypeProductSettingsAuthorityProjection.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FacadeOpenException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_merge_remote_product_settings(
+        it,
+
+        FfiConverterTypeCommandId.lower(`commandId`),
+        FfiConverterUInt.lower(`schemaVersion`),
+        FfiConverterTypeSettingsWriterVersion.lower(`writerVersion`),
+        FfiConverterTypeProductSettingsValues.lower(`values`),_status)
+}
+    }
+    )
+    }
+
+
+
+    @Throws(FacadeOpenException::class)override fun `productSettingsAuthority`(): ProductSettingsAuthorityProjection {
+            return FfiConverterTypeProductSettingsAuthorityProjection.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FacadeOpenException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_product_settings_authority(
+        it,
+        _status)
+}
+    }
+    )
+    }
+
+
+
+    @Throws(FacadeOpenException::class)override fun `setProductSettings`(`commandId`: CommandId, `expectedRevision`: StateRevision, `writerId`: ContentDigest, `values`: ProductSettingsValues): ProductSettingsAuthorityProjection {
+            return FfiConverterTypeProductSettingsAuthorityProjection.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FacadeOpenException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_set_product_settings(
+        it,
+
+        FfiConverterTypeCommandId.lower(`commandId`),
+        FfiConverterTypeStateRevision.lower(`expectedRevision`),
+        FfiConverterTypeContentDigest.lower(`writerId`),
+        FfiConverterTypeProductSettingsValues.lower(`values`),_status)
+}
+    }
+    )
+    }
+
+
     override fun `dispatch`(`command`: CommandEnvelope)
         =
     callWithHandle {
@@ -2830,6 +2958,20 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
         it,
 
         FfiConverterTypeProjectionRequest.lower(`request`),_status)
+}
+    }
+    )
+    }
+
+
+    override fun `snapshotBatch`(`request`: ProjectionBatchRequest): ProjectionBatchEnvelope {
+            return FfiConverterTypeProjectionBatchEnvelope.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_snapshot_batch(
+        it,
+
+        FfiConverterTypeProjectionBatchRequest.lower(`request`),_status)
 }
     }
     )
@@ -6379,6 +6521,44 @@ public object FfiConverterTypeNativeErasureAction: FfiConverterRustBuffer<Native
 
 
 
+data class ProductSettingsAuthorityProjection (
+    val `authoritative`: kotlin.Boolean
+    ,
+    val `settings`: ProductSettings?
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeProductSettingsAuthorityProjection: FfiConverterRustBuffer<ProductSettingsAuthorityProjection> {
+    override fun read(buf: ByteBuffer): ProductSettingsAuthorityProjection {
+        return ProductSettingsAuthorityProjection(
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalTypeProductSettings.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ProductSettingsAuthorityProjection) = (
+            FfiConverterBoolean.allocationSize(value.`authoritative`) +
+            FfiConverterOptionalTypeProductSettings.allocationSize(value.`settings`)
+    )
+
+    override fun write(value: ProductSettingsAuthorityProjection, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`authoritative`, buf)
+            FfiConverterOptionalTypeProductSettings.write(value.`settings`, buf)
+    }
+}
+
+
+
 data class SharedListeningStorePreparation (
     val `fromVersion`: kotlin.UInt
     ,
@@ -9454,6 +9634,38 @@ public object FfiConverterOptionalTypeContentDigest: FfiConverterRustBuffer<Cont
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeProductSettings: FfiConverterRustBuffer<ProductSettings?> {
+    override fun read(buf: ByteBuffer): ProductSettings? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeProductSettings.read(buf)
+    }
+
+    override fun allocationSize(value: ProductSettings?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeProductSettings.allocationSize(value)
+        }
+    }
+
+    override fun write(value: ProductSettings?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeProductSettings.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeSpeakerId: FfiConverterRustBuffer<SpeakerId?> {
     override fun read(buf: ByteBuffer): SpeakerId? {
         if (buf.get().toInt() == 0) {
@@ -10527,6 +10739,16 @@ public object FfiConverterSequenceTypeUserDataErasureTargetLocation: FfiConverte
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
 
 
 

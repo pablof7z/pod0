@@ -707,6 +707,8 @@ public protocol Pod0FacadeProtocol: AnyObject, Sendable {
 
     func snapshot(request: ProjectionRequest)  -> ProjectionEnvelope
 
+    func snapshotBatch(request: ProjectionBatchRequest)  -> ProjectionBatchEnvelope
+
     func subscribe(request: ProjectionRequest, subscriber: ProjectionSubscriber)  -> SubscriptionId
 
     func unsubscribe(subscriptionId: SubscriptionId)
@@ -1180,6 +1182,16 @@ open func snapshot(request: ProjectionRequest) -> ProjectionEnvelope  {
     uniffi_pod0_facade_fn_method_pod0facade_snapshot(
             self.uniffiCloneHandle(),
         FfiConverterTypeProjectionRequest_lower(request),uniffiCallStatus
+    )
+})
+}
+
+open func snapshotBatch(request: ProjectionBatchRequest) -> ProjectionBatchEnvelope  {
+    return try!  FfiConverterTypeProjectionBatchEnvelope_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_snapshot_batch(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeProjectionBatchRequest_lower(request),uniffiCallStatus
     )
 })
 }
@@ -10456,6 +10468,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_snapshot() != 46308) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_snapshot_batch() != 1485) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_subscribe() != 29651) {

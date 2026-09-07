@@ -31,7 +31,10 @@ fn ambiguous_submission_waits_for_recovery_but_exact_reattach_can_reclaim() {
             .unwrap()
             .is_none()
     );
-    assert_eq!(outbox.next_claim_at(time(2_001)).unwrap(), None);
+    assert_eq!(
+        outbox.next_claim_at(time(2_001)).unwrap(),
+        Some(time(2_000))
+    );
 
     let exact = Fixture::new();
     exact.migrate_to_current(55).unwrap();

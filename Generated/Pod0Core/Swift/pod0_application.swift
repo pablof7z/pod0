@@ -6595,6 +6595,118 @@ public func FfiConverterTypePodcastSummary_lower(_ value: PodcastSummary) -> Rus
 }
 
 
+public struct ProjectionBatchEnvelope: Equatable, Hashable {
+    public let contractVersion: UInt32
+    public let stateRevision: StateRevision
+    public let projections: [ProjectionEnvelope]
+    public let hasMore: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(contractVersion: UInt32, stateRevision: StateRevision, projections: [ProjectionEnvelope], hasMore: Bool) {
+        self.contractVersion = contractVersion
+        self.stateRevision = stateRevision
+        self.projections = projections
+        self.hasMore = hasMore
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ProjectionBatchEnvelope: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeProjectionBatchEnvelope: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ProjectionBatchEnvelope {
+        return
+            try ProjectionBatchEnvelope(
+                contractVersion: FfiConverterUInt32.read(from: &buf),
+                stateRevision: FfiConverterTypeStateRevision.read(from: &buf),
+                projections: FfiConverterSequenceTypeProjectionEnvelope.read(from: &buf),
+                hasMore: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ProjectionBatchEnvelope, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.contractVersion, into: &buf)
+        FfiConverterTypeStateRevision.write(value.stateRevision, into: &buf)
+        FfiConverterSequenceTypeProjectionEnvelope.write(value.projections, into: &buf)
+        FfiConverterBool.write(value.hasMore, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProjectionBatchEnvelope_lift(_ buf: RustBuffer) throws -> ProjectionBatchEnvelope {
+    return try FfiConverterTypeProjectionBatchEnvelope.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProjectionBatchEnvelope_lower(_ value: ProjectionBatchEnvelope) -> RustBuffer {
+    return FfiConverterTypeProjectionBatchEnvelope.lower(value)
+}
+
+
+public struct ProjectionBatchRequest: Equatable, Hashable {
+    public let requests: [ProjectionRequest]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(requests: [ProjectionRequest]) {
+        self.requests = requests
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ProjectionBatchRequest: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeProjectionBatchRequest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ProjectionBatchRequest {
+        return
+            try ProjectionBatchRequest(
+                requests: FfiConverterSequenceTypeProjectionRequest.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ProjectionBatchRequest, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeProjectionRequest.write(value.requests, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProjectionBatchRequest_lift(_ buf: RustBuffer) throws -> ProjectionBatchRequest {
+    return try FfiConverterTypeProjectionBatchRequest.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProjectionBatchRequest_lower(_ value: ProjectionBatchRequest) -> RustBuffer {
+    return FfiConverterTypeProjectionBatchRequest.lower(value)
+}
+
+
 public struct ProjectionEnvelope: Equatable, Hashable {
     public let contractVersion: UInt32
     public let stateRevision: StateRevision
@@ -24657,6 +24769,56 @@ fileprivate struct FfiConverterSequenceTypePodcastDirectoryEntry: FfiConverterRu
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypePodcastDirectoryEntry.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeProjectionEnvelope: FfiConverterRustBuffer {
+    typealias SwiftType = [ProjectionEnvelope]
+
+    public static func write(_ value: [ProjectionEnvelope], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeProjectionEnvelope.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ProjectionEnvelope] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ProjectionEnvelope]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeProjectionEnvelope.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeProjectionRequest: FfiConverterRustBuffer {
+    typealias SwiftType = [ProjectionRequest]
+
+    public static func write(_ value: [ProjectionRequest], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeProjectionRequest.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ProjectionRequest] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ProjectionRequest]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeProjectionRequest.read(from: &buf))
         }
         return seq
     }

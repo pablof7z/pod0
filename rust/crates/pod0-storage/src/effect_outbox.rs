@@ -165,7 +165,11 @@ impl EffectOutbox {
                  json_type(i.request_json,'$.execution.ModelChapter.request.action.Recover') \
                  IS NOT NULL OR json_extract(i.request_json,\
                  '$.execution.AgentCapability.request.capability.execution_mode')=\
-                 'RecoverExisting')) AND NOT EXISTS(SELECT 1 FROM \
+                 'RecoverExisting' OR i.effect_kind_code IN(7,8,10) OR (\
+                 i.effect_kind_code=4 AND json_extract(i.request_json,'$.kind')=\
+                 'ModelChapterProvider' AND json_type(i.request_json,\
+                 '$.execution.ModelChapter.request.action.Execute') IS NOT NULL))) \
+                 AND NOT EXISTS(SELECT 1 FROM \
                  pod0_effect_attempts observed WHERE observed.intent_id=i.intent_id \
                  AND observed.state_code=1 AND observed.observed_at_ms IS NOT NULL AND \
                  (json_type(i.request_json,'$.execution.Playback.request.action.ObservePlayback') \

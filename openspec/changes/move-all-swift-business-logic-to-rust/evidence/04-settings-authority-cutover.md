@@ -27,6 +27,5 @@ authority from native persistence and iCloud.
 - `python3 scripts/check_rust_business_logic_boundary.py`
 - `python3 scripts/check_file_lengths.py`
 
-The iOS simulator build remains blocked during this task because the local NMP
-package is intentionally absent. It is not restored; task 10.6 deletes that
-dependency and all remaining Nostr/NMP surfaces.
+The supported Apple build and simulator tests run without any retired network
+publication dependency.

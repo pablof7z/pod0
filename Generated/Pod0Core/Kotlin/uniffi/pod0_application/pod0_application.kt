@@ -6293,6 +6293,87 @@ public object FfiConverterTypePodcastSummary: FfiConverterRustBuffer<PodcastSumm
 
 
 
+data class ProjectionBatchEnvelope (
+    val `contractVersion`: kotlin.UInt
+    ,
+    val `stateRevision`: StateRevision
+    ,
+    val `projections`: List<ProjectionEnvelope>
+    ,
+    val `hasMore`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeProjectionBatchEnvelope: FfiConverterRustBuffer<ProjectionBatchEnvelope> {
+    override fun read(buf: ByteBuffer): ProjectionBatchEnvelope {
+        return ProjectionBatchEnvelope(
+            FfiConverterUInt.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterSequenceTypeProjectionEnvelope.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ProjectionBatchEnvelope) = (
+            FfiConverterUInt.allocationSize(value.`contractVersion`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`stateRevision`) +
+            FfiConverterSequenceTypeProjectionEnvelope.allocationSize(value.`projections`) +
+            FfiConverterBoolean.allocationSize(value.`hasMore`)
+    )
+
+    override fun write(value: ProjectionBatchEnvelope, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`contractVersion`, buf)
+            FfiConverterTypeStateRevision.write(value.`stateRevision`, buf)
+            FfiConverterSequenceTypeProjectionEnvelope.write(value.`projections`, buf)
+            FfiConverterBoolean.write(value.`hasMore`, buf)
+    }
+}
+
+
+
+data class ProjectionBatchRequest (
+    val `requests`: List<ProjectionRequest>
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeProjectionBatchRequest: FfiConverterRustBuffer<ProjectionBatchRequest> {
+    override fun read(buf: ByteBuffer): ProjectionBatchRequest {
+        return ProjectionBatchRequest(
+            FfiConverterSequenceTypeProjectionRequest.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ProjectionBatchRequest) = (
+            FfiConverterSequenceTypeProjectionRequest.allocationSize(value.`requests`)
+    )
+
+    override fun write(value: ProjectionBatchRequest, buf: ByteBuffer) {
+            FfiConverterSequenceTypeProjectionRequest.write(value.`requests`, buf)
+    }
+}
+
+
+
 data class ProjectionEnvelope (
     val `contractVersion`: kotlin.UInt
     ,
@@ -30469,6 +30550,62 @@ public object FfiConverterSequenceTypePodcastDirectoryEntry: FfiConverterRustBuf
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypePodcastDirectoryEntry.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeProjectionEnvelope: FfiConverterRustBuffer<List<ProjectionEnvelope>> {
+    override fun read(buf: ByteBuffer): List<ProjectionEnvelope> {
+        val len = buf.getInt()
+        return List<ProjectionEnvelope>(len) {
+            FfiConverterTypeProjectionEnvelope.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<ProjectionEnvelope>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeProjectionEnvelope.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<ProjectionEnvelope>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeProjectionEnvelope.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeProjectionRequest: FfiConverterRustBuffer<List<ProjectionRequest>> {
+    override fun read(buf: ByteBuffer): List<ProjectionRequest> {
+        val len = buf.getInt()
+        return List<ProjectionRequest>(len) {
+            FfiConverterTypeProjectionRequest.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<ProjectionRequest>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeProjectionRequest.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<ProjectionRequest>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeProjectionRequest.write(it, buf)
         }
     }
 }
