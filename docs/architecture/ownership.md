@@ -1,9 +1,10 @@
-# Swift ownership inventory
+# Cross-platform ownership inventory
 
-The machine-readable inventory is
-[`ownership.json`](ownership.json). It classifies every production Swift file
-by behavior and target ownership rather than by assuming a directory is native
-or shared.
+[`ownership.json`](ownership.json) defines owners and selectors.
+[`ownership-coverage.json`](ownership-coverage.json) defines the production
+Swift, Kotlin, and Rust roots plus the exact behavioral manifests and derived
+transition, internal-command, projection, and durable-store surfaces. Together
+they classify product source and behavior rather than trusting directory labels.
 
 Validate it from the repository root:
 
@@ -11,9 +12,10 @@ Validate it from the repository root:
 python3 scripts/check_architecture_ownership.py
 ```
 
-The check fails when a production Swift file is uncovered, covered by multiple
-owners, attached to an unsupported classification, or assigned to a migrating
-owner without both a GitHub migration issue and a deletion target.
+The check fails when a production source or behavioral surface is uncovered or
+multiply owned, a behavioral identity is duplicated, a fact resolves to more
+than one domain owner, a classification is unsupported, or a migrating owner
+lacks both a migration issue and deletion target.
 
 ## Baseline interpretation
 
@@ -28,7 +30,10 @@ owner without both a GitHub migration issue and a deletion target.
   zero.
 - **Undecided pending investigation:** forbidden for production business
   logic. Investigation can own a decision artifact, not a shipping policy.
-
+- **Rust business authority:** domain-specific Rust state machines, transitions,
+  facts, stores, and bounded projections own cross-platform product meaning.
+- **Generated binding:** Swift/Kotlin transport output derives from one Rust
+  contract and cannot own policy.
 The inventory plus the exact exception manifest is a ratchet, not permission
 to add temporary native policy. `current_owner`, `target_owner`,
 `migration_issues`, and `deletion_target` document removal responsibility.
@@ -41,9 +46,10 @@ to add temporary native policy. `current_owner`, `target_owner`,
    authoritative after #97; remaining work migrates derived knowledge policy,
    not transcript selection back to Swift.
 3. Download intent and recovery: #115–#119; scheduled-agent workflow and
-   artifact ownership: #125–#130. Rust now owns active agent conversations,
-   memories, scheduled state, model usage, generated audio provenance, and
-   readers are development-only cleanup debt with no release-based retention.
+   artifact ownership: #125–#130. Rust owns active agent conversations,
+   memories, scheduled state, model usage, and generated audio provenance.
+   Residual migration readers are development-only cleanup debt with no
+   release-based retention.
 4. Native UI and platform capabilities remain native and converge on typed
    host/projection boundaries as their domains migrate.
 

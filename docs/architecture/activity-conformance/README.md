@@ -14,6 +14,13 @@ a recovery, authoritative mutation, or native execution surface.
 new enum variant or detected surface fails until it has an explicit Rust owner,
 fact policy, child issue, and migration status.
 
+`scripts/check_architecture_ownership.py` also consumes these manifests through
+`ownership-coverage.json`. It requires one owner for every command, host effect,
+observation, fact, recovery/mutation/native-execution surface, and for derived
+transition, internal-command, projection, and durable-store modules. The same
+check classifies every production Swift, Kotlin, and Rust source file, so a
+directory label cannot substitute for an ownership decision.
+
 An inventory row is not proof that the target architecture is implemented.
 `implementation_status` deliberately distinguishes registered legacy/current
 surfaces from completed enforcement. Issue #219 may close only when every row

@@ -1,6 +1,7 @@
 ## 1. Reconcile Scope and Freeze the Baseline
 
-- [ ] 1.2 Expand the ownership inventory to cover every production Swift, Kotlin, and Rust file plus each mutable fact, durable store, command, projection, effect, observation, and recovery path; verify the inventory reports no missing or multiply owned entry.
+- [x] 1.1 Reconcile the applied subsystem-removal and repository-state changes, record overlapping files, and verify no later task restores deleted behavior.
+- [x] 1.2 Expand the ownership inventory to cover every production Swift, Kotlin, and Rust file plus each mutable fact, durable store, command, projection, effect, observation, and recovery path; verify the inventory reports no missing or multiply owned entry.
 - [ ] 1.3 Capture the pre-migration test, architecture-check, storage-version, startup/recovery, projection-pagination, playback-observation, and provider-payload baselines; verify the evidence is reproducible from documented commands.
 - [ ] 1.4 Map every active Swift business-policy cohort and each of the eleven temporary exceptions to its target Rust owner or an explicit deletion task; verify the mapping has no unassigned item.
 - [ ] 1.5 Define the per-wave authority-marker, backup, migration, validation, and legacy-deletion checklist; verify a fixture proves an interrupted cutover resumes without enabling two writers.

@@ -4,11 +4,15 @@
     "App/Sources/",
     "App/Widget/Sources/"
   ],
+  "coverage_manifest": "docs/architecture/ownership-coverage.json",
   "classifications": [
     "shared_rust_now",
     "native_by_design",
     "temporary_swift",
-    "undecided_pending_investigation"
+    "undecided_pending_investigation",
+    "rust_business_authority",
+    "generated_binding",
+    "delete_without_replacement"
   ],
   "entries": [
     {
@@ -182,7 +186,7 @@
       "current_owner": "Rust owns all active durable workflow intent, lifecycle, and artifact receipts; Swift retains bounded native opportunity and capability adapters plus temporary development importers",
       "target_owner": "Pod0 Rust workflow/application layer",
       "reason": "Desired state, leases, fencing, retry, recovery, and artifact adoption are durable cross-platform decisions.",
-      "boundary": "Native announces BGTask and lifecycle opportunities, executes URLSession, notification, signer, and platform-provider capabilities, and returns typed observations; it never leases or executes durable jobs.",
+      "boundary": "Native announces BGTask and lifecycle opportunities, executes URLSession, notification, and platform-provider capabilities, and returns typed observations; it never leases or executes durable jobs.",
       "persisted_state": "Rust owns authoritative workflow rows, receipts, and generated artifacts. Residual Swift workflow and artifact tables are inactive development-migration inputs; native staging files remain uncommitted capability output until Rust adopts them.",
       "migration_issues": [48, 51, 52, 60, 100, 107, 109, 110, 111, 114, 115, 116, 117, 118, 119, 120, 125, 126, 127, 128, 129, 130, 131, 155],
       "deletion_target": "The active native coordinator and its obsolete metadata executor were deleted by #60. Issue #114 deleted the complete Swift chapter-workflow bridge. Remove remaining development importers in dedicated cleanups as soon as their current cutovers are qualified.",
@@ -290,13 +294,13 @@
     {
       "id": "shared-agent-application-policy",
       "classification": "shared_rust_now",
-      "current_owner": "Rust owns interactive and scheduled turn state, conversation history, model usage, generated audio provenance, tool identity, permissions, fences, supported commits, and publication receipts; Swift retains typed provider/platform capabilities, transient presentation streams, and decode-only rollback compatibility",
+      "current_owner": "Rust owns interactive and scheduled turn state, conversation history, model usage, generated audio provenance, tool identity, permissions, fences, and supported commits; Swift retains typed provider/platform capabilities, transient presentation streams, and decode-only rollback compatibility",
       "target_owner": "Pod0 Rust agent/application layer",
       "reason": "Tool validation, permission, durable commits, jobs, and generated artifact policy must be identical across platforms.",
       "boundary": "The agent permission matrix requires typed Rust proposals, durable grants, effect fences, commits, and bounded projections. Native presents conversations and approvals and returns raw observations for typed platform capabilities.",
-      "persisted_state": "Rust SQLite owns conversations, turns, model usage, memories, scheduled tasks/occurrences, generated audio and artifact provenance, and publication receipts. Swift retains platform files awaiting acknowledged adoption and immutable rollback manifests only.",
+      "persisted_state": "Rust SQLite owns conversations, turns, model usage, memories, scheduled tasks/occurrences, generated audio, and artifact provenance. Swift retains platform files awaiting acknowledged adoption and immutable rollback manifests only.",
       "migration_issues": [60, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138],
-      "deletion_target": "Issues #130, #135, and #136 completed scheduled/conversation/artifact/publication authority cutovers. Facade v45 deleted native catalog and provider-neutral schema ownership. Issue #133 completed the product-proof Rust agent owner; #134 finishes native capability qualification, #137 qualifies the physical-device signer, and #138 removes remaining compatibility ownership.",
+      "deletion_target": "Issues #130, #135, and #136 completed scheduled/conversation/artifact authority cutovers. Facade v45 deleted native catalog and provider-neutral schema ownership. Issue #133 completed the product-proof Rust agent owner; #134 finishes native capability qualification, and #138 removes remaining compatibility ownership.",
       "priority": "high",
       "includes": ["App/Sources/Agent/"]
     },
@@ -367,12 +371,78 @@
       "target_owner": "Pod0 Rust domain/application/workflow layers plus thin native capabilities",
       "reason": "The residual mixed service layer contains unsettled product behavior and thin platform executors. Listening, subscription durability, downloads, transcript workflow state, scheduled agents, active conversations, and generated audio have already moved to Rust and must not reappear here.",
       "boundary": "Migrated domains use typed Rust commands and projections. Temporary behavior writes only through its declared typed owner and may not create a second durable store.",
-      "persisted_state": "Temporary durable Swift state is limited to categories and explicitly unmigrated adjuncts. Migrated library, workflow, conversation, memory, artifact, activity, and publication facts remain Rust-owned or retired.",
+      "persisted_state": "Temporary durable Swift state is limited to categories and explicitly unmigrated adjuncts. Migrated library, workflow, conversation, memory, artifact, and activity facts remain Rust-owned.",
       "migration_issues": [58, 59, 60, 69, 79, 80, 81, 82, 83, 94, 95, 96, 97, 115, 116, 117, 118, 119, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138],
       "deletion_target": "Issues #60, #119, #130, #133, #134, and #138 removed durable workflow and agent authority from this layer. Remaining categorization and clip-boundary assistance are one-shot product surfaces outside #60; product proof #56 determines the clip path while categorization stays isolated until it receives a named owner decision.",
       "priority": "high",
       "includes": ["App/Sources/Services/"],
       "excludes": ["App/Sources/Services/AssemblyAICredentialStore.swift", "App/Sources/Services/BYOK", "App/Sources/Services/ClipExporter.swift", "App/Sources/Services/DataExport.swift", "App/Sources/Services/DeepLinkHandler.swift", "App/Sources/Services/ElevenLabsCredentialStore.swift", "App/Sources/Services/EpisodeDownloadService+Delegate.swift", "App/Sources/Services/HandoffActivityType.swift", "App/Sources/Services/KeychainStore.swift", "App/Sources/Services/NotificationService.swift", "App/Sources/Services/NowPlayingSnapshotStore.swift", "App/Sources/Services/OllamaCredentialStore.swift", "App/Sources/Services/OpenRouterCredentialStore.swift", "App/Sources/Services/PerplexityCredentialStore.swift", "App/Sources/Services/Pod0FeedbackProtocol.swift", "App/Sources/Services/PodcastCatalogEpisodeSearchService.swift", "App/Sources/Services/SharedEpisodeImportCoordinator.swift", "App/Sources/Services/RecallProviderService.swift", "App/Sources/Services/ReviewPrompt.swift", "App/Sources/Services/SpotlightIndexer.swift", "App/Sources/Services/SpotlightIndexer+Erasure.swift", "App/Sources/Services/WorkflowClient.swift", "App/Sources/Services/WorkflowClient+Intents.swift", "App/Sources/Services/iCloudSettingsSync.swift"]
+    },
+    {
+      "id": "rust-domain-authority",
+      "classification": "rust_business_authority",
+      "current_owner": "Pod0 Rust domain crate",
+      "target_owner": "Pod0 Rust domain state machines and value types",
+      "reason": "Cross-platform invariants and product identities belong to Rust.",
+      "boundary": "Pure typed domain behavior; no platform execution or direct storage.",
+      "persisted_state": "None directly; storage persists domain values.",
+      "priority": "keep_rust",
+      "includes": ["rust/crates/pod0-domain/src/"]
+    },
+    {
+      "id": "rust-application-authority",
+      "classification": "rust_business_authority",
+      "current_owner": "Pod0 Rust application crate",
+      "target_owner": "Domain-specific Rust application state machines",
+      "reason": "Commands, transitions, facts, effects, observations, and internal commands are product policy.",
+      "boundary": "Plan typed atomic transitions; execute no platform capability directly.",
+      "persisted_state": "Only through the storage transition boundary.",
+      "priority": "keep_rust",
+      "includes": ["rust/crates/pod0-application/src/"]
+    },
+    {
+      "id": "rust-storage-authority",
+      "classification": "rust_business_authority",
+      "current_owner": "Pod0 Rust storage crate",
+      "target_owner": "Rust versioned schemas and atomic transition commits",
+      "reason": "Authoritative product state requires one durable cross-platform writer.",
+      "boundary": "Persist owner-planned transitions; do not invent product outcomes.",
+      "persisted_state": "Rust SQLite state, facts, receipts, internal commands, effects, and projections.",
+      "priority": "keep_rust",
+      "includes": ["rust/crates/pod0-storage/src/"]
+    },
+    {
+      "id": "rust-facade-boundary",
+      "classification": "rust_business_authority",
+      "current_owner": "Pod0 Rust facade crate",
+      "target_owner": "Typed cross-platform Rust ingress and bounded projections",
+      "reason": "All native product intent and observation ingress crosses the Rust facade.",
+      "boundary": "Route to domain owners and expose projections; no native-owned mutation fallback.",
+      "persisted_state": "Runtime handles only; durable state remains in Rust storage.",
+      "priority": "keep_rust",
+      "includes": ["rust/crates/pod0-facade/src/"]
+    },
+    {
+      "id": "rust-native-capability-hosts",
+      "classification": "native_by_design",
+      "current_owner": "Rust executable and platform capability adapters",
+      "target_owner": "Literal capability executors behind application leases",
+      "reason": "System, media, TTS, live-provider, and CLI processes execute bounded external capabilities.",
+      "boundary": "Execute exact requests and return raw observations; own no product policy.",
+      "persisted_state": "Transient buffers, handles, and staged artifacts only.",
+      "priority": "keep_native",
+      "includes": ["rust/crates/pod0-live-hosts/src/", "rust/crates/pod0-system-hosts/src/", "rust/crates/pod0-tts-host/src/", "rust/crates/pod0-portable-media/src/", "rust/crates/pod0-cli/src/"]
+    },
+    {
+      "id": "generated-kotlin-contract",
+      "classification": "generated_binding",
+      "current_owner": "Generated Kotlin UniFFI bindings",
+      "target_owner": "Rust contract generator output",
+      "reason": "Kotlin consumes the same Rust-owned contract as Swift.",
+      "boundary": "Generated transport types only; never hand-edit product policy here.",
+      "persisted_state": "None.",
+      "priority": "generated",
+      "includes": ["Generated/Pod0Core/Kotlin/"]
     }
   ]
 }
