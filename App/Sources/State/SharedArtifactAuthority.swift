@@ -7,4 +7,5 @@ struct SharedArtifactAuthority {
     var notes = false
     var clips = false
     var settings = false
+    var categories = false
 }
