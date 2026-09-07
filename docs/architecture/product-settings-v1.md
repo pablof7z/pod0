@@ -1,8 +1,8 @@
 # Product settings v1
 
-Task 4.1 establishes the dormant Rust settings owner. It does not commit the
-legacy-import authority marker or redirect native callers; those are task 4.2
-and task 4.4 responsibilities.
+Tasks 4.1 and 4.2 establish and activate the Rust settings owner. Task 4.4
+replaces the transitional whole-record UI command with narrower typed intents
+and bounded settings projections.
 
 ## Durable state
 
@@ -36,3 +36,18 @@ not duplicated in either evidence table.
 
 The sync transport remains a native capability. It may carry versioned
 snapshots, but it neither validates nor chooses a winner.
+
+## One-time authority cutover
+
+Bootstrap converts the supported portable fields from legacy `Settings` into
+`ProductSettingsValues`. The values, their validation evidence, and the
+`product_settings` authority marker commit in one SQLite transaction. A retry
+after interruption is safe; a settings row without its marker fails closed;
+and an already-authoritative store ignores later legacy input.
+
+After the marker is verified, AppState persistence redacts portable product
+values while retaining device-local credential handles and connection
+metadata. UI updates commit through the Rust facade before changing the Swift
+read model. iCloud carries a schema version, writer counter, stable writer
+identity, and portable values; Rust validates and merges every observation
+before the canonical projection is mirrored back to iCloud.

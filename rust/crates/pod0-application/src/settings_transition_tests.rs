@@ -16,6 +16,7 @@ fn local_change_advances_authoritative_and_writer_revisions() {
     let plan = plan_settings_transition(
         command(1),
         StateRevision::new(40),
+        true,
         Some(&current),
         SettingsChange::Local {
             expected_revision: StateRevision::new(7),
@@ -59,6 +60,7 @@ fn stale_local_and_invalid_remote_candidates_never_mutate() {
     let stale = plan_settings_transition(
         command(4),
         StateRevision::new(40),
+        true,
         Some(&current),
         SettingsChange::Local {
             expected_revision: StateRevision::new(6),
@@ -80,6 +82,7 @@ fn stale_local_and_invalid_remote_candidates_never_mutate() {
     let rejected = plan_settings_transition(
         command(5),
         StateRevision::new(40),
+        true,
         Some(&current),
         SettingsChange::Remote {
             schema_version: PRODUCT_SETTINGS_SCHEMA_VERSION,
@@ -97,6 +100,42 @@ fn stale_local_and_invalid_remote_candidates_never_mutate() {
     assert_ne!(mutation.validation, SettingsValidationState::Valid);
 }
 
+#[test]
+fn local_and_remote_changes_are_rejected_before_import_authority() {
+    let local = plan_settings_transition(
+        command(6),
+        StateRevision::new(40),
+        false,
+        None,
+        SettingsChange::Local {
+            expected_revision: StateRevision::INITIAL,
+            writer_id: digest(1),
+            values: ProductSettingsValues::default(),
+        },
+    )
+    .unwrap();
+    let remote = plan_settings_transition(
+        command(7),
+        StateRevision::new(40),
+        false,
+        None,
+        SettingsChange::Remote {
+            schema_version: PRODUCT_SETTINGS_SCHEMA_VERSION,
+            writer_version: SettingsWriterVersion {
+                counter: 1,
+                writer_id: digest(2),
+            },
+            values: ProductSettingsValues::default(),
+        },
+    )
+    .unwrap();
+    let missing = RequestDisposition::Rejected {
+        reason: RequestRejectionReason::MissingPrerequisite,
+    };
+    assert_eq!(local.disposition(), missing);
+    assert_eq!(remote.disposition(), missing);
+}
+
 fn remote_plan(
     current: &ProductSettings,
     candidate: &ProductSettings,
@@ -105,6 +144,7 @@ fn remote_plan(
     plan_settings_transition(
         command(id),
         StateRevision::new(40),
+        true,
         Some(current),
         SettingsChange::Remote {
             schema_version: candidate.schema_version,

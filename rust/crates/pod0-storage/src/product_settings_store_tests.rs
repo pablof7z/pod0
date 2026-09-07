@@ -9,16 +9,24 @@ use crate::library_store_tests::imported_fixture;
 use crate::{LibraryStore, commit_listening_cutover};
 
 #[test]
-fn versioned_defaults_are_durable_and_restart_safe() {
+fn clean_legacy_import_is_durable_authoritative_and_restart_safe() {
     let fixture = imported_fixture();
     commit_listening_cutover(&fixture.target, 1_800_000_000_000).unwrap();
     let store = LibraryStore::open_authoritative(&fixture.target).unwrap();
     assert_eq!(store.product_settings().unwrap(), None);
 
     let outcome = store
-        .initialize_product_settings_defaults(command(1), digest(1), digest(8), 1_800_000_000_001)
+        .import_legacy_product_settings(
+            command(1),
+            digest(1),
+            7,
+            digest(8),
+            ProductSettingsValues::default(),
+            1_800_000_000_001,
+        )
         .unwrap();
     assert!(outcome.changed);
+    assert!(outcome.authoritative);
     assert_eq!(outcome.validation, SettingsValidationState::Valid);
     let settings = outcome.settings.unwrap();
     assert_eq!(settings.schema_version, PRODUCT_SETTINGS_SCHEMA_VERSION);
@@ -30,6 +38,131 @@ fn versioned_defaults_are_durable_and_restart_safe() {
             .unwrap(),
         Some(settings)
     );
+}
+
+#[test]
+fn populated_legacy_import_preserves_values_and_single_writer_authority() {
+    let fixture = imported_fixture();
+    commit_listening_cutover(&fixture.target, 1_800_000_000_000).unwrap();
+    let store = LibraryStore::open_authoritative(&fixture.target).unwrap();
+    let mut values = ProductSettingsValues::default();
+    values.agent_display_name = "Migrated Agent".to_owned();
+    values.skip_forward_seconds = 45;
+
+    let outcome = store
+        .import_legacy_product_settings(
+            command(2),
+            digest(2),
+            41,
+            digest(8),
+            values.clone(),
+            1_800_000_000_002,
+        )
+        .unwrap();
+
+    assert!(outcome.authoritative);
+    assert_eq!(outcome.settings.unwrap().values, values);
+    let replay = store
+        .import_legacy_product_settings(
+            command(3),
+            digest(3),
+            42,
+            digest(9),
+            ProductSettingsValues::default(),
+            1_800_000_000_003,
+        )
+        .unwrap();
+    assert_eq!(
+        replay.receipt.disposition,
+        RequestDisposition::AlreadyComplete
+    );
+    assert!(!replay.changed);
+    assert!(replay.authoritative);
+    assert_eq!(replay.settings.unwrap().values, values);
+}
+
+#[test]
+fn interrupted_legacy_import_rolls_back_and_retries_atomically() {
+    let fixture = imported_fixture();
+    commit_listening_cutover(&fixture.target, 1_800_000_000_000).unwrap();
+    let store = LibraryStore::open_authoritative(&fixture.target).unwrap();
+    let connection = Connection::open(&fixture.target).unwrap();
+    connection
+        .execute_batch(
+            "CREATE TRIGGER fail_settings_authority BEFORE INSERT ON pod0_domain_cutovers \
+             WHEN NEW.domain='product_settings' BEGIN SELECT RAISE(ABORT,'injected'); END;",
+        )
+        .unwrap();
+
+    assert!(
+        store
+            .import_legacy_product_settings(
+                command(4),
+                digest(4),
+                5,
+                digest(8),
+                ProductSettingsValues::default(),
+                1_800_000_000_004,
+            )
+            .is_err()
+    );
+    assert_eq!(store.product_settings().unwrap(), None);
+    assert!(!store.product_settings_is_authoritative().unwrap());
+
+    connection
+        .execute_batch("DROP TRIGGER fail_settings_authority;")
+        .unwrap();
+    let retry = store
+        .import_legacy_product_settings(
+            command(4),
+            digest(4),
+            5,
+            digest(8),
+            ProductSettingsValues::default(),
+            1_800_000_000_004,
+        )
+        .unwrap();
+    assert!(retry.changed);
+    assert!(retry.authoritative);
+}
+
+#[test]
+fn unmarked_existing_settings_fail_closed_without_overwrite() {
+    let fixture = imported_fixture();
+    commit_listening_cutover(&fixture.target, 1_800_000_000_000).unwrap();
+    let store = LibraryStore::open_authoritative(&fixture.target).unwrap();
+    let mut original = ProductSettingsValues::default();
+    original.agent_display_name = "Original".to_owned();
+    store
+        .import_legacy_product_settings(
+            command(5),
+            digest(5),
+            1,
+            digest(8),
+            original.clone(),
+            1_800_000_000_005,
+        )
+        .unwrap();
+    Connection::open(&fixture.target)
+        .unwrap()
+        .execute(
+            "DELETE FROM pod0_domain_cutovers WHERE domain='product_settings'",
+            [],
+        )
+        .unwrap();
+
+    let result = store.import_legacy_product_settings(
+        command(6),
+        digest(6),
+        2,
+        digest(9),
+        ProductSettingsValues::default(),
+        1_800_000_000_006,
+    );
+
+    assert!(matches!(result, Err(crate::StorageError::ImportConflict)));
+    assert_eq!(store.product_settings().unwrap().unwrap().values, original);
+    assert!(!store.product_settings_is_authoritative().unwrap());
 }
 
 #[test]
@@ -146,10 +279,12 @@ fn invalid_remote_value_records_validation_without_mutating_settings() {
 
 fn seed(store: &LibraryStore, command_offset: u64, writer: u8) {
     let defaults = store
-        .initialize_product_settings_defaults(
+        .import_legacy_product_settings(
             command(command_offset),
             digest(command_offset as u8),
+            command_offset,
             digest(writer),
+            ProductSettingsValues::default(),
             1_800_000_000_000 + command_offset as i64,
         )
         .unwrap()

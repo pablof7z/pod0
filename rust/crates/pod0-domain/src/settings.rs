@@ -2,7 +2,7 @@ use crate::{ContentDigest, StateRevision};
 
 pub const PRODUCT_SETTINGS_SCHEMA_VERSION: u32 = 1;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum HeadphoneGestureSetting {
     SkipForward,
     SkipBackward,
@@ -12,7 +12,7 @@ pub enum HeadphoneGestureSetting {
     None,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum SpeechTranscriptionSetting {
     ElevenLabsScribe,
     AssemblyAi,
@@ -22,7 +22,7 @@ pub enum SpeechTranscriptionSetting {
 
 /// Portable product preferences. Secret material and legacy-only migration
 /// fields are deliberately absent from this type.
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct ProductSettingsValues {
     pub agent_initial_model: String,
     pub agent_initial_model_name: String,
@@ -107,14 +107,23 @@ impl Default for ProductSettingsValues {
 }
 
 #[derive(
-    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    serde::Serialize,
+    serde::Deserialize,
+    uniffi::Record,
 )]
 pub struct SettingsWriterVersion {
     pub counter: u64,
     pub writer_id: ContentDigest,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct ProductSettings {
     pub schema_version: u32,
     pub revision: StateRevision,

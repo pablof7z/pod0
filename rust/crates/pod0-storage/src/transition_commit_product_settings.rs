@@ -23,8 +23,15 @@ pub(crate) fn commit_product_settings_change(
         timestamp,
         |transaction| {
             let revision = current_revision(transaction)?;
+            let authority = crate::product_settings_store::settings_authoritative(transaction)?;
             let current = crate::product_settings_store::read_settings(transaction)?;
-            plan_settings_transition(command_id, revision, current.as_ref(), change)
+            if matches!(&change, SettingsChange::LegacyImport { .. })
+                && !authority
+                && current.is_some()
+            {
+                return Err(StorageError::ImportConflict);
+            }
+            plan_settings_transition(command_id, revision, authority, current.as_ref(), change)
                 .map_err(|_| StorageError::InvalidActivity)
         },
         |transaction, current, mutation| {
@@ -34,6 +41,7 @@ pub(crate) fn commit_product_settings_change(
     let store = LibraryStore::open_authoritative(path)?;
     Ok(SettingsCommitOutcome {
         settings: store.product_settings()?,
+        authoritative: store.product_settings_is_authoritative()?,
         validation: store.read(|connection| {
             crate::product_settings_store::read_validation(connection, command_id)
         })?,
@@ -75,6 +83,23 @@ fn commit_mutation(
     };
     require_revision(transaction, current)?;
     crate::product_settings_store::write_settings(transaction, &next, observed_at_ms)?;
+    if mutation.commit_authority {
+        let generation = mutation
+            .source_generation
+            .ok_or(StorageError::InvalidActivity)?;
+        transaction
+            .execute(
+                "INSERT INTO pod0_domain_cutovers(domain,state,source_generation,core_revision,\
+             committed_at_ms) VALUES('product_settings','authoritative',?1,?2,?3)",
+                rusqlite::params![
+                    i64::try_from(generation).map_err(|_| StorageError::InvalidActivity)?,
+                    i64::try_from(next.revision.value)
+                        .map_err(|_| StorageError::InvalidActivity)?,
+                    observed_at_ms,
+                ],
+            )
+            .map_err(|error| StorageError::sqlite("commit product settings authority", error))?;
+    }
     let revision = crate::library_store::advance_playback_revision(transaction)?;
     (revision == next.revision)
         .then_some(revision)

@@ -685,6 +685,14 @@ public protocol Pod0FacadeProtocol: AnyObject, Sendable {
 
     func verifyLegacyMemoryCutover(sourceGeneration: UInt64)  -> LegacyMemoryCutoverProjection
 
+    func importLegacyProductSettings(commandId: CommandId, sourceGeneration: UInt64, writerId: ContentDigest, values: ProductSettingsValues) throws  -> ProductSettingsAuthorityProjection
+
+    func mergeRemoteProductSettings(commandId: CommandId, schemaVersion: UInt32, writerVersion: SettingsWriterVersion, values: ProductSettingsValues) throws  -> ProductSettingsAuthorityProjection
+
+    func productSettingsAuthority() throws  -> ProductSettingsAuthorityProjection
+
+    func setProductSettings(commandId: CommandId, expectedRevision: StateRevision, writerId: ContentDigest, values: ProductSettingsValues) throws  -> ProductSettingsAuthorityProjection
+
     func dispatch(command: CommandEnvelope)
 
     func nextLeasedHostRequests(maximumCount: UInt16)  -> [LeasedHostRequestEnvelope]
@@ -1070,6 +1078,54 @@ open func verifyLegacyMemoryCutover(sourceGeneration: UInt64) -> LegacyMemoryCut
     uniffi_pod0_facade_fn_method_pod0facade_verify_legacy_memory_cutover(
             self.uniffiCloneHandle(),
         FfiConverterUInt64.lower(sourceGeneration),uniffiCallStatus
+    )
+})
+}
+
+open func importLegacyProductSettings(commandId: CommandId, sourceGeneration: UInt64, writerId: ContentDigest, values: ProductSettingsValues)throws  -> ProductSettingsAuthorityProjection  {
+    return try  FfiConverterTypeProductSettingsAuthorityProjection_lift(try rustCallWithError(FfiConverterTypeFacadeOpenError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_import_legacy_product_settings(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeCommandId_lower(commandId),
+        FfiConverterUInt64.lower(sourceGeneration),
+        FfiConverterTypeContentDigest_lower(writerId),
+        FfiConverterTypeProductSettingsValues_lower(values),uniffiCallStatus
+    )
+})
+}
+
+open func mergeRemoteProductSettings(commandId: CommandId, schemaVersion: UInt32, writerVersion: SettingsWriterVersion, values: ProductSettingsValues)throws  -> ProductSettingsAuthorityProjection  {
+    return try  FfiConverterTypeProductSettingsAuthorityProjection_lift(try rustCallWithError(FfiConverterTypeFacadeOpenError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_merge_remote_product_settings(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeCommandId_lower(commandId),
+        FfiConverterUInt32.lower(schemaVersion),
+        FfiConverterTypeSettingsWriterVersion_lower(writerVersion),
+        FfiConverterTypeProductSettingsValues_lower(values),uniffiCallStatus
+    )
+})
+}
+
+open func productSettingsAuthority()throws  -> ProductSettingsAuthorityProjection  {
+    return try  FfiConverterTypeProductSettingsAuthorityProjection_lift(try rustCallWithError(FfiConverterTypeFacadeOpenError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_product_settings_authority(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+
+open func setProductSettings(commandId: CommandId, expectedRevision: StateRevision, writerId: ContentDigest, values: ProductSettingsValues)throws  -> ProductSettingsAuthorityProjection  {
+    return try  FfiConverterTypeProductSettingsAuthorityProjection_lift(try rustCallWithError(FfiConverterTypeFacadeOpenError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_set_product_settings(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeCommandId_lower(commandId),
+        FfiConverterTypeStateRevision_lower(expectedRevision),
+        FfiConverterTypeContentDigest_lower(writerId),
+        FfiConverterTypeProductSettingsValues_lower(values),uniffiCallStatus
     )
 })
 }
@@ -4933,6 +4989,60 @@ public func FfiConverterTypeNativeErasureAction_lower(_ value: NativeErasureActi
 }
 
 
+public struct ProductSettingsAuthorityProjection: Equatable, Hashable {
+    public let authoritative: Bool
+    public let settings: ProductSettings?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(authoritative: Bool, settings: ProductSettings?) {
+        self.authoritative = authoritative
+        self.settings = settings
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ProductSettingsAuthorityProjection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeProductSettingsAuthorityProjection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ProductSettingsAuthorityProjection {
+        return
+            try ProductSettingsAuthorityProjection(
+                authoritative: FfiConverterBool.read(from: &buf),
+                settings: FfiConverterOptionTypeProductSettings.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ProductSettingsAuthorityProjection, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.authoritative, into: &buf)
+        FfiConverterOptionTypeProductSettings.write(value.settings, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProductSettingsAuthorityProjection_lift(_ buf: RustBuffer) throws -> ProductSettingsAuthorityProjection {
+    return try FfiConverterTypeProductSettingsAuthorityProjection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProductSettingsAuthorityProjection_lower(_ value: ProductSettingsAuthorityProjection) -> RustBuffer {
+    return FfiConverterTypeProductSettingsAuthorityProjection.lower(value)
+}
+
+
 public struct SharedListeningStorePreparation: Equatable, Hashable {
     public let fromVersion: UInt32
     public let toVersion: UInt32
@@ -8692,6 +8802,30 @@ fileprivate struct FfiConverterOptionTypeContentDigest: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeProductSettings: FfiConverterRustBuffer {
+    typealias SwiftType = ProductSettings?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeProductSettings.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeProductSettings.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeSpeakerId: FfiConverterRustBuffer {
     typealias SwiftType = SpeakerId?
 
@@ -10295,6 +10429,18 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_memory_cutover() != 30698) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_import_legacy_product_settings() != 47138) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_merge_remote_product_settings() != 65352) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_product_settings_authority() != 60118) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_set_product_settings() != 19162) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_dispatch() != 4557) {

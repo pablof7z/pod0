@@ -12,6 +12,7 @@ use crate::{CommitReceipt, LibraryStore, StorageError};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SettingsCommitOutcome {
     pub settings: Option<ProductSettings>,
+    pub authoritative: bool,
     pub validation: SettingsValidationState,
     pub conflict: Option<SettingsConflictEvidence>,
     pub changed: bool,
@@ -23,18 +24,29 @@ impl LibraryStore {
         self.read(read_settings)
     }
 
-    pub fn initialize_product_settings_defaults(
+    pub fn product_settings_is_authoritative(&self) -> Result<bool, StorageError> {
+        self.read(settings_authoritative)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn import_legacy_product_settings(
         &self,
         command_id: CommandId,
         fingerprint: ContentDigest,
+        source_generation: u64,
         writer_id: ContentDigest,
+        values: ProductSettingsValues,
         observed_at_ms: i64,
     ) -> Result<SettingsCommitOutcome, StorageError> {
         crate::transition_commit::commit_product_settings_change(
             self.path(),
             command_id,
             fingerprint,
-            pod0_application::SettingsChange::Defaults { writer_id },
+            pod0_application::SettingsChange::LegacyImport {
+                source_generation,
+                writer_id,
+                values,
+            },
             observed_at_ms,
         )
     }
@@ -84,6 +96,18 @@ impl LibraryStore {
             observed_at_ms,
         )
     }
+}
+
+pub(crate) fn settings_authoritative(connection: &Connection) -> Result<bool, StorageError> {
+    connection
+        .query_row(
+            "SELECT state='authoritative' FROM pod0_domain_cutovers WHERE domain='product_settings'",
+            [],
+            |row| row.get(0),
+        )
+        .optional()
+        .map(|value| value.unwrap_or(false))
+        .map_err(|error| StorageError::sqlite("read product settings authority", error))
 }
 
 pub(crate) fn read_settings(
@@ -273,7 +297,7 @@ fn loaded_u64(value: i64) -> Result<u64, StorageError> {
 }
 const fn source_code(value: SettingsChangeSource) -> u8 {
     match value {
-        SettingsChangeSource::Defaults => 0,
+        SettingsChangeSource::LegacyImport => 0,
         SettingsChangeSource::Local => 1,
         SettingsChangeSource::Remote => 2,
     }

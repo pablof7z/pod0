@@ -9,13 +9,15 @@ pub(super) fn settings_candidate(
     change: SettingsChange,
 ) -> Result<(u32, SettingsWriterVersion, ProductSettingsValues), TransitionPlanError> {
     Ok(match change {
-        SettingsChange::Defaults { writer_id } => (
+        SettingsChange::LegacyImport {
+            writer_id, values, ..
+        } => (
             PRODUCT_SETTINGS_SCHEMA_VERSION,
             SettingsWriterVersion {
                 counter: 0,
                 writer_id,
             },
-            ProductSettingsValues::default(),
+            values,
         ),
         SettingsChange::Local {
             writer_id, values, ..

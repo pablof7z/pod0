@@ -14,6 +14,10 @@ extension Persistence {
         sharedArtifactAuthority.withLock { $0.notes = true }
     }
 
+    func activateSharedSettingsAuthority() {
+        sharedArtifactAuthority.withLock { $0.settings = true }
+    }
+
     func metadataState(from state: AppState) -> AppState {
         var metadata = state
         metadata.episodes = []
@@ -27,6 +31,9 @@ extension Persistence {
         }
         if sharedArtifactAuthority.withLock({ $0.clips }) {
             metadata.clips = []
+        }
+        if sharedArtifactAuthority.withLock({ $0.settings }) {
+            metadata.settings = ProductSettingsBridge.nativeMetadataOnly(from: state.settings)
         }
         metadata.agentScheduledTasks = []
         metadata.agentMemories = []

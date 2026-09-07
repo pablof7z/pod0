@@ -1,4 +1,5 @@
 import Foundation
+import Pod0Core
 import os.log
 
 // MARK: - iCloudSettingsSync
@@ -25,14 +26,8 @@ import os.log
 ///   - `elevenLabsCredentialSource`, `*BYOKKeyID/Label`, `*ConnectedAt` — same
 ///     reasoning as above
 ///
-/// **Conflict resolution.** `NSUbiquitousKeyValueStore` uses last-write-wins
-/// across devices. On first launch after reinstall (or first launch on a new
-/// device) an explicit merge call prefers iCloud values over the local defaults
-/// so that model preferences are immediately available.
-///
-/// **Loop prevention.** The `isApplyingRemoteChange` flag blocks the outbound
-/// writer while an inbound merge is in progress so that updating `state.settings`
-/// does not immediately re-echo the same values back to iCloud.
+/// iCloud carries values plus version evidence. Rust validates and resolves
+/// every conflict before the resulting projection is rendered or mirrored.
 @MainActor
 final class iCloudSettingsSync {
     nonisolated private static let logger = Logger.app("iCloudSettingsSync")
@@ -42,10 +37,6 @@ final class iCloudSettingsSync {
     static let shared = iCloudSettingsSync()
 
     // MARK: - Private state
-
-    /// Guards against echo-back: set to `true` while applying an inbound
-    /// change so the outbound path skips the write.
-    var isApplyingRemoteChange = false
 
     /// Reference to the underlying key-value store.
     private let kvs = NSUbiquitousKeyValueStore.default
@@ -59,13 +50,9 @@ final class iCloudSettingsSync {
 
     // MARK: - Lifecycle
 
-    /// Registers the notification observer and performs an initial merge so
-    /// that iCloud values are reflected before the first view renders.
-    ///
-    /// Call once from `AppStateStore.init`, passing the freshly loaded state.
-    /// The sync service merges iCloud values in-place; `AppStateStore` should
-    /// assign the mutated settings to `state` before presenting any UI.
-    func start(mergingInto settings: inout Settings) {
+    /// Registers the raw transport observer. Product merging remains in Rust.
+    func start() {
+        guard kvsObserver == nil else { return }
         kvsObserver = NotificationCenter.default.addObserver(
             forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
             object: kvs,
@@ -81,18 +68,32 @@ final class iCloudSettingsSync {
         }
         // Kick off a background fetch from iCloud.
         kvs.synchronize()
-        // One-time merge: prefer stored iCloud values over local defaults.
-        merge(from: kvs, into: &settings)
         Self.logger.info("iCloudSettingsSync started")
     }
 
-    /// Pushes current settings to the key-value store.
-    /// Call whenever settings change (i.e. from `AppStateStore.state.didSet`).
-    ///
-    /// Does nothing when an inbound change is being applied — prevents loops.
-    func push(_ settings: Settings) {
-        guard !isApplyingRemoteChange else { return }
-        write(settings, to: kvs)
+    func push(_ settings: ProductSettings) {
+        let portable = ProductSettingsBridge.applying(settings.values, to: Settings())
+        write(portable, to: kvs)
+        kvs.set(String(settings.schemaVersion), forKey: Key.schemaVersion.rawValue)
+        kvs.set(String(settings.writerVersion.counter), forKey: Key.writerCounter.rawValue)
+        write(settings.writerVersion.writerId, to: kvs)
+    }
+
+    func remoteSnapshot(basedOn settings: Settings) throws -> iCloudProductSettingsSnapshot? {
+        guard Key.portable.contains(where: { kvs.object(forKey: $0.rawValue) != nil }) else {
+            return nil
+        }
+        var merged = settings
+        merge(from: kvs, into: &merged)
+        return iCloudProductSettingsSnapshot(
+            schemaVersion: UInt32(string(.schemaVersion) ?? "") ?? 1,
+            writerVersion: SettingsWriterVersion(
+                counter: UInt64(string(.writerCounter) ?? "") ?? 1,
+                writerId: readWriterID(from: kvs)
+                    ?? SharedLibraryBootstrap.stableDigest("pod0-legacy-icloud-settings-writer")
+            ),
+            values: try ProductSettingsBridge.values(from: merged)
+        )
     }
 
     /// Removes the former Swift-owned recall keys only after the shared core
@@ -138,6 +139,10 @@ final class iCloudSettingsSync {
         if let v = string(.categorizationModelName)           { settings.categorizationModelName = v }
         if let v = string(.chapterCompilationModel), !v.isEmpty { settings.chapterCompilationModel = v }
         if let v = string(.chapterCompilationModelName)       { settings.chapterCompilationModelName = v }
+        if let v = string(.imageGenerationModel), !v.isEmpty  { settings.imageGenerationModel = v }
+        if let v = string(.imageGenerationModelName)          { settings.imageGenerationModelName = v }
+        if let v = string(.ollamaChatURL), !v.isEmpty          { settings.ollamaChatURL = v }
+        if let v = string(.youtubeExtractorURL)                { settings.youtubeExtractorURL = v }
         if let v = string(.embeddingsModel), !v.isEmpty {
             settings.legacyRecallEmbeddingsModel = v
         }
@@ -161,6 +166,7 @@ final class iCloudSettingsSync {
         if let v = bool(.autoMarkPlayedAtEnd)                 { settings.autoMarkPlayedAtEnd = v }
         if let v = bool(.autoPlayNext)                        { settings.autoPlayNext = v }
         if let v = bool(.autoDeleteDownloadsAfterPlayed)      { settings.autoDeleteDownloadsAfterPlayed = v }
+        if let v = bool(.autoSkipAds)                          { settings.autoSkipAds = v }
         if let raw = string(.headphoneDoubleTapAction),
            let v = HeadphoneGestureAction(rawValue: raw)      { settings.headphoneDoubleTapAction = v }
         if let raw = string(.headphoneTripleTapAction),
@@ -186,6 +192,14 @@ final class iCloudSettingsSync {
         kvs.set(settings.categorizationModelName,                 forKey: Key.categorizationModelName.rawValue)
         kvs.set(settings.chapterCompilationModel,                 forKey: Key.chapterCompilationModel.rawValue)
         kvs.set(settings.chapterCompilationModelName,             forKey: Key.chapterCompilationModelName.rawValue)
+        kvs.set(settings.imageGenerationModel,                    forKey: Key.imageGenerationModel.rawValue)
+        kvs.set(settings.imageGenerationModelName,                forKey: Key.imageGenerationModelName.rawValue)
+        kvs.set(settings.ollamaChatURL,                            forKey: Key.ollamaChatURL.rawValue)
+        if let youtubeExtractorURL = settings.youtubeExtractorURL {
+            kvs.set(youtubeExtractorURL, forKey: Key.youtubeExtractorURL.rawValue)
+        } else {
+            kvs.removeObject(forKey: Key.youtubeExtractorURL.rawValue)
+        }
         kvs.set(settings.sttProvider.rawValue,                    forKey: Key.sttProvider.rawValue)
         kvs.set(settings.openRouterWhisperModel,                  forKey: Key.openRouterWhisperModel.rawValue)
         kvs.set(settings.assemblyAISTTModel,                      forKey: Key.assemblyAISTTModel.rawValue)
@@ -199,6 +213,7 @@ final class iCloudSettingsSync {
         kvs.set(settings.autoMarkPlayedAtEnd,                     forKey: Key.autoMarkPlayedAtEnd.rawValue)
         kvs.set(settings.autoPlayNext,                            forKey: Key.autoPlayNext.rawValue)
         kvs.set(settings.autoDeleteDownloadsAfterPlayed,          forKey: Key.autoDeleteDownloadsAfterPlayed.rawValue)
+        kvs.set(settings.autoSkipAds,                              forKey: Key.autoSkipAds.rawValue)
         kvs.set(settings.headphoneDoubleTapAction.rawValue,       forKey: Key.headphoneDoubleTapAction.rawValue)
         kvs.set(settings.headphoneTripleTapAction.rawValue,       forKey: Key.headphoneTripleTapAction.rawValue)
         kvs.set(settings.autoIngestPublisherTranscripts,          forKey: Key.autoIngestPublisherTranscripts.rawValue)
@@ -207,47 +222,24 @@ final class iCloudSettingsSync {
         kvs.set(settings.agentAvatarURLString,                    forKey: Key.agentAvatarURLString.rawValue)
     }
 
-    // MARK: - Key namespace
+    private func string(_ key: Key) -> String? {
+        kvs.object(forKey: key.rawValue) as? String
+    }
 
-    /// Namespaced keys for `NSUbiquitousKeyValueStore` to avoid collisions
-    /// with any other KV store entries.
-    enum Key: String {
-        // RawValues preserved as "sync.settings.llmModel" / "llmModelName" so
-        // existing iCloud KVS entries continue to roundtrip after the rename.
-        case agentInitialModel                   = "sync.settings.llmModel"
-        case agentInitialModelName               = "sync.settings.llmModelName"
-        case agentThinkingModel                  = "sync.settings.agentThinkingModel"
-        case agentThinkingModelName              = "sync.settings.agentThinkingModelName"
-        case memoryCompilationModel              = "sync.settings.memoryCompilationModel"
-        case memoryCompilationModelName          = "sync.settings.memoryCompilationModelName"
-        case wikiModel                           = "sync.settings.wikiModel"
-        case wikiModelName                       = "sync.settings.wikiModelName"
-        case categorizationModel                 = "sync.settings.categorizationModel"
-        case categorizationModelName             = "sync.settings.categorizationModelName"
-        case chapterCompilationModel             = "sync.settings.chapterCompilationModel"
-        case chapterCompilationModelName         = "sync.settings.chapterCompilationModelName"
-        case embeddingsModel                     = "sync.settings.embeddingsModel"
-        case embeddingsModelName                 = "sync.settings.embeddingsModelName"
-        case rerankerEnabled                     = "sync.settings.rerankerEnabled"
-        case sttProvider                         = "sync.settings.sttProvider"
-        case openRouterWhisperModel              = "sync.settings.openRouterWhisperModel"
-        case assemblyAISTTModel                  = "sync.settings.assemblyAISTTModel"
-        case elevenLabsSTTModel                  = "sync.settings.elevenLabsSTTModel"
-        case elevenLabsTTSModel                  = "sync.settings.elevenLabsTTSModel"
-        case elevenLabsVoiceID                   = "sync.settings.elevenLabsVoiceID"
-        case elevenLabsVoiceName                 = "sync.settings.elevenLabsVoiceName"
-        case defaultPlaybackRate                 = "sync.settings.defaultPlaybackRate"
-        case skipForwardSeconds                  = "sync.settings.skipForwardSeconds"
-        case skipBackwardSeconds                 = "sync.settings.skipBackwardSeconds"
-        case autoMarkPlayedAtEnd                 = "sync.settings.autoMarkPlayedAtEnd"
-        case autoPlayNext                        = "sync.settings.autoPlayNext"
-        case autoDeleteDownloadsAfterPlayed      = "sync.settings.autoDeleteDownloadsAfterPlayed"
-        case headphoneDoubleTapAction            = "sync.settings.headphoneDoubleTapAction"
-        case headphoneTripleTapAction            = "sync.settings.headphoneTripleTapAction"
-        case autoIngestPublisherTranscripts      = "sync.settings.autoIngestPublisherTranscripts"
-        case autoFallbackToScribe                = "sync.settings.autoFallbackToScribe"
-        case agentDisplayName                    = "sync.settings.agentDisplayName"
-        case agentAvatarURLString                = "sync.settings.agentAvatarURLString"
+    private func write(_ digest: ContentDigest, to kvs: NSUbiquitousKeyValueStore) {
+        kvs.set(String(digest.word0), forKey: Key.writerWord0.rawValue)
+        kvs.set(String(digest.word1), forKey: Key.writerWord1.rawValue)
+        kvs.set(String(digest.word2), forKey: Key.writerWord2.rawValue)
+        kvs.set(String(digest.word3), forKey: Key.writerWord3.rawValue)
+    }
+
+    private func readWriterID(from kvs: NSUbiquitousKeyValueStore) -> ContentDigest? {
+        guard let word0 = string(.writerWord0).flatMap(UInt64.init),
+              let word1 = string(.writerWord1).flatMap(UInt64.init),
+              let word2 = string(.writerWord2).flatMap(UInt64.init),
+              let word3 = string(.writerWord3).flatMap(UInt64.init)
+        else { return nil }
+        return ContentDigest(word0: word0, word1: word1, word2: word2, word3: word3)
     }
 }
 

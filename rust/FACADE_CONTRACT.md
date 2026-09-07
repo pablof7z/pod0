@@ -147,6 +147,13 @@ the committed revision, replay evidence, and one typed terminal disposition:
 applied, rejected, stale, duplicate, not allowed, already complete, no-op,
 cancelled, failed, or outcome unknown. Native clients do not invent or persist
 these dispositions.
+Contract version 57 replaces native semantic effect outcomes with bounded raw
+observations that Rust alone maps into product truth. Contract version 58 adds
+revision-consistent projection batches capped at 16 requests, with every nested
+projection retaining the existing 200-item bound. Contract version 59 adds the
+one-time product-settings import, Rust-owned local and remote transitions, and
+the authoritative settings projection used by native persistence and sync
+transports.
 Swift still owns transcript-generation/index workflow scheduling, remaining
 agent workflow state, and presentation state until their complete vertical
 facade exposes only Pod0 publication drafts and bounded product audit updates.

@@ -3,9 +3,7 @@ import Observation
 import Pod0Core
 import WidgetKit
 import os.log
-
 /// Native projection and temporary-domain store.
-///
 /// Rust is the sole durable owner of the migrated listening slice. This store
 /// persists unmigrated product domains and a replaceable native read model.
 @MainActor
@@ -15,6 +13,7 @@ final class AppStateStore {
     let productSignals: any ProductSignalSink
     @ObservationIgnored private(set) var sharedLibrary: SharedLibraryClient?
     @ObservationIgnored private(set) var sharedLibraryUnavailableReason: String?
+    @ObservationIgnored var productSettingsProjection: ProductSettings?
     @ObservationIgnored private(set) var startupRecoveryRequired = false
     /// Bounded Rust projection; never persisted as native durable state.
     var newEpisodeNotificationsEnabled = true
@@ -160,7 +159,6 @@ final class AppStateStore {
     /// system has a daily timeline-reload budget that flooding burns
     /// without producing extra refreshes.
     var widgetReloadTask: Task<Void, Never>?
-
     convenience init(
         persistence: Persistence = .shared,
         productSignals: any ProductSignalSink = DiscardingProductSignalSink.shared,
@@ -191,10 +189,16 @@ final class AppStateStore {
         syncSettingsWithICloud = persistence === Persistence.shared
         self.productSignals = productSignals
         var loadedState = preparedStartup.state
-        if syncSettingsWithICloud, !preparedStartup.loadFailed {
-            iCloudSettingsSync.shared.start(mergingInto: &loadedState.settings)
+        var initialProductSettings: ProductSettings?
+        if case .ready(let preparation)? = preparedStartup.bootstrap {
+            initialProductSettings = preparation.productSettings
+            loadedState.settings = ProductSettingsBridge.applying(
+                preparation.productSettings.values,
+                to: loadedState.settings
+            )
         }
         self.state = loadedState
+        productSettingsProjection = initialProductSettings
         if preparedStartup.loadFailed {
             startupRecoveryRequired = true
             sharedLibraryUnavailableReason = "app_state_recovery_required"
@@ -254,6 +258,7 @@ final class AppStateStore {
         // Observe external iCloud changes so settings stay in sync while the
         // app is running on multiple devices simultaneously.
         if syncSettingsWithICloud {
+            iCloudSettingsSync.shared.start()
             iCloudObserver = NotificationCenter.default.addObserver(
                 forName: iCloudSettingsSync.settingsDidChangeExternallyNotification,
                 object: nil,
@@ -263,6 +268,7 @@ final class AppStateStore {
                     self?.applyExternalSettingsChange()
                 }
             }
+            applyExternalSettingsChange()
         }
         // Refresh once for this foreground lifecycle. Later opportunities are
         // delivered by foreground notifications and BGTaskScheduler.
@@ -270,13 +276,11 @@ final class AppStateStore {
             SubscriptionRefreshService.shared.startLifecycleRefresh(store: self)
         }
     }
-
     deinit {
         // NotificationCenter retains observer tokens until they're removed,
         // even after the registering instance dies. Without this, the
         // closure would keep firing into a `nil` self (harmless but noisy)
         // and the test target would leak observers across runs.
-        //
         // Swift 6 deinit is nonisolated; we can't touch the @MainActor
         // stored properties from here directly. The observer tokens and
         // Task we need to clean up are conceptually owned by the actor,

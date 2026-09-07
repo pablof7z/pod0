@@ -16,8 +16,10 @@ use pod0_domain::{
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SettingsChange {
-    Defaults {
+    LegacyImport {
+        source_generation: u64,
         writer_id: ContentDigest,
+        values: ProductSettingsValues,
     },
     Local {
         expected_revision: StateRevision,
@@ -33,7 +35,7 @@ pub enum SettingsChange {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum SettingsChangeSource {
-    Defaults,
+    LegacyImport,
     Local,
     Remote,
 }
@@ -58,6 +60,8 @@ pub struct SettingsMutation {
     pub source: SettingsChangeSource,
     pub candidate_schema_version: u32,
     pub candidate_version: SettingsWriterVersion,
+    pub source_generation: Option<u64>,
+    pub commit_authority: bool,
     pub next: Option<ProductSettings>,
     pub validation: SettingsValidationState,
     pub conflict: Option<SettingsConflictEvidence>,
@@ -69,10 +73,17 @@ pub type SettingsTransitionPlan =
 pub fn plan_settings_transition(
     command_id: CommandId,
     current_revision: StateRevision,
+    authority: bool,
     current: Option<&ProductSettings>,
     change: SettingsChange,
 ) -> Result<SettingsTransitionPlan, TransitionPlanError> {
     let source = source(&change);
+    let source_generation = match &change {
+        SettingsChange::LegacyImport {
+            source_generation, ..
+        } => Some(*source_generation),
+        _ => None,
+    };
     let revision_conflict = match &change {
         SettingsChange::Local {
             expected_revision, ..
@@ -90,6 +101,16 @@ pub fn plan_settings_transition(
     };
     let (disposition, selected, conflict) = if validation != SettingsValidationState::Valid {
         (rejected_invalid(), None, None)
+    } else if authority && source == SettingsChangeSource::LegacyImport {
+        (RequestDisposition::AlreadyComplete, None, None)
+    } else if !authority && source != SettingsChangeSource::LegacyImport {
+        (
+            RequestDisposition::Rejected {
+                reason: RequestRejectionReason::MissingPrerequisite,
+            },
+            None,
+            None,
+        )
     } else if revision_conflict {
         (
             RequestDisposition::Rejected {
@@ -111,6 +132,7 @@ pub fn plan_settings_transition(
     } else {
         current_revision
     };
+    let commit_authority = selected.is_some() && source == SettingsChangeSource::LegacyImport;
     let next = selected.map(|values| ProductSettings {
         schema_version: PRODUCT_SETTINGS_SCHEMA_VERSION,
         revision: committed_revision,
@@ -126,6 +148,8 @@ pub fn plan_settings_transition(
             source,
             candidate_schema_version: schema_version,
             candidate_version: version,
+            source_generation,
+            commit_authority,
             next,
             validation,
             conflict,
@@ -147,9 +171,6 @@ fn select(
     let Some(current) = current else {
         return (RequestDisposition::Accepted, Some(values), None);
     };
-    if source == SettingsChangeSource::Defaults {
-        return (RequestDisposition::NoSemanticChange, None, None);
-    }
     if source == SettingsChangeSource::Local && values == current.values {
         return (RequestDisposition::NoSemanticChange, None, None);
     }
@@ -204,12 +225,12 @@ fn build_plan(
     let identity = crate::CommandActivityIdentity::new(command_id);
     let transaction_id = identity.transaction_id();
     let actor = match mutation.source {
-        SettingsChangeSource::Defaults => ActivityActor::Migration,
+        SettingsChangeSource::LegacyImport => ActivityActor::Migration,
         SettingsChangeSource::Local => ActivityActor::User,
         SettingsChangeSource::Remote => ActivityActor::System,
     };
     let origin = match mutation.source {
-        SettingsChangeSource::Defaults => ActivityOrigin::Migration,
+        SettingsChangeSource::LegacyImport => ActivityOrigin::Migration,
         SettingsChangeSource::Local => ActivityOrigin::UserInterface,
         SettingsChangeSource::Remote => ActivityOrigin::HostObservation,
     };
@@ -228,19 +249,23 @@ fn build_plan(
     };
     let head = fact(0, ActivityFact::RequestDisposition { disposition });
     let facts = if mutation.next.is_some() {
-        NonEmptyActivityFacts::from_head_and_tail(
-            head,
-            vec![fact(
-                1,
-                ActivityFact::DomainTransition {
-                    kind: DomainTransitionKind::UserArtifact(
-                        UserArtifactTransition::SettingChanged,
-                    ),
-                    previous_revision: current,
-                    committed_revision: committed,
+        let mut tail = vec![fact(
+            1,
+            ActivityFact::DomainTransition {
+                kind: DomainTransitionKind::UserArtifact(UserArtifactTransition::SettingChanged),
+                previous_revision: current,
+                committed_revision: committed,
+            },
+        )];
+        if mutation.commit_authority {
+            tail.push(fact(
+                2,
+                ActivityFact::AuthorityCutover {
+                    domain: crate::ActivityDomain::UserArtifact,
                 },
-            )],
-        )
+            ));
+        }
+        NonEmptyActivityFacts::from_head_and_tail(head, tail)
     } else {
         NonEmptyActivityFacts::new(head)
     };
@@ -256,7 +281,7 @@ fn build_plan(
 
 fn source(change: &SettingsChange) -> SettingsChangeSource {
     match change {
-        SettingsChange::Defaults { .. } => SettingsChangeSource::Defaults,
+        SettingsChange::LegacyImport { .. } => SettingsChangeSource::LegacyImport,
         SettingsChange::Local { .. } => SettingsChangeSource::Local,
         SettingsChange::Remote { .. } => SettingsChangeSource::Remote,
     }
