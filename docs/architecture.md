@@ -19,7 +19,9 @@ chapters, notes, and clips; download desired state and recovery; recall
 configuration, indexing, and retrieval; publisher and model chapter workflows;
 scheduled-agent definitions, occurrences, and artifacts; interactive
 product-proof agent conversations, proposals, permissions, recall citations,
-feed-discovery download/notification policy with durable recovery. The facade contract is now version 56. It exposes bounded commands,
+model usage, generated audio provenance, and feed-discovery
+download/notification policy with durable recovery. The facade contract is now
+version 57. It exposes bounded commands,
 projections, domain events, and correlated host requests across those migrated
 domains. Exact integer milliseconds, stable identifiers, explicit revisions,
 effect fences, cancellation, and typed failure states prevent native adapters
@@ -29,8 +31,8 @@ Cancellable native host adapters execute URLSession/provider primitives,
 AVFoundation playback, Keychain/security prompts, platform files,
 notifications, speech, and other Apple capabilities. Swift renders Rust
 projections and retains durable authority only for explicitly unmigrated
-publication semantics and receipts are Rust-owned over the exactly pinned
-smoke tests and Android-compatible Rust builds are readiness checks only.
+domains. Live Apple tests, Rust tests, Kotlin binding smoke tests, and
+Android-compatible Rust builds are readiness checks only.
 
 ### Application state
 
@@ -51,7 +53,7 @@ memory authority are verified and is then excluded from every native write.
 
 `pod0-core.sqlite` is authoritative for migrated library/listening, playback,
 notes, clips, transcripts, chapters, downloads, recall, scheduled-agent,
-interactive-agent, generated-artifact, and publication-receipt state.
+interactive-agent, and generated-artifact state.
 `Persistence` remains SQLite-authoritative for unmigrated and adjunct Swift
 state. Normal reads and writes do not compare a JSON store.
 

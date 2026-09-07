@@ -1,7 +1,7 @@
 use pod0_application::{
-    ChapterModelFailureEvidence, ChapterModelObservationMode, ChapterModelRetryDisposition,
-    ChapterObservationProjection, ModelChapterObservation, classify_chapter_model_failure,
-    qualify_model_chapter_observation,
+    ChapterModelFailureEvidence, ChapterModelFailurePhase, ChapterModelObservationMode,
+    ChapterModelRetryDisposition, ChapterObservationProjection, ModelChapterObservation,
+    classify_chapter_model_failure, qualify_model_chapter_observation,
 };
 use pod0_storage::{
     ModelChapterFailureDisposition, ModelChapterFailureInput, ModelChapterFinalizationAction,
@@ -199,7 +199,12 @@ impl FacadeState {
         record: &ModelChapterWorkflowRecord,
         evidence: ChapterModelFailureEvidence,
     ) -> bool {
-        let classification = classify_chapter_model_failure(evidence);
+        let classification = classify_chapter_model_failure(
+            evidence,
+            ChapterModelFailurePhase {
+                submission_authorized: record.submission_authorized_at_ms.is_some(),
+            },
+        );
         let disposition = if classification.retry == ChapterModelRetryDisposition::Replan {
             ModelChapterFailureDisposition::Replan
         } else {

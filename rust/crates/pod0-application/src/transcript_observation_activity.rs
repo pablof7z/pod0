@@ -7,8 +7,9 @@ use crate::{
     ActivityActor, ActivityFact, ActivityFactDraft, ActivityFailureCode, ActivityOrigin,
     ActivitySubject, DomainTransitionKind, DurableExternalEffectRequest,
     DurableInternalCommandRequest, EffectObservationActivityIdentity, EffectOutcome,
-    NonEmptyActivityFacts, RequestDisposition, TranscriptCapabilityObservation,
-    TranscriptFailureEvidence, TranscriptTransition, TransitionPlan, TransitionPlanError,
+    NonEmptyActivityFacts, RequestDisposition, TranscriptFailureTransition,
+    TranscriptObservationDecision, TranscriptTransition, TranscriptWorkflowFailureCode,
+    TransitionPlan, TransitionPlanError,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -28,24 +29,32 @@ pub struct TranscriptObservationActivityInput {
 
 #[must_use]
 pub fn transcript_observation_semantics(
-    observation: &TranscriptCapabilityObservation,
+    decision: &TranscriptObservationDecision,
 ) -> (EffectOutcome, TranscriptTransition) {
-    match observation {
-        TranscriptCapabilityObservation::ProviderAccepted { .. }
-        | TranscriptCapabilityObservation::ProviderPending { .. } => (
-            EffectOutcome::Succeeded,
+    match decision {
+        TranscriptObservationDecision::ProviderAccepted { .. }
+        | TranscriptObservationDecision::ProviderPending { .. } => (
+            EffectOutcome::Progressed,
             TranscriptTransition::AttemptStateChanged,
         ),
-        TranscriptCapabilityObservation::Completed { .. } => (
+        TranscriptObservationDecision::Completion => (
             EffectOutcome::Succeeded,
             TranscriptTransition::ArtifactAdopted,
         ),
-        TranscriptCapabilityObservation::Cancelled => {
-            (EffectOutcome::Cancelled, TranscriptTransition::Cancelled)
-        }
-        TranscriptCapabilityObservation::Failed { evidence, .. } => (
+        TranscriptObservationDecision::Failure {
+            transition: TranscriptFailureTransition::Cancel,
+            ..
+        } => (EffectOutcome::Cancelled, TranscriptTransition::Cancelled),
+        TranscriptObservationDecision::Failure {
+            transition: TranscriptFailureTransition::Ambiguous,
+            ..
+        } => (
+            EffectOutcome::OutcomeUnknown,
+            TranscriptTransition::AttemptStateChanged,
+        ),
+        TranscriptObservationDecision::Failure { code, .. } => (
             EffectOutcome::Failed {
-                code: transcript_failure_activity_code(*evidence),
+                code: transcript_failure_activity_code(*code),
             },
             TranscriptTransition::AttemptStateChanged,
         ),
@@ -53,31 +62,36 @@ pub fn transcript_observation_semantics(
 }
 
 const fn transcript_failure_activity_code(
-    evidence: TranscriptFailureEvidence,
+    code: TranscriptWorkflowFailureCode,
 ) -> ActivityFailureCode {
-    match evidence {
-        TranscriptFailureEvidence::Offline { .. } => ActivityFailureCode::Offline,
-        TranscriptFailureEvidence::TimedOut { .. } => ActivityFailureCode::TimedOut,
-        TranscriptFailureEvidence::PermissionDenied => ActivityFailureCode::PermissionDenied,
-        TranscriptFailureEvidence::InvalidResponse
-        | TranscriptFailureEvidence::InvalidRequest
-        | TranscriptFailureEvidence::ProviderRejected
-        | TranscriptFailureEvidence::StaleInput => ActivityFailureCode::InvalidResponse,
-        TranscriptFailureEvidence::ResponseTooLarge => ActivityFailureCode::ResponseTooLarge,
-        TranscriptFailureEvidence::MissingLocalAudio => ActivityFailureCode::MediaUnavailable,
-        TranscriptFailureEvidence::MissingCredential => ActivityFailureCode::Unauthorized,
-        TranscriptFailureEvidence::ProviderUnavailable { .. }
-        | TranscriptFailureEvidence::ProviderRecoveryUnavailable
-        | TranscriptFailureEvidence::PublisherUnavailable
-        | TranscriptFailureEvidence::RateLimited { .. }
-        | TranscriptFailureEvidence::RetryExhausted { .. }
-        | TranscriptFailureEvidence::UnsupportedProvider => {
+    match code {
+        TranscriptWorkflowFailureCode::Offline => ActivityFailureCode::Offline,
+        TranscriptWorkflowFailureCode::TimedOut => ActivityFailureCode::TimedOut,
+        TranscriptWorkflowFailureCode::PermissionDenied => ActivityFailureCode::PermissionDenied,
+        TranscriptWorkflowFailureCode::InvalidResponse
+        | TranscriptWorkflowFailureCode::InvalidRequest
+        | TranscriptWorkflowFailureCode::ProviderRejected
+        | TranscriptWorkflowFailureCode::StaleInput => ActivityFailureCode::InvalidResponse,
+        TranscriptWorkflowFailureCode::ResponseTooLarge => ActivityFailureCode::ResponseTooLarge,
+        TranscriptWorkflowFailureCode::MissingLocalAudio => ActivityFailureCode::MediaUnavailable,
+        TranscriptWorkflowFailureCode::MissingCredential => ActivityFailureCode::Unauthorized,
+        TranscriptWorkflowFailureCode::ProviderUnavailable
+        | TranscriptWorkflowFailureCode::ProviderRecoveryUnavailable
+        | TranscriptWorkflowFailureCode::PublisherUnavailable
+        | TranscriptWorkflowFailureCode::RateLimited
+        | TranscriptWorkflowFailureCode::RetryExhausted
+        | TranscriptWorkflowFailureCode::UnsupportedProvider => {
             ActivityFailureCode::ProviderUnavailable
         }
-        TranscriptFailureEvidence::Transport { .. }
-        | TranscriptFailureEvidence::StorageUnavailable { .. }
-        | TranscriptFailureEvidence::Cancelled { .. }
-        | TranscriptFailureEvidence::Unsupported { .. } => ActivityFailureCode::PlatformFailure,
+        TranscriptWorkflowFailureCode::StorageUnavailable => {
+            ActivityFailureCode::StorageUnavailable
+        }
+        TranscriptWorkflowFailureCode::Transport
+        | TranscriptWorkflowFailureCode::AmbiguousSubmission
+        | TranscriptWorkflowFailureCode::Cancelled => ActivityFailureCode::PlatformFailure,
+        TranscriptWorkflowFailureCode::Unsupported { wire_code } => {
+            ActivityFailureCode::Unsupported { wire_code }
+        }
     }
 }
 

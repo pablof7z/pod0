@@ -3454,6 +3454,76 @@ public func FfiConverterTypeCommandEnvelope_lower(_ value: CommandEnvelope) -> R
 }
 
 
+public struct CommandReceipt: Equatable, Hashable {
+    public let commandId: CommandId
+    public let cancellationId: CancellationId
+    public let expectedRevision: StateRevision?
+    public let committedRevision: StateRevision
+    public let disposition: CommandDisposition
+    public let replayed: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(commandId: CommandId, cancellationId: CancellationId, expectedRevision: StateRevision?, committedRevision: StateRevision, disposition: CommandDisposition, replayed: Bool) {
+        self.commandId = commandId
+        self.cancellationId = cancellationId
+        self.expectedRevision = expectedRevision
+        self.committedRevision = committedRevision
+        self.disposition = disposition
+        self.replayed = replayed
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CommandReceipt: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCommandReceipt: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CommandReceipt {
+        return
+            try CommandReceipt(
+                commandId: FfiConverterTypeCommandId.read(from: &buf),
+                cancellationId: FfiConverterTypeCancellationId.read(from: &buf),
+                expectedRevision: FfiConverterOptionTypeStateRevision.read(from: &buf),
+                committedRevision: FfiConverterTypeStateRevision.read(from: &buf),
+                disposition: FfiConverterTypeCommandDisposition.read(from: &buf),
+                replayed: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CommandReceipt, into buf: inout [UInt8]) {
+        FfiConverterTypeCommandId.write(value.commandId, into: &buf)
+        FfiConverterTypeCancellationId.write(value.cancellationId, into: &buf)
+        FfiConverterOptionTypeStateRevision.write(value.expectedRevision, into: &buf)
+        FfiConverterTypeStateRevision.write(value.committedRevision, into: &buf)
+        FfiConverterTypeCommandDisposition.write(value.disposition, into: &buf)
+        FfiConverterBool.write(value.replayed, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCommandReceipt_lift(_ buf: RustBuffer) throws -> CommandReceipt {
+    return try FfiConverterTypeCommandReceipt.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCommandReceipt_lower(_ value: CommandReceipt) -> RustBuffer {
+    return FfiConverterTypeCommandReceipt.lower(value)
+}
+
+
 public struct CommittedTranscriptGeneration: Equatable, Hashable {
     public let sourceRevision: String
     public let transcriptVersionId: TranscriptVersionId
@@ -12759,12 +12829,9 @@ public enum ChapterModelFailureEvidence: Equatable, Hashable {
     case coreUnavailable
     case httpResponse(statusCode: UInt16
     )
-    case offline(submissionAuthorized: Bool
-    )
-    case timedOut(submissionAuthorized: Bool
-    )
-    case transport(submissionAuthorized: Bool
-    )
+    case offline
+    case timedOut
+    case transport
     case responseTooLarge
     case invalidResponse
     case qualification(reason: ChapterObservationRejection
@@ -12772,13 +12839,10 @@ public enum ChapterModelFailureEvidence: Equatable, Hashable {
     case staleTranscript
     case stalePublisherBase
     case selectionChanged
-    case storageUnavailable(submissionAuthorized: Bool
-    )
+    case storageUnavailable
     case providerRecoveryUnavailable
-    case retryExhausted(mayHaveSubmitted: Bool
-    )
-    case cancelled(submissionAuthorized: Bool
-    )
+    case retryExhausted
+    case cancelled
     case unsupported(wireCode: UInt32
     )
 
@@ -12813,14 +12877,11 @@ public struct FfiConverterTypeChapterModelFailureEvidence: FfiConverterRustBuffe
         case 5: return .httpResponse(statusCode: try FfiConverterUInt16.read(from: &buf)
         )
 
-        case 6: return .offline(submissionAuthorized: try FfiConverterBool.read(from: &buf)
-        )
+        case 6: return .offline
 
-        case 7: return .timedOut(submissionAuthorized: try FfiConverterBool.read(from: &buf)
-        )
+        case 7: return .timedOut
 
-        case 8: return .transport(submissionAuthorized: try FfiConverterBool.read(from: &buf)
-        )
+        case 8: return .transport
 
         case 9: return .responseTooLarge
 
@@ -12835,16 +12896,13 @@ public struct FfiConverterTypeChapterModelFailureEvidence: FfiConverterRustBuffe
 
         case 14: return .selectionChanged
 
-        case 15: return .storageUnavailable(submissionAuthorized: try FfiConverterBool.read(from: &buf)
-        )
+        case 15: return .storageUnavailable
 
         case 16: return .providerRecoveryUnavailable
 
-        case 17: return .retryExhausted(mayHaveSubmitted: try FfiConverterBool.read(from: &buf)
-        )
+        case 17: return .retryExhausted
 
-        case 18: return .cancelled(submissionAuthorized: try FfiConverterBool.read(from: &buf)
-        )
+        case 18: return .cancelled
 
         case 19: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
@@ -12878,19 +12936,16 @@ public struct FfiConverterTypeChapterModelFailureEvidence: FfiConverterRustBuffe
             FfiConverterUInt16.write(statusCode, into: &buf)
 
 
-        case let .offline(submissionAuthorized):
+        case .offline:
             writeInt(&buf, Int32(6))
-            FfiConverterBool.write(submissionAuthorized, into: &buf)
 
 
-        case let .timedOut(submissionAuthorized):
+        case .timedOut:
             writeInt(&buf, Int32(7))
-            FfiConverterBool.write(submissionAuthorized, into: &buf)
 
 
-        case let .transport(submissionAuthorized):
+        case .transport:
             writeInt(&buf, Int32(8))
-            FfiConverterBool.write(submissionAuthorized, into: &buf)
 
 
         case .responseTooLarge:
@@ -12918,23 +12973,20 @@ public struct FfiConverterTypeChapterModelFailureEvidence: FfiConverterRustBuffe
             writeInt(&buf, Int32(14))
 
 
-        case let .storageUnavailable(submissionAuthorized):
+        case .storageUnavailable:
             writeInt(&buf, Int32(15))
-            FfiConverterBool.write(submissionAuthorized, into: &buf)
 
 
         case .providerRecoveryUnavailable:
             writeInt(&buf, Int32(16))
 
 
-        case let .retryExhausted(mayHaveSubmitted):
+        case .retryExhausted:
             writeInt(&buf, Int32(17))
-            FfiConverterBool.write(mayHaveSubmitted, into: &buf)
 
 
-        case let .cancelled(submissionAuthorized):
+        case .cancelled:
             writeInt(&buf, Int32(18))
-            FfiConverterBool.write(submissionAuthorized, into: &buf)
 
 
         case let .unsupported(wireCode):
@@ -13892,6 +13944,232 @@ public func FfiConverterTypeClipProjectionScope_lift(_ buf: RustBuffer) throws -
 #endif
 public func FfiConverterTypeClipProjectionScope_lower(_ value: ClipProjectionScope) -> RustBuffer {
     return FfiConverterTypeClipProjectionScope.lower(value)
+}
+
+
+
+
+public enum CommandDisposition: Equatable, Hashable {
+
+    case applied
+    case rejected(reason: CommandRejectionReason
+    )
+    case stale(expectedRevision: StateRevision, actualRevision: StateRevision
+    )
+    case duplicate
+    case notAllowed
+    case alreadyComplete
+    case noOp
+    case cancelled
+    case failed(code: CoreFailureCode
+    )
+    case outcomeUnknown
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CommandDisposition: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCommandDisposition: FfiConverterRustBuffer {
+    typealias SwiftType = CommandDisposition
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CommandDisposition {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .applied
+
+        case 2: return .rejected(reason: try FfiConverterTypeCommandRejectionReason.read(from: &buf)
+        )
+
+        case 3: return .stale(expectedRevision: try FfiConverterTypeStateRevision.read(from: &buf), actualRevision: try FfiConverterTypeStateRevision.read(from: &buf)
+        )
+
+        case 4: return .duplicate
+
+        case 5: return .notAllowed
+
+        case 6: return .alreadyComplete
+
+        case 7: return .noOp
+
+        case 8: return .cancelled
+
+        case 9: return .failed(code: try FfiConverterTypeCoreFailureCode.read(from: &buf)
+        )
+
+        case 10: return .outcomeUnknown
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: CommandDisposition, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .applied:
+            writeInt(&buf, Int32(1))
+
+
+        case let .rejected(reason):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeCommandRejectionReason.write(reason, into: &buf)
+
+
+        case let .stale(expectedRevision,actualRevision):
+            writeInt(&buf, Int32(3))
+            FfiConverterTypeStateRevision.write(expectedRevision, into: &buf)
+            FfiConverterTypeStateRevision.write(actualRevision, into: &buf)
+
+
+        case .duplicate:
+            writeInt(&buf, Int32(4))
+
+
+        case .notAllowed:
+            writeInt(&buf, Int32(5))
+
+
+        case .alreadyComplete:
+            writeInt(&buf, Int32(6))
+
+
+        case .noOp:
+            writeInt(&buf, Int32(7))
+
+
+        case .cancelled:
+            writeInt(&buf, Int32(8))
+
+
+        case let .failed(code):
+            writeInt(&buf, Int32(9))
+            FfiConverterTypeCoreFailureCode.write(code, into: &buf)
+
+
+        case .outcomeUnknown:
+            writeInt(&buf, Int32(10))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCommandDisposition_lift(_ buf: RustBuffer) throws -> CommandDisposition {
+    return try FfiConverterTypeCommandDisposition.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCommandDisposition_lower(_ value: CommandDisposition) -> RustBuffer {
+    return FfiConverterTypeCommandDisposition.lower(value)
+}
+
+
+
+
+public enum CommandRejectionReason: Equatable, Hashable {
+
+    case invalidInput
+    case commandIdentityConflict
+    case missingSubject
+    case unsupported
+    case privacyBoundary
+    case missingPrerequisite
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CommandRejectionReason: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCommandRejectionReason: FfiConverterRustBuffer {
+    typealias SwiftType = CommandRejectionReason
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CommandRejectionReason {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .invalidInput
+
+        case 2: return .commandIdentityConflict
+
+        case 3: return .missingSubject
+
+        case 4: return .unsupported
+
+        case 5: return .privacyBoundary
+
+        case 6: return .missingPrerequisite
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: CommandRejectionReason, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .invalidInput:
+            writeInt(&buf, Int32(1))
+
+
+        case .commandIdentityConflict:
+            writeInt(&buf, Int32(2))
+
+
+        case .missingSubject:
+            writeInt(&buf, Int32(3))
+
+
+        case .unsupported:
+            writeInt(&buf, Int32(4))
+
+
+        case .privacyBoundary:
+            writeInt(&buf, Int32(5))
+
+
+        case .missingPrerequisite:
+            writeInt(&buf, Int32(6))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCommandRejectionReason_lift(_ buf: RustBuffer) throws -> CommandRejectionReason {
+    return try FfiConverterTypeCommandRejectionReason.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCommandRejectionReason_lower(_ value: CommandRejectionReason) -> RustBuffer {
+    return FfiConverterTypeCommandRejectionReason.lower(value)
 }
 
 
@@ -20784,28 +21062,20 @@ public enum TranscriptFailureEvidence: Equatable, Hashable {
     case invalidRequest
     case unsupportedProvider
     case publisherUnavailable
-    case offline(submissionAuthorized: Bool, providerAccepted: Bool
-    )
-    case rateLimited(submissionAuthorized: Bool, providerAccepted: Bool
-    )
-    case timedOut(submissionAuthorized: Bool, providerAccepted: Bool
-    )
-    case transport(submissionAuthorized: Bool, providerAccepted: Bool
-    )
+    case offline
+    case rateLimited
+    case timedOut
+    case transport
     case permissionDenied
     case providerRejected
-    case providerUnavailable(submissionAuthorized: Bool, providerAccepted: Bool
-    )
+    case providerUnavailable
     case responseTooLarge
     case invalidResponse
     case staleInput
-    case storageUnavailable(submissionAuthorized: Bool, providerAccepted: Bool
-    )
+    case storageUnavailable
     case providerRecoveryUnavailable
-    case retryExhausted(mayHaveSubmitted: Bool
-    )
-    case cancelled(submissionAuthorized: Bool, providerAccepted: Bool
-    )
+    case retryExhausted
+    case cancelled
     case unsupported(wireCode: UInt32
     )
 
@@ -20839,24 +21109,19 @@ public struct FfiConverterTypeTranscriptFailureEvidence: FfiConverterRustBuffer 
 
         case 5: return .publisherUnavailable
 
-        case 6: return .offline(submissionAuthorized: try FfiConverterBool.read(from: &buf), providerAccepted: try FfiConverterBool.read(from: &buf)
-        )
+        case 6: return .offline
 
-        case 7: return .rateLimited(submissionAuthorized: try FfiConverterBool.read(from: &buf), providerAccepted: try FfiConverterBool.read(from: &buf)
-        )
+        case 7: return .rateLimited
 
-        case 8: return .timedOut(submissionAuthorized: try FfiConverterBool.read(from: &buf), providerAccepted: try FfiConverterBool.read(from: &buf)
-        )
+        case 8: return .timedOut
 
-        case 9: return .transport(submissionAuthorized: try FfiConverterBool.read(from: &buf), providerAccepted: try FfiConverterBool.read(from: &buf)
-        )
+        case 9: return .transport
 
         case 10: return .permissionDenied
 
         case 11: return .providerRejected
 
-        case 12: return .providerUnavailable(submissionAuthorized: try FfiConverterBool.read(from: &buf), providerAccepted: try FfiConverterBool.read(from: &buf)
-        )
+        case 12: return .providerUnavailable
 
         case 13: return .responseTooLarge
 
@@ -20864,16 +21129,13 @@ public struct FfiConverterTypeTranscriptFailureEvidence: FfiConverterRustBuffer 
 
         case 15: return .staleInput
 
-        case 16: return .storageUnavailable(submissionAuthorized: try FfiConverterBool.read(from: &buf), providerAccepted: try FfiConverterBool.read(from: &buf)
-        )
+        case 16: return .storageUnavailable
 
         case 17: return .providerRecoveryUnavailable
 
-        case 18: return .retryExhausted(mayHaveSubmitted: try FfiConverterBool.read(from: &buf)
-        )
+        case 18: return .retryExhausted
 
-        case 19: return .cancelled(submissionAuthorized: try FfiConverterBool.read(from: &buf), providerAccepted: try FfiConverterBool.read(from: &buf)
-        )
+        case 19: return .cancelled
 
         case 20: return .unsupported(wireCode: try FfiConverterUInt32.read(from: &buf)
         )
@@ -20906,28 +21168,20 @@ public struct FfiConverterTypeTranscriptFailureEvidence: FfiConverterRustBuffer 
             writeInt(&buf, Int32(5))
 
 
-        case let .offline(submissionAuthorized,providerAccepted):
+        case .offline:
             writeInt(&buf, Int32(6))
-            FfiConverterBool.write(submissionAuthorized, into: &buf)
-            FfiConverterBool.write(providerAccepted, into: &buf)
 
 
-        case let .rateLimited(submissionAuthorized,providerAccepted):
+        case .rateLimited:
             writeInt(&buf, Int32(7))
-            FfiConverterBool.write(submissionAuthorized, into: &buf)
-            FfiConverterBool.write(providerAccepted, into: &buf)
 
 
-        case let .timedOut(submissionAuthorized,providerAccepted):
+        case .timedOut:
             writeInt(&buf, Int32(8))
-            FfiConverterBool.write(submissionAuthorized, into: &buf)
-            FfiConverterBool.write(providerAccepted, into: &buf)
 
 
-        case let .transport(submissionAuthorized,providerAccepted):
+        case .transport:
             writeInt(&buf, Int32(9))
-            FfiConverterBool.write(submissionAuthorized, into: &buf)
-            FfiConverterBool.write(providerAccepted, into: &buf)
 
 
         case .permissionDenied:
@@ -20938,10 +21192,8 @@ public struct FfiConverterTypeTranscriptFailureEvidence: FfiConverterRustBuffer 
             writeInt(&buf, Int32(11))
 
 
-        case let .providerUnavailable(submissionAuthorized,providerAccepted):
+        case .providerUnavailable:
             writeInt(&buf, Int32(12))
-            FfiConverterBool.write(submissionAuthorized, into: &buf)
-            FfiConverterBool.write(providerAccepted, into: &buf)
 
 
         case .responseTooLarge:
@@ -20956,25 +21208,20 @@ public struct FfiConverterTypeTranscriptFailureEvidence: FfiConverterRustBuffer 
             writeInt(&buf, Int32(15))
 
 
-        case let .storageUnavailable(submissionAuthorized,providerAccepted):
+        case .storageUnavailable:
             writeInt(&buf, Int32(16))
-            FfiConverterBool.write(submissionAuthorized, into: &buf)
-            FfiConverterBool.write(providerAccepted, into: &buf)
 
 
         case .providerRecoveryUnavailable:
             writeInt(&buf, Int32(17))
 
 
-        case let .retryExhausted(mayHaveSubmitted):
+        case .retryExhausted:
             writeInt(&buf, Int32(18))
-            FfiConverterBool.write(mayHaveSubmitted, into: &buf)
 
 
-        case let .cancelled(submissionAuthorized,providerAccepted):
+        case .cancelled:
             writeInt(&buf, Int32(19))
-            FfiConverterBool.write(submissionAuthorized, into: &buf)
-            FfiConverterBool.write(providerAccepted, into: &buf)
 
 
         case let .unsupported(wireCode):

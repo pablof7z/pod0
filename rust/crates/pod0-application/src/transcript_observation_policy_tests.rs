@@ -18,10 +18,7 @@ fn safe_pre_submission_failure_plans_a_new_fenced_attempt() {
             provider_accepted: false,
         },
         observation: TranscriptCapabilityObservation::Failed {
-            evidence: TranscriptFailureEvidence::Offline {
-                submission_authorized: false,
-                provider_accepted: false,
-            },
+            evidence: TranscriptFailureEvidence::Offline,
             safe_detail: None,
             retry_after_milliseconds: None,
         },
@@ -44,7 +41,7 @@ fn safe_pre_submission_failure_plans_a_new_fenced_attempt() {
 }
 
 #[test]
-fn cancellation_after_submission_is_an_ambiguous_terminal_decision() {
+fn cancellation_after_submission_is_a_rust_owned_terminal_decision() {
     let decision = decide_transcript_observation(TranscriptObservationPolicyInput {
         state: TranscriptObservationPolicyState {
             workflow_id: TranscriptWorkflowId::from_parts(1, 2),

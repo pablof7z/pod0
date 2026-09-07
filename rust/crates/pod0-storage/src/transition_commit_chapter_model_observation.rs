@@ -188,9 +188,9 @@ fn workflow_for_observation(
     Ok(workflow)
 }
 
-fn effect_outcome(action: &ModelChapterObservationAction) -> EffectOutcome {
+pub(super) fn effect_outcome(action: &ModelChapterObservationAction) -> EffectOutcome {
     match action {
-        ModelChapterObservationAction::ProviderAccepted(_) => EffectOutcome::OutcomeUnknown,
+        ModelChapterObservationAction::ProviderAccepted(_) => EffectOutcome::Progressed,
         ModelChapterObservationAction::Completion(_) => EffectOutcome::Succeeded,
         ModelChapterObservationAction::Failure { outcome, .. } => *outcome,
     }

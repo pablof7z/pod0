@@ -199,6 +199,8 @@ mod transcript_finalization_activity;
 mod transcript_observation_activity;
 #[cfg(test)]
 mod transcript_observation_activity_tests;
+#[cfg(test)]
+mod transcript_observation_semantics_tests;
 mod transcript_observation_policy;
 #[cfg(test)]
 mod transcript_observation_policy_tests;

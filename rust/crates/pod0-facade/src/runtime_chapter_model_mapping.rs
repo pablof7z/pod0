@@ -142,21 +142,13 @@ pub(super) fn host_failure_evidence(
         H::HttpResponse { status_code } => {
             ChapterModelFailureEvidence::HttpResponse { status_code }
         }
-        H::Offline => ChapterModelFailureEvidence::Offline {
-            submission_authorized: true,
-        },
-        H::TimedOut => ChapterModelFailureEvidence::TimedOut {
-            submission_authorized: true,
-        },
-        H::Transport => ChapterModelFailureEvidence::Transport {
-            submission_authorized: true,
-        },
+        H::Offline => ChapterModelFailureEvidence::Offline,
+        H::TimedOut => ChapterModelFailureEvidence::TimedOut,
+        H::Transport => ChapterModelFailureEvidence::Transport,
         H::ResponseTooLarge => ChapterModelFailureEvidence::ResponseTooLarge,
         H::InvalidResponse => ChapterModelFailureEvidence::InvalidResponse,
         H::ProviderRecoveryUnavailable => ChapterModelFailureEvidence::ProviderRecoveryUnavailable,
-        H::Cancelled => ChapterModelFailureEvidence::Cancelled {
-            submission_authorized: true,
-        },
+        H::Cancelled => ChapterModelFailureEvidence::Cancelled,
         H::Unsupported { wire_code } => ChapterModelFailureEvidence::Unsupported { wire_code },
     }
 }

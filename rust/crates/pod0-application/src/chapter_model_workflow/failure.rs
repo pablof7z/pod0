@@ -3,6 +3,7 @@ use super::*;
 #[must_use]
 pub fn classify_chapter_model_failure(
     evidence: ChapterModelFailureEvidence,
+    phase: ChapterModelFailurePhase,
 ) -> ChapterModelFailureClassification {
     use ChapterModelFailureEvidence as E;
     use ChapterModelRetryDisposition as R;
@@ -12,50 +13,43 @@ pub fn classify_chapter_model_failure(
         E::InvalidRequest | E::UnsupportedProvider => (C::InvalidRequest, R::Never, false, true),
         E::CoreUnavailable => (C::StorageUnavailable, R::AutomaticRequest, false, true),
         E::HttpResponse { status_code } => classify_http(status_code),
-        E::Offline {
-            submission_authorized: true,
+        E::Offline if phase.submission_authorized => {
+            (C::AmbiguousSubmission, R::ExplicitOnly, true, false)
         }
-        | E::TimedOut {
-            submission_authorized: true,
+        E::TimedOut if phase.submission_authorized => {
+            (C::AmbiguousSubmission, R::ExplicitOnly, true, false)
         }
-        | E::Transport {
-            submission_authorized: true,
-        } => (C::AmbiguousSubmission, R::ExplicitOnly, true, false),
-        E::Offline {
-            submission_authorized: false,
-        } => (C::Offline, R::AutomaticRequest, false, true),
-        E::TimedOut {
-            submission_authorized: false,
-        } => (C::TimedOut, R::AutomaticRequest, false, true),
-        E::Transport {
-            submission_authorized: false,
-        } => (C::Transport, R::AutomaticRequest, false, true),
+        E::Transport if phase.submission_authorized => {
+            (C::AmbiguousSubmission, R::ExplicitOnly, true, false)
+        }
+        E::Offline => (C::Offline, R::AutomaticRequest, false, true),
+        E::TimedOut => (C::TimedOut, R::AutomaticRequest, false, true),
+        E::Transport => (C::Transport, R::AutomaticRequest, false, true),
         E::ResponseTooLarge => (C::ResponseTooLarge, R::ExplicitOnly, true, false),
         E::InvalidResponse => (C::InvalidResponse, R::ExplicitOnly, true, false),
         E::Qualification { .. } => (C::QualificationRejected, R::ExplicitOnly, true, false),
         E::StaleTranscript => (C::StaleTranscript, R::Replan, true, false),
         E::StalePublisherBase => (C::StalePublisherBase, R::Replan, true, false),
         E::SelectionChanged => (C::SelectionChanged, R::Replan, true, false),
-        E::StorageUnavailable {
-            submission_authorized,
-        } => (
+        E::StorageUnavailable => (
             C::StorageUnavailable,
             R::ResumePersisted,
-            submission_authorized,
-            !submission_authorized,
+            phase.submission_authorized,
+            !phase.submission_authorized,
         ),
         E::ProviderRecoveryUnavailable => {
             (C::ProviderRecoveryUnavailable, R::ExplicitOnly, true, false)
         }
-        E::RetryExhausted { may_have_submitted } => {
-            (C::RetryExhausted, R::Never, may_have_submitted, false)
+        E::RetryExhausted => (
+            C::RetryExhausted,
+            R::Never,
+            phase.submission_authorized,
+            false,
+        ),
+        E::Cancelled if phase.submission_authorized => {
+            (C::AmbiguousSubmission, R::ExplicitOnly, true, false)
         }
-        E::Cancelled {
-            submission_authorized: true,
-        } => (C::AmbiguousSubmission, R::ExplicitOnly, true, false),
-        E::Cancelled {
-            submission_authorized: false,
-        } => (C::Cancelled, R::Never, false, true),
+        E::Cancelled => (C::Cancelled, R::Never, false, true),
         E::Unsupported { wire_code } => (C::Unsupported { wire_code }, R::Never, false, true),
     };
     ChapterModelFailureClassification {

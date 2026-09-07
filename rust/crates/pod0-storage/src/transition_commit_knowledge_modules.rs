@@ -33,6 +33,9 @@ pub(crate) use chapter_model_internal::commit_model_chapter_internal_admission;
 mod chapter_model_cancel;
 #[path = "transition_commit_chapter_model_observation.rs"]
 mod chapter_model_observation;
+#[cfg(test)]
+#[path = "transition_commit_chapter_model_observation_tests.rs"]
+mod chapter_model_observation_tests;
 #[path = "transition_commit_chapter_model_recovery.rs"]
 mod chapter_model_recovery;
 #[path = "transition_commit_chapter_model_provider_recovery.rs"]

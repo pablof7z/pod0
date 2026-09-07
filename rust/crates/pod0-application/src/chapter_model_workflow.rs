@@ -88,19 +88,19 @@ pub enum ChapterModelFailureEvidence {
     UnsupportedProvider,
     CoreUnavailable,
     HttpResponse { status_code: u16 },
-    Offline { submission_authorized: bool },
-    TimedOut { submission_authorized: bool },
-    Transport { submission_authorized: bool },
+    Offline,
+    TimedOut,
+    Transport,
     ResponseTooLarge,
     InvalidResponse,
     Qualification { reason: ChapterObservationRejection },
     StaleTranscript,
     StalePublisherBase,
     SelectionChanged,
-    StorageUnavailable { submission_authorized: bool },
+    StorageUnavailable,
     ProviderRecoveryUnavailable,
-    RetryExhausted { may_have_submitted: bool },
-    Cancelled { submission_authorized: bool },
+    RetryExhausted,
+    Cancelled,
     Unsupported { wire_code: u32 },
 }
 
@@ -119,6 +119,11 @@ pub struct ChapterModelFailureClassification {
     pub retry: ChapterModelRetryDisposition,
     pub may_have_submitted: bool,
     pub resubmission_is_safe: bool,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ChapterModelFailurePhase {
+    pub submission_authorized: bool,
 }
 
 #[must_use]

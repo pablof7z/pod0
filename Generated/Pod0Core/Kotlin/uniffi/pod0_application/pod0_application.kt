@@ -3681,6 +3681,64 @@ public object FfiConverterTypeCommandEnvelope: FfiConverterRustBuffer<CommandEnv
 
 
 
+data class CommandReceipt (
+    val `commandId`: CommandId
+    ,
+    val `cancellationId`: CancellationId
+    ,
+    val `expectedRevision`: StateRevision?
+    ,
+    val `committedRevision`: StateRevision
+    ,
+    val `disposition`: CommandDisposition
+    ,
+    val `replayed`: kotlin.Boolean
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCommandReceipt: FfiConverterRustBuffer<CommandReceipt> {
+    override fun read(buf: ByteBuffer): CommandReceipt {
+        return CommandReceipt(
+            FfiConverterTypeCommandId.read(buf),
+            FfiConverterTypeCancellationId.read(buf),
+            FfiConverterOptionalTypeStateRevision.read(buf),
+            FfiConverterTypeStateRevision.read(buf),
+            FfiConverterTypeCommandDisposition.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: CommandReceipt) = (
+            FfiConverterTypeCommandId.allocationSize(value.`commandId`) +
+            FfiConverterTypeCancellationId.allocationSize(value.`cancellationId`) +
+            FfiConverterOptionalTypeStateRevision.allocationSize(value.`expectedRevision`) +
+            FfiConverterTypeStateRevision.allocationSize(value.`committedRevision`) +
+            FfiConverterTypeCommandDisposition.allocationSize(value.`disposition`) +
+            FfiConverterBoolean.allocationSize(value.`replayed`)
+    )
+
+    override fun write(value: CommandReceipt, buf: ByteBuffer) {
+            FfiConverterTypeCommandId.write(value.`commandId`, buf)
+            FfiConverterTypeCancellationId.write(value.`cancellationId`, buf)
+            FfiConverterOptionalTypeStateRevision.write(value.`expectedRevision`, buf)
+            FfiConverterTypeStateRevision.write(value.`committedRevision`, buf)
+            FfiConverterTypeCommandDisposition.write(value.`disposition`, buf)
+            FfiConverterBoolean.write(value.`replayed`, buf)
+    }
+}
+
+
+
 data class CommittedTranscriptGeneration (
     val `sourceRevision`: kotlin.String
     ,
@@ -12878,32 +12936,14 @@ sealed class ChapterModelFailureEvidence {
         companion object
     }
 
-    data class Offline(
-        val `submissionAuthorized`: kotlin.Boolean) : ChapterModelFailureEvidence()
-
-    {
+    object Offline : ChapterModelFailureEvidence()
 
 
-        companion object
-    }
-
-    data class TimedOut(
-        val `submissionAuthorized`: kotlin.Boolean) : ChapterModelFailureEvidence()
-
-    {
+    object TimedOut : ChapterModelFailureEvidence()
 
 
-        companion object
-    }
+    object Transport : ChapterModelFailureEvidence()
 
-    data class Transport(
-        val `submissionAuthorized`: kotlin.Boolean) : ChapterModelFailureEvidence()
-
-    {
-
-
-        companion object
-    }
 
     object ResponseTooLarge : ChapterModelFailureEvidence()
 
@@ -12929,35 +12969,17 @@ sealed class ChapterModelFailureEvidence {
     object SelectionChanged : ChapterModelFailureEvidence()
 
 
-    data class StorageUnavailable(
-        val `submissionAuthorized`: kotlin.Boolean) : ChapterModelFailureEvidence()
+    object StorageUnavailable : ChapterModelFailureEvidence()
 
-    {
-
-
-        companion object
-    }
 
     object ProviderRecoveryUnavailable : ChapterModelFailureEvidence()
 
 
-    data class RetryExhausted(
-        val `mayHaveSubmitted`: kotlin.Boolean) : ChapterModelFailureEvidence()
-
-    {
+    object RetryExhausted : ChapterModelFailureEvidence()
 
 
-        companion object
-    }
+    object Cancelled : ChapterModelFailureEvidence()
 
-    data class Cancelled(
-        val `submissionAuthorized`: kotlin.Boolean) : ChapterModelFailureEvidence()
-
-    {
-
-
-        companion object
-    }
 
     data class Unsupported(
         val `wireCode`: kotlin.UInt) : ChapterModelFailureEvidence()
@@ -12991,15 +13013,9 @@ public object FfiConverterTypeChapterModelFailureEvidence : FfiConverterRustBuff
             5 -> ChapterModelFailureEvidence.HttpResponse(
                 FfiConverterUShort.read(buf),
                 )
-            6 -> ChapterModelFailureEvidence.Offline(
-                FfiConverterBoolean.read(buf),
-                )
-            7 -> ChapterModelFailureEvidence.TimedOut(
-                FfiConverterBoolean.read(buf),
-                )
-            8 -> ChapterModelFailureEvidence.Transport(
-                FfiConverterBoolean.read(buf),
-                )
+            6 -> ChapterModelFailureEvidence.Offline
+            7 -> ChapterModelFailureEvidence.TimedOut
+            8 -> ChapterModelFailureEvidence.Transport
             9 -> ChapterModelFailureEvidence.ResponseTooLarge
             10 -> ChapterModelFailureEvidence.InvalidResponse
             11 -> ChapterModelFailureEvidence.Qualification(
@@ -13008,16 +13024,10 @@ public object FfiConverterTypeChapterModelFailureEvidence : FfiConverterRustBuff
             12 -> ChapterModelFailureEvidence.StaleTranscript
             13 -> ChapterModelFailureEvidence.StalePublisherBase
             14 -> ChapterModelFailureEvidence.SelectionChanged
-            15 -> ChapterModelFailureEvidence.StorageUnavailable(
-                FfiConverterBoolean.read(buf),
-                )
+            15 -> ChapterModelFailureEvidence.StorageUnavailable
             16 -> ChapterModelFailureEvidence.ProviderRecoveryUnavailable
-            17 -> ChapterModelFailureEvidence.RetryExhausted(
-                FfiConverterBoolean.read(buf),
-                )
-            18 -> ChapterModelFailureEvidence.Cancelled(
-                FfiConverterBoolean.read(buf),
-                )
+            17 -> ChapterModelFailureEvidence.RetryExhausted
+            18 -> ChapterModelFailureEvidence.Cancelled
             19 -> ChapterModelFailureEvidence.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
@@ -13061,21 +13071,18 @@ public object FfiConverterTypeChapterModelFailureEvidence : FfiConverterRustBuff
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterBoolean.allocationSize(value.`submissionAuthorized`)
             )
         }
         is ChapterModelFailureEvidence.TimedOut -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterBoolean.allocationSize(value.`submissionAuthorized`)
             )
         }
         is ChapterModelFailureEvidence.Transport -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterBoolean.allocationSize(value.`submissionAuthorized`)
             )
         }
         is ChapterModelFailureEvidence.ResponseTooLarge -> {
@@ -13119,7 +13126,6 @@ public object FfiConverterTypeChapterModelFailureEvidence : FfiConverterRustBuff
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterBoolean.allocationSize(value.`submissionAuthorized`)
             )
         }
         is ChapterModelFailureEvidence.ProviderRecoveryUnavailable -> {
@@ -13132,14 +13138,12 @@ public object FfiConverterTypeChapterModelFailureEvidence : FfiConverterRustBuff
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterBoolean.allocationSize(value.`mayHaveSubmitted`)
             )
         }
         is ChapterModelFailureEvidence.Cancelled -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterBoolean.allocationSize(value.`submissionAuthorized`)
             )
         }
         is ChapterModelFailureEvidence.Unsupported -> {
@@ -13176,17 +13180,14 @@ public object FfiConverterTypeChapterModelFailureEvidence : FfiConverterRustBuff
             }
             is ChapterModelFailureEvidence.Offline -> {
                 buf.putInt(6)
-                FfiConverterBoolean.write(value.`submissionAuthorized`, buf)
                 Unit
             }
             is ChapterModelFailureEvidence.TimedOut -> {
                 buf.putInt(7)
-                FfiConverterBoolean.write(value.`submissionAuthorized`, buf)
                 Unit
             }
             is ChapterModelFailureEvidence.Transport -> {
                 buf.putInt(8)
-                FfiConverterBoolean.write(value.`submissionAuthorized`, buf)
                 Unit
             }
             is ChapterModelFailureEvidence.ResponseTooLarge -> {
@@ -13216,7 +13217,6 @@ public object FfiConverterTypeChapterModelFailureEvidence : FfiConverterRustBuff
             }
             is ChapterModelFailureEvidence.StorageUnavailable -> {
                 buf.putInt(15)
-                FfiConverterBoolean.write(value.`submissionAuthorized`, buf)
                 Unit
             }
             is ChapterModelFailureEvidence.ProviderRecoveryUnavailable -> {
@@ -13225,12 +13225,10 @@ public object FfiConverterTypeChapterModelFailureEvidence : FfiConverterRustBuff
             }
             is ChapterModelFailureEvidence.RetryExhausted -> {
                 buf.putInt(17)
-                FfiConverterBoolean.write(value.`mayHaveSubmitted`, buf)
                 Unit
             }
             is ChapterModelFailureEvidence.Cancelled -> {
                 buf.putInt(18)
-                FfiConverterBoolean.write(value.`submissionAuthorized`, buf)
                 Unit
             }
             is ChapterModelFailureEvidence.Unsupported -> {
@@ -14482,6 +14480,255 @@ public object FfiConverterTypeClipProjectionScope : FfiConverterRustBuffer<ClipP
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+sealed class CommandDisposition {
+
+    object Applied : CommandDisposition()
+
+
+    data class Rejected(
+        val `reason`: uniffi.pod0_application.CommandRejectionReason) : CommandDisposition()
+
+    {
+
+
+        companion object
+    }
+
+    data class Stale(
+        val `expectedRevision`: uniffi.pod0_domain.StateRevision,
+        val `actualRevision`: uniffi.pod0_domain.StateRevision) : CommandDisposition()
+
+    {
+
+
+        companion object
+    }
+
+    object Duplicate : CommandDisposition()
+
+
+    object NotAllowed : CommandDisposition()
+
+
+    object AlreadyComplete : CommandDisposition()
+
+
+    object NoOp : CommandDisposition()
+
+
+    object Cancelled : CommandDisposition()
+
+
+    data class Failed(
+        val `code`: uniffi.pod0_application.CoreFailureCode) : CommandDisposition()
+
+    {
+
+
+        companion object
+    }
+
+    object OutcomeUnknown : CommandDisposition()
+
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCommandDisposition : FfiConverterRustBuffer<CommandDisposition>{
+    override fun read(buf: ByteBuffer): CommandDisposition {
+        return when(buf.getInt()) {
+            1 -> CommandDisposition.Applied
+            2 -> CommandDisposition.Rejected(
+                FfiConverterTypeCommandRejectionReason.read(buf),
+                )
+            3 -> CommandDisposition.Stale(
+                FfiConverterTypeStateRevision.read(buf),
+                FfiConverterTypeStateRevision.read(buf),
+                )
+            4 -> CommandDisposition.Duplicate
+            5 -> CommandDisposition.NotAllowed
+            6 -> CommandDisposition.AlreadyComplete
+            7 -> CommandDisposition.NoOp
+            8 -> CommandDisposition.Cancelled
+            9 -> CommandDisposition.Failed(
+                FfiConverterTypeCoreFailureCode.read(buf),
+                )
+            10 -> CommandDisposition.OutcomeUnknown
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: CommandDisposition): ULong = when(value) {
+        is CommandDisposition.Applied -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CommandDisposition.Rejected -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeCommandRejectionReason.allocationSize(value.`reason`)
+            )
+        }
+        is CommandDisposition.Stale -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeStateRevision.allocationSize(value.`expectedRevision`)
+                + FfiConverterTypeStateRevision.allocationSize(value.`actualRevision`)
+            )
+        }
+        is CommandDisposition.Duplicate -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CommandDisposition.NotAllowed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CommandDisposition.AlreadyComplete -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CommandDisposition.NoOp -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CommandDisposition.Cancelled -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is CommandDisposition.Failed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeCoreFailureCode.allocationSize(value.`code`)
+            )
+        }
+        is CommandDisposition.OutcomeUnknown -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: CommandDisposition, buf: ByteBuffer) {
+        when(value) {
+            is CommandDisposition.Applied -> {
+                buf.putInt(1)
+                Unit
+            }
+            is CommandDisposition.Rejected -> {
+                buf.putInt(2)
+                FfiConverterTypeCommandRejectionReason.write(value.`reason`, buf)
+                Unit
+            }
+            is CommandDisposition.Stale -> {
+                buf.putInt(3)
+                FfiConverterTypeStateRevision.write(value.`expectedRevision`, buf)
+                FfiConverterTypeStateRevision.write(value.`actualRevision`, buf)
+                Unit
+            }
+            is CommandDisposition.Duplicate -> {
+                buf.putInt(4)
+                Unit
+            }
+            is CommandDisposition.NotAllowed -> {
+                buf.putInt(5)
+                Unit
+            }
+            is CommandDisposition.AlreadyComplete -> {
+                buf.putInt(6)
+                Unit
+            }
+            is CommandDisposition.NoOp -> {
+                buf.putInt(7)
+                Unit
+            }
+            is CommandDisposition.Cancelled -> {
+                buf.putInt(8)
+                Unit
+            }
+            is CommandDisposition.Failed -> {
+                buf.putInt(9)
+                FfiConverterTypeCoreFailureCode.write(value.`code`, buf)
+                Unit
+            }
+            is CommandDisposition.OutcomeUnknown -> {
+                buf.putInt(10)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+
+enum class CommandRejectionReason {
+
+    INVALID_INPUT,
+    COMMAND_IDENTITY_CONFLICT,
+    MISSING_SUBJECT,
+    UNSUPPORTED,
+    PRIVACY_BOUNDARY,
+    MISSING_PREREQUISITE;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCommandRejectionReason: FfiConverterRustBuffer<CommandRejectionReason> {
+    override fun read(buf: ByteBuffer) = try {
+
+        CommandRejectionReason.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: CommandRejectionReason) = 4UL
+
+    override fun write(value: CommandRejectionReason, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
     }
 }
 
@@ -25683,45 +25930,17 @@ sealed class TranscriptFailureEvidence {
     object PublisherUnavailable : TranscriptFailureEvidence()
 
 
-    data class Offline(
-        val `submissionAuthorized`: kotlin.Boolean,
-        val `providerAccepted`: kotlin.Boolean) : TranscriptFailureEvidence()
-
-    {
+    object Offline : TranscriptFailureEvidence()
 
 
-        companion object
-    }
-
-    data class RateLimited(
-        val `submissionAuthorized`: kotlin.Boolean,
-        val `providerAccepted`: kotlin.Boolean) : TranscriptFailureEvidence()
-
-    {
+    object RateLimited : TranscriptFailureEvidence()
 
 
-        companion object
-    }
-
-    data class TimedOut(
-        val `submissionAuthorized`: kotlin.Boolean,
-        val `providerAccepted`: kotlin.Boolean) : TranscriptFailureEvidence()
-
-    {
+    object TimedOut : TranscriptFailureEvidence()
 
 
-        companion object
-    }
+    object Transport : TranscriptFailureEvidence()
 
-    data class Transport(
-        val `submissionAuthorized`: kotlin.Boolean,
-        val `providerAccepted`: kotlin.Boolean) : TranscriptFailureEvidence()
-
-    {
-
-
-        companion object
-    }
 
     object PermissionDenied : TranscriptFailureEvidence()
 
@@ -25729,15 +25948,8 @@ sealed class TranscriptFailureEvidence {
     object ProviderRejected : TranscriptFailureEvidence()
 
 
-    data class ProviderUnavailable(
-        val `submissionAuthorized`: kotlin.Boolean,
-        val `providerAccepted`: kotlin.Boolean) : TranscriptFailureEvidence()
+    object ProviderUnavailable : TranscriptFailureEvidence()
 
-    {
-
-
-        companion object
-    }
 
     object ResponseTooLarge : TranscriptFailureEvidence()
 
@@ -25748,37 +25960,17 @@ sealed class TranscriptFailureEvidence {
     object StaleInput : TranscriptFailureEvidence()
 
 
-    data class StorageUnavailable(
-        val `submissionAuthorized`: kotlin.Boolean,
-        val `providerAccepted`: kotlin.Boolean) : TranscriptFailureEvidence()
+    object StorageUnavailable : TranscriptFailureEvidence()
 
-    {
-
-
-        companion object
-    }
 
     object ProviderRecoveryUnavailable : TranscriptFailureEvidence()
 
 
-    data class RetryExhausted(
-        val `mayHaveSubmitted`: kotlin.Boolean) : TranscriptFailureEvidence()
-
-    {
+    object RetryExhausted : TranscriptFailureEvidence()
 
 
-        companion object
-    }
+    object Cancelled : TranscriptFailureEvidence()
 
-    data class Cancelled(
-        val `submissionAuthorized`: kotlin.Boolean,
-        val `providerAccepted`: kotlin.Boolean) : TranscriptFailureEvidence()
-
-    {
-
-
-        companion object
-    }
 
     data class Unsupported(
         val `wireCode`: kotlin.UInt) : TranscriptFailureEvidence()
@@ -25810,43 +26002,20 @@ public object FfiConverterTypeTranscriptFailureEvidence : FfiConverterRustBuffer
             3 -> TranscriptFailureEvidence.InvalidRequest
             4 -> TranscriptFailureEvidence.UnsupportedProvider
             5 -> TranscriptFailureEvidence.PublisherUnavailable
-            6 -> TranscriptFailureEvidence.Offline(
-                FfiConverterBoolean.read(buf),
-                FfiConverterBoolean.read(buf),
-                )
-            7 -> TranscriptFailureEvidence.RateLimited(
-                FfiConverterBoolean.read(buf),
-                FfiConverterBoolean.read(buf),
-                )
-            8 -> TranscriptFailureEvidence.TimedOut(
-                FfiConverterBoolean.read(buf),
-                FfiConverterBoolean.read(buf),
-                )
-            9 -> TranscriptFailureEvidence.Transport(
-                FfiConverterBoolean.read(buf),
-                FfiConverterBoolean.read(buf),
-                )
+            6 -> TranscriptFailureEvidence.Offline
+            7 -> TranscriptFailureEvidence.RateLimited
+            8 -> TranscriptFailureEvidence.TimedOut
+            9 -> TranscriptFailureEvidence.Transport
             10 -> TranscriptFailureEvidence.PermissionDenied
             11 -> TranscriptFailureEvidence.ProviderRejected
-            12 -> TranscriptFailureEvidence.ProviderUnavailable(
-                FfiConverterBoolean.read(buf),
-                FfiConverterBoolean.read(buf),
-                )
+            12 -> TranscriptFailureEvidence.ProviderUnavailable
             13 -> TranscriptFailureEvidence.ResponseTooLarge
             14 -> TranscriptFailureEvidence.InvalidResponse
             15 -> TranscriptFailureEvidence.StaleInput
-            16 -> TranscriptFailureEvidence.StorageUnavailable(
-                FfiConverterBoolean.read(buf),
-                FfiConverterBoolean.read(buf),
-                )
+            16 -> TranscriptFailureEvidence.StorageUnavailable
             17 -> TranscriptFailureEvidence.ProviderRecoveryUnavailable
-            18 -> TranscriptFailureEvidence.RetryExhausted(
-                FfiConverterBoolean.read(buf),
-                )
-            19 -> TranscriptFailureEvidence.Cancelled(
-                FfiConverterBoolean.read(buf),
-                FfiConverterBoolean.read(buf),
-                )
+            18 -> TranscriptFailureEvidence.RetryExhausted
+            19 -> TranscriptFailureEvidence.Cancelled
             20 -> TranscriptFailureEvidence.Unsupported(
                 FfiConverterUInt.read(buf),
                 )
@@ -25889,32 +26058,24 @@ public object FfiConverterTypeTranscriptFailureEvidence : FfiConverterRustBuffer
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterBoolean.allocationSize(value.`submissionAuthorized`)
-                + FfiConverterBoolean.allocationSize(value.`providerAccepted`)
             )
         }
         is TranscriptFailureEvidence.RateLimited -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterBoolean.allocationSize(value.`submissionAuthorized`)
-                + FfiConverterBoolean.allocationSize(value.`providerAccepted`)
             )
         }
         is TranscriptFailureEvidence.TimedOut -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterBoolean.allocationSize(value.`submissionAuthorized`)
-                + FfiConverterBoolean.allocationSize(value.`providerAccepted`)
             )
         }
         is TranscriptFailureEvidence.Transport -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterBoolean.allocationSize(value.`submissionAuthorized`)
-                + FfiConverterBoolean.allocationSize(value.`providerAccepted`)
             )
         }
         is TranscriptFailureEvidence.PermissionDenied -> {
@@ -25933,8 +26094,6 @@ public object FfiConverterTypeTranscriptFailureEvidence : FfiConverterRustBuffer
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterBoolean.allocationSize(value.`submissionAuthorized`)
-                + FfiConverterBoolean.allocationSize(value.`providerAccepted`)
             )
         }
         is TranscriptFailureEvidence.ResponseTooLarge -> {
@@ -25959,8 +26118,6 @@ public object FfiConverterTypeTranscriptFailureEvidence : FfiConverterRustBuffer
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterBoolean.allocationSize(value.`submissionAuthorized`)
-                + FfiConverterBoolean.allocationSize(value.`providerAccepted`)
             )
         }
         is TranscriptFailureEvidence.ProviderRecoveryUnavailable -> {
@@ -25973,15 +26130,12 @@ public object FfiConverterTypeTranscriptFailureEvidence : FfiConverterRustBuffer
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterBoolean.allocationSize(value.`mayHaveSubmitted`)
             )
         }
         is TranscriptFailureEvidence.Cancelled -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterBoolean.allocationSize(value.`submissionAuthorized`)
-                + FfiConverterBoolean.allocationSize(value.`providerAccepted`)
             )
         }
         is TranscriptFailureEvidence.Unsupported -> {
@@ -26017,26 +26171,18 @@ public object FfiConverterTypeTranscriptFailureEvidence : FfiConverterRustBuffer
             }
             is TranscriptFailureEvidence.Offline -> {
                 buf.putInt(6)
-                FfiConverterBoolean.write(value.`submissionAuthorized`, buf)
-                FfiConverterBoolean.write(value.`providerAccepted`, buf)
                 Unit
             }
             is TranscriptFailureEvidence.RateLimited -> {
                 buf.putInt(7)
-                FfiConverterBoolean.write(value.`submissionAuthorized`, buf)
-                FfiConverterBoolean.write(value.`providerAccepted`, buf)
                 Unit
             }
             is TranscriptFailureEvidence.TimedOut -> {
                 buf.putInt(8)
-                FfiConverterBoolean.write(value.`submissionAuthorized`, buf)
-                FfiConverterBoolean.write(value.`providerAccepted`, buf)
                 Unit
             }
             is TranscriptFailureEvidence.Transport -> {
                 buf.putInt(9)
-                FfiConverterBoolean.write(value.`submissionAuthorized`, buf)
-                FfiConverterBoolean.write(value.`providerAccepted`, buf)
                 Unit
             }
             is TranscriptFailureEvidence.PermissionDenied -> {
@@ -26049,8 +26195,6 @@ public object FfiConverterTypeTranscriptFailureEvidence : FfiConverterRustBuffer
             }
             is TranscriptFailureEvidence.ProviderUnavailable -> {
                 buf.putInt(12)
-                FfiConverterBoolean.write(value.`submissionAuthorized`, buf)
-                FfiConverterBoolean.write(value.`providerAccepted`, buf)
                 Unit
             }
             is TranscriptFailureEvidence.ResponseTooLarge -> {
@@ -26067,8 +26211,6 @@ public object FfiConverterTypeTranscriptFailureEvidence : FfiConverterRustBuffer
             }
             is TranscriptFailureEvidence.StorageUnavailable -> {
                 buf.putInt(16)
-                FfiConverterBoolean.write(value.`submissionAuthorized`, buf)
-                FfiConverterBoolean.write(value.`providerAccepted`, buf)
                 Unit
             }
             is TranscriptFailureEvidence.ProviderRecoveryUnavailable -> {
@@ -26077,13 +26219,10 @@ public object FfiConverterTypeTranscriptFailureEvidence : FfiConverterRustBuffer
             }
             is TranscriptFailureEvidence.RetryExhausted -> {
                 buf.putInt(18)
-                FfiConverterBoolean.write(value.`mayHaveSubmitted`, buf)
                 Unit
             }
             is TranscriptFailureEvidence.Cancelled -> {
                 buf.putInt(19)
-                FfiConverterBoolean.write(value.`submissionAuthorized`, buf)
-                FfiConverterBoolean.write(value.`providerAccepted`, buf)
                 Unit
             }
             is TranscriptFailureEvidence.Unsupported -> {
