@@ -159,6 +159,8 @@ evidence for overlapping legacy membership.
 Contract version 61 adds bounded typed product-setting intents so native
 surfaces name the setting they intend to change instead of replacing the
 entire settings aggregate.
+Contract version 62 adds the bounded category-authority projection and typed
+category import, replacement, membership, and settings commands.
 Swift still owns transcript-generation/index workflow scheduling, remaining
 agent workflow state, and presentation state until their complete vertical
 facade exposes only typed host requests and bounded product audit updates.
