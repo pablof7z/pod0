@@ -3,9 +3,7 @@ import Observation
 import Pod0Core
 import WidgetKit
 import os.log
-/// Native projection and temporary-domain store.
-/// Rust is the sole durable owner of the migrated listening slice. This store
-/// persists unmigrated product domains and a replaceable native read model.
+/// Native read model plus temporary stores for domains not yet migrated.
 @MainActor
 @Observable
 final class AppStateStore {
@@ -19,16 +17,9 @@ final class AppStateStore {
     /// Bounded Rust projection; never persisted as native durable state.
     var newEpisodeNotificationsEnabled = true
     var recallConfigurationRevision: UInt64 = 0
-    /// Chapter the user long-pressed in `PlayerChaptersScrollView`. Drained
-    /// by `SharedAgentChatView` and prefilled into the composer; cleared by
-    /// the same presentation so a later sheet re-open starts blank. Carries no
-    /// transcript text — only the chapter title + time range; the agent
-    /// fetches transcript context through its tool inventory.
+    /// Selected chapter context drained by `SharedAgentChatView`.
     var pendingChapterAgentContext: ChapterAgentContext?
-    /// Voice note the user recorded via the mic button in the player. Drained
-    /// by `SharedAgentChatView` and auto-sent to the agent. The context
-    /// carries the timestamp anchor, the active chapter bounds, and the
-    /// transcribed utterance; the agent decides what to do with it.
+    /// Recorded voice context drained by `SharedAgentChatView`.
     var pendingVoiceNoteAgentContext: VoiceNoteAgentContext?
     private(set) var state: AppState {
         didSet {
