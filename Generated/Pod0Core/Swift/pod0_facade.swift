@@ -685,6 +685,8 @@ public protocol Pod0FacadeProtocol: AnyObject, Sendable {
 
     func verifyLegacyMemoryCutover(sourceGeneration: UInt64)  -> LegacyMemoryCutoverProjection
 
+    func applyProductSettingIntents(commandId: CommandId, expectedRevision: StateRevision, writerId: ContentDigest, intents: [ProductSettingIntent]) throws  -> ProductSettingsAuthorityProjection
+
     func importLegacyProductSettings(commandId: CommandId, sourceGeneration: UInt64, writerId: ContentDigest, values: ProductSettingsValues) throws  -> ProductSettingsAuthorityProjection
 
     func mergeRemoteProductSettings(commandId: CommandId, schemaVersion: UInt32, writerVersion: SettingsWriterVersion, values: ProductSettingsValues) throws  -> ProductSettingsAuthorityProjection
@@ -1080,6 +1082,19 @@ open func verifyLegacyMemoryCutover(sourceGeneration: UInt64) -> LegacyMemoryCut
     uniffi_pod0_facade_fn_method_pod0facade_verify_legacy_memory_cutover(
             self.uniffiCloneHandle(),
         FfiConverterUInt64.lower(sourceGeneration),uniffiCallStatus
+    )
+})
+}
+
+open func applyProductSettingIntents(commandId: CommandId, expectedRevision: StateRevision, writerId: ContentDigest, intents: [ProductSettingIntent])throws  -> ProductSettingsAuthorityProjection  {
+    return try  FfiConverterTypeProductSettingsAuthorityProjection_lift(try rustCallWithError(FfiConverterTypeFacadeOpenError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_method_pod0facade_apply_product_setting_intents(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeCommandId_lower(commandId),
+        FfiConverterTypeStateRevision_lower(expectedRevision),
+        FfiConverterTypeContentDigest_lower(writerId),
+        FfiConverterSequenceTypeProductSettingIntent.lower(intents),uniffiCallStatus
     )
 })
 }
@@ -9716,6 +9731,31 @@ fileprivate struct FfiConverterSequenceTypeUserDataErasureTargetLocation: FfiCon
         return seq
     }
 }
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeProductSettingIntent: FfiConverterRustBuffer {
+    typealias SwiftType = [ProductSettingIntent]
+
+    public static func write(_ value: [ProductSettingIntent], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeProductSettingIntent.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ProductSettingIntent] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ProductSettingIntent]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeProductSettingIntent.read(from: &buf))
+        }
+        return seq
+    }
+}
 public func commitStagedLegacyChapterImport(sourceDatabasePath: String, artifactRootPath: String, targetPath: String, importId: CommandId) -> LegacyChapterMigrationProjection  {
     return try!  FfiConverterTypeLegacyChapterMigrationProjection_lift(try! rustCall() {
         uniffiCallStatus in
@@ -10441,6 +10481,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_memory_cutover() != 30698) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_method_pod0facade_apply_product_setting_intents() != 18412) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_import_legacy_product_settings() != 47138) {

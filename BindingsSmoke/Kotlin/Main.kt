@@ -48,7 +48,7 @@ fun main(args: Array<String>) {
         check(subscriber.revisions == listOf(0UL, 1UL))
 
         val projection = facade.snapshot(request).projection
-        check(facade.snapshot(request).contractVersion == 60u)
+        check(facade.snapshot(request).contractVersion == 61u)
         check(projection is Projection.Library)
         val unsupportedOperation = projection.value.operations.single()
         check(unsupportedOperation.commandId == CommandId(0UL, 1UL))

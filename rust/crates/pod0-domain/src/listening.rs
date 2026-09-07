@@ -44,7 +44,9 @@ pub enum AutoDownloadMode {
     Unsupported { wire_code: u32 },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Record,
+)]
 pub struct AutoDownloadPolicy {
     pub mode: AutoDownloadMode,
     pub wifi_only: bool,

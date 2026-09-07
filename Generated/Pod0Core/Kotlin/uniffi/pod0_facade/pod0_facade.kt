@@ -60,6 +60,7 @@ import uniffi.pod0_application.FfiConverterTypeLeasedHostObservationEnvelope
 import uniffi.pod0_application.FfiConverterTypeLeasedHostRequestEnvelope
 import uniffi.pod0_application.FfiConverterTypeLegacyAgentHistoryConversationInput
 import uniffi.pod0_application.FfiConverterTypeModelChapterObservation
+import uniffi.pod0_application.FfiConverterTypeProductSettingIntent
 import uniffi.pod0_application.FfiConverterTypeProjectionBatchEnvelope
 import uniffi.pod0_application.FfiConverterTypeProjectionBatchRequest
 import uniffi.pod0_application.FfiConverterTypeProjectionEnvelope
@@ -89,6 +90,7 @@ import uniffi.pod0_application.LeasedHostObservationEnvelope
 import uniffi.pod0_application.LeasedHostRequestEnvelope
 import uniffi.pod0_application.LegacyAgentHistoryConversationInput
 import uniffi.pod0_application.ModelChapterObservation
+import uniffi.pod0_application.ProductSettingIntent
 import uniffi.pod0_application.ProjectionBatchEnvelope
 import uniffi.pod0_application.ProjectionBatchRequest
 import uniffi.pod0_application.ProjectionEnvelope
@@ -164,6 +166,7 @@ import uniffi.pod0_application.RustBuffer as RustBufferLeasedHostObservationEnve
 import uniffi.pod0_application.RustBuffer as RustBufferLeasedHostRequestEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferLegacyAgentHistoryConversationInput
 import uniffi.pod0_application.RustBuffer as RustBufferModelChapterObservation
+import uniffi.pod0_application.RustBuffer as RustBufferProductSettingIntent
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionBatchEnvelope
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionBatchRequest
 import uniffi.pod0_application.RustBuffer as RustBufferProjectionEnvelope
@@ -1009,6 +1012,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_memory_cutover(
     ): Int
+    external fun uniffi_pod0_facade_checksum_method_pod0facade_apply_product_setting_intents(
+    ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_import_legacy_product_settings(
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_merge_remote_product_settings(
@@ -1159,6 +1164,8 @@ internal object UniffiLib {
     external fun uniffi_pod0_facade_fn_method_pod0facade_stage_legacy_memory_cutover(`ptr`: Long,`backupDigest`: RustBufferContentDigest.ByValue,`backupByteCount`: Long,`memories`: RustBuffer.ByValue,`compiled`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_verify_legacy_memory_cutover(`ptr`: Long,`sourceGeneration`: Long,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_pod0_facade_fn_method_pod0facade_apply_product_setting_intents(`ptr`: Long,`commandId`: RustBufferCommandId.ByValue,`expectedRevision`: RustBufferStateRevision.ByValue,`writerId`: RustBufferContentDigest.ByValue,`intents`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_pod0_facade_fn_method_pod0facade_import_legacy_product_settings(`ptr`: Long,`commandId`: RustBufferCommandId.ByValue,`sourceGeneration`: Long,`writerId`: RustBufferContentDigest.ByValue,`values`: RustBufferProductSettingsValues.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
@@ -1647,6 +1654,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_memory_cutover() != 30698) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_apply_product_setting_intents() != 18412) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_import_legacy_product_settings() != 47138) {
@@ -2303,6 +2313,8 @@ public interface Pod0FacadeInterface {
 
     fun `verifyLegacyMemoryCutover`(`sourceGeneration`: kotlin.ULong): LegacyMemoryCutoverProjection
 
+    fun `applyProductSettingIntents`(`commandId`: CommandId, `expectedRevision`: StateRevision, `writerId`: ContentDigest, `intents`: List<ProductSettingIntent>): ProductSettingsAuthorityProjection
+
     fun `importLegacyProductSettings`(`commandId`: CommandId, `sourceGeneration`: kotlin.ULong, `writerId`: ContentDigest, `values`: ProductSettingsValues): ProductSettingsAuthorityProjection
 
     fun `mergeRemoteProductSettings`(`commandId`: CommandId, `schemaVersion`: kotlin.UInt, `writerVersion`: SettingsWriterVersion, `values`: ProductSettingsValues): ProductSettingsAuthorityProjection
@@ -2816,6 +2828,24 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
         it,
 
         FfiConverterULong.lower(`sourceGeneration`),_status)
+}
+    }
+    )
+    }
+
+
+
+    @Throws(FacadeOpenException::class)override fun `applyProductSettingIntents`(`commandId`: CommandId, `expectedRevision`: StateRevision, `writerId`: ContentDigest, `intents`: List<ProductSettingIntent>): ProductSettingsAuthorityProjection {
+            return FfiConverterTypeProductSettingsAuthorityProjection.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FacadeOpenException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_method_pod0facade_apply_product_setting_intents(
+        it,
+
+        FfiConverterTypeCommandId.lower(`commandId`),
+        FfiConverterTypeStateRevision.lower(`expectedRevision`),
+        FfiConverterTypeContentDigest.lower(`writerId`),
+        FfiConverterSequenceTypeProductSettingIntent.lower(`intents`),_status)
 }
     }
     )
@@ -10739,6 +10769,36 @@ public object FfiConverterSequenceTypeUserDataErasureTargetLocation: FfiConverte
         }
     }
 }
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeProductSettingIntent: FfiConverterRustBuffer<List<ProductSettingIntent>> {
+    override fun read(buf: ByteBuffer): List<ProductSettingIntent> {
+        val len = buf.getInt()
+        return List<ProductSettingIntent>(len) {
+            FfiConverterTypeProductSettingIntent.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<ProductSettingIntent>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeProductSettingIntent.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<ProductSettingIntent>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeProductSettingIntent.write(it, buf)
+        }
+    }
+}
+
+
 
 
 

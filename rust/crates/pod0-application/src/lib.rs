@@ -180,11 +180,11 @@ mod scheduled_agent_observation_validation;
 mod scheduled_agent_policy;
 #[cfg(test)]
 mod scheduled_agent_tests;
-mod settings_transition;
-mod settings_transition_candidate;
 mod settings_intent;
 #[cfg(test)]
 mod settings_intent_tests;
+mod settings_transition;
+mod settings_transition_candidate;
 #[cfg(test)]
 mod settings_transition_tests;
 mod settings_validation;
