@@ -3,7 +3,10 @@ use rusqlite::{Connection, OptionalExtension};
 use crate::StorageError;
 use crate::schema_introspection::require_columns;
 
-pub(crate) fn validate_activity_schema(connection: &Connection) -> Result<(), StorageError> {
+pub(crate) fn validate_activity_schema(
+    connection: &Connection,
+    version: u32,
+) -> Result<(), StorageError> {
     require_columns(
         connection,
         "pod0_activity_facts",
@@ -120,6 +123,28 @@ pub(crate) fn validate_activity_schema(connection: &Connection) -> Result<(), St
             return Err(StorageError::CorruptSchema {
                 detail: "activity append-only trigger is missing",
             });
+        }
+    }
+    if version >= 45 {
+        for trigger in [
+            "pod0_effect_intents_request_immutable",
+            "pod0_effect_intents_no_delete",
+        ] {
+            let found: Option<String> = connection
+                .query_row(
+                    "SELECT name FROM sqlite_master WHERE type='trigger' AND name=?1",
+                    [trigger],
+                    |row| row.get(0),
+                )
+                .optional()
+                .map_err(|error| {
+                    StorageError::sqlite("validate immutable effect trigger", error)
+                })?;
+            if found.is_none() {
+                return Err(StorageError::CorruptSchema {
+                    detail: "immutable effect trigger is missing",
+                });
+            }
         }
     }
     Ok(())

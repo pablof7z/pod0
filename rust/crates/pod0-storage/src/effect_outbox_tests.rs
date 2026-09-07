@@ -14,7 +14,7 @@ use crate::recovery_test_support::Fixture;
 use crate::transition_commit::TransitionCommit;
 use crate::{EffectOutbox, EffectOutboxError, TransitionIngress, TransitionIngressKind};
 
-fn commit_effect(path: &std::path::Path) -> EffectIntentId {
+pub(super) fn commit_effect(path: &std::path::Path) -> EffectIntentId {
     let episode_id = EpisodeId::from_parts(10, 1);
     let transaction_id = ActivityTransactionId::from_parts(11, 1);
     let correlation_id = ActivityCorrelationId::from_parts(12, 1);
@@ -112,7 +112,47 @@ fn lease_excludes_concurrent_execution_and_expiry_reclaims_with_a_new_fence() {
         .unwrap()
         .unwrap();
     assert_eq!(first.intent_id, intent_id);
+    assert_eq!(first.attempt_id, EffectAttemptId::from_parts(20, 1));
+    assert_eq!(first.lease_id, EffectLeaseId::from_parts(21, 1));
     assert_eq!(first.fence, 1);
+    assert_eq!(first.authorizing_activity_id, ActivityId::from_parts(14, 2));
+    assert_eq!(
+        first.correlation_id,
+        ActivityCorrelationId::from_parts(12, 1)
+    );
+    assert_eq!(
+        outbox.effect_request(intent_id).unwrap(),
+        Some(first.request.clone())
+    );
+    let pod0_application::DurableEffectExecution::Lifecycle { request } = &first.request.execution
+    else {
+        panic!("test effect must retain its exact typed execution");
+    };
+    assert_eq!(
+        request.cancellation_id,
+        pod0_domain::CancellationId::from_parts(15, 3)
+    );
+    assert_eq!(first.expires_at, UnixTimestampMilliseconds::new(2_000));
+    assert_eq!(first.identity().attempt_id, first.attempt_id);
+    assert_eq!(first.identity().lease_id, first.lease_id);
+    assert_eq!(
+        outbox.stage_observation(
+            EffectLeaseId::from_parts(99, 1),
+            first.fence,
+            EffectOutcome::Succeeded,
+            UnixTimestampMilliseconds::new(1_500),
+        ),
+        Err(EffectOutboxError::StaleLease)
+    );
+    assert_eq!(
+        outbox.stage_observation(
+            first.lease_id,
+            first.fence + 1,
+            EffectOutcome::Succeeded,
+            UnixTimestampMilliseconds::new(1_500),
+        ),
+        Err(EffectOutboxError::StaleLease)
+    );
     assert_eq!(
         outbox
             .next_claim_at(UnixTimestampMilliseconds::new(1_500))
@@ -130,6 +170,15 @@ fn lease_excludes_concurrent_execution_and_expiry_reclaims_with_a_new_fence() {
             .unwrap()
             .is_none()
     );
+    assert_eq!(
+        outbox.stage_observation(
+            first.lease_id,
+            first.fence,
+            EffectOutcome::Succeeded,
+            UnixTimestampMilliseconds::new(2_001),
+        ),
+        Err(EffectOutboxError::StaleLease)
+    );
 
     let reopened = EffectOutbox::open(&fixture.store).unwrap();
     let second = reopened
@@ -143,6 +192,9 @@ fn lease_excludes_concurrent_execution_and_expiry_reclaims_with_a_new_fence() {
         .unwrap();
     assert_eq!(second.intent_id, intent_id);
     assert_eq!(second.fence, 2);
+    assert_eq!(second.request, first.request);
+    assert_ne!(second.attempt_id, first.attempt_id);
+    assert_ne!(second.lease_id, first.lease_id);
     assert!(matches!(
         reopened.stage_observation(
             first.lease_id,
@@ -160,6 +212,15 @@ fn lease_excludes_concurrent_execution_and_expiry_reclaims_with_a_new_fence() {
             UnixTimestampMilliseconds::new(2_500),
         )
         .unwrap();
+    assert_eq!(
+        reopened.stage_observation(
+            second.lease_id,
+            second.fence,
+            EffectOutcome::Succeeded,
+            UnixTimestampMilliseconds::new(2_500),
+        ),
+        Err(EffectOutboxError::StaleLease)
+    );
     assert!(
         reopened
             .claim_next(

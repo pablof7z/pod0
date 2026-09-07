@@ -58,6 +58,11 @@ the host-request identity, conditional-fetch headers, attempt count, retry
 schedule, and terminal failure state so an interrupted fetch is re-issued
 after relaunch with the same request identity.
 
+Version 45 makes durable external-effect request rows append-only at the
+database boundary. Lease claims and terminalization may advance only the
+mutable state and fence columns; request identity, authorization, correlation,
+payload, timing, and provenance cannot be updated or deleted.
+
 SQL steps are sequential files under `rust/schema/migrations`. Their SHA-256
 lock and `CURRENT_SCHEMA_VERSION` are checked in CI. Never edit a shipped step;
 add the next version and update the lock in the same reviewed change.

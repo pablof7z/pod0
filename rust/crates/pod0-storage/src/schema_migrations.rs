@@ -48,6 +48,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../../../schema/migrations/0042_durable_cancellation_effects.sql"),
     include_str!("../../../schema/migrations/0043_library_network_workflows.sql"),
     include_str!("../../../schema/migrations/0044_remove_external_publication_state.sql"),
+    include_str!("../../../schema/migrations/0045_immutable_effect_intents.sql"),
 ];
 
 pub(crate) fn migration_sql(version: u32) -> Option<&'static str> {
