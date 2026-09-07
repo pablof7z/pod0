@@ -156,9 +156,12 @@ the authoritative settings projection used by native persistence and sync
 transports. Contract version 60 completes the category record with Rust-owned
 settings, an optional auto-download override, and deterministic conflict
 evidence for overlapping legacy membership.
+Contract version 61 adds bounded typed product-setting intents so native
+surfaces name the setting they intend to change instead of replacing the
+entire settings aggregate.
 Swift still owns transcript-generation/index workflow scheduling, remaining
 agent workflow state, and presentation state until their complete vertical
-facade exposes only Pod0 publication drafts and bounded product audit updates.
+facade exposes only typed host requests and bounded product audit updates.
 
 Canonical chapter artifacts, selections, and workflows are Rust-owned. Contract
 version 24 adds durable source-version provenance to the model-chapter command,

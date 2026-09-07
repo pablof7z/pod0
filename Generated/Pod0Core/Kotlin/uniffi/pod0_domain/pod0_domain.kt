@@ -1793,6 +1793,78 @@ public object FfiConverterTypeCategoryRecord: FfiConverterRustBuffer<CategoryRec
 
 
 
+/**
+ * Complete input for one category replacement. The kernel derives slugs and
+ * validates membership against the authoritative subscription collection.
+ */
+data class CategoryReplacementInput (
+    val `categoryId`: CategoryId
+    ,
+    val `name`: kotlin.String
+    ,
+    val `description`: kotlin.String
+    ,
+    val `colorHex`: kotlin.String?
+    ,
+    val `origin`: CategoryOrigin
+    ,
+    val `podcastIds`: List<PodcastId>
+    ,
+    val `settings`: CategorySettings
+    ,
+    val `generatedAt`: UnixTimestampMilliseconds
+
+){
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCategoryReplacementInput: FfiConverterRustBuffer<CategoryReplacementInput> {
+    override fun read(buf: ByteBuffer): CategoryReplacementInput {
+        return CategoryReplacementInput(
+            FfiConverterTypeCategoryId.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeCategoryOrigin.read(buf),
+            FfiConverterSequenceTypePodcastId.read(buf),
+            FfiConverterTypeCategorySettings.read(buf),
+            FfiConverterTypeUnixTimestampMilliseconds.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: CategoryReplacementInput) = (
+            FfiConverterTypeCategoryId.allocationSize(value.`categoryId`) +
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterString.allocationSize(value.`description`) +
+            FfiConverterOptionalString.allocationSize(value.`colorHex`) +
+            FfiConverterTypeCategoryOrigin.allocationSize(value.`origin`) +
+            FfiConverterSequenceTypePodcastId.allocationSize(value.`podcastIds`) +
+            FfiConverterTypeCategorySettings.allocationSize(value.`settings`) +
+            FfiConverterTypeUnixTimestampMilliseconds.allocationSize(value.`generatedAt`)
+    )
+
+    override fun write(value: CategoryReplacementInput, buf: ByteBuffer) {
+            FfiConverterTypeCategoryId.write(value.`categoryId`, buf)
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterString.write(value.`description`, buf)
+            FfiConverterOptionalString.write(value.`colorHex`, buf)
+            FfiConverterTypeCategoryOrigin.write(value.`origin`, buf)
+            FfiConverterSequenceTypePodcastId.write(value.`podcastIds`, buf)
+            FfiConverterTypeCategorySettings.write(value.`settings`, buf)
+            FfiConverterTypeUnixTimestampMilliseconds.write(value.`generatedAt`, buf)
+    }
+}
+
+
+
 data class CategoryRevision (
     val `value`: kotlin.ULong
 
@@ -10058,6 +10130,34 @@ public object FfiConverterSequenceTypeMemoryId: FfiConverterRustBuffer<List<Memo
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeMemoryId.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypePodcastId: FfiConverterRustBuffer<List<PodcastId>> {
+    override fun read(buf: ByteBuffer): List<PodcastId> {
+        val len = buf.getInt()
+        return List<PodcastId>(len) {
+            FfiConverterTypePodcastId.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<PodcastId>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypePodcastId.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<PodcastId>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypePodcastId.write(it, buf)
         }
     }
 }

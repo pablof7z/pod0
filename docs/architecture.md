@@ -22,7 +22,7 @@ product-proof agent conversations, proposals, permissions, recall citations,
 model usage, generated audio provenance, feed-discovery download/notification
 policy with durable recovery, and portable product settings with versioned
 sync-conflict evidence, plus category policy and deterministic override
-resolution. The facade contract is now version 60. It exposes bounded commands,
+resolution. The facade contract is now version 61. It exposes bounded commands,
 projections, domain events, and correlated host requests across those migrated
 domains. Exact integer milliseconds, stable identifiers, explicit revisions,
 effect fences, cancellation, and typed failure states prevent native adapters

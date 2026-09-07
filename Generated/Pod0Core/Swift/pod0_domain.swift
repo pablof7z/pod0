@@ -1535,6 +1535,88 @@ public func FfiConverterTypeCategoryRecord_lower(_ value: CategoryRecord) -> Rus
 }
 
 
+/**
+ * Complete input for one category replacement. The kernel derives slugs and
+ * validates membership against the authoritative subscription collection.
+ */
+public struct CategoryReplacementInput: Equatable, Hashable {
+    public let categoryId: CategoryId
+    public let name: String
+    public let description: String
+    public let colorHex: String?
+    public let origin: CategoryOrigin
+    public let podcastIds: [PodcastId]
+    public let settings: CategorySettings
+    public let generatedAt: UnixTimestampMilliseconds
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(categoryId: CategoryId, name: String, description: String, colorHex: String?, origin: CategoryOrigin, podcastIds: [PodcastId], settings: CategorySettings, generatedAt: UnixTimestampMilliseconds) {
+        self.categoryId = categoryId
+        self.name = name
+        self.description = description
+        self.colorHex = colorHex
+        self.origin = origin
+        self.podcastIds = podcastIds
+        self.settings = settings
+        self.generatedAt = generatedAt
+    }
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CategoryReplacementInput: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCategoryReplacementInput: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CategoryReplacementInput {
+        return
+            try CategoryReplacementInput(
+                categoryId: FfiConverterTypeCategoryId.read(from: &buf),
+                name: FfiConverterString.read(from: &buf),
+                description: FfiConverterString.read(from: &buf),
+                colorHex: FfiConverterOptionString.read(from: &buf),
+                origin: FfiConverterTypeCategoryOrigin.read(from: &buf),
+                podcastIds: FfiConverterSequenceTypePodcastId.read(from: &buf),
+                settings: FfiConverterTypeCategorySettings.read(from: &buf),
+                generatedAt: FfiConverterTypeUnixTimestampMilliseconds.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CategoryReplacementInput, into buf: inout [UInt8]) {
+        FfiConverterTypeCategoryId.write(value.categoryId, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.description, into: &buf)
+        FfiConverterOptionString.write(value.colorHex, into: &buf)
+        FfiConverterTypeCategoryOrigin.write(value.origin, into: &buf)
+        FfiConverterSequenceTypePodcastId.write(value.podcastIds, into: &buf)
+        FfiConverterTypeCategorySettings.write(value.settings, into: &buf)
+        FfiConverterTypeUnixTimestampMilliseconds.write(value.generatedAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCategoryReplacementInput_lift(_ buf: RustBuffer) throws -> CategoryReplacementInput {
+    return try FfiConverterTypeCategoryReplacementInput.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCategoryReplacementInput_lower(_ value: CategoryReplacementInput) -> RustBuffer {
+    return FfiConverterTypeCategoryReplacementInput.lower(value)
+}
+
+
 public struct CategoryRevision: Equatable, Hashable {
     public let value: UInt64
 
@@ -10227,6 +10309,31 @@ fileprivate struct FfiConverterSequenceTypeMemoryId: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeMemoryId.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypePodcastId: FfiConverterRustBuffer {
+    typealias SwiftType = [PodcastId]
+
+    public static func write(_ value: [PodcastId], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypePodcastId.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [PodcastId] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [PodcastId]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypePodcastId.read(from: &buf))
         }
         return seq
     }

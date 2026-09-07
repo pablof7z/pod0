@@ -111,6 +111,7 @@ import uniffi.pod0_domain.FfiConverterTypeEvidenceGenerationId
 import uniffi.pod0_domain.FfiConverterTypeEvidenceSpanId
 import uniffi.pod0_domain.FfiConverterTypeFeedDiscoveryOccurrenceId
 import uniffi.pod0_domain.FfiConverterTypeGeneratedArtifactId
+import uniffi.pod0_domain.FfiConverterTypeHeadphoneGestureSetting
 import uniffi.pod0_domain.FfiConverterTypeHostRequestId
 import uniffi.pod0_domain.FfiConverterTypeLibraryItemId
 import uniffi.pod0_domain.FfiConverterTypeMemoryId
@@ -140,6 +141,7 @@ import uniffi.pod0_domain.FfiConverterTypeScheduledAttemptId
 import uniffi.pod0_domain.FfiConverterTypeScheduledOccurrenceId
 import uniffi.pod0_domain.FfiConverterTypeScheduledTaskId
 import uniffi.pod0_domain.FfiConverterTypeSpeakerId
+import uniffi.pod0_domain.FfiConverterTypeSpeechTranscriptionSetting
 import uniffi.pod0_domain.FfiConverterTypeStateRevision
 import uniffi.pod0_domain.FfiConverterTypeTranscriptArtifactId
 import uniffi.pod0_domain.FfiConverterTypeTranscriptArtifactInput
@@ -153,6 +155,7 @@ import uniffi.pod0_domain.FfiConverterTypeTranscriptVersionId
 import uniffi.pod0_domain.FfiConverterTypeTranscriptWorkflowId
 import uniffi.pod0_domain.FfiConverterTypeUnixTimestampMilliseconds
 import uniffi.pod0_domain.GeneratedArtifactId
+import uniffi.pod0_domain.HeadphoneGestureSetting
 import uniffi.pod0_domain.HostRequestId
 import uniffi.pod0_domain.LibraryItemId
 import uniffi.pod0_domain.MemoryId
@@ -182,6 +185,7 @@ import uniffi.pod0_domain.ScheduledAttemptId
 import uniffi.pod0_domain.ScheduledOccurrenceId
 import uniffi.pod0_domain.ScheduledTaskId
 import uniffi.pod0_domain.SpeakerId
+import uniffi.pod0_domain.SpeechTranscriptionSetting
 import uniffi.pod0_domain.StateRevision
 import uniffi.pod0_domain.TranscriptArtifactId
 import uniffi.pod0_domain.TranscriptArtifactInput
@@ -235,6 +239,7 @@ import uniffi.pod0_domain.RustBuffer as RustBufferEvidenceGenerationId
 import uniffi.pod0_domain.RustBuffer as RustBufferEvidenceSpanId
 import uniffi.pod0_domain.RustBuffer as RustBufferFeedDiscoveryOccurrenceId
 import uniffi.pod0_domain.RustBuffer as RustBufferGeneratedArtifactId
+import uniffi.pod0_domain.RustBuffer as RustBufferHeadphoneGestureSetting
 import uniffi.pod0_domain.RustBuffer as RustBufferHostRequestId
 import uniffi.pod0_domain.RustBuffer as RustBufferLibraryItemId
 import uniffi.pod0_domain.RustBuffer as RustBufferMemoryId
@@ -264,6 +269,7 @@ import uniffi.pod0_domain.RustBuffer as RustBufferScheduledAttemptId
 import uniffi.pod0_domain.RustBuffer as RustBufferScheduledOccurrenceId
 import uniffi.pod0_domain.RustBuffer as RustBufferScheduledTaskId
 import uniffi.pod0_domain.RustBuffer as RustBufferSpeakerId
+import uniffi.pod0_domain.RustBuffer as RustBufferSpeechTranscriptionSetting
 import uniffi.pod0_domain.RustBuffer as RustBufferStateRevision
 import uniffi.pod0_domain.RustBuffer as RustBufferTranscriptArtifactId
 import uniffi.pod0_domain.RustBuffer as RustBufferTranscriptArtifactInput
@@ -16840,6 +16846,42 @@ public object FfiConverterTypeFeedFetchStage : FfiConverterRustBuffer<FeedFetchS
 
 
 
+
+enum class HeadphoneGestureTap {
+
+    DOUBLE,
+    TRIPLE;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeHeadphoneGestureTap: FfiConverterRustBuffer<HeadphoneGestureTap> {
+    override fun read(buf: ByteBuffer) = try {
+
+        HeadphoneGestureTap.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: HeadphoneGestureTap) = 4UL
+
+    override fun write(value: HeadphoneGestureTap, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 sealed class HostFailureCode {
 
     object Offline : HostFailureCode()
@@ -22243,6 +22285,44 @@ public object FfiConverterTypePlaybackPolicyState : FfiConverterRustBuffer<Playb
 
 
 
+
+enum class PlaybackSettingToggle {
+
+    AUTO_MARK_PLAYED_AT_END,
+    AUTO_DELETE_DOWNLOADS_AFTER_PLAYED,
+    AUTO_PLAY_NEXT,
+    AUTO_SKIP_ADS;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePlaybackSettingToggle: FfiConverterRustBuffer<PlaybackSettingToggle> {
+    override fun read(buf: ByteBuffer) = try {
+
+        PlaybackSettingToggle.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: PlaybackSettingToggle) = 4UL
+
+    override fun write(value: PlaybackSettingToggle, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 sealed class PlaybackStopReason {
 
     object UserInitiated : PlaybackStopReason()
@@ -22459,6 +22539,430 @@ public object FfiConverterTypePlaybackTransitionCue : FfiConverterRustBuffer<Pla
             is PlaybackTransitionCue.Unsupported -> {
                 buf.putInt(3)
                 FfiConverterUInt.write(value.`wireCode`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+
+enum class ProductModelSlot {
+
+    AGENT_INITIAL,
+    AGENT_THINKING,
+    MEMORY_COMPILATION,
+    UTILITY,
+    CATEGORIZATION,
+    CHAPTER_COMPILATION,
+    IMAGE_GENERATION;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeProductModelSlot: FfiConverterRustBuffer<ProductModelSlot> {
+    override fun read(buf: ByteBuffer) = try {
+
+        ProductModelSlot.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: ProductModelSlot) = 4UL
+
+    override fun write(value: ProductModelSlot, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+sealed class ProductSettingIntent {
+
+    data class SelectModel(
+        val `slot`: uniffi.pod0_application.ProductModelSlot,
+        val `modelId`: kotlin.String,
+        val `modelName`: kotlin.String) : ProductSettingIntent()
+
+    {
+
+
+        companion object
+    }
+
+    data class SetOllamaChatUrl(
+        val `url`: kotlin.String) : ProductSettingIntent()
+
+    {
+
+
+        companion object
+    }
+
+    data class SetYoutubeExtractorUrl(
+        val `url`: kotlin.String?) : ProductSettingIntent()
+
+    {
+
+
+        companion object
+    }
+
+    data class SetTranscriptionProvider(
+        val `provider`: uniffi.pod0_domain.SpeechTranscriptionSetting) : ProductSettingIntent()
+
+    {
+
+
+        companion object
+    }
+
+    data class SetTranscriptionModel(
+        val `slot`: uniffi.pod0_application.TranscriptionModelSlot,
+        val `modelId`: kotlin.String) : ProductSettingIntent()
+
+    {
+
+
+        companion object
+    }
+
+    data class SetTextToSpeechModel(
+        val `modelId`: kotlin.String) : ProductSettingIntent()
+
+    {
+
+
+        companion object
+    }
+
+    data class SetTextToSpeechVoice(
+        val `voiceId`: kotlin.String,
+        val `voiceName`: kotlin.String) : ProductSettingIntent()
+
+    {
+
+
+        companion object
+    }
+
+    data class SetPlaybackRate(
+        val `milli`: kotlin.UShort) : ProductSettingIntent()
+
+    {
+
+
+        companion object
+    }
+
+    data class SetSkipIntervals(
+        val `forwardSeconds`: kotlin.UShort,
+        val `backwardSeconds`: kotlin.UShort) : ProductSettingIntent()
+
+    {
+
+
+        companion object
+    }
+
+    data class SetPlaybackToggle(
+        val `setting`: uniffi.pod0_application.PlaybackSettingToggle,
+        val `enabled`: kotlin.Boolean) : ProductSettingIntent()
+
+    {
+
+
+        companion object
+    }
+
+    data class SetHeadphoneGesture(
+        val `tap`: uniffi.pod0_application.HeadphoneGestureTap,
+        val `action`: uniffi.pod0_domain.HeadphoneGestureSetting) : ProductSettingIntent()
+
+    {
+
+
+        companion object
+    }
+
+    data class SetTranscriptToggle(
+        val `setting`: uniffi.pod0_application.TranscriptSettingToggle,
+        val `enabled`: kotlin.Boolean) : ProductSettingIntent()
+
+    {
+
+
+        companion object
+    }
+
+    data class SetAgentIdentity(
+        val `displayName`: kotlin.String,
+        val `avatarUrl`: kotlin.String?) : ProductSettingIntent()
+
+    {
+
+
+        companion object
+    }
+
+
+
+
+
+
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeProductSettingIntent : FfiConverterRustBuffer<ProductSettingIntent>{
+    override fun read(buf: ByteBuffer): ProductSettingIntent {
+        return when(buf.getInt()) {
+            1 -> ProductSettingIntent.SelectModel(
+                FfiConverterTypeProductModelSlot.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                )
+            2 -> ProductSettingIntent.SetOllamaChatUrl(
+                FfiConverterString.read(buf),
+                )
+            3 -> ProductSettingIntent.SetYoutubeExtractorUrl(
+                FfiConverterOptionalString.read(buf),
+                )
+            4 -> ProductSettingIntent.SetTranscriptionProvider(
+                FfiConverterTypeSpeechTranscriptionSetting.read(buf),
+                )
+            5 -> ProductSettingIntent.SetTranscriptionModel(
+                FfiConverterTypeTranscriptionModelSlot.read(buf),
+                FfiConverterString.read(buf),
+                )
+            6 -> ProductSettingIntent.SetTextToSpeechModel(
+                FfiConverterString.read(buf),
+                )
+            7 -> ProductSettingIntent.SetTextToSpeechVoice(
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                )
+            8 -> ProductSettingIntent.SetPlaybackRate(
+                FfiConverterUShort.read(buf),
+                )
+            9 -> ProductSettingIntent.SetSkipIntervals(
+                FfiConverterUShort.read(buf),
+                FfiConverterUShort.read(buf),
+                )
+            10 -> ProductSettingIntent.SetPlaybackToggle(
+                FfiConverterTypePlaybackSettingToggle.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            11 -> ProductSettingIntent.SetHeadphoneGesture(
+                FfiConverterTypeHeadphoneGestureTap.read(buf),
+                FfiConverterTypeHeadphoneGestureSetting.read(buf),
+                )
+            12 -> ProductSettingIntent.SetTranscriptToggle(
+                FfiConverterTypeTranscriptSettingToggle.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            13 -> ProductSettingIntent.SetAgentIdentity(
+                FfiConverterString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: ProductSettingIntent): ULong = when(value) {
+        is ProductSettingIntent.SelectModel -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeProductModelSlot.allocationSize(value.`slot`)
+                + FfiConverterString.allocationSize(value.`modelId`)
+                + FfiConverterString.allocationSize(value.`modelName`)
+            )
+        }
+        is ProductSettingIntent.SetOllamaChatUrl -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`url`)
+            )
+        }
+        is ProductSettingIntent.SetYoutubeExtractorUrl -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterOptionalString.allocationSize(value.`url`)
+            )
+        }
+        is ProductSettingIntent.SetTranscriptionProvider -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeSpeechTranscriptionSetting.allocationSize(value.`provider`)
+            )
+        }
+        is ProductSettingIntent.SetTranscriptionModel -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeTranscriptionModelSlot.allocationSize(value.`slot`)
+                + FfiConverterString.allocationSize(value.`modelId`)
+            )
+        }
+        is ProductSettingIntent.SetTextToSpeechModel -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`modelId`)
+            )
+        }
+        is ProductSettingIntent.SetTextToSpeechVoice -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`voiceId`)
+                + FfiConverterString.allocationSize(value.`voiceName`)
+            )
+        }
+        is ProductSettingIntent.SetPlaybackRate -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUShort.allocationSize(value.`milli`)
+            )
+        }
+        is ProductSettingIntent.SetSkipIntervals -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUShort.allocationSize(value.`forwardSeconds`)
+                + FfiConverterUShort.allocationSize(value.`backwardSeconds`)
+            )
+        }
+        is ProductSettingIntent.SetPlaybackToggle -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePlaybackSettingToggle.allocationSize(value.`setting`)
+                + FfiConverterBoolean.allocationSize(value.`enabled`)
+            )
+        }
+        is ProductSettingIntent.SetHeadphoneGesture -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeHeadphoneGestureTap.allocationSize(value.`tap`)
+                + FfiConverterTypeHeadphoneGestureSetting.allocationSize(value.`action`)
+            )
+        }
+        is ProductSettingIntent.SetTranscriptToggle -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeTranscriptSettingToggle.allocationSize(value.`setting`)
+                + FfiConverterBoolean.allocationSize(value.`enabled`)
+            )
+        }
+        is ProductSettingIntent.SetAgentIdentity -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`displayName`)
+                + FfiConverterOptionalString.allocationSize(value.`avatarUrl`)
+            )
+        }
+    }
+
+    override fun write(value: ProductSettingIntent, buf: ByteBuffer) {
+        when(value) {
+            is ProductSettingIntent.SelectModel -> {
+                buf.putInt(1)
+                FfiConverterTypeProductModelSlot.write(value.`slot`, buf)
+                FfiConverterString.write(value.`modelId`, buf)
+                FfiConverterString.write(value.`modelName`, buf)
+                Unit
+            }
+            is ProductSettingIntent.SetOllamaChatUrl -> {
+                buf.putInt(2)
+                FfiConverterString.write(value.`url`, buf)
+                Unit
+            }
+            is ProductSettingIntent.SetYoutubeExtractorUrl -> {
+                buf.putInt(3)
+                FfiConverterOptionalString.write(value.`url`, buf)
+                Unit
+            }
+            is ProductSettingIntent.SetTranscriptionProvider -> {
+                buf.putInt(4)
+                FfiConverterTypeSpeechTranscriptionSetting.write(value.`provider`, buf)
+                Unit
+            }
+            is ProductSettingIntent.SetTranscriptionModel -> {
+                buf.putInt(5)
+                FfiConverterTypeTranscriptionModelSlot.write(value.`slot`, buf)
+                FfiConverterString.write(value.`modelId`, buf)
+                Unit
+            }
+            is ProductSettingIntent.SetTextToSpeechModel -> {
+                buf.putInt(6)
+                FfiConverterString.write(value.`modelId`, buf)
+                Unit
+            }
+            is ProductSettingIntent.SetTextToSpeechVoice -> {
+                buf.putInt(7)
+                FfiConverterString.write(value.`voiceId`, buf)
+                FfiConverterString.write(value.`voiceName`, buf)
+                Unit
+            }
+            is ProductSettingIntent.SetPlaybackRate -> {
+                buf.putInt(8)
+                FfiConverterUShort.write(value.`milli`, buf)
+                Unit
+            }
+            is ProductSettingIntent.SetSkipIntervals -> {
+                buf.putInt(9)
+                FfiConverterUShort.write(value.`forwardSeconds`, buf)
+                FfiConverterUShort.write(value.`backwardSeconds`, buf)
+                Unit
+            }
+            is ProductSettingIntent.SetPlaybackToggle -> {
+                buf.putInt(10)
+                FfiConverterTypePlaybackSettingToggle.write(value.`setting`, buf)
+                FfiConverterBoolean.write(value.`enabled`, buf)
+                Unit
+            }
+            is ProductSettingIntent.SetHeadphoneGesture -> {
+                buf.putInt(11)
+                FfiConverterTypeHeadphoneGestureTap.write(value.`tap`, buf)
+                FfiConverterTypeHeadphoneGestureSetting.write(value.`action`, buf)
+                Unit
+            }
+            is ProductSettingIntent.SetTranscriptToggle -> {
+                buf.putInt(12)
+                FfiConverterTypeTranscriptSettingToggle.write(value.`setting`, buf)
+                FfiConverterBoolean.write(value.`enabled`, buf)
+                Unit
+            }
+            is ProductSettingIntent.SetAgentIdentity -> {
+                buf.putInt(13)
+                FfiConverterString.write(value.`displayName`, buf)
+                FfiConverterOptionalString.write(value.`avatarUrl`, buf)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
@@ -26761,6 +27265,42 @@ public object FfiConverterTypeTranscriptRetryDisposition: FfiConverterRustBuffer
 
 
 
+
+enum class TranscriptSettingToggle {
+
+    AUTO_INGEST_PUBLISHER_TRANSCRIPTS,
+    AUTO_FALLBACK_TO_SCRIBE;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptSettingToggle: FfiConverterRustBuffer<TranscriptSettingToggle> {
+    override fun read(buf: ByteBuffer) = try {
+
+        TranscriptSettingToggle.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: TranscriptSettingToggle) = 4UL
+
+    override fun write(value: TranscriptSettingToggle, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 sealed class TranscriptWorkflowFailureCode {
 
     object MissingCredential : TranscriptWorkflowFailureCode()
@@ -27435,6 +27975,43 @@ public object FfiConverterTypeTranscriptWorkflowStage : FfiConverterRustBuffer<T
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+
+enum class TranscriptionModelSlot {
+
+    OPEN_ROUTER_WHISPER,
+    ASSEMBLY_AI,
+    ELEVEN_LABS;
+
+
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTranscriptionModelSlot: FfiConverterRustBuffer<TranscriptionModelSlot> {
+    override fun read(buf: ByteBuffer) = try {
+
+        TranscriptionModelSlot.entries[buf.getInt() - 1]
+
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: TranscriptionModelSlot) = 4UL
+
+    override fun write(value: TranscriptionModelSlot, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
     }
 }
 

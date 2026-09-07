@@ -15703,6 +15703,72 @@ public func FfiConverterTypeFeedFetchStage_lower(_ value: FeedFetchStage) -> Rus
 
 
 
+public enum HeadphoneGestureTap: Equatable, Hashable {
+
+    case double
+    case triple
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension HeadphoneGestureTap: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeHeadphoneGestureTap: FfiConverterRustBuffer {
+    typealias SwiftType = HeadphoneGestureTap
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> HeadphoneGestureTap {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .double
+
+        case 2: return .triple
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: HeadphoneGestureTap, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .double:
+            writeInt(&buf, Int32(1))
+
+
+        case .triple:
+            writeInt(&buf, Int32(2))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeHeadphoneGestureTap_lift(_ buf: RustBuffer) throws -> HeadphoneGestureTap {
+    return try FfiConverterTypeHeadphoneGestureTap.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeHeadphoneGestureTap_lower(_ value: HeadphoneGestureTap) -> RustBuffer {
+    return FfiConverterTypeHeadphoneGestureTap.lower(value)
+}
+
+
+
+
 public enum HostFailureCode: Equatable, Hashable {
 
     case offline
@@ -18744,6 +18810,86 @@ public func FfiConverterTypePlaybackPolicyState_lower(_ value: PlaybackPolicySta
 
 
 
+public enum PlaybackSettingToggle: Equatable, Hashable {
+
+    case autoMarkPlayedAtEnd
+    case autoDeleteDownloadsAfterPlayed
+    case autoPlayNext
+    case autoSkipAds
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PlaybackSettingToggle: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePlaybackSettingToggle: FfiConverterRustBuffer {
+    typealias SwiftType = PlaybackSettingToggle
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PlaybackSettingToggle {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .autoMarkPlayedAtEnd
+
+        case 2: return .autoDeleteDownloadsAfterPlayed
+
+        case 3: return .autoPlayNext
+
+        case 4: return .autoSkipAds
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: PlaybackSettingToggle, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .autoMarkPlayedAtEnd:
+            writeInt(&buf, Int32(1))
+
+
+        case .autoDeleteDownloadsAfterPlayed:
+            writeInt(&buf, Int32(2))
+
+
+        case .autoPlayNext:
+            writeInt(&buf, Int32(3))
+
+
+        case .autoSkipAds:
+            writeInt(&buf, Int32(4))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlaybackSettingToggle_lift(_ buf: RustBuffer) throws -> PlaybackSettingToggle {
+    return try FfiConverterTypePlaybackSettingToggle.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlaybackSettingToggle_lower(_ value: PlaybackSettingToggle) -> RustBuffer {
+    return FfiConverterTypePlaybackSettingToggle.lower(value)
+}
+
+
+
+
 public enum PlaybackStopReason: Equatable, Hashable {
 
     case userInitiated
@@ -18915,6 +19061,298 @@ public func FfiConverterTypePlaybackTransitionCue_lift(_ buf: RustBuffer) throws
 #endif
 public func FfiConverterTypePlaybackTransitionCue_lower(_ value: PlaybackTransitionCue) -> RustBuffer {
     return FfiConverterTypePlaybackTransitionCue.lower(value)
+}
+
+
+
+
+public enum ProductModelSlot: Equatable, Hashable {
+
+    case agentInitial
+    case agentThinking
+    case memoryCompilation
+    case utility
+    case categorization
+    case chapterCompilation
+    case imageGeneration
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ProductModelSlot: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeProductModelSlot: FfiConverterRustBuffer {
+    typealias SwiftType = ProductModelSlot
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ProductModelSlot {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .agentInitial
+
+        case 2: return .agentThinking
+
+        case 3: return .memoryCompilation
+
+        case 4: return .utility
+
+        case 5: return .categorization
+
+        case 6: return .chapterCompilation
+
+        case 7: return .imageGeneration
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ProductModelSlot, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .agentInitial:
+            writeInt(&buf, Int32(1))
+
+
+        case .agentThinking:
+            writeInt(&buf, Int32(2))
+
+
+        case .memoryCompilation:
+            writeInt(&buf, Int32(3))
+
+
+        case .utility:
+            writeInt(&buf, Int32(4))
+
+
+        case .categorization:
+            writeInt(&buf, Int32(5))
+
+
+        case .chapterCompilation:
+            writeInt(&buf, Int32(6))
+
+
+        case .imageGeneration:
+            writeInt(&buf, Int32(7))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProductModelSlot_lift(_ buf: RustBuffer) throws -> ProductModelSlot {
+    return try FfiConverterTypeProductModelSlot.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProductModelSlot_lower(_ value: ProductModelSlot) -> RustBuffer {
+    return FfiConverterTypeProductModelSlot.lower(value)
+}
+
+
+
+
+public enum ProductSettingIntent: Equatable, Hashable {
+
+    case selectModel(slot: ProductModelSlot, modelId: String, modelName: String
+    )
+    case setOllamaChatUrl(url: String
+    )
+    case setYoutubeExtractorUrl(url: String?
+    )
+    case setTranscriptionProvider(provider: SpeechTranscriptionSetting
+    )
+    case setTranscriptionModel(slot: TranscriptionModelSlot, modelId: String
+    )
+    case setTextToSpeechModel(modelId: String
+    )
+    case setTextToSpeechVoice(voiceId: String, voiceName: String
+    )
+    case setPlaybackRate(milli: UInt16
+    )
+    case setSkipIntervals(forwardSeconds: UInt16, backwardSeconds: UInt16
+    )
+    case setPlaybackToggle(setting: PlaybackSettingToggle, enabled: Bool
+    )
+    case setHeadphoneGesture(tap: HeadphoneGestureTap, action: HeadphoneGestureSetting
+    )
+    case setTranscriptToggle(setting: TranscriptSettingToggle, enabled: Bool
+    )
+    case setAgentIdentity(displayName: String, avatarUrl: String?
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ProductSettingIntent: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeProductSettingIntent: FfiConverterRustBuffer {
+    typealias SwiftType = ProductSettingIntent
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ProductSettingIntent {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .selectModel(slot: try FfiConverterTypeProductModelSlot.read(from: &buf), modelId: try FfiConverterString.read(from: &buf), modelName: try FfiConverterString.read(from: &buf)
+        )
+
+        case 2: return .setOllamaChatUrl(url: try FfiConverterString.read(from: &buf)
+        )
+
+        case 3: return .setYoutubeExtractorUrl(url: try FfiConverterOptionString.read(from: &buf)
+        )
+
+        case 4: return .setTranscriptionProvider(provider: try FfiConverterTypeSpeechTranscriptionSetting.read(from: &buf)
+        )
+
+        case 5: return .setTranscriptionModel(slot: try FfiConverterTypeTranscriptionModelSlot.read(from: &buf), modelId: try FfiConverterString.read(from: &buf)
+        )
+
+        case 6: return .setTextToSpeechModel(modelId: try FfiConverterString.read(from: &buf)
+        )
+
+        case 7: return .setTextToSpeechVoice(voiceId: try FfiConverterString.read(from: &buf), voiceName: try FfiConverterString.read(from: &buf)
+        )
+
+        case 8: return .setPlaybackRate(milli: try FfiConverterUInt16.read(from: &buf)
+        )
+
+        case 9: return .setSkipIntervals(forwardSeconds: try FfiConverterUInt16.read(from: &buf), backwardSeconds: try FfiConverterUInt16.read(from: &buf)
+        )
+
+        case 10: return .setPlaybackToggle(setting: try FfiConverterTypePlaybackSettingToggle.read(from: &buf), enabled: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 11: return .setHeadphoneGesture(tap: try FfiConverterTypeHeadphoneGestureTap.read(from: &buf), action: try FfiConverterTypeHeadphoneGestureSetting.read(from: &buf)
+        )
+
+        case 12: return .setTranscriptToggle(setting: try FfiConverterTypeTranscriptSettingToggle.read(from: &buf), enabled: try FfiConverterBool.read(from: &buf)
+        )
+
+        case 13: return .setAgentIdentity(displayName: try FfiConverterString.read(from: &buf), avatarUrl: try FfiConverterOptionString.read(from: &buf)
+        )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ProductSettingIntent, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case let .selectModel(slot,modelId,modelName):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeProductModelSlot.write(slot, into: &buf)
+            FfiConverterString.write(modelId, into: &buf)
+            FfiConverterString.write(modelName, into: &buf)
+
+
+        case let .setOllamaChatUrl(url):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(url, into: &buf)
+
+
+        case let .setYoutubeExtractorUrl(url):
+            writeInt(&buf, Int32(3))
+            FfiConverterOptionString.write(url, into: &buf)
+
+
+        case let .setTranscriptionProvider(provider):
+            writeInt(&buf, Int32(4))
+            FfiConverterTypeSpeechTranscriptionSetting.write(provider, into: &buf)
+
+
+        case let .setTranscriptionModel(slot,modelId):
+            writeInt(&buf, Int32(5))
+            FfiConverterTypeTranscriptionModelSlot.write(slot, into: &buf)
+            FfiConverterString.write(modelId, into: &buf)
+
+
+        case let .setTextToSpeechModel(modelId):
+            writeInt(&buf, Int32(6))
+            FfiConverterString.write(modelId, into: &buf)
+
+
+        case let .setTextToSpeechVoice(voiceId,voiceName):
+            writeInt(&buf, Int32(7))
+            FfiConverterString.write(voiceId, into: &buf)
+            FfiConverterString.write(voiceName, into: &buf)
+
+
+        case let .setPlaybackRate(milli):
+            writeInt(&buf, Int32(8))
+            FfiConverterUInt16.write(milli, into: &buf)
+
+
+        case let .setSkipIntervals(forwardSeconds,backwardSeconds):
+            writeInt(&buf, Int32(9))
+            FfiConverterUInt16.write(forwardSeconds, into: &buf)
+            FfiConverterUInt16.write(backwardSeconds, into: &buf)
+
+
+        case let .setPlaybackToggle(setting,enabled):
+            writeInt(&buf, Int32(10))
+            FfiConverterTypePlaybackSettingToggle.write(setting, into: &buf)
+            FfiConverterBool.write(enabled, into: &buf)
+
+
+        case let .setHeadphoneGesture(tap,action):
+            writeInt(&buf, Int32(11))
+            FfiConverterTypeHeadphoneGestureTap.write(tap, into: &buf)
+            FfiConverterTypeHeadphoneGestureSetting.write(action, into: &buf)
+
+
+        case let .setTranscriptToggle(setting,enabled):
+            writeInt(&buf, Int32(12))
+            FfiConverterTypeTranscriptSettingToggle.write(setting, into: &buf)
+            FfiConverterBool.write(enabled, into: &buf)
+
+
+        case let .setAgentIdentity(displayName,avatarUrl):
+            writeInt(&buf, Int32(13))
+            FfiConverterString.write(displayName, into: &buf)
+            FfiConverterOptionString.write(avatarUrl, into: &buf)
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProductSettingIntent_lift(_ buf: RustBuffer) throws -> ProductSettingIntent {
+    return try FfiConverterTypeProductSettingIntent.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProductSettingIntent_lower(_ value: ProductSettingIntent) -> RustBuffer {
+    return FfiConverterTypeProductSettingIntent.lower(value)
 }
 
 
@@ -21742,6 +22180,72 @@ public func FfiConverterTypeTranscriptRetryDisposition_lower(_ value: Transcript
 
 
 
+public enum TranscriptSettingToggle: Equatable, Hashable {
+
+    case autoIngestPublisherTranscripts
+    case autoFallbackToScribe
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptSettingToggle: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptSettingToggle: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptSettingToggle
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptSettingToggle {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .autoIngestPublisherTranscripts
+
+        case 2: return .autoFallbackToScribe
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: TranscriptSettingToggle, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .autoIngestPublisherTranscripts:
+            writeInt(&buf, Int32(1))
+
+
+        case .autoFallbackToScribe:
+            writeInt(&buf, Int32(2))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptSettingToggle_lift(_ buf: RustBuffer) throws -> TranscriptSettingToggle {
+    return try FfiConverterTypeTranscriptSettingToggle.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptSettingToggle_lower(_ value: TranscriptSettingToggle) -> RustBuffer {
+    return FfiConverterTypeTranscriptSettingToggle.lower(value)
+}
+
+
+
+
 public enum TranscriptWorkflowFailureCode: Equatable, Hashable {
 
     case missingCredential
@@ -22175,6 +22679,79 @@ public func FfiConverterTypeTranscriptWorkflowStage_lift(_ buf: RustBuffer) thro
 #endif
 public func FfiConverterTypeTranscriptWorkflowStage_lower(_ value: TranscriptWorkflowStage) -> RustBuffer {
     return FfiConverterTypeTranscriptWorkflowStage.lower(value)
+}
+
+
+
+
+public enum TranscriptionModelSlot: Equatable, Hashable {
+
+    case openRouterWhisper
+    case assemblyAi
+    case elevenLabs
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TranscriptionModelSlot: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTranscriptionModelSlot: FfiConverterRustBuffer {
+    typealias SwiftType = TranscriptionModelSlot
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TranscriptionModelSlot {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        case 1: return .openRouterWhisper
+
+        case 2: return .assemblyAi
+
+        case 3: return .elevenLabs
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: TranscriptionModelSlot, into buf: inout [UInt8]) {
+        switch value {
+
+
+        case .openRouterWhisper:
+            writeInt(&buf, Int32(1))
+
+
+        case .assemblyAi:
+            writeInt(&buf, Int32(2))
+
+
+        case .elevenLabs:
+            writeInt(&buf, Int32(3))
+
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptionModelSlot_lift(_ buf: RustBuffer) throws -> TranscriptionModelSlot {
+    return try FfiConverterTypeTranscriptionModelSlot.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTranscriptionModelSlot_lower(_ value: TranscriptionModelSlot) -> RustBuffer {
+    return FfiConverterTypeTranscriptionModelSlot.lower(value)
 }
 
 
