@@ -41,7 +41,14 @@ fn rejected_reason_is_preserved_by_idempotent_replay() {
 #[test]
 fn internal_command_requires_and_atomically_consumes_its_causal_link() {
     let fixture = Fixture::new();
-    fixture.migrate_to_current(41).unwrap();
+    let store =
+        crate::create_authoritative_store(&fixture.store, CommandId::from_parts(40, 1), 100)
+            .unwrap();
+    let connection = Connection::open(&fixture.store).unwrap();
+    connection
+        .execute("CREATE TABLE test_target_state(value TEXT)", [])
+        .unwrap();
+    drop(connection);
     let committer = TransitionCommit::open(&fixture.store).unwrap();
     committer
         .commit_with(
@@ -51,6 +58,25 @@ fn internal_command_requires_and_atomically_consumes_its_causal_link() {
             |_, _, _| Ok(StateRevision::new(10)),
         )
         .unwrap();
+    drop(committer);
+
+    let pending = store.pending_internal_commands(100).unwrap();
+    assert_eq!(pending.len(), 1);
+    assert_eq!(
+        pending[0].internal_command_id,
+        InternalCommandId::from_parts(8, 1)
+    );
+    assert_eq!(
+        pending[0].authorizing_activity_id,
+        ActivityId::from_parts(1, 3)
+    );
+    assert_eq!(
+        pending[0].correlation_id,
+        ActivityCorrelationId::from_parts(3, 1)
+    );
+    assert_eq!(pending[0].request.target, ActivityDomain::RecallKnowledge);
+
+    let committer = TransitionCommit::open(&fixture.store).unwrap();
     let target_plan = |linked: bool| {
         let episode_id = EpisodeId::from_parts(5, 6);
         let fact = ActivityFactDraft {
@@ -91,13 +117,31 @@ fn internal_command_requires_and_atomically_consumes_its_causal_link() {
         ),
         Err(StorageError::InvalidActivity)
     ));
-    committer
-        .commit_no_state_change(
+    let receipt = committer
+        .commit_with(
             target_ingress,
             target_plan(true),
             UnixTimestampMilliseconds::new(102),
+            |transaction, expected, ()| {
+                assert_eq!(expected, StateRevision::new(10));
+                transaction
+                    .execute("INSERT INTO test_target_state VALUES('applied')", [])
+                    .unwrap();
+                Ok(StateRevision::new(11))
+            },
         )
         .unwrap();
+    assert!(!receipt.replayed);
+    let replay = committer
+        .commit_with(
+            target_ingress,
+            target_plan(true),
+            UnixTimestampMilliseconds::new(103),
+            |_, _, _| panic!("replayed delivery must not mutate target state"),
+        )
+        .unwrap();
+    assert!(replay.replayed);
+    assert!(store.pending_internal_commands(100).unwrap().is_empty());
     let connection = Connection::open(&fixture.store).unwrap();
     let state: i64 = connection
         .query_row(
@@ -107,4 +151,11 @@ fn internal_command_requires_and_atomically_consumes_its_causal_link() {
         )
         .unwrap();
     assert_eq!(state, 2);
+    assert_eq!(
+        connection
+            .query_row("SELECT count(*) FROM test_target_state", [], |row| row
+                .get::<_, i64>(0))
+            .unwrap(),
+        1
+    );
 }
