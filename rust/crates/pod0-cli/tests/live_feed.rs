@@ -32,7 +32,7 @@ fn network_feed_persists_and_reopens_from_the_authoritative_store() {
 
     let directory = tempfile::tempdir_in(".").unwrap();
     let store = directory.path().join("pod0.sqlite");
-    support::bootstrap_authoritative_store(&store);
+    support::create_authoritative_store(&store);
     let mut shell = Shell::new(HostConfig::empty()).unwrap();
     let open: CliRequest = serde_json::from_value(serde_json::json!({
         "v": 1,

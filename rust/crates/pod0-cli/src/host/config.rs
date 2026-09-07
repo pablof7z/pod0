@@ -63,8 +63,8 @@ impl HostConfig {
             library_http: true,
             openai_compatible: self.openai_base_url.is_some(),
             ollama: self.ollama_base_url.is_some(),
-            agent_tools: false,
-            agent_capability_execution: false,
+            agent_tools: true,
+            agent_capability_execution: true,
             audio_playback: true,
             clip_media: false,
         }
@@ -191,7 +191,7 @@ mod tests {
         let output = serde_json::to_string(&config.capabilities()).unwrap();
         assert!(!output.contains("top-secret-key"));
         assert!(!output.contains("secret-host.example"));
-        assert!(!config.capabilities().agent_tools);
-        assert!(!config.capabilities().agent_capability_execution);
+        assert!(config.capabilities().agent_tools);
+        assert!(config.capabilities().agent_capability_execution);
     }
 }

@@ -39,6 +39,22 @@ def self_test() -> None:
         assert evaluate({"App/Sources/Bad.swift": token}), token
 
 
+def read_active_text_files(root: Path) -> dict[str, str]:
+    sources: dict[str, str] = {}
+    for active_root in ACTIVE_ROOTS:
+        for path in (root / active_root).rglob("*"):
+            if not path.is_file() or "target" in path.parts:
+                continue
+            payload = path.read_bytes()
+            if b"\0" in payload:
+                continue
+            try:
+                sources[str(path.relative_to(root))] = payload.decode("utf-8")
+            except UnicodeDecodeError:
+                continue
+    return sources
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--self-test", action="store_true")
@@ -50,12 +66,7 @@ def main() -> int:
         return 0
 
     root = Path(args.root).resolve()
-    sources = {
-        str(path.relative_to(root)): path.read_text(encoding="utf-8")
-        for active_root in ACTIVE_ROOTS
-        for path in (root / active_root).rglob("*")
-        if path.is_file() and "target" not in path.parts
-    }
+    sources = read_active_text_files(root)
     sources["Project.swift"] = (root / "Project.swift").read_text(encoding="utf-8")
     sources["rust/Cargo.toml"] = (root / "rust/Cargo.toml").read_text(encoding="utf-8")
     errors = evaluate(sources)

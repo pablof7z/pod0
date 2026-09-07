@@ -13,8 +13,8 @@ fn openai_compatible_turn_uses_live_http_and_returns_the_core_projection() {
         let (mut stream, _) = listener.accept().unwrap();
         let request = read_http_request(&mut stream);
         assert!(request.starts_with("POST /v1/chat/completions "));
-        assert!(!request.contains("\"tools\""));
-        assert!(!request.contains("\"tool_choice\""));
+        assert!(request.contains("\"tools\""));
+        assert!(request.contains("\"tool_choice\""));
         let body = r#"{"choices":[{"message":{"role":"assistant","content":"Live response","tool_calls":[]}}],"usage":{"prompt_tokens":7,"completion_tokens":2}}"#;
         write_response(&mut stream, body);
     });
@@ -26,7 +26,7 @@ fn openai_compatible_turn_uses_live_http_and_returns_the_core_projection() {
         Some("integration-secret".to_owned()),
     );
     let mut shell = Shell::new(config).unwrap();
-    support::bootstrap_authoritative_store(&store);
+    support::create_authoritative_store(&store);
     assert!(shell.handle(open_request(&store)).ok);
 
     let response = shell.handle(ask_request("Answer over the network"));
@@ -49,8 +49,7 @@ fn unexpected_provider_tool_call_fails_without_capability_execution() {
     let address = listener.local_addr().unwrap();
     let server = std::thread::spawn(move || {
         let (mut stream, _) = listener.accept().unwrap();
-        let request = read_http_request(&mut stream);
-        assert!(!request.contains("\"tools\""));
+        let _request = read_http_request(&mut stream);
         let body = r#"{"choices":[{"message":{"role":"assistant","content":"","tool_calls":[{"id":"unexpected","type":"function","function":{"name":"create_note","arguments":"{}"}}]}}]}"#;
         write_response(&mut stream, body);
     });
@@ -59,7 +58,7 @@ fn unexpected_provider_tool_call_fails_without_capability_execution() {
     let store = directory.path().join("pod0.sqlite");
     let config = HostConfig::openai_compatible(format!("http://{address}/v1"), None);
     let mut shell = Shell::new(config).unwrap();
-    support::bootstrap_authoritative_store(&store);
+    support::create_authoritative_store(&store);
     assert!(shell.handle(open_request(&store)).ok);
 
     let response = shell.handle(ask_request("Try an unavailable tool"));
@@ -92,7 +91,7 @@ fn ollama_turn_uses_native_live_http_endpoint() {
         let (mut stream, _) = listener.accept().unwrap();
         let request = read_http_request(&mut stream);
         assert!(request.starts_with("POST /api/chat "));
-        assert!(!request.contains("\"tools\""));
+        assert!(request.contains("\"tools\""));
         let body = r#"{"done":true,"message":{"role":"assistant","content":"Ollama response"},"prompt_eval_count":5,"eval_count":2}"#;
         write_response(&mut stream, body);
     });
@@ -100,7 +99,7 @@ fn ollama_turn_uses_native_live_http_endpoint() {
     let directory = tempfile::tempdir_in(".").unwrap();
     let store = directory.path().join("pod0.sqlite");
     let mut shell = Shell::new(HostConfig::ollama(address.to_string())).unwrap();
-    support::bootstrap_authoritative_store(&store);
+    support::create_authoritative_store(&store);
     assert!(shell.handle(open_request(&store)).ok);
 
     let ask: CliRequest = serde_json::from_value(serde_json::json!({
@@ -177,7 +176,7 @@ fn headless_turn_completes_after_approved_capability_execution() {
         Some("integration-secret".to_owned()),
     );
     let mut shell = Shell::new(config).unwrap();
-    support::bootstrap_authoritative_store(&store);
+    support::create_authoritative_store(&store);
     assert!(shell.handle(open_request(&store)).ok);
 
     let response = shell.handle(ask_request("Find me a daily tech news podcast"));

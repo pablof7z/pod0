@@ -38,8 +38,7 @@ impl LiveHosts {
                         request.chat.limits,
                     )
                     .await?;
-                let bytes =
-                    bounded_body(response, request.chat.limits.maximum_body_bytes).await?;
+                let bytes = bounded_body(response, request.chat.limits.maximum_body_bytes).await?;
                 parse_openai(&bytes, evidence, request.chat.maximum_output_bytes)
             })
             .await;

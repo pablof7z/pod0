@@ -110,8 +110,8 @@ fn cancellation_prevents_late_host_observation_from_committing() {
             )
         })
         .expect("cancellation must be delivered only as a persisted exact lease");
-    let cancellation_receipt = facade.record_leased_host_observation(
-        LeasedHostObservationEnvelope {
+    let cancellation_receipt =
+        facade.record_leased_host_observation(LeasedHostObservationEnvelope {
             lease: cancellation.lease,
             observation: HostObservationEnvelope {
                 request_id: cancellation.request.request_id,
@@ -125,8 +125,7 @@ fn cancellation_prevents_late_host_observation_from_committing() {
                     target_request_id: request.request.request_id,
                 },
             },
-        },
-    );
+        });
     assert!(matches!(
         cancellation_receipt,
         HostObservationReceipt::Persisted { terminal: true, .. }
@@ -177,6 +176,11 @@ fn cancellation_prevents_late_host_observation_from_committing() {
             .all(|episode| episode.publisher_guid != "late-cancelled-episode"),
         "a cancelled fetch must not commit its late result"
     );
+    let Projection::Library { value } = fixture.facade.snapshot(library_request()).projection
+    else {
+        panic!("expected library projection")
+    };
+    assert!(value.feed_fetches.is_empty());
 }
 
 #[test]

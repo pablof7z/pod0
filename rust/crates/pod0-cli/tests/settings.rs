@@ -5,11 +5,10 @@ use pod0_facade::Pod0Facade;
 use rusqlite::{Connection, params};
 
 #[test]
-#[ignore = "the store-bootstrap gap is closed, but this passes only with the concurrent uncommitted pod0-storage fix in transition_commit_workflow_configuration.rs (a first-time settings_set with no prior stored configuration is incorrectly rejected as a revision conflict at committed HEAD, so the reopened workflow_configuration() is None) — out of this plan's pod0-cli-only scope; see .planning/phases/01-headless-host-crates/01-06-SUMMARY.md (as of 2026-08-23)"]
 fn workflow_settings_are_initialized_by_the_user_command_and_reopen() {
     let directory = tempfile::tempdir_in(".").unwrap();
     let store = directory.path().join("pod0.sqlite");
-    support::bootstrap_authoritative_store(&store);
+    support::create_authoritative_store(&store);
     let mut shell = Shell::new(HostConfig::empty()).unwrap();
     let open: CliRequest = serde_json::from_value(serde_json::json!({
         "v": 1,
@@ -46,11 +45,10 @@ fn workflow_settings_are_initialized_by_the_user_command_and_reopen() {
 }
 
 #[test]
-#[ignore = "requires Pod0Facade store-bootstrap support not yet committed to pod0-storage/pod0-facade — see .planning/phases/01-headless-host-crates/01-VERIFICATION.md; un-ignore once that lands (as of 2026-08-22); also asserts store-wide totals beyond one page, which mapping::library's committed-HEAD-only implementation cannot provide either (see 01-04-PLAN.md Task 2)"]
 fn settings_subscription_pages_expose_authoritative_totals_beyond_two_hundred() {
     let directory = tempfile::tempdir_in(".").unwrap();
     let store = directory.path().join("pod0.sqlite");
-    drop(Pod0Facade::open(store.to_string_lossy().into_owned()).unwrap());
+    drop(Pod0Facade::create(store.to_string_lossy().into_owned()).unwrap());
     insert_subscriptions(&store, 205);
 
     let mut shell = Shell::new(HostConfig::empty()).unwrap();

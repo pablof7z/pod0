@@ -27,7 +27,7 @@ fn opening_store_wakes_for_restart_recovered_leased_work() {
 
     let directory = tempfile::tempdir_in(".").unwrap();
     let store = directory.path().join("pod0.sqlite");
-    support::bootstrap_authoritative_store(&store);
+    support::create_authoritative_store(&store);
     let facade = Pod0Facade::open(store.to_string_lossy().into_owned()).unwrap();
     let command_id = CommandId::from_parts(501, 1);
     facade.dispatch(CommandEnvelope {
@@ -85,7 +85,7 @@ fn opening_store_wakes_for_restart_recovered_leased_work() {
 fn persistent_pump_wakes_for_scheduled_core_work() {
     let directory = tempfile::tempdir_in(".").unwrap();
     let store = directory.path().join("pod0.sqlite");
-    support::bootstrap_authoritative_store(&store);
+    support::create_authoritative_store(&store);
     drop(Pod0Facade::open(store.to_string_lossy().into_owned()).unwrap());
     let now = now_milliseconds();
     let wake_at = UnixTimestampMilliseconds::new(now + 150);
@@ -127,7 +127,7 @@ fn persistent_pump_wakes_for_scheduled_core_work() {
 fn shutdown_wakes_a_pump_waiting_on_future_work() {
     let directory = tempfile::tempdir_in(".").unwrap();
     let store = directory.path().join("pod0.sqlite");
-    support::bootstrap_authoritative_store(&store);
+    support::create_authoritative_store(&store);
     drop(Pod0Facade::open(store.to_string_lossy().into_owned()).unwrap());
     let now = now_milliseconds();
     pod0_storage::LibraryStore::open_authoritative(&store)

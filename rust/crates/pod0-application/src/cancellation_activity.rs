@@ -18,6 +18,7 @@ pub struct CancellationEffectTarget {
     pub episode_id: Option<pod0_domain::EpisodeId>,
     pub host_request_id: HostRequestId,
     pub cancellation_id: pod0_domain::CancellationId,
+    pub requires_host_cancellation: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -120,6 +121,9 @@ pub fn plan_cancellation_activity(
                 outcome: EffectOutcome::Superseded,
             },
         });
+        if !target.requires_host_cancellation {
+            continue;
+        }
         let authorization = prepare_cancellation_authorization(
             input.command_id,
             input.current_revision,

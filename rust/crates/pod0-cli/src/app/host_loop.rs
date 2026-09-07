@@ -3,17 +3,18 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 
 use pod0_facade::{
-    HostObservationEnvelope, HostObservationReceipt, LeasedHostObservationEnvelope, Pod0Facade,
-    UnixTimestampMilliseconds,
+    AgentCapabilityOutcome, AgentCapabilityRequest, AgentToolAction, AgentToolName,
+    ApplicationCommand, CancellationId, CommandEnvelope, CommandId, HostObservation,
+    HostObservationEnvelope, HostObservationReceipt, HostRequest, HostRequestEnvelope,
+    LeasedHostObservationEnvelope, PlaybackCommand, Pod0Facade, UnixTimestampMilliseconds,
 };
+use sha2::{Digest as _, Sha256};
 
 use super::Shell;
 use crate::host::{HostExecution, HostExecutor};
 use crate::protocol::CliError;
 
 const MAX_SYNCHRONOUS_HOST_STEPS: usize = 64;
-const POLL_INTERVAL: Duration = Duration::from_millis(250);
-
 pub(super) struct HostPump {
     shared: Arc<PumpShared>,
     worker: Option<JoinHandle<()>>,
@@ -115,11 +116,19 @@ impl PumpShared {
             if signal.generation != observed_generation {
                 continue;
             }
-            signal = self
-                .wake
-                .wait_timeout(signal, POLL_INTERVAL)
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .0;
+            signal = match self.next_wake_delay() {
+                Some(delay) if delay.is_zero() => continue,
+                Some(delay) => {
+                    self.wake
+                        .wait_timeout(signal, delay)
+                        .unwrap_or_else(std::sync::PoisonError::into_inner)
+                        .0
+                }
+                None => self
+                    .wake
+                    .wait(signal)
+                    .unwrap_or_else(std::sync::PoisonError::into_inner),
+            };
             if signal.shutdown {
                 return;
             }
@@ -134,13 +143,13 @@ impl PumpShared {
         for processed in 0..MAX_SYNCHRONOUS_HOST_STEPS {
             let Some(request) = self
                 .facade
-                .next_leased_host_requests(1)
+                .next_leased_headless_host_requests(1)
                 .into_iter()
                 .next()
             else {
                 return Ok(processed);
             };
-            let HostExecution::Observed(observation) = self.host.execute(&request.request) else {
+            let Some(observation) = self.observe(&request.request) else {
                 return Ok(processed);
             };
             let receipt =
@@ -153,7 +162,7 @@ impl PumpShared {
                             observed_request_revision: request.request.issued_revision,
                             sequence_number: 1,
                             observed_at: UnixTimestampMilliseconds::new(now_milliseconds()),
-                            observation: *observation,
+                            observation,
                         },
                     });
             if !matches!(
@@ -173,6 +182,69 @@ impl PumpShared {
             "host work did not quiesce within the bounded loop",
             true,
         ))
+    }
+
+    fn next_wake_delay(&self) -> Option<Duration> {
+        let wake_at = self.facade.next_host_effect_at().ok().flatten()?;
+        let delay = wake_at.value.saturating_sub(now_milliseconds());
+        Some(Duration::from_millis(
+            u64::try_from(delay).unwrap_or_default(),
+        ))
+    }
+
+    /// Returns an observation when the request can be handled immediately, or
+    /// `None` when a scheduled host wake has not fired yet.
+    fn observe(&self, envelope: &HostRequestEnvelope) -> Option<HostObservation> {
+        if let HostRequest::ExecuteAgentCapability { capability } = &envelope.request
+            && let Some(observation) = self.facade_capability(envelope, capability)
+        {
+            return Some(observation);
+        }
+        match self.host.execute(envelope) {
+            HostExecution::Observed(observation) => Some(*observation),
+            HostExecution::Pending => None,
+        }
+    }
+
+    /// Executes capabilities whose product state is already owned by the
+    /// facade. Platform-only capabilities continue through `HostExecutor`.
+    fn facade_capability(
+        &self,
+        envelope: &HostRequestEnvelope,
+        capability: &AgentCapabilityRequest,
+    ) -> Option<HostObservation> {
+        let command = match &capability.action {
+            AgentToolAction::PlayEpisode { episode_id, .. } => ApplicationCommand::Playback {
+                command: PlaybackCommand::Select {
+                    episode_id: *episode_id,
+                    segment: None,
+                    label: None,
+                },
+            },
+            AgentToolAction::NoArguments {
+                tool: AgentToolName::PausePlayback,
+            } => ApplicationCommand::Playback {
+                command: PlaybackCommand::Pause,
+            },
+            AgentToolAction::SubscribePodcast { feed_url } => ApplicationCommand::SubscribeToFeed {
+                feed_url: feed_url.clone(),
+            },
+            _ => return None,
+        };
+        self.facade.dispatch(CommandEnvelope {
+            command_id: capability_command_id(capability),
+            cancellation_id: CancellationId::from_bytes(envelope.cancellation_id.into_bytes()),
+            expected_revision: None,
+            command,
+        });
+        Some(HostObservation::AgentCapabilityObserved {
+            turn_id: capability.turn_id,
+            proposal_id: capability.proposal_id,
+            execution_fence_id: capability.execution_fence_id,
+            outcome: AgentCapabilityOutcome::Succeeded {
+                bounded_result: String::new(),
+            },
+        })
     }
 }
 
@@ -207,4 +279,11 @@ fn now_milliseconds() -> i64 {
         .ok()
         .and_then(|duration| i64::try_from(duration.as_millis()).ok())
         .unwrap_or_default()
+}
+
+fn capability_command_id(capability: &AgentCapabilityRequest) -> CommandId {
+    let mut hash = Sha256::new();
+    hash.update(b"pod0:headless-capability-command:v1\0");
+    hash.update(capability.execution_fence_id.into_bytes());
+    CommandId::from_bytes(hash.finalize()[..16].try_into().expect("digest prefix"))
 }

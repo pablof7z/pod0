@@ -84,6 +84,43 @@ fn exact_wake_lease_survives_reopen_and_observation_replays_once() {
 }
 
 #[test]
+fn headless_claim_defers_core_wake_until_the_authoritative_time() {
+    let (_fixture, store) = empty_authoritative_store();
+    let request = wake();
+    store
+        .authorize_lifecycle_wake(request.clone(), UnixTimestampMilliseconds::new(BASE_TIME))
+        .unwrap();
+    assert_eq!(
+        store
+            .next_effect_claim_at(UnixTimestampMilliseconds::new(BASE_TIME))
+            .unwrap(),
+        Some(request.wake_at)
+    );
+    assert!(
+        store
+            .claim_next_headless_effect(
+                UnixTimestampMilliseconds::new(BASE_TIME),
+                10_000,
+                pod0_application::MAX_ACTIVE_PUBLISHER_CHAPTER_REQUESTS,
+            )
+            .unwrap()
+            .is_none()
+    );
+    let lease = store
+        .claim_next_headless_effect(
+            request.wake_at,
+            10_000,
+            pod0_application::MAX_ACTIVE_PUBLISHER_CHAPTER_REQUESTS,
+        )
+        .unwrap()
+        .unwrap();
+    assert!(matches!(
+        lease.request.execution,
+        DurableEffectExecution::Lifecycle { request: exact } if exact == request
+    ));
+}
+
+#[test]
 fn retryable_schedule_failure_atomically_authorizes_delayed_next_attempt() {
     let (_fixture, store) = empty_authoritative_store();
     let request = wake();

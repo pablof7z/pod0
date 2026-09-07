@@ -3,7 +3,7 @@ use std::net::TcpListener;
 
 use pod0_cli::{HostConfig, HostRequestEnvelope, execute_host_request};
 use pod0_facade::{
-    CancellationId, CommandId, EvidenceGenerationId, EvidenceSpanId, HostRequestId, HostRequest,
+    CancellationId, CommandId, EvidenceGenerationId, EvidenceSpanId, HostRequest, HostRequestId,
     RecallEmbeddingInput, RecallEmbeddingProvider, RecallQueryId, RecallRerankDocument,
     RecallRerankProvider, StateRevision, UnixTimestampMilliseconds,
 };
@@ -26,8 +26,10 @@ fn openai_compatible_embedding_uses_live_http_and_returns_quantized_vector() {
     let observation = execute_host_request(config, envelope).unwrap().unwrap();
     server.assert_served();
 
-    let pod0_facade::HostObservation::RecallQueryEmbedded { embedding, query_id: observed } =
-        observation
+    let pod0_facade::HostObservation::RecallQueryEmbedded {
+        embedding,
+        query_id: observed,
+    } = observation
     else {
         panic!("observation must be RecallQueryEmbedded, got {observation:?}");
     };
@@ -41,7 +43,8 @@ fn openai_compatible_embedding_uses_live_http_and_returns_quantized_vector() {
 
 #[test]
 fn ollama_span_embeddings_use_live_http_and_preserve_span_order() {
-    let body = r#"{"embeddings":[[0.1,0.2,0.0],[-0.4,0.5,0.1]],"prompt_eval_count":12,"model":"nomic"}"#;
+    let body =
+        r#"{"embeddings":[[0.1,0.2,0.0],[-0.4,0.5,0.1]],"prompt_eval_count":12,"model":"nomic"}"#;
     let server = expect_request("POST /api/embeddings ", body);
     let address = server.address();
     let config = HostConfig::ollama(address.to_string());
@@ -71,7 +74,10 @@ fn ollama_span_embeddings_use_live_http_and_preserve_span_order() {
     assert_eq!(embeddings[0].span_id, EvidenceSpanId::from_parts(0, 1));
     assert_eq!(embeddings[0].embedding.values, vec![100_000, 200_000, 0]);
     assert_eq!(embeddings[1].span_id, EvidenceSpanId::from_parts(0, 2));
-    assert_eq!(embeddings[1].embedding.values, vec![-400_000, 500_000, 100_000]);
+    assert_eq!(
+        embeddings[1].embedding.values,
+        vec![-400_000, 500_000, 100_000]
+    );
 }
 
 #[test]
@@ -90,11 +96,16 @@ fn openrouter_rerank_uses_live_http_and_maps_positions_to_ranks() {
             excerpt: "candidate one".to_owned(),
         },
     ];
-    let envelope = rerank_envelope(RecallRerankProvider::OpenRouter, "cohere/rerank-v3.5", candidates);
+    let envelope = rerank_envelope(
+        RecallRerankProvider::OpenRouter,
+        "cohere/rerank-v3.5",
+        candidates,
+    );
     let observation = execute_host_request(config, envelope).unwrap().unwrap();
     server.assert_served();
 
-    let pod0_facade::HostObservation::RecallCandidatesReranked { rankings, .. } = observation else {
+    let pod0_facade::HostObservation::RecallCandidatesReranked { rankings, .. } = observation
+    else {
         panic!("observation must be RecallCandidatesReranked, got {observation:?}");
     };
     assert_eq!(rankings.len(), 2);
@@ -105,8 +116,7 @@ fn openrouter_rerank_uses_live_http_and_maps_positions_to_ranks() {
     assert_eq!(rankings[1].rank, 2);
 }
 
-const OPENAI_EMBEDDING_BODY: &str =
-    r#"{"data":[{"index":0,"embedding":[0.1,0.2,-0.3,0.5]}],"usage":{"prompt_tokens":3,"total_tokens":4}}"#;
+const OPENAI_EMBEDDING_BODY: &str = r#"{"data":[{"index":0,"embedding":[0.1,0.2,-0.3,0.5]}],"usage":{"prompt_tokens":3,"total_tokens":4}}"#;
 
 fn embed_query_envelope(
     provider: RecallEmbeddingProvider,

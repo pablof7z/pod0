@@ -49,6 +49,7 @@ pub(super) fn active_observation_effects(
                 episode_id: request.episode_id,
                 host_request_id: playback.request_id,
                 cancellation_id: playback.cancellation_id,
+                requires_host_cancellation: true,
             },
         });
     }

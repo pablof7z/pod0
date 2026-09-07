@@ -30,12 +30,15 @@ fn search_podcasts_hits_a_real_http_endpoint_and_returns_feed_urls() {
     // SAFETY: this test is single-threaded with respect to the env var; no
     // other test reads or writes POD0_PODCAST_SEARCH_URL.
     unsafe {
-        std::env::set_var("POD0_PODCAST_SEARCH_URL", format!("http://{address}/search"));
+        std::env::set_var(
+            "POD0_PODCAST_SEARCH_URL",
+            format!("http://{address}/search"),
+        );
     }
 
     let directory = tempfile::tempdir_in(".").unwrap();
     let store = directory.path().join("pod0.sqlite");
-    support::bootstrap_authoritative_store(&store);
+    support::create_authoritative_store(&store);
     let mut shell = Shell::new(HostConfig::empty()).unwrap();
     assert!(shell.handle(open_request(&store)).ok);
 
@@ -49,10 +52,20 @@ fn search_podcasts_hits_a_real_http_endpoint_and_returns_feed_urls() {
     let response = shell.handle(search);
     assert!(response.ok, "{:?}", response.error);
     let value = serde_json::to_value(&response).unwrap();
-    let results = value.pointer("/result/results").unwrap().as_array().unwrap();
+    let results = value
+        .pointer("/result/results")
+        .unwrap()
+        .as_array()
+        .unwrap();
     assert_eq!(results.len(), 2);
-    assert_eq!(results[0].pointer("/itunes_id"), Some(&serde_json::json!(1530353)));
-    assert_eq!(results[0].pointer("/title"), Some(&serde_json::json!("Acquired")));
+    assert_eq!(
+        results[0].pointer("/itunes_id"),
+        Some(&serde_json::json!(1530353))
+    );
+    assert_eq!(
+        results[0].pointer("/title"),
+        Some(&serde_json::json!("Acquired"))
+    );
     assert_eq!(
         results[0].pointer("/feed_url"),
         Some(&serde_json::json!("https://acquired.com/feed.xml"))

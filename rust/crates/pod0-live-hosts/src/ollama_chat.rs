@@ -34,8 +34,7 @@ impl LiveHosts {
                 let (response, evidence) = self
                     .provider_response(response, ProviderKind::Ollama, request.chat.limits)
                     .await?;
-                let bytes =
-                    bounded_body(response, request.chat.limits.maximum_body_bytes).await?;
+                let bytes = bounded_body(response, request.chat.limits.maximum_body_bytes).await?;
                 parse_ollama(&bytes, evidence, request.chat.maximum_output_bytes)
             })
             .await;

@@ -30,14 +30,17 @@ pub(crate) fn commit_transcript_cancellation(
                 episode_id: input.episode_id,
                 workflow_id: current.request.workflow_id,
                 workflow_revision: input.expected_workflow_revision,
-                target: current.request_id.map(|host_request_id| CancellationEffectTarget {
-                    subject: ActivitySubject::TranscriptWorkflow {
-                        workflow_id: current.request.workflow_id,
-                    },
-                    episode_id: Some(input.episode_id),
-                    host_request_id,
-                    cancellation_id: current.cancellation_id,
-                }),
+                target: current
+                    .request_id
+                    .map(|host_request_id| CancellationEffectTarget {
+                        subject: ActivitySubject::TranscriptWorkflow {
+                            workflow_id: current.request.workflow_id,
+                        },
+                        episode_id: Some(input.episode_id),
+                        host_request_id,
+                        cancellation_id: current.cancellation_id,
+                        requires_host_cancellation: true,
+                    }),
             })
             .map_err(|_| StorageError::InvalidActivity)
         },

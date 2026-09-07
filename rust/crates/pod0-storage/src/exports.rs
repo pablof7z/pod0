@@ -5,6 +5,7 @@ pub use crate::agent_history_cutover::inspect_legacy_agent_history_cutover;
 pub use crate::agent_history_cutover_model::*;
 pub use crate::agent_store::AgentStore;
 pub use crate::agent_store_model::*;
+pub use crate::authoritative_bootstrap::create_authoritative_store;
 pub use crate::backup::{restore_backup_to_new_store, verify_backup};
 pub use crate::category_store_model::CategoryCollectionSnapshot;
 pub use crate::chapter_authority::chapter_store_is_authoritative;
@@ -130,6 +131,14 @@ pub use crate::transition_commit_lifecycle_observation::{
 };
 pub use crate::transition_commit_model::CommitReceipt;
 pub(crate) use crate::transition_commit_model::{TransitionIngress, TransitionIngressKind};
+pub use crate::user_data_erasure::{
+    LeasedNativeErasureAction, UserDataErasureConfirmation, UserDataErasureFaultPoint,
+    UserDataErasureProgress, confirm_user_data_erasure, observe_native_user_data_erasure,
+    prepare_user_data_erasure, recover_user_data_erasure,
+};
+pub use crate::user_data_erasure_exclusions::*;
+pub use crate::user_data_erasure_inventory::*;
+pub use crate::user_data_erasure_recovery::pending_user_data_erasure_markers;
 pub use crate::workflow_configuration_store::{
     WorkflowCapabilityCommitOutcome, WorkflowConfigurationCommitOutcome,
     WorkflowReconcileCommitOutcome,

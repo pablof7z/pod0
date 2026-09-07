@@ -40,11 +40,13 @@ fn only_refresh_intent_commits_feed_discovery_evidence() {
     let state = fixture.facade.state();
     let store = state.store.as_ref().unwrap();
     assert_eq!(store.pending_feed_discoveries(10).unwrap(), pending);
-    assert!(state
-        .listening
-        .episodes
-        .iter()
-        .all(|episode| episode.publisher_guid != "metadata-only"));
+    assert!(
+        state
+            .listening
+            .episodes
+            .iter()
+            .all(|episode| episode.publisher_guid != "metadata-only")
+    );
 }
 
 #[test]
@@ -127,15 +129,17 @@ fn notification_request_recovers_with_exact_identity_and_commits_once() {
         }
     );
     let relaunched = Pod0Facade::open(fixture.target.to_string_lossy().into_owned()).unwrap();
-    assert!(relaunched
-        .next_leased_host_requests(10)
-        .into_iter()
-        .all(|request| {
-            !matches!(
-                request.request.request,
-                HostRequest::DeliverNewEpisodeNotification { .. }
-            )
-        }));
+    assert!(
+        relaunched
+            .next_leased_host_requests(10)
+            .into_iter()
+            .all(|request| {
+                !matches!(
+                    request.request.request,
+                    HostRequest::DeliverNewEpisodeNotification { .. }
+                )
+            })
+    );
 }
 
 #[test]
@@ -164,7 +168,7 @@ fn global_notification_setting_is_projected_and_withdraws_pending_delivery() {
         },
     });
     record_feed(&fixture, FEED_WITH_NEW_EPISODE);
-    let _request = fixture
+    let request = fixture
         .facade
         .next_leased_host_requests(10)
         .into_iter()
@@ -181,7 +185,18 @@ fn global_notification_setting_is_projected_and_withdraws_pending_delivery() {
         expected_revision: None,
         command: ApplicationCommand::SetNewEpisodeNotificationsEnabled { enabled: false },
     });
-    assert!(fixture.facade.next_leased_host_requests(10).is_empty());
+    let cancellation = fixture
+        .facade
+        .next_leased_host_requests(10)
+        .into_iter()
+        .find(|candidate| {
+            matches!(
+                candidate.request.request,
+                HostRequest::CancelAuthorizedEffect { target_request_id }
+                    if target_request_id == request.request.request_id
+            )
+        });
+    assert!(cancellation.is_some());
     let Projection::NewEpisodeNotificationSettings { value } = fixture
         .facade
         .snapshot(ProjectionRequest {

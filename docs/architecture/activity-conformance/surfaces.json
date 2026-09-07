@@ -261,7 +261,15 @@
     },
     {
       "kind": "authoritative_mutation_module",
-      "path": "rust/crates/pod0-storage/src/effect_outbox.rs",
+      "path": "rust/crates/pod0-storage/src/authoritative_bootstrap.rs",
+      "domain": "fresh_store_authority",
+      "target_boundary": "NewPathTransactionalBootstrap",
+      "child_issue": 208,
+      "implementation_status": "transactional_empty_authority_seeded_before_no_clobber_publication"
+    },
+    {
+      "kind": "authoritative_mutation_module",
+      "path": "rust/crates/pod0-storage/src/effect_outbox_claim.rs",
       "domain": "effect_delivery",
       "target_boundary": "PersistedRustEffectLease",
       "child_issue": 209,

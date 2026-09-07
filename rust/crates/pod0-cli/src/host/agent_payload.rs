@@ -14,9 +14,10 @@ pub(super) fn to_chat_messages(execution: &AgentModelExecutionRequest) -> Vec<Ch
             let (role, content) = match message.role {
                 AgentMessageRole::User => (ChatRole::User, message.content.clone()),
                 AgentMessageRole::Assistant => (ChatRole::Assistant, message.content.clone()),
-                AgentMessageRole::Tool => {
-                    (ChatRole::User, format!("[tool result]\n{}", message.content))
-                }
+                AgentMessageRole::Tool => (
+                    ChatRole::User,
+                    format!("[tool result]\n{}", message.content),
+                ),
                 AgentMessageRole::Error => {
                     (ChatRole::System, format!("[error]\n{}", message.content))
                 }

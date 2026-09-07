@@ -2,12 +2,13 @@ use std::time::Duration;
 
 use pod0_facade::{
     AgentModelExecutionRequest, AgentModelToolCallObservation, AgentModelUsageObservation,
-    HostFailureCode, HostObservation,
+    AgentToolDefinition, AgentToolParameterKind, HostFailureCode, HostObservation,
 };
 use pod0_live_hosts::{
-    CancellationToken, ChatRequest, ChatResponse, HttpLimits, OllamaChatRequest,
+    CancellationToken, ChatRequest, ChatResponse, ChatTool, HttpLimits, OllamaChatRequest,
     OpenAiChatRequest, ProviderEndpoint, SecretString, ToolChoice,
 };
+use serde_json::{Value, json};
 
 use crate::protocol::AgentProvider;
 
@@ -48,10 +49,11 @@ fn chat_request(execution: &AgentModelExecutionRequest, model: &str) -> ChatRequ
     ChatRequest {
         model: model.to_owned(),
         messages: to_chat_messages(execution),
-        // Advertising tools is out of this task's scope; `chat_request::request_body`
-        // already omits the "tools" key entirely when `tools` is empty, so the
-        // outbound wire request is unchanged from before this migration.
-        tools: Vec::new(),
+        tools: execution
+            .tool_definitions
+            .iter()
+            .map(tool_definition_to_chat_tool)
+            .collect(),
         tool_choice: ToolChoice::Auto,
         temperature: None,
         maximum_completion_tokens: None,
@@ -61,6 +63,49 @@ fn chat_request(execution: &AgentModelExecutionRequest, model: &str) -> ChatRequ
             maximum_metadata_bytes: CHAT_MAXIMUM_METADATA_BYTES,
         },
         maximum_output_bytes: execution.maximum_output_bytes,
+    }
+}
+
+fn tool_definition_to_chat_tool(definition: &AgentToolDefinition) -> ChatTool {
+    let mut properties = serde_json::Map::new();
+    let mut required = Vec::new();
+    for parameter in &definition.parameters {
+        let schema = match &parameter.kind {
+            AgentToolParameterKind::Text => json!({"type": "string"}),
+            AgentToolParameterKind::Integer { minimum, maximum } => {
+                json!({"type": "integer", "minimum": minimum, "maximum": maximum})
+            }
+            AgentToolParameterKind::DecimalPermille { minimum, maximum } => json!({
+                "type": "number",
+                "minimum": f64::from(*minimum) / 1_000.0,
+                "maximum": f64::from(*maximum) / 1_000.0
+            }),
+            AgentToolParameterKind::Boolean => json!({"type": "boolean"}),
+            AgentToolParameterKind::TextList { maximum_items } => json!({
+                "type": "array",
+                "items": {"type": "string"},
+                "maxItems": maximum_items
+            }),
+        };
+        let mut entry = schema.as_object().cloned().unwrap_or_default();
+        entry.insert(
+            "description".to_owned(),
+            Value::String(parameter.description.clone()),
+        );
+        properties.insert(parameter.name.clone(), Value::Object(entry));
+        if parameter.required {
+            required.push(Value::String(parameter.name.clone()));
+        }
+    }
+    ChatTool {
+        name: definition.wire_name.clone(),
+        description: definition.description.clone(),
+        parameters: json!({
+            "type": "object",
+            "properties": properties,
+            "required": required,
+        }),
+        strict: None,
     }
 }
 
@@ -81,10 +126,10 @@ fn execute_openai(
         None => ProviderEndpoint::unauthenticated(url),
     };
     let chat = chat_request(execution, model);
-    let result = host.runtime.block_on(
-        host.live
-            .openai_chat(OpenAiChatRequest { endpoint, chat }, &CancellationToken::new()),
-    );
+    let result = host.runtime.block_on(host.live.openai_chat(
+        OpenAiChatRequest { endpoint, chat },
+        &CancellationToken::new(),
+    ));
     match result {
         Ok(response) => completed(execution, response),
         Err(error) => map_adapter_error(&error),
@@ -105,10 +150,10 @@ fn execute_ollama(
     let url = format!("{}/api/chat", base.trim_end_matches('/'));
     let endpoint = ProviderEndpoint::unauthenticated(url);
     let chat = chat_request(execution, model);
-    let result = host.runtime.block_on(
-        host.live
-            .ollama_chat(OllamaChatRequest { endpoint, chat }, &CancellationToken::new()),
-    );
+    let result = host.runtime.block_on(host.live.ollama_chat(
+        OllamaChatRequest { endpoint, chat },
+        &CancellationToken::new(),
+    ));
     match result {
         Ok(response) => completed(execution, response),
         Err(error) => map_adapter_error(&error),
@@ -118,13 +163,15 @@ fn execute_ollama(
 fn completed(execution: &AgentModelExecutionRequest, response: ChatResponse) -> HostObservation {
     let usage = usage(&response);
     let assistant_text = response.content.unwrap_or_default();
-    let proposed_tool_call = response.tool_calls.first().map(|call| {
-        AgentModelToolCallObservation {
-            provider_call_id: call.id.clone().unwrap_or_default(),
-            tool_name: call.name.clone(),
-            arguments_json: call.arguments_json.clone(),
-        }
-    });
+    let proposed_tool_call =
+        response
+            .tool_calls
+            .first()
+            .map(|call| AgentModelToolCallObservation {
+                provider_call_id: call.id.clone().unwrap_or_default(),
+                tool_name: call.name.clone(),
+                arguments_json: call.arguments_json.clone(),
+            });
     if assistant_text.is_empty() && proposed_tool_call.is_none() {
         return failed(
             HostFailureCode::InvalidResponse,

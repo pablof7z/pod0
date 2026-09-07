@@ -1,4 +1,3 @@
-use std::path::Path;
 use std::sync::Arc;
 
 use pod0_facade::Pod0Facade;
@@ -10,18 +9,12 @@ use crate::protocol::{CliError, ResponseData};
 
 impl Shell {
     pub(super) fn create_store(&mut self, path: String) -> Result<ResponseData, CliError> {
-        if Path::new(&path).exists() {
-            return Err(CliError::new(
-                "store_exists",
-                "refusing to replace an existing store",
-                false,
-            ));
-        }
-        Err(CliError::new(
-            "store_creation_unavailable",
-            "creating a new authoritative store requires pod0-facade/pod0-storage bootstrap support that is not yet committed to this workspace",
-            false,
-        ))
+        let facade = Pod0Facade::create(path.clone()).map_err(open_error)?;
+        self.install_store(facade, path.clone())?;
+        Ok(ResponseData::Store {
+            path,
+            created: true,
+        })
     }
 
     pub(super) fn open_store(&mut self, path: String) -> Result<ResponseData, CliError> {

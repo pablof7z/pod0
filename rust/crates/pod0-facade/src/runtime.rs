@@ -3,9 +3,10 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use pod0_application::{
     ApplicationCommand, CommandEnvelope, ProjectionEnvelope, ProjectionRequest,
 };
-use pod0_domain::{CancellationId, SubscriptionId};
+use pod0_domain::{CancellationId, CommandId, SubscriptionId};
 use pod0_recall_index::{RECALL_INDEX_DIMENSIONS, RecallIndex, recall_index_path_for_core_store};
 use pod0_storage::{EvidenceStore, LibraryStore, TranscriptStore};
+use sha2::{Digest as _, Sha256};
 use std::path::Path;
 
 use crate::ProjectionSubscriber;
@@ -16,6 +17,7 @@ use crate::runtime_state::FacadeState;
 use crate::runtime_state_open::FacadeStores;
 
 mod api;
+mod public_api;
 
 #[derive(uniffi::Object)]
 pub struct Pod0Facade {
@@ -102,151 +104,84 @@ impl Pod0Facade {
             subscriber.receive(projection);
         }
     }
-}
 
-#[uniffi::export]
-impl Pod0Facade {
-    #[uniffi::constructor]
-    pub fn new() -> Arc<Self> {
-        Self::from_state(FacadeState::default())
-    }
-
-    #[uniffi::constructor]
-    pub fn open(store_path: String) -> Result<Arc<Self>, FacadeOpenError> {
-        Self::open_with_clock_value(store_path, Arc::new(SystemClock))
-    }
-
-    pub fn dispatch(&self, command: CommandEnvelope) {
-        let cancellation_id = cancellation_target(&command);
-        if let Some(cancellation_id) = cancellation_id {
-            self.recall_interrupts.signal(cancellation_id);
-        }
-        let changed = self.state().dispatch(command);
-        if let Some(cancellation_id) = cancellation_id {
-            self.recall_interrupts.finish_signal(cancellation_id);
-        }
-        if changed {
-            self.notify_subscribers();
-        }
-    }
-
-    pub fn snapshot(&self, request: ProjectionRequest) -> ProjectionEnvelope {
-        self.state().snapshot(request)
-    }
-
-    /// Plans the exact bounded chapter-model capability request from the
-    /// authoritative Rust episode, transcript, and chapter selections.
-    pub fn plan_chapter_model_request(
+    /// Returns durable pending host work without claiming leases or changing
+    /// retry state. Intended for diagnostics and headless host inspection.
+    pub fn pending_host_effects(
         &self,
-        episode_id: pod0_domain::EpisodeId,
-        configured_model: String,
-    ) -> pod0_application::ChapterModelPlan {
-        self.chapter_model_plan(episode_id, configured_model)
-    }
-
-    /// Reads the secret-free Rust-owned workflow policy for exact-revision
-    /// native setting updates. Absence means the one-time import has not yet
-    /// established authority.
-    pub fn workflow_configuration(
-        &self,
-    ) -> Result<Option<pod0_application::WorkflowConfiguration>, FacadeOpenError> {
+        maximum_count: u16,
+    ) -> Result<Vec<pod0_application::DurableExternalEffectRequest>, FacadeOpenError> {
         let store = self
             .state()
             .store
             .clone()
             .ok_or(FacadeOpenError::StorageUnavailable)?;
         store
-            .workflow_configuration()
-            .map_err(FacadeOpenError::from)
+            .pending_effect_requests(maximum_count)
+            .map_err(|_| FacadeOpenError::StorageUnavailable)
     }
 
-    pub fn subscribe(
+    /// Returns the authoritative time at which durable host work can next be
+    /// claimed, including delayed core wakes and expired-lease recovery.
+    pub fn next_host_effect_at(
         &self,
-        request: ProjectionRequest,
-        subscriber: Arc<dyn ProjectionSubscriber>,
-    ) -> SubscriptionId {
-        let (subscription_id, projection) = {
-            let mut state = self.state();
-            let id = state.subscriptions.subscribe(request);
-            state.subscribers.insert(id, Arc::clone(&subscriber));
-            let projection = state.snapshot(request);
-            let content = state.delivery_content(request, &projection.projection);
-            state
-                .delivered_projections
-                .insert(id, projection.projection.clone());
-            state.delivered_contents.insert(id, content);
-            (id, projection)
-        };
-        subscriber.receive(projection);
-        subscription_id
+    ) -> Result<Option<pod0_domain::UnixTimestampMilliseconds>, FacadeOpenError> {
+        let state = self.state();
+        let store = state
+            .store
+            .clone()
+            .ok_or(FacadeOpenError::StorageUnavailable)?;
+        store
+            .next_effect_claim_at(state.now())
+            .map_err(|_| FacadeOpenError::StorageUnavailable)
     }
 
-    pub fn unsubscribe(&self, subscription_id: SubscriptionId) {
-        let mut state = self.state();
-        let _ = state.subscriptions.unsubscribe(subscription_id);
-        state.subscribers.remove(&subscription_id);
-        state.delivered_projections.remove(&subscription_id);
-        state.delivered_contents.remove(&subscription_id);
-    }
-
-    pub fn next_leased_host_requests(
+    pub fn next_leased_headless_host_requests(
         &self,
         maximum_count: u16,
     ) -> Vec<pod0_application::LeasedHostRequestEnvelope> {
-        let (changed, requests) = self.state().next_leased_transcript_requests(maximum_count);
+        let (changed, requests) = self.state().next_leased_headless_requests(maximum_count);
         if changed {
             self.notify_subscribers();
         }
         requests
     }
 
-    pub fn next_nmp_publications(
+    pub fn library_page_with_totals(
         &self,
-        maximum_count: u16,
-    ) -> Vec<pod0_application::LeasedNMPPublicationDraft> {
-        self.state()
-            .take_pending_publications(usize::from(maximum_count.clamp(1, 32)))
-    }
-
-    pub fn nmp_publication_receipt_links(
-        &self,
-    ) -> Vec<pod0_application::NMPPublicationReceiptLink> {
-        self.state().publication_receipt_links()
-    }
-
-    pub fn record_nmp_publication_receipt(
-        &self,
-        receipt: pod0_application::LeasedNMPPublicationReceipt,
+        offset: u32,
+        max_items: u16,
+    ) -> (
+        ProjectionEnvelope,
+        (usize, usize, usize),
+        Vec<pod0_domain::PodcastId>,
     ) {
-        if self.state().record_publication_receipt(receipt) {
-            self.notify_subscribers();
-        }
-    }
-
-    pub fn record_nmp_publication_observation(
-        &self,
-        observation: pod0_application::LeasedNMPPublicationObservation,
-    ) {
-        if self.state().record_publication_observation(observation) {
-            self.notify_subscribers();
-        }
-    }
-
-    pub fn record_leased_host_observation(
-        &self,
-        observation: pod0_application::LeasedHostObservationEnvelope,
-    ) -> pod0_application::HostObservationReceipt {
-        let (changed, receipt) = self.state().record_leased_host_observation(observation);
-        if changed {
-            self.notify_subscribers();
-        }
-        receipt
-    }
-}
-
-fn cancellation_target(command: &CommandEnvelope) -> Option<CancellationId> {
-    match command.command {
-        ApplicationCommand::CancelOperation { cancellation_id } => Some(cancellation_id),
-        _ => None,
+        let state = self.state();
+        let totals = (
+            state.listening.podcasts.len(),
+            state.listening.subscriptions.len(),
+            state.listening.episodes.len(),
+        );
+        let projection = state.snapshot(ProjectionRequest {
+            scope: pod0_application::ProjectionScope::Library,
+            offset,
+            max_items,
+        });
+        let subscribed_podcast_ids = match &projection.projection {
+            pod0_application::Projection::Library { value } => value
+                .podcasts
+                .iter()
+                .filter(|podcast| {
+                    state
+                        .listening
+                        .subscriptions
+                        .iter()
+                        .any(|subscription| subscription.podcast_id == podcast.podcast_id)
+                })
+                .map(|podcast| podcast.podcast_id)
+                .collect(),
+            _ => Vec::new(),
+        };
+        (projection, totals, subscribed_podcast_ids)
     }
 }

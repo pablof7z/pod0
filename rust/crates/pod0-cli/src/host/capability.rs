@@ -138,7 +138,9 @@ mod tests {
         let bounded = bounded_result_json(results);
         assert!(bounded.len() <= pod0_application::MAX_AGENT_MESSAGE_BYTES);
         let parsed: serde_json::Value = serde_json::from_str(&bounded).unwrap();
-        let entries = parsed.as_array().expect("bounded_result must be a JSON array");
+        let entries = parsed
+            .as_array()
+            .expect("bounded_result must be a JSON array");
         assert!(!entries.is_empty());
         assert!(entries.len() < 200);
     }

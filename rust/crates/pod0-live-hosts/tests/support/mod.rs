@@ -51,13 +51,21 @@ impl TcpTestServer {
                 };
                 thread_accepted.fetch_add(1, Ordering::AcqRel);
                 stream
+                    .set_nonblocking(false)
+                    .expect("set accepted test stream blocking");
+                stream
                     .set_read_timeout(Some(Duration::from_secs(2)))
                     .expect("set read timeout");
-                let request = read_request(&mut stream);
+                let Some(request) = read_request(&mut stream) else {
+                    continue;
+                };
                 let response = handler(index, &request);
                 let _ = stream.write_all(&response);
                 let _ = stream.flush();
-                let _ = stream.shutdown(Shutdown::Both);
+                // Half-close after flushing so the client observes an orderly HTTP EOF.
+                // A full shutdown can reset the socket before buffered response bytes are
+                // consumed, which made otherwise valid responses fail only under suite load.
+                let _ = stream.shutdown(Shutdown::Write);
             }
             let _ = done_tx.send(());
         });
@@ -117,20 +125,33 @@ fn accept_before_deadline(listener: &TcpListener, stop: &AtomicBool) -> Option<T
     }
 }
 
-fn read_request(stream: &mut TcpStream) -> String {
+fn read_request(stream: &mut TcpStream) -> Option<String> {
     let mut request = Vec::new();
     let mut buffer = [0_u8; 1_024];
     loop {
-        let count = stream.read(&mut buffer).expect("read HTTP request");
+        let count = match stream.read(&mut buffer) {
+            Ok(count) => count,
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    std::io::ErrorKind::ConnectionReset
+                        | std::io::ErrorKind::UnexpectedEof
+                        | std::io::ErrorKind::TimedOut
+                        | std::io::ErrorKind::WouldBlock
+                ) =>
+            {
+                return None;
+            }
+            Err(error) => panic!("read HTTP request: {error}"),
+        };
         if count == 0 {
-            break;
+            return None;
         }
         request.extend_from_slice(&buffer[..count]);
         if request.windows(4).any(|window| window == b"\r\n\r\n") {
-            break;
+            return Some(String::from_utf8(request).expect("test request is UTF-8 HTTP"));
         }
     }
-    String::from_utf8(request).expect("test request is UTF-8 HTTP")
 }
 
 pub fn response(status: &str, headers: &[(&str, &str)], body: &[u8]) -> Vec<u8> {
@@ -177,4 +198,24 @@ impl Drop for TestDirectory {
             let _ = fs::remove_dir(parent);
         }
     }
+}
+
+#[test]
+fn client_disconnect_before_headers_is_clean_shutdown() {
+    let server = TcpTestServer::spawn(1, |_index, _request| {
+        panic!("incomplete request must not reach the handler")
+    });
+    let stream = TcpStream::connect(&server.address).expect("connect to local TCP test server");
+    let deadline = Instant::now() + Duration::from_secs(1);
+    while server.accepted_connections() == 0 {
+        assert!(
+            Instant::now() < deadline,
+            "server must accept fixture connection"
+        );
+        thread::yield_now();
+    }
+    stream
+        .shutdown(Shutdown::Both)
+        .expect("disconnect fixture client");
+    drop(server);
 }

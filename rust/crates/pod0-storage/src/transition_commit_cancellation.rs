@@ -68,10 +68,11 @@ fn commit(
             let effects = cancellable_effects(transaction, cancellation_id, lifecycle_only)?;
             let targets = effects.iter().map(|effect| effect.target).collect();
             let updates_recall = effects.iter().any(|effect| effect.updates_recall);
+            let updates_feed_fetch = effects.iter().any(|effect| effect.updates_feed_fetch);
             let updates_chapter = effects.iter().any(|effect| effect.updates_chapter);
             let intent_ids: Vec<[u8; 16]> =
                 effects.into_iter().map(|effect| effect.intent_id).collect();
-            let current = if updates_recall {
+            let current = if updates_recall || updates_feed_fetch {
                 core_revision(transaction)?
             } else {
                 pod0_domain::StateRevision::INITIAL
@@ -81,10 +82,21 @@ fn commit(
                 current_revision: current,
                 targets,
             })
-            .map(|plan| plan.map_mutation(|()| (intent_ids, updates_recall, updates_chapter)))
+            .map(|plan| {
+                plan.map_mutation(|()| {
+                    (
+                        intent_ids,
+                        updates_recall,
+                        updates_feed_fetch,
+                        updates_chapter,
+                    )
+                })
+            })
             .map_err(|_| StorageError::InvalidActivity)
         },
-        |transaction, expected, (intent_ids, updates_recall, updates_chapter)| {
+        |transaction,
+         expected,
+         (intent_ids, updates_recall, updates_feed_fetch, updates_chapter)| {
             for intent_id in intent_ids {
                 transaction
                     .execute(
@@ -115,7 +127,17 @@ fn commit(
                     committed_at,
                 )?;
             }
-            if !updates_recall {
+            if updates_feed_fetch {
+                transaction
+                    .execute(
+                        "DELETE FROM pod0_feed_fetch_workflows WHERE cancellation_id=?1",
+                        [cancellation_id.into_bytes().as_slice()],
+                    )
+                    .map_err(|error| {
+                        StorageError::sqlite("remove cancelled feed fetch workflow", error)
+                    })?;
+            }
+            if !updates_recall && !updates_feed_fetch {
                 return Ok(expected);
             }
             let committed = crate::library_store::advance_playback_revision(transaction)?;
@@ -133,6 +155,7 @@ struct CancellableEffect {
     intent_id: [u8; 16],
     target: CancellationEffectTarget,
     updates_recall: bool,
+    updates_feed_fetch: bool,
     updates_chapter: bool,
 }
 
@@ -143,18 +166,22 @@ fn cancellable_effects(
 ) -> Result<Vec<CancellableEffect>, StorageError> {
     let mut statement = transaction
         .prepare(
-            "SELECT intent_id,request_json FROM pod0_effect_intents \
+            "SELECT intent_id,request_json,state_code FROM pod0_effect_intents \
              WHERE state_code IN(1,2) ORDER BY committed_at_ms,intent_id",
         )
         .map_err(|error| StorageError::sqlite("read cancellable durable effects", error))?;
     let rows = statement
         .query_map([], |row| {
-            Ok((row.get::<_, Vec<u8>>(0)?, row.get::<_, String>(1)?))
+            Ok((
+                row.get::<_, Vec<u8>>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, i64>(2)?,
+            ))
         })
         .map_err(|error| StorageError::sqlite("query cancellable durable effects", error))?;
     let mut effects = Vec::new();
     for row in rows {
-        let (intent, payload) =
+        let (intent, payload, state_code) =
             row.map_err(|error| StorageError::sqlite("decode cancellable durable effect", error))?;
         let request: DurableExternalEffectRequest =
             serde_json::from_str(&payload).map_err(|_| StorageError::InvalidActivity)?;
@@ -179,11 +206,21 @@ fn cancellable_effects(
                 episode_id: request.episode_id,
                 host_request_id,
                 cancellation_id,
+                requires_host_cancellation: state_code == 2,
             },
             updates_recall: matches!(
                 request.execution,
                 DurableEffectExecution::RecallQuery { .. }
                     | DurableEffectExecution::RecallIndexCutover { .. }
+            ),
+            updates_feed_fetch: matches!(
+                request.execution,
+                DurableEffectExecution::Feed {
+                    request: pod0_application::DurableFeedEffectRequest {
+                        action: pod0_application::DurableFeedEffectAction::FetchFeed { .. },
+                        ..
+                    }
+                }
             ),
             updates_chapter: matches!(
                 request.execution,

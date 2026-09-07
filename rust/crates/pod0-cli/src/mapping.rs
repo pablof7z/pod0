@@ -1,6 +1,5 @@
 use pod0_facade::{
     AgentTurnStage, CoreFailureCode, OperationProjection, OperationStage, Pod0Facade, Projection,
-    ProjectionRequest, ProjectionScope,
 };
 
 use crate::protocol::{CliError, OperationDto};
@@ -18,25 +17,10 @@ pub(crate) fn library(
     ),
     CliError,
 > {
-    let snapshot = facade.snapshot(ProjectionRequest {
-        scope: ProjectionScope::Library,
-        offset,
-        max_items,
-    });
+    let (snapshot, totals, subscribed_podcast_ids) =
+        facade.library_page_with_totals(offset, max_items);
     match snapshot.projection {
-        Projection::Library { value } => {
-            let totals = (
-                value.podcasts.len(),
-                value.subscriptions.len(),
-                value.episodes.len(),
-            );
-            let subscribed_podcast_ids = value
-                .subscriptions
-                .iter()
-                .map(|subscription| subscription.podcast_id)
-                .collect();
-            Ok((value, totals, subscribed_podcast_ids))
-        }
+        Projection::Library { value } => Ok((value, totals, subscribed_podcast_ids)),
         _ => Err(projection_error()),
     }
 }

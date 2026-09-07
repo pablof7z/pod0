@@ -22,7 +22,11 @@ pub(crate) fn search(
 ) -> Result<Vec<PodcastSearchResultDto>, CliError> {
     let term = term.trim();
     if term.is_empty() {
-        return Err(CliError::new("search_term_empty", "search term must not be empty", false));
+        return Err(CliError::new(
+            "search_term_empty",
+            "search term must not be empty",
+            false,
+        ));
     }
     let limit = requested_limit.clamp(1, MAX_SEARCH_RESULTS);
     let encoded = urlencode(term);
@@ -30,9 +34,7 @@ pub(crate) fn search(
         .ok()
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| ITUNES_SEARCH_URL.to_owned());
-    let url = format!(
-        "{base}?media=podcast&limit={limit}&term={encoded}"
-    );
+    let url = format!("{base}?media=podcast&limit={limit}&term={encoded}");
 
     let request = HttpGetRequest {
         url,
@@ -66,15 +68,22 @@ pub(crate) fn search(
 }
 
 fn parse_results(bytes: &[u8]) -> Result<Vec<PodcastSearchResultDto>, CliError> {
-    let value: serde_json::Value =
-        serde_json::from_slice(bytes).map_err(|_| {
-            CliError::new("search_invalid_json", "iTunes search returned invalid JSON", false)
-        })?;
+    let value: serde_json::Value = serde_json::from_slice(bytes).map_err(|_| {
+        CliError::new(
+            "search_invalid_json",
+            "iTunes search returned invalid JSON",
+            false,
+        )
+    })?;
     let results = value
         .get("results")
         .and_then(serde_json::Value::as_array)
         .ok_or_else(|| {
-            CliError::new("search_invalid_json", "iTunes search response had no results array", false)
+            CliError::new(
+                "search_invalid_json",
+                "iTunes search response had no results array",
+                false,
+            )
         })?;
     let mut out = Vec::new();
     for item in results {
@@ -120,7 +129,9 @@ fn parse_results(bytes: &[u8]) -> Result<Vec<PodcastSearchResultDto>, CliError> 
 
 fn observation_to_error(observation: pod0_facade::HostObservation) -> CliError {
     let detail = match observation {
-        pod0_facade::HostObservation::Failed { code, .. } => format!("iTunes search failed: {code:?}"),
+        pod0_facade::HostObservation::Failed { code, .. } => {
+            format!("iTunes search failed: {code:?}")
+        }
         other => format!("iTunes search failed: {other:?}"),
     };
     CliError::new("search_http_error", detail, true)

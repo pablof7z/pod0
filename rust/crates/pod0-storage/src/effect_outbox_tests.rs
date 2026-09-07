@@ -113,6 +113,12 @@ fn lease_excludes_concurrent_execution_and_expiry_reclaims_with_a_new_fence() {
         .unwrap();
     assert_eq!(first.intent_id, intent_id);
     assert_eq!(first.fence, 1);
+    assert_eq!(
+        outbox
+            .next_claim_at(UnixTimestampMilliseconds::new(1_500))
+            .unwrap(),
+        Some(UnixTimestampMilliseconds::new(2_000))
+    );
     assert!(
         outbox
             .claim_next(

@@ -3,7 +3,7 @@ use std::io::Write;
 use pod0_cli::{HostConfig, HostRequestEnvelope, execute_host_request};
 use pod0_domain::PlaybackSeekReason;
 use pod0_facade::{
-    CancellationId, CommandId, EpisodeId, HostObservation, HostRequestId, HostRequest,
+    CancellationId, CommandId, EpisodeId, HostObservation, HostRequest, HostRequestId,
     NativeTimerMode, PlaybackHostState, PlaybackRatePermille, PlaybackTransitionCue, StateRevision,
 };
 
@@ -62,20 +62,25 @@ fn playback_loads_observes_seeks_pauses_and_stops_real_media() {
     let directory = tempfile::tempdir_in(".").unwrap();
     let wav = directory.path().join("tone.wav");
     // 8000 samples at 8000 Hz = 1 second of real audio.
-    let samples: Vec<i16> = (0..8000).map(|i| {
-        let phase = (i as f32 / 8.0).sin() * 0.3;
-        (phase * 32_000.0) as i16
-    }).collect();
+    let samples: Vec<i16> = (0..8000)
+        .map(|i| {
+            let phase = (i as f32 / 8.0).sin() * 0.3;
+            (phase * 32_000.0) as i16
+        })
+        .collect();
     write_wav(&wav, &samples);
     let audio_url = format!("file://{}", wav.to_string_lossy());
     let config = HostConfig::empty();
     let episode = EpisodeId::from_parts(3, 4);
 
-    let observation = run(&config, HostRequest::LoadMedia {
-        episode_id: episode,
-        audio_url: audio_url.clone(),
-        start_position_milliseconds: 0,
-    });
+    let observation = run(
+        &config,
+        HostRequest::LoadMedia {
+            episode_id: episode,
+            audio_url: audio_url.clone(),
+            start_position_milliseconds: 0,
+        },
+    );
     let HostObservation::PlaybackObserved { value } = &observation else {
         panic!("load must produce PlaybackObserved, got {observation:?}");
     };
@@ -88,33 +93,52 @@ fn playback_loads_observes_seeks_pauses_and_stops_real_media() {
         value.duration_milliseconds
     );
 
-    let observation = run(&config, HostRequest::ObservePlayback {
-        episode_id: Some(episode),
-        minimum_interval_milliseconds: 500,
-    });
+    let observation = run(
+        &config,
+        HostRequest::ObservePlayback {
+            episode_id: Some(episode),
+            minimum_interval_milliseconds: 500,
+        },
+    );
     assert_state(&observation, PlaybackHostState::Prepared);
 
-    let observation = run(&config, HostRequest::Seek {
-        episode_id: episode,
-        position_milliseconds: 400,
-        reason: PlaybackSeekReason::UserRequested,
-        chapter_context: None,
-    });
+    let observation = run(
+        &config,
+        HostRequest::Seek {
+            episode_id: episode,
+            position_milliseconds: 400,
+            reason: PlaybackSeekReason::UserRequested,
+            chapter_context: None,
+        },
+    );
     let HostObservation::PlaybackObserved { value } = &observation else {
         panic!("seek must produce PlaybackObserved, got {observation:?}");
     };
     assert_eq!(value.position_milliseconds, 400);
 
-    let observation = run(&config, HostRequest::SetRate {
-        episode_id: episode,
-        rate: PlaybackRatePermille { value: 1500 },
-    });
+    let observation = run(
+        &config,
+        HostRequest::SetRate {
+            episode_id: episode,
+            rate: PlaybackRatePermille { value: 1500 },
+        },
+    );
     assert_state(&observation, PlaybackHostState::Prepared);
 
-    let observation = run(&config, HostRequest::Pause { episode_id: episode });
+    let observation = run(
+        &config,
+        HostRequest::Pause {
+            episode_id: episode,
+        },
+    );
     assert_state(&observation, PlaybackHostState::Paused);
 
-    let observation = run(&config, HostRequest::StopPlayback { episode_id: episode });
+    let observation = run(
+        &config,
+        HostRequest::StopPlayback {
+            episode_id: episode,
+        },
+    );
     assert_state(&observation, PlaybackHostState::Idle);
 
     // Operating on the wrong episode fails honestly (no media loaded for it).
@@ -132,18 +156,29 @@ fn playback_arm_end_of_episode_timer_observes_without_a_fake_pause() {
     let config = HostConfig::empty();
     let episode = EpisodeId::from_parts(5, 6);
 
-    let _ = run(&config, HostRequest::LoadMedia {
-        episode_id: episode,
-        audio_url,
-        start_position_milliseconds: 0,
-    });
-    let observation = run(&config, HostRequest::ArmNativeTimer {
-        episode_id: episode,
-        mode: NativeTimerMode::EndOfEpisode,
-    });
+    let _ = run(
+        &config,
+        HostRequest::LoadMedia {
+            episode_id: episode,
+            audio_url,
+            start_position_milliseconds: 0,
+        },
+    );
+    let observation = run(
+        &config,
+        HostRequest::ArmNativeTimer {
+            episode_id: episode,
+            mode: NativeTimerMode::EndOfEpisode,
+        },
+    );
     assert_state(&observation, PlaybackHostState::Prepared);
 
-    let observation = run(&config, HostRequest::CancelNativeTimer { episode_id: episode });
+    let observation = run(
+        &config,
+        HostRequest::CancelNativeTimer {
+            episode_id: episode,
+        },
+    );
     assert_state(&observation, PlaybackHostState::Prepared);
 }
 
@@ -151,27 +186,41 @@ fn playback_arm_end_of_episode_timer_observes_without_a_fake_pause() {
 fn playback_play_starts_real_audio_output_or_fails_honestly_without_audio_device() {
     let directory = tempfile::tempdir_in(".").unwrap();
     let wav = directory.path().join("play.wav");
-    write_wav(&wav, &(0..800).map(|i| ((i as f32 / 8.0).sin() * 30_000.0) as i16).collect::<Vec<_>>());
+    write_wav(
+        &wav,
+        &(0..800)
+            .map(|i| ((i as f32 / 8.0).sin() * 30_000.0) as i16)
+            .collect::<Vec<_>>(),
+    );
     let audio_url = format!("file://{}", wav.to_string_lossy());
     let config = HostConfig::empty();
     let episode = EpisodeId::from_parts(7, 8);
 
-    let _ = run(&config, HostRequest::LoadMedia {
-        episode_id: episode,
-        audio_url,
-        start_position_milliseconds: 0,
-    });
-    let observation = run(&config, HostRequest::Play {
-        episode_id: episode,
-        transition_cue: PlaybackTransitionCue::Immediate,
-    });
+    let _ = run(
+        &config,
+        HostRequest::LoadMedia {
+            episode_id: episode,
+            audio_url,
+            start_position_milliseconds: 0,
+        },
+    );
+    let observation = run(
+        &config,
+        HostRequest::Play {
+            episode_id: episode,
+            transition_cue: PlaybackTransitionCue::Immediate,
+        },
+    );
     let HostObservation::PlaybackObserved { value } = &observation else {
         panic!("play must produce PlaybackObserved, got {observation:?}");
     };
     // Real playback either starts (device present) or fails honestly with a
     // real audio-output error. It must never report a fabricated success.
     assert!(
-        matches!(value.state, PlaybackHostState::Playing | PlaybackHostState::Failed),
+        matches!(
+            value.state,
+            PlaybackHostState::Playing | PlaybackHostState::Failed
+        ),
         "play must really attempt audio output, got {value:?}"
     );
     assert_eq!(value.episode_id, Some(episode));
