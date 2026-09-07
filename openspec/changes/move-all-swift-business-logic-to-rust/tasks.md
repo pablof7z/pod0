@@ -8,7 +8,7 @@
 
 ## 2. Build the Rust Transition and Effect Substrate
 
-- [ ] 2.1 Add stable command identity, expected-revision context, and typed applied/rejected/stale/duplicate/not-allowed/already-complete/no-op/cancelled/failed/outcome-unknown dispositions to the Rust application contract; verify replay and invalid-input unit tests pass.
+- [x] 2.1 Add stable command identity, expected-revision context, and typed applied/rejected/stale/duplicate/not-allowed/already-complete/no-op/cancelled/failed/outcome-unknown dispositions to the Rust application contract; verify replay and invalid-input unit tests pass.
 - [ ] 2.2 Make state, semantic facts, idempotency receipts, internal commands, and external-effect intents commit atomically; verify fault injection at every commit boundary exposes either the old state or the complete new transition.
 - [ ] 2.3 Implement the durable typed internal-command outbox with correlation, causation, idempotent target consumption, and wake-after-commit behavior; verify crash/replay tests do not lose or duplicate a target-domain mutation.
 - [ ] 2.4 Implement immutable native-effect requests with effect, lease, attempt, fence, and cancellation identity; verify unleased, expired, duplicate, and stale-fence claims are rejected.

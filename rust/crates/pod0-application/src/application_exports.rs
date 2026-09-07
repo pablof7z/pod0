@@ -34,6 +34,7 @@ pub use chapter_observation_activity::*;
 pub use chapter_projection::*;
 pub use chapter_workflow::*;
 pub use clip_contract::*;
+pub use command_disposition::*;
 pub use contract::*;
 pub use contract_library_input::*;
 pub use contract_failure::*;
