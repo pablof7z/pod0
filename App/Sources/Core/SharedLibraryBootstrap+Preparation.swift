@@ -7,6 +7,7 @@ struct SharedLibraryBootstrapPreparation: @unchecked Sendable {
     let feedHost: any CoreFeedHosting
     let observationOutbox: NativeHostObservationOutbox
     let productSettings: ProductSettings
+    let categories: CategoryAuthorityProjection
 }
 
 enum SharedLibraryBootstrapPreparationOutcome: @unchecked Sendable {
@@ -52,6 +53,7 @@ extension SharedLibraryBootstrap {
             client.start()
             persistence.activateSharedListeningAuthority()
             persistence.activateSharedSettingsAuthority()
+            persistence.activateSharedCategoryAuthority()
             logger.info(
                 "Shared Rust library is authoritative at \(preparation.coreStoreURL.path, privacy: .public)"
             )

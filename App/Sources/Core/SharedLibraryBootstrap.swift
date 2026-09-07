@@ -197,6 +197,8 @@ enum SharedLibraryBootstrap {
                 target: target,
                 into: facade
             )
+            stage = .categories
+            let categories = try importLegacyCategories(from: legacyState, into: facade)
             stage = .recallConfiguration
             try importLegacyRecallConfiguration(legacyRecallConfiguration, into: facade)
             let legacyJobStore = JobStore(fileURL: persistence.episodeStore.fileURL)
@@ -232,7 +234,8 @@ enum SharedLibraryBootstrap {
                 coreStoreURL: target,
                 feedHost: feedHost,
                 observationOutbox: observationOutbox,
-                productSettings: productSettings
+                productSettings: productSettings,
+                categories: categories
             ))
         } catch {
             let code = SharedLibraryBootstrapFailureCode.classify(error)
