@@ -140,6 +140,7 @@ mod library_network_store_model;
 mod library_store;
 mod library_store_activity;
 mod library_store_categories;
+mod library_store_category_collection;
 mod library_store_category_members;
 mod library_store_chapter_commit;
 mod library_store_chapters;

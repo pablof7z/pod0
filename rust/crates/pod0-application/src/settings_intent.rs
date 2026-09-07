@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use pod0_domain::{HeadphoneGestureSetting, ProductSettingsValues, SpeechTranscriptionSetting};
 
-pub const MAX_PRODUCT_SETTING_INTENTS: usize = 16;
+pub const MAX_PRODUCT_SETTING_INTENTS: usize = 32;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
 pub enum ProductModelSlot {

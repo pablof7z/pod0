@@ -13,6 +13,9 @@ mod chapter_migration_mapping;
 #[cfg(test)]
 mod chapter_migration_tests;
 mod chapter_observation_facade;
+mod category_facade;
+#[cfg(test)]
+mod category_facade_tests;
 mod clip_migration;
 mod contract_facade;
 mod download_cutover;
@@ -159,6 +162,7 @@ pub use chapter_observation_facade::{
     chapter_observation_limits, qualify_agent_composed_chapter_observation,
     qualify_model_chapter_observation, qualify_publisher_chapter_observation,
 };
+pub use category_facade::{CategoryAuthorityProjection, CategoryProjection};
 pub use clip_migration::{
     LegacyClipBackupEvidence, LegacyClipImportPlan, LegacyClipImportReport,
     LegacyClipImportVerification, LegacyClipMigrationError, commit_staged_legacy_clip_import,
