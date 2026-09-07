@@ -31,6 +31,7 @@ enum CommitFaultPoint {
     AfterEffectIntents,
     AfterInternalCommands,
     AfterReceipt,
+    AfterCommit,
 }
 
 #[derive(Clone, Debug)]

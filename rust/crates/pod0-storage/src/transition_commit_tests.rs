@@ -218,7 +218,7 @@ fn state_dependent_planning_runs_under_the_immediate_write_lock() {
 }
 
 #[test]
-fn every_fault_seam_rolls_back_state_facts_outboxes_and_receipt() {
+fn every_fault_seam_exposes_only_old_or_complete_transition() {
     let points = [
         CommitFaultPoint::BeforeMutation,
         CommitFaultPoint::AfterMutation,
@@ -226,6 +226,7 @@ fn every_fault_seam_rolls_back_state_facts_outboxes_and_receipt() {
         CommitFaultPoint::AfterEffectIntents,
         CommitFaultPoint::AfterInternalCommands,
         CommitFaultPoint::AfterReceipt,
+        CommitFaultPoint::AfterCommit,
     ];
     for (index, target) in points.into_iter().enumerate() {
         let fixture = Fixture::new();
@@ -257,15 +258,54 @@ fn every_fault_seam_rolls_back_state_facts_outboxes_and_receipt() {
             );
         assert!(matches!(result, Err(StorageError::Interrupted)));
         let connection = Connection::open(&fixture.store).unwrap();
+        let committed = target == CommitFaultPoint::AfterCommit;
+        assert_eq!(count(&connection, "test_state"), i64::from(committed));
+        assert_eq!(
+            count(&connection, "pod0_activity_facts"),
+            if committed { 3 } else { 0 }
+        );
         for table in [
-            "test_state",
-            "pod0_activity_facts",
             "pod0_effect_intents",
             "pod0_internal_command_intents",
             "pod0_transition_receipts",
         ] {
-            assert_eq!(count(&connection, table), 0, "{target:?}: {table}");
+            assert_eq!(
+                count(&connection, table),
+                i64::from(committed),
+                "{target:?}: {table}"
+            );
         }
+        drop(connection);
+
+        let replay = TransitionCommit::open(&fixture.store)
+            .unwrap()
+            .commit_with(
+                ingress(1),
+                plan(),
+                UnixTimestampMilliseconds::new(101),
+                |transaction, _, value| {
+                    transaction
+                        .execute("INSERT INTO test_state VALUES(?1)", [value])
+                        .unwrap();
+                    Ok(StateRevision::new(10))
+                },
+            )
+            .unwrap();
+        assert_eq!(replay.replayed, committed, "{target:?}");
+        let connection = Connection::open(&fixture.store).unwrap();
+        assert_eq!(count(&connection, "test_state"), 1, "{target:?}");
+        assert_eq!(count(&connection, "pod0_activity_facts"), 3, "{target:?}");
+        assert_eq!(count(&connection, "pod0_effect_intents"), 1, "{target:?}");
+        assert_eq!(
+            count(&connection, "pod0_internal_command_intents"),
+            1,
+            "{target:?}"
+        );
+        assert_eq!(
+            count(&connection, "pod0_transition_receipts"),
+            1,
+            "{target:?}"
+        );
     }
 }
 
