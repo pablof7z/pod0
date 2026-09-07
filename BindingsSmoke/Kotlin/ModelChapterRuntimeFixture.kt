@@ -22,7 +22,7 @@ fun qualifyModelChapterRuntime(facade: Pod0Facade, episodeId: EpisodeId) {
         request.cancellationId,
         request.issuedRevision,
         1UL,
-        UnixTimestampMilliseconds(1_800_000_100_200L),
+        UnixTimestampMilliseconds(leased.lease.expiresAt.value - 1L),
         HostObservation.ChapterModelCompleted(
             execute.episodeId,
             execute.generation,

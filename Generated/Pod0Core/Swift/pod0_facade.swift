@@ -819,6 +819,15 @@ public convenience init() {
     }
 
 
+public static func create(storePath: String)throws  -> Pod0Facade  {
+    return try  FfiConverterTypePod0Facade_lift(try rustCallWithError(FfiConverterTypeFacadeOpenError_lift) {
+        uniffiCallStatus in
+    uniffi_pod0_facade_fn_constructor_pod0facade_create(
+        FfiConverterString.lower(storePath),uniffiCallStatus
+    )
+})
+}
+
 public static func `open`(storePath: String)throws  -> Pod0Facade  {
     return try  FfiConverterTypePod0Facade_lift(try rustCallWithError(FfiConverterTypeFacadeOpenError_lift) {
         uniffiCallStatus in
@@ -10383,40 +10392,40 @@ private let initializationResult: InitializationResult = {
     if (uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_memory_cutover() != 30698) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_dispatch() != 36474) {
+    if (uniffi_pod0_facade_checksum_method_pod0facade_dispatch() != 4557) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_next_leased_host_requests() != 19145) {
+    if (uniffi_pod0_facade_checksum_method_pod0facade_next_leased_host_requests() != 33049) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_next_nmp_publications() != 55983) {
+    if (uniffi_pod0_facade_checksum_method_pod0facade_next_nmp_publications() != 60210) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_nmp_publication_receipt_links() != 44581) {
+    if (uniffi_pod0_facade_checksum_method_pod0facade_nmp_publication_receipt_links() != 65294) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_plan_chapter_model_request() != 53024) {
+    if (uniffi_pod0_facade_checksum_method_pod0facade_plan_chapter_model_request() != 64977) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_record_leased_host_observation() != 16311) {
+    if (uniffi_pod0_facade_checksum_method_pod0facade_record_leased_host_observation() != 35742) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_observation() != 55579) {
+    if (uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_observation() != 26243) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_receipt() != 24707) {
+    if (uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_receipt() != 24054) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_snapshot() != 17086) {
+    if (uniffi_pod0_facade_checksum_method_pod0facade_snapshot() != 46308) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_subscribe() != 52155) {
+    if (uniffi_pod0_facade_checksum_method_pod0facade_subscribe() != 29651) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_unsubscribe() != 29741) {
+    if (uniffi_pod0_facade_checksum_method_pod0facade_unsubscribe() != 5262) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_method_pod0facade_workflow_configuration() != 40685) {
+    if (uniffi_pod0_facade_checksum_method_pod0facade_workflow_configuration() != 18393) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_scheduled_agent_cutover() != 55891) {
@@ -10473,10 +10482,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_pod0_facade_checksum_method_pod0facade_execute_workflow_action() != 55223) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_constructor_pod0facade_new() != 63792) {
+    if (uniffi_pod0_facade_checksum_constructor_pod0facade_create() != 38454) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_pod0_facade_checksum_constructor_pod0facade_open() != 33565) {
+    if (uniffi_pod0_facade_checksum_constructor_pod0facade_new() != 16124) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_pod0_facade_checksum_constructor_pod0facade_open() != 26756) {
         return InitializationResult.apiChecksumMismatch
     }
 

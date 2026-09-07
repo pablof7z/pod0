@@ -1066,6 +1066,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_pod0_facade_checksum_method_pod0facade_execute_workflow_action(
     ): Int
+    external fun uniffi_pod0_facade_checksum_constructor_pod0facade_create(
+    ): Int
     external fun uniffi_pod0_facade_checksum_constructor_pod0facade_new(
     ): Int
     external fun uniffi_pod0_facade_checksum_constructor_pod0facade_open(
@@ -1103,6 +1105,8 @@ internal object UniffiLib {
     ): Long
     external fun uniffi_pod0_facade_fn_free_pod0facade(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): Unit
+    external fun uniffi_pod0_facade_fn_constructor_pod0facade_create(`storePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): Long
     external fun uniffi_pod0_facade_fn_constructor_pod0facade_new(uniffi_out_err: UniffiRustCallStatus,
     ): Long
     external fun uniffi_pod0_facade_fn_constructor_pod0facade_open(`storePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1638,40 +1642,40 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_verify_legacy_memory_cutover() != 30698) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_dispatch() != 36474) {
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_dispatch() != 4557) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_next_leased_host_requests() != 19145) {
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_next_leased_host_requests() != 33049) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_next_nmp_publications() != 55983) {
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_next_nmp_publications() != 60210) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_nmp_publication_receipt_links() != 44581) {
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_nmp_publication_receipt_links() != 65294) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_plan_chapter_model_request() != 53024) {
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_plan_chapter_model_request() != 64977) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_leased_host_observation() != 16311) {
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_leased_host_observation() != 35742) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_observation() != 55579) {
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_observation() != 26243) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_receipt() != 24707) {
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_record_nmp_publication_receipt() != 24054) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_snapshot() != 17086) {
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_snapshot() != 46308) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_subscribe() != 52155) {
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_subscribe() != 29651) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_unsubscribe() != 29741) {
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_unsubscribe() != 5262) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_workflow_configuration() != 40685) {
+    if (lib.uniffi_pod0_facade_checksum_method_pod0facade_workflow_configuration() != 18393) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_commit_legacy_scheduled_agent_cutover() != 55891) {
@@ -1728,10 +1732,13 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_pod0_facade_checksum_method_pod0facade_execute_workflow_action() != 55223) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_constructor_pod0facade_new() != 63792) {
+    if (lib.uniffi_pod0_facade_checksum_constructor_pod0facade_create() != 38454) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_pod0_facade_checksum_constructor_pod0facade_open() != 33565) {
+    if (lib.uniffi_pod0_facade_checksum_constructor_pod0facade_new() != 16124) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_pod0_facade_checksum_constructor_pod0facade_open() != 26756) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -3258,6 +3265,19 @@ open class Pod0Facade: Disposable, AutoCloseable, Pod0FacadeInterface
 
 
     companion object {
+
+    @Throws(FacadeOpenException::class) fun `create`(`storePath`: kotlin.String): Pod0Facade {
+            return FfiConverterTypePod0Facade.lift(
+    uniffiRustCallWithError(FacadeOpenException) { _status ->
+    UniffiLib.uniffi_pod0_facade_fn_constructor_pod0facade_create(
+
+
+        FfiConverterString.lower(`storePath`),_status)
+}
+    )
+    }
+
+
 
     @Throws(FacadeOpenException::class) fun `open`(`storePath`: kotlin.String): Pod0Facade {
             return FfiConverterTypePod0Facade.lift(
