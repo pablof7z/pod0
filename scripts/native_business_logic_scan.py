@@ -46,6 +46,35 @@ RULES = (
         ),
         "direct external-effect dispatch",
     ),
+    (
+        "native_default_fallback_retry",
+        re.compile(
+            r"\b(?:productDefault|fallbackProvider|retryCount|retryPolicy|"
+            r"fallbackPolicy)[A-Za-z0-9_]*\s*(?:=|\()"
+        ),
+        "native default, fallback, or retry policy",
+    ),
+    (
+        "in_memory_only_authorization",
+        re.compile(
+            r"\b(?:authorizedEffects|authorizedRequests|pendingAuthorizedEffects)"
+            r"\s*\.\s*(?:append|insert|add)\s*\("
+        ),
+        "in-memory-only effect authorization",
+    ),
+    (
+        "stale_observation_acceptance",
+        re.compile(r"\b(?:accept|apply|commit)StaleObservation\s*\("),
+        "stale observation acceptance",
+    ),
+    (
+        "restored_retired_writer",
+        re.compile(
+            r"\b(?:TranscriptStore|EpisodeAuditLogStore|"
+            r"ScheduledAgentRunJobExecutor|FeedDiscoveryJobExecutor)\b"
+        ),
+        "restored retired native writer",
+    ),
 )
 
 

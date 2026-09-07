@@ -237,6 +237,10 @@ def run_self_test() -> int:
         "direct_durable_write": "ProductStateStore.shared.save(value)\n",
         "semantic_fact_construction": "ActivityFact(value)\n",
         "direct_effect_dispatch": "ExternalEffectDispatcher.shared.dispatch(effect)\n",
+        "native_default_fallback_retry": "fallbackProvider = provider\n",
+        "in_memory_only_authorization": "authorizedEffects.append(effect)\n",
+        "stale_observation_acceptance": "acceptStaleObservation(observation)\n",
+        "restored_retired_writer": "let store = TranscriptStore.shared\n",
     }
     for index, (rule_id, source) in enumerate(violation_sources.items()):
         with tempfile.TemporaryDirectory() as directory:
