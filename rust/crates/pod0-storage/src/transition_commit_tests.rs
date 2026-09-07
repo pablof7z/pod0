@@ -10,7 +10,7 @@ use pod0_domain::{
 };
 use rusqlite::Connection;
 
-use super::{CommitFaultPoint, TransitionCommit};
+use super::TransitionCommit;
 use crate::recovery_test_support::Fixture;
 use crate::{StorageError, TransitionIngress, TransitionIngressKind};
 
@@ -219,6 +219,5 @@ fn state_dependent_planning_runs_under_the_immediate_write_lock() {
 
 #[path = "transition_commit_causation_tests.rs"]
 mod causation;
-
 #[path = "transition_commit_fault_tests.rs"]
 mod faults;
