@@ -20,8 +20,8 @@ configuration, indexing, and retrieval; publisher and model chapter workflows;
 scheduled-agent definitions, occurrences, and artifacts; interactive
 product-proof agent conversations, proposals, permissions, recall citations,
 model usage, generated audio provenance, and feed-discovery
-download/notification policy with durable recovery. The facade contract is now
-version 57. It exposes bounded commands,
+download/notification policy with durable recovery. The facade contract is now version 57.
+It exposes bounded commands,
 projections, domain events, and correlated host requests across those migrated
 domains. Exact integer milliseconds, stable identifiers, explicit revisions,
 effect fences, cancellation, and typed failure states prevent native adapters
